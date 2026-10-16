@@ -1,25 +1,26 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { validateStateEvidence } from './a11y-state-evidence.mjs';
+import { basename, join, resolve } from 'node:path';
 import manifest from '../specimens/frontcomposer-specimen-manifest.json' with { type: 'json' };
 
 const required = [
-  'playwright-report/index.html',
-  'test-results/junit.xml',
+  join(process.env.FC_E2E_HTML_REPORT_DIR ?? 'playwright-report', 'index.html'),
+  join(process.env.FC_E2E_OUTPUT_DIR ?? 'test-results', 'junit.xml'),
 ];
 
 const optionalEvidenceRoots = [
-  'test-results',
-  'playwright-report',
+  process.env.FC_E2E_OUTPUT_DIR ?? 'test-results',
+  process.env.FC_E2E_HTML_REPORT_DIR ?? 'playwright-report',
 ];
 
-const missing = required.filter((path) => !existsSync(join(process.cwd(), path)));
+const missing = required.filter((path) => !existsSync(resolve(process.cwd(), path)));
 if (missing.length > 0) {
   console.error(`Missing required Playwright artifact(s): ${missing.join(', ')}`);
   process.exit(1);
 }
 
 const files = optionalEvidenceRoots
-  .map((path) => join(process.cwd(), path))
+  .map((path) => resolve(process.cwd(), path))
   .filter(existsSync)
   .flatMap(listFiles);
 const expectedEvidence = manifest.routes
@@ -47,12 +48,18 @@ if (missingSnapshots.length > 0) {
 }
 
 const oversized = optionalEvidenceRoots
-  .map((path) => join(process.cwd(), path))
+  .map((path) => resolve(process.cwd(), path))
   .filter(existsSync)
   .filter((path) => treeSize(path) > 50 * 1024 * 1024);
 
 if (oversized.length > 0) {
   console.error(`Accessibility artifact root is unexpectedly large: ${oversized.join(', ')}`);
+  process.exit(1);
+}
+
+const stateErrors = validateStateEvidence(files);
+if (stateErrors.length) {
+  console.error(stateErrors.join('\n'));
   process.exit(1);
 }
 

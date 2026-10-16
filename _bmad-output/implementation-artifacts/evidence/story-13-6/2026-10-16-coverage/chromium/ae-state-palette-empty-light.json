@@ -1,0 +1,200 @@
+{
+  "state": "palette-empty-light",
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "#f7bed3d7",
+      "width": 200,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "node": "p",
+      "paint": "No commands or pages match.",
+      "foreground": [
+        97,
+        97,
+        97,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 6.193286162073998,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [
+    [
+      {
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "node": "div",
+        "paint": "::after border-bottom",
+        "foreground": [
+          21,
+          115,
+          127,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 5.539960708564337,
+        "minimum": 3
+      }
+    ]
+  ],
+  "cues": [],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "systemText": [
+    {
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "node": "p",
+      "paint": "No commands or pages match.",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "reducedMotion": true
+}

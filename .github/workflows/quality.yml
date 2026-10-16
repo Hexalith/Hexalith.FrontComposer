@@ -155,8 +155,8 @@ jobs:
           --require-tests
 
       # Live no-incremental solution builds must never overlap solution-wide test modules. This
-      # Shell-only lane runs the two cached analyzer-policy builds once and authenticates nonzero
-      # MTP evidence independently of the ordinary Governance/default result trees.
+      # Shell-only lane runs the two cached analyzer-policy builds and hidden-control project probes
+      # once, authenticating nonzero MTP evidence independently of Governance/default result trees.
       - name: 'Gate 2b: Analyzer governance build proofs'
         env:
           DiffEngine_Disabled: true
@@ -170,6 +170,7 @@ jobs:
           --require-tests
           --expected-test Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate
           --expected-test Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean
+          --expected-test Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean
 
       - name: 'Gate 2b: Release suppression lifecycle tests'
         run: python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py

@@ -1,0 +1,244 @@
+{
+  "state": "destructive-dialog-light",
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "[data-testid=\"fc-destructive-cancel\"]",
+      "width": 272,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-destructive-confirm\"]",
+      "width": 272,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "node": "h2#fc-destructive-dialog-title",
+      "paint": "Purge specimen record?",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    },
+    {
+      "node": "div#fc-destructive-dialog-description",
+      "paint": "This specimen record is used by visual and accessibility evidence.",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "node": "slot",
+      "paint": "Cancel",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "node": "slot",
+      "paint": "Purge Specimen Record",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        21,
+        115,
+        127,
+        1
+      ],
+      "ratio": 5.539960708564337,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [
+    [
+      {
+        "node": "fluent-button",
+        "paint": "element box-shadow",
+        "foreground": [
+          224.4,
+          224.4,
+          224.4,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.3151070295451353,
+        "minimum": 3
+      },
+      {
+        "node": "fluent-button",
+        "paint": "element box-shadow",
+        "foreground": [
+          219.29999999999998,
+          219.29999999999998,
+          219.29999999999998,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.3805499104886596,
+        "minimum": 3
+      },
+      {
+        "node": "fluent-button",
+        "paint": "element box-shadow",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "systemText": [
+    {
+      "node": "h2#fc-destructive-dialog-title",
+      "paint": "Purge specimen record?",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "node": "div#fc-destructive-dialog-description",
+      "paint": "This specimen record is used by visual and accessibility evidence.",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "node": "slot",
+      "paint": "Cancel",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "node": "slot",
+      "paint": "Purge Specimen Record",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        54.999999999999986,
+        50.999999999999986,
+        109.39999999999999,
+        1
+      ],
+      "ratio": 11.299264667530393,
+      "minimum": 4.5
+    }
+  ],
+  "reducedMotion": true
+}

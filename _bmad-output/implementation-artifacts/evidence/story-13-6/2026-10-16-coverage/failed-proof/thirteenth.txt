@@ -1,0 +1,274 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts --project=chromium --workers=2 --grep active toolbar|generated validation|paint measurement
+
+
+Running 5 tests using 2 workers
+
+(node:3284599) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3284614) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [chromium] › specs/accessibility-state-matrix.spec.ts:288:3 › generated validation, policy, destructive and abandonment states in light (2.0s)
+(node:3285831) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › specs/accessibility-state-matrix.spec.ts:238:3 › active toolbar, tabs, palette and settings states in light (4.7s)
+  ✘  4 [chromium] › specs/accessibility-state-matrix.spec.ts:288:3 › generated validation, policy, destructive and abandonment states in dark (1.9s)
+(node:3287539) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  3 [chromium] › specs/accessibility-state-matrix.spec.ts:238:3 › active toolbar, tabs, palette and settings states in dark (4.6s)
+  ✓  5 [chromium] › specs/accessibility-state-matrix.spec.ts:409:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (237ms)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:288:3 › generated validation, policy, destructive and abandonment states in light 
+
+    Error: border contrast failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 74
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "background": Array [
+    +       255,
+    +       255,
+    +       255,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       209,
+    +       209,
+    +       209,
+    +       1,
+    +     ],
+    +     "minimum": 3,
+    +     "node": "fluent-button",
+    +     "paint": "element border-top",
+    +     "ratio": 1.527057553215567,
+    +   },
+    +   Object {
+    +     "background": Array [
+    +       255,
+    +       255,
+    +       255,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       209,
+    +       209,
+    +       209,
+    +       1,
+    +     ],
+    +     "minimum": 3,
+    +     "node": "fluent-button",
+    +     "paint": "element border-right",
+    +     "ratio": 1.527057553215567,
+    +   },
+    +   Object {
+    +     "background": Array [
+    +       255,
+    +       255,
+    +       255,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       209,
+    +       209,
+    +       209,
+    +       1,
+    +     ],
+    +     "minimum": 3,
+    +     "node": "fluent-button",
+    +     "paint": "element border-bottom",
+    +     "ratio": 1.527057553215567,
+    +   },
+    +   Object {
+    +     "background": Array [
+    +       255,
+    +       255,
+    +       255,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       209,
+    +       209,
+    +       209,
+    +       1,
+    +     ],
+    +     "minimum": 3,
+    +     "node": "fluent-button",
+    +     "paint": "element border-left",
+    +     "ratio": 1.527057553215567,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:389
+
+      387 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      388 |   const failures = (kind === 'focus' || kind === 'border') && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+    > 389 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+          |                                                 ^
+      390 |   return samples;
+      391 | }
+      392 |
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:389:49)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:45:58)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:304:5
+
+    attachment #1: state-generated-validation-light (application/json) ─────────────────────────────
+    ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-generated-validation-light-14626d90ba461a32f7b5c2e1d06745958b19c69b.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-policy-denied-light (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-policy-denied-light-69b61a8e3b982600b0ce5b9bd94a5d1061cfc0bd.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › specs/accessibility-state-matrix.spec.ts:288:3 › generated validation, policy, destructive and abandonment states in dark 
+
+    Error: border contrast failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 74
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "background": Array [
+    +       41,
+    +       41,
+    +       41,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       102,
+    +       102,
+    +       102,
+    +       1,
+    +     ],
+    +     "minimum": 3,
+    +     "node": "fluent-button",
+    +     "paint": "element border-top",
+    +     "ratio": 2.533718700016165,
+    +   },
+    +   Object {
+    +     "background": Array [
+    +       41,
+    +       41,
+    +       41,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       102,
+    +       102,
+    +       102,
+    +       1,
+    +     ],
+    +     "minimum": 3,
+    +     "node": "fluent-button",
+    +     "paint": "element border-right",
+    +     "ratio": 2.533718700016165,
+    +   },
+    +   Object {
+    +     "background": Array [
+    +       41,
+    +       41,
+    +       41,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       102,
+    +       102,
+    +       102,
+    +       1,
+    +     ],
+    +     "minimum": 3,
+    +     "node": "fluent-button",
+    +     "paint": "element border-bottom",
+    +     "ratio": 2.533718700016165,
+    +   },
+    +   Object {
+    +     "background": Array [
+    +       41,
+    +       41,
+    +       41,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       102,
+    +       102,
+    +       102,
+    +       1,
+    +     ],
+    +     "minimum": 3,
+    +     "node": "fluent-button",
+    +     "paint": "element border-left",
+    +     "ratio": 2.533718700016165,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:389
+
+      387 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      388 |   const failures = (kind === 'focus' || kind === 'border') && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+    > 389 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+          |                                                 ^
+      390 |   return samples;
+      391 | }
+      392 |
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:389:49)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:45:58)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:304:5
+
+    attachment #1: state-generated-validation-dark (application/json) ──────────────────────────────
+    ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/attachments/state-generated-validation-dark-4c4e0f8046151fedec1706be72ac3f50407accd1.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-policy-denied-dark (application/json) ─────────────────────────────────────
+    ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/attachments/state-policy-denied-dark-3be4eee935701c11eab7c48ba2e15c11dfb9b908.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-thirteenth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:288:3 › generated validation, policy, destructive and abandonment states in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:288:3 › generated validation, policy, destructive and abandonment states in dark 
+  3 passed (8.1s)

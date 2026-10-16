@@ -164,7 +164,7 @@
 
 /* The fail-closed denial card and form-level warnings keep the readable warning scheme. */
 .fc-specimen ::deep [data-fc-authorization-denied],
-.fc-specimen ::deep fluent-message-bar {
+.fc-specimen ::deep :is([data-testid="fc-destructive-command-specimen"], [data-testid="fc-policy-command-specimen"]) fluent-message-bar {
     background: var(--fc-specimen-warning-background);
     border: 1px solid var(--fc-specimen-warning-border);
     color: var(--fc-specimen-warning-foreground);

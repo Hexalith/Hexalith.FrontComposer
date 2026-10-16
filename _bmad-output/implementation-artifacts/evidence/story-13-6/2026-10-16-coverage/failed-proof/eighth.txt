@@ -1,0 +1,389 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts --project=chromium --workers=3 --grep generated-forms: composed|active toolbar|generated validation|reconnect fallback
+
+
+Running 8 tests using 3 workers
+
+(node:3078733) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3078732) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3078739) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  3 [chromium] › specs/accessibility-state-matrix.spec.ts:174:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (3.1s)
+  ✓  2 [chromium] › specs/accessibility-state-matrix.spec.ts:174:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (3.2s)
+  ✘  1 [chromium] › specs/accessibility-state-matrix.spec.ts:216:3 › active toolbar, tabs, palette and settings states in light (3.7s)
+(node:3080572) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  4 [chromium] › specs/accessibility-state-matrix.spec.ts:263:3 › generated validation, policy, destructive and abandonment states in light (2.0s)
+(node:3081069) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  5 [chromium] › specs/accessibility-state-matrix.spec.ts:216:3 › active toolbar, tabs, palette and settings states in dark (2.8s)
+  ✘  6 [chromium] › specs/accessibility-state-matrix.spec.ts:263:3 › generated validation, policy, destructive and abandonment states in dark (2.0s)
+(node:3081197) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  7 [chromium] › specs/accessibility-state-matrix.spec.ts:302:3 › projection reconnect fallback stale slow cap and filter cues in light (16.3s)
+  ✘  8 [chromium] › specs/accessibility-state-matrix.spec.ts:302:3 › projection reconnect fallback stale slow cap and filter cues in dark (16.4s)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:216:3 › active toolbar, tabs, palette and settings states in light 
+
+    Error: Nonempty icon contrast inventory
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+       at ../helpers/responsive-accessibility.ts:375
+
+      373 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      374 |   const samples = await measureSurfaceContrast(root, kind);
+    > 375 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+          |                                                                 ^
+      376 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      377 |   const failures = (kind === 'focus' || kind === 'border') && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+      378 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:375:65)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:243:5
+
+    attachment #1: state-filter-popover-light (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-filter-popover-light-06a898080f0716b4bcd373df4bebf0ee3eb75653.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-view-menu-light (application/json) ────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-view-menu-light-f1d634f9073bf4b497b3be0f6a642a2959d6020b.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-tabs-active-light (application/json) ──────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-tabs-active-light-370d94120135a6c7d14a041aabd197df06079ca2.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-palette-default-light (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-default-light-85f4cd49ecdccd0cd652437b3676ab688d0b58cb.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-palette-selected-light (application/json) ─────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-selected-light-c92c76345593384ed62845572b8dfc43ad0f90df.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/error-context.md
+
+    attachment #9: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › specs/accessibility-state-matrix.spec.ts:263:3 › generated validation, policy, destructive and abandonment states in light 
+
+    Error: Nonempty text contrast inventory
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+       at ../helpers/responsive-accessibility.ts:375
+
+      373 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      374 |   const samples = await measureSurfaceContrast(root, kind);
+    > 375 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+          |                                                                 ^
+      376 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      377 |   const failures = (kind === 'focus' || kind === 'border') && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+      378 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:375:65)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:29:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:279:5
+
+    attachment #1: state-generated-validation-light (application/json) ─────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-generated-validation-light-3982b72b4ceea94d8f9481ae1744444385924bb7.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-policy-denied-light (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-policy-denied-light-36a9d28c6d3e7b90b5d467c861ee124683bdd520.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › specs/accessibility-state-matrix.spec.ts:216:3 › active toolbar, tabs, palette and settings states in dark 
+
+    Error: Nonempty icon contrast inventory
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+       at ../helpers/responsive-accessibility.ts:375
+
+      373 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      374 |   const samples = await measureSurfaceContrast(root, kind);
+    > 375 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+          |                                                                 ^
+      376 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      377 |   const failures = (kind === 'focus' || kind === 'border') && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+      378 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:375:65)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:243:5
+
+    attachment #1: state-filter-popover-dark (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-filter-popover-dark-7c1fb6deec720a655e5233845bd6c8fcd30a7898.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-view-menu-dark (application/json) ─────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-view-menu-dark-49a8e6f80b5f4a1b61fc7052836059127d13813d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-tabs-active-dark (application/json) ───────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-tabs-active-dark-ffd105d1fb26ac6828eb4d1b58cb06f110c707a9.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-palette-default-dark (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-default-dark-cbd6d90536dffa1b286511e14cd3646a2ad2619c.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-palette-selected-dark (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-selected-dark-01976c2eb15e5af03e5b7c0f3735153da0d04633.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/error-context.md
+
+    attachment #9: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › specs/accessibility-state-matrix.spec.ts:263:3 › generated validation, policy, destructive and abandonment states in dark 
+
+    Error: Nonempty text contrast inventory
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+       at ../helpers/responsive-accessibility.ts:375
+
+      373 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      374 |   const samples = await measureSurfaceContrast(root, kind);
+    > 375 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+          |                                                                 ^
+      376 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      377 |   const failures = (kind === 'focus' || kind === 'border') && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+      378 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:375:65)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:29:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:279:5
+
+    attachment #1: state-generated-validation-dark (application/json) ──────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/attachments/state-generated-validation-dark-a232d0101eeba03f3200d45d55792f03b42b97e5.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-policy-denied-dark (application/json) ─────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/attachments/state-policy-denied-dark-19b075621ff9ef410856c254a456a30b000c01aa.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium] › specs/accessibility-state-matrix.spec.ts:302:3 › projection reconnect fallback stale slow cap and filter cues in light 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('fc-generated-counter-grid').getByTestId('fc-filter-empty-state')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('fc-generated-counter-grid').getByTestId('fc-filter-empty-state') with timeout 10000ms
+      - waiting for getByTestId('fc-generated-counter-grid').getByTestId('fc-filter-empty-state')
+
+
+      323 |     await evidence(page, cap, `result-limit-${theme}`, info);
+      324 |     await page.getByTestId('fc-ae-filter-empty').click();
+    > 325 |     await expect(grid.getByTestId('fc-filter-empty-state')).toBeVisible();
+          |                                                             ^
+      326 |     await evidence(page, grid.getByTestId('fc-filter-empty-state'), `filter-empty-${theme}`, info);
+      327 |     await page.getByTestId('fc-ae-filter-reset').click();
+      328 |     await expect(grid.getByTestId('fc-filter-empty-state')).toHaveCount(0);
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:325:61
+
+    attachment #1: state-connection-reconnecting-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-connection-reconnecting-light-ddeba0141a955732544351cd6313e66fb8a8ba89.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-stale-reconnecting-light-745c47afb9b81f027e46a0fdfc5e618c24a316d5.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-connection-disconnected-light-e60dfd9f24f075ace2bba4d1db8549ee09ea88d3.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-stale-disconnected-light-ad3c6195fd188a9573e9fd22ada3692c628fea07.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-connection-connected-light (application/json) ─────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-connection-connected-light-ef90a3cfe3a0e3790e713e5f8b510009b705e9ee.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: state-slow-query-light (application/json) ───────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-slow-query-light-3c1d7a25e2e0255a9009a7c595e00823654666a6.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: state-result-limit-light (application/json) ─────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-result-limit-light-1cf945f107579123b13e89f634f5a795a0a04da8.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/error-context.md
+
+    attachment #11: trace (application/zip) ────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [chromium] › specs/accessibility-state-matrix.spec.ts:302:3 › projection reconnect fallback stale slow cap and filter cues in dark 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('fc-generated-counter-grid').getByTestId('fc-filter-empty-state')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('fc-generated-counter-grid').getByTestId('fc-filter-empty-state') with timeout 10000ms
+      - waiting for getByTestId('fc-generated-counter-grid').getByTestId('fc-filter-empty-state')
+
+
+      323 |     await evidence(page, cap, `result-limit-${theme}`, info);
+      324 |     await page.getByTestId('fc-ae-filter-empty').click();
+    > 325 |     await expect(grid.getByTestId('fc-filter-empty-state')).toBeVisible();
+          |                                                             ^
+      326 |     await evidence(page, grid.getByTestId('fc-filter-empty-state'), `filter-empty-${theme}`, info);
+      327 |     await page.getByTestId('fc-ae-filter-reset').click();
+      328 |     await expect(grid.getByTestId('fc-filter-empty-state')).toHaveCount(0);
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:325:61
+
+    attachment #1: state-connection-reconnecting-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-connection-reconnecting-dark-fedf9c00c07030dc0796952ea152046db6cefe99.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-stale-reconnecting-dark-8872fa2acf3d4cb5407237c006bbbeeec2bf43f9.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-connection-disconnected-dark-4dccb8dcff740be460af4ed2238ac2860964e0a5.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-stale-disconnected-dark-ca74ff7c270b805b38f6c7f612eb6e2ee90fcfce.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-connection-connected-dark (application/json) ──────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-connection-connected-dark-03f5397d297736ef8bada03952666dc71f8cebf4.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: state-slow-query-dark (application/json) ────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-slow-query-dark-d86f0b27188f4330f0f2017e27b39e3cf5f27d8e.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: state-result-limit-dark (application/json) ──────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-result-limit-dark-4b70939ad35e6425c170dd44998120f324cdecc1.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/error-context.md
+
+    attachment #11: trace (application/zip) ────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-eighth/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:216:3 › active toolbar, tabs, palette and settings states in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:263:3 › generated validation, policy, destructive and abandonment states in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:216:3 › active toolbar, tabs, palette and settings states in dark 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:263:3 › generated validation, policy, destructive and abandonment states in dark 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:302:3 › projection reconnect fallback stale slow cap and filter cues in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:302:3 › projection reconnect fallback stale slow cap and filter cues in dark 
+  2 passed (23.8s)

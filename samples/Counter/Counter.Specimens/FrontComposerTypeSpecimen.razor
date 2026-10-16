@@ -1,5 +1,7 @@
 @page "/__frontcomposer/specimens/type"
 @namespace Counter.Specimens
+@inject IServiceProvider SpecimenServices
+@using Microsoft.Extensions.DependencyInjection
 @using Counter.Domain
 @using Counter.Specimens.Domain
 @using Hexalith.FrontComposer.Contracts.Rendering
@@ -94,8 +96,15 @@
 
     <section aria-labelledby="fc-badge-grid-title" data-testid="fc-badge-grid">
         <h2 id="fc-badge-grid-title">Generated projection DataGrid and badge states</h2>
-        <SpecimenStatusProjectionView />
+        <CascadingValue Name="SpecimenGeneratedStatusGrid" Value="@(AccessibilityScenarios && SpecimenServices.GetService<AccessibilitySpecimenState>() is not null)">
+            <SpecimenStatusProjectionView />
+        </CascadingValue>
     </section>
+
+    @if (AccessibilityScenarios && SpecimenServices.GetService<AccessibilitySpecimenState>() is not null)
+    {
+        <AccessibilityScenarioControls />
+    }
 
     <section aria-labelledby="fc-counter-grid-title" data-testid="fc-generated-counter-grid">
         <h2 id="fc-counter-grid-title">Generated Counter projection grid</h2>
@@ -216,6 +225,10 @@
     [SupplyParameterFromQuery(Name = "generatedGrid")]
     public bool GeneratedGrid { get; set; }
 
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "accessibilityScenarios")]
+    public bool AccessibilityScenarios { get; set; }
+
     private bool _focusHidden;
     private bool _focusMissing;
     private bool _focusSettled = true;
@@ -245,7 +258,8 @@
 
     private string BuildHref(string theme, string density)
         => $"{FrontComposerSpecimenRoutes.TypeSpecimen}?theme={theme}&density={density}"
-            + (GeneratedGrid ? "&generatedGrid=true" : string.Empty);
+            + (GeneratedGrid ? "&generatedGrid=true" : string.Empty)
+            + (AccessibilityScenarios ? "&accessibilityScenarios=true" : string.Empty);
 
     private static readonly TypeRampSlot[] TypeRamp = [
         new("display", "Display", "FrontComposer Display", "fc-specimen__display"),

@@ -1,6 +1,12 @@
 @namespace Counter.Specimens
 @using Counter.Specimens.Domain
 
+@if (UseGeneratedDefaultGrid)
+{
+    @Context.DefaultBody
+}
+else
+{
 <table class="fc-specimen-generated-template">
     <tbody>
         @foreach (SpecimenStatusProjection row in Context.Items) {
@@ -12,3 +18,5 @@
 </table>
 
 @Context.SectionRenderer("Detail")
+
+}

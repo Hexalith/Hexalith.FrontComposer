@@ -29,4 +29,12 @@
         color: CanvasText;
         outline-color: Highlight;
     }
+
+    /* Keep the destructive label readable with the user's system button palette. */
+    .fc-destructive-confirm {
+        forced-color-adjust: auto;
+        background: ButtonFace;
+        border-color: ButtonText;
+        color: ButtonText;
+    }
 }

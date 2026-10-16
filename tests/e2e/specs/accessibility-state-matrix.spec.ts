@@ -1,0 +1,465 @@
+import { PageToolbarSpecimenPage } from '../page-objects/page-toolbar-specimen.page.js';
+import { fillFieldByLabel } from '../helpers/fluent-fields.js';
+import { writeFile } from 'node:fs/promises';
+import { expect, test } from '../fixtures/index.js';
+import type { Locator, Page, TestInfo } from '@playwright/test';
+import { applyTextSpacing, expectFocusVisible, expectNoPageOverflow, expectNoTextClipping, expectSurfaceContrast, expectTargetSizes, measureSurfaceContrast, settlePaint } from '../helpers/responsive-accessibility.js';
+import { expectNoBlockingAxeViolations } from '../helpers/a11y.js';
+import { LIFECYCLE_STATES } from '../fixtures/lifecycle.fixture.js';
+
+const scenarioPath = '/__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true&density=compact';
+const outcomes = ['validation', 'returned-rejection', 'exception-rejection', 'forbidden', 'unavailable', 'blank-unavailable', 'rate-limited', 'blank-rate-limited', 'transport', 'admission', 'policy'] as const;
+
+async function ready(page: Page, path: string, theme: string) {
+  await page.goto(path);
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.getByTitle('Change theme').first().click();
+  await page.getByRole('menuitem', { name: theme === 'dark' ? 'Dark' : 'Light', exact: true }).click();
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await applyTextSpacing(page);
+  await settlePaint(page);
+}
+
+async function evidence(page: Page, root: Locator, state: string, info: TestInfo, icons?: Locator) {
+  await expect(root).toBeVisible();
+  await expectNoPageOverflow(page);
+  await expectNoTextClipping(page);
+  await settlePaint(page);
+  const theme = state.endsWith('-dark') ? 'Dark' : 'Light';
+  await expect(page.getByTitle('Change theme').first().locator('span[aria-hidden="true"]')).toHaveText(theme);
+  const themePaint = await page.locator('.fc-shell-root').evaluate(element => {
+    const css = getComputedStyle(element), background = css.getPropertyValue('--colorNeutralBackground1').trim();
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+    const context = canvas.getContext('2d')!; context.fillStyle = background; context.fillRect(0, 0, 1, 1);
+    return { background, rgb: [...context.getImageData(0, 0, 1, 1).data].slice(0, 3) };
+  });
+  expect(themePaint.rgb.reduce((sum, channel) => sum + channel, 0) < 384, 'Actual Fluent theme paint').toBe(theme === 'Dark');
+  const reducedMotion = await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+  expect(reducedMotion).toBe(true);
+  const cues = [];
+  if (state.startsWith('generated-validation-')) cues.push(await expectSurfaceContrast(root, 'focus'));
+  if (state.startsWith('fresh-presentation-')) cues.push(await expectSurfaceContrast(root, 'border'));
+  if (state.startsWith('generated-missing-lost-focus-')) cues.push(await expectSurfaceContrast(root, 'focus'));
+  if (state.startsWith('tabs-active-')) cues.push(await expectSurfaceContrast(root.locator('[aria-selected="true"]'), 'focus'));
+  if (state.startsWith('palette-selected-')) cues.push(await expectSurfaceContrast(root.locator('.fc-palette-option-selected'), 'focus'));
+  if (state.startsWith('destructive-dialog-')) cues.push(await expectSurfaceContrast(page.getByTestId('fc-destructive-cancel'), 'focus'));
+  if (state.startsWith('abandonment-')) cues.push(await expectSurfaceContrast(page.getByTestId('fc-form-abandonment-stay'), 'focus'));
+  const exceptions: import('../helpers/responsive-accessibility.js').TargetException[] = state.startsWith('settings-')
+    ? ['Compact', 'Comfortable', 'Roomy'].map(value => ({ selector: `fluent-radio[name="fc-density-select"][value="${value}"]`, kind: 'Spacing' as const, rationale: 'Fluent density radio keeps its native visual size with a clear 24px spacing circle.', keyboardPath: 'Settings → Density; Tab and arrows', evidence: `ae-state-${state}.json target inventory` }))
+    : state.startsWith('abandonment-') ? [{ selector: 'nav[aria-label="breadcrumb"] > a', kind: 'Spacing', rationale: 'The full-page breadcrumb link is isolated from all neighboring targets; its 24px circle is measured against the complete inventory.', keyboardPath: 'Full-page form → Counter breadcrumb (Shift+Tab)', evidence: `ae-state-${state}.json target inventory` }] : [];
+  const targets = await expectTargetSizes(page, exceptions);
+  const text = await expectSurfaceContrast(root);
+  const paintedIcons = await measureSurfaceContrast(icons ?? root, 'icon');
+  const icon = paintedIcons.length ? await expectSurfaceContrast(icons ?? root, 'icon') : [];
+  const boundaries = [];
+  for (const control of await root.locator('fluent-text-input:not([disabled]),fluent-number-input:not([disabled]),fluent-dropdown:not([disabled]),fluent-combobox:not([disabled])').all()) {
+    if (await control.isVisible()) boundaries.push(await expectSurfaceContrast(control, 'border'));
+  }
+  await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
+  await settlePaint(page);
+  const forcedColors = await page.evaluate(() => matchMedia('(forced-colors: active)').matches);
+  const forcedColorsPaint = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;left:-10000px;color:rgb(255,0,0);background:rgb(0,255,0);forced-color-adjust:auto';
+    document.body.append(probe);
+    const css = getComputedStyle(probe), changed = css.color !== 'rgb(255, 0, 0)' && css.backgroundColor !== 'rgb(0, 255, 0)';
+    probe.remove(); return changed;
+  });
+  const systemText = forcedColorsPaint ? await expectSurfaceContrast(root) : [];
+  const forcedColorsStatus = forcedColorsPaint ? 'painted system palette' : 'unsupported authored-color replacement; media rules only';
+  if (!forcedColorsPaint) expect(info.project.name, 'Only the probed WebKit engine lacks forced palette emulation').toBe('webkit');
+  await expect(root).toBeVisible();
+  await expectNoPageOverflow(page);
+  await page.emulateMedia({ forcedColors: 'none' });
+  await settlePaint(page);
+  const path = info.outputPath(`ae-state-${state}.json`);
+  await writeFile(path, JSON.stringify({ state, engine: info.project.name, theme, themePaint, targets, text, icon, boundaries, cues, decorativeIconExemptions: ['.fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text', '.fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name'], forcedColors, forcedColorsPaint, forcedColorsStatus, systemText, reducedMotion }, null, 2));
+  await info.attach(`state-${state}`, { path, contentType: 'application/json' });
+}
+
+for (const theme of ['light', 'dark']) {
+  test.describe(`AE complete state matrix ${theme}`, () => {
+    test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => { localStorage.clear(); sessionStorage.clear(); });
+    });
+
+    for (const outcome of outcomes) {
+      test(`generated zero-field ${outcome}: safe feedback, focus, owner, next attempt`, async ({ page }, info) => {
+        await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+        const root = page.getByTestId('fc-ae-scenarios');
+        await root.getByTestId(`fc-ae-select-${outcome}`).click();
+        const trigger = root.getByRole('button', { name: 'Run accessibility specimen', exact: true });
+        await trigger.focus();
+        await page.keyboard.press('Shift+Tab');
+        await page.keyboard.press('Tab');
+        await page.keyboard.press('Enter');
+        const feedback = root.getByTestId('fc-zero-field-outcome');
+        await expect(feedback).toBeVisible();
+        await expect(feedback).toHaveAttribute('aria-live', 'off');
+        await expect(trigger).toBeFocused();
+        await expect(feedback).not.toHaveText(/^\s*$/u);
+        await expect(feedback.locator('a,button,fluent-button')).toHaveCount(0);
+        if (outcome.includes('rate-limited')) await expect(feedback).toContainText('Retry after 17 seconds.');
+        const copy = (await feedback.innerText()).trim();
+        await expect(root.getByTestId('fc-surface-status').filter({ hasText: outcome.includes('rejection') ? /rejected/i : copy })).toHaveCount(1);
+        await expect(root.locator('[role="alert"],[aria-live="assertive"]')).toHaveCount(0);
+        await evidence(page, feedback, `zero-${outcome}-${theme}`, info);
+        await expectFocusVisible(trigger);
+        await expectSurfaceContrast(trigger, 'focus');
+        // No automatic pre-accept retry: the independent dispatch counter stays at one (zero for denials).
+        await page.waitForTimeout(350);
+        await root.getByTestId('fc-ae-select-accepted').click();
+        await expect(root.getByTestId('fc-ae-command-probe')).toHaveAttribute('data-dispatch-count', ['admission', 'policy'].includes(outcome) ? '0' : '1');
+        await expect(feedback).toHaveText(copy);
+        await trigger.click();
+        await expect(feedback).toHaveCount(0);
+        await expect(page.locator('.fc-pending-command-summary')).toBeVisible();
+        if (outcome === 'validation') await evidence(page, page.locator('.fc-pending-command-summary'), `zero-accepted-${theme}`, info);
+        await info.attach(`zero-field-${outcome}-${theme}.json`, { body: JSON.stringify({ outcome, theme, copy, preAcceptRetries: 0, observedOwnerCount: 1, heardSpeech: 'not observed' }), contentType: 'application/json' });
+      });
+    }
+
+    test('real generated detail removal preserves external focus and deduplicates completed results', async ({ page }, info) => {
+      await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+      const grid = page.getByTestId('fc-generated-counter-grid');
+      const controls = page.getByTestId('fc-ae-scenarios');
+      await controls.getByTestId('fc-ae-rows-two').click();
+      await expect(grid.locator('tbody tr.fluent-data-grid-row')).toHaveCount(2);
+      await grid.getByRole('gridcell', { name: 'FC-AE-1', exact: true }).click();
+      const detail = grid.locator('.fc-expand-in-row-detail');
+      await expect(detail).toContainText('FC-AE-1');
+      const external = controls.getByTestId('fc-ae-rows-two');
+      await external.focus();
+      await controls.getByTestId('fc-ae-rows-missing').dispatchEvent('click');
+      const explanation = grid.locator('.fc-expanded-row-hidden-banner-text');
+      await expect(explanation).toContainText('not in the current results');
+      await expect(external).toBeFocused();
+      await expect(grid.getByTestId('fc-expanded-row-hidden-banner-clear')).toHaveCount(0);
+      await expect(grid.getByTestId('fc-surface-status')).toContainText('not in the current results');
+      const revision = await grid.locator('[data-message-revision]').getAttribute('data-message-revision');
+      await controls.getByTestId('fc-ae-rows-repeat').dispatchEvent('click');
+      await expect(grid.locator('[data-message-revision]')).toHaveAttribute('data-message-revision', revision!);
+      await expect(external).toBeFocused();
+      await evidence(page, explanation, `generated-missing-external-${theme}`, info);
+    });
+
+    test('real generated detail loss focuses its neutral non-live explanation', async ({ page }, info) => {
+      await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+      const grid = page.getByTestId('fc-generated-counter-grid');
+      const controls = page.getByTestId('fc-ae-scenarios');
+      await controls.getByTestId('fc-ae-rows-two').click();
+      await grid.getByRole('gridcell', { name: 'FC-AE-1', exact: true }).click();
+      const detail = grid.locator('.fc-expand-in-row-detail');
+      await expect(detail).toContainText('FC-AE-1');
+      const detailControl = detail.locator('a,button,fluent-button,[tabindex="0"]').first();
+      await detailControl.focus();
+      await expect(detailControl).toBeFocused();
+      await controls.getByTestId('fc-ae-rows-missing').dispatchEvent('click');
+      const explanation = grid.locator('.fc-expanded-row-hidden-banner-text');
+      await expect(explanation).toBeFocused();
+      await expect(explanation).toContainText('not in the current results');
+      await expect(grid.getByTestId('fc-surface-status')).not.toContainText('not in the current results');
+      await expect(explanation.locator('xpath=..')).toHaveAttribute('aria-live', 'off');
+      await evidence(page, explanation, `generated-missing-lost-focus-${theme}`, info);
+      await expectFocusVisible(explanation);
+    });
+
+    test('all eleven actual lifecycle wrapper states retain immediate text and system-color cues', async ({ page }, info) => {
+      await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+      const root = page.getByTestId('fc-ae-scenarios');
+      const wrapper = page.getByTestId('fc-lifecycle-ae-state');
+      for (const state of LIFECYCLE_STATES) {
+        await root.getByTestId(`fc-ae-lifecycle-${state.replaceAll('-', '')}`).click();
+        await expect(wrapper).toHaveAttribute('data-lifecycle-state', state);
+        await evidence(page, wrapper, `lifecycle-${state}-${theme}`, info);
+        await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
+        await expect(wrapper).toContainText('Observable lifecycle specimen');
+        expect(await wrapper.evaluate(element => getComputedStyle(element).forcedColorAdjust)).toBe('auto');
+        const animations = await wrapper.evaluate(element => [element, ...element.querySelectorAll('.fc-lifecycle-pulse,.fc-lifecycle-still-syncing')].map(node => ({ animation: getComputedStyle(node).animationName, transition: getComputedStyle(node).transitionDuration })));
+        expect(animations.every(paint => paint.animation === 'none' && paint.transition.split(',').every(value => parseFloat(value) === 0))).toBe(true);
+        await page.emulateMedia({ forcedColors: 'none' });
+      }
+      await page.screenshot({ path: info.outputPath(`lifecycle-matrix-${theme}.png`) });
+    });
+
+    test('generated projection loaded, detail, loading, empty and failure surfaces', async ({ page }, info) => {
+      await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+      const grid = page.getByTestId('fc-generated-counter-grid');
+      for (const state of ['two', 'loading', 'empty', 'error']) {
+        await page.getByTestId(`fc-ae-rows-${state}`).click();
+        if (state === 'two') await expect(grid.locator('tbody tr.fluent-data-grid-row')).toHaveCount(2);
+        if (state === 'loading') await expect(grid.locator('[aria-busy="true"]').first()).toBeVisible();
+        if (state === 'empty') await expect(grid).toContainText(/No .*yet|No data|No items/i);
+        if (state === 'error') await expect(grid).toContainText(/could not|failed|try again/i);
+        await evidence(page, grid, `projection-${state}-${theme}`, info);
+        await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
+        await expect(grid).toBeVisible();
+        await expectNoPageOverflow(page);
+        await page.emulateMedia({ forcedColors: 'none' });
+      }
+    });
+
+    for (const surface of [
+      { name: 'home', path: '/home' },
+      { name: 'navigation-tabs', path: '/counter/counter-projection' },
+      { name: 'toolbar', path: '/__frontcomposer/specimens/page-toolbar' },
+      { name: 'generated-forms', path: '/counter' },
+    ]) {
+      test(`${surface.name}: composed text, targets, current-state and forced-color cues`, async ({ page }, info) => {
+        await ready(page, surface.path, theme);
+        await evidence(page, page.locator('#fc-main-content'), `${surface.name}-${theme}`, info);
+        const inventory = await expectTargetSizes(page);
+        await info.attach(`targets-${surface.name}-${theme}`, { body: JSON.stringify(inventory), contentType: 'application/json' });
+        const heading = page.locator('#fc-main-content h1').first();
+        const keyboardTarget = page.getByTestId('fc-palette-trigger');
+        await keyboardTarget.focus();
+        await page.keyboard.press('Shift+Tab');
+        await page.keyboard.press('Tab');
+        await expectFocusVisible(keyboardTarget);
+        await expectSurfaceContrast(keyboardTarget, 'focus');
+        await expectNoBlockingAxeViolations(page, { route: surface.path, artifactPath: info.outputPath(`axe-state-${surface.name}-${theme}.json`) });
+        await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
+        await expect(heading).toBeVisible();
+        await expectNoPageOverflow(page);
+        const current = page.locator('[aria-current="page"],[aria-selected="true"]');
+        if (surface.name === 'navigation-tabs') expect(await current.count()).toBeGreaterThan(0);
+        await page.screenshot({ path: info.outputPath(`system-colors-${surface.name}-${theme}.png`) });
+      });
+    }
+  });
+}
+
+test('contrast measurement rejects empty, low-contrast, unpainted and unsupported samples', async ({ page }) => {
+  await page.setContent('<main style="color:#aaa;background:#fff"><p id="low">Low text</p><div id="empty"></div><div id="host" style="background:#111;color:#fff"></div><button id="bad" style="border:2px solid #eee;outline:2px solid #eee">Bad focus</button><div id="gradient" style="background:linear-gradient(white,black)">Unsupported</div><svg id="icon" width="20" height="20"><path fill="#eee" d="M0 0h20v20H0z"/></svg></main>');
+  await expect(expectSurfaceContrast(page.locator('#low'))).rejects.toThrow(/contrast failures/);
+  await expect(expectSurfaceContrast(page.locator('#empty'))).rejects.toThrow(/Nonempty/);
+  await page.locator('#low').evaluate(element => (element as HTMLElement).style.opacity = '.5');
+  await expect(expectSurfaceContrast(page.locator('#low'))).rejects.toThrow(/pixel evidence/);
+  await expect(expectSurfaceContrast(page.locator('#gradient'))).rejects.toThrow(/pixel evidence/);
+  await expect(expectSurfaceContrast(page.locator('#bad'), 'border')).rejects.toThrow(/contrast failures/);
+  await expect(expectSurfaceContrast(page.locator('#bad'), 'focus')).rejects.toThrow(/contrast failures/);
+  await expect(expectSurfaceContrast(page.locator('#icon'), 'icon')).rejects.toThrow(/contrast failures/);
+  await page.locator('#host').evaluate(element => { element.attachShadow({ mode: 'open' }).innerHTML = '<p style="color:rgba(255,255,255,.9)">Shadow text</p>'; });
+  const samples = await expectSurfaceContrast(page.locator('#host'));
+  expect(samples).toHaveLength(1);
+  expect(samples[0].background.slice(0, 3)).toEqual([17, 17, 17]);
+  expect(await measureSurfaceContrast(page.locator('#empty'), 'icon')).toEqual([]);
+});
+
+for (const theme of ['light', 'dark']) {
+  test(`active toolbar, tabs, palette and settings states in ${theme}`, async ({ page }, info) => {
+    await ready(page, '/__frontcomposer/specimens/page-toolbar', theme);
+    const toolbar = new PageToolbarSpecimenPage(page);
+    await toolbar.searchInput.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expectFocusVisible(toolbar.searchInput);
+    await expectSurfaceContrast(page.getByTestId('fc-page-toolbar-search'), 'focus');
+    await toolbar.filterTrigger.click();
+    await expect(toolbar.filterContent).toBeVisible();
+    await evidence(page, toolbar.filterContent, `filter-popover-${theme}`, info);
+    await toolbar.filterTrigger.click();
+    await toolbar.viewTrigger.click();
+    await evidence(page, toolbar.viewDensityItem, `view-menu-${theme}`, info);
+    await page.keyboard.press('Escape');
+    await toolbar.summaryTab.focus();
+    await toolbar.summaryTab.press('ArrowRight');
+    await expect(toolbar.activityTab).toHaveAttribute('aria-selected', 'true');
+    await expectFocusVisible(toolbar.activityTab);
+    await evidence(page, toolbar.tabs, `tabs-active-${theme}`, info);
+    await page.getByTestId('fc-palette-trigger').click();
+    const palette = page.getByTestId('fc-palette-root');
+    await evidence(page, palette, `palette-default-${theme}`, info);
+    const search = page.getByTestId('fc-palette-search').locator('input');
+    await search.fill('counter');
+    await expect(palette.locator('[aria-selected="true"]')).toBeVisible();
+    await evidence(page, palette, `palette-selected-${theme}`, info);
+    await expectSurfaceContrast(palette.locator('.fc-palette-option-selected'), 'focus');
+    await search.fill('no-match-accessibility-136');
+    await expect(palette.locator('.fc-palette-noresults')).toBeVisible();
+    await evidence(page, palette, `palette-empty-${theme}`, info);
+    await page.emulateMedia({ forcedColors: 'active' });
+    await expect(palette.locator('.fc-palette-noresults')).toContainText(/No/);
+    await page.emulateMedia({ forcedColors: 'none' });
+    await page.keyboard.press('Escape');
+    await expect(palette).toHaveCount(0);
+    await expect(page.getByTestId('fc-palette-trigger')).toBeFocused();
+    await page.getByTestId('fc-settings-button').focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('fc-settings-button')).toBeFocused();
+    await page.keyboard.press('Enter');
+    const settings = page.getByTestId('fc-settings-dialog');
+    await evidence(page, settings, `settings-${theme}`, info);
+    const exceptions: import('../helpers/responsive-accessibility.js').TargetException[] = ['Compact', 'Comfortable', 'Roomy'].map(value => ({ selector: `fluent-radio[name="fc-density-select"][value="${value}"]`, kind: 'Spacing', rationale: 'Fluent radio with independently measured 24px spacing circle.', keyboardPath: 'Settings → Density; Tab and arrows', evidence: `settings-${theme} target inventory` }));
+    const targets = await expectTargetSizes(page, exceptions);
+    await info.attach(`settings-targets-${theme}`, { body: JSON.stringify(targets), contentType: 'application/json' });
+    await page.emulateMedia({ forcedColors: 'active' });
+    await expect(settings).toContainText('Display density');
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('fc-settings-button')).toBeFocused();
+  });
+
+  test(`generated validation, policy, destructive and abandonment states in ${theme}`, async ({ page }, info) => {
+    await ready(page, `/__frontcomposer/specimens/type?theme=${theme}`, theme);
+    const destructive = page.getByTestId('fc-destructive-command-specimen');
+    await destructive.getByRole('button', { name: 'Purge Specimen Record', exact: true }).click();
+    // Required retention deliberately stays empty: the genuine generated validation summary owns focus.
+    const summary = destructive.locator('[data-testid="fc-validation-summary"]');
+    await expect(summary).toBeVisible();
+    await evidence(page, summary, `generated-validation-${theme}`, info);
+    await evidence(page, page.getByTestId('fc-policy-command-specimen'), `policy-denied-${theme}`, info);
+    const form = destructive.locator('.fc-command-form');
+    await form.getByRole('combobox').click();
+    await form.getByRole('combobox').press('ArrowDown');
+    await form.getByRole('combobox').press('Enter');
+    await destructive.getByRole('button', { name: 'Purge Specimen Record', exact: true }).focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('alertdialog');
+    await expect(dialog).toBeVisible();
+    await evidence(page, dialog, `destructive-dialog-${theme}`, info);
+    await expectTargetSizes(page);
+    await page.keyboard.press('Escape');
+
+    await ready(page, '/commands/Counter/ConfigureCounterCommand', theme);
+    const configure = page.locator('.fc-command-form[aria-label="Configure Counter command form"]');
+    await fillFieldByLabel(configure, 'Name', 'Accessibility specimen');
+    await page.waitForTimeout(6_500);
+    await page.getByRole('link', { name: 'Counter', exact: true }).last().focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    const warning = page.getByTestId('fc-form-abandonment-warning');
+    await expect(warning).toBeVisible();
+    await expect(page.getByTestId('fc-form-abandonment-stay')).toBeFocused();
+    await evidence(page, warning, `abandonment-${theme}`, info);
+    await expectFocusVisible(page.getByTestId('fc-form-abandonment-stay'));
+    await page.keyboard.press('Escape');
+    await expect(warning).toHaveCount(0);
+    await expect(configure).toContainText('Name');
+  });
+}
+
+for (const theme of ['light', 'dark']) {
+  test(`projection reconnect fallback stale slow cap and filter cues in ${theme}`, async ({ page }, info) => {
+    await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+    const grid = page.getByTestId('fc-generated-counter-grid');
+    for (const connection of ['reconnecting', 'disconnected', 'connected']) {
+      await page.getByTestId(`fc-ae-connection-${connection}`).click();
+      const notice = page.getByTestId('fc-projection-connection-status');
+      await expect(notice).toBeVisible();
+      await evidence(page, notice, `connection-${connection}-${theme}`, info, notice);
+      if (connection !== 'connected') {
+        await expect(grid.getByTestId('fc-projection-stale-notice')).toBeVisible();
+        await evidence(page, grid.getByTestId('fc-projection-stale-notice'), `stale-${connection}-${theme}`, info);
+      }
+    }
+    await page.getByTestId('fc-ae-page-start').click();
+    const slow = grid.getByTestId('fc-slow-query-notice');
+    await expect(slow).toBeVisible({ timeout: 5_000 });
+    await evidence(page, slow, `slow-query-${theme}`, info);
+    await page.getByTestId('fc-ae-page-cap').click();
+    await expect(slow).toHaveCount(0);
+    const cap = grid.getByTestId('fc-max-items-cap-notice');
+    await expect(cap).toBeVisible();
+    await evidence(page, cap, `result-limit-${theme}`, info);
+    await page.getByTestId('fc-ae-filter-empty').click();
+    await expect(page.getByTestId('fc-filter-empty-state')).toBeVisible();
+    await evidence(page, page.getByTestId('fc-filter-empty-state'), `filter-empty-${theme}`, info);
+    await page.getByTestId('fc-ae-filter-reset').click();
+    await expect(page.getByTestId('fc-filter-empty-state')).toHaveCount(0);
+  });
+}
+
+for (const theme of ['light', 'dark']) {
+  test(`real generated filter-hidden detail stays distinct from missing-item results in ${theme}`, async ({ page }, info) => {
+    await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+    const grid = page.getByTestId('fc-badge-grid');
+    await grid.getByRole('gridcell', { name: 'FC-1000', exact: true }).click();
+    await expect(grid.locator('.fc-expand-in-row-detail')).toContainText('FC-1000');
+    await grid.locator('[data-fc-status-chip="Success"]').click();
+    const clear = grid.getByTestId('fc-expanded-row-hidden-banner-clear');
+    await expect(clear).toBeFocused();
+    await expect(grid.getByTestId('fc-expanded-row-hidden-banner')).toContainText('hidden');
+    await expect(grid.getByTestId('fc-expanded-row-hidden-banner')).not.toContainText('not in the current results');
+    await evidence(page, grid.getByTestId('fc-expanded-row-hidden-banner'), `filter-hidden-detail-${theme}`, info);
+    await clear.click();
+    await expect(grid.locator('.fc-expand-in-row-detail')).toContainText('FC-1000');
+  });
+}
+
+for (const theme of ['light', 'dark']) {
+  test(`delayed generated detail recovery cancels after operator focus and navigation in ${theme}`, async ({ page }) => {
+    await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+    const grid = page.getByTestId('fc-generated-counter-grid');
+    await page.getByTestId('fc-ae-rows-two').click();
+    await grid.getByRole('gridcell', { name: 'FC-AE-1', exact: true }).click();
+    const detail = grid.locator('.fc-expand-in-row-detail');
+    await expect(detail).toContainText('FC-AE-1');
+    await detail.locator('a,button,fluent-button,[tabindex="0"]').first().focus();
+    await page.getByTestId('fc-ae-rows-delayed').dispatchEvent('click');
+    await page.getByTestId('fc-ae-rows-two').focus();
+    await expect(grid.locator('.fc-expanded-row-hidden-banner-text')).toBeVisible();
+    await expect(page.getByTestId('fc-ae-rows-two')).toBeFocused();
+    await page.getByTestId('fc-ae-rows-two').click();
+    await expect(detail).toContainText('FC-AE-1');
+    await detail.locator('a,button,fluent-button,[tabindex="0"]').first().focus();
+    await page.getByTestId('fc-ae-rows-delayed').dispatchEvent('click');
+    await page.goto('/home');
+    const heading = page.locator('#fc-main-content h1').first();
+    await expect(heading).toBeFocused();
+    await page.waitForTimeout(700);
+    await expect(heading).toBeFocused();
+    await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+  });
+}
+
+for (const theme of ['light', 'dark']) {
+  test(`fresh-row presentation retains text boundary and system-color meaning in ${theme}`, async ({ page }, info) => {
+    await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+    const cue = page.getByTestId('fc-ae-fresh-presentation');
+    await expect(cue).toContainText(/new|updated/i);
+    await evidence(page, cue, `fresh-presentation-${theme}`, info);
+    await expectSurfaceContrast(cue, 'border');
+  });
+}
+
+test('paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors', async ({ page }) => {
+  await page.setContent('<style>#edge{border:1px solid #eee;background:white}#edge::after{content:"";border-bottom:2px solid black;transform:scaleX(0);display:block}</style><div id="host" style="color:black;background:black">Slotted readable label</div><div id="edge">Boundary</div><div inert><dialog id="modal"><p>Visible modal text</p></dialog></div>');
+  await page.locator('#host').evaluate(element => { element.attachShadow({ mode: 'open' }).innerHTML = '<style>slot{color:white}</style><slot></slot>'; });
+  expect((await expectSurfaceContrast(page.locator('#host')))[0].ratio).toBe(21);
+  expect((await expectSurfaceContrast(page.locator('#host').locator('slot')))[0].ratio).toBe(21);
+  await expect(expectSurfaceContrast(page.locator('#edge'), 'border')).rejects.toThrow(/contrast failures/);
+  await page.addStyleTag({ content: '#edge::after{transform:scaleX(1)}' });
+  expect((await expectSurfaceContrast(page.locator('#edge'), 'border')).some(sample => sample.ratio >= 3)).toBe(true);
+  await page.locator('#modal').evaluate(element => (element as HTMLDialogElement).showModal());
+  await expectSurfaceContrast(page.locator('#modal'));
+});
+
+
+test('validation links keep native same-page href activation when focus enhancement is unavailable', async ({ page }, info) => {
+  await page.route('**/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js', async route => {
+    const response = await route.fetch();
+    const body = (await response.text())
+      .replace('export function focusValidationOutcome(', 'export function unavailableFocusValidationOutcome(')
+      .replace('export function focusValidationTarget(', 'export function unavailableFocusValidationTarget(')
+      + "\nexport function focusValidationOutcome(){throw new Error('Fixed focus-enhancement fixture unavailable');}\nexport function focusValidationTarget(){throw new Error('Fixed focus-enhancement fixture unavailable');}\n";
+    await route.fulfill({ response, body });
+  });
+  await ready(page, '/__frontcomposer/specimens/type', 'light');
+  await page.getByTestId('fc-destructive-command-specimen').getByRole('button', { name: 'Purge Specimen Record', exact: true }).click();
+  const link = page.getByTestId('fc-validation-summary').getByRole('link', { name: 'The Retention field is required.', exact: true });
+  await expect(link).toHaveCount(1);
+  const href = await link.getAttribute('href');
+  expect(href).toMatch(/__frontcomposer\/specimens\/type#.+-Retention$/u);
+  await link.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(link).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new URL(href!, await page.locator('base').getAttribute('href').then(base => new URL(base!, page.url()).href)).href);
+  await info.attach('native-validation-link-fallback', { body: JSON.stringify({ role: 'link', href, activation: 'keyboard Enter', duplicateKeyboardStops: false }), contentType: 'application/json' });
+});

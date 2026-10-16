@@ -6,3 +6,15 @@
     outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
     outline-offset: var(--strokeWidthThick);
 }
+
+/* Native fragment links retain their keyboard/default action and use Fluent's readable foreground. */
+.fc-validation-target {
+    color: var(--colorNeutralForeground1);
+    display: inline-block;
+    min-block-size: 24px;
+}
+
+.fc-validation-target:focus-visible {
+    outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+    outline-offset: var(--strokeWidthThick);
+}

@@ -68,6 +68,13 @@ test('focus checks reject an absent indicator and a pointer-transparent opaque o
   expect((await focusGeometry(page.locator('button'))).failures).not.toContain('app content obscures target or focus ring');
 });
 
+test('modal decoration cannot substitute for the focused control indicator', async ({ page }) => {
+  await page.setContent('<fluent-dialog><button style="outline:none;box-shadow:none">Bare control</button></fluent-dialog>');
+  await page.locator('fluent-dialog').evaluate(element => { element.attachShadow({ mode: 'open' }).innerHTML = '<div style="padding:20px;box-shadow:0 0 0 3px black"><slot></slot></div>'; });
+  await page.locator('button').focus();
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('focused target has no visible focus indicator');
+});
+
 test('a one-control keyboard trap cannot satisfy the expected cycle', async ({ page }) => {
   await page.setContent('<button id="a" style="outline:2px solid">First</button><button id="b">Second</button>');
   await page.locator('#a').evaluate(element => { element.addEventListener('keydown', event => { if ((event as KeyboardEvent).key === 'Tab') event.preventDefault(); }); });
@@ -280,19 +287,36 @@ async function verifyKeyboardCycle(page: import('@playwright/test').Page, modal 
     return stops.length;
   }, modal);
   expect(expectedCount, 'Expected reachable keyboard controls').toBeGreaterThan(0);
+  let previousIndex = -1;
   const step = async (reverse = false) => {
     for (let outside = 0; outside < 3; outside++) {
       await page.keyboard.press(reverse ? 'Shift+Tab' : 'Tab');
       const result = await page.evaluate(() => {
         const state = (window as unknown as { aeKeyboard: { stops: Element[]; activeModal?: Element; contains: (ancestor: Element, child: Element) => boolean; describe: (element: Element) => string; canonical: (element: Element) => Element } }).aeKeyboard;
         const active = document.activeElement;
-        if (!active || active === document.body) return { outside: true, modal: Boolean(state.activeModal), index: -1 };
+        if (!document.hasFocus() || !active || active === document.body) return { outside: true, modal: Boolean(state.activeModal), index: -1 };
         return { outside: false, modal: Boolean(state.activeModal), member: !state.activeModal || state.contains(state.activeModal, active), index: state.stops.indexOf(state.canonical(active)), control: state.describe(active) };
       });
-      if (result.outside) { expect(result.modal, 'Modal keyboard focus left its document').toBe(false); continue; }
+      if (result.outside) {
+        expect(result.modal, 'Modal keyboard focus left its document').toBe(false);
+        expect(previousIndex, 'Document focus left before its complete boundary').toBe(reverse ? 0 : expectedCount - 1);
+        // Firefox retains the last activeElement while focus is in browser chrome, and
+        // automation cannot Tab through browser UI. Resume at the opposite document
+        // boundary only after proving the final app stop; modal escapes always fail.
+        await page.bringToFront();
+        const boundary = await page.evaluate(backward => {
+          const state = (window as unknown as { aeKeyboard: { stops: HTMLElement[] } }).aeKeyboard;
+          const index = backward ? state.stops.length - 1 : 0;
+          state.stops[index].focus(); return index;
+        }, reverse);
+        previousIndex = boundary;
+        await expectFocusVisible(page.locator(':focus').first());
+        return boundary;
+      }
       expect(result.member, 'Focus left the active modal').toBe(true);
       expect(result.index, `Focused control was absent from the reachable inventory: ${result.control}`).toBeGreaterThanOrEqual(0);
       await expectFocusVisible(page.locator(':focus').first());
+      previousIndex = result.index;
       return result.index;
     }
     throw new Error('Keyboard focus did not return from browser chrome');
@@ -363,17 +387,29 @@ test('real generated compact rows preserve 32px, match ItemSize through spacing,
   await expect(table.locator('fluent-button').first()).toBeFocused();
   const focusedControl = await table.locator('fluent-button').first().elementHandle();
   await applyTextSpacing(page);
-  await expect.poll(async () => (await metrics()).itemSize).toBeGreaterThan(32);
-  await expect.poll(() => focusedControl!.evaluate(element => element.isConnected)).toBe(false);
-  await expect(grid).toBeFocused();
-  await expect.poll(async () => { const measured = await metrics(); return measured.rows.length > 0 && measured.rows.every(height => Math.abs(height - measured.itemSize) < .5); }).toBe(true);
-  await testInfo.attach('generated-compact-spacing-row-metrics', { body: JSON.stringify(await metrics()), contentType: 'application/json' });
+  await expect.poll(async () => { const measured = await metrics(); return measured.itemSize >= 32 && measured.rows.length > 0 && measured.rows.every(height => Math.abs(height - measured.itemSize) < .5); }).toBe(true);
+  const spaced = await metrics();
+  // Intrinsic widths can keep spaced text on one line. Growth follows painted content,
+  // while the density floor stays exact; the larger text below guarantees a remount.
+  if (spaced.itemSize > 32) {
+    await expect.poll(() => focusedControl!.evaluate(element => element.isConnected)).toBe(false);
+    await expect(grid).toBeFocused();
+  } else {
+    expect(await focusedControl!.evaluate(element => element.isConnected)).toBe(true);
+    await expect(table.locator('fluent-button').first()).toBeFocused();
+  }
+  await testInfo.attach('generated-compact-spacing-row-metrics', { body: JSON.stringify(spaced), contentType: 'application/json' });
   // A separately labelled user-text-size stress exercises real generated content
   // beyond canonical spacing, while the virtualizer must follow the rendered height.
   const largerText = await page.addStyleTag({ content: '[data-testid="fc-generated-counter-grid"] td { font-size:24px !important; }' });
   await largerText.evaluate(element => (element as Element).setAttribute('data-ae-text-spacing', 'additional-user-text-size-stress'));
-  await page.getByTestId('fc-command-input').focus();
   await expect.poll(async () => (await metrics()).itemSize).toBeGreaterThan(32);
+  await expect.poll(() => focusedControl!.evaluate(element => element.isConnected)).toBe(false);
+  await expect(grid).toBeFocused();
+  const firstGrowth = (await metrics()).itemSize;
+  await page.getByTestId('fc-command-input').focus();
+  await largerText.evaluate(element => { element.textContent = element.textContent!.replace('24px', '32px'); });
+  await expect.poll(async () => (await metrics()).itemSize).toBeGreaterThan(firstGrowth);
   await expect.poll(async () => { const measured = await metrics(); return measured.rows.length > 0 && measured.rows.every(height => Math.abs(height - measured.itemSize) < .5); }).toBe(true);
   await testInfo.attach('generated-compact-larger-user-text-row-metrics', { body: JSON.stringify(await metrics()), contentType: 'application/json' });
   await expect(page.getByTestId('fc-command-input')).toBeFocused();

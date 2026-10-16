@@ -1,0 +1,258 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts --project=chromium --workers=2 --grep active toolbar|generated validation|paint measurement
+
+
+Running 5 tests using 2 workers
+
+(node:3236294) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3236293) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › specs/accessibility-state-matrix.spec.ts:268:3 › generated validation, policy, destructive and abandonment states in light (2.0s)
+(node:3237592) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [chromium] › specs/accessibility-state-matrix.spec.ts:220:3 › active toolbar, tabs, palette and settings states in light (14.2s)
+(node:3241360) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  4 [chromium] › specs/accessibility-state-matrix.spec.ts:268:3 › generated validation, policy, destructive and abandonment states in dark (1.9s)
+  ✘  3 [chromium] › specs/accessibility-state-matrix.spec.ts:220:3 › active toolbar, tabs, palette and settings states in dark (14.2s)
+(node:3242026) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  5 [chromium] › specs/accessibility-state-matrix.spec.ts:390:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (225ms)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:220:3 › active toolbar, tabs, palette and settings states in light 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('fc-settings-dialog')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('fc-settings-dialog') with timeout 10000ms
+      - waiting for getByTestId('fc-settings-dialog')
+
+
+      23 |
+      24 | async function evidence(page: Page, root: Locator, state: string, info: TestInfo, icons?: Locator) {
+    > 25 |   await expect(root).toBeVisible();
+         |                      ^
+      26 |   await expectNoPageOverflow(page);
+      27 |   await expectNoTextClipping(page);
+      28 |   await settlePaint(page);
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:25:22)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:258:11
+
+    attachment #1: state-filter-popover-light (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-filter-popover-light-89c647e2788fcd4f908504629277ff2c052e4cee.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-view-menu-light (application/json) ────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-view-menu-light-4dc1ce3e3c8257878ad4cf4da579f23028932423.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-tabs-active-light (application/json) ──────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-tabs-active-light-c6ab245ef25e69e492737b363562a78a1a2f6d64.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-palette-default-light (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-default-light-59ff9373788e466cb1552a69e36e3fa2337f5bea.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-palette-selected-light (application/json) ─────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-selected-light-020e262376e3d24d69009df83d75d470ef4b6098.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: state-palette-empty-light (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-empty-light-f847c20b56d8d01483c1cd0da12de206cecda75d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/error-context.md
+
+    attachment #10: trace (application/zip) ────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › specs/accessibility-state-matrix.spec.ts:268:3 › generated validation, policy, destructive and abandonment states in light 
+
+    Error: Nonempty text contrast inventory
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+       at ../helpers/responsive-accessibility.ts:383
+
+      381 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      382 |   const samples = await measureSurfaceContrast(root, kind);
+    > 383 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+          |                                                                 ^
+      384 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      385 |   const failures = (kind === 'focus' || kind === 'border') && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+      386 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:383:65)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:33:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:284:5
+
+    attachment #1: state-generated-validation-light (application/json) ─────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-generated-validation-light-03a2a494b7315c82028be10cfe86aba7b6b0f783.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-policy-denied-light (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-policy-denied-light-4ec03737d7a04424e5c7972769fb562b1b167c09.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › specs/accessibility-state-matrix.spec.ts:220:3 › active toolbar, tabs, palette and settings states in dark 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('fc-settings-dialog')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('fc-settings-dialog') with timeout 10000ms
+      - waiting for getByTestId('fc-settings-dialog')
+
+
+      23 |
+      24 | async function evidence(page: Page, root: Locator, state: string, info: TestInfo, icons?: Locator) {
+    > 25 |   await expect(root).toBeVisible();
+         |                      ^
+      26 |   await expectNoPageOverflow(page);
+      27 |   await expectNoTextClipping(page);
+      28 |   await settlePaint(page);
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:25:22)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:258:11
+
+    attachment #1: state-filter-popover-dark (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-filter-popover-dark-e85ffb1ace348f5dce39479d5391fe2bb9c1440d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-view-menu-dark (application/json) ─────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-view-menu-dark-fc5d6152a2f612c6d30557bc96fc67ad72fbefab.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-tabs-active-dark (application/json) ───────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-tabs-active-dark-81eaa3e105484d860aa02941fa143da7ff56e778.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-palette-default-dark (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-default-dark-92eda6c1ec7b382d042616f3113b14bd631073c6.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-palette-selected-dark (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-selected-dark-b4de2485377f58dddb5bfbb09b945a75c46b6614.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: state-palette-empty-dark (application/json) ─────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-empty-dark-52a5c5f9404fe9f011934dee6683e78b011377a3.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/error-context.md
+
+    attachment #10: trace (application/zip) ────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › specs/accessibility-state-matrix.spec.ts:268:3 › generated validation, policy, destructive and abandonment states in dark 
+
+    Error: Nonempty text contrast inventory
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+       at ../helpers/responsive-accessibility.ts:383
+
+      381 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      382 |   const samples = await measureSurfaceContrast(root, kind);
+    > 383 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+          |                                                                 ^
+      384 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      385 |   const failures = (kind === 'focus' || kind === 'border') && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+      386 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:383:65)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:33:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:284:5
+
+    attachment #1: state-generated-validation-dark (application/json) ──────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/attachments/state-generated-validation-dark-6d9e87351dbfe8211b9f6c9ce592a60e7f0276c0.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-policy-denied-dark (application/json) ─────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/attachments/state-policy-denied-dark-453e93c5034ad166d929cbc34b8c66eb2a8d49bb.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-eleventh/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:220:3 › active toolbar, tabs, palette and settings states in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:268:3 › generated validation, policy, destructive and abandonment states in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:220:3 › active toolbar, tabs, palette and settings states in dark 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:268:3 › generated validation, policy, destructive and abandonment states in dark 
+  1 passed (18.0s)

@@ -24,6 +24,7 @@
                         <li>
                             @if (inputId is not null) {
                                 <a href="@FragmentHref(inputId)"
+                                   class="fc-validation-target"
                                    data-fc-validation-target="@inputId"
                                    @onclick="() => FocusFieldAsync(inputId)"
                                    @onclick:preventDefault="@_scriptFocusAvailable">@LinkText(message, label)</a>

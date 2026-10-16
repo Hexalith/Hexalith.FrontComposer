@@ -1,4 +1,6 @@
 using Counter.Domain;
+using Counter.Specimens;
+using Counter.Specimens.Domain;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
@@ -20,6 +22,7 @@ internal sealed class CounterSampleCommandService :
     private readonly IUserContextAccessor _userContext;
     private readonly ILogger<CounterSampleCommandService> _logger;
     private readonly bool _mappedRejectionEnabled;
+    private readonly AccessibilitySpecimenState? _accessibilityScenarios;
     private readonly bool _dispatchForbiddenEnabled;
 
     /// <summary>Initializes a new instance of the <see cref="CounterSampleCommandService"/> class.</summary>
@@ -28,6 +31,7 @@ internal sealed class CounterSampleCommandService :
     /// <param name="userContext">The resolved sample tenant and user context.</param>
     /// <param name="logger">The sample logger.</param>
     /// <param name="configuration">The optional specimen configuration.</param>
+    /// <param name="accessibilityScenarios">Optional fixed Test-only outcomes.</param>
     /// <param name="environment">The host environment that restricts specimen command outcomes to Test.</param>
     public CounterSampleCommandService(
         ICommandServiceWithLifecycleObservations inner,
@@ -35,7 +39,8 @@ internal sealed class CounterSampleCommandService :
         IUserContextAccessor userContext,
         ILogger<CounterSampleCommandService> logger,
         IConfiguration? configuration = null,
-        IHostEnvironment? environment = null)
+        IHostEnvironment? environment = null,
+        AccessibilitySpecimenState? accessibilityScenarios = null)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _catchUp = catchUp ?? throw new ArgumentNullException(nameof(catchUp));
@@ -45,6 +50,7 @@ internal sealed class CounterSampleCommandService :
         bool specimenOutcomesEnabled = environment?.IsEnvironment("Test") == true
             && configuration is not null
             && FrontComposerSpecimenRoutes.IsEnabled(configuration, environment);
+        _accessibilityScenarios = specimenOutcomesEnabled ? accessibilityScenarios : null;
         _mappedRejectionEnabled = specimenOutcomesEnabled
             && string.Equals(configuration?["Hexalith:FrontComposer:Specimens:MappedRejectionEnabled"], "true", StringComparison.OrdinalIgnoreCase);
         _dispatchForbiddenEnabled = specimenOutcomesEnabled
@@ -66,6 +72,33 @@ internal sealed class CounterSampleCommandService :
         where TCommand : class
     {
         ArgumentNullException.ThrowIfNull(command);
+        if (command is AccessibilityZeroFieldCommand specimen && _accessibilityScenarios is { } scenarios)
+        {
+            scenarios.RecordDispatch();
+            switch (scenarios.Outcome)
+            {
+                case "validation":
+                    throw new CommandValidationException(ProblemDetailsPayload.Empty with {
+                        ValidationErrors = new Dictionary<string, IReadOnlyList<string>> { ["TenantId"] = ["Review the specimen workspace and try again."] },
+                    });
+                case "returned-rejection":
+                    return Task.FromResult(new CommandResult(specimen.MessageId, CommandResultStatus.Rejected));
+                case "exception-rejection":
+                    throw new CommandRejectedException("Specimen rejected", "Review the specimen and try again.");
+                case "forbidden":
+                    throw new CommandWarningException(CommandWarningKind.Forbidden, ProblemDetailsPayload.Empty);
+                case "unavailable":
+                    throw new CommandWarningException(CommandWarningKind.NotFound, ProblemDetailsPayload.Empty with { Detail = "This specimen item is unavailable." });
+                case "blank-unavailable":
+                    throw new CommandWarningException(CommandWarningKind.NotFound, ProblemDetailsPayload.Empty with { Detail = "  " });
+                case "rate-limited":
+                    throw new CommandWarningException(CommandWarningKind.RateLimited, ProblemDetailsPayload.Empty with { Detail = "The specimen is temporarily rate limited." }, TimeSpan.FromSeconds(17));
+                case "blank-rate-limited":
+                    throw new CommandWarningException(CommandWarningKind.RateLimited, ProblemDetailsPayload.Empty, TimeSpan.FromSeconds(17));
+                case "transport":
+                    throw new CommandWarningException(CommandWarningKind.RetryableDispatchFailed, ProblemDetailsPayload.Empty);
+            }
+        }
         if (_dispatchForbiddenEnabled && command is BatchIncrementCommand)
         {
             throw new CommandWarningException(

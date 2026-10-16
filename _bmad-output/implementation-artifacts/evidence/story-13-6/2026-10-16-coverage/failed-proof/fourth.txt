@@ -1,0 +1,361 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts specs/responsive-accessibility.spec.ts --project=chromium --workers=2 --grep admission: safe|returned-rejection: safe|exception-rejection: safe|detail loss|generated-forms: composed|active toolbar|generated validation|real generated compact rows
+
+
+Running 15 tests using 2 workers
+
+(node:2631418) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2631419) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › specs/accessibility-state-matrix.spec.ts:41:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (3.3s)
+  ✓   2 [chromium] › specs/accessibility-state-matrix.spec.ts:41:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (3.3s)
+  ✓   4 [chromium] › specs/accessibility-state-matrix.spec.ts:97:5 › AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation (1.1s)
+  ✓   3 [chromium] › specs/accessibility-state-matrix.spec.ts:41:7 › AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt (1.8s)
+  ✓   5 [chromium] › specs/accessibility-state-matrix.spec.ts:159:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (1.6s)
+  ✓   6 [chromium] › specs/accessibility-state-matrix.spec.ts:41:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (1.9s)
+  ✓   7 [chromium] › specs/accessibility-state-matrix.spec.ts:41:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (2.0s)
+  ✓   8 [chromium] › specs/accessibility-state-matrix.spec.ts:41:7 › AE complete state matrix dark › generated zero-field admission: safe feedback, focus, owner, next attempt (2.0s)
+  ✓   9 [chromium] › specs/accessibility-state-matrix.spec.ts:97:5 › AE complete state matrix dark › real generated detail loss focuses its neutral non-live explanation (1.4s)
+  ✘  10 [chromium] › specs/accessibility-state-matrix.spec.ts:159:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (909ms)
+(node:2635886) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  11 [chromium] › specs/accessibility-state-matrix.spec.ts:196:3 › active toolbar, tabs, palette and settings states in light (9.8s)
+(node:2638644) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  12 [chromium] › specs/accessibility-state-matrix.spec.ts:241:3 › generated validation, policy, destructive and abandonment states in light (16.4s)
+(node:2641017) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  14 [chromium] › specs/accessibility-state-matrix.spec.ts:241:3 › generated validation, policy, destructive and abandonment states in dark (1.1s)
+(node:2641767) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  13 [chromium] › specs/accessibility-state-matrix.spec.ts:196:3 › active toolbar, tabs, palette and settings states in dark (10.2s)
+  ✓  15 [chromium] › specs/responsive-accessibility.spec.ts:347:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes (1.7s)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:159:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues 
+
+    Error: text contrast failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 74
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "background": Array [
+    +       148,
+    +       148,
+    +       148,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       146,
+    +       146,
+    +       146,
+    +       1,
+    +     ],
+    +     "minimum": 4.5,
+    +     "node": "fluent-button#fc-command-form-Counter-Domain-CreateCounterCommand-4-submit",
+    +     "paint": "Create Counter",
+    +     "ratio": 1.0257746902538283,
+    +   },
+    +   Object {
+    +     "background": Array [
+    +       148,
+    +       148,
+    +       148,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       146,
+    +       146,
+    +       146,
+    +       1,
+    +     ],
+    +     "minimum": 4.5,
+    +     "node": "fluent-button#fc-command-form-Counter-Domain-UpdateCounterCommand-4-submit",
+    +     "paint": "Update Counter",
+    +     "ratio": 1.0257746902538283,
+    +   },
+    +   Object {
+    +     "background": Array [
+    +       148,
+    +       148,
+    +       148,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       146,
+    +       146,
+    +       146,
+    +       1,
+    +     ],
+    +     "minimum": 4.5,
+    +     "node": "fluent-button#fc-command-form-Counter-Domain-BatchIncrementCommand-4-submit",
+    +     "paint": "Batch Increment",
+    +     "ratio": 1.0257746902538283,
+    +   },
+    +   Object {
+    +     "background": Array [
+    +       41,
+    +       41,
+    +       41,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       5,
+    +       146,
+    +       161,
+    +       1,
+    +     ],
+    +     "minimum": 4.5,
+    +     "node": "a",
+    +     "paint": "Configure Counter",
+    +     "ratio": 3.902137560412215,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:364
+
+      362 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      363 |   const failures = kind === 'focus' && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+    > 364 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+          |                                                 ^
+      365 |   return samples;
+      366 | }
+      367 |
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:364:49)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:27:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:161:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › specs/accessibility-state-matrix.spec.ts:196:3 › active toolbar, tabs, palette and settings states in light 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "focused target has no visible focus indicator: {\"target\":\"INPUT#control\",\"box\":{\"left\":23,\"top\":576.34375,\"right\":297,\"bottom\":606.34375},\"ring\":0,\"failures\":[\"focused target has no visible focus indicator\"],\"occluder\":null}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:221
+
+      219 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      220 |   await expect(target).toBeFocused();
+    > 221 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      222 | }
+      223 |
+      224 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:221:208)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:200:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › specs/accessibility-state-matrix.spec.ts:241:3 › generated validation, policy, destructive and abandonment states in light 
+
+    TimeoutError: locator.click: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for getByRole('option', { name: 'SevenDays', exact: true })
+
+
+      250 |     const form = destructive.locator('.fc-command-form');
+      251 |     await form.getByRole('combobox').click();
+    > 252 |     await page.getByRole('option', { name: 'SevenDays', exact: true }).click();
+          |                                                                        ^
+      253 |     await destructive.getByRole('button', { name: 'Purge Specimen Record', exact: true }).click();
+      254 |     const dialog = page.getByRole('dialog');
+      255 |     await expect(dialog).toBeVisible();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:252:72
+
+    attachment #1: state-generated-validation-light (application/json) ─────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-generated-validation-light-61a27ba6fd47219275db9bdfb97b0bd9ad26cc2a.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-policy-denied-light (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-policy-denied-light-89476c08df890ccc87fae4f358f2b92b6443c90d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › specs/accessibility-state-matrix.spec.ts:196:3 › active toolbar, tabs, palette and settings states in dark 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "focused target has no visible focus indicator: {\"target\":\"INPUT#control\",\"box\":{\"left\":23,\"top\":576.34375,\"right\":297,\"bottom\":606.34375},\"ring\":0,\"failures\":[\"focused target has no visible focus indicator\"],\"occluder\":null}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:221
+
+      219 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      220 |   await expect(target).toBeFocused();
+    > 221 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      222 | }
+      223 |
+      224 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:221:208)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:200:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium] › specs/accessibility-state-matrix.spec.ts:241:3 › generated validation, policy, destructive and abandonment states in dark 
+
+    Error: text contrast failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 20
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "background": Array [
+    +       41,
+    +       41,
+    +       41,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       5,
+    +       146,
+    +       161,
+    +       1,
+    +     ],
+    +     "minimum": 4.5,
+    +     "node": "a",
+    +     "paint": "The Retention field is required.",
+    +     "ratio": 3.902137560412215,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:364
+
+      362 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      363 |   const failures = kind === 'focus' && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+    > 364 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+          |                                                 ^
+      365 |   return samples;
+      366 | }
+      367 |
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:364:49)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:27:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:248:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-fourth/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:159:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:196:3 › active toolbar, tabs, palette and settings states in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:241:3 › generated validation, policy, destructive and abandonment states in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:196:3 › active toolbar, tabs, palette and settings states in dark 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:241:3 › generated validation, policy, destructive and abandonment states in dark 
+  10 passed (31.4s)

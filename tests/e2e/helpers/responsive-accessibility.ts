@@ -54,7 +54,7 @@ export async function expectNoPageOverflow(page: Page): Promise<void> {
 /** Inventory actual hit targets, collapsing a Fluent control and its shadow control to one target. */
 export async function inventoryTargets(page: Page, exceptions: TargetException[] = []) {
   return page.evaluate((records) => {
-    const selector = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="tab"],[role="option"],[role="menuitem"],[role="checkbox"],[role="switch"],fluent-button,fluent-text-input,fluent-number-input,fluent-select,fluent-combobox,fluent-dropdown,fluent-switch,[tabindex]:not([tabindex="-1"]),[onclick]';
+    const selector = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="tab"],[role="option"],[role="menuitem"],[role="checkbox"],[role="radio"],[role="switch"],fluent-button,fluent-text-input,fluent-number-input,fluent-select,fluent-combobox,fluent-dropdown,fluent-radio,fluent-switch,[tabindex]:not([tabindex="-1"]),[onclick]';
     const all: Element[] = [];
     const visit = (root: Document | ShadowRoot) => {
       root.querySelectorAll('*').forEach(element => { all.push(element); if (element.shadowRoot) visit(element.shadowRoot); });
@@ -118,6 +118,7 @@ export async function expectTargetSizes(page: Page, exceptions: TargetException[
 export async function focusGeometry(target: Locator) {
   return target.evaluate(element => {
     const rect = element.getBoundingClientRect();
+    const composedParent = (node: Element): Element | null => node.assignedSlot ?? node.parentElement ?? (node.getRootNode() instanceof ShadowRoot ? (node.getRootNode() as ShadowRoot).host : null);
     const visuals: Element[] = [element];
     // Fluent paints focus on internal wrappers/pseudo-elements as well as its active input.
     const visitFocus = (root: ShadowRoot) => {
@@ -126,8 +127,8 @@ export async function focusGeometry(target: Locator) {
         if (child.shadowRoot?.activeElement) visitFocus(child.shadowRoot);
       }
     };
-    for (let owner: Element | null = element; owner; owner = owner.parentElement) {
-      if ((owner === element || owner.matches('fluent-field,fluent-dropdown,fluent-combobox')) && owner.shadowRoot && owner.matches(':focus-within')) {
+    for (let owner: Element | null = element; owner; owner = composedParent(owner)) {
+      if ((owner === element || owner.matches('fluent-text-input,fluent-number-input,fluent-dropdown,fluent-combobox,fluent-select,fluent-button,fluent-anchor-button,fluent-switch,fluent-radio')) && owner.shadowRoot && owner.matches(':focus-within')) {
         if (!visuals.includes(owner)) visuals.push(owner);
         visitFocus(owner.shadowRoot);
       }
@@ -283,4 +284,123 @@ export async function expectNoTextClipping(page: Page): Promise<void> {
     return [...new Set(failures)];
   });
   expect(failures, 'AE-03 clipped text ranges').toEqual([]);
+}
+
+export type ContrastKind = 'text' | 'border' | 'icon' | 'focus';
+
+/** Sample actual painted nodes in the composed tree; empty/unsupported samples fail closed. */
+export async function measureSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+  return root.evaluate((scope, sampleKind) => {
+    const parent = (node: Element): Element | null => node.assignedSlot ?? node.parentElement ?? (node.getRootNode() instanceof ShadowRoot ? (node.getRootNode() as ShadowRoot).host : null);
+    const parse = (value: string): number[] => {
+      const channels = value.match(/[\d.]+/gu)?.map(Number) ?? [];
+      if (value.startsWith('color(')) {
+        const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+        const context = canvas.getContext('2d')!; context.fillStyle = value; context.fillRect(0, 0, 1, 1);
+        const pixel = context.getImageData(0, 0, 1, 1).data; return [pixel[0], pixel[1], pixel[2], pixel[3] / 255];
+      }
+      if (!/^rgba?\(/u.test(value) || channels.length < 3) throw new Error(`Unsupported computed paint: ${value}`);
+      return [channels[0], channels[1], channels[2], channels[3] ?? 1];
+    };
+    const composite = (fg: number[], bg: number[]) => [0, 1, 2].map(i => fg[i] * fg[3] + bg[i] * (1 - fg[3])).concat(1);
+    const background = (element: Element | null) => {
+      const layers: number[][] = [];
+      for (let current = element; current; current = parent(current)) {
+        const css = getComputedStyle(current);
+        if (css.backgroundImage !== 'none') throw new Error('Background image needs pixel evidence');
+        if (Number(css.opacity) > 0 && Number(css.opacity) < 1) throw new Error(`Translucent group needs pixel evidence: ${current.tagName}.${current.className} opacity=${css.opacity}`);
+        layers.push(parse(css.backgroundColor));
+      }
+      return layers.reverse().reduce((bg, fg) => composite(fg, bg), [255, 255, 255, 1]);
+    };
+    const luminance = (color: number[]) => color.slice(0, 3).map(channel => { const c = channel / 255; return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; }).reduce((sum, c, i) => sum + c * [.2126, .7152, .0722][i], 0);
+    const visible = (element: Element) => {
+      if (element.getClientRects().length === 0 && getComputedStyle(element).display !== 'contents') return false;
+      for (let current: Element | null = element; current; current = parent(current)) {
+        const css = getComputedStyle(current);
+        if (sampleKind === 'icon' && current.matches('fluent-skeleton,.fluent-skeleton,.fc-empty-state-body__icon')) return false;
+        if (css.visibility === 'hidden' || css.display === 'none' || Number(css.opacity) === 0 || current.matches('[hidden],.fc-sr-only,[disabled],[aria-disabled="true"]') || css.clip !== 'auto' || css.clipPath !== 'none') return false;
+      }
+      return true;
+    };
+    const samples: { node: string; paint: string; foreground: number[]; background: number[]; ratio: number; minimum: number }[] = [];
+    const sample = (element: Element, value: string, label: string, minimum: number, outside = false) => {
+      const color = parse(value);
+      if (color[3] === 0) return;
+      const bg = background(outside ? parent(element) : element);
+      const fg = composite(color, bg), a = luminance(fg), b = luminance(bg);
+      samples.push({ node: `${element.tagName.toLowerCase()}${element.id ? '#' + element.id : ''}`, paint: label, foreground: fg, background: bg, ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05), minimum });
+    };
+    const sampledText = new Set<Node>();
+    const visited = new Set<Element>();
+    const visit = (element: Element) => {
+      if (visited.has(element) || !visible(element)) return;
+      visited.add(element);
+      const css = getComputedStyle(element);
+      if (sampleKind === 'text') {
+        if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+          const paint = element.value.trim() ? css.color : element.getAttribute('placeholder') ? getComputedStyle(element, '::placeholder').color : null;
+          if (paint) sample(element, paint, element.value.trim() ? 'input value' : 'input placeholder', 4.5);
+        }
+        const textNodes = element instanceof HTMLSlotElement ? element.assignedNodes({ flatten: true }) : element.childNodes;
+        for (const node of textNodes) if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim() && !sampledText.has(node)) {
+          sampledText.add(node);
+          const range = document.createRange(); range.selectNodeContents(node);
+          if (![...range.getClientRects()].some(box => box.width > 0 && box.height > 0)) continue;
+          const textOwner = (node as Text).assignedSlot ?? element;
+          const textCss = getComputedStyle(textOwner);
+          const large = parseFloat(textCss.fontSize) >= 24 || parseFloat(textCss.fontSize) >= 18.667 && parseInt(textCss.fontWeight) >= 700;
+          sample(textOwner, textCss.color, node.textContent.trim().slice(0, 80), large ? 3 : 4.5);
+        }
+      } else if (sampleKind === 'icon' && element.matches('svg path,svg polygon,svg circle,svg rect')) {
+        const paint = css.fill !== 'none' ? css.fill : css.stroke;
+        if (paint !== 'none') sample(element, paint, 'icon', 3);
+      } else if (sampleKind === 'border') {
+        for (const pseudo of [null, '::before', '::after']) {
+          const edge = getComputedStyle(element, pseudo);
+          if (pseudo && (edge.content === 'none' || edge.visibility === 'hidden' || Number(edge.opacity) === 0)) continue;
+          if (edge.transform !== 'none') { const matrix = new DOMMatrixReadOnly(edge.transform); if (matrix.a === 0 || matrix.d === 0) continue; }
+          for (const side of ['top', 'right', 'bottom', 'left']) if (parseFloat(edge.getPropertyValue(`border-${side}-width`)) > 0 && !['none', 'hidden'].includes(edge.getPropertyValue(`border-${side}-style`))) sample(element, edge.getPropertyValue(`border-${side}-color`), `${pseudo ?? 'element'} border-${side}`, 3, true);
+        }
+      } else if (sampleKind === 'focus') {
+        for (const pseudo of [null, '::before', '::after']) {
+          const paint = getComputedStyle(element, pseudo);
+          if (paint.visibility === 'hidden' || paint.display === 'none' || Number(paint.opacity) === 0 || pseudo && paint.content === 'none') continue;
+          if (paint.transform !== 'none') { const matrix = new DOMMatrixReadOnly(paint.transform); if (matrix.a === 0 || matrix.d === 0) continue; }
+          if (parseFloat(paint.outlineWidth) > 0 && paint.outlineStyle !== 'none') sample(element, paint.outlineColor, `${pseudo ?? 'element'} outline`, 3, true);
+          if (paint.boxShadow !== 'none') for (const color of paint.boxShadow.match(/rgba?\([^)]*\)/gu) ?? []) sample(element, color, `${pseudo ?? 'element'} box-shadow`, 3, true);
+          if (pseudo) for (const side of ['top', 'right', 'bottom', 'left']) if (parseFloat(paint.getPropertyValue(`border-${side}-width`)) > 0 && !['none', 'hidden'].includes(paint.getPropertyValue(`border-${side}-style`))) sample(element, paint.getPropertyValue(`border-${side}-color`), `${pseudo} border-${side}`, 3, true);
+        }
+      }
+      if (element instanceof HTMLSlotElement) for (const child of element.assignedElements({ flatten: true })) visit(child);
+      if (element.shadowRoot) for (const child of element.shadowRoot.children) visit(child);
+      for (const child of element.children) if (!child.matches('style,script,template')) visit(child);
+    };
+    visit(scope);
+    return samples;
+  }, kind);
+}
+
+export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+  const samples = await measureSurfaceContrast(root, kind);
+  expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+  // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+  const failures = (kind === 'focus' || kind === 'border') && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+  expect(failures, `${kind} contrast failures`).toEqual([]);
+  return samples;
+}
+
+/** Wait for finite theme/control paint transitions without changing the active styling. */
+export async function settlePaint(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    for (let pass = 0; pass < 5; pass++) {
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      const roots: (Document | ShadowRoot)[] = [document];
+      const collect = (root: Document | ShadowRoot) => { for (const element of root.querySelectorAll('*')) if (element.shadowRoot) { roots.push(element.shadowRoot); collect(element.shadowRoot); } };
+      collect(document);
+      const animations = roots.flatMap(root => root.getAnimations()).filter(animation => animation.playState === 'running' && Number.isFinite(Number(animation.effect?.getComputedTiming().endTime)));
+      if (!animations.length) return;
+      await Promise.allSettled(animations.map(animation => animation.finished));
+    }
+  });
 }

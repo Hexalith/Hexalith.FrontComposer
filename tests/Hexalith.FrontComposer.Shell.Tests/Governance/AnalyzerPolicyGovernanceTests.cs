@@ -557,6 +557,7 @@ public sealed class AnalyzerPolicyGovernanceTests
     }
 
     [Fact]
+    [Trait("Category", "GovernanceBuild")]
     public async Task AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean()
     {
         string root = RepositoryRoot();

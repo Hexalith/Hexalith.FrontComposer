@@ -1,0 +1,248 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts specs/responsive-accessibility.spec.ts --project=firefox --project=webkit --workers=3 --grep generated zero-field validation|generated validation|active toolbar|paint measurement|generated row
+
+
+Running 14 tests using 3 workers
+
+(node:3582037) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3582033) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3582032) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [firefox] › specs/accessibility-state-matrix.spec.ts:87:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt (4.6s)
+  ✓   2 [firefox] › specs/accessibility-state-matrix.spec.ts:87:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt (5.0s)
+  ✓   3 [firefox] › specs/accessibility-state-matrix.spec.ts:249:3 › active toolbar, tabs, palette and settings states in light (6.2s)
+  ✘   4 [firefox] › specs/accessibility-state-matrix.spec.ts:299:3 › generated validation, policy, destructive and abandonment states in light (3.3s)
+(node:3586043) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   5 [firefox] › specs/accessibility-state-matrix.spec.ts:249:3 › active toolbar, tabs, palette and settings states in dark (5.1s)
+  ✘   6 [firefox] › specs/accessibility-state-matrix.spec.ts:299:3 › generated validation, policy, destructive and abandonment states in dark (3.2s)
+  ✓   7 [firefox] › specs/accessibility-state-matrix.spec.ts:425:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (1.4s)
+(node:3586756) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3586771) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3587025) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   9 [webkit] › specs/accessibility-state-matrix.spec.ts:87:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt (4.1s)
+  ✓   8 [webkit] › specs/accessibility-state-matrix.spec.ts:87:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt (4.2s)
+  ✓  12 [webkit] › specs/accessibility-state-matrix.spec.ts:249:3 › active toolbar, tabs, palette and settings states in dark (7.1s)
+  ✓  11 [webkit] › specs/accessibility-state-matrix.spec.ts:299:3 › generated validation, policy, destructive and abandonment states in light (12.3s)
+  ✓  14 [webkit] › specs/accessibility-state-matrix.spec.ts:425:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (417ms)
+  ✘  10 [webkit] › specs/accessibility-state-matrix.spec.ts:249:3 › active toolbar, tabs, palette and settings states in light (16.0s)
+  ✓  13 [webkit] › specs/accessibility-state-matrix.spec.ts:299:3 › generated validation, policy, destructive and abandonment states in dark (11.5s)
+
+
+  1) [firefox] › specs/accessibility-state-matrix.spec.ts:299:3 › generated validation, policy, destructive and abandonment states in light 
+
+    Error: text contrast failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 20
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "background": Array [
+    +       51,
+    +       153,
+    +       255,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       255,
+    +       255,
+    +       255,
+    +       1,
+    +     ],
+    +     "minimum": 4.5,
+    +     "node": "slot",
+    +     "paint": "Purge Specimen Record",
+    +     "ratio": 2.9406597621705757,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:389
+
+      387 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      388 |   const failures = (kind === 'focus' || kind === 'border') && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+    > 389 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+          |                                                 ^
+      390 |   return samples;
+      391 | }
+      392 |
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:389:49)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:68:42)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:318:5
+
+    attachment #1: state-generated-validation-light (application/json) ─────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-5be77-abandonment-states-in-light-firefox/attachments/state-generated-validation-light-de6edfb2c768eee9299c17dfe7970e3839e83b72.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-policy-denied-light (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-5be77-abandonment-states-in-light-firefox/attachments/state-policy-denied-light-b8af85472dd8dad7e25dc6c64753ae4677d29862.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-5be77-abandonment-states-in-light-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-5be77-abandonment-states-in-light-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-5be77-abandonment-states-in-light-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-5be77-abandonment-states-in-light-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-5be77-abandonment-states-in-light-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [firefox] › specs/accessibility-state-matrix.spec.ts:299:3 › generated validation, policy, destructive and abandonment states in dark 
+
+    Error: text contrast failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 20
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "background": Array [
+    +       51,
+    +       153,
+    +       255,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       255,
+    +       255,
+    +       255,
+    +       1,
+    +     ],
+    +     "minimum": 4.5,
+    +     "node": "slot",
+    +     "paint": "Purge Specimen Record",
+    +     "ratio": 2.9406597621705757,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:389
+
+      387 |   // Fluent's two-color focus ring includes a contrasting outer ring and an inset separator.
+      388 |   const failures = (kind === 'focus' || kind === 'border') && samples.some(sample => sample.ratio >= sample.minimum) ? [] : samples.filter(sample => sample.ratio < sample.minimum);
+    > 389 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+          |                                                 ^
+      390 |   return samples;
+      391 | }
+      392 |
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:389:49)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:68:42)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:318:5
+
+    attachment #1: state-generated-validation-dark (application/json) ──────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox/attachments/state-generated-validation-dark-71e33b702f5bb8d3ebf06c06eb68aef657c24980.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-policy-denied-dark (application/json) ─────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox/attachments/state-policy-denied-dark-53bd6ff367380c0faa97de4746b1c0b1922961f1.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [webkit] › specs/accessibility-state-matrix.spec.ts:249:3 › active toolbar, tabs, palette and settings states in light 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('fc-settings-dialog')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('fc-settings-dialog') with timeout 10000ms
+      - waiting for getByTestId('fc-settings-dialog')
+
+
+      23 |
+      24 | async function evidence(page: Page, root: Locator, state: string, info: TestInfo, icons?: Locator) {
+    > 25 |   await expect(root).toBeVisible();
+         |                      ^
+      26 |   await expectNoPageOverflow(page);
+      27 |   await expectNoTextClipping(page);
+      28 |   await settlePaint(page);
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:25:22)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:289:11
+
+    attachment #1: state-filter-popover-light (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-filter-popover-light-162a8804b23fae2ed151413d678fc3f419f62ad1.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-view-menu-light (application/json) ────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-view-menu-light-a14521f17dbf8627543c99d6ffb8a12478ef749d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-tabs-active-light (application/json) ──────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-tabs-active-light-649d4e7d0f6023965e06d869aa7b2289db9f96db.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-palette-default-light (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-palette-default-light-f1ac84e99b44645116283392138f8b98c81b4132.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-palette-selected-light (application/json) ─────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-palette-selected-light-f5d1119451db8b8f3ea5abfa1a1d38363458f80f.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: state-palette-empty-light (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-palette-empty-light-890d595e4000d232c498fd54f6cc5e4b0710d814.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/error-context.md
+
+    attachment #10: trace (application/zip) ────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-engine-probe2/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [firefox] › specs/accessibility-state-matrix.spec.ts:299:3 › generated validation, policy, destructive and abandonment states in light 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:299:3 › generated validation, policy, destructive and abandonment states in dark 
+    [webkit] › specs/accessibility-state-matrix.spec.ts:249:3 › active toolbar, tabs, palette and settings states in light 
+  11 passed (34.6s)

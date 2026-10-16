@@ -502,7 +502,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
       '--project',
       '../../samples/Counter/Counter.Web/Counter.Web.csproj',
       '--configuration',
-      'Release',
+      process.env.FC_E2E_BUILD_CONFIGURATION ?? 'Release',
       '--no-build',
       '--no-launch-profile',
       '--urls',
@@ -523,7 +523,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     const api = await playwright.request.newContext({ baseURL: `http://127.0.0.1:${port}` });
     try {
       await waitForHost(api);
-      const response = await api.get('/__frontcomposer/specimens/type', { failOnStatusCode: false });
+      const response = await api.get('/__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true', { failOnStatusCode: false });
       expect(response.status(), `Specimen route was exposed without explicit configuration.\n${serverOutput}`).toBeGreaterThanOrEqual(400);
     } finally {
       await api.dispose();

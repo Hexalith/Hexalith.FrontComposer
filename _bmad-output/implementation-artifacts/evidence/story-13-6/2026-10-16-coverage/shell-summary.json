@@ -1,0 +1,92 @@
+{
+  "source": "Debug direct xUnit v3 assembly; configured five trait exclusions",
+  "assembly": {
+    "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, parallel (collections, 14 threads)]",
+    "id": "a59dcf83-ef6f-4410-a86c-d69b08b3d6da",
+    "name": "/home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+    "run-date": "2026-10-16",
+    "run-time": "07:16:42",
+    "start-rtf": "2026-10-16T07:16:42.5150735+00:00",
+    "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+    "target-framework": ".NETCoreApp,Version=v10.0",
+    "errors": "0",
+    "failed": "0",
+    "finish-rtf": "2026-10-16T07:17:35.9609105+00:00",
+    "not-run": "0",
+    "passed": "3681",
+    "skipped": "0",
+    "time": "53.449",
+    "time-rtf": "00:00:53.4490000",
+    "total": "3681"
+  },
+  "sha256Xml": "892417e3cc27c0084084674cf138d238d252ce9e25fe5e974fae39b829f6369b",
+  "sha256Log": "80bfe701b3d0644b5bea9c0b3be5873e1de2b9000dbf179895244da6e382562a",
+  "liveDependencySkips": 0,
+  "affectedTests": [
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Samples.AccessibilitySpecimenGateTests.CommandFailureRequiresBothTestEnvironmentAndSpecimenOptIn(environmentName: \\\"Production\\\", enabled: \\\"true\\\", active: False)",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Samples.AccessibilitySpecimenGateTests.CommandFailureRequiresBothTestEnvironmentAndSpecimenOptIn(environmentName: \\\"Development\\\", enabled: \\\"true\\\", active: False)",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Samples.AccessibilitySpecimenGateTests.CommandFailureRequiresBothTestEnvironmentAndSpecimenOptIn(environmentName: \\\"Test\\\", enabled: \\\"false\\\", active: False)",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Samples.AccessibilitySpecimenGateTests.CommandFailureRequiresBothTestEnvironmentAndSpecimenOptIn(environmentName: \\\"Test\\\", enabled: \\\"true\\\", active: True)",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.GeneratedFormMappedRejectionListsItsFormLevelMessageBesideTheFieldLink",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.GeneratedFormRejectionMappedToVisibleAndHiddenFieldsStaysMapped",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Components.Forms.FcValidationSummaryTests.ModelLevelMessageRendersAsAnUnlinkedEntryInTheCount",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Components.Forms.FcValidationSummaryTests.LinkRestoresNativeFragmentNavigationAfterAFailedScriptedFocus",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Components.Forms.FcValidationSummaryTests.LinkNamesTheFieldOnceWhenTheMessageAlreadyContainsTheLabel",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Components.Forms.FcValidationSummaryTests.FormLevelErrorRepeatingALinkedFieldMessageIsListedOnce",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Components.Forms.FcValidationSummaryTests.LinkedErrorKeepsSamePageFragmentFallbackAndBindsProgrammaticFocus",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Components.Forms.FcValidationSummaryTests.VisibleSummaryRebuildsWhenValidationStateChanges",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Components.Forms.FcValidationSummaryTests.ClientValidationRendersOneNonLiveLinkedSummaryInDeclaredFieldOrder",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Components.Forms.FcValidationSummaryTests.LinkKeepsTheLabelWhenItOnlyAppearsInsideAnUnrelatedWord",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Components.Forms.FcValidationSummaryTests.LinkKeepsNativeFragmentNavigationWhenScriptedFocusIsUnavailable",
+      "result": "Pass"
+    },
+    {
+      "name": "Hexalith.FrontComposer.Shell.Tests.Components.Forms.FcValidationSummaryTests.MappedRejectionUsesExplicitMappedKindWithoutLiveRegion",
+      "result": "Pass"
+    }
+  ],
+  "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- 'Category=GovernanceBuild' -trait- 'Category=Performance' -trait- 'Category=e2e-palette' -trait- 'Category=NightlyProperty' -trait- 'Category=Quarantined' -result-xml /tmp/story13-6-shell-isolated.xml"
+}

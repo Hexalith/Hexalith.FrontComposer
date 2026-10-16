@@ -159,7 +159,14 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     const retentionField = form.locator('fluent-field', { has: page.locator('label[slot="label"]:text-is("Retention")') });
     await expect(retentionField.locator('.fluent-validation-message')).toHaveCount(1);
     await expect(retentionField.getByText('The Retention field is required.', { exact: true })).toHaveCount(1);
-    await summary.locator('[data-fc-validation-target]').first().click();
+    const recordLink = summary.getByRole('link', { name: 'The Record Id field is required.', exact: true });
+    await expect(recordLink).toHaveCount(1);
+    await expect(recordLink).toHaveAttribute('href', /#.+-RecordId$/u);
+    await recordLink.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(recordLink).toBeFocused();
+    await page.keyboard.press('Enter');
     await expect(fieldEditorByLabel(form, 'Record Id')).toBeFocused();
     if (test.info().project.name === 'chromium') {
       // A Fluent select forwards focus to the combobox it slots into its light DOM; the summary link

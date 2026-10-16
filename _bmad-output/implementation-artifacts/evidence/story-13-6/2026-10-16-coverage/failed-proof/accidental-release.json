@@ -1,0 +1,11 @@
+{
+  "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -notrait 'Category=GovernanceBuild' -notrait 'Category=Performance' -notrait 'Category=e2e-palette' -notrait 'Category=NightlyProperty' -notrait 'Category=Quarantined' -xml /tmp/story13-6-shell-final.xml",
+  "observedChild": {
+    "pid": 3313674,
+    "parent": 3289664,
+    "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0 -p:AnalysisMode=Recommended -p:NoWarn=0419%3B1570%3B1572%3B1573%3B1574%3B1734"
+  },
+  "stop": "Exact owned runner SIGTERM; observed child exited by stop time. Subsequent process probe found no owned Release builds. No build/test success claimed for the interrupted run.",
+  "cause": "AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean lacked GovernanceBuild trait.",
+  "repair": "Applied existing trait; added exact identity to existing quality.yml blocking serialized lane allowlist and clarified comment. No probe or job removed."
+}

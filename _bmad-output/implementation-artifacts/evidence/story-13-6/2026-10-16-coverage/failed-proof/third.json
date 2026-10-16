@@ -1,0 +1,46 @@
+[
+  {
+    "case": "accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-chromium",
+    "error": "```\nError: expect(locator).toHaveCount(expected) failed\n\nLocator:  getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Command rejected.. Review the command and retry.' })\nExpected: 1\nReceived: 0\nTimeout:  10000ms\n\nCall log:\n  - Expect \"toHaveCount\" getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Command rejected.. Review the command and retry.' }) with timeout 10000ms\n  - waiting for getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Command rejected.. Review the command and retry.' })\n    24 \u00d7 locator resolved to 0 elements\n       - unexpected value \"0\"\n\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-chromium",
+    "error": "```\nError: expect(locator).toHaveCount(expected) failed\n\nLocator:  getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Command rejected.. Review the command and retry.' })\nExpected: 1\nReceived: 0\nTimeout:  10000ms\n\nCall log:\n  - Expect \"toHaveCount\" getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Command rejected.. Review the command and retry.' }) with timeout 10000ms\n  - waiting for getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Command rejected.. Review the command and retry.' })\n    24 \u00d7 locator resolved to 0 elements\n       - unexpected value \"0\"\n\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-70f6d-eutral-non-live-explanation-chromium",
+    "error": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"app content obscures target or focus ring: {\\\"target\\\":\\\"SPAN#fc-hidden-detail-reason-44529406debd4d1eab4bb8a4fbc3e1b3\\\",\\\"box\\\":{\\\"left\\\":32,\\\"top\\\":348.625,\\\"right\\\":268.5625,\\\"bottom\\\":393.625},\\\"ring\\\":4,\\\"failures\\\":[\\\"app content obscures target or focus ring\\\"],\\\"occluder\\\":\\\"SPAN#fc-hidden-detail-reason-44529406debd4d1eab4bb8a4fbc3e1b3 by TH# at 152.28125,393.125\\\"}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-998f7-ck-focus-owner-next-attempt-chromium",
+    "error": "```\nError: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('fc-ae-scenarios').getByTestId('fc-zero-field-outcome')\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('fc-ae-scenarios').getByTestId('fc-zero-field-outcome') with timeout 10000ms\n  - waiting for getByTestId('fc-ae-scenarios').getByTestId('fc-zero-field-outcome')\n\n```\n\n```yaml\n- link \"Skip to content\":\n  - /url: /__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true&density=compact&theme=light#fc-main-content\n- banner:\n  - button \"Toggle navigation\"\n  - text: Hexalith FrontComposer\n  - button \"Change theme\": \"Change theme: Light\"\n  - button \"Open command palette\"\n  - button \"Open settings\"\n  - button \"FU\"\n- status: Density set to Comfortable.\n- main:\n  - status\n  - group:\n    - heading \"Workspace unavailable\" [level=1]\n    - text: Your workspace identity could not be verified. Sign in again or contact support.\n- text: Hexalith FrontComposer \u00a9 2026\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-538a1-eutral-non-live-explanation-chromium",
+    "error": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"app content obscures target or focus ring: {\\\"target\\\":\\\"SPAN#fc-hidden-detail-reason-f96ddc1231a147d3aba91de6552ff6c9\\\",\\\"box\\\":{\\\"left\\\":32,\\\"top\\\":348.625,\\\"right\\\":268.5625,\\\"bottom\\\":393.625},\\\"ring\\\":4,\\\"failures\\\":[\\\"app content obscures target or focus ring\\\"],\\\"occluder\\\":\\\"SPAN#fc-hidden-detail-reason-f96ddc1231a147d3aba91de6552ff6c9 by TH# at 152.28125,393.125\\\"}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium",
+    "error": "```\nError: text contrast failures\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  -  1\n+ Received  + 20\n\n- Array []\n+ Array [\n+   Object {\n+     \"background\": Array [\n+       41,\n+       41,\n+       41,\n+       1,\n+     ],\n+     \"foreground\": Array [\n+       5,\n+       146,\n+       161,\n+       1,\n+     ],\n+     \"minimum\": 4.5,\n+     \"node\": \"a\",\n+     \"paint\": \"Configure Counter\",\n+     \"ratio\": 3.902137560412215,\n+   },\n+ ]\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-db80d-ck-focus-owner-next-attempt-chromium",
+    "error": "```\nError: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('fc-ae-scenarios').getByTestId('fc-zero-field-outcome')\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByTestId('fc-ae-scenarios').getByTestId('fc-zero-field-outcome') with timeout 10000ms\n  - waiting for getByTestId('fc-ae-scenarios').getByTestId('fc-zero-field-outcome')\n\n```\n\n```yaml\n- link \"Skip to content\":\n  - /url: /__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true&density=compact&theme=dark#fc-main-content\n- banner:\n  - button \"Toggle navigation\"\n  - text: Hexalith FrontComposer\n  - button \"Change theme\": \"Change theme: Dark\"\n  - button \"Open command palette\"\n  - button \"Open settings\"\n  - button \"FU\"\n- status: Density set to Comfortable.\n- main:\n  - status\n  - group:\n    - heading \"Workspace unavailable\" [level=1]\n    - text: Your workspace identity could not be verified. Sign in again or contact support.\n- text: Hexalith FrontComposer \u00a9 2026\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-5a6a5-state-and-forced-color-cues-chromium",
+    "error": "```\nError: AE-04 target-size failures\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  -  1\n+ Received  + 10\n\n- Array []\n+ Array [\n+   Object {\n+     \"conforming\": false,\n+     \"exception\": null,\n+     \"failure\": \"Undersized target lacks an evidenced exception\",\n+     \"height\": 16,\n+     \"target\": \"a[inventory-index=\\\"25\\\"]\",\n+     \"width\": 145.203125,\n+   },\n+ ]\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-chromium",
+    "error": "```\nError: expect(locator).toHaveCount(expected) failed\n\nLocator:  getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Specimen rejected. Review the specimen and try again.' })\nExpected: 1\nReceived: 0\nTimeout:  10000ms\n\nCall log:\n  - Expect \"toHaveCount\" getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Specimen rejected. Review the specimen and try again.' }) with timeout 10000ms\n  - waiting for getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Specimen rejected. Review the specimen and try again.' })\n    24 \u00d7 locator resolved to 0 elements\n       - unexpected value \"0\"\n\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium",
+    "error": "```\nError: text contrast failures\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  -  1\n+ Received  + 38\n\n- Array []\n+ Array [\n+   Object {\n+     \"background\": Array [\n+       255,\n+       244,\n+       206,\n+       1,\n+     ],\n+     \"foreground\": Array [\n+       255,\n+       255,\n+       255,\n+       1,\n+     ],\n+     \"minimum\": 4.5,\n+     \"node\": \"fluent-button\",\n+     \"paint\": \"Edit and retry\",\n+     \"ratio\": 1.1004259336869755,\n+   },\n+   Object {\n+     \"background\": Array [\n+       255,\n+       244,\n+       206,\n+       1,\n+     ],\n+     \"foreground\": Array [\n+       255,\n+       255,\n+       255,\n+       1,\n+     ],\n+     \"minimum\": 4.5,\n+     \"node\": \"fluent-button\",\n+     \"paint\": \"Return\",\n+     \"ratio\": 1.1004259336869755,\n+   },\n+ ]\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-chromium",
+    "error": "```\nError: expect(locator).toHaveCount(expected) failed\n\nLocator:  getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Specimen rejected. Review the specimen and try again.' })\nExpected: 1\nReceived: 0\nTimeout:  10000ms\n\nCall log:\n  - Expect \"toHaveCount\" getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Specimen rejected. Review the specimen and try again.' }) with timeout 10000ms\n  - waiting for getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status').filter({ hasText: 'Specimen rejected. Review the specimen and try again.' })\n    24 \u00d7 locator resolved to 0 elements\n       - unexpected value \"0\"\n\n```"
+  }
+]

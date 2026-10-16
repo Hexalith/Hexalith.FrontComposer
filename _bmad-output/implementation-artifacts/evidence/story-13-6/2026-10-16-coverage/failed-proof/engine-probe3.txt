@@ -1,0 +1,109 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts specs/responsive-accessibility.spec.ts --project=firefox --project=webkit --workers=3 --grep generated validation|active toolbar|generated.*row
+
+
+Running 10 tests using 3 workers
+
+(node:3628909) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3628910) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3628914) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [firefox] › specs/accessibility-state-matrix.spec.ts:249:3 › active toolbar, tabs, palette and settings states in light (6.8s)
+  ✓   2 [firefox] › specs/accessibility-state-matrix.spec.ts:249:3 › active toolbar, tabs, palette and settings states in dark (6.7s)
+  ✓   3 [firefox] › specs/accessibility-state-matrix.spec.ts:302:3 › generated validation, policy, destructive and abandonment states in light (12.3s)
+(node:3635257) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   4 [firefox] › specs/accessibility-state-matrix.spec.ts:302:3 › generated validation, policy, destructive and abandonment states in dark (12.0s)
+(node:3637609) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   6 [webkit] › specs/accessibility-state-matrix.spec.ts:249:3 › active toolbar, tabs, palette and settings states in light (5.7s)
+  ✘   5 [firefox] › specs/responsive-accessibility.spec.ts:347:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes (12.3s)
+(node:3638678) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   8 [webkit] › specs/accessibility-state-matrix.spec.ts:249:3 › active toolbar, tabs, palette and settings states in dark (5.8s)
+  ✓   7 [webkit] › specs/accessibility-state-matrix.spec.ts:302:3 › generated validation, policy, destructive and abandonment states in light (11.5s)
+  ✓   9 [webkit] › specs/accessibility-state-matrix.spec.ts:302:3 › generated validation, policy, destructive and abandonment states in dark (11.5s)
+  ✘  10 [webkit] › specs/responsive-accessibility.spec.ts:347:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes (11.2s)
+
+
+  1) [firefox] › specs/responsive-accessibility.spec.ts:347:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 32
+    Received:   32
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+      364 |   const focusedControl = await table.locator('fluent-button').first().elementHandle();
+      365 |   await applyTextSpacing(page);
+    > 366 |   await expect.poll(async () => (await metrics()).itemSize).toBeGreaterThan(32);
+          |                                                             ^
+      367 |   await expect.poll(() => focusedControl!.evaluate(element => element.isConnected)).toBe(false);
+      368 |   await expect(grid).toBeFocused();
+      369 |   await expect.poll(async () => { const measured = await metrics(); return measured.rows.length > 0 && measured.rows.every(height => Math.abs(height - measured.itemSize) < .5); }).toBe(true);
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:366:61
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe3/responsive-accessibility-r-79b2f-store-after-density-changes-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe3/responsive-accessibility-r-79b2f-store-after-density-changes-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-engine-probe3/responsive-accessibility-r-79b2f-store-after-density-changes-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe3/responsive-accessibility-r-79b2f-store-after-density-changes-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-engine-probe3/responsive-accessibility-r-79b2f-store-after-density-changes-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [webkit] › specs/responsive-accessibility.spec.ts:347:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 32
+    Received:   32
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+      364 |   const focusedControl = await table.locator('fluent-button').first().elementHandle();
+      365 |   await applyTextSpacing(page);
+    > 366 |   await expect.poll(async () => (await metrics()).itemSize).toBeGreaterThan(32);
+          |                                                             ^
+      367 |   await expect.poll(() => focusedControl!.evaluate(element => element.isConnected)).toBe(false);
+      368 |   await expect(grid).toBeFocused();
+      369 |   await expect.poll(async () => { const measured = await metrics(); return measured.rows.length > 0 && measured.rows.every(height => Math.abs(height - measured.itemSize) < .5); }).toBe(true);
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:366:61
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe3/responsive-accessibility-r-79b2f-store-after-density-changes-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe3/responsive-accessibility-r-79b2f-store-after-density-changes-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-engine-probe3/responsive-accessibility-r-79b2f-store-after-density-changes-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-engine-probe3/responsive-accessibility-r-79b2f-store-after-density-changes-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-engine-probe3/responsive-accessibility-r-79b2f-store-after-density-changes-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [firefox] › specs/responsive-accessibility.spec.ts:347:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes 
+    [webkit] › specs/responsive-accessibility.spec.ts:347:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes 
+  8 passed (37.5s)

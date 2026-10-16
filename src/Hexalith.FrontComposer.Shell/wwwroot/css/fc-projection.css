@@ -170,8 +170,8 @@
     padding: 8px;
     scroll-padding: 8px;
 }
-.fc-projection-grid { max-inline-size: 100%; }
-.fc-projection-grid td, .fc-projection-grid th.column-header {
+.fc-projection-grid { max-inline-size: 100%; min-inline-size: max-content; }
+.fc-projection-grid tr.fluent-data-grid-row > td, .fc-projection-grid th.column-header {
     overflow: visible;
     text-overflow: clip;
 }
@@ -194,8 +194,17 @@ fluent-tablist { max-inline-size: 100%; overflow-x: auto; padding: 4px; scroll-p
 /* A focused diagnostic link must fit wholly inside its own bounded scrollport. */
 [data-fc-datagrid] { container-type: inline-size; }
 .fc-projection-grid td .fc-field-placeholder a {
+    inline-size: max-content;
     max-inline-size: calc(100cqi - 16px);
     white-space: normal;
     overflow-wrap: anywhere;
     margin-inline: 8px;
 }
+
+/* Non-live recovery text is a visible programmatic focus destination. */
+.fc-expanded-row-hidden-banner-text:focus {
+    outline: 2px solid var(--colorStrokeFocus2);
+    outline-offset: 2px;
+}
+
+.fc-expanded-row-hidden-banner { padding: 4px; }

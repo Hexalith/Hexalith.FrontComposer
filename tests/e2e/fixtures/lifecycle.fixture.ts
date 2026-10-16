@@ -4,7 +4,7 @@ import { expect, test as base, type Locator, type Page } from '@playwright/test'
  * Command lifecycle contract surfaced by FcLifecycleWrapper.
  * See `_bmad-output/planning-artifacts/architecture.md` for canonical state set.
  */
-export const LIFECYCLE_STATES = ['idle', 'submitting', 'acknowledged', 'syncing', 'confirmed', 'rejected'] as const;
+export const LIFECYCLE_STATES = ['idle', 'submitting', 'acknowledged', 'syncing', 'confirmed', 'rejected', 'idempotent-confirmed', 'needs-review', 'warning', 'degraded', 'degraded-exhausted'] as const;
 export type LifecycleState = (typeof LIFECYCLE_STATES)[number];
 
 export interface LifecycleAssertions {
@@ -20,6 +20,7 @@ export type LifecycleFixtures = {
 const lifecycleLocator = (page: Page, commandId: string): Locator =>
   page.locator(`[data-testid="fc-lifecycle-${commandId}"]`);
 const TERMINAL_STATE_TIMEOUT_MS = 20_000;
+export const TERMINAL_LIFECYCLE_STATES: readonly LifecycleState[] = ['confirmed', 'idempotent-confirmed', 'rejected', 'needs-review', 'warning', 'degraded-exhausted'];
 
 const readState = async (locator: Locator): Promise<LifecycleState | null> => {
   const raw = await locator.getAttribute('data-lifecycle-state');
@@ -34,12 +35,12 @@ export const lifecycleTest = base.extend<LifecycleFixtures>({
       expectState: async (commandId, state) => {
         const loc = lifecycleLocator(page, commandId);
         await expect(loc).toHaveAttribute('data-lifecycle-state', state, {
-          timeout: state === 'confirmed' || state === 'rejected' ? TERMINAL_STATE_TIMEOUT_MS : undefined,
+          timeout: TERMINAL_LIFECYCLE_STATES.includes(state) ? TERMINAL_STATE_TIMEOUT_MS : undefined,
         });
       },
       waitForTerminal: async (commandId) => {
         const loc = lifecycleLocator(page, commandId);
-        await expect(loc).toHaveAttribute('data-lifecycle-state', /^(confirmed|rejected)$/, {
+        await expect(loc).toHaveAttribute('data-lifecycle-state', /^(confirmed|idempotent-confirmed|rejected|needs-review|warning|degraded-exhausted)$/, {
           timeout: TERMINAL_STATE_TIMEOUT_MS,
         });
         const state = await readState(loc);

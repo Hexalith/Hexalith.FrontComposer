@@ -1,0 +1,179 @@
+@namespace Counter.Specimens
+@implements IDisposable
+@using Hexalith.FrontComposer.Shell.State.DataGridNavigation
+@using Hexalith.FrontComposer.Shell.State.ProjectionConnection
+@using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation
+@using Counter.Domain
+@using Counter.Specimens.Domain
+@using Hexalith.FrontComposer.Shell.Components.DataGrid
+@using Hexalith.FrontComposer.Contracts.Lifecycle
+@using Hexalith.FrontComposer.Shell.Components.Lifecycle
+@using Fluxor
+@using Hexalith.FrontComposer.Contracts.Rendering
+@using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject ILifecycleStateService Lifecycle
+@inject AccessibilitySpecimenState Scenarios
+@inject IReconnectionReconciliationState Reconciliation
+@inject IProjectionConnectionState Connection
+@inject IState<DataGridNavigationState> GridNavigation
+@inject IState<LoadedPageState> Pages
+@inject IDispatcher Dispatcher
+@inject IState<CounterProjectionState> Projection
+@inject IFrontComposerTenantContextAccessor TenantContext
+
+<section aria-label="Automated accessibility scenarios" data-testid="fc-ae-scenarios">
+    <h2>Fixed accessibility scenarios</h2>
+    <div class="fc-specimen__controls">
+        @foreach (string outcome in AccessibilitySpecimenState.Outcomes)
+        {
+            <FluentButton OnClick="@(() => Select(outcome))" data-testid="@($"fc-ae-select-{outcome}")">@outcome</FluentButton>
+        }
+    </div>
+    <p data-testid="fc-ae-command-probe" data-dispatch-count="@Scenarios.DispatchCount" data-outcome="@Scenarios.Outcome">@Scenarios.Outcome</p>
+    <AccessibilityZeroFieldCommandRenderer RenderMode="CommandRenderMode.Inline" />
+    <div data-testid="fc-ae-fresh-presentation"><FcNewItemIndicator /></div>
+    <div class="fc-specimen__controls">
+        @foreach (CommandLifecycleState state in Enum.GetValues<CommandLifecycleState>())
+        {
+            <FluentButton OnClick="@(() => ShowLifecycle(state))" data-testid="@($"fc-ae-lifecycle-{state.ToString().ToLowerInvariant()}")">@state</FluentButton>
+        }
+    </div>
+    <FcLifecycleWrapper @key="_lifecycleId" CorrelationId="@_lifecycleId" CommandId="ae-state" DisplayLabel="Accessibility specimen">
+        <FluentText>Observable lifecycle specimen</FluentText>
+    </FcLifecycleWrapper>
+    <div class="fc-specimen__controls">
+        @foreach (ProjectionConnectionStatus connection in Enum.GetValues<ProjectionConnectionStatus>())
+        {
+            <FluentButton OnClick="@(() => SetConnection(connection))" data-testid="@($"fc-ae-connection-{connection.ToString().ToLowerInvariant()}")">@connection</FluentButton>
+        }
+        <FluentButton OnClick="StartPage" data-testid="fc-ae-page-start">Start held page</FluentButton>
+        <FluentButton OnClick="@(() => Scenarios.CompletePage())" data-testid="fc-ae-page-complete">Complete held page</FluentButton>
+        <FluentButton OnClick="@(() => Scenarios.CompletePage(true))" data-testid="fc-ae-page-cap">Complete capped page</FluentButton>
+        <FluentButton OnClick="ApplyEmptyFilter" data-testid="fc-ae-filter-empty">Apply no-match filter</FluentButton>
+        <FluentButton OnClick="ResetEmptyFilter" data-testid="fc-ae-filter-reset">Reset filter</FluentButton>
+    </div>
+    @if (Projection.Value.Items is { Count: 0 } && GridNavigation.Value.ViewStates.TryGetValue("Counter:Counter.Domain.CounterProjection", out var filtered) && filtered.Filters.ContainsKey(ReservedFilterKeys.SearchKey))
+    {
+        <FcFilterEmptyState ViewKey="Counter:Counter.Domain.CounterProjection" ActiveFilterCount="1" TotalCount="0" EntityPlural="counters" />
+    }
+    <div class="fc-specimen__controls">
+        <FluentButton OnClick="@(() => Complete("two"))" data-testid="fc-ae-rows-two">Load two rows</FluentButton>
+        <FluentButton OnClick="@(() => Complete("missing"))" data-testid="fc-ae-rows-missing">Complete missing row result</FluentButton>
+        <FluentButton OnClick="@(() => Complete("empty"))" data-testid="fc-ae-rows-empty">Complete empty result</FluentButton>
+        <FluentButton OnClick="@(() => Complete("error"))" data-testid="fc-ae-rows-error">Complete failed result</FluentButton>
+        <FluentButton OnClick="@(() => Complete("loading"))" data-testid="fc-ae-rows-loading">Start pending result</FluentButton>
+        <FluentButton OnClick="CompleteMissingAfterDelay" data-testid="fc-ae-rows-delayed">Complete delayed missing result</FluentButton>
+        <FluentButton OnClick="Repeat" data-testid="fc-ae-rows-repeat">Repeat completed result</FluentButton>
+    </div>
+</section>
+
+@code {
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+        Scenarios.CancelPage();
+    }
+
+    private readonly CancellationTokenSource _lifetime = new();
+    private async Task CompleteMissingAfterDelay()
+    {
+        try
+        {
+            await Task.Delay(500, _lifetime.Token);
+            if (!_lifetime.IsCancellationRequested) Complete("missing");
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void ApplyEmptyFilter()
+    {
+        Dispatcher.Dispatch(new GlobalSearchChangedAction("Counter:Counter.Domain.CounterProjection", "no-match-ae"));
+        Complete("empty");
+    }
+
+    private void ResetEmptyFilter()
+    {
+        Dispatcher.Dispatch(new FiltersResetAction("Counter:Counter.Domain.CounterProjection"));
+        Complete("two");
+    }
+
+    private TaskCompletionSource<object>? _pageCompletion;
+    private async Task SetConnection(ProjectionConnectionStatus connection)
+    {
+        Connection.Apply(new ProjectionConnectionTransition(connection));
+        if (connection == ProjectionConnectionStatus.Connected)
+        {
+            long epoch = Connection.Current.Epoch;
+            Reconciliation.Start(epoch);
+            StartPage();
+            Scenarios.CompletePage();
+            if (_pageCompletion is not null)
+            {
+                await _pageCompletion.Task;
+                Reconciliation.Complete(epoch, changed: true);
+            }
+        }
+    }
+
+    private void StartPage()
+    {
+        if (TenantContext.TryGetContext(operationKind: "accessibility-page").Context is not { } scope) return;
+        Scenarios.BeginPage();
+        _pageCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Dispatcher.Dispatch(new LoadPageAction("Counter:Counter.Domain.CounterProjection", 0, 100,
+            System.Collections.Immutable.ImmutableDictionary<string, string>.Empty, null, false, null,
+            _pageCompletion, _lifetime.Token) {
+                OriginTenantId = scope.TenantId, OriginUserId = scope.UserId, OriginScopeGeneration = Pages.Value.ScopeGeneration,
+                RegisteredAt = DateTimeOffset.UtcNow,
+                RequestIdentity = "-1:0-1:",
+            });
+    }
+
+    private string _lifecycleId = "ae-initial";
+    private void ShowLifecycle(CommandLifecycleState state)
+    {
+        _lifecycleId = Guid.NewGuid().ToString("N");
+        if (state == CommandLifecycleState.Idle) return;
+        string messageId = "01ARZ3NDEKTSV4RRFFQ69G5F" + ((int)state).ToString("D2", System.Globalization.CultureInfo.InvariantCulture);
+        Lifecycle.Transition(_lifecycleId, CommandLifecycleState.Submitting);
+        if (state == CommandLifecycleState.Submitting) return;
+        Lifecycle.Transition(_lifecycleId, CommandLifecycleState.Acknowledged, messageId);
+        if (state == CommandLifecycleState.Acknowledged) return;
+        Lifecycle.Transition(_lifecycleId, CommandLifecycleState.Syncing, messageId);
+        if (state != CommandLifecycleState.Syncing) Lifecycle.Transition(_lifecycleId, state, messageId);
+    }
+
+    private CounterProjectionLoadedAction? _lastResult;
+    private void Select(string outcome) => Scenarios.Select(outcome);
+
+    private void Repeat()
+    {
+        if (_lastResult is not null) Dispatcher.Dispatch(_lastResult);
+    }
+
+    private void Complete(string result)
+    {
+        if (TenantContext.TryGetContext(operationKind: "accessibility-specimen-result").Context is not { } scope) return;
+        string correlation = Guid.NewGuid().ToString("N");
+        long generation = Projection.Value.ScopeGeneration;
+        Dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlation) { ScopeTenantId = scope.TenantId, ScopeUserId = scope.UserId, OriginScopeGeneration = generation });
+        if (result == "loading") return;
+        if (result == "error")
+        {
+            Dispatcher.Dispatch(new CounterProjectionLoadFailedAction(correlation, "The specimen query could not be completed.") { ScopeTenantId = scope.TenantId, ScopeUserId = scope.UserId, OriginScopeGeneration = generation });
+            return;
+        }
+        CounterProjection[] rows = result switch {
+            "two" => [Row("FC-AE-1", 1), Row("FC-AE-2", 2)],
+            "missing" => [Row("FC-AE-2", 2)],
+            _ => [],
+        };
+        _lastResult = new CounterProjectionLoadedAction(correlation, rows) { ScopeTenantId = scope.TenantId, ScopeUserId = scope.UserId, OriginScopeGeneration = generation };
+        Dispatcher.Dispatch(_lastResult);
+    }
+
+    private static CounterProjection Row(string id, int count) => new() { Id = id, Count = count, LastUpdated = DateTimeOffset.Parse("2026-01-15T13:45:00Z", System.Globalization.CultureInfo.InvariantCulture) };
+}

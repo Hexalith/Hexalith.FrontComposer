@@ -37,7 +37,13 @@ test.describe('Story 3.1: generated command forms', () => {
     await expectFrameworkIdentityHidden(inlineForm);
     await page.getByRole('button', { name: 'Cancel' }).click();
 
-    await page.getByRole('link', { name: 'Configure Counter' }).click();
+    const configureLink = page.getByRole('link', { name: 'Configure Counter', exact: true });
+    await expect(configureLink).toHaveAttribute('href', /\/commands\/Counter\/ConfigureCounterCommand/u);
+    await configureLink.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(configureLink).toBeFocused();
+    await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/commands\/Counter\/ConfigureCounterCommand/);
 
     const fullPageForm = commandForm(page, 'Configure Counter command form');

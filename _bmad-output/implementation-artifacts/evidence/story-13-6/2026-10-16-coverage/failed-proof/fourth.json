@@ -1,0 +1,22 @@
+[
+  {
+    "case": "accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium",
+    "error": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"focused target has no visible focus indicator: {\\\"target\\\":\\\"INPUT#control\\\",\\\"box\\\":{\\\"left\\\":23,\\\"top\\\":576.34375,\\\"right\\\":297,\\\"bottom\\\":606.34375},\\\"ring\\\":0,\\\"failures\\\":[\\\"focused target has no visible focus indicator\\\"],\\\"occluder\\\":null}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium",
+    "error": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"focused target has no visible focus indicator: {\\\"target\\\":\\\"INPUT#control\\\",\\\"box\\\":{\\\"left\\\":23,\\\"top\\\":576.34375,\\\"right\\\":297,\\\"bottom\\\":606.34375},\\\"ring\\\":0,\\\"failures\\\":[\\\"focused target has no visible focus indicator\\\"],\\\"occluder\\\":null}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium",
+    "error": "```\nError: text contrast failures\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  -  1\n+ Received  + 74\n\n- Array []\n+ Array [\n+   Object {\n+     \"background\": Array [\n+       148,\n+       148,\n+       148,\n+       1,\n+     ],\n+     \"foreground\": Array [\n+       146,\n+       146,\n+       146,\n+       1,\n+     ],\n+     \"minimum\": 4.5,\n+     \"node\": \"fluent-button#fc-command-form-Counter-Domain-CreateCounterCommand-4-submit\",\n+     \"paint\": \"Create Counter\",\n+     \"ratio\": 1.0257746902538283,\n+   },\n+   Object {\n+     \"background\": Array [\n+       148,\n+       148,\n+       148,\n+       1,\n+     ],\n+     \"foreground\": Array [\n+       146,\n+       146,\n+       146,\n+       1,\n+     ],\n+     \"minimum\": 4.5,\n+     \"node\": \"fluent-button#fc-command-form-Counter-Domain-UpdateCounterCommand-4-submit\",\n+     \"paint\": \"Update Counter\",\n+     \"ratio\": 1.0257746902538283,\n+   },\n+   Object {\n+     \"background\": Array [\n+       148,\n+       148,\n+       148,\n+       1,\n+     ],\n+     \"foreground\": Array [\n+       146,\n+       146,\n+       146,\n+       1,\n+     ],\n+     \"minimum\": 4.5,\n+     \"node\": \"fluent-button#fc-command-form-Counter-Domain-BatchIncrementCommand-4-submit\",\n+     \"paint\": \"Batch Increment\",\n+     \"ratio\": 1.0257746902538283,\n+   },\n+   Object {\n+     \"background\": Array [\n+       41,\n+       41,\n+       41,\n+       1,\n+     ],\n+     \"foreground\": Array [\n+       5,\n+       146,\n+       161,\n+       1,\n+     ],\n+     \"minimum\": 4.5,\n+     \"node\": \"a\",\n+     \"paint\": \"Configure Counter\",\n+     \"ratio\": 3.902137560412215,\n+   },\n+ ]\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-5be77-abandonment-states-in-light-chromium",
+    "error": "```\nTimeoutError: locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for getByRole('option', { name: 'SevenDays', exact: true })\n\n```"
+  },
+  {
+    "case": "accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium",
+    "error": "```\nError: text contrast failures\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  -  1\n+ Received  + 20\n\n- Array []\n+ Array [\n+   Object {\n+     \"background\": Array [\n+       41,\n+       41,\n+       41,\n+       1,\n+     ],\n+     \"foreground\": Array [\n+       5,\n+       146,\n+       161,\n+       1,\n+     ],\n+     \"minimum\": 4.5,\n+     \"node\": \"a\",\n+     \"paint\": \"The Retention field is required.\",\n+     \"ratio\": 3.902137560412215,\n+   },\n+ ]\n```"
+  }
+]

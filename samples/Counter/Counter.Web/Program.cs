@@ -68,7 +68,9 @@ builder.Services.AddHexalithFrontComposerQuickstart(
                 typeof(PolicyAllowedSpecimenCommandLifecycleFeature),
                 typeof(PolicyAllowedSpecimenCommandReducers),
                 typeof(PolicyDeniedSpecimenCommandLifecycleFeature),
-                typeof(PolicyDeniedSpecimenCommandReducers));
+                typeof(PolicyDeniedSpecimenCommandReducers),
+                typeof(AccessibilityZeroFieldCommandLifecycleFeature),
+                typeof(AccessibilityZeroFieldCommandReducers));
         }
         else {
             _ = o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly);
@@ -89,15 +91,27 @@ builder.Services.Replace(ServiceDescriptor.Scoped<ICommandService>(sp =>
 if (specimensEnabled) {
     _ = builder.Services.AddHexalithDomain<CounterSpecimensDomain>();
     _ = builder.Services.AddAuthorizationCore(o => {
+        o.AddPolicy("Specimens.Accessibility", policy => policy.RequireAssertion(_ => true));
         o.AddPolicy("Specimens.PolicyAllowed", policy => policy.RequireAssertion(_ => true));
         o.AddPolicy("Specimens.PolicyDenied", policy => policy.RequireAssertion(_ => false));
     });
     _ = builder.Services.Configure<Hexalith.FrontComposer.Shell.Options.FrontComposerAuthorizationOptions>(o => {
+        o.KnownPolicies.Add("Specimens.Accessibility");
         o.KnownPolicies.Add("Specimens.PolicyAllowed");
         o.KnownPolicies.Add("Specimens.PolicyDenied");
     });
     if (builder.Environment.IsEnvironment("Test")) {
         builder.Services.Replace(ServiceDescriptor.Scoped<AuthenticationStateProvider, CounterSpecimenAuthenticationStateProvider>());
+        builder.Services.AddScoped<AccessibilitySpecimenState>();
+        builder.Services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader, AccessibilitySpecimenPageLoader>());
+        builder.Services.AddScoped<AccessibilitySpecimenPendingScope>();
+        builder.Services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate>(sp =>
+            new Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionGate(
+                sp.GetRequiredService<Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService>(),
+                sp.GetRequiredService<TimeProvider>(),
+                sp.GetRequiredService<AccessibilitySpecimenPendingScope>())));
+        builder.Services.AddScoped<Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationEvaluator>();
+        builder.Services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Shell.Services.Authorization.ICommandAuthorizationEvaluator, AccessibilitySpecimenAuthorizationEvaluator>());
     }
 }
 
