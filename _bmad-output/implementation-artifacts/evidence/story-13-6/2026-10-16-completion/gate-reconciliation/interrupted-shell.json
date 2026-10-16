@@ -1,0 +1,9 @@
+{
+  "candidateDigest": "sha256:5085a3fd41df4dbd1d358e9eda14fc2796c0c0c578f09a96d3b677f82f776918",
+  "pid": 93570,
+  "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- Category=GovernanceBuild -trait- Category=Performance -trait- Category=e2e-palette -trait- Category=NightlyProperty -trait- Category=Quarantined -result-xml _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/gate-reconciliation/shell.xml",
+  "result": "interrupted; no test completion/XML; never a pass",
+  "cause": "EventStoreClientTests.AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows deadlocks in FakeTimeProvider.Advance at the accepted-recovery deadline: inline CompleteAcceptedCleanupAsync -> linked CancellationTokenSource.Dispose -> WaitForCallbackToComplete, while provider cancellation callback awaits test release. No live scheduler stack.",
+  "action": "Terminate only this owned test process after stack capture; fix cleanup continuation and rerun focused/full lanes.",
+  "dumpPolicy": "Diagnostic dump remains in /tmp; only bounded stack evidence retained."
+}

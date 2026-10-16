@@ -1,0 +1,80 @@
+diff --git a/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs b/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs
+index 3457fe72..98117b00 100644
+--- a/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs
++++ b/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs
+@@ -415,7 +415,9 @@ public sealed class EventStoreCommandClient(
+         }
+         finally
+         {
+-            cancellation.Dispose();
++            // Linked disposal can wait for a parent callback still blocked in a provider.
++            // Keep that synchronous wait off dispatch and recovery-deadline callbacks.
++            await Task.Run(cancellation.Dispose).ConfigureAwait(false);
+         }
+     }
+ 
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs
+index b34eac8b..d458df0e 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs
+@@ -191,14 +191,17 @@ public sealed class ProjectionSubscriptionServiceTests {
+             fallbackDriver: fallbackDriver,
+             shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions),
+             userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
++        Task? closeAfterJoin = null;
+         connection.JoinCompleted = () => {
+             connection.JoinCompleted = null;
+-            return connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Closed));
++            return closeAfterJoin = connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Closed));
+         };
+ 
+         try {
+             await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+-            await connection.LastJoinCallbackTask!.ConfigureAwait(true);
++            // A successful restart can already rejoin and replace the fake's last callback.
++            // Keep the original close/restart task owned by this subscription attempt.
++            await closeAfterJoin!.ConfigureAwait(true);
+ 
+             connection.StartCount.ShouldBe(2);
+             connection.JoinedGroups.ShouldBe(["orders:acme", "orders:acme"]);
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs
+index 1d2d7d0b..6f7f4fda 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs
+@@ -996,6 +996,7 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
+         TaskCompletionSource<ProjectionFallbackLaneRefreshOutcome> originalB = new(TaskCreationOptions.RunContinuationsAsynchronously);
+         TaskCompletionSource<ProjectionFallbackLaneRefreshOutcome> originalC = new(TaskCreationOptions.RunContinuationsAsynchronously);
+         TaskCompletionSource<ProjectionFallbackLaneRefreshOutcome> replayB = new(TaskCreationOptions.RunContinuationsAsynchronously);
++        TaskCompletionSource replayBStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+         TaskCompletionSource replayCStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+         int readsB = 0;
+         int readsC = 0;
+@@ -1011,8 +1012,14 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
+             ProjectionType = "BProjection",
+             RefreshAsync = _ => Interlocked.Increment(ref readsB) == 1
+                 ? new ValueTask<ProjectionFallbackLaneRefreshOutcome>(originalB.Task)
+-                : new ValueTask<ProjectionFallbackLaneRefreshOutcome>(replayB.Task),
++                : ReplayB(),
+         });
++        ValueTask<ProjectionFallbackLaneRefreshOutcome> ReplayB()
++        {
++            replayBStarted.TrySetResult();
++            return new ValueTask<ProjectionFallbackLaneRefreshOutcome>(replayB.Task);
++        }
++
+         using IDisposable laneC = scheduler.RegisterLane(DefaultLane("c") with {
+             ProjectionType = "CProjection",
+             RefreshAsync = _ => Interlocked.Increment(ref readsC) == 1
+@@ -1032,7 +1039,11 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
+         config = new FcShellOptions { MaxProjectionFallbackPollingLanes = 2 };
+         originalB.SetResult(ProjectionFallbackLaneRefreshOutcome.Changed);
+         originalC.SetResult(ProjectionFallbackLaneRefreshOutcome.Changed);
+-        await replayCStarted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
++        // The scheduler admits both callbacks before awaiting either one, but Task.Run
++        // does not guarantee callback execution order. Observe both starts within the
++        // same deadline while B remains held, so C still proves it is not blocked by B.
++        await Task.WhenAll(replayBStarted.Task, replayCStarted.Task)
++            .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+         readsB.ShouldBe(2);
+         readsC.ShouldBe(2);
+         replayB.SetResult(ProjectionFallbackLaneRefreshOutcome.NotModified);

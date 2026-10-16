@@ -1,0 +1,141 @@
+{
+  "sourceReport": "/tmp/story13-6-reconcile-final-report-5c9169b59ad5",
+  "sourceIndexSha256": "1149564a394aa8e712a06c8020f6807542f9a525f8ed902eda7044dca1c9576e",
+  "curatedReportBytes": 28587048,
+  "diagnosticArchive": "report-diagnostics.tar.gz",
+  "diagnosticArchiveSha256": "ac7ac8383784b49a71fceea0b2b94ca5d8dbc395830a26625b05b355d6874a01",
+  "archivedFiles": [
+    {
+      "path": "data/ac0e8ebf435bf64cbde4602fec1753318d743775.webm",
+      "sha256": "f002561c98c5ae5b7d830c925194c8b0465cdf93d7c2855cdba09c5254717d10",
+      "bytes": 151332
+    },
+    {
+      "path": "data/db9e876cdca5e5fc6f3f2346643a60d46bfcd44a.zip",
+      "sha256": "1d3fbaba6bf8c5a221c3e0d2d52afed0ce47265d85674bfc165d8cf40c6cdcd5",
+      "bytes": 3003371
+    },
+    {
+      "path": "data/b8598db418ed403d9b0936fdc749c07c01955e6f.zip",
+      "sha256": "6b96022807c9ac4a6132659cb7aacd4f7bcdef2b8993da10cc8426d391ed9f89",
+      "bytes": 2050145
+    },
+    {
+      "path": "data/507a5b889a5bb005227d886ecf0b604b9b4ac154.webm",
+      "sha256": "b68cca54effe2d6793807c7dfb4ab32d986e3a20bfeb7ab626a56eb2ede8e31c",
+      "bytes": 141146
+    },
+    {
+      "path": "data/7a0700ff2d16853b8c7a6868dd5b34d002b52546.webm",
+      "sha256": "650ee5cff2e0fb225d83b735b95bac049b774d212286eb2b8f17854b636ebd05",
+      "bytes": 174122
+    },
+    {
+      "path": "data/b2764de02ac6e391fe7e630ee6a8819988b58e9d.zip",
+      "sha256": "52e3a2fae88098130d69e5e2d8d48e84ac7a909c022757e78bbddbce93f7d0f0",
+      "bytes": 2895221
+    },
+    {
+      "path": "data/c2a5d927316d0ec233b2db3a0e02cac6e136877f.webm",
+      "sha256": "51b7f428b2c28254be1d2c827e24b0bff9696b630148ba68821435f1875517d7",
+      "bytes": 170025
+    },
+    {
+      "path": "data/0ba701e5c88da2a05be96fc948dd44bcec1eb95f.webm",
+      "sha256": "bd578501102450aa2fde8af8faacfcd3e5dc7bc4e3c681d72cabbd9b6aec7c73",
+      "bytes": 152649
+    },
+    {
+      "path": "data/a21b851533730eed5aa6794d176bf518d202a466.zip",
+      "sha256": "a8fb6e61eb317b3507e709bfeebfe1769921c21386d7494e627c91b00106d27f",
+      "bytes": 2856228
+    },
+    {
+      "path": "data/6ee2f5e912b6e95b9dcaf227f346cf72fece742b.webm",
+      "sha256": "0923f3d71e843e8ab455ec1eba64132d59df3dff530e0d41722c3d85c7ec2a5a",
+      "bytes": 157348
+    },
+    {
+      "path": "data/01f97ad6faa7c973bfb18de904de04ad637583a3.zip",
+      "sha256": "545caedacaf1b70d750dc94973384a16c800279666da89b076eb75adf1987f3b",
+      "bytes": 2102587
+    },
+    {
+      "path": "data/11c4611bf884320fc30bc80ceb74fb76cd60cdad.webm",
+      "sha256": "c945a361e9ac833aa4c0c82f3d9ad8750de31c534ad51ea25b3bb7f70cbd88f4",
+      "bytes": 149842
+    },
+    {
+      "path": "data/5011df16e32a16f0bef17b9ba7ae8aff88a4b732.zip",
+      "sha256": "db6ffcdbb4ec30099567b42a35fa0cdec206713b9c3594866b3fa44f027a8357",
+      "bytes": 2810100
+    },
+    {
+      "path": "data/593cfa93be5b0db822915c7b1e72eefd31f59dca.zip",
+      "sha256": "f8ec4347826db87d00b3dc4c186effc9c7367c1e0ecdd5c6454884d09965c9c6",
+      "bytes": 2121173
+    },
+    {
+      "path": "data/dd9dc09a115ecebe823d0aa3be8b80f46d3655bb.zip",
+      "sha256": "4d2d2d9e0c0aaee7b685a830f1fc70f11fa4398192602e3803f185dd4ea5551e",
+      "bytes": 2086941
+    },
+    {
+      "path": "data/69a62da98aa2a55a118a2802a8c189465daddc68.zip",
+      "sha256": "d5a7e15388f36628adcb529a8d529b58a5250a80f28f930d24f92f35d3bb674b",
+      "bytes": 2087648
+    },
+    {
+      "path": "data/217d126fc254492a5bd9f5adb0e607af0d33d500.zip",
+      "sha256": "713f8a55701d561fd8e2b174227e465b97a6dd229a5a1dab11933211bd5faf62",
+      "bytes": 3112645
+    },
+    {
+      "path": "data/4436439fc70126c8b606f3765a1eb376721f4010.webm",
+      "sha256": "e37399c7e91dae08bb6d6198f94e3009a4332f417176e4ef0d3076bb3da4573c",
+      "bytes": 233545
+    },
+    {
+      "path": "data/00dda9531d7c99502bcf4bb541622be6886fcc5d.webm",
+      "sha256": "bf68a5eaa0c60085b2344f0d5aa5739b3240225adf51829645477ad89025ddba",
+      "bytes": 174875
+    },
+    {
+      "path": "data/0172cd0dd26cd11d547def3682047e1abe4407c3.webm",
+      "sha256": "d5c0e3d786e39ccf864458b761dfa8bddafdd8ba6a92cb61f14d975af2533583",
+      "bytes": 239686
+    },
+    {
+      "path": "data/b29040d043dd902f772dbe90b6d57af6293366ca.webm",
+      "sha256": "ef518ba7a141e6eb52f1d34c86aaf4b6316346a16e3a5b77bd4d1f3d6c05dd94",
+      "bytes": 227873
+    },
+    {
+      "path": "data/6826cc4814fc9668e74df265e1d930914b4a957a.zip",
+      "sha256": "53b8138ab392e583aad8c0c2bbf8540829aae85b5860d95d09d93f93d0daf2f4",
+      "bytes": 3154780
+    },
+    {
+      "path": "data/c221cbda272d89899e5337b02737007bc65eae57.zip",
+      "sha256": "496a894284941d6b9489e75a9f673ecd9a797f0db02d4f91930c0e0d8908062f",
+      "bytes": 2110534
+    },
+    {
+      "path": "data/a0948216ac351d67858c5693caed1f9cd73b0deb.webm",
+      "sha256": "878bee6984426b4fe66f0e984a14c476c14906b823c12f49da630aed2530dc73",
+      "bytes": 148653
+    },
+    {
+      "path": "data/ac103fbfd59b520eb8c0ad77ad4294b848b56fcd.webm",
+      "sha256": "6ce118de6e10711e22ff06c6f76b3cf07eca70bdc3e1d4abbbdcb468e7fdb56f",
+      "bytes": 448141
+    },
+    {
+      "path": "data/63deedb1213fa70463ec6f4fd18ce2cabba6eeaf.zip",
+      "sha256": "df06d1e00868b2faa389ada941e94a312e19b407899362969c18ef319cca2dac",
+      "bytes": 3151687
+    }
+  ],
+  "reason": "Preserve original HTML and every required image/state/axe/JUnit artifact while keeping the curated report below the unchanged50MiB policy. Original trace/video bytes are losslessly retained in a separate archive.",
+  "restore": "Extract report-diagnostics.tar.gz into playwright-report to restore optional trace/video links. The expanded original report exceeds50MiB and is not the curated artifact-validator input."
+}

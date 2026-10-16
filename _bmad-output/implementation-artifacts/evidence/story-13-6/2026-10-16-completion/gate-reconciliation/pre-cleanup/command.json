@@ -1,0 +1,27 @@
+{
+  "candidateDigest": "sha256:5085a3fd41df4dbd1d358e9eda14fc2796c0c0c578f09a96d3b677f82f776918",
+  "cwd": "tests/e2e",
+  "command": [
+    "npm",
+    "test",
+    "--",
+    "specs/specimen-accessibility.spec.ts",
+    "specs/responsive-accessibility.spec.ts",
+    "specs/accessibility-state-matrix.spec.ts",
+    "--project=chromium",
+    "--project=firefox",
+    "--project=webkit",
+    "--workers=3"
+  ],
+  "environment": {
+    "BASE_URL": "http://127.0.0.1:5070",
+    "PLAYWRIGHT_SKIP_WEBSERVER": "1",
+    "FC_E2E_BUILD_CONFIGURATION": "Debug",
+    "FC_E2E_OUTPUT_DIR": "/tmp/story13-6-reconcile-final-c5fbb00ce828",
+    "FC_E2E_HTML_REPORT_DIR": "/tmp/story13-6-reconcile-final-report-c5fbb00ce828",
+    "FC_A11Y_EVIDENCE_RUN_ID": "story-13-6-reconciliation-c5fbb00ce828"
+  },
+  "runId": "story-13-6-reconciliation-c5fbb00ce828",
+  "output": "/tmp/story13-6-reconcile-final-c5fbb00ce828",
+  "html": "/tmp/story13-6-reconcile-final-report-c5fbb00ce828"
+}

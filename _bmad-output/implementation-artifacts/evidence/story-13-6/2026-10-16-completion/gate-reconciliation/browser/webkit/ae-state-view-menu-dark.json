@@ -1,0 +1,208 @@
+{
+  "state": "view-menu-dark",
+  "engine": "webkit",
+  "runId": "story-13-6-reconciliation-5c9169b59ad5",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Dark",
+  "themePaint": {
+    "background": "#292929",
+    "rgb": [
+      41,
+      41,
+      41
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 156.375,
+      "height": 41,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 180.390625,
+      "height": 41,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"2\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-page-toolbar-search-input",
+      "width": 296,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-page-toolbar-filter-trigger",
+      "width": 133.75,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-page-toolbar-view-trigger\"]",
+      "width": 155.875,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#f2446360",
+      "width": 160.265625,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#f697f2e0",
+      "width": 160.265625,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-page-toolbar-refresh\"]",
+      "width": 96,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#summary",
+      "width": 101.484375,
+      "height": 45,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#activity",
+      "width": 84.703125,
+      "height": 45,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#archived",
+      "width": 94.5,
+      "height": 45,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#history",
+      "width": 82.90625,
+      "height": 45,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "slot",
+      "paint": "Density columns",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 10.009758502342363,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": false,
+  "forcedColorsStatus": "unsupported authored-color replacement; media rules only",
+  "systemText": [],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-MENU-ITEM#f2446360",
+    "requireIndicator": false,
+    "box": {
+      "left": 17,
+      "top": 754.34375,
+      "right": 177.265625,
+      "bottom": 786.34375
+    },
+    "ring": 0,
+    "failures": [],
+    "occluder": null
+  },
+  "systemSnapshot": null,
+  "reducedMotion": true
+}

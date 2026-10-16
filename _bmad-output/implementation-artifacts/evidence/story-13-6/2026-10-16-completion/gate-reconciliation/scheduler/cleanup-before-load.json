@@ -1,0 +1,170 @@
+[
+  {
+    "iteration": 0,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-00.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 1.077,
+    "externallyInterruptedAfterSeconds": null
+  },
+  {
+    "iteration": 1,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-01.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.974,
+    "externallyInterruptedAfterSeconds": null
+  },
+  {
+    "iteration": 2,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-02.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 1.071,
+    "externallyInterruptedAfterSeconds": null
+  },
+  {
+    "iteration": 3,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-03.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 1.125,
+    "externallyInterruptedAfterSeconds": null
+  },
+  {
+    "iteration": 4,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-04.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 1.024,
+    "externallyInterruptedAfterSeconds": null
+  },
+  {
+    "iteration": 5,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-05.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 1.022,
+    "externallyInterruptedAfterSeconds": null
+  },
+  {
+    "iteration": 6,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-06.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 1.026,
+    "externallyInterruptedAfterSeconds": null
+  },
+  {
+    "iteration": 7,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-07.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.971,
+    "externallyInterruptedAfterSeconds": null
+  },
+  {
+    "iteration": 8,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-08.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.874,
+    "externallyInterruptedAfterSeconds": null
+  },
+  {
+    "iteration": 9,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-09.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.87,
+    "externallyInterruptedAfterSeconds": null
+  },
+  {
+    "iteration": 10,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-10.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.874,
+    "externallyInterruptedAfterSeconds": null
+  },
+  {
+    "iteration": 11,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/cleanup-before-load-11.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.871,
+    "externallyInterruptedAfterSeconds": null
+  }
+]

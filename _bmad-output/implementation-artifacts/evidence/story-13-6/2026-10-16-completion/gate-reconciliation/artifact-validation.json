@@ -1,0 +1,41 @@
+{
+  "candidateDigest": "sha256:36097daec9b85bb2a11b15e504e7d667a80af9430727789d87afbbaa52396f39",
+  "command": [
+    "npm",
+    "run",
+    "validate:a11y-artifacts"
+  ],
+  "cwd": "tests/e2e",
+  "exitCode": 0,
+  "environment": {
+    "FC_E2E_OUTPUT_DIR": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/gate-reconciliation/browser/chromium",
+    "FC_E2E_HTML_REPORT_DIR": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/gate-reconciliation/playwright-report"
+  },
+  "copiedSpecimenArtifacts": [
+    "browser/chromium/specimen-captures/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-chromium/axe-wcag22.json",
+    "browser/chromium/specimen-captures/accessibility-state-matrix-d7ccd-state-and-forced-color-cues-chromium/axe-state-home-light.json",
+    "browser/chromium/specimen-captures/responsive-accessibility-S-a58c4-oolbar-320-CSS-pixel-reflow-chromium/axe-wcag22.json",
+    "browser/chromium/specimen-captures/specimen-accessibility-Fro-ef0a3-nd-passes-blocking-axe-gate-chromium/axe-type.json",
+    "browser/chromium/specimen-captures/responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/axe-wcag22.json",
+    "browser/chromium/specimen-captures/specimen-accessibility-Fro-034a2-nd-passes-blocking-axe-gate-chromium/axe-data-formatting.json",
+    "browser/chromium/specimen-captures/responsive-accessibility-S-40b5b-ectory-320-CSS-pixel-reflow-chromium/axe-wcag22.json",
+    "browser/chromium/specimen-captures/responsive-accessibility-S-58c4a--all-text-spacing-overrides-chromium/axe-wcag22.json",
+    "browser/chromium/specimen-captures/accessibility-state-matrix-494dc-state-and-forced-color-cues-chromium/axe-state-home-dark.json",
+    "browser/chromium/specimen-captures/responsive-accessibility-S-303db--all-text-spacing-overrides-chromium/axe-wcag22.json",
+    "browser/chromium/specimen-captures/specimen-accessibility-Fro-a83e8-nd-passes-blocking-axe-gate-chromium/axe-page-toolbar.json",
+    "browser/chromium/specimen-captures/accessibility-state-matrix-ee4d5-state-and-forced-color-cues-chromium/axe-state-navigation-tabs-dark.json",
+    "browser/chromium/specimen-captures/accessibility-state-matrix-ec449-state-and-forced-color-cues-chromium/axe-state-toolbar-dark.json",
+    "browser/chromium/specimen-captures/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/axe-wcag22.json",
+    "browser/chromium/specimen-captures/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/axe-state-generated-forms-dark.json",
+    "browser/chromium/specimen-captures/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-chromium/axe-state-generated-forms-light.json",
+    "browser/chromium/specimen-captures/accessibility-state-matrix-12490-state-and-forced-color-cues-chromium/axe-state-toolbar-light.json",
+    "browser/chromium/specimen-captures/accessibility-state-matrix-08167-op-navigation-rails-in-dark-chromium/axe-shell-menu-dark.json",
+    "browser/chromium/specimen-captures/responsive-accessibility-S-2dd61--all-text-spacing-overrides-chromium/axe-wcag22.json",
+    "browser/chromium/specimen-captures/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/axe-shell-menu-light.json",
+    "browser/chromium/specimen-captures/accessibility-state-matrix-274ba-state-and-forced-color-cues-chromium/axe-state-navigation-tabs-light.json",
+    "browser/chromium/specimen-captures/responsive-accessibility-S-510ea--all-text-spacing-overrides-chromium/axe-wcag22.json",
+    "browser/chromium/specimen-captures/specimen-accessibility-Fro-3b315-ible-over-lifecycle-visuals-chromium/focus-type-command-submit.png",
+    "browser/chromium/specimen-captures/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-chromium/axe-wcag22.json"
+  ],
+  "curation": "Strict existing Windows inventory validator executed on Linux against current-run Chromium raw state/axe/focus artifacts and the actual shared three-engine JUnit/HTML report. Other-engine state rows are retained separately. This supplies no Windows execution claim."
+}

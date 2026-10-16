@@ -415,7 +415,9 @@ public sealed class EventStoreCommandClient(
         }
         finally
         {
-            cancellation.Dispose();
+            // Linked disposal can wait for a parent callback still blocked in a provider.
+            // Keep that synchronous wait off dispatch and recovery-deadline callbacks.
+            await Task.Run(cancellation.Dispose).ConfigureAwait(false);
         }
     }
 

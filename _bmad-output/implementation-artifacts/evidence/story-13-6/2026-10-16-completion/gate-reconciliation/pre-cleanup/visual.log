@@ -1,0 +1,815 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/specimen-accessibility.spec.ts --project=chromium --project=firefox --project=webkit --grep visual baseline --workers=3
+
+
+Running 18 tests using 3 workers
+
+(node:82400) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:82398) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:82401) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy (1.3s)
+  ✓   3 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable (1.4s)
+  ✓   1 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact (1.4s)
+  ✓   4 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact (1.3s)
+  ✓   5 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable (1.3s)
+  ✓   6 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy (1.3s)
+(node:85431) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:85443) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:85459) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   7 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact (3.3s)
+(node:87370) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   8 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable (3.4s)
+(node:87489) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   9 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy (3.4s)
+(node:87637) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  10 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact (3.4s)
+(node:89446) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  11 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable (3.4s)
+(node:89588) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  12 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy (3.4s)
+(node:89994) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  13 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact (3.1s)
+  ✘  14 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable (3.1s)
+(node:91439) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:91455) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  15 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy (3.1s)
+(node:91768) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  16 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact (3.1s)
+  ✘  17 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable (3.0s)
+  ✘  18 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy (3.2s)
+
+
+  1) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3778px, received 1280px by 3820px. 188989 pixels (ratio 0.04 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-compact.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-compact.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3778px, received 1280px by 3820px. 188989 pixels (ratio 0.04 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3778px, received 1280px by 3820px. 188989 pixels (ratio 0.04 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-compact (image/png) ────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-firefox-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/frontcomposer-type-light-compact-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/frontcomposer-type-light-compact-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3846px, received 1280px by 3880px. 206280 pixels (ratio 0.05 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-comfortable.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-comfortable.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3846px, received 1280px by 3880px. 206280 pixels (ratio 0.05 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3846px, received 1280px by 3880px. 206280 pixels (ratio 0.05 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-comfortable (image/png) ────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-firefox-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/frontcomposer-type-light-comfortable-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/frontcomposer-type-light-comfortable-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3914px, received 1280px by 3940px. 217319 pixels (ratio 0.05 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-roomy.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-roomy.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3914px, received 1280px by 3940px. 217319 pixels (ratio 0.05 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3914px, received 1280px by 3940px. 217319 pixels (ratio 0.05 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-roomy (image/png) ──────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-firefox-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/frontcomposer-type-light-roomy-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/frontcomposer-type-light-roomy-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3778px, received 1280px by 3820px. 518605 pixels (ratio 0.11 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-compact.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-compact.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3778px, received 1280px by 3820px. 518605 pixels (ratio 0.11 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3778px, received 1280px by 3820px. 518605 pixels (ratio 0.11 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-compact (image/png) ─────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-firefox-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/frontcomposer-type-dark-compact-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/frontcomposer-type-dark-compact-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3846px, received 1280px by 3880px. 456063 pixels (ratio 0.10 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-comfortable.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-comfortable.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3846px, received 1280px by 3880px. 456063 pixels (ratio 0.10 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3846px, received 1280px by 3880px. 456063 pixels (ratio 0.10 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-comfortable (image/png) ─────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-firefox-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/frontcomposer-type-dark-comfortable-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/frontcomposer-type-dark-comfortable-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3914px, received 1280px by 3940px. 405558 pixels (ratio 0.09 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-roomy.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-roomy.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3914px, received 1280px by 3940px. 405558 pixels (ratio 0.09 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3914px, received 1280px by 3940px. 405558 pixels (ratio 0.09 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-roomy (image/png) ───────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-firefox-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/frontcomposer-type-dark-roomy-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/frontcomposer-type-dark-roomy-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3818px, received 1280px by 3863px. 182793 pixels (ratio 0.04 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-compact.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-compact.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3818px, received 1280px by 3863px. 182793 pixels (ratio 0.04 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3818px, received 1280px by 3863px. 182793 pixels (ratio 0.04 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-compact (image/png) ────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-webkit-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/frontcomposer-type-light-compact-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/frontcomposer-type-light-compact-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3886px, received 1280px by 3923px. 199656 pixels (ratio 0.04 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-comfortable.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-comfortable.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3886px, received 1280px by 3923px. 199656 pixels (ratio 0.04 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3886px, received 1280px by 3923px. 199656 pixels (ratio 0.04 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-comfortable (image/png) ────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-webkit-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/frontcomposer-type-light-comfortable-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/frontcomposer-type-light-comfortable-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3954px, received 1280px by 3983px. 213593 pixels (ratio 0.05 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-roomy.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-roomy.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3954px, received 1280px by 3983px. 213593 pixels (ratio 0.05 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3954px, received 1280px by 3983px. 213593 pixels (ratio 0.05 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-roomy (image/png) ──────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-webkit-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/frontcomposer-type-light-roomy-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/frontcomposer-type-light-roomy-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3818px, received 1280px by 3863px. 523048 pixels (ratio 0.11 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-compact.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-compact.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3818px, received 1280px by 3863px. 523048 pixels (ratio 0.11 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3818px, received 1280px by 3863px. 523048 pixels (ratio 0.11 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-compact (image/png) ─────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-webkit-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/frontcomposer-type-dark-compact-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/frontcomposer-type-dark-compact-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3886px, received 1280px by 3923px. 458513 pixels (ratio 0.10 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-comfortable.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-comfortable.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3886px, received 1280px by 3923px. 458513 pixels (ratio 0.10 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3886px, received 1280px by 3923px. 458513 pixels (ratio 0.10 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-comfortable (image/png) ─────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-webkit-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/frontcomposer-type-dark-comfortable-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/frontcomposer-type-dark-comfortable-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3954px, received 1280px by 3983px. 402419 pixels (ratio 0.08 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-roomy.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-roomy.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3954px, received 1280px by 3983px. 402419 pixels (ratio 0.08 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3954px, received 1280px by 3983px. 402419 pixels (ratio 0.08 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-roomy (image/png) ───────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-webkit-linux.png
+    Received: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/frontcomposer-type-dark-roomy-actual.png
+    Diff:     ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/frontcomposer-type-dark-roomy-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story13-6-visual-fb451ec21028/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12 failed
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact 
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable 
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy 
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact 
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable 
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy 
+  6 passed (20.2s)

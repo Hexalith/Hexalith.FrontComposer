@@ -1,0 +1,336 @@
+{
+  "auditedAt": "2026-10-16T11:09:03.222010+00:00",
+  "candidateDigest": "sha256:c14be5f5413337c1e5a55b7e49075804761c57015e810113b0f94accb9190732",
+  "executedBrowserCandidateDigest": "sha256:36097daec9b85bb2a11b15e504e7d667a80af9430727789d87afbbaa52396f39",
+  "scope": "Independent raw-byte provenance, result-count, artifact-retention and truthful-limit audit. This audit is not a rerun or certification of accessibility, visual, browser or human/owner acceptance gates. Only independent-audit.json is written.",
+  "checks": {
+    "candidate_current_bytes": {
+      "passed": true,
+      "details": {
+        "files": 43,
+        "mismatches": []
+      }
+    },
+    "candidate_raw_rows_and_aggregate": {
+      "passed": true,
+      "details": {
+        "computedDigest": "sha256:c14be5f5413337c1e5a55b7e49075804761c57015e810113b0f94accb9190732",
+        "rawRowsSha256": "c14be5f5413337c1e5a55b7e49075804761c57015e810113b0f94accb9190732"
+      }
+    },
+    "source_head": {
+      "passed": true,
+      "details": "cda47ce88bd80f2b9ddf995eba2f0bd27add1cdc"
+    },
+    "candidate_tracked_scope_complete": {
+      "passed": true,
+      "details": {
+        "trackedDeltaCount": 43,
+        "undeclared": [],
+        "declaredOutsideTrackedDelta": []
+      }
+    },
+    "both_frozen_intent_hashes": {
+      "passed": true,
+      "details": {
+        "spec-13-6-complete-automated-accessibility-coverage.md": {
+          "computed": "86d004cd94342fc48c8bc299091ba8b58a8dd10bf3a7ff20f70beee65db82c7a",
+          "expected": "86d004cd94342fc48c8bc299091ba8b58a8dd10bf3a7ff20f70beee65db82c7a",
+          "matchesEarlierCandidate": true
+        },
+        "spec-13-6-verify-responsive-and-assistive-accessibility.md": {
+          "computed": "fb065a576c0091b5ef2aea6819ec640e3922af66121a3eb03e8eb1d303afcf20",
+          "expected": "fb065a576c0091b5ef2aea6819ec640e3922af66121a3eb03e8eb1d303afcf20",
+          "matchesEarlierCandidate": true
+        }
+      }
+    },
+    "all_24_committed_baselines": {
+      "passed": true,
+      "details": {
+        "count": 24,
+        "checkedAgainst": "cda47ce88bd80f2b9ddf995eba2f0bd27add1cdc",
+        "mismatches": []
+      }
+    },
+    "browser_input_reuse": {
+      "passed": true,
+      "details": {
+        "browserCandidate": "sha256:36097daec9b85bb2a11b15e504e7d667a80af9430727789d87afbbaa52396f39",
+        "unchangedExistingFiles": 42,
+        "changed": [],
+        "added": [
+          "tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs"
+        ]
+      }
+    },
+    "shell_3681_0_0": {
+      "passed": true,
+      "details": {
+        "xmlCounts": {
+          "total": 3681,
+          "passed": 3681,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "testcaseResults": {
+          "Pass": 3681
+        },
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, parallel (collections, 14 threads)]"
+      }
+    },
+    "browser_366_13_2": {
+      "passed": true,
+      "details": {
+        "xmlCounts": {
+          "tests": 381,
+          "failures": 13,
+          "errors": 0,
+          "skipped": 2,
+          "passed": 366
+        },
+        "perEngine": {
+          "chromium": {
+            "passed": 126,
+            "failed": 1
+          },
+          "firefox": {
+            "passed": 120,
+            "skipped": 1,
+            "failed": 6
+          },
+          "webkit": {
+            "passed": 120,
+            "skipped": 1,
+            "failed": 6
+          }
+        },
+        "visual": {
+          "passed": 6,
+          "failed": 12
+        },
+        "nonvisual": {
+          "passed": 360,
+          "failed": 1,
+          "skipped": 2
+        },
+        "nonvisualFailures": [
+          {
+            "engine": "chromium",
+            "name": "active toolbar, tabs, palette and settings states in dark"
+          }
+        ]
+      }
+    },
+    "state_116_each_and_ledger_hashes": {
+      "passed": true,
+      "details": {
+        "counts": {
+          "chromium": 116,
+          "firefox": 116,
+          "webkit": 116
+        },
+        "uniqueEngineStates": 348,
+        "mismatches": [],
+        "runId": "story-13-6-reconciliation-5c9169b59ad5"
+      }
+    },
+    "report_archive_and_every_member": {
+      "passed": true,
+      "details": {
+        "archiveSha256": "ac7ac8383784b49a71fceea0b2b94ca5d8dbc395830a26625b05b355d6874a01",
+        "membersChecked": 26,
+        "badMembers": [],
+        "unlistedMembers": [],
+        "originalSourceMismatches": []
+      }
+    },
+    "report_lossless_retention_and_size": {
+      "passed": true,
+      "details": {
+        "curatedBytes": 28587048,
+        "expandedSourceBytes": 64699345,
+        "originalIndexSha256": "1149564a394aa8e712a06c8020f6807542f9a525f8ed902eda7044dca1c9576e",
+        "unretainedOriginalFiles": [],
+        "changedCuratedFiles": [],
+        "restoreInstructions": "Extract report-diagnostics.tar.gz into playwright-report to restore optional trace/video links. The expanded original report exceeds50MiB and is not the curated artifact-validator input."
+      }
+    },
+    "visual_comparison_member_hashes": {
+      "passed": true,
+      "details": {
+        "files": 36,
+        "mismatches": []
+      }
+    },
+    "settings_six_passes_remain_diagnostic": {
+      "passed": true,
+      "details": {
+        "files": 6,
+        "artifactBase": "settings-focus-diagnostic/raw",
+        "mismatches": [],
+        "classification": "6 passed; does not clear canonical full-lane Settings failure"
+      }
+    },
+    "active_result_and_spec_links": {
+      "passed": true,
+      "details": {
+        "linksChecked": 39,
+        "broken": []
+      }
+    },
+    "truthful_open_gates": {
+      "passed": true,
+      "details": {
+        "missingRequiredStatements": [],
+        "openEvidenceGroups": 15,
+        "remainingBlockers": [
+          "Twelve Firefox/WebKit visual comparisons remain failed: demonstrated local Noto-versus-baseline DejaVu font resolution plus baseline/current layout differences; every remaining pixel disposition requires hosted visual-owner reconciliation. Baselines and thresholds preserved.",
+          "Current canonical Chromium dark Settings initial focus return failed once; cause unattributed. Six instrumented repeats passed but do not clear the failed full gate. See failed-settings-focus and settings-focus-diagnostic.",
+          "Fifteen Medium accessibility evidence-hardening review groups remain open in unchanged preceding helpers/tests; passing suite counts do not establish full AE certification.",
+          "Linux WebKit116 actual forced-palette cells remain uncovered; strict validation448 errors, explicit media-only capability validation0.",
+          "Windows execution, human NVDA/JAWS/VoiceOver, actual400% zoom, tablet/phone and heard-speech observations not performed.",
+          "OI-16,G-4,FLUENT-APP-1,Product approval/reapproval and separate live EventStore fresh-row acceptance remain open."
+        ],
+        "manualBoxesChecked": 0
+      }
+    },
+    "candidate_stable_at_end": {
+      "passed": true,
+      "details": {
+        "filesRechecked": 43
+      }
+    },
+    "state_validator_rerun": {
+      "passed": true,
+      "details": {
+        "requiredStates": 116,
+        "runId": "story-13-6-reconciliation-5c9169b59ad5",
+        "result": [
+          {
+            "engine": "chromium",
+            "rows": 116,
+            "strictErrors": 0,
+            "capabilityLimitedErrors": null,
+            "capability": {
+              "engine": "chromium",
+              "version": "153.0.8010.12",
+              "hostOS": "Linux",
+              "normal": {
+                "forcedColors": false,
+                "reducedMotion": false,
+                "foreground": "rgb(255, 0, 0)",
+                "background": "rgb(0, 255, 0)"
+              },
+              "forced": {
+                "forcedColors": true,
+                "reducedMotion": true,
+                "foreground": "rgb(0, 0, 0)",
+                "background": "rgb(255, 255, 255)"
+              },
+              "authoredColorReplacement": true,
+              "backgroundPixel30x30": {
+                "normal": [
+                  0,
+                  255,
+                  0
+                ],
+                "forced": [
+                  255,
+                  255,
+                  255
+                ]
+              }
+            }
+          },
+          {
+            "engine": "firefox",
+            "rows": 116,
+            "strictErrors": 0,
+            "capabilityLimitedErrors": null,
+            "capability": {
+              "engine": "firefox",
+              "version": "155.0",
+              "hostOS": "Linux",
+              "normal": {
+                "forcedColors": false,
+                "reducedMotion": false,
+                "foreground": "rgb(255, 0, 0)",
+                "background": "rgb(0, 255, 0)"
+              },
+              "forced": {
+                "forcedColors": true,
+                "reducedMotion": true,
+                "foreground": "rgb(0, 0, 0)",
+                "background": "rgb(255, 255, 255)"
+              },
+              "authoredColorReplacement": true,
+              "backgroundPixel30x30": {
+                "normal": [
+                  0,
+                  255,
+                  0
+                ],
+                "forced": [
+                  255,
+                  255,
+                  255
+                ]
+              }
+            }
+          },
+          {
+            "engine": "webkit",
+            "rows": 116,
+            "strictErrors": 448,
+            "capabilityLimitedErrors": 0,
+            "capability": {
+              "engine": "webkit",
+              "version": "26.6",
+              "hostOS": "Linux",
+              "normal": {
+                "forcedColors": false,
+                "reducedMotion": false,
+                "foreground": "rgb(255, 0, 0)",
+                "background": "rgb(0, 255, 0)"
+              },
+              "forced": {
+                "forcedColors": true,
+                "reducedMotion": true,
+                "foreground": "rgb(255, 0, 0)",
+                "background": "rgb(0, 255, 0)"
+              },
+              "authoredColorReplacement": false,
+              "backgroundPixel30x30": {
+                "normal": [
+                  0,
+                  255,
+                  0
+                ],
+                "forced": [
+                  0,
+                  255,
+                  0
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "limitation": "The validator is the existing implementation with the fifteen recorded evidence-hardening groups still open. Passing Chromium/Firefox inventories are not complete AE certification."
+    },
+    "artifact_validator_rerun": {
+      "passed": true,
+      "details": {
+        "command": "FC_E2E_OUTPUT_DIR=<packet>/browser/chromium FC_E2E_HTML_REPORT_DIR=<packet>/playwright-report npm run validate:a11y-artifacts",
+        "cwd": "tests/e2e",
+        "exitCode": 0,
+        "output": "\n> hexalith-frontcomposer-e2e@0.0.0 validate:a11y-artifacts\n> node scripts/validate-a11y-artifacts.mjs\n\nAccessibility artifact validation passed.\n"
+      }
+    }
+  },
+  "errors": [],
+  "result": "passed",
+  "acceptanceStatus": "open; Shell gate passes, canonical browser/visual gate fails, six diagnostic Settings passes do not supersede that failure, and platform/manual/owner and evidence-hardening gates remain unresolved."
+}

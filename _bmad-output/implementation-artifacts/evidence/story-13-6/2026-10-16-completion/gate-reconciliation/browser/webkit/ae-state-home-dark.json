@@ -1,0 +1,285 @@
+{
+  "state": "home-dark",
+  "engine": "webkit",
+  "runId": "story-13-6-reconciliation-5c9169b59ad5",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Dark",
+  "themePaint": {
+    "background": "#292929",
+    "rgb": [
+      41,
+      41,
+      41
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 156.375,
+      "height": 41,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 180.390625,
+      "height": 41,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"2\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"7\"]",
+      "width": 225.578125,
+      "height": 107.546875,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"8\"]",
+      "width": 155.5625,
+      "height": 83.546875,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"9\"]",
+      "width": 280,
+      "height": 179.546875,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "h1",
+      "paint": "Welcome back, FrontComposer specimen user.",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "p",
+      "paint": "You're all set up. Items will appear here as teams send work your way.",
+      "foreground": [
+        173,
+        173,
+        173,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 6.482747494991505,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "h2",
+      "paint": "Counter",
+      "foreground": [
+        38.39999999999999,
+        38.39999999999999,
+        38.39999999999999,
+        1
+      ],
+      "background": [
+        192,
+        192,
+        192,
+        1
+      ],
+      "ratio": 8.275007718609809,
+      "minimum": 3
+    },
+    {
+      "owner": 2,
+      "node": "span",
+      "paint": "CounterProjection",
+      "foreground": [
+        38.39999999999999,
+        38.39999999999999,
+        38.39999999999999,
+        1
+      ],
+      "background": [
+        192,
+        192,
+        192,
+        1
+      ],
+      "ratio": 8.275007718609809,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "h2",
+      "paint": "Default",
+      "foreground": [
+        38.39999999999999,
+        38.39999999999999,
+        38.39999999999999,
+        1
+      ],
+      "background": [
+        192,
+        192,
+        192,
+        1
+      ],
+      "ratio": 8.275007718609809,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "h2",
+      "paint": "Specimens",
+      "foreground": [
+        38.39999999999999,
+        38.39999999999999,
+        38.39999999999999,
+        1
+      ],
+      "background": [
+        192,
+        192,
+        192,
+        1
+      ],
+      "ratio": 8.275007718609809,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "span",
+      "paint": "SpecimenFormattingProjection",
+      "foreground": [
+        38.39999999999999,
+        38.39999999999999,
+        38.39999999999999,
+        1
+      ],
+      "background": [
+        192,
+        192,
+        192,
+        1
+      ],
+      "ratio": 8.275007718609809,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "span",
+      "paint": "SpecimenStatusProjection",
+      "foreground": [
+        38.39999999999999,
+        38.39999999999999,
+        38.39999999999999,
+        1
+      ],
+      "background": [
+        192,
+        192,
+        192,
+        1
+      ],
+      "ratio": 8.275007718609809,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": false,
+  "forcedColorsStatus": "unsupported authored-color replacement; media rules only",
+  "systemText": [],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-MENU-BUTTON#",
+    "requireIndicator": true,
+    "box": {
+      "left": 10,
+      "top": 126,
+      "right": 62,
+      "bottom": 162
+    },
+    "ring": 2,
+    "failures": [],
+    "occluder": null
+  },
+  "systemSnapshot": null,
+  "reducedMotion": true
+}

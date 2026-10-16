@@ -1,0 +1,210 @@
+{
+  "candidateDigest": "sha256:5085a3fd41df4dbd1d358e9eda14fc2796c0c0c578f09a96d3b677f82f776918",
+  "comparisons": [
+    {
+      "engine": "firefox",
+      "theme": "light",
+      "density": "compact",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-firefox-linux.png",
+      "expectedFileSha256": "43c02191d40c0e79069712dc23ab5a3fcf5b7c043bec8d288ffd046583008c72",
+      "diagnosticImage": "font-probes/dejavu-final/firefox-initial.png"
+    },
+    {
+      "engine": "firefox",
+      "theme": "light",
+      "density": "comfortable",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-firefox-linux.png",
+      "expectedFileSha256": "e12a548edfd20bf9d609a4dde32e8ded4a13bf949e2619db28e89f86466bd0d8",
+      "diagnosticImage": "font-probes/dejavu-final/firefox-initial.png"
+    },
+    {
+      "engine": "firefox",
+      "theme": "light",
+      "density": "roomy",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-firefox-linux.png",
+      "expectedFileSha256": "7aab51a089e66388329399ae9d19f3f7d0be69299fc97c1bb56b0816efd54b23",
+      "diagnosticImage": "font-probes/dejavu-final/firefox-initial.png"
+    },
+    {
+      "engine": "firefox",
+      "theme": "dark",
+      "density": "compact",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-firefox-linux.png",
+      "expectedFileSha256": "81cf57a0e4927497d9610757b4dc247b02d558b680a5a77198c19adc7640ac92",
+      "diagnosticImage": "font-probes/dejavu-dark/firefox-initial.png"
+    },
+    {
+      "engine": "firefox",
+      "theme": "dark",
+      "density": "comfortable",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-firefox-linux.png",
+      "expectedFileSha256": "46b033d271a15d18e8015f678be34e6bfd64cc1b50a4f88cbddf9b1f35368b7d",
+      "diagnosticImage": "font-probes/dejavu-dark/firefox-initial.png"
+    },
+    {
+      "engine": "firefox",
+      "theme": "dark",
+      "density": "roomy",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-firefox-linux.png",
+      "expectedFileSha256": "426a564d0d46cc0d9ba2ed75499890d0077cb64e6303c5cd2981d46b4dbc0076",
+      "diagnosticImage": "font-probes/dejavu-dark/firefox-initial.png"
+    },
+    {
+      "engine": "webkit",
+      "theme": "light",
+      "density": "compact",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-webkit-linux.png",
+      "expectedFileSha256": "23930aa317142ff85f5340062c513f39baae2d08967fe1ad5187c47c21008e75",
+      "diagnosticImage": "font-probes/dejavu-final/webkit-initial.png"
+    },
+    {
+      "engine": "webkit",
+      "theme": "light",
+      "density": "comfortable",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-webkit-linux.png",
+      "expectedFileSha256": "ff35f494d0b8d214e0fb04f27156d1e1c1c8722d932b746040c484d8228c89f2",
+      "diagnosticImage": "font-probes/dejavu-final/webkit-initial.png"
+    },
+    {
+      "engine": "webkit",
+      "theme": "light",
+      "density": "roomy",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-webkit-linux.png",
+      "expectedFileSha256": "1d39fb0cf432a43742fa1b78acf614fe09081fcdca1b5cd695d19c287b1917e8",
+      "diagnosticImage": "font-probes/dejavu-final/webkit-initial.png"
+    },
+    {
+      "engine": "webkit",
+      "theme": "dark",
+      "density": "compact",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-webkit-linux.png",
+      "expectedFileSha256": "0a26fdfb2f7b540b9367f9ea40b8128a271e7694b218e002c503e25dc9cb53c3",
+      "diagnosticImage": "font-probes/dejavu-dark/webkit-initial.png"
+    },
+    {
+      "engine": "webkit",
+      "theme": "dark",
+      "density": "comfortable",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-webkit-linux.png",
+      "expectedFileSha256": "b9ee6b84800fd4c9b72146145c8fa4801e9f52a210f6b2884e66b85457157452",
+      "diagnosticImage": "font-probes/dejavu-dark/webkit-initial.png"
+    },
+    {
+      "engine": "webkit",
+      "theme": "dark",
+      "density": "roomy",
+      "region": [
+        76,
+        124,
+        1260,
+        176
+      ],
+      "purpose": "unchanged route title: isolate font from later target/grid/layout changes",
+      "currentNotoByteIdentical": false,
+      "isolatedDejaVuByteIdentical": true,
+      "expected": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-webkit-linux.png",
+      "expectedFileSha256": "bc8a4007ce5531f312bd0ed2c140825d12ba5f02417c3a3deda600d522fa98eb",
+      "diagnosticImage": "font-probes/dejavu-dark/webkit-initial.png"
+    }
+  ],
+  "method": "Exact decoded RGB equality of unchanged title region; this diagnostic introduces no screenshot assertion tolerance and does not count as a whole-image pass."
+}

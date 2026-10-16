@@ -1,0 +1,228 @@
+{
+  "state": "view-menu-light",
+  "engine": "chromium",
+  "runId": "23d0293c-7ade-4aa2-86f3-23c109f9c562",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 150.296875,
+      "height": 41,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 173.25,
+      "height": 41,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"2\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-page-toolbar-search-input",
+      "width": 296,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-page-toolbar-filter-trigger",
+      "width": 130.21875,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-page-toolbar-view-trigger\"]",
+      "width": 154.5,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#f1d2662a",
+      "width": 154.15625,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#f438b93c",
+      "width": 154.15625,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-page-toolbar-refresh\"]",
+      "width": 96,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#summary",
+      "width": 99.578125,
+      "height": 45,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#activity",
+      "width": 81.78125,
+      "height": 45,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#archived",
+      "width": 91.921875,
+      "height": 45,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#history",
+      "width": 79.328125,
+      "height": 45,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "slot",
+      "paint": "Density columns",
+      "foreground": [
+        66,
+        66,
+        66,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 10.049743700462349,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": true,
+  "forcedColorsStatus": "painted system palette",
+  "systemText": [
+    {
+      "owner": 0,
+      "node": "slot",
+      "paint": "Density columns",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-MENU-ITEM#f1d2662a",
+    "requireIndicator": false,
+    "box": {
+      "left": 155.21875,
+      "top": 654.34375,
+      "right": 309.375,
+      "bottom": 686.34375
+    },
+    "ring": 0,
+    "failures": [],
+    "occluder": null
+  },
+  "systemSnapshot": "system-state-view-menu-light.png",
+  "reducedMotion": true
+}

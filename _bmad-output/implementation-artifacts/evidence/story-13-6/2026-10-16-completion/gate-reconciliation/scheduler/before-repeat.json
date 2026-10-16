@@ -1,0 +1,418 @@
+[
+  {
+    "iteration": 0,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-00.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.727
+  },
+  {
+    "iteration": 1,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-01.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.741
+  },
+  {
+    "iteration": 2,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-02.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.767
+  },
+  {
+    "iteration": 3,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-03.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.723
+  },
+  {
+    "iteration": 4,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-04.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.699
+  },
+  {
+    "iteration": 5,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-05.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.697
+  },
+  {
+    "iteration": 6,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-06.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.735
+  },
+  {
+    "iteration": 7,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-07.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.733
+  },
+  {
+    "iteration": 8,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-08.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.709
+  },
+  {
+    "iteration": 9,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-09.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.709
+  },
+  {
+    "iteration": 10,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-10.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.738
+  },
+  {
+    "iteration": 11,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-11.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.75
+  },
+  {
+    "iteration": 12,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-12.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.694
+  },
+  {
+    "iteration": 13,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-13.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.702
+  },
+  {
+    "iteration": 14,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-14.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.714
+  },
+  {
+    "iteration": 15,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-15.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.702
+  },
+  {
+    "iteration": 16,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-16.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.7
+  },
+  {
+    "iteration": 17,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-17.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.707
+  },
+  {
+    "iteration": 18,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-18.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.711
+  },
+  {
+    "iteration": 19,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-19.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.713
+  },
+  {
+    "iteration": 20,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-20.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.695
+  },
+  {
+    "iteration": 21,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-21.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.701
+  },
+  {
+    "iteration": 22,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-22.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.7
+  },
+  {
+    "iteration": 23,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-23.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.688
+  },
+  {
+    "iteration": 24,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-24.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.7
+  },
+  {
+    "iteration": 25,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-25.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.693
+  },
+  {
+    "iteration": 26,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-26.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.704
+  },
+  {
+    "iteration": 27,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-27.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.702
+  },
+  {
+    "iteration": 28,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-28.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.702
+  },
+  {
+    "iteration": 29,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-29.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.706
+  },
+  {
+    "iteration": 30,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-30.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.692
+  },
+  {
+    "iteration": 31,
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/before-31.xml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.709
+  }
+]

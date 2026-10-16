@@ -1,0 +1,10 @@
+{
+  "finalCandidateDigest": "sha256:c14be5f5413337c1e5a55b7e49075804761c57015e810113b0f94accb9190732",
+  "executedBrowserCandidateDigest": "sha256:36097daec9b85bb2a11b15e504e7d667a80af9430727789d87afbbaa52396f39",
+  "unchangedExistingCandidateFiles": 42,
+  "changedExistingInputs": [],
+  "addedFinalInputs": [
+    "tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs"
+  ],
+  "classification": "Final delta adds only the subscription-test file. Every existing candidate byte, including production sources, browser tests/helpers/config, CSS/JS and image policy, is identical. Current rebuilt Debug host and browser run cover the final production/UI inputs; Shell rerun covers final test inputs."
+}

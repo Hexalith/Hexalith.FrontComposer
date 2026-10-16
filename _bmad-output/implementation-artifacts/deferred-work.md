@@ -10301,3 +10301,63 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 
 - `FcNewItemIndicator.Dispose` resolves `FreshRowAnnouncementLedger`/`ISurfaceAnnouncementCoordinator` via `IServiceProvider` at teardown; if a host disposes the scope provider before the renderer this throws `ObjectDisposedException` (unverified medium). Would settle: confirm Blazor Server/WASM/bUnit disposal order, or cache the services at first use.
 - Five `references/Hexalith.*` gitlinks (Builds, EventStore, Memories, Parties, Tenants) moved inside the 985d3e70..HEAD range outside the Story 13.5 Code Map; pre-existing workspace movement, owned by their own dependency stories.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R01: keyboard boundary fallback.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/specs/responsive-accessibility.spec.ts:574` — The fallback manually wraps after an unprevented Tab and unchanged boundary index; a handler that refocuses the last button without preventDefault is accepted. The retained isolated probe reproduced the trap three times. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R02: pseudo opacity.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:631` — Pseudo opacity is checked only for zero; sample() receives no fractional pseudo alpha. The retained black border at .01/.1 opacity reports21:1. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R03: SVG graphics inventory.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:602` — The selector accepts path/polygon/circle/rect only. A passing rectangle masks an unmeasured low-contrast ellipse/line/polyline/use. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R04: zero-width stroke.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:605` — Sampling fill/stroke opacity never tests stroke-width. A fill:none, stroke:black, stroke-width:0 rectangle is reported as meaningful21:1 icon paint. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R05: filter and blend paint.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:535` — background() rejects background images and fractional group opacity but not filters/blending. brightness(0) can make white text black-on-black while its computed color still reports21:1. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R06: effective glyph fill.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:600` — Text nodes use textCss.color without the effective -webkit-text-fill-color. White glyph fill over white with color:black is falsely measured as21:1. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R07: nonancestor background layers.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:531` — background() composites ancestors only. An opaque black positioned sibling underneath black glyphs is absent from the reported white background. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R08: ancestor opacity in geometry.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:285` — focusGeometry skips a visual whose own opacity is0 but does not reject opacity0 ancestry; its contour can be reported visible in an invisible group. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R09: descendant obstruction.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:371` — related() exempts every descendant through contains(element,candidate); an opaque child extending across the target and ring is skipped by occlusion measurement. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R10: generated text inventory.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:592` — The text traversal samples actual text nodes/input content, not pseudo generated text. A low-contrast ::before label disappears beside a passing paragraph. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R11: collapsed negative-spread shadow.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:238` — outerShadows discards collapsed spread only at zero offset. A10px offset with -100px spread draws no pixels yet geometry/contrast pass; retained screenshots were identical resting/focused. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R12: unchanged shadow layer.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:625` — audit.changed qualifies a changed complete shadow list; all layers, including a permanent black layer, are then sampled. Appending an invisible white layer can produce a false focus pass with identical pixels. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R13: inset pseudo border adjacency.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:631` — Pseudo border samples always pass outside=true. A black border wholly inside a black control is compared against white ancestry and reported21:1 despite identical resting/focused pixels. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R14: placeholder opacity.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/helpers/responsive-accessibility.ts:589` — Placeholder sampling reads the pseudo color but not its separate opacity; an opacity.1 black placeholder on white is reported21:1. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+- source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
+  summary: Story 13.6 evidence-hardening R15: Settings delayed vendor return regression.
+  evidence: Medium, verified during gate reconciliation; `tests/e2e/specs/responsive-accessibility.spec.ts:236` — Pre-verified regression gap: the held actual Fluent25ms callback test opens palette only. Settings coverage ends at initial origin return; removing its vendor-return suppression has no equivalent delayed-operator-movement regression. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.

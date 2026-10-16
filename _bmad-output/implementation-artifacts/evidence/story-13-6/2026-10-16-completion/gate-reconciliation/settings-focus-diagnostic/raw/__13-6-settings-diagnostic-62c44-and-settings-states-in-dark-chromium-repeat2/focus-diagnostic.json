@@ -1,0 +1,489 @@
+[
+  {
+    "kind": "focusin",
+    "at": 297.7999999988824,
+    "active": "fc-page-toolbar-specimen-title",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 420.8999999985099,
+    "active": "",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 443.8999999985099,
+    "active": "f1fdb28c",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 484.3999999985099,
+    "active": "f131eef9",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 485.59999999962747,
+    "active": "",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 888.0999999996275,
+    "active": "fc-page-toolbar-search",
+    "origin": null
+  },
+  {
+    "kind": "key Shift",
+    "at": 895.5,
+    "active": "fc-page-toolbar-search",
+    "origin": null
+  },
+  {
+    "kind": "key Tab",
+    "at": 897.2999999988824,
+    "active": "fc-page-toolbar-search",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 899.1999999992549,
+    "active": "fc-settings-button",
+    "origin": null
+  },
+  {
+    "kind": "key Tab",
+    "at": 907.1999999992549,
+    "active": "fc-settings-button",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 908.2999999988824,
+    "active": "fc-page-toolbar-search",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 1051.2999999988824,
+    "active": "fc-page-toolbar-filter-trigger",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 1599.7999999988824,
+    "active": "fc-page-toolbar-view-trigger",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 1627.3999999985099,
+    "active": "fc-page-toolbar-view-density",
+    "origin": null
+  },
+  {
+    "kind": "key Escape",
+    "at": 2058.0999999996275,
+    "active": "fc-page-toolbar-view-density",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 2059.2999999988824,
+    "active": "fc-page-toolbar-view-trigger",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 2079.199999999255,
+    "active": "summary",
+    "origin": null
+  },
+  {
+    "kind": "key ArrowRight",
+    "at": 2102.0999999996275,
+    "active": "summary",
+    "origin": null
+  },
+  {
+    "kind": "focusin",
+    "at": 2103.39999999851,
+    "active": "activity",
+    "origin": null
+  },
+  {
+    "kind": "__fcOverlayOrigin",
+    "at": 2733,
+    "active": "activity",
+    "origin": "fc-palette-trigger"
+  },
+  {
+    "kind": "__fcOverlayOpenIntent",
+    "at": 2733,
+    "active": "activity",
+    "origin": "fc-palette-trigger",
+    "intent": {
+      "origin": "fc-palette-trigger",
+      "moved": false
+    }
+  },
+  {
+    "kind": "focusin",
+    "at": 2733.0999999996275,
+    "active": "fc-palette-trigger",
+    "origin": "fc-palette-trigger",
+    "intent": {
+      "origin": "fc-palette-trigger",
+      "moved": false
+    }
+  },
+  {
+    "kind": "__fcModalReservation",
+    "at": 2750,
+    "active": "fc-palette-trigger",
+    "origin": "fc-palette-trigger",
+    "reservation": null,
+    "intent": {
+      "origin": "fc-palette-trigger",
+      "moved": false
+    }
+  },
+  {
+    "kind": "__fcModalReservation",
+    "at": 2750.0999999996275,
+    "active": "fc-palette-trigger",
+    "origin": "fc-palette-trigger",
+    "reservation": {
+      "origin": "fc-palette-trigger"
+    },
+    "intent": {
+      "origin": "fc-palette-trigger",
+      "moved": false
+    }
+  },
+  {
+    "kind": "__fcOverlayOpenIntent",
+    "at": 2763.199999999255,
+    "active": "fc-palette-trigger",
+    "origin": "fc-palette-trigger",
+    "reservation": {
+      "origin": "fc-palette-trigger"
+    },
+    "intent": null
+  },
+  {
+    "kind": "focusin",
+    "at": 2783.2999999988824,
+    "active": "f693f1a7",
+    "origin": "fc-palette-trigger",
+    "reservation": {
+      "origin": "fc-palette-trigger"
+    },
+    "intent": null
+  },
+  {
+    "kind": "focusin",
+    "at": 2784.2999999988824,
+    "active": "fc-palette-search",
+    "origin": "fc-palette-trigger",
+    "reservation": {
+      "origin": "fc-palette-trigger"
+    },
+    "intent": null
+  },
+  {
+    "kind": "key Escape",
+    "at": 5745.89999999851,
+    "active": "fc-palette-search",
+    "origin": "fc-palette-trigger",
+    "reservation": {
+      "origin": "fc-palette-trigger"
+    },
+    "intent": null
+  },
+  {
+    "kind": "vendor queued",
+    "at": 5759.299999998882,
+    "active": "fc-palette-search",
+    "origin": "fc-palette-trigger",
+    "reservation": {
+      "origin": "fc-palette-trigger"
+    },
+    "intent": null
+  },
+  {
+    "kind": "__fcOverlayOrigin",
+    "at": 5759.5999999996275,
+    "active": "fc-palette-search",
+    "origin": null,
+    "reservation": {
+      "origin": "fc-palette-trigger"
+    },
+    "intent": null
+  },
+  {
+    "kind": "__fcOverlayOpenIntent",
+    "at": 5759.5999999996275,
+    "active": "fc-palette-search",
+    "origin": null,
+    "reservation": {
+      "origin": "fc-palette-trigger"
+    },
+    "intent": null
+  },
+  {
+    "kind": "__fcModalReservation",
+    "at": 5759.5999999996275,
+    "active": "fc-palette-search",
+    "origin": null,
+    "reservation": null,
+    "intent": null
+  },
+  {
+    "kind": "focusin",
+    "at": 5776.5999999996275,
+    "active": "fc-palette-trigger",
+    "origin": null,
+    "reservation": null,
+    "intent": null
+  },
+  {
+    "kind": "vendor fired",
+    "at": 5784.39999999851,
+    "active": "fc-palette-trigger",
+    "origin": null,
+    "reservation": null,
+    "intent": null
+  },
+  {
+    "kind": "vendor complete",
+    "at": 5784.39999999851,
+    "active": "fc-palette-trigger",
+    "origin": null,
+    "reservation": null,
+    "intent": null
+  },
+  {
+    "kind": "key Tab",
+    "at": 5789.799999998882,
+    "active": "fc-palette-trigger",
+    "origin": null,
+    "reservation": null,
+    "intent": null
+  },
+  {
+    "kind": "focusin",
+    "at": 5790.5,
+    "active": "fc-settings-button",
+    "origin": null,
+    "reservation": null,
+    "intent": null
+  },
+  {
+    "kind": "key Enter",
+    "at": 5803.699999999255,
+    "active": "fc-settings-button",
+    "origin": null,
+    "reservation": null,
+    "intent": null
+  },
+  {
+    "kind": "__fcOverlayOrigin",
+    "at": 5803.699999999255,
+    "active": "fc-settings-button",
+    "origin": "fc-settings-button",
+    "reservation": null,
+    "intent": null
+  },
+  {
+    "kind": "__fcOverlayOpenIntent",
+    "at": 5803.699999999255,
+    "active": "fc-settings-button",
+    "origin": "fc-settings-button",
+    "reservation": null,
+    "intent": {
+      "origin": "fc-settings-button",
+      "moved": false
+    }
+  },
+  {
+    "kind": "__fcModalReservation",
+    "at": 5812.5999999996275,
+    "active": "fc-settings-button",
+    "origin": "fc-settings-button",
+    "reservation": null,
+    "intent": {
+      "origin": "fc-settings-button",
+      "moved": false
+    }
+  },
+  {
+    "kind": "__fcModalReservation",
+    "at": 5812.5999999996275,
+    "active": "fc-settings-button",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": {
+      "origin": "fc-settings-button",
+      "moved": false
+    }
+  },
+  {
+    "kind": "__fcOverlayOpenIntent",
+    "at": 5833.699999999255,
+    "active": "fc-settings-button",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "focusin",
+    "at": 5845.89999999851,
+    "active": "f4f0064b",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "focusin",
+    "at": 5984.299999998882,
+    "active": "fc-settings-heading",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "key Tab",
+    "at": 6014.0999999996275,
+    "active": "fc-settings-heading",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "focusin",
+    "at": 6015.299999998882,
+    "active": "f1bcf4a7",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "key Tab",
+    "at": 6022.5999999996275,
+    "active": "f1bcf4a7",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "focusin",
+    "at": 6024.199999999255,
+    "active": "f1e3e7c6",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "key Escape",
+    "at": 6901.799999998882,
+    "active": "f1e3e7c6",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "vendor queued",
+    "at": 6902.699999999255,
+    "active": "f1e3e7c6",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "focusin",
+    "at": 6905.89999999851,
+    "active": "fc-settings-button",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "vendor queued",
+    "at": 6914.89999999851,
+    "active": "fc-settings-button",
+    "origin": "fc-settings-button",
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "__fcOverlayOrigin",
+    "at": 6915.199999999255,
+    "active": "fc-settings-button",
+    "origin": null,
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "__fcOverlayOpenIntent",
+    "at": 6915.199999999255,
+    "active": "fc-settings-button",
+    "origin": null,
+    "reservation": {
+      "origin": "fc-settings-button"
+    },
+    "intent": null
+  },
+  {
+    "kind": "__fcModalReservation",
+    "at": 6915.199999999255,
+    "active": "fc-settings-button",
+    "origin": null,
+    "reservation": null,
+    "intent": null
+  },
+  {
+    "kind": "vendor fired",
+    "at": 6932.5,
+    "active": "fc-settings-button",
+    "origin": null,
+    "reservation": null,
+    "intent": null
+  },
+  {
+    "kind": "vendor complete",
+    "at": 6932.5,
+    "active": "fc-settings-button",
+    "origin": null,
+    "reservation": null,
+    "intent": null
+  }
+]

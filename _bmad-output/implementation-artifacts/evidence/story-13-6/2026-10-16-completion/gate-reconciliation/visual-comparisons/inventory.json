@@ -1,0 +1,150 @@
+{
+  "candidateDigest": "sha256:36097daec9b85bb2a11b15e504e7d667a80af9430727789d87afbbaa52396f39",
+  "runId": "story-13-6-reconciliation-5c9169b59ad5",
+  "files": [
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-dark-compact-actual.png",
+      "sha256": "a501912759fa963ae3a6010086d21695808c84a67b6d0734d82c2d7a09b79f3b"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-dark-compact-diff.png",
+      "sha256": "c0f0aa5b130bf5f7a68d6babc860201b66392b11c3f12ef9b710bac469ae6b11"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-dark-compact-expected.png",
+      "sha256": "81cf57a0e4927497d9610757b4dc247b02d558b680a5a77198c19adc7640ac92"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-dark-compact-actual.png",
+      "sha256": "8c5dbb7dd51fb0ebac1d4d22e7578acb43c03ff96cd816d18237e8ee4931e402"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-dark-compact-diff.png",
+      "sha256": "b4169f14b778bae74be085ba2333c4f12b24b1c1ce1712dd49c31d2079637901"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-dark-compact-expected.png",
+      "sha256": "0a26fdfb2f7b540b9367f9ea40b8128a271e7694b218e002c503e25dc9cb53c3"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-dark-roomy-actual.png",
+      "sha256": "5a3f2feecb8784c44998b2857af7894ba86fb6cbb0acdf3d98036f813bf744ee"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-dark-roomy-diff.png",
+      "sha256": "de5461ba75c7d992ec14e5766cf7bb9bbbb317335cdbf2538f672c10c3558c94"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-dark-roomy-expected.png",
+      "sha256": "426a564d0d46cc0d9ba2ed75499890d0077cb64e6303c5cd2981d46b4dbc0076"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-dark-roomy-actual.png",
+      "sha256": "98d4ac2a6df3a9298d7f00cec2eee9f9b932865125c071a1a7be5f4f2bed896c"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-dark-roomy-diff.png",
+      "sha256": "31425280af82b88e470cfbbfb9aa8378f7225427a6162de379439236e7df6d0a"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-dark-roomy-expected.png",
+      "sha256": "bc8a4007ce5531f312bd0ed2c140825d12ba5f02417c3a3deda600d522fa98eb"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-dark-comfortable-actual.png",
+      "sha256": "7e534887a8509d0d24b32bbd560c70eb39511485022cf05aa4f67839c96e87c4"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-dark-comfortable-diff.png",
+      "sha256": "8b29e777914cfda06c1f5ee4a32841c2e5346a521864d9d73630bcf721b7375e"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-dark-comfortable-expected.png",
+      "sha256": "46b033d271a15d18e8015f678be34e6bfd64cc1b50a4f88cbddf9b1f35368b7d"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-dark-comfortable-actual.png",
+      "sha256": "1a35c9db786b3ded9e1c53842c66a294e1103a4342a7a9188f53a54bd4cb6da1"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-dark-comfortable-diff.png",
+      "sha256": "a1c1f889d119041dc150389420ae9013292bcd1e7c62d0821865071e2d858232"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-dark-comfortable-expected.png",
+      "sha256": "b9ee6b84800fd4c9b72146145c8fa4801e9f52a210f6b2884e66b85457157452"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-light-roomy-actual.png",
+      "sha256": "eb7771c98f910412e2fd3ccffe562230e207eb2ec30b157402e866182658fd31"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-light-roomy-diff.png",
+      "sha256": "bb8200f2c0e2cc024c922f53c62a321b5dcbf02b3b898125fc8088e1e28c29b4"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-light-roomy-expected.png",
+      "sha256": "7aab51a089e66388329399ae9d19f3f7d0be69299fc97c1bb56b0816efd54b23"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-light-roomy-actual.png",
+      "sha256": "d736f469db445f8c5e3ed96118c07da21f385e84574d7f7e3bd7049f03fef16b"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-light-roomy-diff.png",
+      "sha256": "a2e8cd4a84764bcb06a6b6cc55e0b2bf03ee14b07107b0fb95a4ab4c27906750"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-light-roomy-expected.png",
+      "sha256": "1d39fb0cf432a43742fa1b78acf614fe09081fcdca1b5cd695d19c287b1917e8"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-light-comfortable-actual.png",
+      "sha256": "9adc0cb143016ccf6ea170f319ffe2a95658ba6cbaa39af7b1b40464fb4e2ac4"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-light-comfortable-diff.png",
+      "sha256": "c21c2585bcdf32caf34628332efa1c2f07461e4bee621b838331122d54e50ad4"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-light-comfortable-expected.png",
+      "sha256": "e12a548edfd20bf9d609a4dde32e8ded4a13bf949e2619db28e89f86466bd0d8"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-light-comfortable-actual.png",
+      "sha256": "7f28301480044c9d997a95fc9fd0a5ffe1ea33a2c1784a6ae20ce2a2e873c8cb"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-light-comfortable-diff.png",
+      "sha256": "edc716ebd27380a90cc1468fb33f7b35532802c520037caceaef35f7da7f8731"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-light-comfortable-expected.png",
+      "sha256": "ff35f494d0b8d214e0fb04f27156d1e1c1c8722d932b746040c484d8228c89f2"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-light-compact-actual.png",
+      "sha256": "77c83683de42215c4be7f392ef7c7ca8120d553e55ae13bec3ce22e95ec59458"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-light-compact-diff.png",
+      "sha256": "035d5463f43c06b1fd282b425061df6926c98a12d691c92635c5c96553cc9db8"
+    },
+    {
+      "path": "visual-comparisons/firefox/frontcomposer-type-light-compact-expected.png",
+      "sha256": "43c02191d40c0e79069712dc23ab5a3fcf5b7c043bec8d288ffd046583008c72"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-light-compact-actual.png",
+      "sha256": "df9fc1804e51dbe0819009c8228a794bf3d7664c3d834beb67caaca0e0ddd26a"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-light-compact-diff.png",
+      "sha256": "0344e065a0a93a447b799403d004a3d786e646a5ae994a5b692c5d250840de78"
+    },
+    {
+      "path": "visual-comparisons/webkit/frontcomposer-type-light-compact-expected.png",
+      "sha256": "23930aa317142ff85f5340062c513f39baae2d08967fe1ad5187c47c21008e75"
+    }
+  ]
+}

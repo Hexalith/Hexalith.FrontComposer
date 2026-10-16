@@ -1,0 +1,105 @@
+{
+  "classification": "test synchronization race; production scheduler behavior unchanged",
+  "causalExplanation": "The replay pump admits B and C without awaiting either custom callback; RefreshLaneOnceAsync runs each callback with Task.Run. The old test waited only for C callback entry, which does not establish that the already-admitted B callback executed. A single worker can execute C and the C-signal test continuation before B. Therefore readsB=1 is an invalid ordering assumption, not a missing replay admission.",
+  "timeProvider": "This test uses system time; FakeTimeProvider/timer installation is not involved.",
+  "fix": "Add a B replay-start signal and await Task.WhenAll(BStarted,CStarted) within the original single 5-second deadline while B result remains held. Both reads must still equal 2; release B only after both starts.",
+  "preserved": [
+    "production code",
+    "initial per-sweep budget 1, replay budget 2",
+    "single overall 5-second callback-start deadline",
+    "readsB==2 and readsC==2 assertions",
+    "held B result until C start"
+  ],
+  "sourceHead": "cda47ce88bd80f2b9ddf995eba2f0bd27add1cdc",
+  "source": [
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs",
+      "sha256": "c20c147989a7ebfcb0a5fe37f1317653458bf2508f09efdfd4d391929b6b18e5",
+      "headBlobSha256": "0eb5f1c8282e0ec199f740c9c0b1c1c4049f3af17ba073f55d45619c56544689",
+      "headBlobId": "1d2d7d0b4b2cac6bc741b7704faccd1b75965021",
+      "currentFilteredBlobId": "6f7f4fda545d4584a0bbfaffd4f5602248f46f28",
+      "workingTreeDiffEmpty": false
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Infrastructure/ProjectionConnection/ProjectionFallbackRefreshScheduler.cs",
+      "sha256": "77393641d5b1494d6aee612d5dd07563604ddf569e1ae9a76800981cd1e4a619",
+      "headBlobSha256": "c8c1088afabdf843ec07b5108737ab744f9300eb29929457bffc116faca1b094",
+      "headBlobId": "583fa080dcc599384ef69701a11f666289f9f0b9",
+      "currentFilteredBlobId": "583fa080dcc599384ef69701a11f666289f9f0b9",
+      "workingTreeDiffEmpty": true
+    }
+  ],
+  "build": {
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+      "--configuration",
+      "Debug",
+      "--no-restore",
+      "-m:1"
+    ],
+    "exitCode": 0,
+    "warnings": 0,
+    "errors": 0,
+    "seconds": 18.06,
+    "log": "build.log"
+  },
+  "beforeLowLoad": {
+    "iterations": 32,
+    "parallelProcesses": 4,
+    "passed": 32,
+    "failed": 0,
+    "details": "before-repeat.json"
+  },
+  "beforeStress": {
+    "iterations": 64,
+    "parallelProcesses": 16,
+    "passed": 59,
+    "failed": 5,
+    "failure": "readsB expected 2, actual 1",
+    "details": "before-load-repeat.json"
+  },
+  "beforeSingleWorker": {
+    "iterations": 3,
+    "passed": 0,
+    "failed": 3,
+    "failure": "readsB expected 2, actual 1",
+    "details": "before-single-worker-repeat.json"
+  },
+  "afterFocused": {
+    "schedulerClass": {
+      "total": 88,
+      "passed": 88,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 1.813,
+      "xml": "after-class.xml"
+    },
+    "singleWorker": {
+      "iterations": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "details": "after-focused.json"
+  },
+  "broadLane": "Parent owns configured full Shell lane; none run here.",
+  "sourceHashNote": "sha256 hashes raw working-tree bytes; headBlobSha256 hashes Git blob bytes, which can differ for unchanged files due checkout CRLF normalization. Blob IDs and workingTreeDiffEmpty identify actual changes.",
+  "afterStress": {
+    "iterations": 64,
+    "parallelProcesses": 16,
+    "passed": 64,
+    "failed": 0,
+    "details": "after-load-repeat.json"
+  },
+  "diffCheck": {
+    "command": [
+      "git",
+      "diff",
+      "--check",
+      "--",
+      "tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs"
+    ],
+    "exitCode": 0
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "findings": [
+    {
+      "id": "BH01",
+      "title": "keyboard boundary fallback",
+      "location": "tests/e2e/specs/responsive-accessibility.spec.ts:574",
+      "verdict": "medium",
+      "evidence": "The fallback manually wraps after an unprevented Tab and unchanged boundary index; a handler that refocuses the last button without preventDefault is accepted. The retained isolated probe reproduced the trap three times.",
+      "route": "defer",
+      "group": "R01"
+    },
+    {
+      "id": "BH02",
+      "title": "pseudo opacity",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:631",
+      "verdict": "medium",
+      "evidence": "Pseudo opacity is checked only for zero; sample() receives no fractional pseudo alpha. The retained black border at .01/.1 opacity reports21:1.",
+      "route": "defer",
+      "group": "R02"
+    },
+    {
+      "id": "BH03",
+      "title": "SVG graphics inventory",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:602",
+      "verdict": "medium",
+      "evidence": "The selector accepts path/polygon/circle/rect only. A passing rectangle masks an unmeasured low-contrast ellipse/line/polyline/use.",
+      "route": "defer",
+      "group": "R03"
+    },
+    {
+      "id": "BH04",
+      "title": "zero-width stroke",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:605",
+      "verdict": "medium",
+      "evidence": "Sampling fill/stroke opacity never tests stroke-width. A fill:none, stroke:black, stroke-width:0 rectangle is reported as meaningful21:1 icon paint.",
+      "route": "defer",
+      "group": "R04"
+    },
+    {
+      "id": "BH05",
+      "title": "filter and blend paint",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:535",
+      "verdict": "medium",
+      "evidence": "background() rejects background images and fractional group opacity but not filters/blending. brightness(0) can make white text black-on-black while its computed color still reports21:1.",
+      "route": "defer",
+      "group": "R05"
+    },
+    {
+      "id": "BH06",
+      "title": "effective glyph fill",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:600",
+      "verdict": "medium",
+      "evidence": "Text nodes use textCss.color without the effective -webkit-text-fill-color. White glyph fill over white with color:black is falsely measured as21:1.",
+      "route": "defer",
+      "group": "R06"
+    },
+    {
+      "id": "BH07",
+      "title": "nonancestor background layers",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:531",
+      "verdict": "medium",
+      "evidence": "background() composites ancestors only. An opaque black positioned sibling underneath black glyphs is absent from the reported white background.",
+      "route": "defer",
+      "group": "R07"
+    },
+    {
+      "id": "BH08",
+      "title": "ancestor opacity in geometry",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:285",
+      "verdict": "medium",
+      "evidence": "focusGeometry skips a visual whose own opacity is0 but does not reject opacity0 ancestry; its contour can be reported visible in an invisible group.",
+      "route": "defer",
+      "group": "R08"
+    },
+    {
+      "id": "BH09",
+      "title": "descendant obstruction",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:371",
+      "verdict": "medium",
+      "evidence": "related() exempts every descendant through contains(element,candidate); an opaque child extending across the target and ring is skipped by occlusion measurement.",
+      "route": "defer",
+      "group": "R09"
+    },
+    {
+      "id": "BH10",
+      "title": "generated text inventory",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:592",
+      "verdict": "medium",
+      "evidence": "The text traversal samples actual text nodes/input content, not pseudo generated text. A low-contrast ::before label disappears beside a passing paragraph.",
+      "route": "defer",
+      "group": "R10"
+    },
+    {
+      "id": "EC01",
+      "title": "collapsed negative-spread shadow",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:238",
+      "verdict": "medium",
+      "evidence": "outerShadows discards collapsed spread only at zero offset. A10px offset with -100px spread draws no pixels yet geometry/contrast pass; retained screenshots were identical resting/focused.",
+      "route": "defer",
+      "group": "R11"
+    },
+    {
+      "id": "EC02",
+      "title": "unchanged shadow layer",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:625",
+      "verdict": "medium",
+      "evidence": "audit.changed qualifies a changed complete shadow list; all layers, including a permanent black layer, are then sampled. Appending an invisible white layer can produce a false focus pass with identical pixels.",
+      "route": "defer",
+      "group": "R12"
+    },
+    {
+      "id": "EC03",
+      "title": "inset pseudo border adjacency",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:631",
+      "verdict": "medium",
+      "evidence": "Pseudo border samples always pass outside=true. A black border wholly inside a black control is compared against white ancestry and reported21:1 despite identical resting/focused pixels.",
+      "route": "defer",
+      "group": "R13"
+    },
+    {
+      "id": "EC04",
+      "title": "pseudo opacity",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:617",
+      "verdict": "medium",
+      "evidence": "Same root as BH02, independently reproduced with a black pseudo focus border at opacity.1. The pseudo alpha is never passed into sample().",
+      "route": "defer",
+      "group": "R02"
+    },
+    {
+      "id": "EC05",
+      "title": "placeholder opacity",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:589",
+      "verdict": "medium",
+      "evidence": "Placeholder sampling reads the pseudo color but not its separate opacity; an opacity.1 black placeholder on white is reported21:1.",
+      "route": "defer",
+      "group": "R14"
+    },
+    {
+      "id": "EC06",
+      "title": "SVG graphics inventory",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:602",
+      "verdict": "medium",
+      "evidence": "Same selector omission as BH03; independent ellipse fixture leaves only the passing rectangle in the contrast inventory.",
+      "route": "defer",
+      "group": "R03"
+    },
+    {
+      "id": "VG01",
+      "title": "Settings delayed vendor return regression",
+      "location": "tests/e2e/specs/responsive-accessibility.spec.ts:236",
+      "verdict": "medium",
+      "evidence": "Pre-verified regression gap: the held actual Fluent25ms callback test opens palette only. Settings coverage ends at initial origin return; removing its vendor-return suppression has no equivalent delayed-operator-movement regression.",
+      "route": "defer",
+      "group": "R15"
+    },
+    {
+      "id": "VG02",
+      "title": "pseudo opacity",
+      "location": "tests/e2e/helpers/responsive-accessibility.ts:617",
+      "verdict": "medium",
+      "evidence": "Independently reproduced black pseudo underline with opacity.1 passes geometry and reports21:1 rather than effective approximately1.25:1. Same root as BH02/EC04.",
+      "route": "defer",
+      "group": "R02"
+    }
+  ],
+  "individualRows": 18,
+  "openRootCauseGroups": 15,
+  "sourceDeltaFindings": 0,
+  "noCompletionClaim": true
+}

@@ -191,14 +191,17 @@ public sealed class ProjectionSubscriptionServiceTests {
             fallbackDriver: fallbackDriver,
             shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions),
             userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
+        Task? closeAfterJoin = null;
         connection.JoinCompleted = () => {
             connection.JoinCompleted = null;
-            return connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Closed));
+            return closeAfterJoin = connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Closed));
         };
 
         try {
             await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
-            await connection.LastJoinCallbackTask!.ConfigureAwait(true);
+            // A successful restart can already rejoin and replace the fake's last callback.
+            // Keep the original close/restart task owned by this subscription attempt.
+            await closeAfterJoin!.ConfigureAwait(true);
 
             connection.StartCount.ShouldBe(2);
             connection.JoinedGroups.ShouldBe(["orders:acme", "orders:acme"]);

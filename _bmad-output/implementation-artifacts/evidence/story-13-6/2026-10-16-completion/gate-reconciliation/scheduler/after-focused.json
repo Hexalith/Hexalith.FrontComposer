@@ -1,0 +1,68 @@
+[
+  {
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-class",
+      "*ProjectionFallbackRefreshSchedulerTests",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/after-class.xml"
+    ],
+    "environment": {
+      "DiffEngine_Disabled": "true"
+    },
+    "exitCode": 0,
+    "seconds": 2.297
+  },
+  {
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/after-single-worker-0.xml"
+    ],
+    "environment": {
+      "DiffEngine_Disabled": "true",
+      "DOTNET_ThreadPool_ForceMinWorkerThreads": "1",
+      "DOTNET_ThreadPool_ForceMaxWorkerThreads": "1"
+    },
+    "exitCode": 0,
+    "seconds": 0.715
+  },
+  {
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/after-single-worker-1.xml"
+    ],
+    "environment": {
+      "DiffEngine_Disabled": "true",
+      "DOTNET_ThreadPool_ForceMinWorkerThreads": "1",
+      "DOTNET_ThreadPool_ForceMaxWorkerThreads": "1"
+    },
+    "exitCode": 0,
+    "seconds": 0.706
+  },
+  {
+    "command": [
+      "dotnet",
+      "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "-method",
+      "*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "-result-xml",
+      "/tmp/story13-6-scheduler/after-single-worker-2.xml"
+    ],
+    "environment": {
+      "DiffEngine_Disabled": "true",
+      "DOTNET_ThreadPool_ForceMinWorkerThreads": "1",
+      "DOTNET_ThreadPool_ForceMaxWorkerThreads": "1"
+    },
+    "exitCode": 0,
+    "seconds": 0.684
+  }
+]
