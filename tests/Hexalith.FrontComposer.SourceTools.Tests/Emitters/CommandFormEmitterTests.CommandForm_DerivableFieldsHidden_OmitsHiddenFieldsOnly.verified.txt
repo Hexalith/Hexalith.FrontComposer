@@ -149,7 +149,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     {
         _serverWarning = CreateCommandBlockedWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);
         CommandFeedbackPublisher.PublishWarning(_serverWarning);
-        await PresentHiddenOutcomeAsync(_serverWarning.Detail ?? _serverWarning.Title).ConfigureAwait(false);
+        await PresentHiddenOutcomeAsync(ResolveHiddenWarningText(_serverWarning)).ConfigureAwait(false);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -220,6 +220,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             await _blockedOutcome.ClearAsync().ConfigureAwait(false);
         }
     }
+
+    private string ResolveHiddenWarningText(global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning warning)
+        => new[] { warning.Detail, warning.Title }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? ShellLocalizer["CommandWarningFallback"].Value;
 
     private async Task PresentHiddenOutcomeAsync(string? message, bool announce = true)
     {
@@ -894,7 +897,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 ? ShellLocalizer["RetryableDispatchFailedFallback"].Value
                 : new[] { _serverWarning.Detail, _serverWarning.Title, _serverWarning.EntityLabel }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? ShellLocalizer["CommandWarningFallback"].Value;
             if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is { } retryAfter)
-                hiddenWarning += $" Retry after {retryAfter.TotalSeconds:0} seconds.";
+                hiddenWarning += " " + string.Format(global::System.Globalization.CultureInfo.CurrentCulture, ShellLocalizer["RetryAfterSeconds"].Value, retryAfter.TotalSeconds.ToString("0", global::System.Globalization.CultureInfo.CurrentCulture));
             await PresentHiddenOutcomeAsync(hiddenWarning).ConfigureAwait(false);
             if (_disposed) return;
             if (ex.Kind == global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Forbidden)
@@ -1095,7 +1098,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                     if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is not null)
                     {
                         __msg.OpenElement(1, "div");
-                        __msg.AddContent(2, $"Retry after {_serverWarning.RetryAfter.Value.TotalSeconds:0} seconds.");
+                        __msg.AddContent(2, string.Format(global::System.Globalization.CultureInfo.CurrentCulture, ShellLocalizer["RetryAfterSeconds"].Value, _serverWarning.RetryAfter.Value.TotalSeconds.ToString("0", global::System.Globalization.CultureInfo.CurrentCulture)));
                         __msg.CloseElement();
                     }
                 }));

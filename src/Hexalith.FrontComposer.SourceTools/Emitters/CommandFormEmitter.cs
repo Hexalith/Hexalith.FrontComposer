@@ -433,7 +433,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        _serverWarning = CreateCommandBlockedWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);");
         _ = sb.AppendLine("        CommandFeedbackPublisher.PublishWarning(_serverWarning);");
-        _ = sb.AppendLine("        await PresentHiddenOutcomeAsync(_serverWarning.Detail ?? _serverWarning.Title).ConfigureAwait(false);");
+        _ = sb.AppendLine("        await PresentHiddenOutcomeAsync(ResolveHiddenWarningText(_serverWarning)).ConfigureAwait(false);");
         _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
@@ -509,6 +509,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            await _blockedOutcome.ClearAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private string ResolveHiddenWarningText(global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning warning)");
+        _ = sb.AppendLine("        => new[] { warning.Detail, warning.Title }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? ShellLocalizer[\"CommandWarningFallback\"].Value;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private async Task PresentHiddenOutcomeAsync(string? message, bool announce = true)");
         _ = sb.AppendLine("    {");
@@ -1385,7 +1388,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            if (_serverWarning is not null)");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
-            _ = sb.AppendLine("                await PresentHiddenOutcomeAsync(_serverWarning.Detail ?? _serverWarning.Title).ConfigureAwait(false);");
+            _ = sb.AppendLine("                await PresentHiddenOutcomeAsync(ResolveHiddenWarningText(_serverWarning)).ConfigureAwait(false);");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
             _ = sb.AppendLine("            if (Logger is not null) { LogAuthorizationBlocked(Logger, authorization.CorrelationId, authorization.Reason); }");
@@ -1426,7 +1429,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            if (_serverWarning is not null)");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
-            _ = sb.AppendLine("                await PresentHiddenOutcomeAsync(_serverWarning.Detail ?? _serverWarning.Title).ConfigureAwait(false);");
+            _ = sb.AppendLine("                await PresentHiddenOutcomeAsync(ResolveHiddenWarningText(_serverWarning)).ConfigureAwait(false);");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
             _ = sb.AppendLine("            if (Logger is not null) { LogAuthorizationBlockedAfterBeforeSubmit(Logger, authorizationPostBeforeSubmit.CorrelationId, authorizationPostBeforeSubmit.Reason); }");
@@ -1749,7 +1752,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                ? ShellLocalizer[\"RetryableDispatchFailedFallback\"].Value");
         _ = sb.AppendLine("                : new[] { _serverWarning.Detail, _serverWarning.Title, _serverWarning.EntityLabel }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? ShellLocalizer[\"CommandWarningFallback\"].Value;");
         _ = sb.AppendLine("            if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is { } retryAfter)");
-        _ = sb.AppendLine("                hiddenWarning += $\" Retry after {retryAfter.TotalSeconds:0} seconds.\";");
+        _ = sb.AppendLine("                hiddenWarning += \" \" + string.Format(global::System.Globalization.CultureInfo.CurrentCulture, ShellLocalizer[\"RetryAfterSeconds\"].Value, retryAfter.TotalSeconds.ToString(\"0\", global::System.Globalization.CultureInfo.CurrentCulture));");
         _ = sb.AppendLine("            await PresentHiddenOutcomeAsync(hiddenWarning).ConfigureAwait(false);");
         _ = sb.AppendLine("            if (_disposed) return;");
         _ = sb.AppendLine("            if (ex.Kind == global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Forbidden)");
@@ -2048,7 +2051,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                    if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is not null)");
         _ = sb.AppendLine("                    {");
         _ = sb.AppendLine("                        __msg.OpenElement(mseq++, \"div\");");
-        _ = sb.AppendLine("                        __msg.AddContent(mseq++, $\"Retry after {_serverWarning.RetryAfter.Value.TotalSeconds:0} seconds.\");");
+        _ = sb.AppendLine("                        __msg.AddContent(mseq++, string.Format(global::System.Globalization.CultureInfo.CurrentCulture, ShellLocalizer[\"RetryAfterSeconds\"].Value, _serverWarning.RetryAfter.Value.TotalSeconds.ToString(\"0\", global::System.Globalization.CultureInfo.CurrentCulture)));");
         _ = sb.AppendLine("                        __msg.CloseElement();");
         _ = sb.AppendLine("                    }");
         _ = sb.AppendLine("                }));");

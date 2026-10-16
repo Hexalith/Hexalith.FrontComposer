@@ -61,7 +61,7 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
     }
 
     [Fact]
-    public void MissingWithoutFilterEvidenceShowsNeutralReasonAndDoesNotAnnounceAm22()
+    public void MissingWithoutFilterEvidenceShowsNeutralReasonAndAnnouncesItOnce()
     {
         ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
         List<string> spoken = [];

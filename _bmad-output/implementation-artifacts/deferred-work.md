@@ -10361,3 +10361,21 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 - source_spec: `spec-13-6-complete-automated-accessibility-coverage.md`
   summary: Story 13.6 evidence-hardening R15: Settings delayed vendor return regression.
   evidence: Medium, verified during gate reconciliation; `tests/e2e/specs/responsive-accessibility.spec.ts:236` — Pre-verified regression gap: the held actual Fluent25ms callback test opens palette only. Settings coverage ends at initial origin return; removing its vendor-return suppression has no equivalent delayed-operator-movement regression. Unchanged preceding helper/test code; not repaired in the current scheduler/visual diagnostic continuation. Details and reproducers: `evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md`. Broader accessibility certification remains open.
+
+## Deferred from: code review of spec-13-6-verify-responsive-and-assistive-accessibility (2026-10-16)
+
+- `EventStoreCommandClient.cs:418` `await Task.Run(cancellation.Dispose)` still awaited; may not remove stall (maybe-false, medium if true). Settle via EventStoreClientTests :1246/:1361.
+- `fc-datagrid.js` `observeRowMetrics` document-wide MutationObserver forces layout on any class/style change (maybe-false, perf). Settle with multi-grid profile.
+- `fc-focus.js` detail tracker eviction at 32; `FcExpandedRowHiddenBanner` imports JS module every render (low).
+- `AccessibilityScenarioControls.razor` `SetConnection` may await cancelled/stale `_pageCompletion` (Counter fixture only).
+- `fc-shell.css` forced-colors override of `--colorNeutralForeground1..4` vs no-Fluent-theme-redefinition rule (maybe-false).
+- Hidden zero-field feedback (`_hiddenOutcome`) is not cleared on scope change; verify a tenant switch recreates the renderer before adding a clear (decision 2026-10-16, no code change).
+
+## Deferred from: code review of spec-13-6-verify-responsive-and-assistive-accessibility pass 2 (2026-10-16)
+
+- AE-01..03 real 400% zoom unperformed; keep as manual/owner evidence.
+- No assertion that only labelled grid/tab regions scroll horizontally (`tests/e2e`).
+- Keyboard-cycle proof limited to palette/settings; `verifyKeyboardCycle` boundary resume uses programmatic focus.
+- 320px reflow loop skips clipping check unless text spacing is on.
+- `Essential` target exception has no validation beyond non-empty strings; stale exceptions pass because `used.add` runs for conforming targets.
+- Scope-change cancellation/clearing untested (Decisions 1 and 2); no fr-culture `RetryAfterSeconds` assertion.

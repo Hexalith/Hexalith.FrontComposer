@@ -19,6 +19,11 @@ function matrix(run) {
   } finally { rmSync(root, { recursive: true, force: true }); }
 }
 
+test('rejects another run when a run is expected', () => matrix(({ all, files, update }) => {
+  for (let i = 0; i < files.length; i++) update(i, { runId: 'stale-run' });
+  assert.match(validateStateEvidence(all, { expectedEngine: 'chromium', expectedRun: 'fixture-run' }).join('\n'), /Unexpected engine\/run/);
+}));
+
 test('requires all owned state, cue, contrast and actual mode evidence', () => matrix(({ files, all, read, update }) => {
   assert.deepEqual(validateStateEvidence(all, { expectedEngine: 'chromium', expectedRun: 'fixture-run' }), []);
   assert.match(validateStateEvidence(all.filter(file => file !== files[0])).join('\n'), /Missing state evidence/);
@@ -46,12 +51,13 @@ test('target evidence requires real finite dimensions, consistent conformity and
 }));
 
 test('never pools partial engine/run matrices or another owners snapshot', () => matrix(({ root, all, files, snapshots, update }) => {
-  for (let i = 58; i < files.length; i++) update(i, { engine: 'firefox' });
+  assert.equal(files.length % 2, 0);
+  for (let i = files.length / 2; i < files.length; i++) update(i, { engine: 'firefox' });
   assert.match(validateStateEvidence(all).join('\n'), /Missing state evidence/);
   assert.match(validateStateEvidence(all, { expectedEngine: 'chromium' }).join('\n'), /Unexpected engine\/run/);
-  for (let i = 58; i < files.length; i++) update(i, { engine: 'chromium', runId: 'other-run' });
+  for (let i = files.length / 2; i < files.length; i++) update(i, { engine: 'chromium', runId: 'other-run' });
   assert.match(validateStateEvidence(all).join('\n'), /Missing state evidence/);
-  for (let i = 58; i < files.length; i++) update(i, { runId: 'fixture-run' });
+  for (let i = files.length / 2; i < files.length; i++) update(i, { runId: 'fixture-run' });
   const foreign = join(root, 'other-owner'); mkdirSync(foreign); const moved = join(foreign, `system-state-${requiredStates[0]}.png`); renameSync(snapshots[0], moved);
   assert.match(validateStateEvidence(all.filter(file => file !== snapshots[0]).concat(moved)).join('\n'), /Missing system-state snapshot/);
 }));

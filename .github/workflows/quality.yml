@@ -910,6 +910,7 @@ jobs:
           CI: true
           ASPNETCORE_ENVIRONMENT: Test
           Hexalith__FrontComposer__Specimens__Enabled: true
+          FC_A11Y_EVIDENCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         run: npm run test:a11y
 
       - name: Run legacy Story 2.2 live browser gate
@@ -927,6 +928,8 @@ jobs:
       - name: Validate accessibility artifacts
         if: always()
         working-directory: tests/e2e
+        env:
+          FC_A11Y_EVIDENCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         run: npm run validate:a11y-artifacts
 
       - name: Upload accessibility and visual artifacts

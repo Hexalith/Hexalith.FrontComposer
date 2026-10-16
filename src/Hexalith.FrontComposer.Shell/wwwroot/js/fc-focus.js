@@ -290,7 +290,8 @@ export function containDialogFocus(testId, retryOnce = true) {
         const active = document.activeElement;
         const inside = active instanceof Node && host.contains(active);
         const ownsActiveControl = candidate => active === candidate || candidate.matches('fluent-dropdown,fluent-combobox') && candidate.contains(active);
-        const atBoundary = !tabbables.includes(active) || ownsActiveControl(event.shiftKey ? first : last);
+        const ownsAnyControl = tabbables.some(ownsActiveControl);
+        const atBoundary = !ownsAnyControl || ownsActiveControl(event.shiftKey ? first : last);
         if (!inside || atBoundary) {
             event.preventDefault();
             const target = event.shiftKey ? last : first;

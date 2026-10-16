@@ -66,6 +66,44 @@ The user approved both recommendations and requested application.
 - Given each changed surface, when AE-01–AE-09 journeys run, then the matrix passes, including 1.5× line height, 2× paragraph spacing, 0.12em letter spacing, 0.16em word spacing; 4.5:1 normal text, 3:1 large text/non-text/focus; and individually justified Inline/Spacing/Equivalent/User Agent Control/Essential target exceptions.
 - Given automated and dated human evidence, when readiness is assessed, then each requirement cites candidate-valid proof; actual 400% zoom, heard speech (including direct cues and silent-restore/new-message sequences) and real-device outcomes are never inferred, and missing evidence prevents completion.
 
+### Review Findings
+
+Code review 2026-10-16, pass 1 of 2 (`src/`, `samples/`, `.github/`, `docs/` of `3c867962..HEAD`; `tests/` pass pending).
+
+- [x] [Review][Decision→Patch, applied] Home route title now neutral `HomePageTitle` ("Home"/"Accueil") [src/Hexalith.FrontComposer.Shell/Components/Pages/FcHomeRouteView.razor:11]
+- [x] [Review][Decision→Defer] No code change; verify that a tenant switch recreates the renderer (hidden zero-field feedback scope-change clearing) although Decision 2 says "retain until next attempt/navigation/scope change"; confirm whether renderer survives scope change before adding a clear [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs]
+- [x] [Review][Patch] Hard-coded English "Retry after N seconds." appended to localized hidden warning; add a resx key (en + fr) [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:~1752]
+- [x] [Review][Patch] `_serverWarning.Detail ?? _serverWarning.Title` at three call sites passes a whitespace Detail through, so no bar/announcement; reuse the first-non-blank chain with `CommandWarningFallback` [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:~436,~1385,~1430]
+- [x] [Review][Patch] `containDialogFocus` Tab handler: `!tabbables.includes(active)` still fires when focus is on a light-DOM child of fluent-dropdown/combobox, so Tab jumps to the first control; treat owned children as in-list [src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js:~291]
+- [x] [Review][Defer] `await Task.Run(cancellation.Dispose)` is still awaited, so a blocked provider callback may still delay completion — deferred: maybe-false; settle by checking whether `EventStoreClientTests` blocking-cleanup tests (:1246, :1361) assert the returned task completes before dispose finishes
+- [x] [Review][Defer] `observeRowMetrics` MutationObserver on `documentElement` forces row re-measure on any style/class change — deferred: maybe-false/perf; settle with a profile of a multi-grid page
+- [x] [Review][Defer] Detail-focus tracker eviction at 32 and per-render JS import in `FcExpandedRowHiddenBanner` — deferred: unlikely at realistic counts
+- [x] [Review][Defer] `AccessibilityScenarioControls.SetConnection` can await a cancelled/stale `_pageCompletion` — deferred: Counter specimen fixture only
+- [x] [Review][Defer] Forced-colors `--colorNeutralForeground*` override on `.fc-shell-root` vs "no Fluent theme redefinition" rule — deferred: maybe-false; scoped to forced-colors, owner to confirm the exception
+
+#### Rejected
+
+- Thread-safety of `AccessibilitySpecimenState`, hard-coded specimen deny reason, `FcStatusIcon` bare `span` selector, global `fluent-tablist`/`[data-fc-datagrid]` CSS, disabled-option opacity removal, 40rem specimen breakpoint, rationale-doc evidence gaps, duplicate-sequence in renderer lambda, missing-episode re-announce, manual-evidence docs not updated, focus-return rework, unlabelled scroll: low/speculative or refuted by cited tests/forced-colors affordance; no demonstrated harm.
+
+#### Pass 2 (`tests/`)
+
+- [x] [Review][Decision→Patch, applied A: run id shared via quality.yml env] Evidence validator not bound to the current run: `validate-a11y-artifacts.mjs:60` passes `expectedEngine` but never `expectedRun`, so a complete stale run in the artifact directory can satisfy the gate while the current run is partial (AC2 "candidate-valid"); `FC_A11Y_EVIDENCE_RUN_ID` is a per-process UUID, so the validator process cannot see it without a handoff [tests/e2e/scripts/validate-a11y-artifacts.mjs:60]
+- [x] [Review][Decision→Patch, applied A: AddAccessibilitySpecimenSeams + theory test] Only the command-service seam of the Counter Test-host replacements (authorization evaluator, page loader, admission gate, auth-state provider in `Program.cs:102-114`) has a gating test; moving them out of the `IsEnvironment("Test")` block fails nothing [samples/Counter/Counter.Web/Program.cs:102]
+- [x] [Review][Patch] `a11y-state-evidence.test.mjs` splits light/dark with hard-coded `i = 58`; derive from the state list [tests/e2e/scripts/a11y-state-evidence.test.mjs:49-54]
+- [x] [Review][Patch] `MissingWithoutFilterEvidenceShowsNeutralReasonAndDoesNotAnnounceAm22` now asserts the reason is spoken once; rename (confirm `AnalyzerPolicy_IdentifierInventory_MatchesSeal` after) [tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs:~64]
+- [x] [Review][Defer] AE-01..03 actual 400% browser zoom is not exercised (only viewport reflow) — deferred: manual/owner evidence lane, must stay "unperformed" in the result file
+- [x] [Review][Defer] "Only labelled grid/tab regions scroll horizontally" is never asserted (only page overflow) — deferred: new inner-scroller inventory helper, own story
+- [x] [Review][Defer] Keyboard-cycle proof covers only palette and settings; destructive alertdialog, abandonment warning, filter popover, view menu lack it; `verifyKeyboardCycle` resumes via programmatic focus at boundaries — deferred
+- [x] [Review][Defer] 320px reflow loop checks text clipping only with text spacing on — deferred
+- [x] [Review][Defer] `Essential` target-exception kind accepted on non-empty strings alone; stale exceptions not flagged when the target already conforms (`used.add` on match) — deferred
+- [x] [Review][Defer] Decision 1/2 scope-change cancellation and clearing untested (no tenant-switch case) — deferred with pass 1 scope-change item
+- [x] [Review][Defer] No fr-culture assertion for `RetryAfterSeconds`; Test-only seam registrations lack negative-environment test if D2 resolves to rename — deferred
+
+##### Rejected (pass 2)
+
+- `AnalyzerPolicy_IdentifierInventory_MatchesSeal`: refuted, run green locally against the current tree.
+- Reflection/`closeAfterJoin!`/`VerifyInvoke` diagnostics, hard-coded evidence literals (`heardSpeech: not observed` is explicit), icon-sampler shape/alpha corners, multi-dialog selection, `settlePaint` no-throw, route-rewrite pattern guard, `expectTextContrast` colour parsing, behaviour-change notes, trait addition, style nits: speculative or no demonstrated harm.
+
 ## Implementation Notes
 
 ### Completion follow-up, 2026-10-16

@@ -100,19 +100,7 @@ if (specimensEnabled) {
         o.KnownPolicies.Add("Specimens.PolicyAllowed");
         o.KnownPolicies.Add("Specimens.PolicyDenied");
     });
-    if (builder.Environment.IsEnvironment("Test")) {
-        builder.Services.Replace(ServiceDescriptor.Scoped<AuthenticationStateProvider, CounterSpecimenAuthenticationStateProvider>());
-        builder.Services.AddScoped<AccessibilitySpecimenState>();
-        builder.Services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader, AccessibilitySpecimenPageLoader>());
-        builder.Services.AddScoped<AccessibilitySpecimenPendingScope>();
-        builder.Services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate>(sp =>
-            new Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionGate(
-                sp.GetRequiredService<Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService>(),
-                sp.GetRequiredService<TimeProvider>(),
-                sp.GetRequiredService<AccessibilitySpecimenPendingScope>())));
-        builder.Services.AddScoped<Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationEvaluator>();
-        builder.Services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Shell.Services.Authorization.ICommandAuthorizationEvaluator, AccessibilitySpecimenAuthorizationEvaluator>());
-    }
+    _ = builder.Services.AddAccessibilitySpecimenSeams(builder.Environment);
 }
 
 if (specimensEnabled) {

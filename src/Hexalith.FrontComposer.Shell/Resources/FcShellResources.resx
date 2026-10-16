@@ -878,4 +878,12 @@
     <value>Please review the warning and try again.</value>
     <comment>Existing generic command warning fallback, including hidden zero-field feedback.</comment>
   </data>
+  <data name="RetryAfterSeconds" xml:space="preserve">
+    <value>Retry after {0} seconds.</value>
+    <comment>Command warning retry hint; {0} is whole seconds.</comment>
+  </data>
+  <data name="HomePageTitle" xml:space="preserve">
+    <value>Home</value>
+    <comment>Browser document title of the shared Home route.</comment>
+  </data>
 </root>

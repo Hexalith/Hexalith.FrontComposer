@@ -6,7 +6,13 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Specimens;
 
+using Hexalith.FrontComposer.Shell.Services.Authorization;
+using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
+
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -16,7 +22,7 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Samples;
 
-/// <summary>Fixed failure seams cannot activate outside the opt-in Test host.</summary>
+/// <summary>Fixed failure seams (command service and Test-host service replacements) cannot activate outside the Test host.</summary>
 public sealed class AccessibilitySpecimenGateTests
 {
     [Theory]
@@ -49,5 +55,25 @@ public sealed class AccessibilitySpecimenGateTests
             scenarios.DispatchCount.ShouldBe(0);
             await inner.Received(1).DispatchAsync(Arg.Any<AccessibilityZeroFieldCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
         }
+    }
+
+    [Theory]
+    [InlineData("Production", false)]
+    [InlineData("Development", false)]
+    [InlineData("Test", true)]
+    public void ServiceReplacementsAreRegisteredOnlyInTheTestEnvironment(string environmentName, bool registered)
+    {
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(environmentName);
+        ServiceCollection services = [];
+
+        _ = services.AddAccessibilitySpecimenSeams(environment);
+
+        services.Any(d => d.ServiceType == typeof(AccessibilitySpecimenState)).ShouldBe(registered);
+        services.Any(d => d.ServiceType == typeof(AccessibilitySpecimenPendingScope)).ShouldBe(registered);
+        services.Any(d => d.ServiceType == typeof(ICommandAuthorizationEvaluator)).ShouldBe(registered);
+        services.Any(d => d.ServiceType == typeof(IProjectionPageLoader)).ShouldBe(registered);
+        services.Any(d => d.ServiceType == typeof(ICommandExecutionAdmissionGate)).ShouldBe(registered);
+        services.Any(d => d.ServiceType == typeof(AuthenticationStateProvider)).ShouldBe(registered);
     }
 }

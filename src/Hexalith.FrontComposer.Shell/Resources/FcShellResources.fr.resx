@@ -669,4 +669,12 @@
     <value>Veuillez lire l’avertissement et réessayer.</value>
     <comment>Existing generic command warning fallback, including hidden zero-field feedback.</comment>
   </data>
+  <data name="RetryAfterSeconds" xml:space="preserve">
+    <value>Réessayez dans {0} secondes.</value>
+    <comment>Command warning retry hint; {0} is whole seconds.</comment>
+  </data>
+  <data name="HomePageTitle" xml:space="preserve">
+    <value>Accueil</value>
+    <comment>Browser document title of the shared Home route.</comment>
+  </data>
 </root>
