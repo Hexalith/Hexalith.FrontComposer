@@ -10393,3 +10393,34 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 - In-form warning body renders `Detail ?? EntityLabel ?? fallback` so blank/whitespace Detail yields an empty message bar (`CommandFormEmitter.cs:2049`); hidden path already guards. Pre-existing; fix needs SourceTools snapshot re-verify.
 - No `fr` assertion for `RetryAfterSeconds` (key parity or rendered French text).
 - Firefox/WebKit not in CI `test:a11y`; `validateStateEvidence` pinned to chromium.
+
+## Resolution evidence: spec-13-6-close-automated-verification-gaps (2026-10-16)
+
+These appended dispositions supersede only the named automated gaps; all historical entries above remain intact. Candidate `sha256:2ad017457f917b89770f291b2deea9c451af0779afd45748478d8010a0e6bef9`; [dated evidence](evidence/story-13-6/2026-10-16-gap-closure/report.md).
+
+- R01: implemented; three-engine registered regression passes. Reject application refocus after an unprevented boundary Tab; inspect actual focus calls and focus events.
+- R02: implemented; three-engine registered regression passes. Composite fractional pseudo-element opacity; .01/.1 fail and opaque paint passes.
+- R03: implemented; three-engine registered regression passes. Inventory ellipse, line and polyline; SVG use remains explicitly unsupported and fails closed for pixel evidence.
+- R04: implemented; three-engine registered regression passes. Exclude zero-width SVG strokes; an actual 2px stroke supplies the positive control.
+- R05: implemented; three-engine registered regression passes. Reject filter, backdrop-filter and blend composition for pixel evidence; simple unfiltered paint passes.
+- R06: implemented; three-engine registered regression passes. Measure effective glyph fill, including authored webkit text fill; system color replacement is capability checked.
+- R07: implemented; three-engine registered regression passes. Reject positioned unrelated sibling background composition for pixel evidence; removing the layer supplies the positive control.
+- R08: implemented; three-engine registered regression passes. Exclude invisible ancestor groups from focus geometry; visible ancestry passes.
+- R09: implemented; three-engine registered regression passes. Measure opaque descendant obstruction across the target/ring. Fluent native contained parts and unshifted normal-flow tabs retain actual ownership.
+- R10: implemented; three-engine registered regression passes. Inventory generated meaningful text, with generated-content opacity and effective glyph fill.
+- R11: implemented; three-engine registered regression passes. Exclude collapsed negative-spread shadows regardless of offset.
+- R12: implemented; three-engine registered regression passes. Compare individual changed shadow layers and exclude permanent or fully hidden layers.
+- R13: implemented; three-engine registered regression passes. Compare inset pseudo borders against the control paint; unsupported straddling composition fails closed.
+- R14: implemented; three-engine registered regression passes. Composite placeholder opacity before measuring contrast.
+- R15: implemented; three-engine registered regression passes. Exercise the full dark toolbar→palette→Settings sequence, hold the actual Fluent 25ms callback, and preserve a later operator Tab. Native close resets modal input tracking for the current reservation on each reused host opening.
+- Reflow, nested scrollports, stale/Essential exceptions: ordinary and spaced clipping are checked; only labelled grid/tab scrolling is accepted; target evidence mirrors finite dimensions and applicable exception traits. The reproduced 48px rail overflow is fixed through Fluent IconOnly and has a two-width regression.
+- Blank ordinary warning and French retry: existing localized fallback covers whitespace title/body; rendered en/fr tests preserve retry guidance and values.
+- Scope clearing/cancellation/speech: real tenant/user shell remount tests drain held dispatch and inspect old/new announcement surfaces; browser scope cases and held missing-detail generation checks pass.
+- Retry artifact ambiguity and Linux engine coverage: authoritative final test/run/engine/retry outcomes and attachment bytes prevent pooling; negative tests include failed-first successful-retry, incomplete/mixed matrices and stale capability ownership. Linux CI validates each engine/run; Windows checks remain.
+- Settings initial/native return and delayed Fluent callback: complete dark toolbar→palette→Settings journey passes in all engines, including held actual callback and later movement; reused host openings bind the current reservation.
+- Polling full-Shell timeout: deterministic test-only synchronization correction preserves original budgets; single-worker before 3/3 failures, after 3/3 passes, configured Shell 3693/3693.
+- Still open: twelve preserved Firefox/WebKit visual comparisons; Windows execution; Linux WebKit actual forced-palette paint; manual AT/heard speech/actual 400% zoom/physical devices; OI-16, G-4, FLUENT-APP-1, Product and separate live-backend approval. No overall story completion is claimed.
+
+- source_spec: `spec-13-6-close-automated-verification-gaps.md`
+  summary: Validate system-snapshot PNG integrity and bind snapshot bytes to the authoritative attempt.
+  evidence: Build finding BH12 reproduces acceptance of nonempty non-PNG files; the pre-existing snapshot guard checks only name, same-directory identity and size. Add real PNG positive fixtures and corrupted/foreign snapshot negatives before claiming byte-level snapshot integrity.

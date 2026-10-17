@@ -1,0 +1,715 @@
+{
+  "testId": "a542ea7f175527dc3e9c-b711111f93c8dc58b845",
+  "attempt": 0,
+  "state": "theme-menu-light",
+  "engine": "webkit",
+  "runId": "gap-root-review-13af441b28ac",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 156.375,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9842.625,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 180.390625,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9818.609375,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"2\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 16,
+        "top": 4,
+        "right": 48,
+        "bottom": 36
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 128,
+        "right": 60,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#f70970e9",
+      "width": 150,
+      "height": 32,
+      "box": {
+        "left": 17,
+        "top": 165,
+        "right": 167,
+        "bottom": 197
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#f3e5caae",
+      "width": 150,
+      "height": 32,
+      "box": {
+        "left": 17,
+        "top": 199,
+        "right": 167,
+        "bottom": 231
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#f30b3673",
+      "width": 150,
+      "height": 32,
+      "box": {
+        "left": 17,
+        "top": 233,
+        "right": 167,
+        "bottom": 265
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 68,
+        "top": 128,
+        "right": 100,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 108,
+        "top": 128,
+        "right": 140,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 148,
+        "top": 128,
+        "right": 180,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#overview",
+      "width": 101.5625,
+      "height": 45,
+      "box": {
+        "left": 16,
+        "top": 267.796875,
+        "right": 117.5625,
+        "bottom": 312.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#counter-projection",
+      "width": 107.265625,
+      "height": 45,
+      "box": {
+        "left": 117.5625,
+        "top": 267.796875,
+        "right": 224.828125,
+        "bottom": 312.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 230,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 324.796875,
+        "right": 290,
+        "bottom": 368.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-90-CounterId",
+      "width": 192,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 416.796875,
+        "right": 237,
+        "bottom": 448.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-90-InitialValue",
+      "width": 182,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 497.796875,
+        "right": 227,
+        "bottom": 529.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-90-submit",
+      "width": 155.765625,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 543.796875,
+        "right": 200.765625,
+        "bottom": 575.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 230,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 588.796875,
+        "right": 290,
+        "bottom": 632.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-90-CounterId",
+      "width": 192,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 680.796875,
+        "right": 237,
+        "bottom": 712.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-90-Amount",
+      "width": 182,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 761.796875,
+        "right": 227,
+        "bottom": 793.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-90-submit",
+      "width": 160.875,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 807.796875,
+        "right": 205.875,
+        "bottom": 839.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 216,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 852.796875,
+        "right": 276,
+        "bottom": 896.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-90-Amount",
+      "width": 182,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 944.796875,
+        "right": 227,
+        "bottom": 976.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-90-Note",
+      "width": 192,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 1025.796875,
+        "right": 237,
+        "bottom": 1057.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-90-EffectiveDate",
+      "width": 216,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 1106.796875,
+        "right": 261,
+        "bottom": 1138.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-90-submit",
+      "width": 167.78125,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 1152.796875,
+        "right": 212.78125,
+        "bottom": 1184.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 212.015625,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 1197.796875,
+        "right": 272.015625,
+        "bottom": 1241.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-trigger-Counter-Domain-IncrementCommand",
+      "width": 136.609375,
+      "height": 32,
+      "box": {
+        "left": 32,
+        "top": 1241.796875,
+        "right": 168.609375,
+        "bottom": 1273.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 230,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 1273.796875,
+        "right": 290,
+        "bottom": 1317.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-anchor-button[inventory-index=\"28\"]",
+      "width": 183.3125,
+      "height": 32,
+      "box": {
+        "left": 32,
+        "top": 1530.796875,
+        "right": 215.3125,
+        "bottom": 1562.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "slot",
+      "paint": "Light",
+      "foreground": [
+        66,
+        66,
+        66,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 10.049743700462349,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "slot",
+      "paint": "Dark",
+      "foreground": [
+        66,
+        66,
+        66,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 10.049743700462349,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "slot",
+      "paint": "System",
+      "foreground": [
+        66,
+        66,
+        66,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 10.049743700462349,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [
+    [
+      {
+        "owner": 0,
+        "node": "fluent-menu-item#f3e5caae",
+        "paint": "element outline",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": false,
+  "forcedColorsStatus": "unsupported authored-color replacement; media rules only",
+  "systemText": [],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-MENU-ITEM#f3e5caae",
+    "requireIndicator": true,
+    "box": {
+      "left": 15,
+      "top": 197,
+      "right": 169,
+      "bottom": 233
+    },
+    "ring": 2,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": []
+  },
+  "systemSnapshot": null,
+  "reducedMotion": true
+}

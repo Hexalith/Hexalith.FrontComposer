@@ -1,0 +1,641 @@
+{
+  "testId": "a542ea7f175527dc3e9c-042bfadd23989e1d0e07",
+  "attempt": 0,
+  "state": "abandonment-light",
+  "engine": "chromium",
+  "runId": "gap-root-review-13af441b28ac",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 150.296875,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9848.703125,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 173.25,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9825.75,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"2\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 16,
+        "top": 4,
+        "right": 48,
+        "bottom": 36
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 128,
+        "right": 60,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 68,
+        "top": 128,
+        "right": 100,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 108,
+        "top": 128,
+        "right": 140,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 148,
+        "top": 128,
+        "right": 180,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"7\"]",
+      "width": 61.578125,
+      "height": 16,
+      "box": {
+        "left": 12,
+        "top": 323,
+        "right": 73.578125,
+        "bottom": 339
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": false,
+      "exception": {
+        "selector": "nav[aria-label=\"breadcrumb\"] > a",
+        "kind": "Spacing",
+        "rationale": "The full-page breadcrumb link is isolated from all neighboring targets; its 24px circle is measured against the complete inventory.",
+        "keyboardPath": "Full-page form → Counter breadcrumb (Shift+Tab)",
+        "evidence": "ae-state-abandonment-light.json target inventory"
+      },
+      "failure": null
+    },
+    {
+      "target": "#fc-form-abandonment-stay-f8412ea8c7c24af1bfa8c98357351ea5",
+      "width": 136.21875,
+      "height": 32,
+      "box": {
+        "left": 25,
+        "top": 529,
+        "right": 161.21875,
+        "bottom": 561
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-form-abandonment-leave\"]",
+      "width": 142.578125,
+      "height": 32,
+      "box": {
+        "left": 25,
+        "top": 569,
+        "right": 167.578125,
+        "bottom": 601
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-14-Name",
+      "width": 207,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 661,
+        "right": 219,
+        "bottom": 693
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-14-Description",
+      "width": 207,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 742,
+        "right": 219,
+        "bottom": 774
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-14-InitialValue",
+      "width": 197,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 823,
+        "right": 209,
+        "bottom": 855
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-14-MaxValue",
+      "width": 197,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 904,
+        "right": 209,
+        "bottom": 936
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-14-Category",
+      "width": 207,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 985,
+        "right": 219,
+        "bottom": 1017
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-14-submit",
+      "width": 180.46875,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 1031,
+        "right": 192.46875,
+        "bottom": 1063
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "h2#fc-form-abandonment-title-f8412ea8c7c24af1bfa8c98357351ea5",
+      "paint": "You have unsaved input.",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "p#fc-form-abandonment-description-f8412ea8c7c24af1bfa8c98357351ea5",
+      "paint": "Leaving now discards what you've entered.",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "slot",
+      "paint": "Stay on form",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        21,
+        115,
+        127,
+        1
+      ],
+      "ratio": 5.539960708564337,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "slot",
+      "paint": "Leave anyway",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [
+    [
+      {
+        "measurement": "conservative-bound",
+        "shadowBound": {
+          "kind": "conservative-black-shadow-composite",
+          "lowerLayer": "rgb(0, 0, 0) 0px 0px 0px 2px",
+          "layers": [
+            {
+              "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+              "declaredAlpha": 0.12,
+              "maximumAlpha": 0.12392156862745098
+            },
+            {
+              "layer": "rgba(0, 0, 0, 0.14) 0px 1px 2px 0px",
+              "declaredAlpha": 0.14,
+              "maximumAlpha": 0.14392156862745098
+            }
+          ],
+          "backgroundLayers": [
+            {
+              "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+              "declaredAlpha": 0.12,
+              "maximumAlpha": 0.12392156862745098
+            },
+            {
+              "layer": "rgba(0, 0, 0, 0.14) 0px 1px 2px 0px",
+              "declaredAlpha": 0.14,
+              "maximumAlpha": 0.14392156862745098
+            }
+          ],
+          "foreground": {
+            "minimum": [
+              0,
+              0,
+              0
+            ],
+            "maximum": [
+              0,
+              0,
+              0
+            ]
+          },
+          "background": {
+            "minimum": [
+              191,
+              191,
+              191
+            ],
+            "maximum": [
+              255,
+              255,
+              255
+            ]
+          },
+          "closestForeground": [
+            0,
+            0,
+            0
+          ],
+          "closestBackground": [
+            191,
+            191,
+            191
+          ],
+          "ratioMinimum": 11.419911464086086
+        },
+        "owner": 0,
+        "node": "fluent-button#fc-form-abandonment-stay-f8412ea8c7c24af1bfa8c98357351ea5",
+        "paint": "element box-shadow (conservative composite bound)",
+        "foreground": [
+          0,
+          0,
+          0
+        ],
+        "background": [
+          191,
+          191,
+          191
+        ],
+        "ratio": 11.419911464086086,
+        "minimum": 3
+      }
+    ]
+  ],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": true,
+  "forcedColorsStatus": "painted system palette",
+  "systemText": [
+    {
+      "owner": 0,
+      "node": "h2#fc-form-abandonment-title-f8412ea8c7c24af1bfa8c98357351ea5",
+      "paint": "You have unsaved input.",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "p#fc-form-abandonment-description-f8412ea8c7c24af1bfa8c98357351ea5",
+      "paint": "Leaving now discards what you've entered.",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "slot",
+      "paint": "Stay on form",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "slot",
+      "paint": "Leave anyway",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [
+    [
+      {
+        "owner": 0,
+        "node": "fluent-button#fc-form-abandonment-stay-f8412ea8c7c24af1bfa8c98357351ea5",
+        "paint": "element outline",
+        "foreground": [
+          54.999999999999986,
+          50.999999999999986,
+          108.6,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 11.32025621138092,
+        "minimum": 3
+      }
+    ]
+  ],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-BUTTON#fc-form-abandonment-stay-f8412ea8c7c24af1bfa8c98357351ea5",
+    "requireIndicator": true,
+    "box": {
+      "left": 23,
+      "top": 527,
+      "right": 163.21875,
+      "bottom": 563
+    },
+    "ring": 2,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": []
+  },
+  "systemSnapshot": "system-state-abandonment-light.png",
+  "reducedMotion": true
+}

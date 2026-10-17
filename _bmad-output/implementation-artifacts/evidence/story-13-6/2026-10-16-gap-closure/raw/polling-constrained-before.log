@@ -1,0 +1,42 @@
+Attempt 1: single-worker cancellation proof
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.Shell.Tests
+  Discovered:  Hexalith.FrontComposer.Shell.Tests
+  Starting:    Hexalith.FrontComposer.Shell.Tests
+    Hexalith.FrontComposer.Shell.Tests.State.PendingCommands.PendingCommandPollingCoordinatorTests.HeldQueryPreservesCallerCancellationAndFatalPropagation(fatal: False) [FAIL]
+      System.TimeoutException : The operation has timed out.
+      Stack Trace:
+        tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs(431,0): at Hexalith.FrontComposer.Shell.Tests.State.PendingCommands.PendingCommandPollingCoordinatorTests.HeldQueryPreservesCallerCancellationAndFatalPropagation(Boolean fatal)
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.FrontComposer.Shell.Tests (ID = '47ea1885be85e02ea5ab6d4f3f0a3316b9743a6877b49a72f290b3b7fc1a0f08')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.Shell.Tests  Total: 2, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 5.220s
+Exit: 1
+Attempt 2: single-worker cancellation proof
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.Shell.Tests
+  Discovered:  Hexalith.FrontComposer.Shell.Tests
+  Starting:    Hexalith.FrontComposer.Shell.Tests
+    Hexalith.FrontComposer.Shell.Tests.State.PendingCommands.PendingCommandPollingCoordinatorTests.HeldQueryPreservesCallerCancellationAndFatalPropagation(fatal: False) [FAIL]
+      System.TimeoutException : The operation has timed out.
+      Stack Trace:
+        tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs(431,0): at Hexalith.FrontComposer.Shell.Tests.State.PendingCommands.PendingCommandPollingCoordinatorTests.HeldQueryPreservesCallerCancellationAndFatalPropagation(Boolean fatal)
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.FrontComposer.Shell.Tests (ID = '47ea1885be85e02ea5ab6d4f3f0a3316b9743a6877b49a72f290b3b7fc1a0f08')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.Shell.Tests  Total: 2, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 5.213s
+Exit: 1
+Attempt 3: single-worker cancellation proof
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.Shell.Tests
+  Discovered:  Hexalith.FrontComposer.Shell.Tests
+  Starting:    Hexalith.FrontComposer.Shell.Tests
+    Hexalith.FrontComposer.Shell.Tests.State.PendingCommands.PendingCommandPollingCoordinatorTests.HeldQueryPreservesCallerCancellationAndFatalPropagation(fatal: False) [FAIL]
+      System.TimeoutException : The operation has timed out.
+      Stack Trace:
+        tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs(431,0): at Hexalith.FrontComposer.Shell.Tests.State.PendingCommands.PendingCommandPollingCoordinatorTests.HeldQueryPreservesCallerCancellationAndFatalPropagation(Boolean fatal)
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.FrontComposer.Shell.Tests (ID = '47ea1885be85e02ea5ab6d4f3f0a3316b9743a6877b49a72f290b3b7fc1a0f08')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.Shell.Tests  Total: 2, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 5.218s
+Exit: 1

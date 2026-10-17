@@ -17,6 +17,14 @@ internal static class AccessibilitySpecimenSeams
 
         services.Replace(ServiceDescriptor.Scoped<AuthenticationStateProvider, CounterSpecimenAuthenticationStateProvider>());
         services.AddScoped<AccessibilitySpecimenState>();
+        services.AddScoped<AccessibilitySpecimenUserContextAccessor>();
+        services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor>(sp => sp.GetRequiredService<AccessibilitySpecimenUserContextAccessor>()));
+        services.AddScoped<Action<bool>>(sp => tenantChange => {
+            AccessibilitySpecimenUserContextAccessor context = sp.GetRequiredService<AccessibilitySpecimenUserContextAccessor>();
+            if (tenantChange) context.TenantId = context.TenantId == "counter-demo" ? "counter-ae-replacement" : "counter-demo";
+            else context.UserId = context.UserId == "demo-user" ? "ae-replacement-user" : "demo-user";
+            sp.GetRequiredService<Hexalith.FrontComposer.Shell.Services.ScopeBoundaryService>().Synchronize();
+        });
         services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader, AccessibilitySpecimenPageLoader>());
         services.AddScoped<AccessibilitySpecimenPendingScope>();
         services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate>(sp =>

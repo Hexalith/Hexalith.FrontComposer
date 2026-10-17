@@ -1,0 +1,372 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/responsive-accessibility.spec.ts --project=chromium --project=firefox --project=webkit --workers=3 --grep R0[1-9]|R1[0-5]|reflow rejects
+
+
+Running 69 tests using 3 workers
+
+(node:13795) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13783) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13788) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 0.1 (707ms)
+  ✓   3 [chromium] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 0.01 (696ms)
+  ✓   2 [chromium] › specs/responsive-accessibility.spec.ts:827:1 › R01 rejects an unprevented boundary Tab that application code refocuses (789ms)
+  ✓   4 [chromium] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 1 (313ms)
+  ✓   6 [chromium] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG line without a passing rectangle masking it (310ms)
+  ✓   5 [chromium] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG ellipse without a passing rectangle masking it (425ms)
+  ✓   7 [chromium] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG polyline without a passing rectangle masking it (319ms)
+  ✓   8 [chromium] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG use without a passing rectangle masking it (298ms)
+  ✓  10 [chromium] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition filter:brightness(0) (315ms)
+  ✓   9 [chromium] › specs/responsive-accessibility.spec.ts:855:1 › R04 zero-width SVG stroke does not count as meaningful icon paint (403ms)
+  ✓  11 [chromium] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition mix-blend-mode:multiply (260ms)
+  ✓  12 [chromium] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition backdrop-filter:brightness(0) (206ms)
+  ✓  13 [chromium] › specs/responsive-accessibility.spec.ts:871:1 › R06 effective glyph fill determines text contrast (236ms)
+  ✓  14 [chromium] › specs/responsive-accessibility.spec.ts:878:1 › R07 sibling background paint cannot be replaced with ancestor white (209ms)
+  ✓  15 [chromium] › specs/responsive-accessibility.spec.ts:885:1 › R08 invisible ancestor cannot certify focus geometry (193ms)
+  ✓  16 [chromium] › specs/responsive-accessibility.spec.ts:893:1 › R09 descendant extending over the target ring is an obstruction (229ms)
+  ✓  17 [chromium] › specs/responsive-accessibility.spec.ts:901:1 › R10 generated meaningful text cannot disappear beside passing text (213ms)
+  ✓  18 [chromium] › specs/responsive-accessibility.spec.ts:908:1 › R11 collapsed offset shadow paints no focus pixels (223ms)
+  ✘  19 [chromium] › specs/responsive-accessibility.spec.ts:917:1 › R12 permanent shadow cannot certify an invisible focus-only layer (202ms)
+  ✓  21 [chromium] › specs/responsive-accessibility.spec.ts:933:1 › R14 placeholder alpha determines effective contrast (197ms)
+  ✓  20 [chromium] › specs/responsive-accessibility.spec.ts:925:1 › R13 inset pseudo focus border compares against control paint (238ms)
+(node:15822) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15847) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  23 [chromium] › specs/responsive-accessibility.spec.ts:940:1 › reflow rejects unlabelled nested horizontal scrolling and stale or unjustified target exceptions (283ms)
+(node:16270) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  22 [chromium] › specs/responsive-accessibility.spec.ts:949:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (1.9s)
+(node:17164) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  25 [firefox] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 0.01 (1.4s)
+  ✘  24 [firefox] › specs/responsive-accessibility.spec.ts:827:1 › R01 rejects an unprevented boundary Tab that application code refocuses (1.8s)
+  ✓  27 [firefox] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 1 (372ms)
+(node:18062) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  26 [firefox] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 0.1 (1.4s)
+  ✓  28 [firefox] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG line without a passing rectangle masking it (454ms)
+  ✓  29 [firefox] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG polyline without a passing rectangle masking it (431ms)
+  ✓  31 [firefox] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG use without a passing rectangle masking it (339ms)
+  ✓  32 [firefox] › specs/responsive-accessibility.spec.ts:855:1 › R04 zero-width SVG stroke does not count as meaningful icon paint (424ms)
+  ✓  33 [firefox] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition filter:brightness(0) (433ms)
+  ✓  34 [firefox] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition mix-blend-mode:multiply (369ms)
+  ✓  35 [firefox] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition backdrop-filter:brightness(0) (396ms)
+  ✓  36 [firefox] › specs/responsive-accessibility.spec.ts:871:1 › R06 effective glyph fill determines text contrast (410ms)
+  ✓  37 [firefox] › specs/responsive-accessibility.spec.ts:878:1 › R07 sibling background paint cannot be replaced with ancestor white (430ms)
+  ✓  30 [firefox] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG ellipse without a passing rectangle masking it (1.4s)
+  ✓  38 [firefox] › specs/responsive-accessibility.spec.ts:885:1 › R08 invisible ancestor cannot certify focus geometry (430ms)
+  ✓  39 [firefox] › specs/responsive-accessibility.spec.ts:893:1 › R09 descendant extending over the target ring is an obstruction (560ms)
+  ✓  40 [firefox] › specs/responsive-accessibility.spec.ts:901:1 › R10 generated meaningful text cannot disappear beside passing text (429ms)
+  ✓  41 [firefox] › specs/responsive-accessibility.spec.ts:908:1 › R11 collapsed offset shadow paints no focus pixels (504ms)
+  ✓  43 [firefox] › specs/responsive-accessibility.spec.ts:925:1 › R13 inset pseudo focus border compares against control paint (483ms)
+  ✘  42 [firefox] › specs/responsive-accessibility.spec.ts:917:1 › R12 permanent shadow cannot certify an invisible focus-only layer (568ms)
+  ✓  44 [firefox] › specs/responsive-accessibility.spec.ts:933:1 › R14 placeholder alpha determines effective contrast (584ms)
+  ✓  45 [firefox] › specs/responsive-accessibility.spec.ts:940:1 › reflow rejects unlabelled nested horizontal scrolling and stale or unjustified target exceptions (426ms)
+(node:21384) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21723) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22025) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  48 [webkit] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 0.01 (817ms)
+  ✓  47 [webkit] › specs/responsive-accessibility.spec.ts:827:1 › R01 rejects an unprevented boundary Tab that application code refocuses (1.0s)
+  ✓  49 [webkit] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 0.1 (549ms)
+  ✓  50 [webkit] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 1 (570ms)
+  ✓  51 [webkit] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG ellipse without a passing rectangle masking it (516ms)
+  ✓  52 [webkit] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG line without a passing rectangle masking it (466ms)
+  ✓  54 [webkit] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG use without a passing rectangle masking it (545ms)
+  ✓  53 [webkit] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG polyline without a passing rectangle masking it (656ms)
+  ✓  55 [webkit] › specs/responsive-accessibility.spec.ts:855:1 › R04 zero-width SVG stroke does not count as meaningful icon paint (871ms)
+  ✓  56 [webkit] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition filter:brightness(0) (1.2s)
+  ✓  57 [webkit] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition mix-blend-mode:multiply (499ms)
+  ✓  58 [webkit] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition backdrop-filter:brightness(0) (436ms)
+  ✓  59 [webkit] › specs/responsive-accessibility.spec.ts:871:1 › R06 effective glyph fill determines text contrast (456ms)
+  ✓  60 [webkit] › specs/responsive-accessibility.spec.ts:878:1 › R07 sibling background paint cannot be replaced with ancestor white (618ms)
+  ✓  61 [webkit] › specs/responsive-accessibility.spec.ts:885:1 › R08 invisible ancestor cannot certify focus geometry (1.0s)
+  ✓  62 [webkit] › specs/responsive-accessibility.spec.ts:893:1 › R09 descendant extending over the target ring is an obstruction (1.0s)
+  ✓  63 [webkit] › specs/responsive-accessibility.spec.ts:901:1 › R10 generated meaningful text cannot disappear beside passing text (813ms)
+  ✘  64 [webkit] › specs/responsive-accessibility.spec.ts:908:1 › R11 collapsed offset shadow paints no focus pixels (873ms)
+  ✘  65 [webkit] › specs/responsive-accessibility.spec.ts:917:1 › R12 permanent shadow cannot certify an invisible focus-only layer (796ms)
+(node:26313) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26443) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  66 [webkit] › specs/responsive-accessibility.spec.ts:925:1 › R13 inset pseudo focus border compares against control paint (771ms)
+  ✓  67 [webkit] › specs/responsive-accessibility.spec.ts:933:1 › R14 placeholder alpha determines effective contrast (736ms)
+  ✓  68 [webkit] › specs/responsive-accessibility.spec.ts:940:1 › reflow rejects unlabelled nested horizontal scrolling and stale or unjustified target exceptions (643ms)
+  ✓  69 [webkit] › specs/responsive-accessibility.spec.ts:949:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (2.8s)
+  ✘  46 [firefox] › specs/responsive-accessibility.spec.ts:949:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (13.6s)
+
+
+  1) [chromium] › specs/responsive-accessibility.spec.ts:917:1 › R12 permanent shadow cannot certify an invisible focus-only layer 
+
+    Error: expect(received).rejects.toThrow(expected)
+
+    Expected pattern: /contrast failures/
+    Received message: "Nonempty focus contrast inventory·
+    expect(received).toBeGreaterThan(expected)·
+    Expected: > 0
+    Received:   0"
+
+          713 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+          714 |   const samples = await measureSurfaceContrast(root, kind);
+        > 715 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+              |                                                                 ^
+          716 |   // A Fluent control may paint a contrasting edge plus a two-color separator.
+          717 |   // Alternatives belong to that unique control; another control cannot mask a failure.
+          718 |   const owners = new Set(samples.map(sample => sample.owner));
+
+          at expectSurfaceContrast (helpers/responsive-accessibility.ts:715:65)
+          at specs/responsive-accessibility.spec.ts:920:3
+
+      918 |   await page.setContent('<style>button{margin:40px;background:white;outline:none;box-shadow:0 0 0 3px black}button:focus{box-shadow:0 0 0 3px black,0 0 0 1px white}</style><button>Action</button>');
+      919 |   await page.locator('button').focus();
+    > 920 |   await expect(expectSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/contrast failures/);
+          |                                                                                ^
+      921 |   await page.addStyleTag({ content: 'button:focus{box-shadow:0 0 0 3px black,0 0 0 5px black}' });
+      922 |   await expectSurfaceContrast(page.locator('button'), 'focus');
+      923 | });
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:920:80
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [firefox] › specs/responsive-accessibility.spec.ts:827:1 › R01 rejects an unprevented boundary Tab that application code refocuses 
+
+    Error: expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: undefined
+
+      831 |     if (key.key === 'Tab' && !key.shiftKey) setTimeout(() => (button as HTMLElement).focus(), 0);
+      832 |   }));
+    > 833 |   await expect(verifyKeyboardCycle(page)).rejects.toThrow(/Application trapped Tab/);
+          |                                                   ^
+      834 | });
+      835 |
+      836 | for (const opacity of [.01, .1, 1]) {
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:833:51
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dca02--application-code-refocuses-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dca02--application-code-refocuses-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dca02--application-code-refocuses-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dca02--application-code-refocuses-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dca02--application-code-refocuses-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [firefox] › specs/responsive-accessibility.spec.ts:917:1 › R12 permanent shadow cannot certify an invisible focus-only layer 
+
+    Error: expect(received).rejects.toThrow(expected)
+
+    Expected pattern: /contrast failures/
+    Received message: "Nonempty focus contrast inventory·
+    expect(received).toBeGreaterThan(expected)·
+    Expected: > 0
+    Received:   0"
+
+          713 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+          714 |   const samples = await measureSurfaceContrast(root, kind);
+        > 715 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+              |                                                                 ^
+          716 |   // A Fluent control may paint a contrasting edge plus a two-color separator.
+          717 |   // Alternatives belong to that unique control; another control cannot mask a failure.
+          718 |   const owners = new Set(samples.map(sample => sample.owner));
+
+          at expectSurfaceContrast (helpers/responsive-accessibility.ts:715:65)
+          at specs/responsive-accessibility.spec.ts:920:3
+
+      918 |   await page.setContent('<style>button{margin:40px;background:white;outline:none;box-shadow:0 0 0 3px black}button:focus{box-shadow:0 0 0 3px black,0 0 0 1px white}</style><button>Action</button>');
+      919 |   await page.locator('button').focus();
+    > 920 |   await expect(expectSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/contrast failures/);
+          |                                                                                ^
+      921 |   await page.addStyleTag({ content: 'button:focus{box-shadow:0 0 0 3px black,0 0 0 5px black}' });
+      922 |   await expectSurfaceContrast(page.locator('button'), 'focus');
+      923 | });
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:920:80
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [firefox] › specs/responsive-accessibility.spec.ts:949:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab 
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  getByTestId('fc-palette-trigger')
+    Expected: focused
+    Received: inactive
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toBeFocused" getByTestId('fc-palette-trigger') with timeout 10000ms
+      - waiting for getByTestId('fc-palette-trigger')
+        23 × locator resolved to <fluent-button icon-only="" tabindex="0" role="button" appearance="subtle" data-testid="fc-palette-trigger" aria-label="Open command palette" _bl_a189bcd4-4216-4493-8ae4-651eb73c2f14="">…</fluent-button>
+           - unexpected value "inactive"
+
+
+      961 |   await page.getByTestId('fc-palette-search').locator('input').fill('no-match-accessibility-136');
+      962 |   await page.keyboard.press('Escape');
+    > 963 |   await expect(page.getByTestId('fc-palette-trigger')).toBeFocused();
+          |                                                        ^
+      964 |   await page.keyboard.press('Tab');
+      965 |   await expect(page.getByTestId('fc-settings-button')).toBeFocused();
+      966 |   await page.keyboard.press('Enter');
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:963:56
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-8b800-eturn-after-an-operator-Tab-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-8b800-eturn-after-an-operator-Tab-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-8b800-eturn-after-an-operator-Tab-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-8b800-eturn-after-an-operator-Tab-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-8b800-eturn-after-an-operator-Tab-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [webkit] › specs/responsive-accessibility.spec.ts:908:1 › R11 collapsed offset shadow paints no focus pixels 
+
+    Error: Nonempty focus contrast inventory
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+       at ../helpers/responsive-accessibility.ts:715
+
+      713 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      714 |   const samples = await measureSurfaceContrast(root, kind);
+    > 715 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+          |                                                                 ^
+      716 |   // A Fluent control may paint a contrasting edge plus a two-color separator.
+      717 |   // Alternatives belong to that unique control; another control cannot mask a failure.
+      718 |   const owners = new Set(samples.map(sample => sample.owner));
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:715:65)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:914:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-6be39-adow-paints-no-focus-pixels-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-6be39-adow-paints-no-focus-pixels-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-6be39-adow-paints-no-focus-pixels-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-6be39-adow-paints-no-focus-pixels-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-6be39-adow-paints-no-focus-pixels-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [webkit] › specs/responsive-accessibility.spec.ts:917:1 › R12 permanent shadow cannot certify an invisible focus-only layer 
+
+    Error: expect(received).rejects.toThrow(expected)
+
+    Expected pattern: /contrast failures/
+    Received message: "Nonempty focus contrast inventory·
+    expect(received).toBeGreaterThan(expected)·
+    Expected: > 0
+    Received:   0"
+
+          713 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+          714 |   const samples = await measureSurfaceContrast(root, kind);
+        > 715 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+              |                                                                 ^
+          716 |   // A Fluent control may paint a contrasting edge plus a two-color separator.
+          717 |   // Alternatives belong to that unique control; another control cannot mask a failure.
+          718 |   const owners = new Set(samples.map(sample => sample.owner));
+
+          at expectSurfaceContrast (helpers/responsive-accessibility.ts:715:65)
+          at specs/responsive-accessibility.spec.ts:920:3
+
+      918 |   await page.setContent('<style>button{margin:40px;background:white;outline:none;box-shadow:0 0 0 3px black}button:focus{box-shadow:0 0 0 3px black,0 0 0 1px white}</style><button>Action</button>');
+      919 |   await page.locator('button').focus();
+    > 920 |   await expect(expectSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/contrast failures/);
+          |                                                                                ^
+      921 |   await page.addStyleTag({ content: 'button:focus{box-shadow:0 0 0 3px black,0 0 0 5px black}' });
+      922 |   await expectSurfaceContrast(page.locator('button'), 'focus');
+      923 | });
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:920:80
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-three-negatives/responsive-accessibility-R-dfd81--invisible-focus-only-layer-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6 failed
+    [chromium] › specs/responsive-accessibility.spec.ts:917:1 › R12 permanent shadow cannot certify an invisible focus-only layer 
+    [firefox] › specs/responsive-accessibility.spec.ts:827:1 › R01 rejects an unprevented boundary Tab that application code refocuses 
+    [firefox] › specs/responsive-accessibility.spec.ts:917:1 › R12 permanent shadow cannot certify an invisible focus-only layer 
+    [firefox] › specs/responsive-accessibility.spec.ts:949:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab 
+    [webkit] › specs/responsive-accessibility.spec.ts:908:1 › R11 collapsed offset shadow paints no focus pixels 
+    [webkit] › specs/responsive-accessibility.spec.ts:917:1 › R12 permanent shadow cannot certify an invisible focus-only layer 
+  63 passed (26.2s)

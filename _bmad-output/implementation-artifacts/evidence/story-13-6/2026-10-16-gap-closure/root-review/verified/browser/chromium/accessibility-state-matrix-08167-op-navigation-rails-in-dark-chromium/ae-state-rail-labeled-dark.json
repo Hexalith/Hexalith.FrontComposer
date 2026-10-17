@@ -1,0 +1,2892 @@
+{
+  "testId": "a542ea7f175527dc3e9c-12acb15aee7e14639156",
+  "attempt": 0,
+  "state": "rail-labeled-dark",
+  "engine": "chromium",
+  "runId": "gap-root-review-9c934194b041",
+  "viewport": {
+    "width": 1600,
+    "height": 900
+  },
+  "theme": "Dark",
+  "themePaint": {
+    "background": "#292929",
+    "rgb": [
+      41,
+      41,
+      41
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 150.296875,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9848.703125,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 173.25,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9825.75,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-hamburger-toggle\"]",
+      "width": 96,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 9,
+        "right": 108,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "box": {
+        "left": 1412,
+        "top": 9,
+        "right": 1460,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 1468,
+        "top": 9,
+        "right": 1500,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 1508,
+        "top": 9,
+        "right": 1540,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 1548,
+        "top": 9,
+        "right": 1580,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-rail-Counter",
+      "width": 63,
+      "height": 60,
+      "box": {
+        "left": 4,
+        "top": 59,
+        "right": 67,
+        "bottom": 119
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-rail-more-Counter",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 19.5,
+        "top": 123,
+        "right": 51.5,
+        "bottom": 155
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-rail-Default",
+      "width": 63,
+      "height": 60,
+      "box": {
+        "left": 4,
+        "top": 159,
+        "right": 67,
+        "bottom": 219
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-rail-Specimens",
+      "width": 63,
+      "height": 78,
+      "box": {
+        "left": 4,
+        "top": 223,
+        "right": 67,
+        "bottom": 301
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-rail-more-Specimens",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 19.5,
+        "top": 305,
+        "right": 51.5,
+        "bottom": 337
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#overview",
+      "width": 99.703125,
+      "height": 45,
+      "box": {
+        "left": 88,
+        "top": 153.796875,
+        "right": 187.703125,
+        "bottom": 198.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#counter-projection",
+      "width": 103.0625,
+      "height": 45,
+      "box": {
+        "left": 187.703125,
+        "top": 153.796875,
+        "right": 290.765625,
+        "bottom": 198.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 221.640625,
+      "height": 44,
+      "box": {
+        "left": 132,
+        "top": 210.796875,
+        "right": 353.640625,
+        "bottom": 254.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-132-CounterId",
+      "width": 207,
+      "height": 32,
+      "box": {
+        "left": 117,
+        "top": 302.796875,
+        "right": 324,
+        "bottom": 334.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-132-InitialValue",
+      "width": 197,
+      "height": 32,
+      "box": {
+        "left": 117,
+        "top": 383.796875,
+        "right": 314,
+        "bottom": 415.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-132-submit",
+      "width": 152.90625,
+      "height": 32,
+      "box": {
+        "left": 117,
+        "top": 429.796875,
+        "right": 269.90625,
+        "bottom": 461.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 224.765625,
+      "height": 44,
+      "box": {
+        "left": 132,
+        "top": 474.796875,
+        "right": 356.765625,
+        "bottom": 518.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-132-CounterId",
+      "width": 207,
+      "height": 32,
+      "box": {
+        "left": 117,
+        "top": 566.796875,
+        "right": 324,
+        "bottom": 598.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-132-Amount",
+      "width": 197,
+      "height": 32,
+      "box": {
+        "left": 117,
+        "top": 647.796875,
+        "right": 314,
+        "bottom": 679.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-132-submit",
+      "width": 156.765625,
+      "height": 32,
+      "box": {
+        "left": 117,
+        "top": 693.796875,
+        "right": 273.765625,
+        "bottom": 725.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 231,
+      "height": 44,
+      "box": {
+        "left": 132,
+        "top": 738.796875,
+        "right": 363,
+        "bottom": 782.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-132-Amount",
+      "width": 197,
+      "height": 32,
+      "box": {
+        "left": 117,
+        "top": 830.796875,
+        "right": 314,
+        "bottom": 862.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-132-Note",
+      "width": 207,
+      "height": 32,
+      "box": {
+        "left": 117,
+        "top": 911.796875,
+        "right": 324,
+        "bottom": 943.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-132-EffectiveDate",
+      "width": 231,
+      "height": 32,
+      "box": {
+        "left": 117,
+        "top": 992.796875,
+        "right": 348,
+        "bottom": 1024.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-132-submit",
+      "width": 163.140625,
+      "height": 32,
+      "box": {
+        "left": 117,
+        "top": 1038.796875,
+        "right": 280.140625,
+        "bottom": 1070.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 203.234375,
+      "height": 44,
+      "box": {
+        "left": 132,
+        "top": 1083.796875,
+        "right": 335.234375,
+        "bottom": 1127.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-trigger-Counter-Domain-IncrementCommand",
+      "width": 132.03125,
+      "height": 32,
+      "box": {
+        "left": 104,
+        "top": 1127.796875,
+        "right": 236.03125,
+        "bottom": 1159.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 1251.765625,
+      "height": 44,
+      "box": {
+        "left": 132,
+        "top": 1159.796875,
+        "right": 1383.765625,
+        "bottom": 1203.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-anchor-button[inventory-index=\"30\"]",
+      "width": 180.46875,
+      "height": 32,
+      "box": {
+        "left": 104,
+        "top": 1290.796875,
+        "right": 284.46875,
+        "bottom": 1322.796875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "span",
+      "paint": "Hexalith FrontComposer",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 16.48297747532879,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "span",
+      "paint": "Dark",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 11.340965984132366,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "span",
+      "paint": "FU",
+      "foreground": [
+        200,
+        209,
+        250,
+        1
+      ],
+      "background": [
+        44,
+        60,
+        133,
+        1
+      ],
+      "ratio": 6.670947635096477,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "slot",
+      "paint": "Counter",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 11.340965984132366,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "slot",
+      "paint": "Default",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 11.340965984132366,
+      "minimum": 4.5
+    },
+    {
+      "owner": 5,
+      "node": "slot",
+      "paint": "Specimens",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 11.340965984132366,
+      "minimum": 4.5
+    },
+    {
+      "owner": 6,
+      "node": "h1",
+      "paint": "Counter",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 3
+    },
+    {
+      "owner": 7,
+      "node": "slot",
+      "paint": "Overview",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 8,
+      "node": "slot",
+      "paint": "Projection",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 10.009758502342363,
+      "minimum": 4.5
+    },
+    {
+      "owner": 9,
+      "node": "span",
+      "paint": "Create with an exact target",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 10,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-132-CounterId-label",
+      "paint": "Counter key",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 10,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-132-CounterId-label",
+      "paint": "::after generated text",
+      "foreground": [
+        227,
+        125,
+        128,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 5.203632523793535,
+      "minimum": 4.5
+    },
+    {
+      "owner": 11,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-132-InitialValue-label",
+      "paint": "Initial Value",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 11,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-132-InitialValue-label",
+      "paint": "::after generated text",
+      "foreground": [
+        227,
+        125,
+        128,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 5.203632523793535,
+      "minimum": 4.5
+    },
+    {
+      "owner": 12,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 13,
+      "node": "slot",
+      "paint": "Create Counter",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 14,
+      "node": "span",
+      "paint": "Update with an exact target",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 15,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-132-CounterId-label",
+      "paint": "Counter key",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 15,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-132-CounterId-label",
+      "paint": "::after generated text",
+      "foreground": [
+        227,
+        125,
+        128,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 5.203632523793535,
+      "minimum": 4.5
+    },
+    {
+      "owner": 16,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-132-Amount-label",
+      "paint": "Amount",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 16,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-132-Amount-label",
+      "paint": "::after generated text",
+      "foreground": [
+        227,
+        125,
+        128,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 5.203632523793535,
+      "minimum": 4.5
+    },
+    {
+      "owner": 17,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 18,
+      "node": "slot",
+      "paint": "Update Counter",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 19,
+      "node": "span",
+      "paint": "Compact inline (3 fields)",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 20,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-132-Amount-label",
+      "paint": "Amount",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 20,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-132-Amount-label",
+      "paint": "::after generated text",
+      "foreground": [
+        227,
+        125,
+        128,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 5.203632523793535,
+      "minimum": 4.5
+    },
+    {
+      "owner": 21,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 22,
+      "node": "span",
+      "paint": "Hexalith FrontComposer © 2026",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 11.340965984132366,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [
+    {
+      "owner": 0,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        5,
+        146,
+        161,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 4.421086615394807,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        56,
+        56,
+        56,
+        1
+      ],
+      "ratio": 11.725786089779096,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        56,
+        56,
+        56,
+        1
+      ],
+      "ratio": 11.725786089779096,
+      "minimum": 3
+    },
+    {
+      "owner": 2,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        5,
+        146,
+        161,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 4.421086615394807,
+      "minimum": 3
+    },
+    {
+      "owner": 3,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        5,
+        146,
+        161,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 4.421086615394807,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 16.48297747532879,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 11.340965984132366,
+      "minimum": 3
+    }
+  ],
+  "boundaries": [
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          173,
+          173,
+          173,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 6.482747494991505,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          173,
+          173,
+          173,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 6.482747494991505,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          173,
+          173,
+          173,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 6.482747494991505,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          173,
+          173,
+          173,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 6.482747494991505,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          173,
+          173,
+          173,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 6.482747494991505,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      }
+    ]
+  ],
+  "cues": [
+    [
+      {
+        "owner": 0,
+        "node": "fluent-button#fc-rail-Counter",
+        "paint": "element border-left",
+        "foreground": [
+          5,
+          146,
+          161,
+          1
+        ],
+        "background": [
+          31,
+          31,
+          31,
+          1
+        ],
+        "ratio": 4.421086615394807,
+        "minimum": 3
+      }
+    ]
+  ],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": true,
+  "forcedColorsStatus": "painted system palette",
+  "systemText": [
+    {
+      "owner": 0,
+      "node": "span",
+      "paint": "Hexalith FrontComposer",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "span",
+      "paint": "Dark",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "span",
+      "paint": "FU",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "slot",
+      "paint": "Counter",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "slot",
+      "paint": "Default",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 5,
+      "node": "slot",
+      "paint": "Specimens",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 6,
+      "node": "h1",
+      "paint": "Counter",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 7,
+      "node": "slot",
+      "paint": "Overview",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 8,
+      "node": "slot",
+      "paint": "Projection",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 9,
+      "node": "span",
+      "paint": "Create with an exact target",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 10,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-132-CounterId-label",
+      "paint": "Counter key",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 10,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-132-CounterId-label",
+      "paint": "::after generated text",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 11,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-132-InitialValue-label",
+      "paint": "Initial Value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 11,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-132-InitialValue-label",
+      "paint": "::after generated text",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 12,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 13,
+      "node": "slot",
+      "paint": "Create Counter",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 14,
+      "node": "span",
+      "paint": "Update with an exact target",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 15,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-132-CounterId-label",
+      "paint": "Counter key",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 15,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-132-CounterId-label",
+      "paint": "::after generated text",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 16,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-132-Amount-label",
+      "paint": "Amount",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 16,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-132-Amount-label",
+      "paint": "::after generated text",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 17,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 18,
+      "node": "slot",
+      "paint": "Update Counter",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 19,
+      "node": "span",
+      "paint": "Compact inline (3 fields)",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 20,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-132-Amount-label",
+      "paint": "Amount",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 20,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-132-Amount-label",
+      "paint": "::after generated text",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 21,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 22,
+      "node": "span",
+      "paint": "Hexalith FrontComposer © 2026",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "systemIcon": [
+    {
+      "owner": 0,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        5,
+        146,
+        161,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 3.7282638657050713,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 2,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        5,
+        146,
+        161,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 3.7282638657050713,
+      "minimum": 3
+    },
+    {
+      "owner": 3,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        5,
+        146,
+        161,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 3.7282638657050713,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    }
+  ],
+  "systemBoundaries": [
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "systemCues": [
+    [
+      {
+        "owner": 0,
+        "node": "fluent-button#fc-rail-Counter",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-button#fc-rail-Counter",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-button#fc-rail-Counter",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-button#fc-rail-Counter",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-MENU-BUTTON#",
+    "requireIndicator": true,
+    "box": {
+      "left": 1410,
+      "top": 7,
+      "right": 1462,
+      "bottom": 43
+    },
+    "ring": 2,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": []
+  },
+  "systemSnapshot": "system-state-rail-labeled-dark.png",
+  "reducedMotion": true
+}

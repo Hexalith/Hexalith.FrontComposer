@@ -1,0 +1,20 @@
+{
+  "utc": "2026-10-16T18:43:16.415691+00:00",
+  "sourceIdentitySha256": "8a2058c7769a7761d377906fb32f0990c962bd85e2bfa20125e3e6573d5cdd69",
+  "sourceManifestMatchesAfterDocumentationAndCleanup": true,
+  "sourceFileCount": 27,
+  "allApprovedImagesUnchanged": 24,
+  "frozenIntentSha256": "6ec3bc1c9c38c1f0043bebe3ecc3364c0a22e8a07750a3c6aa48071083b8424e",
+  "submoduleHeadsDirtyDiffHashesAndStatusUnchanged": true,
+  "whitespaceCommand": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "whitespaceExit": 0,
+  "whitespaceOutput": "",
+  "documentLinksChecked": 78,
+  "testAppHostStopExit": 0,
+  "storyStatus": "in-review",
+  "sprintStatus": "in-progress"
+}

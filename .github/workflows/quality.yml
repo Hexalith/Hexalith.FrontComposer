@@ -910,6 +910,7 @@ jobs:
           CI: true
           ASPNETCORE_ENVIRONMENT: Test
           Hexalith__FrontComposer__Specimens__Enabled: true
+          Hexalith__Shell__ProjectionReconnectedNoticeDurationMs: 30000
           FC_A11Y_EVIDENCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         run: npm run test:a11y
 
@@ -998,9 +999,32 @@ jobs:
         working-directory: tests/e2e
         env:
           CI: true
+          FC_A11Y_EVIDENCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-linux
           ASPNETCORE_ENVIRONMENT: Test
           Hexalith__FrontComposer__Specimens__Enabled: true
+          Hexalith__Shell__ProjectionReconnectedNoticeDurationMs: 30000
         run: npx playwright test --workers 4
+
+      - name: Test accessibility evidence attempt validation
+        working-directory: tests/e2e
+        run: node --test scripts/a11y-state-evidence.test.mjs
+
+      - name: Validate each Linux accessibility engine and run
+        if: always()
+        working-directory: tests/e2e
+        env:
+          FC_A11Y_EVIDENCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-linux
+        run: |
+          result=0
+          for engine in chromium firefox webkit; do
+            FC_A11Y_EVIDENCE_ENGINE="$engine" npm run validate:a11y-artifacts || result=1
+          done
+          exit "$result"
+
+      - name: Validate Linux visual governance
+        if: always()
+        working-directory: tests/e2e
+        run: npm run validate:visual-governance
 
       - name: Upload Linux browser results
         if: always()

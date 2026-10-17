@@ -1,0 +1,3116 @@
+{
+  "testId": "a542ea7f175527dc3e9c-adeae62940e636975dfc",
+  "attempt": 0,
+  "state": "generated-forms-light",
+  "engine": "firefox",
+  "runId": "gap-final2-three-engine",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 156.38333129882812,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9842.616668701172,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 180.43333435058594,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9818.566665649414,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"2\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 16,
+        "top": 4,
+        "right": 48,
+        "bottom": 36
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 128,
+        "right": 60,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 68,
+        "top": 128,
+        "right": 100,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 108,
+        "top": 128,
+        "right": 140,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 148,
+        "top": 128,
+        "right": 180,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#overview",
+      "width": 101.60000610351562,
+      "height": 45,
+      "box": {
+        "left": 16,
+        "top": 267.79998779296875,
+        "right": 117.60000610351562,
+        "bottom": 312.79998779296875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#counter-projection",
+      "width": 107.2833251953125,
+      "height": 45,
+      "box": {
+        "left": 117.60000610351562,
+        "top": 267.79998779296875,
+        "right": 224.88333129882812,
+        "bottom": 312.79998779296875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 230,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 324.79998779296875,
+        "right": 290,
+        "bottom": 368.79998779296875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-196-CounterId",
+      "width": 230,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 416.79998779296875,
+        "right": 275,
+        "bottom": 448.79998779296875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-196-InitialValue",
+      "width": 222,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 497.79998779296875,
+        "right": 267,
+        "bottom": 529.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-196-submit",
+      "width": 155.78334045410156,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 543.7999877929688,
+        "right": 200.78334045410156,
+        "bottom": 575.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 230,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 588.7999877929688,
+        "right": 290,
+        "bottom": 632.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-196-CounterId",
+      "width": 230,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 680.7999877929688,
+        "right": 275,
+        "bottom": 712.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-196-Amount",
+      "width": 222,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 761.7999877929688,
+        "right": 267,
+        "bottom": 793.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-196-submit",
+      "width": 160.88333129882812,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 807.7999877929688,
+        "right": 205.88333129882812,
+        "bottom": 839.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 230,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 852.7999877929688,
+        "right": 290,
+        "bottom": 896.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-196-Amount",
+      "width": 222,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 944.7999877929688,
+        "right": 267,
+        "bottom": 976.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-196-Note",
+      "width": 230,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 1025.800048828125,
+        "right": 275,
+        "bottom": 1057.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-196-EffectiveDate",
+      "width": 230,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 1106.800048828125,
+        "right": 275,
+        "bottom": 1138.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-196-submit",
+      "width": 167.81666564941406,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 1152.800048828125,
+        "right": 212.81666564941406,
+        "bottom": 1184.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 212.06666564941406,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 1197.800048828125,
+        "right": 272.06666564941406,
+        "bottom": 1241.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-trigger-Counter-Domain-IncrementCommand",
+      "width": 136.63333129882812,
+      "height": 32,
+      "box": {
+        "left": 32,
+        "top": 1241.800048828125,
+        "right": 168.63333129882812,
+        "bottom": 1273.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 230,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 1273.800048828125,
+        "right": 290,
+        "bottom": 1317.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-anchor-button[inventory-index=\"25\"]",
+      "width": 183.3333282470703,
+      "height": 32,
+      "box": {
+        "left": 32,
+        "top": 1530.800048828125,
+        "right": 215.3333282470703,
+        "bottom": 1562.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "h1",
+      "paint": "Counter",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "slot",
+      "paint": "Overview",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "slot",
+      "paint": "Projection",
+      "foreground": [
+        66,
+        66,
+        66,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 10.049743700462349,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "span",
+      "paint": "Create with an exact target",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-196-CounterId-label",
+      "paint": "Counter key",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-196-CounterId-label",
+      "paint": "::after generated text",
+      "foreground": [
+        188,
+        47,
+        50,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 5.848055552651147,
+      "minimum": 4.5
+    },
+    {
+      "owner": 5,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-196-InitialValue-label",
+      "paint": "Initial Value",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 5,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-196-InitialValue-label",
+      "paint": "::after generated text",
+      "foreground": [
+        188,
+        47,
+        50,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 5.848055552651147,
+      "minimum": 4.5
+    },
+    {
+      "owner": 6,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 7,
+      "node": "slot",
+      "paint": "Create Counter",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 8,
+      "node": "span",
+      "paint": "Update with an exact target",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 9,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-196-CounterId-label",
+      "paint": "Counter key",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 9,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-196-CounterId-label",
+      "paint": "::after generated text",
+      "foreground": [
+        188,
+        47,
+        50,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 5.848055552651147,
+      "minimum": 4.5
+    },
+    {
+      "owner": 10,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-196-Amount-label",
+      "paint": "Amount",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 10,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-196-Amount-label",
+      "paint": "::after generated text",
+      "foreground": [
+        188,
+        47,
+        50,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 5.848055552651147,
+      "minimum": 4.5
+    },
+    {
+      "owner": 11,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 12,
+      "node": "slot",
+      "paint": "Update Counter",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 13,
+      "node": "span",
+      "paint": "Compact inline (3 fields)",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 14,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-196-Amount-label",
+      "paint": "Amount",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 14,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-196-Amount-label",
+      "paint": "::after generated text",
+      "foreground": [
+        188,
+        47,
+        50,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 5.848055552651147,
+      "minimum": 4.5
+    },
+    {
+      "owner": 15,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 16,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-196-Note-label",
+      "paint": "Note",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 16,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-196-Note-label",
+      "paint": "::after generated text",
+      "foreground": [
+        188,
+        47,
+        50,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 5.848055552651147,
+      "minimum": 4.5
+    },
+    {
+      "owner": 17,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-196-EffectiveDate-label",
+      "paint": "Effective Date",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 18,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 19,
+      "node": "slot",
+      "paint": "Batch Increment",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 20,
+      "node": "span",
+      "paint": "Inline + popover (1 field)",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 21,
+      "node": "slot",
+      "paint": "Increment",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 22,
+      "node": "span",
+      "paint": "Full-page command (5 fields)",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 23,
+      "node": "p",
+      "paint": "Navigation state persistence (scroll, filter, sort across FullPage round-trip) l",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        250,
+        250,
+        250,
+        1
+      ],
+      "ratio": 14.87203261434497,
+      "minimum": 4.5
+    },
+    {
+      "owner": 24,
+      "node": "slot",
+      "paint": "Configure Counter",
+      "foreground": [
+        66,
+        66,
+        66,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 10.049743700462349,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [
+    {
+      "owner": 0,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    },
+    {
+      "owner": 2,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    },
+    {
+      "owner": 3,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        97,
+        97,
+        97,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 6.193286162073998,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    },
+    {
+      "owner": 5,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    },
+    {
+      "owner": 6,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    }
+  ],
+  "boundaries": [
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          97,
+          97,
+          97,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 6.193286162073998,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          97,
+          97,
+          97,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 6.193286162073998,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          97,
+          97,
+          97,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 6.193286162073998,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          97,
+          97,
+          97,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 6.193286162073998,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          97,
+          97,
+          97,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 6.193286162073998,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          97,
+          97,
+          97,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 6.193286162073998,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          97,
+          97,
+          97,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 6.193286162073998,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      }
+    ]
+  ],
+  "cues": [],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": true,
+  "forcedColorsStatus": "painted system palette",
+  "systemText": [
+    {
+      "owner": 0,
+      "node": "h1",
+      "paint": "Counter",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "slot",
+      "paint": "Overview",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "slot",
+      "paint": "Projection",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "span",
+      "paint": "Create with an exact target",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-196-CounterId-label",
+      "paint": "Counter key",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-196-CounterId-label",
+      "paint": "::after generated text",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 5,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-196-InitialValue-label",
+      "paint": "Initial Value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 5,
+      "node": "label#fc-command-form-Counter-Domain-CreateCounterCommand-196-InitialValue-label",
+      "paint": "::after generated text",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 6,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 7,
+      "node": "slot",
+      "paint": "Create Counter",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        233,
+        233,
+        237,
+        1
+      ],
+      "ratio": 17.34317794034221,
+      "minimum": 4.5
+    },
+    {
+      "owner": 8,
+      "node": "span",
+      "paint": "Update with an exact target",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 9,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-196-CounterId-label",
+      "paint": "Counter key",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 9,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-196-CounterId-label",
+      "paint": "::after generated text",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 10,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-196-Amount-label",
+      "paint": "Amount",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 10,
+      "node": "label#fc-command-form-Counter-Domain-UpdateCounterCommand-196-Amount-label",
+      "paint": "::after generated text",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 11,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 12,
+      "node": "slot",
+      "paint": "Update Counter",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        233,
+        233,
+        237,
+        1
+      ],
+      "ratio": 17.34317794034221,
+      "minimum": 4.5
+    },
+    {
+      "owner": 13,
+      "node": "span",
+      "paint": "Compact inline (3 fields)",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 14,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-196-Amount-label",
+      "paint": "Amount",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 14,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-196-Amount-label",
+      "paint": "::after generated text",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 15,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 16,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-196-Note-label",
+      "paint": "Note",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 16,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-196-Note-label",
+      "paint": "::after generated text",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 17,
+      "node": "label#fc-command-form-Counter-Domain-BatchIncrementCommand-196-EffectiveDate-label",
+      "paint": "Effective Date",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 18,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 19,
+      "node": "slot",
+      "paint": "Batch Increment",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        233,
+        233,
+        237,
+        1
+      ],
+      "ratio": 17.34317794034221,
+      "minimum": 4.5
+    },
+    {
+      "owner": 20,
+      "node": "span",
+      "paint": "Inline + popover (1 field)",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 21,
+      "node": "slot",
+      "paint": "Increment",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 22,
+      "node": "span",
+      "paint": "Full-page command (5 fields)",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 23,
+      "node": "p",
+      "paint": "Navigation state persistence (scroll, filter, sort across FullPage round-trip) l",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 24,
+      "node": "slot",
+      "paint": "Configure Counter",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "systemIcon": [
+    {
+      "owner": 0,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 2,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 3,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 5,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 6,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    }
+  ],
+  "systemBoundaries": [
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-MENU-BUTTON#",
+    "requireIndicator": false,
+    "box": {
+      "left": 12,
+      "top": 128,
+      "right": 60,
+      "bottom": 160
+    },
+    "ring": 0,
+    "failures": [],
+    "occluder": null
+  },
+  "systemSnapshot": "system-state-generated-forms-light.png",
+  "reducedMotion": true
+}

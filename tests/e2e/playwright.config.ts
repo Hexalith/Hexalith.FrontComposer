@@ -6,15 +6,19 @@ process.env.FC_A11Y_EVIDENCE_RUN_ID ??= randomUUID();
 const BASE_URL = process.env.BASE_URL ?? 'http://127.0.0.1:5070';
 const IS_CI = !!process.env.CI;
 const STORY_3_6_CONFIRM_DELAY_MS = process.env.FC_E2E_STORY_3_6_CONFIRM_DELAY_MS ?? '6500';
+const PROJECTION_RECONNECTED_NOTICE_DURATION_MS = '30000';
 const OUTPUT_DIR = process.env.FC_E2E_OUTPUT_DIR ?? 'test-results';
 const HTML_REPORT_DIR = process.env.FC_E2E_HTML_REPORT_DIR ?? 'playwright-report';
+const JSON_PATH = process.env.FC_E2E_JSON_PATH ?? `${OUTPUT_DIR}/playwright.json`;
 const JUNIT_PATH = process.env.FC_E2E_JUNIT_PATH ?? `${OUTPUT_DIR}/junit.xml`;
 
 export default defineConfig({
+  metadata: { a11yEvidenceRunId: process.env.FC_A11Y_EVIDENCE_RUN_ID, testHostOptions: { ProjectionReconnectedNoticeDurationMs: Number(PROJECTION_RECONNECTED_NOTICE_DURATION_MS) } },
   testDir: './specs',
   fullyParallel: true,
   forbidOnly: IS_CI,
   retries: IS_CI ? 2 : 0,
+  updateSnapshots: 'none',
   workers: IS_CI ? '50%' : undefined,
   timeout: 60_000,
   expect: {
@@ -24,6 +28,7 @@ export default defineConfig({
     ['list'],
     ['html', { outputFolder: HTML_REPORT_DIR, open: 'never' }],
     ['junit', { outputFile: JUNIT_PATH }],
+    ['json', { outputFile: JSON_PATH }],
   ],
   use: {
     baseURL: BASE_URL,
@@ -62,6 +67,8 @@ export default defineConfig({
           Hexalith__FrontComposer__Specimens__Enabled: 'true',
           Hexalith__Shell__FormAbandonmentThresholdSeconds: '5',
           Hexalith__Shell__TimeoutActionThresholdMs: '5000',
+          // Keep genuine recovery paint available for both media-mode inspections.
+          Hexalith__Shell__ProjectionReconnectedNoticeDurationMs: PROJECTION_RECONNECTED_NOTICE_DURATION_MS,
           Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs: STORY_3_6_CONFIRM_DELAY_MS,
         },
       },

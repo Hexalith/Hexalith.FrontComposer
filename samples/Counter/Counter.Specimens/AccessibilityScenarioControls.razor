@@ -18,6 +18,7 @@
 @inject IProjectionConnectionState Connection
 @inject IState<DataGridNavigationState> GridNavigation
 @inject IState<LoadedPageState> Pages
+@inject IServiceProvider Services
 @inject IDispatcher Dispatcher
 @inject IState<CounterProjectionState> Projection
 @inject IFrontComposerTenantContextAccessor TenantContext
@@ -64,6 +65,8 @@
         <FluentButton OnClick="@(() => Complete("error"))" data-testid="fc-ae-rows-error">Complete failed result</FluentButton>
         <FluentButton OnClick="@(() => Complete("loading"))" data-testid="fc-ae-rows-loading">Start pending result</FluentButton>
         <FluentButton OnClick="CompleteMissingAfterDelay" data-testid="fc-ae-rows-delayed">Complete delayed missing result</FluentButton>
+        <FluentButton OnClick="@(() => ChangeScope(true))" data-testid="fc-ae-scope-tenant">Change fixed tenant</FluentButton>
+        <FluentButton OnClick="@(() => ChangeScope(false))" data-testid="fc-ae-scope-user">Change fixed user</FluentButton>
         <FluentButton OnClick="Repeat" data-testid="fc-ae-rows-repeat">Repeat completed result</FluentButton>
     </div>
 </section>
@@ -147,6 +150,9 @@
     }
 
     private CounterProjectionLoadedAction? _lastResult;
+    private void ChangeScope(bool tenantChange)
+        => ((Action<bool>?)Services.GetService(typeof(Action<bool>)))?.Invoke(tenantChange);
+
     private void Select(string outcome) => Scenarios.Select(outcome);
 
     private void Repeat()

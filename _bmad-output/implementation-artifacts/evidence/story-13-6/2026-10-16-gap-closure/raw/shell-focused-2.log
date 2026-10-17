@@ -1,0 +1,21 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.Shell.Tests
+  Discovered:  Hexalith.FrontComposer.Shell.Tests
+  Starting:    Hexalith.FrontComposer.Shell.Tests
+    Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(tenantChange: True) [FAIL]
+      Bunit.Rendering.ComponentNotFoundException : A component of type ZeroFieldInlineCommandRenderer was not found in the render tree.
+      Stack Trace:
+        /_/src/bunit/Rendering/BunitRenderer.cs(264,0): at Bunit.Rendering.BunitRenderer.FindComponent[TComponent](IRenderedComponent`1 parentComponent)
+        /_/src/bunit/Extensions/RenderedComponentExtensions.cs(95,0): at Bunit.RenderedComponentExtensions.FindComponent[TChildComponent](IRenderedComponent`1 renderedComponent)
+        tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs(89,0): at Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(Boolean tenantChange)
+        --- End of stack trace from previous location ---
+    Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(tenantChange: False) [FAIL]
+      Bunit.Rendering.ComponentNotFoundException : A component of type ZeroFieldInlineCommandRenderer was not found in the render tree.
+      Stack Trace:
+        /_/src/bunit/Rendering/BunitRenderer.cs(264,0): at Bunit.Rendering.BunitRenderer.FindComponent[TComponent](IRenderedComponent`1 parentComponent)
+        /_/src/bunit/Extensions/RenderedComponentExtensions.cs(95,0): at Bunit.RenderedComponentExtensions.FindComponent[TChildComponent](IRenderedComponent`1 renderedComponent)
+        tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs(89,0): at Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(Boolean tenantChange)
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.FrontComposer.Shell.Tests (ID = '47ea1885be85e02ea5ab6d4f3f0a3316b9743a6877b49a72f290b3b7fc1a0f08')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.Shell.Tests  Total: 113, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 7.767s

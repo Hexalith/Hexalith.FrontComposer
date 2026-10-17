@@ -29,3 +29,6 @@ _bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v4.jso
 _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md -text
 # Story 13.6 preserves candidate-bound browser and verification evidence bytes.
 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/** -text
+
+# Story 13.6 gap-closure hashes bind the original diagnostic and verification bytes.
+_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/** -text

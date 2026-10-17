@@ -1,0 +1,6 @@
+{
+  "route": "/counter",
+  "blocking": [],
+  "reportOnly": [],
+  "unknown": []
+}

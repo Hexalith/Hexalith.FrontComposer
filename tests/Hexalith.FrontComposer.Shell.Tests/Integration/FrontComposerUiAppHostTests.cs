@@ -10,6 +10,20 @@ public sealed class FrontComposerUiAppHostTests {
     private const string FrontComposerUiClientSecret = "frontcomposer-ui-dev-secret";
 
     [Fact]
+    public void AppHostCounterAccessibilityOverridesAreConfinedToExplicitLocalTestRuns()
+    {
+        string program = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost", "Program.cs"));
+        int gate = program.IndexOf("if (builder.ExecutionContext.IsRunMode && builder.Environment.IsEnvironment(\"Test\"))", StringComparison.Ordinal);
+        gate.ShouldBeGreaterThan(0);
+        int end = program.IndexOf('}', gate);
+        string branch = program[gate..end];
+        branch.ShouldContain("counterWeb");
+        branch.ShouldContain(".WithEnvironment(\"ASPNETCORE_ENVIRONMENT\", \"Test\")");
+        branch.ShouldContain(".WithEnvironment(\"Hexalith__FrontComposer__Specimens__Enabled\", \"true\")");
+        program.Remove(gate, end - gate).ShouldNotContain(".WithEnvironment(\"ASPNETCORE_ENVIRONMENT\", \"Test\")");
+    }
+
+    [Fact]
     public void UiAppDocumentLanguage_Source_UsesSingleCsharpAuthorityForPrerenderAndInteractive() {
         string root = FindRepoRoot();
         string app = File.ReadAllText(Path.Combine(root, "src", "Hexalith.FrontComposer.UI", "Components", "App.razor"));

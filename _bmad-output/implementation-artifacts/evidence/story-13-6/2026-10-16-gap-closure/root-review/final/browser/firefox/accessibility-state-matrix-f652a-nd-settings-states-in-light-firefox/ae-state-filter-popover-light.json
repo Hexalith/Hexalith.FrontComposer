@@ -1,0 +1,433 @@
+{
+  "testId": "a542ea7f175527dc3e9c-1949c8a741066e25550b",
+  "attempt": 0,
+  "state": "filter-popover-light",
+  "engine": "firefox",
+  "runId": "gap-root-review-13af441b28ac",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 156.38333129882812,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9842.616668701172,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 180.43333435058594,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9818.566665649414,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"2\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 16,
+        "top": 4,
+        "right": 48,
+        "bottom": 36
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 128,
+        "right": 60,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 68,
+        "top": 128,
+        "right": 100,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 108,
+        "top": 128,
+        "right": 140,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 148,
+        "top": 128,
+        "right": 180,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-page-toolbar-search-input",
+      "width": 296,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 635.36669921875,
+        "right": 308,
+        "bottom": 667.36669921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-page-toolbar-filter-trigger",
+      "width": 133.8000030517578,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 677.36669921875,
+        "right": 145.8000030517578,
+        "bottom": 709.36669921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-page-toolbar-view-trigger\"]",
+      "width": 155.89999389648438,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 717.36669921875,
+        "right": 167.89999389648438,
+        "bottom": 749.36669921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-page-toolbar-refresh\"]",
+      "width": 96,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 757.36669921875,
+        "right": 108,
+        "bottom": 789.36669921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#summary",
+      "width": 101.5,
+      "height": 45,
+      "box": {
+        "left": 16,
+        "top": 867.933349609375,
+        "right": 117.5,
+        "bottom": 912.933349609375
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#activity",
+      "width": 84.71665954589844,
+      "height": 45,
+      "box": {
+        "left": 117.5,
+        "top": 867.933349609375,
+        "right": 202.21665954589844,
+        "bottom": 912.933349609375
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#archived",
+      "width": 94.53334045410156,
+      "height": 45,
+      "box": {
+        "left": 202.21665954589844,
+        "top": 867.933349609375,
+        "right": 296.75,
+        "bottom": 912.933349609375
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#history",
+      "width": 82.89999389648438,
+      "height": 45,
+      "box": {
+        "left": 296.75,
+        "top": 867.933349609375,
+        "right": 379.6499938964844,
+        "bottom": 912.933349609375
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "slot",
+      "paint": "Status: Active",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "slot",
+      "paint": "Owner: Current tenant",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": true,
+  "forcedColorsStatus": "painted system palette",
+  "systemText": [
+    {
+      "owner": 0,
+      "node": "slot",
+      "paint": "Status: Active",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "slot",
+      "paint": "Owner: Current tenant",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-BUTTON#fc-page-toolbar-filter-trigger",
+    "requireIndicator": false,
+    "box": {
+      "left": 12,
+      "top": 677.36669921875,
+      "right": 145.8000030517578,
+      "bottom": 709.36669921875
+    },
+    "ring": 0,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": []
+  },
+  "systemSnapshot": "system-state-filter-popover-light.png",
+  "reducedMotion": true
+}

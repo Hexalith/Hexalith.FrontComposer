@@ -1,0 +1,55 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts --project=chromium --workers=1 --grep light.*generated zero-field validation:
+
+
+Running 1 test using 1 worker
+
+(node:54098) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt (4.2s)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Error: Overlapping translucent shadow layers need pixel evidence: {"element":"FLUENT-BUTTON#fc-trigger-Counter-Specimens-Domain-AccessibilityZeroFieldCommand.","pseudo":null,"layers":["rgba(0, 0, 0, 0.12) 0px 0px 2px 0px","rgba(0, 0, 0, 0.14) 0px 2px 4px 0px","rgb(0, 0, 0) 0px 0px 0px 2px"],"changed":"rgba(0, 0, 0, 0.14) 0px 2px 4px 0px","baseline":"none"}
+        at eval (eval at evaluate (:311:30), <anonymous>:195:21)
+        at Array.filter (<anonymous>)
+        at Object.shadows (eval at evaluate (:311:30), <anonymous>:167:21)
+        at eval (eval at evaluate (:311:30), <anonymous>:131:91)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at eval (eval at evaluate (:311:30), <anonymous>:195:21)
+        at Object.shadows (eval at evaluate (:311:30), <anonymous>:167:21)
+        at eval (eval at evaluate (:311:30), <anonymous>:131:91)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at focusGeometry (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:284:17)
+        at expect.poll.message (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:539:50)
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:539:3)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:132:9
+
+    attachment #1: state-zero-validation-light (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/fc13-focus-shadow-diagnosis/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/attachments/state-zero-validation-light-75c092d1ec56ccbb97fa5b2bd288c8482d3435c9.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-focus-shadow-diagnosis/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-focus-shadow-diagnosis/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-focus-shadow-diagnosis/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-focus-shadow-diagnosis/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-focus-shadow-diagnosis/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt 

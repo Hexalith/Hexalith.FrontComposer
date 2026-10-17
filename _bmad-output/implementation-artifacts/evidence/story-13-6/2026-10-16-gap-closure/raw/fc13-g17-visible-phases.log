@@ -1,0 +1,263 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts --project=chromium --project=firefox --project=webkit --workers=3 --grep real generated detail removal preserves external focus|projection reconnect fallback stale slow cap and filter cues|fresh-row presentation retains text boundary
+
+
+Running 18 tests using 3 workers
+
+(node:41118) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41104) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41090) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › specs/accessibility-state-matrix.spec.ts:196:5 › AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results (13.0s)
+  ✓   3 [chromium] › specs/accessibility-state-matrix.spec.ts:196:5 › AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results (13.3s)
+  ✓   5 [chromium] › specs/accessibility-state-matrix.spec.ts:591:3 › fresh-row presentation retains text boundary and system-color meaning in light (8.7s)
+  ✓   6 [chromium] › specs/accessibility-state-matrix.spec.ts:591:3 › fresh-row presentation retains text boundary and system-color meaning in dark (9.4s)
+(node:57007) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   1 [chromium] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in light (47.8s)
+(node:64878) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   7 [firefox] › specs/accessibility-state-matrix.spec.ts:196:5 › AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results (18.1s)
+  ✘   4 [chromium] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in dark (47.2s)
+(node:70482) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   8 [firefox] › specs/accessibility-state-matrix.spec.ts:196:5 › AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results (17.7s)
+  ✓  11 [firefox] › specs/accessibility-state-matrix.spec.ts:591:3 › fresh-row presentation retains text boundary and system-color meaning in light (11.7s)
+  ✓  12 [firefox] › specs/accessibility-state-matrix.spec.ts:591:3 › fresh-row presentation retains text boundary and system-color meaning in dark (12.4s)
+(node:84586) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  13 [webkit] › specs/accessibility-state-matrix.spec.ts:196:5 › AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results (10.1s)
+  ✘   9 [firefox] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in light (52.6s)
+(node:90480) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  14 [webkit] › specs/accessibility-state-matrix.spec.ts:196:5 › AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results (7.2s)
+  ✘  10 [firefox] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in dark (54.9s)
+(node:95458) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  17 [webkit] › specs/accessibility-state-matrix.spec.ts:591:3 › fresh-row presentation retains text boundary and system-color meaning in light (7.9s)
+  ✓  18 [webkit] › specs/accessibility-state-matrix.spec.ts:591:3 › fresh-row presentation retains text boundary and system-color meaning in dark (9.1s)
+  ✓  15 [webkit] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in light (31.6s)
+  ✓  16 [webkit] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in dark (31.1s)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in light 
+
+    TimeoutError: locator.evaluate: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for getByTestId('fc-projection-connection-status')
+
+
+       at ../helpers/responsive-accessibility.ts:683
+
+      681 | export async function measureSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      682 |   await preparePaintAudit(root);
+    > 683 |   return root.evaluate((scope, sampleKind) => {
+          |               ^
+      684 |     const parent = (node: Element): Element | null => node.assignedSlot ?? node.parentElement ?? (node.getRootNode() instanceof ShadowRoot ? (node.getRootNode() as ShadowRoot).host : null);
+      685 |     const audit = (window as typeof window & { __aePaintAudit: PaintAudit }).__aePaintAudit;
+      686 |     const parse = audit.parse;
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:683:15)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:91:24)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:483:7
+
+    attachment #1: state-connection-reconnecting-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-connection-reconnecting-light-5d1c535cd2631a2b67a3e78726e0929bac86a5da.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-stale-reconnecting-light-cafb5a4c5233792c73f6785e4fee7a5ca2235731.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-connection-disconnected-light-7be336f9fba3323547d2bfcb720368b67b5edbe3.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-stale-disconnected-light-a37319fa69cc1ca27813208cdc45ada362b7ddfb.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in dark 
+
+    TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for getByTestId('fc-projection-connection-status')
+
+
+      46 |         result = { mode, status: 'measured', phase: inspection!.phase, ...geometry, contrast };
+      47 |       } else result = { mode, status: 'none', phase: inspection!.phase, target: active };
+    > 48 |       await root.scrollIntoViewIfNeeded();
+         |                  ^
+      49 |       expect(await activeElement.evaluate(element => document.activeElement === element), `Root inspection retains activeElement: ${state} ${mode}`).toBe(true);
+      50 |       if (inspection!.retainedFocus) await expect(focused).toBeFocused();
+      51 |       return { ...result, activeElementRetainedAfterRootScroll: true };
+        at inspectBeforeRootScroll (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:48:18)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:113:45)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:483:7
+
+    attachment #1: state-connection-reconnecting-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-connection-reconnecting-dark-e77e90daa53060a25f41d2218ed301ad18dad06e.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-stale-reconnecting-dark-a88d2b66a7122fc9279095afa9fe4e6459491217.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-connection-disconnected-dark-b83e2df16077ffcd525f13ff10ea365ec3ecb4a1.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-stale-disconnected-dark-2caffc41cc2edde323c9f831ccd6228eb3fce435.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [firefox] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in light 
+
+    TimeoutError: locator.evaluate: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for getByTestId('fc-projection-connection-status')
+
+
+       at ../helpers/responsive-accessibility.ts:683
+
+      681 | export async function measureSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      682 |   await preparePaintAudit(root);
+    > 683 |   return root.evaluate((scope, sampleKind) => {
+          |               ^
+      684 |     const parent = (node: Element): Element | null => node.assignedSlot ?? node.parentElement ?? (node.getRootNode() instanceof ShadowRoot ? (node.getRootNode() as ShadowRoot).host : null);
+      685 |     const audit = (window as typeof window & { __aePaintAudit: PaintAudit }).__aePaintAudit;
+      686 |     const parse = audit.parse;
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:683:15)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:91:24)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:483:7
+
+    attachment #1: state-connection-reconnecting-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-connection-reconnecting-light-880a8fad3e90602306c5dc02091defc95ad3f2e9.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-stale-reconnecting-light-e0ba6f9dc1203b97e91bc4397a0d0e6f25658c18.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-connection-disconnected-light-c959253dd4ca6eeaaac0dc90e5e4a09a04e069d9.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-stale-disconnected-light-fc0520bd0c072866d1308ef3a5f7ef3a8f6e6a88.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [firefox] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in dark 
+
+    TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for getByTestId('fc-projection-connection-status')
+
+
+      46 |         result = { mode, status: 'measured', phase: inspection!.phase, ...geometry, contrast };
+      47 |       } else result = { mode, status: 'none', phase: inspection!.phase, target: active };
+    > 48 |       await root.scrollIntoViewIfNeeded();
+         |                  ^
+      49 |       expect(await activeElement.evaluate(element => document.activeElement === element), `Root inspection retains activeElement: ${state} ${mode}`).toBe(true);
+      50 |       if (inspection!.retainedFocus) await expect(focused).toBeFocused();
+      51 |       return { ...result, activeElementRetainedAfterRootScroll: true };
+        at inspectBeforeRootScroll (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:48:18)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:113:45)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:483:7
+
+    attachment #1: state-connection-reconnecting-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-connection-reconnecting-dark-0b2b8f8bedfdf50544be9e584a38b4f3d1b4f1f3.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-stale-reconnecting-dark-b57395ce50c4e7359b27725f7d41e60e461e2fe3.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-connection-disconnected-dark-fe4bd8849fd524cf89e2d25687cf802d7dce1874.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-stale-disconnected-dark-a69b14e6739364c5ac4093081c0b9f3ecb122f73.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-g17-visible-phases/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in dark 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in light 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:476:3 › projection reconnect fallback stale slow cap and filter cues in dark 
+  14 passed (2.4m)

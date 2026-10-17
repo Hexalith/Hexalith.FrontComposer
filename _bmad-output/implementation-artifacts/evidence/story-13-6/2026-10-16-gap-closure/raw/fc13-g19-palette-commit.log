@@ -1,0 +1,27 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts --project=chromium --project=firefox --project=webkit --workers=3 --grep active toolbar, tabs, palette and settings states in
+
+
+Running 6 tests using 3 workers
+
+(node:83041) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:83040) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:83042) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in dark (11.6s)
+  ✓  2 [chromium] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in light (11.7s)
+(node:89934) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:90122) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  3 [firefox] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in light (18.4s)
+(node:95052) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  5 [webkit] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in light (17.7s)
+  ✓  6 [webkit] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in dark (14.1s)
+  ✓  4 [firefox] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in dark (22.1s)
+
+  6 passed (38.4s)

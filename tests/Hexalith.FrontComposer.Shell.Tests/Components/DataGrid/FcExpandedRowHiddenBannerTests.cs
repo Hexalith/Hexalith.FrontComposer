@@ -26,6 +26,24 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// </summary>
 public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
     [Fact]
+    public async Task ScopeChangeDuringHeldRecoveryImportCancelsPriorFocusAndSpeech()
+    {
+        DelayedHiddenDetailFocusRuntime runtime = new();
+        RecordingHiddenDetailFocusModule module = new();
+        IRenderedComponent<FcExpandedRowHiddenBanner> cut = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.ScopeGeneration, 1));
+        typeof(FcExpandedRowHiddenBanner).GetProperty("JS", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .SetValue(cut.Instance, runtime);
+        cut.Render(p => p.Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "old-scope"));
+        runtime.ImportCalls.ShouldBe(1);
+        cut.Render(p => p.Add(c => c.ScopeGeneration, 2).Add(c => c.IsHiddenByFilter, false).Add(c => c.ResultIdentity, "replacement"));
+        runtime.Import.TrySetResult(module);
+        await module.Released.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        module.FocusCalls.ShouldBe(0);
+        Services.GetRequiredService<ISurfaceAnnouncementCoordinator>().Current("projection:orders:Orders").ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task DisposalDuringMissingFocusImportDoesNotRegisterDetailListeners()
     {
         DelayedHiddenDetailFocusRuntime runtime = new();

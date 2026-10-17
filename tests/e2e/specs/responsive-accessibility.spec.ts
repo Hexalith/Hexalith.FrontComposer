@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures/index.js';
-import { applyTextSpacing, removeTextSpacing, expectFocusVisible, expectNoPageOverflow, expectNoTextClipping, expectTargetSizes, expectTextContrast, expectSurfaceContrast, focusGeometry, inventoryTargets, screenshotPreservingScroll, settlePaint, type TargetException } from '../helpers/responsive-accessibility.js';
+import { applyTextSpacing, removeTextSpacing, expectFocusVisible, expectNoPageOverflow, expectNoTextClipping, expectTargetSizes, expectTextContrast, expectSurfaceContrast, focusGeometry, inventoryTargets, screenshotPreservingScroll, settlePaint, measureSurfaceContrast, type TargetException } from '../helpers/responsive-accessibility.js';
 import { expectNoBlockingAxeViolations } from '../helpers/a11y.js';
 import { specimenManifest } from '../helpers/specimen-manifest.js';
 
@@ -366,7 +366,8 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
         await page.goto(surface.path);
         await expect(page.locator(surface.ready).first()).toBeVisible();
         await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
-        if (spacing) { await applyTextSpacing(page); await expectNoTextClipping(page); }
+        if (spacing) await applyTextSpacing(page);
+        await expectNoTextClipping(page);
         await expectNoPageOverflow(page);
         const inventory = await expectTargetSizes(page);
         await testInfo.attach('AE-04-target-inventory', { body: JSON.stringify(inventory, null, 2), contentType: 'application/json' });
@@ -552,25 +553,33 @@ async function verifyKeyboardCycle(page: import('@playwright/test').Page, modal 
     const describe = (element: Element) => `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element.getAttribute('data-testid') ? `[${element.getAttribute('data-testid')}]` : ''}${element.getAttribute('role') ? ` role=${element.getAttribute('role')}` : ''} ${(element.getAttribute('aria-label') ?? element.textContent ?? '').trim().replace(/\s+/gu, ' ').slice(0, 70)}`;
     // Fluent's native focusgroup exposes one Tab stop; its entry member can differ from the checked radio.
     const canonical = (element: Element) => radios.includes(element) ? stops.find(stop => radios.includes(stop) && radioGroup(stop) === radioGroup(element)) ?? element : element;
-    const state = { stops, activeModal, contains, describe, canonical, tabEvent: null as KeyboardEvent | null };
+    const state = { stops, activeModal, contains, describe, canonical, tabEvent: null as KeyboardEvent | null, focusEvents: 0, focusCalls: 0, restore: () => {} };
     document.addEventListener('keydown', event => {
-      if (event.key === 'Tab') state.tabEvent = event;
+      if (event.key === 'Tab') { state.tabEvent = event; state.focusEvents = 0; state.focusCalls = 0; }
     }, true);
+    document.addEventListener('focusin', () => { state.focusEvents++; }, true);
+    const nativeFocus = HTMLElement.prototype.focus;
+    HTMLElement.prototype.focus = function (options?: FocusOptions) { state.focusCalls++; nativeFocus.call(this, options); };
+    state.restore = () => { HTMLElement.prototype.focus = nativeFocus; };
     (window as unknown as { aeKeyboard: unknown }).aeKeyboard = state;
     return stops.length;
   }, { requireModal: modal, engine });
   expect(expectedCount, 'Expected reachable keyboard controls').toBeGreaterThan(0);
+  try {
   let previousIndex = -1;
   const step = async (reverse = false) => {
     for (let outside = 0; outside < 3; outside++) {
       await page.keyboard.press(reverse ? 'Shift+Tab' : 'Tab');
+      // Allow application timers triggered by Tab to reveal a boundary refocus trap.
+      await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 25)));
+
       const result = await page.evaluate(() => {
-        const state = (window as unknown as { aeKeyboard: { stops: Element[]; activeModal?: Element; contains: (ancestor: Element, child: Element) => boolean; describe: (element: Element) => string; canonical: (element: Element) => Element; tabEvent: KeyboardEvent | null } }).aeKeyboard;
+        const state = (window as unknown as { aeKeyboard: { stops: Element[]; activeModal?: Element; contains: (ancestor: Element, child: Element) => boolean; describe: (element: Element) => string; canonical: (element: Element) => Element; tabEvent: KeyboardEvent | null; focusEvents: number; focusCalls: number } }).aeKeyboard;
         const active = document.activeElement;
         if (!document.hasFocus() || !active || active === document.body) return { outside: true, modal: Boolean(state.activeModal), index: -1 };
-        return { outside: false, modal: Boolean(state.activeModal), member: !state.activeModal || state.contains(state.activeModal, active), index: state.stops.indexOf(state.canonical(active)), control: state.describe(active), tabPrevented: state.tabEvent?.defaultPrevented };
+        return { outside: false, modal: Boolean(state.activeModal), member: !state.activeModal || state.contains(state.activeModal, active), index: state.stops.indexOf(state.canonical(active)), control: state.describe(active), tabPrevented: state.tabEvent?.defaultPrevented, focusEvents: state.focusEvents, focusCalls: state.focusCalls };
       });
-      if (result.index === previousIndex && result.tabPrevented && !(modal && expectedCount === 1)) throw new Error(`Application trapped Tab on a reachable control: ${result.control}`);
+      if (result.index === previousIndex && (result.tabPrevented || (result.focusEvents ?? 0) > 0 || (result.focusCalls ?? 0) > 0) && !(modal && expectedCount === 1)) throw new Error(`Application trapped Tab on a reachable control: ${result.control}`);
       const stationaryBrowserBoundary = !result.modal && result.index === previousIndex && previousIndex === (reverse ? 0 : expectedCount - 1) && result.tabPrevented === false;
       if (result.outside || stationaryBrowserBoundary) {
         expect(result.modal, 'Modal keyboard focus left its document').toBe(false);
@@ -609,6 +618,9 @@ async function verifyKeyboardCycle(page: import('@playwright/test').Page, modal 
     sequence.push(index);
   }
   throw new Error('Keyboard inventory did not complete its expected cycle');
+  } finally {
+    await page.evaluate(() => (window as unknown as { aeKeyboard: { restore: () => void } }).aeKeyboard.restore());
+  }
 }
 
 test('row metrics preserve the compact minimum and report growth with the matching density floor', async ({ page }) => {
@@ -819,4 +831,442 @@ test('real Fluent search and generated editors retain their focus contour with t
     expect((await focusGeometry(control.locator('input'))).failures).toEqual([]);
     await expectSurfaceContrast(control, 'focus');
   }
+});
+
+
+test('R01 rejects an unprevented boundary Tab that application code refocuses', async ({ page }) => {
+  await page.setContent('<style>button{margin:8px;outline:none}button:focus{outline:2px solid}</style><button id="first">First</button><button id="last">Last</button>');
+  await page.locator('#last').evaluate(button => button.addEventListener('keydown', event => {
+    const key = event as KeyboardEvent;
+    if (key.key === 'Tab' && !key.shiftKey) setTimeout(() => (button as HTMLElement).focus(), 0);
+  }));
+  await expect(verifyKeyboardCycle(page)).rejects.toThrow(/Application trapped Tab/);
+});
+
+for (const opacity of [.01, .1, 1]) {
+  test(`R02 pseudo focus paint composites opacity ${opacity}`, async ({ page }) => {
+    await page.setContent(`<style>button{position:absolute;left:40px;top:40px;width:100px;height:40px;background:white;border:0;outline:none}button:focus::after{content:"";position:absolute;inset:0;border:2px solid black;opacity:${opacity}}</style><button>Action</button>`);
+    await page.locator('button').focus();
+    if (opacity < 1) await expect(expectSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/contrast failures/);
+    else await expectSurfaceContrast(page.locator('button'), 'focus');
+  });
+}
+
+for (const shape of ['ellipse', 'line', 'polyline', 'use']) {
+  test(`R03 measures SVG ${shape} without a passing rectangle masking it`, async ({ page }) => {
+    const svg = { ellipse: '<ellipse cx="50" cy="20" rx="10" ry="10" fill="#eee"/>', line: '<line x1="40" y1="10" x2="60" y2="30" stroke="#eee" stroke-width="3"/>', polyline: '<polyline points="40,10 50,30 60,10" fill="none" stroke="#eee" stroke-width="3"/>', use: '<defs><path id="glyph" d="M40 10h20v20h-20z"/></defs><use href="#glyph" fill="#eee"/>' }[shape];
+    await page.setContent(`<svg style="background:white" width="80" height="40"><rect width="20" height="20" fill="black"/>${svg}</svg>`);
+    await expect(expectSurfaceContrast(page.locator('svg'), 'icon')).rejects.toThrow(shape === 'use' ? /pixel evidence/ : /contrast failures/);
+    await page.locator('svg').evaluate(svg => svg.querySelectorAll('ellipse,line,polyline,use').forEach(node => { node.setAttribute('fill', node.matches('line,polyline') ? 'none' : 'black'); node.setAttribute('stroke', 'black'); }));
+    if (shape !== 'use') await expectSurfaceContrast(page.locator('svg'), 'icon');
+  });
+}
+
+test('R04 zero-width SVG stroke does not count as meaningful icon paint', async ({ page }) => {
+  await page.setContent('<svg style="background:white"><rect width="40" height="40" fill="none" stroke="black" stroke-width="0"/></svg>');
+  await expect(expectSurfaceContrast(page.locator('svg'), 'icon')).rejects.toThrow(/Nonempty/);
+  await page.locator('rect').evaluate(node => node.setAttribute('stroke-width', '2'));
+  await expectSurfaceContrast(page.locator('svg'), 'icon');
+});
+
+for (const effect of ['filter:brightness(0)', 'mix-blend-mode:multiply', 'backdrop-filter:brightness(0)']) {
+  test(`R05 rejects unsupported composition ${effect}`, async ({ page }) => {
+    await page.setContent(`<div style="background:black;${effect}"><p style="color:white">Meaningful label</p></div>`);
+    await expect(measureSurfaceContrast(page.locator('p'))).rejects.toThrow(/pixel evidence/);
+    await page.locator('div').evaluate(node => { node.style.filter = 'none'; node.style.mixBlendMode = 'normal'; node.style.backdropFilter = 'none'; });
+    await expectSurfaceContrast(page.locator('p'));
+  });
+}
+
+test('R06 effective glyph fill determines text contrast', async ({ page }) => {
+  await page.setContent('<p style="color:black;-webkit-text-fill-color:white;background:white">Invisible glyphs</p>');
+  await expect(expectSurfaceContrast(page.locator('p'))).rejects.toThrow(/contrast failures/);
+  await page.locator('p').evaluate(node => node.style.setProperty('-webkit-text-fill-color', 'black'));
+  await expectSurfaceContrast(page.locator('p'));
+});
+
+test('R07 sibling background paint cannot be replaced with ancestor white', async ({ page }) => {
+  await page.setContent('<div style="position:relative;background:white"><div id="under" style="position:absolute;inset:0;background:black"></div><p style="position:relative;color:black">Hidden black glyphs</p></div>');
+  await expect(measureSurfaceContrast(page.locator('p'))).rejects.toThrow(/sibling background needs pixel evidence/);
+  await page.locator('#under').evaluate(node => node.remove());
+  await expectSurfaceContrast(page.locator('p'));
+});
+
+test('R08 invisible ancestor cannot certify focus geometry', async ({ page }) => {
+  await page.setContent('<style>button{outline:none}button:focus{outline:2px solid black}</style><div style="opacity:0"><button>Action</button></div>');
+  await page.locator('button').focus();
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('focused target has no visible focus indicator');
+  await page.locator('div').evaluate(node => node.style.opacity = '1');
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+});
+
+test('R09 descendant extending over the target ring is an obstruction', async ({ page }) => {
+  await page.setContent('<style>button{position:absolute;left:40px;top:40px;width:100px;height:40px;outline:none}button:focus{outline:2px solid black}</style><button>Action<span style="position:absolute;inset:-5px;background:white"></span></button>');
+  await page.locator('button').focus();
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('app content obscures target or focus ring');
+  await page.locator('span').evaluate(node => node.remove());
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+});
+
+test('R10 generated meaningful text cannot disappear beside passing text', async ({ page }) => {
+  await page.setContent('<style>div{background:white;color:black}div::before{content:"Generated label";color:#eee}</style><div>Passing label</div>');
+  await expect(expectSurfaceContrast(page.locator('div'))).rejects.toThrow(/contrast failures/);
+  await page.addStyleTag({ content: 'div::before{color:black}' });
+  await expectSurfaceContrast(page.locator('div'));
+});
+
+test('R11 collapsed offset shadow paints no focus pixels', async ({ page }) => {
+  await page.setContent('<style>button{appearance:none;margin:40px;outline:none}button:focus{box-shadow:10px 0 0 -100px black}</style><button>Action</button>');
+  await page.locator('button').focus();
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('focused target has no visible focus indicator');
+  await expect(expectSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Nonempty/);
+  await page.addStyleTag({ content: 'button:focus{box-shadow:10px 0 0 2px black}' });
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+});
+
+test('R12 permanent shadow cannot certify an invisible focus-only layer', async ({ page }) => {
+  await page.setContent('<style>button{margin:40px;background:white;outline:none;box-shadow:0 0 0 3px black}button:focus{box-shadow:0 0 0 3px black,0 0 0 1px white}</style><button>Action</button>');
+  await page.locator('button').focus();
+  await expect(expectSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Nonempty|contrast failures/);
+  await page.addStyleTag({ content: 'button:focus{box-shadow:0 0 0 3px black,0 0 0 5px black}' });
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+});
+
+test('R13 inset pseudo focus border compares against control paint', async ({ page }) => {
+  await page.setContent('<style>button{position:relative;margin:40px;background:black;color:white;outline:none}button:focus::after{content:"";position:absolute;inset:0;border:2px solid black}</style><button>Action</button>');
+  await page.locator('button').focus();
+  await expect(expectSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/contrast failures/);
+  await page.addStyleTag({ content: 'button:focus::after{border-color:white}' });
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+});
+
+test('R14 placeholder alpha determines effective contrast', async ({ page }) => {
+  await page.setContent('<style>input{background:white;color:black}input::placeholder{color:black;opacity:.1}</style><input placeholder="Meaningful placeholder">');
+  await expect(expectSurfaceContrast(page.locator('input'))).rejects.toThrow(/contrast failures/);
+  await page.addStyleTag({ content: 'input::placeholder{opacity:1}' });
+  await expectSurfaceContrast(page.locator('input'));
+});
+
+test('reflow rejects unlabelled nested horizontal scrolling and stale or unjustified target exceptions', async ({ page }) => {
+  await page.setContent('<div style="width:100px;overflow:auto"><div style="width:200px">Long content</div></div><button id="small" style="width:10px;height:10px;padding:0">A</button>');
+  await expect(expectNoPageOverflow(page)).rejects.toThrow(/scroll/);
+  const record: TargetException = { selector: '#small', kind: 'Essential', rationale: 'Small fixture', keyboardPath: 'Tab', evidence: 'fixture' };
+  expect((await inventoryTargets(page, [record])).inventory[0].failure).toContain('Essential');
+  await page.locator('#small').evaluate(node => { node.style.width = node.style.height = '30px'; });
+  expect((await inventoryTargets(page, [record])).inventory[0].failure).toContain('stale');
+});
+
+test('R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab', async ({ page }) => {
+  await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.goto('/__frontcomposer/specimens/page-toolbar');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.getByTitle('Change theme').first().click();
+  await page.getByRole('menuitem', { name: 'Dark', exact: true }).click();
+  const toolbar = new (await import('../page-objects/page-toolbar-specimen.page.js')).PageToolbarSpecimenPage(page);
+  await toolbar.summaryTab.focus();
+  await toolbar.summaryTab.press('ArrowRight');
+  await page.getByTestId('fc-palette-trigger').click();
+  await expect(page.getByTestId('fc-palette-search')).toBeFocused();
+  await page.getByTestId('fc-palette-search').locator('input').fill('no-match-accessibility-136');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('fc-palette-trigger')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('fc-settings-button')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#fc-settings-heading')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await page.evaluate(async () => {
+    const path = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+    const focus = await import(path) as { containDialogFocus: (testId: string) => boolean };
+    if (!focus.containDialogFocus('fc-settings-dialog')) throw new Error('palette containment did not attach');
+    const host = document.querySelector<HTMLElement>('[data-testid="fc-settings-dialog"]')!.closest('fluent-dialog')!;
+    const w = window as typeof window & { __aeVendorReturn?: { host: Element & { previousActiveElement?: Element | null }; callbacks: (() => void)[]; restore: () => void } };
+    const callbacks: (() => void)[] = [];
+    const original = window.setTimeout;
+    window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
+      // Hold the pinned Fluent callback itself, rather than substitute a synthetic return.
+      if (delay === 25 && typeof handler === 'function' && new Error().stack?.includes('Microsoft.FluentUI.AspNetCore.Components.lib.module.js')) {
+        callbacks.push(() => handler(...args));
+        return 0;
+      }
+      return original(handler, delay, ...args);
+    }) as typeof window.setTimeout;
+    w.__aeVendorReturn = { host, callbacks, restore: () => { window.setTimeout = original; } };
+  });
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('fc-settings-dialog')).toHaveCount(0);
+  await expect(page.getByTestId('fc-settings-button')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  const settings = page.getByTestId('fc-palette-trigger');
+  await expect(settings).toBeFocused();
+  const proof = await page.evaluate(() => {
+    const state = (window as typeof window & { __aeVendorReturn: { host: Element & { previousActiveElement?: Element | null }; callbacks: (() => void)[]; restore: () => void } }).__aeVendorReturn;
+    state.restore();
+    const proof = { queued: state.callbacks.length, cleared: state.host.previousActiveElement === null };
+    for (const callback of state.callbacks) callback();
+    return proof;
+  });
+  expect(proof.queued).toBeGreaterThan(0);
+  expect(proof.cleared).toBe(true);
+  await expect(settings).toBeFocused();
+});
+
+
+test('reused owned dialog dismissal resets only its current return and preserves later external input', async ({ page }) => {
+  await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.evaluate(async () => {
+    const path = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+    const focus = await import(path) as { containDialogFocus: (testId: string) => boolean };
+    const host = document.createElement('fluent-dialog');
+    host.hidden = true;
+    host.innerHTML = '<div data-testid="fc-settings-dialog"></div>';
+    document.body.append(host);
+    const w = window as typeof window & { __fcModalReservation?: { watchFocus: boolean; moved: boolean }; __fcOverlayOpenIntent?: { watchFocus: boolean; moved: boolean } };
+    for (let opening = 0; opening < 2; opening++) {
+      document.querySelector<HTMLElement>('[data-testid="fc-palette-trigger"]')!.focus();
+      const reservation = { watchFocus: true, moved: true };
+      const intent = { watchFocus: true, moved: true };
+      w.__fcModalReservation = reservation;
+      w.__fcOverlayOpenIntent = intent;
+      if (!focus.containDialogFocus('fc-settings-dialog')) throw new Error('reused host containment failed');
+      host.dispatchEvent(new CustomEvent('beforetoggle', { detail: { newState: 'closed' } }));
+      if (reservation.watchFocus || reservation.moved || intent.watchFocus || intent.moved) throw new Error('native return retained modal input tracking');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+      document.querySelector<HTMLElement>('[data-testid="fc-settings-button"]')!.focus();
+      if (!reservation.watchFocus || !reservation.moved || !intent.watchFocus || !intent.moved) throw new Error('later external input was discarded');
+    }
+    delete w.__fcModalReservation;
+    delete w.__fcOverlayOpenIntent;
+    host.remove();
+  });
+});
+
+test('forced-color replacement capability is recorded for its engine and run', async ({ page }, info) => {
+  await page.setContent('<span style="color:rgb(255,0,0);background:rgb(0,255,0);forced-color-adjust:auto">Capability</span>');
+  await page.emulateMedia({ forcedColors: 'active' });
+  const forced = await page.locator('span').evaluate(element => {
+    const css = getComputedStyle(element);
+    return { forcedColors: matchMedia('(forced-colors: active)').matches, color: css.color, background: css.backgroundColor };
+  });
+  const authoredColorReplacement = forced.color !== 'rgb(255, 0, 0)' && forced.background !== 'rgb(0, 255, 0)';
+  if (!authoredColorReplacement) expect(info.project.name).toBe('webkit');
+  const path = info.outputPath(`forced-colors-capability-${info.project.name}.json`);
+  await (await import('node:fs/promises')).writeFile(path, JSON.stringify({ engine: info.project.name, runId: process.env.FC_A11Y_EVIDENCE_RUN_ID, testId: info.testId, attempt: info.retry, authoredColorReplacement, forced }));
+  await info.attach('forced-color-capability', { path, contentType: 'application/json' });
+});
+
+
+test('desktop rail flyout controls fit both 72px and 48px rails without horizontal scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto('/__frontcomposer/specimens/type?density=compact');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const rail = page.getByTestId('fc-shell-navigation').getByTestId('fc-navigation-rail');
+  for (const width of [72, 48]) {
+    if (width === 48) await page.getByTestId('fc-hamburger-toggle').click();
+    await expect(rail).toHaveAttribute('data-rail-width', String(width));
+    await expect.poll(async () => (await rail.boundingBox())?.width).toBe(width);
+    for (const forcedColors of ['none', 'active'] as const) {
+      await page.emulateMedia({ forcedColors });
+      await expectNoPageOverflow(page);
+      const regions = await page.getByTestId('fc-shell-navigation').evaluate(element => ({ client: element.clientWidth, scroll: element.scrollWidth }));
+      expect(regions.scroll).toBeLessThanOrEqual(regions.client + 1);
+      await expect(rail.locator('[data-testid="fc-nav-flyout-trigger-Counter"]')).toHaveAttribute('icon-only', '');
+    }
+  }
+});
+
+
+for (const shape of ['line', 'path']) for (const axis of ['horizontal', 'vertical']) {
+  test(`review axis-aligned SVG ${shape} ${axis} retains its painted stroke envelope`, async ({ page }) => {
+    const points = axis === 'horizontal' ? 'x1="40" y1="20" x2="80" y2="20"' : 'x1="60" y1="5" x2="60" y2="35"';
+    const line = shape === 'line' ? `<line ${points}/>` : `<path d="${axis === 'horizontal' ? 'M40 20H80' : 'M60 5V35'}"/>`;
+    await page.setContent(`<svg width="100" height="40" style="background:white"><rect width="20" height="20" fill="black"/><g fill="none" stroke="#eee" stroke-width="3">${line}</g></svg>`);
+    await expect(expectSurfaceContrast(page.locator('svg'), 'icon')).rejects.toThrow(/contrast failures/);
+    await page.locator('g').evaluate(node => node.setAttribute('stroke', 'black'));
+    const samples = await expectSurfaceContrast(page.locator('svg'), 'icon');
+    expect(samples.some(sample => sample.node === shape && sample.paint === 'icon stroke')).toBe(true);
+  });
+}
+
+for (const kind of ['generated', 'placeholder', 'focus']) {
+  test(`review actual ${kind} pseudo composition inspects filters`, async ({ page }, info) => {
+    const markup = kind === 'generated' ? '<style>div::before{content:"Label";color:black;filter:brightness(0)}</style><div style="background:white"></div>'
+      : kind === 'placeholder' ? '<style>input::placeholder{color:black;opacity:1;filter:brightness(0)}</style><input placeholder="Label" style="background:white">'
+      : '<style>button{position:relative;margin:40px;background:white;outline:none}button:focus::after{content:"";position:absolute;inset:0;border:2px solid black;filter:brightness(0)}</style><button>Action</button>';
+    await page.setContent(markup);
+    const target = page.locator(kind === 'generated' ? 'div' : kind === 'placeholder' ? 'input' : 'button');
+    if (kind === 'focus') await target.focus();
+    const computedFilter = await target.evaluate((node, kind) => getComputedStyle(node, kind === 'placeholder' ? '::placeholder' : kind === 'generated' ? '::before' : '::after').filter, kind);
+    if (kind === 'placeholder' && computedFilter === 'none') {
+      expect(info.project.name).toBe('firefox'); // Firefox ignores filter on ::placeholder.
+      await expectSurfaceContrast(target);
+    } else await expect(measureSurfaceContrast(target, kind === 'focus' ? 'focus' : 'text')).rejects.toThrow(/Filtered or blended/);
+    if (kind === 'focus') await expect(focusGeometry(target)).rejects.toThrow(/Filtered or blended/);
+    await page.addStyleTag({ content: '*::before,*::after,*::placeholder{filter:none!important}' });
+    await expectSurfaceContrast(target, kind === 'focus' ? 'focus' : 'text');
+  });
+}
+
+test('review generated glyphs outside their host require pixel evidence', async ({ page }) => {
+  await page.setContent('<style>body{background:black}div{position:relative;background:white;color:black;width:100px;height:40px}div::before{content:"Label";position:absolute;left:120px}</style><div></div>');
+  await expect(measureSurfaceContrast(page.locator('div'))).rejects.toThrow(/Generated text geometry/);
+  await page.addStyleTag({ content: 'div::before{position:static}' });
+  await expectSurfaceContrast(page.locator('div'));
+});
+
+for (const style of ['position:relative;top:40px', 'position:sticky;top:0', 'transform:translateY(40px)', '']) {
+  test(`review overlapping sibling backgrounds require evidence ${style || 'static negative margin'}`, async ({ page }) => {
+    await page.setContent(`<div style="background:white"><div id="under" style="background:black;height:40px;${style}"></div><p style="position:relative;margin-top:${style.includes('40px') ? '0' : '-32px'};color:black">Label</p></div>`);
+    await expect(measureSurfaceContrast(page.locator('p'))).rejects.toThrow(/Overlapping sibling background/);
+    await page.locator('#under').evaluate(node => node.remove());
+    await expectSurfaceContrast(page.locator('p'));
+  });
+}
+
+test('review a sharp shadow concealed by its opaque control is not focus paint', async ({ page }) => {
+  await page.setContent('<style>button{width:100px;height:40px;margin:40px;border:0;border-radius:0;background:white;outline:none}button:focus{box-shadow:1px 0 0 -2px black}</style><button>Action</button>');
+  await page.locator('button').focus();
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('focused target has no visible focus indicator');
+  await expect(expectSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Nonempty/);
+  await page.addStyleTag({ content: 'button:focus{box-shadow:4px 0 0 -2px black}' });
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+});
+
+test('review permanent pseudo background cannot certify a same-color focus border', async ({ page }) => {
+  await page.setContent('<style>button{position:relative;margin:40px;background:white;outline:none}button::after{content:"";position:absolute;inset:0;background:black;border:2px solid transparent}button:focus::after{border-color:black}</style><button>Action</button>');
+  await page.locator('button').focus();
+  await expect(focusGeometry(page.locator('button'))).rejects.toThrow(/Pseudo focus background/);
+  await expect(measureSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Pseudo focus background/);
+  await page.addStyleTag({ content: 'button::after{background:transparent}' });
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+});
+
+test('review margin-shifted pseudo borders use the backdrop outside their host', async ({ page }) => {
+  await page.setContent('<style>body{background:black}button{position:relative;margin:40px;width:100px;height:40px;background:white;outline:none}button:focus::after{content:"";position:absolute;left:0;top:0;width:100px;height:40px;box-sizing:border-box;margin-left:120px;border:2px solid black}</style><button>Action</button>');
+  await page.locator('button').focus();
+  await expect(expectSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/contrast failures/);
+  await page.addStyleTag({ content: 'button:focus::after{border-color:white}' });
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+});
+
+test('review transformed static descendants remain focus obstructions', async ({ page }) => {
+  await page.setContent('<style>button{margin:40px;width:100px;height:40px;outline:none}button:focus{outline:2px solid black}span{display:block;width:120px;height:60px;background:white;transform:translate(-12px,-24px)}</style><button>Action<span></span></button>');
+  await page.locator('button').focus();
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('app content obscures target or focus ring');
+  await page.locator('span').evaluate(node => { node.style.transform = 'none'; node.style.width = node.style.height = '10px'; });
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+});
+
+test('review generated large text uses the existing 3 to 1 threshold', async ({ page }) => {
+  await page.setContent('<style>div{background:white}div::before{content:"Large label";font-size:32px;color:#888}</style><div></div>');
+  const samples = await expectSurfaceContrast(page.locator('div'));
+  expect(samples[0].minimum).toBe(3);
+  expect(samples[0].ratio).toBeGreaterThan(3.5);
+  expect(samples[0].ratio).toBeLessThan(3.6);
+  await page.addStyleTag({ content: 'div::before{color:#aaa}' });
+  await expect(expectSurfaceContrast(page.locator('div'))).rejects.toThrow(/contrast failures/);
+});
+
+test('review recorded operator focus on SVG survives deferred overlay restoration', async ({ page }) => {
+  await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.setContent('<button id="origin">Origin</button>');
+  await page.evaluate(async () => {
+    const path = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+    const focus = await import(path) as { restoreOverlayOrigin: () => void };
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('tabindex', '0'); svg.id = 'operator-svg'; document.body.append(svg); svg.focus();
+    const w = window as typeof window & { __fcOverlayOrigin?: Element; __fcModalReservation?: { moved: boolean } };
+    w.__fcOverlayOrigin = document.querySelector('#origin')!;
+    w.__fcModalReservation = { moved: true };
+    if (document.activeElement !== svg) throw new Error('SVG fixture did not receive focus');
+    focus.restoreOverlayOrigin();
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  });
+  await expect(page.locator('#operator-svg')).toBeFocused();
+});
+
+
+for (const effect of ['mix-blend-mode:multiply', 'backdrop-filter:brightness(0)']) {
+  test(`review actual generated pseudo composition rejects ${effect}`, async ({ page }) => {
+    await page.setContent(`<style>div{background:white}div::before{content:"Label";color:black;${effect}}</style><div></div>`);
+    await expect(measureSurfaceContrast(page.locator('div'))).rejects.toThrow(/Filtered or blended/);
+    await page.addStyleTag({ content: 'div::before{mix-blend-mode:normal;backdrop-filter:none}' });
+    await expectSurfaceContrast(page.locator('div'));
+  });
+}
+
+
+test('review translucent permanent shadow cannot certify covered changed focus paint', async ({ page }) => {
+  await page.setContent('<style>button{margin:40px;width:100px;height:40px;background:white;outline:none;border:0;border-radius:0;box-shadow:0 0 0 3px rgb(255 255 255 / .95)}button:focus{box-shadow:0 0 0 3px rgb(255 255 255 / .95),0 0 0 2px black}</style><button>Action</button>');
+  await page.locator('button').focus();
+  await expect(focusGeometry(page.locator('button'))).rejects.toThrow(/Overlapping translucent shadow layers/);
+  await expect(measureSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Overlapping translucent shadow layers/);
+  await page.addStyleTag({ content: 'button{box-shadow:0 0 0 3px white}button:focus{box-shadow:0 0 0 3px white,0 0 0 5px black}' });
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+  await page.addStyleTag({ content: 'button{box-shadow:none}button:focus{box-shadow:0 0 2px rgb(0 0 0 / .12),0 2px 4px rgb(0 0 0 / .14),0 0 0 2px black}' });
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+  const light = await expectSurfaceContrast(page.locator('button'), 'focus');
+  expect(light.some(sample => sample.measurement === 'conservative-bound' && sample.ratio >= 3 && sample.ratio < 21)).toBe(true);
+  await page.addStyleTag({ content: 'body,button{background:rgb(41,41,41)}button:focus{box-shadow:0 0 2px rgb(0 0 0 / .24),0 2px 4px rgb(0 0 0 / .28),0 0 0 2px white}' });
+  const geometry = await focusGeometry(page.locator('button'));
+  expect(geometry.failures).toEqual([]);
+  expect(geometry.shadowBounds).toHaveLength(1);
+  const dark = await expectSurfaceContrast(page.locator('button'), 'focus');
+  const bound = dark.find(sample => sample.measurement === 'conservative-bound')!.shadowBound!;
+  expect(bound.ratioMinimum).toBeGreaterThanOrEqual(3);
+  expect(bound.layers).toHaveLength(2);
+  expect(bound.backgroundLayers).toHaveLength(2);
+  expect(bound.layers.every(layer => layer.maximumAlpha >= layer.declaredAlpha)).toBe(true);
+  expect([...bound.foreground.minimum, ...bound.foreground.maximum, ...bound.background.minimum, ...bound.background.maximum].every(Number.isInteger)).toBe(true);
+  expect(bound.foreground.minimum.every((value, i) => value < bound.foreground.maximum[i])).toBe(true);
+  expect(bound.background.minimum.every((value, i) => value < bound.background.maximum[i])).toBe(true);
+  // A later black blur can erase contrast against a light adjacent background;
+  // the foreground-only overlays cannot bound that composition on their own.
+  await page.addStyleTag({ content: 'body,button{background:white}button:focus{box-shadow:0 0 2px rgb(0 0 0 / .12),0 0 0 2px black,0 0 12px rgb(0 0 0 / .9)}' });
+  await expect(focusGeometry(page.locator('button'))).rejects.toThrow(/Overlapping translucent shadow layers/);
+  await expect(measureSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Overlapping translucent shadow layers/);
+  // Canvas can quantize .999 to opaque; a blur still has spatial alpha below one.
+  await page.addStyleTag({ content: 'body,button{background:black}button:focus{box-shadow:0 0 2px 20px rgb(0 0 0 / .999),0 0 0 2px white}' });
+  await expect(focusGeometry(page.locator('button'))).rejects.toThrow(/Overlapping translucent shadow layers/);
+  await expect(measureSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Overlapping translucent shadow layers/);
+  await page.addStyleTag({ content: 'body,button{background:color(srgb .16 .16 .16)}button:focus{box-shadow:0 0 2px rgb(0 0 0 / .24),0 0 0 2px white}' });
+  await expect(measureSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Shadow background color/);
+});
+
+
+test('review normal-flow generated label spacing remains measured', async ({ page }) => {
+  await page.setContent('<style>label{background:white;color:black}label::after{content:"*" / "";margin-left:4px;color:black}</style><label>Required field</label>');
+  expect((await expectSurfaceContrast(page.locator('label'))).some(sample => sample.paint === '::after generated text')).toBe(true);
+  await page.addStyleTag({ content: 'label::after{margin-left:-20px}' });
+  await expect(measureSurfaceContrast(page.locator('label'))).rejects.toThrow(/Generated text geometry/);
+});
+
+test('review clipped text cannot overlap an adjacent static footer but visible overlap is rejected', async ({ page }) => {
+  await page.setContent('<style>body{background:white}#root{position:fixed;left:40px;top:40px;width:200px}#port{height:30px;overflow:hidden;background:white}p{margin:0;font-size:12px;line-height:20px;color:black}footer{height:30px;background:black}</style><div id="root"><div id="port"><p>Visible line<br>Partly clipped line</p></div><footer></footer></div>');
+  await expectSurfaceContrast(page.locator('p'));
+  await page.addStyleTag({ content: '#port{height:60px}footer{margin-top:-30px}' });
+  await expect(measureSurfaceContrast(page.locator('p'))).rejects.toThrow(/Overlapping sibling background/);
+});
+
+
+test('review opaque native top-layer surfaces shield text from page backgrounds only', async ({ page }) => {
+  await page.setContent('<style>body{background:white}#under{position:fixed;inset:0;background:black}dialog{background:white;color:black}p{position:relative}</style><div id="under"></div><dialog><p>Modal label</p></dialog>');
+  await page.locator('dialog').evaluate(dialog => (dialog as HTMLDialogElement).showModal());
+  await expectSurfaceContrast(page.locator('p'));
+  await page.evaluate(() => {
+    const overlay = document.createElement('div'); overlay.id = 'over'; overlay.setAttribute('popover', 'manual');
+    overlay.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;margin:0;background:black';
+    document.body.append(overlay); overlay.showPopover();
+  });
+  await expect(measureSurfaceContrast(page.locator('p'))).rejects.toThrow(/Overlapping sibling background/);
+  await page.locator('#over').evaluate(overlay => { (overlay as HTMLElement).hidePopover(); overlay.remove(); });
+  await page.locator('dialog').evaluate(dialog => { const layer = document.createElement('div'); layer.style.cssText = 'position:absolute;inset:0;background:black'; dialog.prepend(layer); });
+  await expect(measureSurfaceContrast(page.locator('p'))).rejects.toThrow(/Overlapping sibling background/);
 });

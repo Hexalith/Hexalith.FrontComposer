@@ -1,0 +1,16 @@
+{
+  "utc": "2026-10-16T18:38:19.743410+00:00",
+  "command": [
+    "aspire",
+    "stop",
+    "--apphost",
+    "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+    "--non-interactive"
+  ],
+  "exitCode": 0,
+  "durationSeconds": 0.615,
+  "result": "Exact task-owned Test AppHost stop returned successfully; no unrelated process cleanup used.",
+  "log": "../../raw/verified-aspire-stop.log",
+  "logSha256": "3262a972a2c7471d49f5b343311350c8ba17e3ea402051500ba5a10a935c5a0a",
+  "sanitization": "ANSI formatting removed; URLs redacted."
+}

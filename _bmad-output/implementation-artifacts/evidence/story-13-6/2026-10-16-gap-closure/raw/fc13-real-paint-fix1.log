@@ -1,0 +1,145 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts --project=chromium --workers=2 --grep shell chrome.*in light|generated zero-field validation:
+
+
+Running 3 tests using 2 workers
+
+(node:22625) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22636) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt (4.7s)
+  ✘  2 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt (4.6s)
+(node:25393) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 [chromium] › specs/accessibility-state-matrix.spec.ts:300:3 › shell chrome, theme menu and exact desktop navigation rails in light (3.3s)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Error: Overlapping translucent shadow layers need pixel evidence
+        at eval (eval at evaluate (:311:30), <anonymous>:195:21)
+        at Array.filter (<anonymous>)
+        at Object.shadows (eval at evaluate (:311:30), <anonymous>:167:21)
+        at eval (eval at evaluate (:311:30), <anonymous>:131:91)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at eval (eval at evaluate (:311:30), <anonymous>:195:21)
+        at Object.shadows (eval at evaluate (:311:30), <anonymous>:167:21)
+        at eval (eval at evaluate (:311:30), <anonymous>:131:91)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at focusGeometry (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:284:17)
+        at expect.poll.message (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:539:50)
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:539:3)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:132:9
+
+    attachment #1: state-zero-validation-light (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/attachments/state-zero-validation-light-4b34b87347b31e61b18ed078311391b9107313cf.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Error: Overlapping translucent shadow layers need pixel evidence
+        at eval (eval at evaluate (:311:30), <anonymous>:195:21)
+        at Array.filter (<anonymous>)
+        at Object.shadows (eval at evaluate (:311:30), <anonymous>:167:21)
+        at eval (eval at evaluate (:311:30), <anonymous>:131:91)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at eval (eval at evaluate (:311:30), <anonymous>:195:21)
+        at Object.shadows (eval at evaluate (:311:30), <anonymous>:167:21)
+        at eval (eval at evaluate (:311:30), <anonymous>:131:91)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at focusGeometry (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:284:17)
+        at expect.poll.message (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:539:50)
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:539:3)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:132:9
+
+    attachment #1: state-zero-validation-dark (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/attachments/state-zero-validation-dark-3ece0b3791a6263e147a82a8bdce5894bd1c620c.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › specs/accessibility-state-matrix.spec.ts:300:3 › shell chrome, theme menu and exact desktop navigation rails in light 
+
+    Error: Nonempty border contrast inventory
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+       at ../helpers/responsive-accessibility.ts:832
+
+      830 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      831 |   const samples = await measureSurfaceContrast(root, kind);
+    > 832 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+          |                                                                 ^
+      833 |   // A Fluent control may paint a contrasting edge plus a two-color separator.
+      834 |   // Alternatives belong to that unique control; another control cannot mask a failure.
+      835 |   const owners = new Set(samples.map(sample => sample.owner));
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:832:65)
+        at collectBoundaries (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:65:54)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:69:22)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:303:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-real-paint-fix1/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:300:3 › shell chrome, theme menu and exact desktop navigation rails in light 

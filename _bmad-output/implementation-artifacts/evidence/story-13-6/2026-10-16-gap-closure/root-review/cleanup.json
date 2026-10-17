@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-16T17:49:43.537257+00:00",
+  "command": [
+    "aspire",
+    "stop",
+    "--apphost",
+    "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+    "--non-interactive"
+  ],
+  "exitCode": 0,
+  "result": "Exact owned AppHost stopped successfully; no unrelated process cleanup used.",
+  "log": "raw/third-aspire-stop.log",
+  "logSha256": "3262a972a2c7471d49f5b343311350c8ba17e3ea402051500ba5a10a935c5a0a",
+  "originalLogPath": "raw/final-aspire-stop.log"
+}

@@ -100,7 +100,6 @@ if (specimensEnabled) {
         o.KnownPolicies.Add("Specimens.PolicyAllowed");
         o.KnownPolicies.Add("Specimens.PolicyDenied");
     });
-    _ = builder.Services.AddAccessibilitySpecimenSeams(builder.Environment);
 }
 
 if (specimensEnabled) {
@@ -171,6 +170,11 @@ Type userContextAccessorType = fakeAuthRequested
     ? typeof(CounterFakeAuthUserContextAccessor)
     : typeof(DemoUserContextAccessor);
 builder.Services.Replace(new ServiceDescriptor(typeof(IUserContextAccessor), userContextAccessorType, ServiceLifetime.Scoped));
+if (specimensEnabled)
+{
+    // Test-only replacement must follow the ordinary demo-context registration.
+    _ = builder.Services.AddAccessibilitySpecimenSeams(builder.Environment);
+}
 
 // Slightly higher stub latencies so the 5-state lifecycle is observable in the Counter sample.
 builder.Services.Configure<StubCommandServiceOptions>(o => {

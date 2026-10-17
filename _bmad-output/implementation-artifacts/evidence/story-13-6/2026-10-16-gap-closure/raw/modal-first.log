@@ -1,0 +1,89 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts specs/responsive-accessibility.spec.ts --project=chromium --workers=1 --grep active toolbar.*dark|actual Fluent
+
+
+Running 2 tests using 1 worker
+
+(node:13805) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in dark (3.5s)
+(node:15144) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium] › specs/responsive-accessibility.spec.ts:236:1 › owned palette return cancels the actual Fluent delayed return after an operator Tab (1.3s)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in dark 
+
+    Error: text contrast failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 21
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "background": Array [
+    +       255,
+    +       255,
+    +       255,
+    +       1,
+    +     ],
+    +     "foreground": Array [
+    +       255,
+    +       255,
+    +       255,
+    +       1,
+    +     ],
+    +     "minimum": 4.5,
+    +     "node": "p",
+    +     "owner": 3,
+    +     "paint": "Activity panel content",
+    +     "ratio": 1,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:693
+
+      691 |   const passingOwners = new Set([...owners].filter(owner => samples.some(sample => sample.owner === owner && sample.ratio >= sample.minimum)));
+      692 |   const failures = samples.filter(sample => sample.ratio < sample.minimum && (!(kind === 'focus' || kind === 'cue' || kind === 'border') || !passingOwners.has(sample.owner)));
+    > 693 |   expect(failures, `${kind} contrast failures`).toEqual([]);
+          |                                                 ^
+      694 |   return samples;
+      695 | }
+      696 |
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:693:49)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:80:42)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:346:5
+
+    attachment #1: state-filter-popover-dark (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-first/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-filter-popover-dark-14519ad5247abc5299f1ac242f28a815fe677845.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-view-menu-dark (application/json) ─────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-first/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-view-menu-dark-f5632bef72a3807767ae5512b89cf11743c437ef.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-first/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-first/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-modal-first/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-first/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-modal-first/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in dark 
+  1 passed (5.9s)

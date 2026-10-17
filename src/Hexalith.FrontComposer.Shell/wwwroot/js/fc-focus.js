@@ -7,6 +7,7 @@ let pendingTabFocus = null;
 let routeFocusGuardController = null;
 const editedOrigins = new WeakMap();
 const containedDialogs = new WeakSet();
+const dialogReturns = new WeakMap();
 let lastEditedRootRef = null;
 let pendingAbandonmentStay = null;
 
@@ -269,9 +270,25 @@ export function containDialogFocus(testId, retryOnce = true) {
     // native dialog dismissal and other Fluent dialogs' return behavior intact.
     if (testId === 'fc-palette-root' || testId === 'fc-settings-dialog') {
         host.previousActiveElement = null;
+        // Associate every opening, including reuse of a host whose listener already exists.
+        dialogReturns.set(host, { reservation: window.__fcModalReservation, intent: window.__fcOverlayOpenIntent });
         if (!containedDialogs.has(host)) {
             host.addEventListener('beforetoggle', (event) => {
-                if ((event.detail?.newState ?? event.newState) === 'closed') host.previousActiveElement = null;
+                if ((event.detail?.newState ?? event.newState) !== 'closed') return;
+                host.previousActiveElement = null;
+                // Escape inside the modal can make the native dialog restore the previously
+                // active page control. That dismissal is not a later operator focus move.
+                // A subsequent external key or pointer input re-arms the keyboard tracker.
+                const state = dialogReturns.get(host);
+                for (const [current, captured] of [
+                    [window.__fcModalReservation, state?.reservation],
+                    [window.__fcOverlayOpenIntent, state?.intent],
+                ]) {
+                    if (current && current === captured) {
+                        current.watchFocus = false;
+                        current.moved = false;
+                    }
+                }
             }, true);
         }
     }
@@ -673,8 +690,10 @@ export function restoreOverlayOrigin(forceRouteHeading = false, owner = null) {
     // interop call. Preserve a subsequent operator move already recorded by the shared tracker,
     // as well as moves made while the deferred return below is waiting.
     let userMovedFocus = (window.__fcModalReservation?.moved === true || window.__fcOverlayOpenIntent?.moved === true)
+        && document.activeElement instanceof Element
+        && !document.activeElement.matches('body,html')
         && document.activeElement !== origin
-        && !document.activeElement?.closest(modalContainerSelector);
+        && !document.activeElement.closest(modalContainerSelector);
     window.__fcOverlayOrigin = null;
     window.__fcOverlayOpenIntent = null;
     window.__fcModalReservation = null;

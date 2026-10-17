@@ -1,0 +1,1669 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --project=chromium --project=firefox --project=webkit --workers=3
+
+
+Running 543 tests using 3 workers
+
+(node:59264) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:59247) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:59270) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    1 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (5.5s)
+  ✓    2 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (5.6s)
+  ✓    3 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt (7.1s)
+  ✓    4 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field forbidden: safe feedback, focus, owner, next attempt (4.7s)
+  ✓    5 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field unavailable: safe feedback, focus, owner, next attempt (4.9s)
+  ✓    6 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (4.6s)
+  ✓    7 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (4.6s)
+  ✓    8 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (4.5s)
+  ✓    9 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field transport: safe feedback, focus, owner, next attempt (4.7s)
+  ✓   10 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt (4.6s)
+  ✓   11 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field policy: safe feedback, focus, owner, next attempt (4.6s)
+  ✓   12 [chromium] › specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results (4.1s)
+  ✓   13 [chromium] › specs/accessibility-state-matrix.spec.ts:226:5 › AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation (3.7s)
+  ✓   16 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › home: composed text, targets, current-state and forced-color cues (2.8s)
+  ✓   15 [chromium] › specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces (7.3s)
+  ✓   17 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › navigation-tabs: composed text, targets, current-state and forced-color cues (4.2s)
+  ✓   18 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues (3.8s)
+  ✓   19 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (6.0s)
+  ✓   20 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt (7.1s)
+  ✓   21 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (5.5s)
+  ✓   22 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (5.4s)
+  ✓   14 [chromium] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (25.4s)
+  ✓   23 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt (5.4s)
+  ✓   24 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt (5.0s)
+  ✓   25 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (5.2s)
+  ✓   26 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (4.9s)
+  ✓   27 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (4.8s)
+  ✓   28 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field transport: safe feedback, focus, owner, next attempt (4.9s)
+  ✓   29 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field admission: safe feedback, focus, owner, next attempt (5.1s)
+  ✓   30 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field policy: safe feedback, focus, owner, next attempt (5.1s)
+  ✓   31 [chromium] › specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results (4.2s)
+  ✓   32 [chromium] › specs/accessibility-state-matrix.spec.ts:226:5 › AE complete state matrix dark › real generated detail loss focuses its neutral non-live explanation (4.5s)
+  ✓   35 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues (2.9s)
+  ✓   34 [chromium] › specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces (8.2s)
+  ✓   36 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › navigation-tabs: composed text, targets, current-state and forced-color cues (4.2s)
+  ✓   37 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues (4.1s)
+  ✓   39 [chromium] › specs/accessibility-state-matrix.spec.ts:314:1 › contrast measurement rejects empty, low-contrast, unpainted and unsupported samples (503ms)
+  ✓   40 [chromium] › specs/accessibility-state-matrix.spec.ts:332:1 › unrelated controls cannot mask failed focus or boundary contrast (314ms)
+  ✓   41 [chromium] › specs/accessibility-state-matrix.spec.ts:343:1 › forced-color state checks reject a removed cue while text and selected semantics survive (324ms)
+  ✓   38 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (6.3s)
+  ✓   33 [chromium] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (25.6s)
+  ✓   43 [chromium] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in light (10.2s)
+  ✓   42 [chromium] › specs/accessibility-state-matrix.spec.ts:355:3 › shell chrome, theme menu and exact desktop navigation rails in light (17.8s)
+  ✓   44 [chromium] › specs/accessibility-state-matrix.spec.ts:439:3 › generated validation, policy, destructive and abandonment states in light (14.8s)
+  ✓   46 [chromium] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in dark (10.0s)
+  ✓   45 [chromium] › specs/accessibility-state-matrix.spec.ts:355:3 › shell chrome, theme menu and exact desktop navigation rails in dark (17.3s)
+  ✓   47 [chromium] › specs/accessibility-state-matrix.spec.ts:439:3 › generated validation, policy, destructive and abandonment states in dark (15.5s)
+  ✓   50 [chromium] › specs/accessibility-state-matrix.spec.ts:513:3 › real generated filter-hidden detail stays distinct from missing-item results in light (3.6s)
+  ✓   51 [chromium] › specs/accessibility-state-matrix.spec.ts:513:3 › real generated filter-hidden detail stays distinct from missing-item results in dark (3.7s)
+  ✓   48 [chromium] › specs/accessibility-state-matrix.spec.ts:482:3 › projection reconnect fallback stale slow cap and filter cues in light (24.1s)
+  ✓   52 [chromium] › specs/accessibility-state-matrix.spec.ts:530:3 › delayed generated detail recovery cancels after operator focus and navigation in light (2.8s)
+  ✓   49 [chromium] › specs/accessibility-state-matrix.spec.ts:482:3 › projection reconnect fallback stale slow cap and filter cues in dark (24.6s)
+  ✓   53 [chromium] › specs/accessibility-state-matrix.spec.ts:530:3 › delayed generated detail recovery cancels after operator focus and navigation in dark (2.7s)
+  ✓   56 [chromium] › specs/accessibility-state-matrix.spec.ts:606:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (350ms)
+  ✓   54 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › fresh-row presentation retains text boundary and system-color meaning in light (3.5s)
+  ✓   58 [chromium] › specs/accessibility-state-matrix.spec.ts:643:1 › G09 forced-color focus geometry rejects a mode-specific clipped ring (225ms)
+  ✓   57 [chromium] › specs/accessibility-state-matrix.spec.ts:619:1 › validation links keep native same-page href activation when focus enhancement is unavailable (1.5s)
+  ✓   55 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › fresh-row presentation retains text boundary and system-color meaning in dark (4.0s)
+  ✓   59 [chromium] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after tenant scope change in light (2.6s)
+  ✓   60 [chromium] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after user scope change in light (2.6s)
+  ✓   63 [chromium] › specs/responsive-accessibility.spec.ts:19:3 › AE geometry regression fixtures › rejects a clipped ring even when the complete target is inside the viewport (303ms)
+  ✓   64 [chromium] › specs/responsive-accessibility.spec.ts:23:3 › AE geometry regression fixtures › includes outer box-shadow rings and offsets in clipping geometry (1.0s)
+  ✓   65 [chromium] › specs/responsive-accessibility.spec.ts:47:3 › AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host (375ms)
+  ✓   61 [chromium] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after tenant scope change in dark (2.8s)
+  ✓   67 [chromium] › specs/responsive-accessibility.spec.ts:78:3 › AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping (347ms)
+  ✓   68 [chromium] › specs/responsive-accessibility.spec.ts:84:3 › AE geometry regression fixtures › spacing exceptions reject neighboring circles and accept an isolated target (211ms)
+  ✓   62 [chromium] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after user scope change in dark (2.6s)
+  ✓   69 [chromium] › specs/responsive-accessibility.spec.ts:91:3 › AE geometry regression fixtures › rejects missing and invalid equivalent inventories (152ms)
+  ✓   70 [chromium] › specs/responsive-accessibility.spec.ts:97:3 › AE geometry regression fixtures › spacing overrides reach Fluent-style shadow content and contrast composites alpha (252ms)
+  ✓   71 [chromium] › specs/responsive-accessibility.spec.ts:112:1 › spacing reaches a delayed shadow root and cleanup stops later injection (281ms)
+  ✓   66 [chromium] › specs/responsive-accessibility.spec.ts:54:3 › AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes (1.2s)
+  ✓   73 [chromium] › specs/responsive-accessibility.spec.ts:137:1 › modal decoration cannot substitute for the focused control indicator (243ms)
+  ✓   72 [chromium] › specs/responsive-accessibility.spec.ts:125:1 › focus checks reject an absent indicator and a pointer-transparent opaque occluder (388ms)
+  ✓   74 [chromium] › specs/responsive-accessibility.spec.ts:144:1 › text clipping follows native top-layer popovers while retaining their own clipping checks (195ms)
+  ✓   75 [chromium] › specs/responsive-accessibility.spec.ts:152:1 › a one-control keyboard trap cannot satisfy the expected cycle (365ms)
+  ✓   76 [chromium] › specs/responsive-accessibility.spec.ts:159:1 › an application-prevented Tab at the final control cannot impersonate browser chrome (377ms)
+  ✓   77 [chromium] › specs/responsive-accessibility.spec.ts:166:1 › shell focus scrolling protects the ring and cancels stale or disposed work (893ms)
+  ✓   78 [chromium] › specs/responsive-accessibility.spec.ts:202:1 › delayed overlay disposal preserves an operator Tab after native origin return (1.4s)
+  ✓   79 [chromium] › specs/responsive-accessibility.spec.ts:236:1 › owned palette return cancels the actual Fluent delayed return after an operator Tab (1.4s)
+  ✓   82 [chromium] › specs/responsive-accessibility.spec.ts:337:1 › the real missing-detail component registers recovery before a Fluent shadow action removes detail (1.1s)
+  ✓   80 [chromium] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in light (2.6s)
+  ✓   81 [chromium] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in dark (2.7s)
+  ✓   83 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow (3.6s)
+  ✓   84 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow with all text-spacing overrides (3.6s)
+  ✓   85 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow (5.1s)
+  ✓   86 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides (5.5s)
+  ✓   89 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow (5.2s)
+  ✓   90 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides (5.0s)
+  ✓   87 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow (18.7s)
+  ✓   91 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (4.9s)
+  ✓   88 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides (19.4s)
+  ✓   92 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (5.3s)
+  ✓   93 [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light (4.3s)
+  ✓   96 [chromium] › specs/responsive-accessibility.spec.ts:471:1 › missing-detail recovery consumes only lost detail focus and cancels stale captures (928ms)
+  ✓   94 [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark (4.4s)
+  ✓   97 [chromium] › specs/responsive-accessibility.spec.ts:626:1 › row metrics preserve the compact minimum and report growth with the matching density floor (1.0s)
+  ✓   99 [chromium] › specs/responsive-accessibility.spec.ts:712:3 › review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus (565ms)
+  ✓  100 [chromium] › specs/responsive-accessibility.spec.ts:733:3 › review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring (242ms)
+  ✓  101 [chromium] › specs/responsive-accessibility.spec.ts:743:3 › review measurement regressions › G03 transparent supported CSS colors are absent focus paint (259ms)
+  ✓  102 [chromium] › specs/responsive-accessibility.spec.ts:751:3 › review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry (522ms)
+  ✓   95 [chromium] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (4.0s)
+  ✓  103 [chromium] › specs/responsive-accessibility.spec.ts:759:3 › review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast (314ms)
+  ✓  104 [chromium] › specs/responsive-accessibility.spec.ts:766:3 › review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory (282ms)
+  ✓  105 [chromium] › specs/responsive-accessibility.spec.ts:773:3 › review measurement regressions › G12 inward outlines contrast with the control paint (199ms)
+  ✓   98 [chromium] › specs/responsive-accessibility.spec.ts:658:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes (2.5s)
+  ✓  106 [chromium] › specs/responsive-accessibility.spec.ts:779:3 › review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator (369ms)
+  ✓  107 [chromium] › specs/responsive-accessibility.spec.ts:789:1 › supported clipped paint keeps a focus underline and excludes only fully hidden text (382ms)
+  ✓  108 [chromium] › specs/responsive-accessibility.spec.ts:800:1 › diagnostic screenshots restore scroll without repairing an actually clipped focus ring (513ms)
+  ✓  110 [chromium] › specs/responsive-accessibility.spec.ts:837:1 › R01 rejects an unprevented boundary Tab that application code refocuses (400ms)
+  ✓  111 [chromium] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.01 (265ms)
+  ✓  112 [chromium] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.1 (225ms)
+  ✓  113 [chromium] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 1 (227ms)
+  ✓  114 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG ellipse without a passing rectangle masking it (238ms)
+  ✓  115 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG line without a passing rectangle masking it (250ms)
+  ✓  116 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG polyline without a passing rectangle masking it (329ms)
+  ✓  117 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG use without a passing rectangle masking it (255ms)
+  ✓  118 [chromium] › specs/responsive-accessibility.spec.ts:865:1 › R04 zero-width SVG stroke does not count as meaningful icon paint (322ms)
+  ✓  119 [chromium] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition filter:brightness(0) (290ms)
+  ✓  121 [chromium] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition backdrop-filter:brightness(0) (345ms)
+  ✓  120 [chromium] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition mix-blend-mode:multiply (398ms)
+  ✓  122 [chromium] › specs/responsive-accessibility.spec.ts:888:1 › R07 sibling background paint cannot be replaced with ancestor white (353ms)
+  ✓  123 [chromium] › specs/responsive-accessibility.spec.ts:881:1 › R06 effective glyph fill determines text contrast (386ms)
+  ✓  109 [chromium] › specs/responsive-accessibility.spec.ts:817:1 › real Fluent search and generated editors retain their focus contour with text spacing (2.6s)
+  ✓  124 [chromium] › specs/responsive-accessibility.spec.ts:895:1 › R08 invisible ancestor cannot certify focus geometry (366ms)
+  ✓  125 [chromium] › specs/responsive-accessibility.spec.ts:903:1 › R09 descendant extending over the target ring is an obstruction (379ms)
+  ✓  126 [chromium] › specs/responsive-accessibility.spec.ts:911:1 › R10 generated meaningful text cannot disappear beside passing text (302ms)
+  ✓  127 [chromium] › specs/responsive-accessibility.spec.ts:918:1 › R11 collapsed offset shadow paints no focus pixels (266ms)
+  ✓  128 [chromium] › specs/responsive-accessibility.spec.ts:927:1 › R12 permanent shadow cannot certify an invisible focus-only layer (258ms)
+  ✓  129 [chromium] › specs/responsive-accessibility.spec.ts:935:1 › R13 inset pseudo focus border compares against control paint (231ms)
+  ✓  131 [chromium] › specs/responsive-accessibility.spec.ts:950:1 › reflow rejects unlabelled nested horizontal scrolling and stale or unjustified target exceptions (186ms)
+  ✓  130 [chromium] › specs/responsive-accessibility.spec.ts:943:1 › R14 placeholder alpha determines effective contrast (228ms)
+  ✓  134 [chromium] › specs/responsive-accessibility.spec.ts:1047:1 › forced-color replacement capability is recorded for its engine and run (227ms)
+  ✓  133 [chromium] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (946ms)
+  ✓  136 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line horizontal retains its painted stroke envelope (309ms)
+  ✓  137 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line vertical retains its painted stroke envelope (321ms)
+  ✓  138 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path horizontal retains its painted stroke envelope (345ms)
+  ✓  135 [chromium] › specs/responsive-accessibility.spec.ts:1062:1 › desktop rail flyout controls fit both 72px and 48px rails without horizontal scrolling (1.7s)
+  ✓  132 [chromium] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (2.2s)
+  ✓  140 [chromium] › specs/responsive-accessibility.spec.ts:1095:3 › review actual generated pseudo composition inspects filters (305ms)
+  ✓  139 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path vertical retains its painted stroke envelope (320ms)
+  ✓  141 [chromium] › specs/responsive-accessibility.spec.ts:1095:3 › review actual placeholder pseudo composition inspects filters (267ms)
+  ✓  143 [chromium] › specs/responsive-accessibility.spec.ts:1113:1 › review generated glyphs outside their host require pixel evidence (238ms)
+  ✓  142 [chromium] › specs/responsive-accessibility.spec.ts:1095:3 › review actual focus pseudo composition inspects filters (291ms)
+  ✓  144 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:relative;top:40px (288ms)
+  ✓  145 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:sticky;top:0 (276ms)
+  ✓  146 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence transform:translateY(40px) (248ms)
+  ✓  147 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence static negative margin (257ms)
+  ✓  148 [chromium] › specs/responsive-accessibility.spec.ts:1129:1 › review a sharp shadow concealed by its opaque control is not focus paint (405ms)
+  ✓  149 [chromium] › specs/responsive-accessibility.spec.ts:1139:1 › review permanent pseudo background cannot certify a same-color focus border (376ms)
+  ✓  150 [chromium] › specs/responsive-accessibility.spec.ts:1149:1 › review margin-shifted pseudo borders use the backdrop outside their host (327ms)
+  ✓  152 [chromium] › specs/responsive-accessibility.spec.ts:1165:1 › review generated large text uses the existing 3 to 1 threshold (251ms)
+  ✓  151 [chromium] › specs/responsive-accessibility.spec.ts:1157:1 › review transformed static descendants remain focus obstructions (281ms)
+  ✓  155 [chromium] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (360ms)
+  ✓  154 [chromium] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects mix-blend-mode:multiply (436ms)
+  ✓  157 [chromium] › specs/responsive-accessibility.spec.ts:1244:1 › review normal-flow generated label spacing remains measured (267ms)
+  ✓  153 [chromium] › specs/responsive-accessibility.spec.ts:1175:1 › review recorded operator focus on SVG survives deferred overlay restoration (1.1s)
+  ✓  158 [chromium] › specs/responsive-accessibility.spec.ts:1251:1 › review clipped text cannot overlap an adjacent static footer but visible overlap is rejected (248ms)
+  ✓  156 [chromium] › specs/responsive-accessibility.spec.ts:1205:1 › review translucent permanent shadow cannot certify covered changed focus paint (728ms)
+  ✓  159 [chromium] › specs/responsive-accessibility.spec.ts:1259:1 › review opaque native top-layer surfaces shield text from page backgrounds only (278ms)
+  ✓  160 [chromium] › specs/specimen-accessibility.spec.ts:50:3 › FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations (186ms)
+  ✓  163 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate (2.4s)
+  ✓  162 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate (2.9s)
+  ✓  161 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate (3.3s)
+  ✓  165 [chromium] › specs/specimen-accessibility.spec.ts:91:3 › FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast (1.5s)
+  ✓  164 [chromium] › specs/specimen-accessibility.spec.ts:66:3 › FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces (2.2s)
+  ✓  166 [chromium] › specs/specimen-accessibility.spec.ts:208:5 › FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch (2.2s)
+  ✓  167 [chromium] › specs/specimen-accessibility.spec.ts:226:3 › FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names (1.5s)
+  ✓  169 [chromium] › specs/specimen-accessibility.spec.ts:276:3 › FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals (1.8s)
+  ✓  170 [chromium] › specs/specimen-accessibility.spec.ts:294:3 › FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion (2.1s)
+  ✓  168 [chromium] › specs/specimen-accessibility.spec.ts:243:3 › FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps (3.6s)
+  ✓  171 [chromium] › specs/specimen-accessibility.spec.ts:403:3 › FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable (1.9s)
+  ✓  172 [chromium] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 1280 CSS pixels (not browser zoom) (1.4s)
+  ✓  173 [chromium] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 640 CSS pixels (not browser zoom) (1.4s)
+  ✓  174 [chromium] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 320 CSS pixels (not browser zoom) (1.3s)
+  ✓  175 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact (2.0s)
+  ✓  176 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable (2.0s)
+  ✓  177 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy (2.1s)
+  ✓  178 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact (2.0s)
+  ✓  179 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable (2.0s)
+(node:55506) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  180 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy (1.9s)
+(node:56351) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  181 [chromium] › specs/specimen-accessibility.spec.ts:498:3 › FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent (2.2s)
+(node:56699) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  183 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (7.3s)
+  ✓  184 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (7.1s)
+  ✓  182 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt (9.4s)
+  ✓  185 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field forbidden: safe feedback, focus, owner, next attempt (5.7s)
+  ✓  186 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field unavailable: safe feedback, focus, owner, next attempt (5.9s)
+  ✓  187 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (5.8s)
+  ✓  188 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (6.0s)
+  ✓  189 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (6.5s)
+  ✓  190 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field transport: safe feedback, focus, owner, next attempt (5.7s)
+  ✓  191 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt (5.9s)
+  ✓  193 [firefox] › specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results (5.2s)
+  ✓  192 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field policy: safe feedback, focus, owner, next attempt (5.6s)
+  ✓  194 [firefox] › specs/accessibility-state-matrix.spec.ts:226:5 › AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation (4.9s)
+  ✓  197 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › home: composed text, targets, current-state and forced-color cues (4.0s)
+  ✓  196 [firefox] › specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces (9.4s)
+  ✓  198 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › navigation-tabs: composed text, targets, current-state and forced-color cues (5.9s)
+  ✓  199 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues (4.9s)
+  ✓  201 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt (8.6s)
+  ✓  200 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (9.0s)
+  ✓  202 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (1.8m)
+  ✘  203 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (1.6m)
+(node:10157) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  204 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt (24.5s)
+  ✘  195 [firefox] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (2.0m)
+(node:11244) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  206 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (8.8s)
+  ✓  208 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (6.2s)
+  ✓  205 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt (12.9s)
+  ✓  207 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (11.9s)
+  ✓  209 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field transport: safe feedback, focus, owner, next attempt (6.7s)
+  ✓  210 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field admission: safe feedback, focus, owner, next attempt (9.3s)
+  ✓  211 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field policy: safe feedback, focus, owner, next attempt (6.4s)
+  ✓  212 [firefox] › specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results (6.3s)
+  ✓  213 [firefox] › specs/accessibility-state-matrix.spec.ts:226:5 › AE complete state matrix dark › real generated detail loss focuses its neutral non-live explanation (5.7s)
+  ✓  216 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues (4.3s)
+  ✓  215 [firefox] › specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces (9.4s)
+  ✓  218 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues (4.0s)
+  ✓  217 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › navigation-tabs: composed text, targets, current-state and forced-color cues (6.3s)
+  ✓  220 [firefox] › specs/accessibility-state-matrix.spec.ts:314:1 › contrast measurement rejects empty, low-contrast, unpainted and unsupported samples (737ms)
+  ✓  221 [firefox] › specs/accessibility-state-matrix.spec.ts:332:1 › unrelated controls cannot mask failed focus or boundary contrast (558ms)
+  ✓  222 [firefox] › specs/accessibility-state-matrix.spec.ts:343:1 › forced-color state checks reject a removed cue while text and selected semantics survive (633ms)
+  ✓  219 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (11.9s)
+  ✓  214 [firefox] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (31.4s)
+  ✓  223 [firefox] › specs/accessibility-state-matrix.spec.ts:355:3 › shell chrome, theme menu and exact desktop navigation rails in light (21.3s)
+  ✓  224 [firefox] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in light (12.3s)
+  ✓  225 [firefox] › specs/accessibility-state-matrix.spec.ts:439:3 › generated validation, policy, destructive and abandonment states in light (16.5s)
+  ✓  227 [firefox] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in dark (9.5s)
+  ✓  226 [firefox] › specs/accessibility-state-matrix.spec.ts:355:3 › shell chrome, theme menu and exact desktop navigation rails in dark (16.4s)
+  ✓  228 [firefox] › specs/accessibility-state-matrix.spec.ts:439:3 › generated validation, policy, destructive and abandonment states in dark (15.3s)
+  ✓  231 [firefox] › specs/accessibility-state-matrix.spec.ts:513:3 › real generated filter-hidden detail stays distinct from missing-item results in light (3.9s)
+  ✓  232 [firefox] › specs/accessibility-state-matrix.spec.ts:513:3 › real generated filter-hidden detail stays distinct from missing-item results in dark (4.8s)
+  ✓  229 [firefox] › specs/accessibility-state-matrix.spec.ts:482:3 › projection reconnect fallback stale slow cap and filter cues in light (23.3s)
+  ✓  233 [firefox] › specs/accessibility-state-matrix.spec.ts:530:3 › delayed generated detail recovery cancels after operator focus and navigation in light (3.5s)
+  ✓  234 [firefox] › specs/accessibility-state-matrix.spec.ts:530:3 › delayed generated detail recovery cancels after operator focus and navigation in dark (5.5s)
+  ✓  235 [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › fresh-row presentation retains text boundary and system-color meaning in light (5.5s)
+  ✓  230 [firefox] › specs/accessibility-state-matrix.spec.ts:482:3 › projection reconnect fallback stale slow cap and filter cues in dark (26.3s)
+  ✓  237 [firefox] › specs/accessibility-state-matrix.spec.ts:606:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (1.5s)
+  ✓  236 [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › fresh-row presentation retains text boundary and system-color meaning in dark (4.2s)
+  ✓  239 [firefox] › specs/accessibility-state-matrix.spec.ts:643:1 › G09 forced-color focus geometry rejects a mode-specific clipped ring (534ms)
+  ✓  238 [firefox] › specs/accessibility-state-matrix.spec.ts:619:1 › validation links keep native same-page href activation when focus enhancement is unavailable (2.1s)
+  ✓  241 [firefox] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after user scope change in light (2.9s)
+  ✓  240 [firefox] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after tenant scope change in light (3.5s)
+  ✓  244 [firefox] › specs/responsive-accessibility.spec.ts:19:3 › AE geometry regression fixtures › rejects a clipped ring even when the complete target is inside the viewport (441ms)
+  ✓  242 [firefox] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after tenant scope change in dark (3.6s)
+  ✓  245 [firefox] › specs/responsive-accessibility.spec.ts:23:3 › AE geometry regression fixtures › includes outer box-shadow rings and offsets in clipping geometry (1.3s)
+  ✓  246 [firefox] › specs/responsive-accessibility.spec.ts:47:3 › AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host (552ms)
+  ✓  248 [firefox] › specs/responsive-accessibility.spec.ts:78:3 › AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping (471ms)
+  ✓  249 [firefox] › specs/responsive-accessibility.spec.ts:84:3 › AE geometry regression fixtures › spacing exceptions reject neighboring circles and accept an isolated target (449ms)
+  ✓  247 [firefox] › specs/responsive-accessibility.spec.ts:54:3 › AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes (1.3s)
+  ✓  243 [firefox] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after user scope change in dark (3.4s)
+  ✓  250 [firefox] › specs/responsive-accessibility.spec.ts:91:3 › AE geometry regression fixtures › rejects missing and invalid equivalent inventories (394ms)
+  ✓  251 [firefox] › specs/responsive-accessibility.spec.ts:97:3 › AE geometry regression fixtures › spacing overrides reach Fluent-style shadow content and contrast composites alpha (433ms)
+  ✓  252 [firefox] › specs/responsive-accessibility.spec.ts:112:1 › spacing reaches a delayed shadow root and cleanup stops later injection (449ms)
+  ✓  254 [firefox] › specs/responsive-accessibility.spec.ts:137:1 › modal decoration cannot substitute for the focused control indicator (419ms)
+  ✓  253 [firefox] › specs/responsive-accessibility.spec.ts:125:1 › focus checks reject an absent indicator and a pointer-transparent opaque occluder (602ms)
+  ✓  255 [firefox] › specs/responsive-accessibility.spec.ts:144:1 › text clipping follows native top-layer popovers while retaining their own clipping checks (385ms)
+  ✓  257 [firefox] › specs/responsive-accessibility.spec.ts:159:1 › an application-prevented Tab at the final control cannot impersonate browser chrome (542ms)
+  ✓  256 [firefox] › specs/responsive-accessibility.spec.ts:152:1 › a one-control keyboard trap cannot satisfy the expected cycle (591ms)
+  ✓  258 [firefox] › specs/responsive-accessibility.spec.ts:166:1 › shell focus scrolling protects the ring and cancels stale or disposed work (1.1s)
+  ✓  260 [firefox] › specs/responsive-accessibility.spec.ts:236:1 › owned palette return cancels the actual Fluent delayed return after an operator Tab (1.7s)
+  ✓  259 [firefox] › specs/responsive-accessibility.spec.ts:202:1 › delayed overlay disposal preserves an operator Tab after native origin return (3.1s)
+  ✓  263 [firefox] › specs/responsive-accessibility.spec.ts:337:1 › the real missing-detail component registers recovery before a Fluent shadow action removes detail (1.2s)
+  ✓  261 [firefox] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in light (4.1s)
+  ✓  262 [firefox] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in dark (4.5s)
+  ✓  264 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow (5.8s)
+  ✓  265 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow with all text-spacing overrides (7.0s)
+  ✓  266 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow (8.1s)
+  ✓  267 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides (8.8s)
+  ✓  270 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow (6.3s)
+  ✓  271 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides (6.9s)
+  ✓  268 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow (23.9s)
+  ✓  269 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides (24.5s)
+  ✓  272 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (9.2s)
+  ✓  274 [firefox] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light (5.5s)
+  ✓  273 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (10.1s)
+  ✓  275 [firefox] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark (5.3s)
+  ✓  277 [firefox] › specs/responsive-accessibility.spec.ts:471:1 › missing-detail recovery consumes only lost detail focus and cancels stale captures (2.2s)
+  ✓  278 [firefox] › specs/responsive-accessibility.spec.ts:626:1 › row metrics preserve the compact minimum and report growth with the matching density floor (2.6s)
+  ✓  280 [firefox] › specs/responsive-accessibility.spec.ts:712:3 › review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus (1.4s)
+  ✓  281 [firefox] › specs/responsive-accessibility.spec.ts:733:3 › review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring (1.9s)
+  ✓  276 [firefox] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (8.3s)
+  ✓  279 [firefox] › specs/responsive-accessibility.spec.ts:658:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes (4.6s)
+  ✓  284 [firefox] › specs/responsive-accessibility.spec.ts:759:3 › review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast (579ms)
+  ✓  282 [firefox] › specs/responsive-accessibility.spec.ts:743:3 › review measurement regressions › G03 transparent supported CSS colors are absent focus paint (644ms)
+  ✓  283 [firefox] › specs/responsive-accessibility.spec.ts:751:3 › review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry (1.1s)
+  ✓  285 [firefox] › specs/responsive-accessibility.spec.ts:766:3 › review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory (605ms)
+  ✓  286 [firefox] › specs/responsive-accessibility.spec.ts:773:3 › review measurement regressions › G12 inward outlines contrast with the control paint (587ms)
+  ✓  287 [firefox] › specs/responsive-accessibility.spec.ts:779:3 › review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator (736ms)
+  ✓  288 [firefox] › specs/responsive-accessibility.spec.ts:789:1 › supported clipped paint keeps a focus underline and excludes only fully hidden text (813ms)
+  ✓  289 [firefox] › specs/responsive-accessibility.spec.ts:800:1 › diagnostic screenshots restore scroll without repairing an actually clipped focus ring (1.0s)
+  ✓  292 [firefox] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.01 (589ms)
+  ✓  291 [firefox] › specs/responsive-accessibility.spec.ts:837:1 › R01 rejects an unprevented boundary Tab that application code refocuses (870ms)
+  ✓  293 [firefox] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.1 (542ms)
+  ✓  294 [firefox] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 1 (504ms)
+  ✓  296 [firefox] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG line without a passing rectangle masking it (566ms)
+  ✓  295 [firefox] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG ellipse without a passing rectangle masking it (595ms)
+  ✓  298 [firefox] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG use without a passing rectangle masking it (624ms)
+  ✓  297 [firefox] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG polyline without a passing rectangle masking it (672ms)
+  ✓  290 [firefox] › specs/responsive-accessibility.spec.ts:817:1 › real Fluent search and generated editors retain their focus contour with text spacing (3.3s)
+  ✓  299 [firefox] › specs/responsive-accessibility.spec.ts:865:1 › R04 zero-width SVG stroke does not count as meaningful icon paint (564ms)
+  ✓  301 [firefox] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition mix-blend-mode:multiply (695ms)
+  ✓  302 [firefox] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition backdrop-filter:brightness(0) (851ms)
+  ✓  303 [firefox] › specs/responsive-accessibility.spec.ts:881:1 › R06 effective glyph fill determines text contrast (658ms)
+  ✓  300 [firefox] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition filter:brightness(0) (2.5s)
+  ✓  306 [firefox] › specs/responsive-accessibility.spec.ts:903:1 › R09 descendant extending over the target ring is an obstruction (773ms)
+  ✓  307 [firefox] › specs/responsive-accessibility.spec.ts:911:1 › R10 generated meaningful text cannot disappear beside passing text (583ms)
+  ✓  304 [firefox] › specs/responsive-accessibility.spec.ts:888:1 › R07 sibling background paint cannot be replaced with ancestor white (2.5s)
+  ✓  305 [firefox] › specs/responsive-accessibility.spec.ts:895:1 › R08 invisible ancestor cannot certify focus geometry (2.2s)
+  ✓  308 [firefox] › specs/responsive-accessibility.spec.ts:918:1 › R11 collapsed offset shadow paints no focus pixels (642ms)
+  ✓  309 [firefox] › specs/responsive-accessibility.spec.ts:927:1 › R12 permanent shadow cannot certify an invisible focus-only layer (700ms)
+  ✓  310 [firefox] › specs/responsive-accessibility.spec.ts:935:1 › R13 inset pseudo focus border compares against control paint (686ms)
+  ✓  311 [firefox] › specs/responsive-accessibility.spec.ts:943:1 › R14 placeholder alpha determines effective contrast (548ms)
+  ✓  312 [firefox] › specs/responsive-accessibility.spec.ts:950:1 › reflow rejects unlabelled nested horizontal scrolling and stale or unjustified target exceptions (478ms)
+  ✓  315 [firefox] › specs/responsive-accessibility.spec.ts:1047:1 › forced-color replacement capability is recorded for its engine and run (468ms)
+  ✓  314 [firefox] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (1.3s)
+  ✓  317 [firefox] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line horizontal retains its painted stroke envelope (775ms)
+  ✓  316 [firefox] › specs/responsive-accessibility.spec.ts:1062:1 › desktop rail flyout controls fit both 72px and 48px rails without horizontal scrolling (2.1s)
+  ✓  313 [firefox] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (3.0s)
+  ✓  318 [firefox] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line vertical retains its painted stroke envelope (586ms)
+  ✓  320 [firefox] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path vertical retains its painted stroke envelope (572ms)
+  ✓  321 [firefox] › specs/responsive-accessibility.spec.ts:1095:3 › review actual generated pseudo composition inspects filters (594ms)
+  ✓  319 [firefox] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path horizontal retains its painted stroke envelope (706ms)
+  ✓  322 [firefox] › specs/responsive-accessibility.spec.ts:1095:3 › review actual placeholder pseudo composition inspects filters (583ms)
+  ✓  323 [firefox] › specs/responsive-accessibility.spec.ts:1095:3 › review actual focus pseudo composition inspects filters (567ms)
+  ✓  324 [firefox] › specs/responsive-accessibility.spec.ts:1113:1 › review generated glyphs outside their host require pixel evidence (551ms)
+  ✓  325 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:relative;top:40px (536ms)
+  ✓  327 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence transform:translateY(40px) (531ms)
+  ✓  329 [firefox] › specs/responsive-accessibility.spec.ts:1129:1 › review a sharp shadow concealed by its opaque control is not focus paint (637ms)
+  ✓  328 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence static negative margin (674ms)
+  ✓  331 [firefox] › specs/responsive-accessibility.spec.ts:1149:1 › review margin-shifted pseudo borders use the backdrop outside their host (596ms)
+  ✓  330 [firefox] › specs/responsive-accessibility.spec.ts:1139:1 › review permanent pseudo background cannot certify a same-color focus border (699ms)
+  ✓  326 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:sticky;top:0 (2.2s)
+  ✓  332 [firefox] › specs/responsive-accessibility.spec.ts:1157:1 › review transformed static descendants remain focus obstructions (536ms)
+  ✓  335 [firefox] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects mix-blend-mode:multiply (476ms)
+  ✓  334 [firefox] › specs/responsive-accessibility.spec.ts:1175:1 › review recorded operator focus on SVG survives deferred overlay restoration (1.2s)
+  ✓  333 [firefox] › specs/responsive-accessibility.spec.ts:1165:1 › review generated large text uses the existing 3 to 1 threshold (2.1s)
+  ✓  337 [firefox] › specs/responsive-accessibility.spec.ts:1205:1 › review translucent permanent shadow cannot certify covered changed focus paint (1.2s)
+  ✓  338 [firefox] › specs/responsive-accessibility.spec.ts:1244:1 › review normal-flow generated label spacing remains measured (628ms)
+  ✓  336 [firefox] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (2.3s)
+  ✓  339 [firefox] › specs/responsive-accessibility.spec.ts:1251:1 › review clipped text cannot overlap an adjacent static footer but visible overlap is rejected (556ms)
+  ✓  340 [firefox] › specs/responsive-accessibility.spec.ts:1259:1 › review opaque native top-layer surfaces shield text from page backgrounds only (620ms)
+  ✓  341 [firefox] › specs/specimen-accessibility.spec.ts:50:3 › FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations (535ms)
+  ✓  343 [firefox] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate (3.2s)
+  ✓  344 [firefox] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate (3.2s)
+  ✓  342 [firefox] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate (4.0s)
+  ✓  346 [firefox] › specs/specimen-accessibility.spec.ts:91:3 › FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast (1.8s)
+  ✓  345 [firefox] › specs/specimen-accessibility.spec.ts:66:3 › FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces (2.4s)
+  ✓  347 [firefox] › specs/specimen-accessibility.spec.ts:208:5 › FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch (3.1s)
+  ✓  348 [firefox] › specs/specimen-accessibility.spec.ts:226:3 › FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names (1.8s)
+  -  351 [firefox] › specs/specimen-accessibility.spec.ts:294:3 › FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion
+  ✓  350 [firefox] › specs/specimen-accessibility.spec.ts:276:3 › FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals (2.3s)
+  ✓  349 [firefox] › specs/specimen-accessibility.spec.ts:243:3 › FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps (4.6s)
+  ✓  352 [firefox] › specs/specimen-accessibility.spec.ts:403:3 › FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable (2.8s)
+  ✓  353 [firefox] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 1280 CSS pixels (not browser zoom) (1.9s)
+  ✓  355 [firefox] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 320 CSS pixels (not browser zoom) (1.8s)
+  ✓  354 [firefox] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 640 CSS pixels (not browser zoom) (2.2s)
+  ✘  356 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact (3.8s)
+(node:88142) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  358 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy (3.7s)
+  ✘  357 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable (3.9s)
+(node:88883) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:89224) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  359 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact (6.8s)
+(node:93651) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  360 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable (7.9s)
+  ✘  361 [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy (6.5s)
+(node:94398) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94405) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  362 [firefox] › specs/specimen-accessibility.spec.ts:498:3 › FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent (4.3s)
+  ✓  364 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (5.6s)
+  ✓  363 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt (6.7s)
+(node:97320) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  365 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field forbidden: safe feedback, focus, owner, next attempt (6.5s)
+  ✓  366 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field unavailable: safe feedback, focus, owner, next attempt (6.8s)
+  ✓  367 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (7.2s)
+  ✓  368 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (6.5s)
+  ✓  369 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (6.7s)
+  ✓  370 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (6.6s)
+  ✓  371 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field transport: safe feedback, focus, owner, next attempt (7.5s)
+  ✓  372 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt (7.2s)
+  ✓  373 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field policy: safe feedback, focus, owner, next attempt (7.7s)
+  ✓  375 [webkit] › specs/accessibility-state-matrix.spec.ts:226:5 › AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation (7.3s)
+  ✓  374 [webkit] › specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results (8.8s)
+  ✓  378 [webkit] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › home: composed text, targets, current-state and forced-color cues (5.1s)
+  ✓  377 [webkit] › specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces (11.4s)
+  ✓  379 [webkit] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › navigation-tabs: composed text, targets, current-state and forced-color cues (6.1s)
+  ✓  380 [webkit] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues (5.0s)
+  ✓  381 [webkit] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (7.1s)
+  ✓  376 [webkit] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (28.5s)
+  ✓  382 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt (8.5s)
+  ✓  383 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (6.4s)
+  ✓  384 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (6.7s)
+  ✓  386 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt (6.1s)
+  ✓  385 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt (6.4s)
+  ✓  387 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (6.3s)
+  ✓  389 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (6.1s)
+  ✓  388 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (6.4s)
+  ✓  390 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field transport: safe feedback, focus, owner, next attempt (7.3s)
+  ✓  392 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field policy: safe feedback, focus, owner, next attempt (6.4s)
+  ✓  391 [webkit] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field admission: safe feedback, focus, owner, next attempt (6.7s)
+  ✓  394 [webkit] › specs/accessibility-state-matrix.spec.ts:226:5 › AE complete state matrix dark › real generated detail loss focuses its neutral non-live explanation (5.7s)
+  ✓  393 [webkit] › specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results (7.6s)
+  ✓  397 [webkit] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues (4.5s)
+  ✓  396 [webkit] › specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces (10.5s)
+  ✓  398 [webkit] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › navigation-tabs: composed text, targets, current-state and forced-color cues (5.2s)
+  ✓  399 [webkit] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues (5.3s)
+  ✓  401 [webkit] › specs/accessibility-state-matrix.spec.ts:314:1 › contrast measurement rejects empty, low-contrast, unpainted and unsupported samples (1.1s)
+  ✓  400 [webkit] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (6.8s)
+  ✓  402 [webkit] › specs/accessibility-state-matrix.spec.ts:332:1 › unrelated controls cannot mask failed focus or boundary contrast (878ms)
+  ✓  403 [webkit] › specs/accessibility-state-matrix.spec.ts:343:1 › forced-color state checks reject a removed cue while text and selected semantics survive (959ms)
+  ✓  395 [webkit] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (30.0s)
+  ✘  405 [webkit] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in light (7.6s)
+(node:46460) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  404 [webkit] › specs/accessibility-state-matrix.spec.ts:355:3 › shell chrome, theme menu and exact desktop navigation rails in light (13.2s)
+  ✓  407 [webkit] › specs/accessibility-state-matrix.spec.ts:355:3 › shell chrome, theme menu and exact desktop navigation rails in dark (12.1s)
+  ✓  406 [webkit] › specs/accessibility-state-matrix.spec.ts:439:3 › generated validation, policy, destructive and abandonment states in light (18.2s)
+  ✓  408 [webkit] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in dark (12.1s)
+  ✓  409 [webkit] › specs/accessibility-state-matrix.spec.ts:439:3 › generated validation, policy, destructive and abandonment states in dark (17.8s)
+  ✓  412 [webkit] › specs/accessibility-state-matrix.spec.ts:513:3 › real generated filter-hidden detail stays distinct from missing-item results in light (5.1s)
+  ✓  413 [webkit] › specs/accessibility-state-matrix.spec.ts:513:3 › real generated filter-hidden detail stays distinct from missing-item results in dark (5.5s)
+  ✓  410 [webkit] › specs/accessibility-state-matrix.spec.ts:482:3 › projection reconnect fallback stale slow cap and filter cues in light (27.8s)
+  ✓  411 [webkit] › specs/accessibility-state-matrix.spec.ts:482:3 › projection reconnect fallback stale slow cap and filter cues in dark (27.4s)
+  ✓  414 [webkit] › specs/accessibility-state-matrix.spec.ts:530:3 › delayed generated detail recovery cancels after operator focus and navigation in light (5.8s)
+  ✓  415 [webkit] › specs/accessibility-state-matrix.spec.ts:530:3 › delayed generated detail recovery cancels after operator focus and navigation in dark (5.2s)
+  ✓  418 [webkit] › specs/accessibility-state-matrix.spec.ts:606:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (701ms)
+  ✓  416 [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › fresh-row presentation retains text boundary and system-color meaning in light (6.8s)
+  ✓  420 [webkit] › specs/accessibility-state-matrix.spec.ts:643:1 › G09 forced-color focus geometry rejects a mode-specific clipped ring (739ms)
+  ✓  419 [webkit] › specs/accessibility-state-matrix.spec.ts:619:1 › validation links keep native same-page href activation when focus enhancement is unavailable (2.8s)
+  ✓  417 [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › fresh-row presentation retains text boundary and system-color meaning in dark (7.0s)
+  ✓  421 [webkit] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after tenant scope change in light (4.5s)
+  ✓  422 [webkit] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after user scope change in light (3.9s)
+  ✓  425 [webkit] › specs/responsive-accessibility.spec.ts:19:3 › AE geometry regression fixtures › rejects a clipped ring even when the complete target is inside the viewport (699ms)
+  ✓  423 [webkit] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after tenant scope change in dark (4.3s)
+  ✓  426 [webkit] › specs/responsive-accessibility.spec.ts:23:3 › AE geometry regression fixtures › includes outer box-shadow rings and offsets in clipping geometry (1.6s)
+  ✓  427 [webkit] › specs/responsive-accessibility.spec.ts:47:3 › AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host (724ms)
+  ✓  429 [webkit] › specs/responsive-accessibility.spec.ts:78:3 › AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping (697ms)
+  ✓  430 [webkit] › specs/responsive-accessibility.spec.ts:84:3 › AE geometry regression fixtures › spacing exceptions reject neighboring circles and accept an isolated target (426ms)
+  ✓  431 [webkit] › specs/responsive-accessibility.spec.ts:91:3 › AE geometry regression fixtures › rejects missing and invalid equivalent inventories (397ms)
+  ✓  424 [webkit] › specs/accessibility-state-matrix.spec.ts:652:3 › held generated recovery cancels after user scope change in dark (4.3s)
+  ✓  428 [webkit] › specs/responsive-accessibility.spec.ts:54:3 › AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes (1.8s)
+  ✓  433 [webkit] › specs/responsive-accessibility.spec.ts:112:1 › spacing reaches a delayed shadow root and cleanup stops later injection (557ms)
+  ✓  432 [webkit] › specs/responsive-accessibility.spec.ts:97:3 › AE geometry regression fixtures › spacing overrides reach Fluent-style shadow content and contrast composites alpha (629ms)
+  ✓  434 [webkit] › specs/responsive-accessibility.spec.ts:125:1 › focus checks reject an absent indicator and a pointer-transparent opaque occluder (852ms)
+  ✓  436 [webkit] › specs/responsive-accessibility.spec.ts:144:1 › text clipping follows native top-layer popovers while retaining their own clipping checks (496ms)
+  ✓  435 [webkit] › specs/responsive-accessibility.spec.ts:137:1 › modal decoration cannot substitute for the focused control indicator (633ms)
+  ✓  437 [webkit] › specs/responsive-accessibility.spec.ts:152:1 › a one-control keyboard trap cannot satisfy the expected cycle (675ms)
+  ✓  438 [webkit] › specs/responsive-accessibility.spec.ts:159:1 › an application-prevented Tab at the final control cannot impersonate browser chrome (630ms)
+  ✓  439 [webkit] › specs/responsive-accessibility.spec.ts:166:1 › shell focus scrolling protects the ring and cancels stale or disposed work (1.3s)
+  ✓  440 [webkit] › specs/responsive-accessibility.spec.ts:202:1 › delayed overlay disposal preserves an operator Tab after native origin return (2.1s)
+  ✓  441 [webkit] › specs/responsive-accessibility.spec.ts:236:1 › owned palette return cancels the actual Fluent delayed return after an operator Tab (2.2s)
+  ✓  444 [webkit] › specs/responsive-accessibility.spec.ts:337:1 › the real missing-detail component registers recovery before a Fluent shadow action removes detail (1.7s)
+  ✓  442 [webkit] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in light (4.1s)
+  ✓  443 [webkit] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in dark (3.9s)
+  ✓  445 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow (4.8s)
+  ✓  446 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow with all text-spacing overrides (4.9s)
+  ✓  447 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow (5.5s)
+  ✓  448 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides (5.9s)
+  ✓  451 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow (5.2s)
+  ✓  452 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides (5.8s)
+  ✓  449 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow (22.6s)
+  ✓  453 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (7.4s)
+  ✓  450 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides (23.7s)
+  ✓  455 [webkit] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light (5.8s)
+  ✓  454 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (7.4s)
+  ✓  456 [webkit] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark (5.1s)
+  ✓  458 [webkit] › specs/responsive-accessibility.spec.ts:471:1 › missing-detail recovery consumes only lost detail focus and cancels stale captures (1.6s)
+  ✓  459 [webkit] › specs/responsive-accessibility.spec.ts:626:1 › row metrics preserve the compact minimum and report growth with the matching density floor (2.1s)
+  ✓  461 [webkit] › specs/responsive-accessibility.spec.ts:712:3 › review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus (1.5s)
+  ✓  462 [webkit] › specs/responsive-accessibility.spec.ts:733:3 › review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring (801ms)
+  ✓  463 [webkit] › specs/responsive-accessibility.spec.ts:743:3 › review measurement regressions › G03 transparent supported CSS colors are absent focus paint (740ms)
+  ✓  457 [webkit] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (6.8s)
+  ✓  460 [webkit] › specs/responsive-accessibility.spec.ts:658:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes (4.5s)
+  ✓  465 [webkit] › specs/responsive-accessibility.spec.ts:759:3 › review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast (513ms)
+  ✓  466 [webkit] › specs/responsive-accessibility.spec.ts:766:3 › review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory (564ms)
+  ✓  464 [webkit] › specs/responsive-accessibility.spec.ts:751:3 › review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry (1.0s)
+  ✓  467 [webkit] › specs/responsive-accessibility.spec.ts:773:3 › review measurement regressions › G12 inward outlines contrast with the control paint (481ms)
+  ✓  469 [webkit] › specs/responsive-accessibility.spec.ts:789:1 › supported clipped paint keeps a focus underline and excludes only fully hidden text (619ms)
+  ✓  468 [webkit] › specs/responsive-accessibility.spec.ts:779:3 › review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator (670ms)
+  ✓  470 [webkit] › specs/responsive-accessibility.spec.ts:800:1 › diagnostic screenshots restore scroll without repairing an actually clipped focus ring (875ms)
+  ✓  472 [webkit] › specs/responsive-accessibility.spec.ts:837:1 › R01 rejects an unprevented boundary Tab that application code refocuses (684ms)
+  ✓  473 [webkit] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.01 (461ms)
+  ✓  474 [webkit] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.1 (559ms)
+  ✓  475 [webkit] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 1 (550ms)
+  ✓  476 [webkit] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG ellipse without a passing rectangle masking it (557ms)
+  ✓  477 [webkit] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG line without a passing rectangle masking it (558ms)
+  ✓  478 [webkit] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG polyline without a passing rectangle masking it (643ms)
+  ✓  479 [webkit] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG use without a passing rectangle masking it (575ms)
+  ✓  480 [webkit] › specs/responsive-accessibility.spec.ts:865:1 › R04 zero-width SVG stroke does not count as meaningful icon paint (622ms)
+  ✓  481 [webkit] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition filter:brightness(0) (716ms)
+  ✓  471 [webkit] › specs/responsive-accessibility.spec.ts:817:1 › real Fluent search and generated editors retain their focus contour with text spacing (3.5s)
+  ✓  482 [webkit] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition mix-blend-mode:multiply (528ms)
+  ✓  483 [webkit] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition backdrop-filter:brightness(0) (589ms)
+  ✓  484 [webkit] › specs/responsive-accessibility.spec.ts:881:1 › R06 effective glyph fill determines text contrast (558ms)
+  ✓  485 [webkit] › specs/responsive-accessibility.spec.ts:888:1 › R07 sibling background paint cannot be replaced with ancestor white (497ms)
+  ✓  486 [webkit] › specs/responsive-accessibility.spec.ts:895:1 › R08 invisible ancestor cannot certify focus geometry (560ms)
+  ✓  487 [webkit] › specs/responsive-accessibility.spec.ts:903:1 › R09 descendant extending over the target ring is an obstruction (540ms)
+  ✓  488 [webkit] › specs/responsive-accessibility.spec.ts:911:1 › R10 generated meaningful text cannot disappear beside passing text (564ms)
+  ✓  490 [webkit] › specs/responsive-accessibility.spec.ts:927:1 › R12 permanent shadow cannot certify an invisible focus-only layer (537ms)
+  ✓  489 [webkit] › specs/responsive-accessibility.spec.ts:918:1 › R11 collapsed offset shadow paints no focus pixels (585ms)
+  ✓  491 [webkit] › specs/responsive-accessibility.spec.ts:935:1 › R13 inset pseudo focus border compares against control paint (586ms)
+  ✓  493 [webkit] › specs/responsive-accessibility.spec.ts:950:1 › reflow rejects unlabelled nested horizontal scrolling and stale or unjustified target exceptions (565ms)
+  ✓  492 [webkit] › specs/responsive-accessibility.spec.ts:943:1 › R14 placeholder alpha determines effective contrast (609ms)
+  ✓  496 [webkit] › specs/responsive-accessibility.spec.ts:1047:1 › forced-color replacement capability is recorded for its engine and run (425ms)
+  ✓  495 [webkit] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (1.3s)
+  ✓  498 [webkit] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line horizontal retains its painted stroke envelope (678ms)
+  ✓  499 [webkit] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line vertical retains its painted stroke envelope (626ms)
+  ✓  494 [webkit] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (3.6s)
+  ✓  497 [webkit] › specs/responsive-accessibility.spec.ts:1062:1 › desktop rail flyout controls fit both 72px and 48px rails without horizontal scrolling (2.8s)
+  ✓  500 [webkit] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path horizontal retains its painted stroke envelope (571ms)
+  ✓  501 [webkit] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path vertical retains its painted stroke envelope (558ms)
+  ✓  503 [webkit] › specs/responsive-accessibility.spec.ts:1095:3 › review actual placeholder pseudo composition inspects filters (726ms)
+  ✓  502 [webkit] › specs/responsive-accessibility.spec.ts:1095:3 › review actual generated pseudo composition inspects filters (748ms)
+  ✓  504 [webkit] › specs/responsive-accessibility.spec.ts:1095:3 › review actual focus pseudo composition inspects filters (717ms)
+  ✓  505 [webkit] › specs/responsive-accessibility.spec.ts:1113:1 › review generated glyphs outside their host require pixel evidence (537ms)
+  ✓  506 [webkit] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:relative;top:40px (562ms)
+  ✓  507 [webkit] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:sticky;top:0 (611ms)
+  ✓  508 [webkit] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence transform:translateY(40px) (574ms)
+  ✓  509 [webkit] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence static negative margin (555ms)
+  ✓  512 [webkit] › specs/responsive-accessibility.spec.ts:1149:1 › review margin-shifted pseudo borders use the backdrop outside their host (667ms)
+  ✓  510 [webkit] › specs/responsive-accessibility.spec.ts:1129:1 › review a sharp shadow concealed by its opaque control is not focus paint (759ms)
+  ✓  511 [webkit] › specs/responsive-accessibility.spec.ts:1139:1 › review permanent pseudo background cannot certify a same-color focus border (794ms)
+  ✓  513 [webkit] › specs/responsive-accessibility.spec.ts:1157:1 › review transformed static descendants remain focus obstructions (659ms)
+  ✓  514 [webkit] › specs/responsive-accessibility.spec.ts:1165:1 › review generated large text uses the existing 3 to 1 threshold (688ms)
+  ✓  516 [webkit] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects mix-blend-mode:multiply (576ms)
+  ✓  517 [webkit] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (634ms)
+  ✓  515 [webkit] › specs/responsive-accessibility.spec.ts:1175:1 › review recorded operator focus on SVG survives deferred overlay restoration (1.6s)
+  ✓  519 [webkit] › specs/responsive-accessibility.spec.ts:1244:1 › review normal-flow generated label spacing remains measured (598ms)
+  ✓  520 [webkit] › specs/responsive-accessibility.spec.ts:1251:1 › review clipped text cannot overlap an adjacent static footer but visible overlap is rejected (655ms)
+  ✓  518 [webkit] › specs/responsive-accessibility.spec.ts:1205:1 › review translucent permanent shadow cannot certify covered changed focus paint (1.3s)
+  ✓  521 [webkit] › specs/responsive-accessibility.spec.ts:1259:1 › review opaque native top-layer surfaces shield text from page backgrounds only (751ms)
+  ✓  522 [webkit] › specs/specimen-accessibility.spec.ts:50:3 › FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations (366ms)
+  ✓  525 [webkit] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate (2.4s)
+  ✓  524 [webkit] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate (2.6s)
+  ✓  523 [webkit] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate (3.4s)
+  ✓  527 [webkit] › specs/specimen-accessibility.spec.ts:91:3 › FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast (1.6s)
+  ✓  526 [webkit] › specs/specimen-accessibility.spec.ts:66:3 › FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces (2.4s)
+  ✓  529 [webkit] › specs/specimen-accessibility.spec.ts:226:3 › FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names (1.3s)
+  ✓  528 [webkit] › specs/specimen-accessibility.spec.ts:208:5 › FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch (2.8s)
+  -  532 [webkit] › specs/specimen-accessibility.spec.ts:294:3 › FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion
+  ✓  531 [webkit] › specs/specimen-accessibility.spec.ts:276:3 › FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals (2.4s)
+  ✓  530 [webkit] › specs/specimen-accessibility.spec.ts:243:3 › FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps (3.9s)
+  ✓  533 [webkit] › specs/specimen-accessibility.spec.ts:403:3 › FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable (2.6s)
+  ✓  534 [webkit] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 1280 CSS pixels (not browser zoom) (2.5s)
+  ✓  535 [webkit] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 640 CSS pixels (not browser zoom) (2.0s)
+  ✓  536 [webkit] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 320 CSS pixels (not browser zoom) (2.0s)
+  ✘  537 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact (4.1s)
+  ✘  538 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable (4.3s)
+(node:33096) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  539 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy (4.1s)
+(node:33141) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33173) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  540 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact (4.2s)
+  ✘  541 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable (4.3s)
+(node:35395) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  542 [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy (4.2s)
+  ✓  543 [webkit] › specs/specimen-accessibility.spec.ts:498:3 › FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent (2.2s)
+
+
+  1) [firefox] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues 
+
+    Test timeout of 60000ms exceeded.
+
+    Tearing down "context" exceeded the test timeout of 60000ms.
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByTestId('fc-lifecycle-ae-state')
+    Expected substring: "Observable lifecycle specimen"
+    Received string:    ""
+
+
+      254 |         await evidence(page, wrapper, `lifecycle-${state}-${theme}`, info, undefined, state === 'rejected' ? { phase: 'operator-focus-before-rejected-lifecycle-scroll' } : undefined);
+      255 |         await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
+    > 256 |         await expect(wrapper).toContainText('Observable lifecycle specimen');
+          |                               ^
+      257 |         const adjustment = await wrapper.evaluate(element => getComputedStyle(element).getPropertyValue('forced-color-adjust'));
+      258 |         if (adjustment) expect(adjustment).toBe('auto');
+      259 |         else expect(info.project.name, 'Unsupported forced palette replacement remains an explicit WebKit capability limit').toBe('webkit');
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:256:31
+
+    Error: browserContext.close: Target page, context or browser has been closed
+
+    attachment #1: state-lifecycle-idle-light (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-idle-light-8951e1ed3722570045dbf7d8803ca4f09cb04238.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-lifecycle-submitting-light (application/json) ─────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-submitting-light-9a61479624ca829e5b6d34dda7ec24cda73b7aff.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-lifecycle-acknowledged-light (application/json) ───────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-acknowledged-light-31ec1fad4503e079582cce1551e1769dc542ef57.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-lifecycle-syncing-light (application/json) ────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-syncing-light-116965b09fb2e88f3220d88f5a16f0aaef5610e6.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-lifecycle-confirmed-light (application/json) ──────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-confirmed-light-6240f16f5ba52c5cf5662ee8265b4a169f31650c.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: state-lifecycle-rejected-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-rejected-light-a4cc318726fcc5ce95ab4b254213f36a979daadd.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: state-lifecycle-idempotent-confirmed-light (application/json) ───────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-idempotent-confirmed-light-ff94d519c10fe351fe22eb57b994b47cfa18c946.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: state-lifecycle-needs-review-light (application/json) ───────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-needs-review-light-73775566ae59e7583abc80a04e3cff371a0b9e76.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: state-lifecycle-warning-light (application/json) ────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-warning-light-77b6697cc17a52d4a7c815a3265cedec4a8bf639.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #10: state-lifecycle-degraded-light (application/json) ──────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-light-e805ce60c9024ca0547a3de04146a9ee39306859.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #11: screenshot (image/png) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #12: state-lifecycle-degraded-exhausted-light (application/json) ────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-exhausted-light-f5cb76491630d821f94cd01b679a66962410483d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/error-context.md
+
+    attachment #14: trace (application/zip) ────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt 
+
+    Tearing down "context" exceeded the test timeout of 60000ms.
+
+    Error: browserContext.close: Test ended.
+    Browser logs:
+
+    [pid=56408][err] EventListener.handleEvent*Zi@http://localhost:5201/_framework/blazor.web.js:1:199636
+    [pid=56408][err] @http://localhost:5201/_framework/blazor.web.js:1:200637
+    [pid=56408][err] @http://localhost:5201/_framework/blazor.web.js:1:200642
+    [pid=56408][err] 
+    [pid=56408][err] JavaScript error: chrome://juggler/content/Helper.js, line 82: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIWebProgress.removeProgressListener]
+    [pid=56408][out] console.error: [Exception... "Component returned failure code: 0x80040111 (NS_ERROR_NOT_AVAILABLE) [nsIContentSniffer.getMIMETypeFromContent]"  nsresult: "0x80040111 (NS_ERROR_NOT_AVAILABLE)"  location: "JS frame :: resource:///modules/FaviconLoader.sys.mjs :: onStopRequest :: line 353"  data: no]
+    [pid=56408][out] console.warn: BackupService: "There was an error while trying to get the Document's directory" [Exception... "Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIProperties.get]"  nsresult: "0x80004005 (NS_ERROR_FAILURE)"  location: "JS frame :: resource:///modules/backup/BackupService.sys.mjs :: get docsDirFolderPath :: line 1299"  data: no]
+    [pid=56408][err] JavaScript error: resource:///modules/backup/BackupService.sys.mjs, line 4429: NotAllowedError: PathUtils.join: PathUtils does not support empty paths
+    [pid=56408][err] JavaScript warning: http://localhost:5201/_framework/blazor.web.js, line 1: Script terminated by timeout at:
+    [pid=56408][err] getDisconnectFormData@http://localhost:5201/_framework/blazor.web.js:1:146986
+    [pid=56408][err] sendDisconnectBeacon@http://localhost:5201/_framework/blazor.web.js:1:147157
+    [pid=56408][err] r@http://localhost:5201/_framework/blazor.web.js:1:165018
+    [pid=56408][err] EventListener.handleEvent*cr@http://localhost:5201/_framework/blazor.web.js:1:165065
+    [pid=56408][err] async*ar@http://localhost:5201/_framework/blazor.web.js:1:163206
+    [pid=56408][err] startCircutIfNotStarted@http://localhost:5201/_framework/blazor.web.js:1:192818
+    [pid=56408][err] resolveRendererIdForDescriptor@http://localhost:5201/_framework/blazor.web.js:1:195586
+    [pid=56408][err] determinePendingOperation@http://localhost:5201/_framework/blazor.web.js:1:196151
+    [pid=56408][err] refreshRootComponents@http://localhost:5201/_framework/blazor.web.js:1:194230
+    [pid=56408][err] rootComponentsMayRequireRefresh/<@http://localhost:5201/_framework/blazor.web.js:1:193171
+    [pid=56408][err] VoidFunction*rootComponentsMayRequireRefresh@http://localhost:5201/_framework/blazor.web.js:1:193111
+    [pid=56408][err] onDocumentUpdated@http://localhost:5201/_framework/blazor.web.js:1:191534
+    [pid=56408][err] es@http://localhost:5201/_framework/blazor.web.js:1:200377
+    [pid=56408][err] EventListener.handleEvent*Zi@http://localhost:5201/_framework/blazor.web.js:1:199636
+    [pid=56408][err] @http://localhost:5201/_framework/blazor.web.js:1:200637
+    [pid=56408][err] @http://localhost:5201/_framework/blazor.web.js:1:200642
+    [pid=56408][err] 
+    [pid=56408][err] JavaScript error: chrome://juggler/content/Helper.js, line 82: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIWebProgress.removeProgressListener]
+    [pid=56408][out] console.error: [Exception... "Component returned failure code: 0x80040111 (NS_ERROR_NOT_AVAILABLE) [nsIContentSniffer.getMIMETypeFromContent]"  nsresult: "0x80040111 (NS_ERROR_NOT_AVAILABLE)"  location: "JS frame :: resource:///modules/FaviconLoader.sys.mjs :: onStopRequest :: line 353"  data: no]
+    [pid=56408][err] JavaScript error: chrome://juggler/content/Helper.js, line 82: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIWebProgress.removeProgressListener]
+    [pid=56408][out] console.error: [Exception... "Component returned failure code: 0x80040111 (NS_ERROR_NOT_AVAILABLE) [nsIContentSniffer.getMIMETypeFromContent]"  nsresult: "0x80040111 (NS_ERROR_NOT_AVAILABLE)"  location: "JS frame :: resource:///modules/FaviconLoader.sys.mjs :: onStopRequest :: line 353"  data: no]
+    [pid=56408][out] console.error: services.settings: 
+    [pid=56408][out]   Message: EmptyDatabaseError: "main/nimbus-desktop-experiments" has not been synced yet
+    [pid=56408][out]   Stack:
+    [pid=56408][out]     EmptyDatabaseError@resource://services-settings/Database.sys.mjs:19:5
+    [pid=56408][out] list@resource://services-settings/Database.sys.mjs:96:13
+    [pid=56408][out] 
+    [pid=56408][err] JavaScript error: chrome://juggler/content/Helper.js, line 82: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIWebProgress.removeProgressListener]
+    [pid=56408][out] console.error: [Exception... "Component returned failure code: 0x80040111 (NS_ERROR_NOT_AVAILABLE) [nsIContentSniffer.getMIMETypeFromContent]"  nsresult: "0x80040111 (NS_ERROR_NOT_AVAILABLE)"  location: "JS frame :: resource:///modules/FaviconLoader.sys.mjs :: onStopRequest :: line 353"  data: no]
+    [pid=56408][out] console.error: "Could not download new icon" (new ServerInfoError("Server response is invalid SyntaxError: JSON.parse: unexpected end of data at line 1 column 1 of the JSON data", "resource://services-settings/Attachments.sys.mjs", 40))
+    [pid=56408][err] JavaScript error: chrome://juggler/content/Helper.js, line 82: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIWebProgress.removeProgressListener]
+    [pid=56408][out] 
+    [pid=56408][out]         ERROR: ERROR: cannot find session with id "81a36f92-01c3-4b54-9a1f-8254b84c9d52" _dispatch@chrome://juggler/content/protocol/Dispatcher.js:54:15
+    [pid=56408][out] receiveMessage@chrome://juggler/content/components/Juggler.js:122:20
+    [pid=56408][out] 
+    [pid=56408][err] JavaScript warning: http://localhost:5201/_framework/blazor.web.js, line 1: Script terminated by timeout at:
+    [pid=56408][err] getDisconnectFormData@http://localhost:5201/_framework/blazor.web.js:1:146986
+    [pid=56408][err] sendDisconnectBeacon@http://localhost:5201/_framework/blazor.web.js:1:147157
+    [pid=56408][err] r@http://localhost:5201/_framework/blazor.web.js:1:165018
+    [pid=56408][err] EventListener.handleEvent*cr@http://localhost:5201/_framework/blazor.web.js:1:165065
+    [pid=56408][err] async*ar@http://localhost:5201/_framework/blazor.web.js:1:163206
+    [pid=56408][err] startCircutIfNotStarted@http://localhost:5201/_framework/blazor.web.js:1:192818
+    [pid=56408][err] resolveRendererIdForDescriptor@http://localhost:5201/_framework/blazor.web.js:1:195586
+    [pid=56408][err] determinePendingOperation@http://localhost:5201/_framework/blazor.web.js:1:196151
+    [pid=56408][err] refreshRootComponents@http://localhost:5201/_framework/blazor.web.js:1:194230
+    [pid=56408][err] rootComponentsMayRequireRefresh/<@http://localhost:5201/_framework/blazor.web.js:1:193171
+    [pid=56408][err] VoidFunction*rootComponentsMayRequireRefresh@http://localhost:5201/_framework/blazor.web.js:1:193111
+    [pid=56408][err] onDocumentUpdated@http://localhost:5201/_framework/blazor.web.js:1:191534
+    [pid=56408][err] es@http://localhost:5201/_framework/blazor.web.js:1:200377
+    [pid=56408][err] EventListener.handleEvent*Zi@http://localhost:5201/_framework/blazor.web.js:1:199636
+    [pid=56408][err] @http://localhost:5201/_framework/blazor.web.js:1:200637
+    [pid=56408][err] @http://localhost:5201/_framework/blazor.web.js:1:200642
+    [pid=56408][err] 
+    [pid=56408][err] JavaScript error: chrome://juggler/content/Helper.js, line 82: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIWebProgress.removeProgressListener]
+    [pid=56408][out]       console.error: [Exception... "Component returned failure code: 0x80040111 (NS_ERROR_NOT_AVAILABLE) [nsIContentSniffer.getMIMETypeFromContent]"  nsresult: "0x80040111 (NS_ERROR_NOT_AVAILABLE)"  location: "JS frame :: resource:///modules/FaviconLoader.sys.mjs :: onStopRequest :: line 353"  data: no]
+    [pid=56408][err] JavaScript error: chrome://juggler/content/Helper.js, line 82: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIWebProgress.removeProgressListener]
+    [pid=56408][err] JavaScript warning: http://localhost:5201/_framework/blazor.web.js, line 1: Script terminated by timeout at:
+    [pid=56408][err] dispatchGlobalEventToAllElements@http://localhost:5201/_framework/blazor.web.js:1:17914
+    [pid=56408][err] onGlobalEvent@http://localhost:5201/_framework/blazor.web.js:1:17586
+    [pid=56408][err] EventListener.handleEvent*addGlobalListener@http://localhost:5201/_framework/blazor.web.js:1:19189
+    [pid=56408][err] add@http://localhost:5201/_framework/blazor.web.js:1:18903
+    [pid=56408][err] setListener@http://localhost:5201/_framework/blazor.web.js:1:16499
+    [pid=56408][err] applyAttribute@http://localhost:5201/_framework/blazor.web.js:1:34746
+    [pid=56408][err] insertElement@http://localhost:5201/_framework/blazor.web.js:1:33935
+    [pid=56408][err] insertFrame@http://localhost:5201/_framework/blazor.web.js:1:32888
+    [pid=56408][err] insertFrameRange@http://localhost:5201/_framework/blazor.web.js:1:34945
+    [pid=56408][err] insertFrame@http://localhost:5201/_framework/blazor.web.js:1:33162
+    [pid=56408][err] insertFrameRange@http://localhost:5201/_framework/blazor.web.js:1:34945
+    [pid=56408][err] insertElement@http://localhost:5201/_framework/blazor.web.js:1:33892
+    [pid=56408][err] insertFrame@http://localhost:5201/_framework/blazor.web.js:1:32888
+    [pid=56408][err] applyEdits@http://localhost:5201/_framework/blazor.web.js:1:31533
+    [pid=56408][err] updateComponent@http://localhost:5201/_framework/blazor.web.js:1:30693
+    [pid=56408][err] Ze@http://localhost:5201/_framework/blazor.web.js:1:37125
+    [pid=56408][err] processBatch@http://localhost:5201/_framework/blazor.web.js:1:136343
+    [pid=56408][err] startConnection/<@http://localhost:5201/_framework/blazor.web.js:1:139648
+    [pid=56408][err] _invokeClientMethod@http://localhost:5201/_framework/blazor.web.js:1:69348
+    [pid=56408][err] _processIncomingData@http://localhost:5201/_framework/blazor.web.js:1:66713
+    [pid=56408][err] kn/this.connection.onreceive@http://localhost:5201/_framework/blazor.web.js:1:60364
+    [pid=56408][err] connect/</i.onmessage@http://localhost:5201/_framework/blazor.web.js:1:84422
+    [pid=56408][err] EventHandlerNonNull*connect/<@http://localhost:5201/_framework/blazor.web.js:1:84273
+    [pid=56408][err] connect@http://localhost:5201/_framework/blazor.web.js:1:83516
+    [pid=56408][err] _startTransport@http://localhost:5201/_framework/blazor.web.js:1:93898
+    [pid=56408][err] _createTransport@http://localhost:5201/_framework/blazor.web.js:1:92232
+    [pid=56408][err] _startInternal@http://localhost:5201/_framework/blazor.web.js:1:89996
+    [pid=56408][err] async*start@http://localhost:5201/_framework/blazor.web.js:1:87134
+    [pid=56408][err] _startInternal@http://localhost:5201/_framework/blazor.web.js:1:62189
+    [pid=56408][err] _startWithStateTransitions@http://localhost:5201/_framework/blazor.web.js:1:61594
+    [pid=56408][err] start@http://localhost:5201/_framework/blazor.web.js:1:61258
+    [pid=56408][err] startConnection@http://localhost:5201/_framework/blazor.web.js:1:140281
+    [pid=56408][err] startCore@http://localhost:5201/_framework/blazor.web.js:1:138045
+    [pid=56408][err] start@http://localhost:5201/_framework/blazor.web.js:1:137763
+    [pid=56408][err] cr@http://localhost:5201/_framework/blazor.web.js:1:164930
+    [pid=56408][err] async*ar@http://localhost:5201/_framework/blazor.web.js:1:163206
+    [pid=56408][err] startCircutIfNotStarted@http://localhost:5201/_framework/blazor.web.js:1:192818
+    [pid=56408][err] resolveRendererIdForDescriptor@http://localhost:5201/_framework/blazor.web.js:1:195586
+    [pid=56408][err] determinePendingOperation@http://localhost:5201/_framework/blazor.web.js:1:196151
+    [pid=56408][err] refreshRootComponents@http://localhost:5201/_framework/blazor.web.js:1:194230
+    [pid=56408][err] rootComponentsMayRequireRefresh/<@http://localhost:5201/_framework/blazor.web.js:1:193171
+    [pid=56408][err] VoidFunction*rootComponentsMayRequireRefresh@http://localhost:5201/_framework/blazor.web.js:1:193111
+    [pid=56408][err] onDocumentUpdated@http://localhost:5201/_framework/blazor.web.js:1:191534
+    [pid=56408][err] es@http://localhost:5201/_framework/blazor.web.js:1:200377
+    [pid=56408][err] EventListener.handleEvent*Zi@http://localhost:5201/_framework/blazor.web.js:1:199636
+    [pid=56408][err] @http://localhost:5201/_framework/blazor.web.js:1:200637
+    [pid=56408][err] @http://localhost:5201/_framework/blazor.web.js:1:200642
+    [pid=56408][err] 
+    [pid=56408][err] JavaScript error: chrome://juggler/content/Helper.js, line 82: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIWebProgress.removeProgressListener]
+    [pid=56408][out] console.error: [Exception... "Component returned failure code: 0x80040111 (NS_ERROR_NOT_AVAILABLE) [nsIContentSniffer.getMIMETypeFromContent]"  nsresult: "0x80040111 (NS_ERROR_NOT_AVAILABLE)"  location: "JS frame :: resource:///modules/FaviconLoader.sys.mjs :: onStopRequest :: line 353"  data: no]
+    [pid=56408][err] JavaScript error: chrome://juggler/content/Helper.js, line 82: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIWebProgress.removeProgressListener]
+    [pid=56408][err] JavaScript warning: http://localhost:5201/_framework/blazor.web.js, line 1: Script terminated by timeout at:
+    [pid=56408][err] getDisconnectFormData@http://localhost:5201/_framework/blazor.web.js:1:146986
+    [pid=56408][err] sendDisconnectBeacon@http://localhost:5201/_framework/blazor.web.js:1:147157
+    [pid=56408][err] r@http://localhost:5201/_framework/blazor.web.js:1:165018
+    [pid=56408][err] EventListener.handleEvent*cr@http://localhost:5201/_framework/blazor.web.js:1:165065
+    [pid=56408][err] async*ar@http://localhost:5201/_framework/blazor.web.js:1:163206
+    [pid=56408][err] startCircutIfNotStarted@http://localhost:5201/_framework/blazor.web.js:1:192818
+    [pid=56408][err] resolveRendererIdForDescriptor@http://localhost:5201/_framework/blazor.web.js:1:195586
+    [pid=56408][err] determinePendingOperation@http://localhost:5201/_framework/blazor.web.js:1:196151
+    [pid=56408][err] refreshRootComponents@http://localhost:5201/_framework/blazor.web.js:1:194230
+    [pid=56408][err] rootComponentsMayRequireRefresh/<@http://localhost:5201/_framework/blazor.web.js:1:193171
+    [pid=56408][err] VoidFunction*rootComponentsMayRequireRefresh@http://localhost:5201/_framework/blazor.web.js:1:193111
+    [pid=56408][err] onDocumentUpdated@http://localhost:5201/_framework/blazor.web.js:1:191534
+    [pid=56408][err] es@http://localhost:5201/_framework/blazor.web.js:1:200377
+    [pid=56408][err] EventListener.handleEvent*Zi@http://localhost:5201/_framework/blazor.web.js:1:199636
+    [pid=56408][err] @http://localhost:5201/_framework/blazor.web.js:1:200637
+    [pid=56408][err] @http://localhost:5201/_framework/blazor.web.js:1:200642
+    [pid=56408][err] 
+    [pid=56408][err] JavaScript error: chrome://juggler/content/Helper.js, line 82: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIWebProgress.removeProgressListener]
+    [pid=56408][out] console.error: [Exception... "Component returned failure code: 0x80040111 (NS_ERROR_NOT_AVAILABLE) [nsIContentSniffer.getMIMETypeFromContent]"  nsresult: "0x80040111 (NS_ERROR_NOT_AVAILABLE)"  location: "JS frame :: resource:///modules/FaviconLoader.sys.mjs :: onStopRequest :: line 353"  data: no]
+    [pid=56408] <gracefully close start>
+    [pid=56408][out] 
+    [pid=56408][out]         ERROR: Failed "callFunction": connector for namespace "page" in channel "undefined" is disposed. _rejectCallbacksFromConnector@chrome://juggler/content/SimpleChannel.js:108:25
+    [pid=56408][out] dispose@chrome://juggler/content/SimpleChannel.js:119:27
+    [pid=56408][out] dispose@chrome://juggler/content/protocol/PageHandler.js:152:23
+    [pid=56408][out] _dispose@chrome://juggler/content/protocol/Dispatcher.js:117:21
+    [pid=56408][out] destroySession@chrome://juggler/content/protocol/Dispatcher.js:35:13
+    [pid=56408][out] dispose@chrome://juggler/content/protocol/BrowserHandler.js:77:24
+    [pid=56408][out] _dispose@chrome://juggler/content/protocol/Dispatcher.js:117:21
+    [pid=56408][out] _dispose@chrome://juggler/content/protocol/Dispatcher.js:41:23
+    [pid=56408][out] observe/browserHandler<@chrome://juggler/content/components/Juggler.js:143:22
+    [pid=56408][out] Browser.close@chrome://juggler/content/protocol/BrowserHandler.js:156:10
+    [pid=56408][out] 
+
+    attachment #1: state-zero-exception-rejection-dark (application/json) ──────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/attachments/state-zero-exception-rejection-dark-7b136f91b77f093e63ae3df8bfc3e38b3bca320f.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3778px, received 1280px by 3820px. 188989 pixels (ratio 0.04 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-compact.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-compact.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3778px, received 1280px by 3820px. 188989 pixels (ratio 0.04 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3778px, received 1280px by 3820px. 188989 pixels (ratio 0.04 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-compact (image/png) ────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-firefox-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/frontcomposer-type-light-compact-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/frontcomposer-type-light-compact-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3846px, received 1280px by 3880px. 206280 pixels (ratio 0.05 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-comfortable.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-comfortable.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3846px, received 1280px by 3880px. 206280 pixels (ratio 0.05 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3846px, received 1280px by 3880px. 206280 pixels (ratio 0.05 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-comfortable (image/png) ────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-firefox-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/frontcomposer-type-light-comfortable-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/frontcomposer-type-light-comfortable-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3914px, received 1280px by 3940px. 217319 pixels (ratio 0.05 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-roomy.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-roomy.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3914px, received 1280px by 3940px. 217319 pixels (ratio 0.05 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3914px, received 1280px by 3940px. 217319 pixels (ratio 0.05 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-roomy (image/png) ──────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-firefox-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/frontcomposer-type-light-roomy-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/frontcomposer-type-light-roomy-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3778px, received 1280px by 3820px. 518605 pixels (ratio 0.11 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-compact.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-compact.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3778px, received 1280px by 3820px. 518605 pixels (ratio 0.11 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3778px, received 1280px by 3820px. 518605 pixels (ratio 0.11 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-compact (image/png) ─────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-firefox-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/frontcomposer-type-dark-compact-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/frontcomposer-type-dark-compact-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3846px, received 1280px by 3880px. 456063 pixels (ratio 0.10 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-comfortable.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-comfortable.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3846px, received 1280px by 3880px. 456063 pixels (ratio 0.10 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3846px, received 1280px by 3880px. 456063 pixels (ratio 0.10 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-comfortable (image/png) ─────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-firefox-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/frontcomposer-type-dark-comfortable-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/frontcomposer-type-dark-comfortable-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3914px, received 1280px by 3940px. 405558 pixels (ratio 0.09 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-roomy.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-roomy.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3914px, received 1280px by 3940px. 405558 pixels (ratio 0.09 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3914px, received 1280px by 3940px. 405558 pixels (ratio 0.09 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-roomy (image/png) ───────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-firefox-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/frontcomposer-type-dark-roomy-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/frontcomposer-type-dark-roomy-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [webkit] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in light 
+
+    Error: Nonempty cue contrast inventory
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+       at ../helpers/responsive-accessibility.ts:915
+
+      913 | export async function expectSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      914 |   const samples = await measureSurfaceContrast(root, kind);
+    > 915 |   expect(samples.length, `Nonempty ${kind} contrast inventory`).toBeGreaterThan(0);
+          |                                                                 ^
+      916 |   // A Fluent control may paint a contrasting edge plus a two-color separator.
+      917 |   // Alternatives belong to that unique control; another control cannot mask a failure.
+      918 |   const owners = new Set(samples.map(sample => sample.owner));
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:915:65)
+        at collectCues (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:77:58)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:85:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:408:5
+
+    attachment #1: state-filter-popover-light (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-filter-popover-light-e7b72e968683f5ba959f2c8fd1a683b663d5ba8b.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-view-menu-light (application/json) ────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-view-menu-light-9f448a2d64cee3e83500d61b93ec4db202e24311.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-tabs-active-light (application/json) ──────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-tabs-active-light-ef47d25c4acd392a7091a34e49e6d15e75fe3254.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-palette-default-light (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-palette-default-light-4625e5e436f4ab7ab6acd1440ba2ca3ee23e5f7d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3818px, received 1280px by 3863px. 182793 pixels (ratio 0.04 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-compact.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-compact.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3818px, received 1280px by 3863px. 182793 pixels (ratio 0.04 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3818px, received 1280px by 3863px. 182793 pixels (ratio 0.04 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-compact (image/png) ────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-webkit-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/frontcomposer-type-light-compact-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/frontcomposer-type-light-compact-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3886px, received 1280px by 3923px. 199656 pixels (ratio 0.04 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-comfortable.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-comfortable.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3886px, received 1280px by 3923px. 199656 pixels (ratio 0.04 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3886px, received 1280px by 3923px. 199656 pixels (ratio 0.04 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-comfortable (image/png) ────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-webkit-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/frontcomposer-type-light-comfortable-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/frontcomposer-type-light-comfortable-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3954px, received 1280px by 3983px. 213593 pixels (ratio 0.05 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-light-roomy.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-light-roomy.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3954px, received 1280px by 3983px. 213593 pixels (ratio 0.05 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3954px, received 1280px by 3983px. 213593 pixels (ratio 0.05 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-light-roomy (image/png) ──────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-webkit-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/frontcomposer-type-light-roomy-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/frontcomposer-type-light-roomy-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3818px, received 1280px by 3863px. 523048 pixels (ratio 0.11 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-compact.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-compact.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3818px, received 1280px by 3863px. 523048 pixels (ratio 0.11 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3818px, received 1280px by 3863px. 523048 pixels (ratio 0.11 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-compact (image/png) ─────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-webkit-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/frontcomposer-type-dark-compact-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/frontcomposer-type-dark-compact-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  14) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3886px, received 1280px by 3923px. 458513 pixels (ratio 0.10 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-comfortable.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-comfortable.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3886px, received 1280px by 3923px. 458513 pixels (ratio 0.10 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3886px, received 1280px by 3923px. 458513 pixels (ratio 0.10 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-comfortable (image/png) ─────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-webkit-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/frontcomposer-type-dark-comfortable-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/frontcomposer-type-dark-comfortable-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15) [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      Expected an image 1280px by 3954px, received 1280px by 3983px. 402419 pixels (ratio 0.08 of all image pixels) are different.
+
+      Snapshot: frontcomposer-type-dark-roomy.png
+
+    Call log:
+      - Expect "toHaveScreenshot(frontcomposer-type-dark-roomy.png)" with timeout 10000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - Expected an image 1280px by 3954px, received 1280px by 3983px. 402419 pixels (ratio 0.08 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - Expected an image 1280px by 3954px, received 1280px by 3983px. 402419 pixels (ratio 0.08 of all image pixels) are different.
+
+
+      485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      486 |       await prepareSpecimenVisualBaseline(page);
+    > 487 |       await expect(page).toHaveScreenshot(combination.artifact, {
+          |                          ^
+      488 |         fullPage: true,
+      489 |         animations: 'disabled',
+      490 |         // Linux baselines are regenerated locally. Windows baselines come from CI
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: frontcomposer-type-dark-roomy (image/png) ───────────────────────────────────────
+    Expected: specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-webkit-linux.png
+    Received: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/frontcomposer-type-dark-roomy-actual.png
+    Diff:     ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/frontcomposer-type-dark-roomy-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-13af441b28ac/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15 failed
+    [firefox] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt 
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact 
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable 
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy 
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact 
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable 
+    [firefox] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy 
+    [webkit] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in light 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable 
+    [webkit] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy 
+  2 skipped
+  526 passed (14.2m)

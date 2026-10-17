@@ -424,11 +424,10 @@ public sealed class PendingCommandPollingCoordinatorTests {
         {
             await cancellation.CancelAsync();
             await Should.ThrowAsync<OperationCanceledException>(() => poll);
-            query.Completion.TrySetResult(null);
-        }
-        if (!fatal)
-        {
+            // Keep the provider held until cancellation has actually run. Completing it first
+            // can dispose its registration before CancelAsync's queued callback is invoked.
             await query.CancellationFinished.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            query.Completion.TrySetResult(null);
         }
         state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
     }

@@ -1,0 +1,2335 @@
+{
+  "testId": "a542ea7f175527dc3e9c-3d03bc0c5b633353be2b",
+  "attempt": 0,
+  "state": "projection-loading-light",
+  "engine": "webkit",
+  "runId": "gap-root-review-2c48946e2441",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 156.375,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9842.625,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 180.390625,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9818.609375,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"2\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 16,
+        "top": 4,
+        "right": 48,
+        "bottom": 36
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 128,
+        "right": 60,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 68,
+        "top": 128,
+        "right": 100,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 108,
+        "top": 128,
+        "right": 140,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 148,
+        "top": 128,
+        "right": 180,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-specimen-skip\"]",
+      "width": 190.796875,
+      "height": 24,
+      "box": {
+        "left": 28,
+        "top": -4147.203125,
+        "right": 218.796875,
+        "bottom": -4123.203125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-theme-control-light\"]",
+      "width": 128,
+      "height": 24,
+      "box": {
+        "left": 28,
+        "top": -3936.65625,
+        "right": 156,
+        "bottom": -3912.65625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-theme-control-dark\"]",
+      "width": 128,
+      "height": 24,
+      "box": {
+        "left": 164,
+        "top": -3936.65625,
+        "right": 292,
+        "bottom": -3912.65625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-density-control-compact\"]",
+      "width": 128,
+      "height": 24,
+      "box": {
+        "left": 28,
+        "top": -3904.65625,
+        "right": 156,
+        "bottom": -3880.65625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-density-control-comfortable\"]",
+      "width": 128,
+      "height": 24,
+      "box": {
+        "left": 164,
+        "top": -3904.65625,
+        "right": 292,
+        "bottom": -3880.65625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-density-control-roomy\"]",
+      "width": 128,
+      "height": 24,
+      "box": {
+        "left": 28,
+        "top": -3872.65625,
+        "right": 156,
+        "bottom": -3848.65625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"13\"]",
+      "width": 154.859375,
+      "height": 33,
+      "box": {
+        "left": 41,
+        "top": -1901.015625,
+        "right": 195.859375,
+        "bottom": -1868.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "input[inventory-index=\"14\"]",
+      "width": 193,
+      "height": 32,
+      "box": {
+        "left": 41,
+        "top": -1868.015625,
+        "right": 234,
+        "bottom": -1836.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": true,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"15\"]",
+      "width": 154.859375,
+      "height": 40,
+      "box": {
+        "left": 41,
+        "top": -1690.015625,
+        "right": 195.859375,
+        "bottom": -1650.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "input[inventory-index=\"16\"]",
+      "width": 193,
+      "height": 40,
+      "box": {
+        "left": 41,
+        "top": -1650.015625,
+        "right": 234,
+        "bottom": -1610.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": true,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"17\"]",
+      "width": 154.859375,
+      "height": 48,
+      "box": {
+        "left": 41,
+        "top": -1464.015625,
+        "right": 195.859375,
+        "bottom": -1416.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "input[inventory-index=\"18\"]",
+      "width": 193,
+      "height": 48,
+      "box": {
+        "left": 41,
+        "top": -1416.015625,
+        "right": 234,
+        "bottom": -1368.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": true,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"19\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 28,
+        "top": -1071.46875,
+        "right": 124,
+        "bottom": -1043.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"20\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 132,
+        "top": -1071.46875,
+        "right": 228,
+        "bottom": -1043.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"21\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 28,
+        "top": -1035.46875,
+        "right": 124,
+        "bottom": -1007.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"22\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 132,
+        "top": -1035.46875,
+        "right": 228,
+        "bottom": -1007.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"23\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 28,
+        "top": -999.46875,
+        "right": 124,
+        "bottom": -971.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"24\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 132,
+        "top": -999.46875,
+        "right": 228,
+        "bottom": -971.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "div[inventory-index=\"25\"]",
+      "width": 264,
+      "height": 332,
+      "box": {
+        "left": 28,
+        "top": -942.46875,
+        "right": 292,
+        "bottom": -610.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"26\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 36,
+        "top": -890.46875,
+        "right": 98,
+        "bottom": -846.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"27\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 98,
+        "top": -890.46875,
+        "right": 160,
+        "bottom": -846.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"28\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 160,
+        "top": -890.46875,
+        "right": 222,
+        "bottom": -846.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-1445",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 178,
+        "top": -881.46875,
+        "right": 202,
+        "bottom": -857.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"30\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 222,
+        "top": -890.46875,
+        "right": 284,
+        "bottom": -846.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"31\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 36,
+        "top": -846.46875,
+        "right": 98,
+        "bottom": -802.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"32\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 98,
+        "top": -846.46875,
+        "right": 160,
+        "bottom": -802.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"33\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 160,
+        "top": -846.46875,
+        "right": 222,
+        "bottom": -802.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-1446",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 178,
+        "top": -837.46875,
+        "right": 202,
+        "bottom": -813.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"35\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 222,
+        "top": -846.46875,
+        "right": 284,
+        "bottom": -802.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"36\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 36,
+        "top": -802.46875,
+        "right": 98,
+        "bottom": -758.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"37\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 98,
+        "top": -802.46875,
+        "right": 160,
+        "bottom": -758.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"38\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 160,
+        "top": -802.46875,
+        "right": 222,
+        "bottom": -758.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-1447",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 178,
+        "top": -793.46875,
+        "right": 202,
+        "bottom": -769.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"40\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 222,
+        "top": -802.46875,
+        "right": 284,
+        "bottom": -758.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"41\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 36,
+        "top": -758.46875,
+        "right": 98,
+        "bottom": -714.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"42\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 98,
+        "top": -758.46875,
+        "right": 160,
+        "bottom": -714.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"43\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 160,
+        "top": -758.46875,
+        "right": 222,
+        "bottom": -714.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-1448",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 178,
+        "top": -749.46875,
+        "right": 202,
+        "bottom": -725.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"45\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 222,
+        "top": -758.46875,
+        "right": 284,
+        "bottom": -714.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"46\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 36,
+        "top": -714.46875,
+        "right": 98,
+        "bottom": -670.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"47\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 98,
+        "top": -714.46875,
+        "right": 160,
+        "bottom": -670.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"48\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 160,
+        "top": -714.46875,
+        "right": 222,
+        "bottom": -670.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-1449",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 178,
+        "top": -705.46875,
+        "right": 202,
+        "bottom": -681.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"50\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 222,
+        "top": -714.46875,
+        "right": 284,
+        "bottom": -670.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"51\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 36,
+        "top": -670.46875,
+        "right": 98,
+        "bottom": -626.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"52\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 98,
+        "top": -670.46875,
+        "right": 160,
+        "bottom": -626.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"53\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 160,
+        "top": -670.46875,
+        "right": 222,
+        "bottom": -626.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-1450",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 178,
+        "top": -661.46875,
+        "right": 202,
+        "bottom": -637.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "td[inventory-index=\"55\"]",
+      "width": 62,
+      "height": 44,
+      "box": {
+        "left": 222,
+        "top": -670.46875,
+        "right": 284,
+        "bottom": -626.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-validation\"]",
+      "width": 111,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": -423.921875,
+        "right": 139,
+        "bottom": -391.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-returned-rejection\"]",
+      "width": 181.90625,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": -391.921875,
+        "right": 209.90625,
+        "bottom": -359.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-exception-rejection\"]",
+      "width": 189.5,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": -359.921875,
+        "right": 217.5,
+        "bottom": -327.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-forbidden\"]",
+      "width": 108.5,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": -327.921875,
+        "right": 136.5,
+        "bottom": -295.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-unavailable\"]",
+      "width": 123.75,
+      "height": 32,
+      "box": {
+        "left": 136.5,
+        "top": -327.921875,
+        "right": 260.25,
+        "bottom": -295.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-blank-unavailable\"]",
+      "width": 176.578125,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": -295.921875,
+        "right": 204.578125,
+        "bottom": -263.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-rate-limited\"]",
+      "width": 126.71875,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": -263.921875,
+        "right": 154.71875,
+        "bottom": -231.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-blank-rate-limited\"]",
+      "width": 179.546875,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": -231.921875,
+        "right": 207.546875,
+        "bottom": -199.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-transport\"]",
+      "width": 105.953125,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": -199.921875,
+        "right": 133.953125,
+        "bottom": -167.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-admission\"]",
+      "width": 110.953125,
+      "height": 32,
+      "box": {
+        "left": 133.953125,
+        "top": -199.921875,
+        "right": 244.90625,
+        "bottom": -167.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-policy\"]",
+      "width": 96,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": -167.921875,
+        "right": 124,
+        "bottom": -135.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-select-accepted\"]",
+      "width": 101.1875,
+      "height": 32,
+      "box": {
+        "left": 124,
+        "top": -167.921875,
+        "right": 225.1875,
+        "bottom": -135.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-trigger-Counter-Specimens-Domain-AccessibilityZeroFieldCommand",
+      "width": 264,
+      "height": 44,
+      "box": {
+        "left": 28,
+        "top": -72.921875,
+        "right": 292,
+        "bottom": -28.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-lifecycle-idle\"]",
+      "width": 96,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 29.078125,
+        "right": 124,
+        "bottom": 61.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-lifecycle-submitting\"]",
+      "width": 118.90625,
+      "height": 32,
+      "box": {
+        "left": 124,
+        "top": 29.078125,
+        "right": 242.90625,
+        "bottom": 61.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-lifecycle-acknowledged\"]",
+      "width": 146.3125,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 61.078125,
+        "right": 174.3125,
+        "bottom": 93.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-lifecycle-syncing\"]",
+      "width": 96,
+      "height": 32,
+      "box": {
+        "left": 174.3125,
+        "top": 61.078125,
+        "right": 270.3125,
+        "bottom": 93.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-lifecycle-confirmed\"]",
+      "width": 113.359375,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 93.078125,
+        "right": 141.359375,
+        "bottom": 125.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-lifecycle-rejected\"]",
+      "width": 98.375,
+      "height": 32,
+      "box": {
+        "left": 141.359375,
+        "top": 93.078125,
+        "right": 239.734375,
+        "bottom": 125.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-lifecycle-idempotentconfirmed\"]",
+      "width": 211.578125,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 125.078125,
+        "right": 239.578125,
+        "bottom": 157.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-lifecycle-needsreview\"]",
+      "width": 135.515625,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 157.078125,
+        "right": 163.515625,
+        "bottom": 189.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-lifecycle-warning\"]",
+      "width": 96,
+      "height": 32,
+      "box": {
+        "left": 163.515625,
+        "top": 157.078125,
+        "right": 259.515625,
+        "bottom": 189.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-lifecycle-degraded\"]",
+      "width": 106.40625,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 189.078125,
+        "right": 134.40625,
+        "bottom": 221.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-lifecycle-degradedexhausted\"]",
+      "width": 192.828125,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 221.078125,
+        "right": 220.828125,
+        "bottom": 253.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-connection-connected\"]",
+      "width": 114.3125,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 274.078125,
+        "right": 142.3125,
+        "bottom": 306.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-connection-reconnecting\"]",
+      "width": 139.53125,
+      "height": 32,
+      "box": {
+        "left": 142.3125,
+        "top": 274.078125,
+        "right": 281.84375,
+        "bottom": 306.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-connection-disconnected\"]",
+      "width": 138.671875,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 306.078125,
+        "right": 166.671875,
+        "bottom": 338.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-page-start\"]",
+      "width": 160.21875,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 338.078125,
+        "right": 188.21875,
+        "bottom": 370.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-page-complete\"]",
+      "width": 197.515625,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 370.078125,
+        "right": 225.515625,
+        "bottom": 402.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-page-cap\"]",
+      "width": 220.65625,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 402.078125,
+        "right": 248.65625,
+        "bottom": 434.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-filter-empty\"]",
+      "width": 210.34375,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 434.078125,
+        "right": 238.34375,
+        "bottom": 466.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-filter-reset\"]",
+      "width": 123.09375,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 466.078125,
+        "right": 151.09375,
+        "bottom": 498.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-rows-two\"]",
+      "width": 151.46875,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 498.078125,
+        "right": 179.46875,
+        "bottom": 530.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-rows-missing\"]",
+      "width": 264,
+      "height": 44,
+      "box": {
+        "left": 28,
+        "top": 530.078125,
+        "right": 292,
+        "bottom": 574.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-rows-empty\"]",
+      "width": 222.046875,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 574.078125,
+        "right": 250.046875,
+        "bottom": 606.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-rows-error\"]",
+      "width": 218.359375,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 606.078125,
+        "right": 246.359375,
+        "bottom": 638.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-rows-loading\"]",
+      "width": 200.78125,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 638.078125,
+        "right": 228.78125,
+        "bottom": 670.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-rows-delayed\"]",
+      "width": 264,
+      "height": 44,
+      "box": {
+        "left": 28,
+        "top": 670.078125,
+        "right": 292,
+        "bottom": 714.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-scope-tenant\"]",
+      "width": 201.0625,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 714.078125,
+        "right": 229.0625,
+        "bottom": 746.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-scope-user\"]",
+      "width": 182.125,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 746.078125,
+        "right": 210.125,
+        "bottom": 778.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-ae-rows-repeat\"]",
+      "width": 236.546875,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 778.078125,
+        "right": 264.546875,
+        "bottom": 810.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-input\"]",
+      "width": 264,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 1473.171875,
+        "right": 292,
+        "bottom": 1505.171875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": true,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-number\"]",
+      "width": 264,
+      "height": 32,
+      "box": {
+        "left": 28,
+        "top": 1542.171875,
+        "right": 292,
+        "bottom": 1574.171875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": true,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-submit\"]",
+      "width": 264,
+      "height": 33,
+      "box": {
+        "left": 28,
+        "top": 1586.171875,
+        "right": 292,
+        "bottom": 1619.171875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-cancel\"]",
+      "width": 264,
+      "height": 33,
+      "box": {
+        "left": 28,
+        "top": 1631.171875,
+        "right": 292,
+        "bottom": 1664.171875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-364-RecordId",
+      "width": 194,
+      "height": 34,
+      "box": {
+        "left": 54,
+        "top": 2338.71875,
+        "right": 248,
+        "bottom": 2372.71875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-364-Reason",
+      "width": 198.421875,
+      "height": 34,
+      "box": {
+        "left": 54,
+        "top": 2441.71875,
+        "right": 252.421875,
+        "bottom": 2475.71875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-364-Retention",
+      "width": 238,
+      "height": 34,
+      "box": {
+        "left": 41,
+        "top": 2557.71875,
+        "right": 279,
+        "bottom": 2591.71875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-364-submit",
+      "width": 227.265625,
+      "height": 32,
+      "box": {
+        "left": 41,
+        "top": 2643.71875,
+        "right": 268.265625,
+        "bottom": 2675.71875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-364-RecordId",
+      "width": 194,
+      "height": 34,
+      "box": {
+        "left": 41,
+        "top": 2923.265625,
+        "right": 235,
+        "bottom": 2957.265625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-364-Reason",
+      "width": 194,
+      "height": 34,
+      "box": {
+        "left": 41,
+        "top": 3006.265625,
+        "right": 235,
+        "bottom": 3040.265625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-364-submit",
+      "width": 236.890625,
+      "height": 32,
+      "box": {
+        "left": 41,
+        "top": 3054.265625,
+        "right": 277.890625,
+        "bottom": 3086.265625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-expanded-detail-summary\"]",
+      "width": 238,
+      "height": 42,
+      "box": {
+        "left": 41,
+        "top": 3516.359375,
+        "right": 279,
+        "bottom": 3558.359375
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-nav-foundation\"]",
+      "width": 92.09375,
+      "height": 24,
+      "box": {
+        "left": 68,
+        "top": 3821.90625,
+        "right": 160.09375,
+        "bottom": 3845.90625
+      },
+      "traits": {
+        "runningText": true,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-nav-group-generated\"]",
+      "width": 199.78125,
+      "height": 33,
+      "box": {
+        "left": 68,
+        "top": 3853.90625,
+        "right": 267.78125,
+        "bottom": 3886.90625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"111\"]",
+      "width": 124.15625,
+      "height": 24,
+      "box": {
+        "left": 108,
+        "top": 3894.90625,
+        "right": 232.15625,
+        "bottom": 3918.90625
+      },
+      "traits": {
+        "runningText": true,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"112\"]",
+      "width": 155.078125,
+      "height": 24,
+      "box": {
+        "left": 108,
+        "top": 3926.90625,
+        "right": 263.078125,
+        "bottom": 3950.90625
+      },
+      "traits": {
+        "runningText": true,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "h2#fc-counter-grid-title",
+      "paint": "Generated Counter projection grid",
+      "foreground": [
+        20,
+        20,
+        20,
+        1
+      ],
+      "background": [
+        248,
+        248,
+        244,
+        1
+      ],
+      "ratio": 17.303659231750295,
+      "minimum": 3
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": false,
+  "forcedColorsStatus": "unsupported authored-color replacement; media rules only",
+  "systemText": [],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-BUTTON#",
+    "requireIndicator": false,
+    "box": {
+      "left": 28,
+      "top": 638.078125,
+      "right": 228.78125,
+      "bottom": 670.078125
+    },
+    "ring": 0,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": []
+  },
+  "systemSnapshot": null,
+  "reducedMotion": true
+}

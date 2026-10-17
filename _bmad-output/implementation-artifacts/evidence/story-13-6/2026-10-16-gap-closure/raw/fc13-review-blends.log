@@ -1,0 +1,25 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/responsive-accessibility.spec.ts --project=chromium --project=firefox --project=webkit --workers=3 --grep review actual generated pseudo composition rejects
+
+
+Running 6 tests using 3 workers
+
+(node:34376) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34377) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34367) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects mix-blend-mode:multiply (393ms)
+  ✓  3 [chromium] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (405ms)
+(node:35262) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35269) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [webkit] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects mix-blend-mode:multiply (672ms)
+  ✓  6 [webkit] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (624ms)
+  ✓  1 [firefox] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects mix-blend-mode:multiply (2.0s)
+  ✓  5 [firefox] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (2.1s)
+
+  6 passed (5.2s)

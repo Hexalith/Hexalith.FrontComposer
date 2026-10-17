@@ -1,0 +1,465 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts specs/responsive-accessibility.spec.ts --project=chromium --workers=3 --grep held generated recovery|active toolbar|generated-forms:|home: composed|R0[19]|R1[0-5]|type states|narrow specimen
+
+
+Running 22 tests using 3 workers
+
+(node:31061) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31060) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31059) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues (2.2s)
+  ✓   2 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › home: composed text, targets, current-state and forced-color cues (2.2s)
+  ✓   3 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (4.2s)
+  ✓   4 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (3.8s)
+  ✘   7 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light (2.0s)
+(node:35444) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   8 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light (1.9s)
+(node:36371) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   9 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark (1.9s)
+(node:37773) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  10 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark (1.9s)
+(node:38575) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  11 [chromium] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in light (1.7s)
+  ✘   5 [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in light (15.6s)
+(node:39463) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  12 [chromium] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in dark (1.7s)
+  ✘  13 [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light (854ms)
+(node:39896) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   6 [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in dark (15.5s)
+  ✓  15 [chromium] › specs/responsive-accessibility.spec.ts:837:1 › R01 rejects an unprevented boundary Tab that application code refocuses (361ms)
+  ✘  14 [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark (827ms)
+(node:40111) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  16 [chromium] › specs/responsive-accessibility.spec.ts:911:1 › R10 generated meaningful text cannot disappear beside passing text (162ms)
+(node:40155) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  17 [chromium] › specs/responsive-accessibility.spec.ts:927:1 › R12 permanent shadow cannot certify an invisible focus-only layer (183ms)
+  ✓  18 [chromium] › specs/responsive-accessibility.spec.ts:903:1 › R09 descendant extending over the target ring is an obstruction (272ms)
+  ✓  19 [chromium] › specs/responsive-accessibility.spec.ts:935:1 › R13 inset pseudo focus border compares against control paint (171ms)
+  ✓  21 [chromium] › specs/responsive-accessibility.spec.ts:943:1 › R14 placeholder alpha determines effective contrast (177ms)
+  ✓  20 [chromium] › specs/responsive-accessibility.spec.ts:918:1 › R11 collapsed offset shadow paints no focus pixels (283ms)
+  ✓  22 [chromium] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (1.5s)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in light 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"FLUENT-RADIO#f7e83115\",\"requireIndicator\":true,\"box\":{\"left\":137.34375,\"top\":271,\"right\":161.34375,\"bottom\":295},\"ring\":4,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"FLUENT-RADIO#f7e83115 by SPAN# at 149.34375,283\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:497
+
+      495 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      496 |   await expect(target).toBeFocused();
+    > 497 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      498 | }
+      499 |
+      500 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:497:208)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:372:5
+
+    attachment #1: state-filter-popover-light (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-filter-popover-light-007537c5afed3d368dbe10e11e04022283f086d5.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-view-menu-light (application/json) ────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-view-menu-light-c7dea2c6a07d239fcbdafd5dc2e4aae03ff389cc.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-tabs-active-light (application/json) ──────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-tabs-active-light-d1667d0c756bf8cdc7d458e6335fff5da5e19676.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-palette-default-light (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-default-light-2bdd302e29f85598109ab7281ceec5a87698334d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-palette-selected-light (application/json) ─────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-selected-light-be288159b091785cc4bf7477398bad89cae63d38.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: state-palette-empty-light (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-empty-light-23aac5cc15ecf8b8616e47945c1a11e5b458dd53.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-check/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/error-context.md
+
+    attachment #10: trace (application/zip) ────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-check/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in dark 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"FLUENT-RADIO#f5072351\",\"requireIndicator\":true,\"box\":{\"left\":137.34375,\"top\":271,\"right\":161.34375,\"bottom\":295},\"ring\":4,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"FLUENT-RADIO#f5072351 by SPAN# at 149.34375,283\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:497
+
+      495 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      496 |   await expect(target).toBeFocused();
+    > 497 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      498 | }
+      499 |
+      500 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:497:208)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:372:5
+
+    attachment #1: state-filter-popover-dark (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-filter-popover-dark-98a946052495305bc592b1f5160b2d99f831f883.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-view-menu-dark (application/json) ─────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-view-menu-dark-65ef7e44fef61577f6ec5795a64aaecf35f76eb9.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-tabs-active-dark (application/json) ───────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-tabs-active-dark-bc2cfcea39bfbfcf60291df2fc91a9358de5fa8f.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-palette-default-dark (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-default-dark-c22cd2519631adb4c89f8f771a4af97897b0065e.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-palette-selected-dark (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-selected-dark-9ebb791b99bc5085a0a1bfe700fe22e0d2a9c417.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: state-palette-empty-dark (application/json) ─────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-empty-dark-fa6bbae213df0c2f53f4956b1f59b29ffab37cba.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-check/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/error-context.md
+
+    attachment #10: trace (application/zip) ────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-check/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light 
+
+    Error: expect(locator).not.toContainText(expected) failed
+
+    Locator: getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')
+    Expected substring: not "not in the current results"
+    Error: strict mode violation: getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status') resolved to 2 elements:
+        1) <div role="status" aria-live="polite" aria-atomic="true" class="fc-sr-only" data-testid="fc-surface-status"></div> aka getByTestId('fc-surface-status').nth(1)
+        2) <div role="status" aria-live="polite" aria-atomic="true" class="fc-sr-only" data-testid="fc-surface-status"></div> aka getByTestId('fc-lifecycle-ae-state').getByTestId('fc-surface-status')
+
+    Call log:
+      - Expect "not toContainText" getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status') with timeout 10000ms
+      - waiting for getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')
+
+
+      649 |     await expect(current).toBeFocused();
+      650 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+    > 651 |     await expect(page.getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')).not.toContainText('not in the current results');
+          |                                                                                            ^
+      652 |   });
+      653 | }
+      654 |
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:651:92
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-c9110-enant-scope-change-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-c9110-enant-scope-change-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-check/accessibility-state-matrix-c9110-enant-scope-change-in-light-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-c9110-enant-scope-change-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-check/accessibility-state-matrix-c9110-enant-scope-change-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light 
+
+    Error: expect(locator).not.toContainText(expected) failed
+
+    Locator: getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')
+    Expected substring: not "not in the current results"
+    Error: strict mode violation: getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status') resolved to 2 elements:
+        1) <div role="status" aria-live="polite" aria-atomic="true" class="fc-sr-only" data-testid="fc-surface-status"></div> aka getByTestId('fc-surface-status').nth(1)
+        2) <div role="status" aria-live="polite" aria-atomic="true" class="fc-sr-only" data-testid="fc-surface-status"></div> aka getByTestId('fc-lifecycle-ae-state').getByTestId('fc-surface-status')
+
+    Call log:
+      - Expect "not toContainText" getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status') with timeout 10000ms
+      - waiting for getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')
+
+
+      649 |     await expect(current).toBeFocused();
+      650 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+    > 651 |     await expect(page.getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')).not.toContainText('not in the current results');
+          |                                                                                            ^
+      652 |   });
+      653 | }
+      654 |
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:651:92
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-734fa--user-scope-change-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-734fa--user-scope-change-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-check/accessibility-state-matrix-734fa--user-scope-change-in-light-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-734fa--user-scope-change-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-check/accessibility-state-matrix-734fa--user-scope-change-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark 
+
+    Error: expect(locator).not.toContainText(expected) failed
+
+    Locator: getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')
+    Expected substring: not "not in the current results"
+    Error: strict mode violation: getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status') resolved to 2 elements:
+        1) <div role="status" aria-live="polite" aria-atomic="true" class="fc-sr-only" data-testid="fc-surface-status"></div> aka getByTestId('fc-surface-status').nth(1)
+        2) <div role="status" aria-live="polite" aria-atomic="true" class="fc-sr-only" data-testid="fc-surface-status"></div> aka getByTestId('fc-lifecycle-ae-state').getByTestId('fc-surface-status')
+
+    Call log:
+      - Expect "not toContainText" getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status') with timeout 10000ms
+      - waiting for getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')
+
+
+      649 |     await expect(current).toBeFocused();
+      650 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+    > 651 |     await expect(page.getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')).not.toContainText('not in the current results');
+          |                                                                                            ^
+      652 |   });
+      653 | }
+      654 |
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:651:92
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-check/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-check/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark 
+
+    Error: expect(locator).not.toContainText(expected) failed
+
+    Locator: getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')
+    Expected substring: not "not in the current results"
+    Error: strict mode violation: getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status') resolved to 2 elements:
+        1) <div role="status" aria-live="polite" aria-atomic="true" class="fc-sr-only" data-testid="fc-surface-status"></div> aka getByTestId('fc-surface-status').nth(1)
+        2) <div role="status" aria-live="polite" aria-atomic="true" class="fc-sr-only" data-testid="fc-surface-status"></div> aka getByTestId('fc-lifecycle-ae-state').getByTestId('fc-surface-status')
+
+    Call log:
+      - Expect "not toContainText" getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status') with timeout 10000ms
+      - waiting for getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')
+
+
+      649 |     await expect(current).toBeFocused();
+      650 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+    > 651 |     await expect(page.getByTestId('fc-ae-scenarios').getByTestId('fc-surface-status')).not.toContainText('not in the current results');
+          |                                                                                            ^
+      652 |   });
+      653 | }
+      654 |
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:651:92
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-check/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-check/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light 
+
+    Error: Horizontal scroll regions must be labelled grids or tablists
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "DIV#",
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:68
+
+      66 |   });
+      67 |   expect(geometry.scrollWidth, `Page overflow: ${JSON.stringify(geometry)}`).toBeLessThanOrEqual(geometry.width + 1);
+    > 68 |   expect(geometry.unlabelled, 'Horizontal scroll regions must be labelled grids or tablists').toEqual([]);
+         |                                                                                               ^
+      69 | }
+      70 |
+      71 | /** Inventory actual hit targets, collapsing a Fluent control and its shadow control to one target. */
+        at expectNoPageOverflow (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:68:95)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:394:7
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/responsive-accessibility-S-42726-educed-motion-cues-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/responsive-accessibility-S-42726-educed-motion-cues-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-check/responsive-accessibility-S-42726-educed-motion-cues-in-light-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/responsive-accessibility-S-42726-educed-motion-cues-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-check/responsive-accessibility-S-42726-educed-motion-cues-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark 
+
+    Error: Horizontal scroll regions must be labelled grids or tablists
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "DIV#",
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:68
+
+      66 |   });
+      67 |   expect(geometry.scrollWidth, `Page overflow: ${JSON.stringify(geometry)}`).toBeLessThanOrEqual(geometry.width + 1);
+    > 68 |   expect(geometry.unlabelled, 'Horizontal scroll regions must be labelled grids or tablists').toEqual([]);
+         |                                                                                               ^
+      69 | }
+      70 |
+      71 | /** Inventory actual hit targets, collapsing a Fluent control and its shadow control to one target. */
+        at expectNoPageOverflow (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:68:95)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:394:7
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/responsive-accessibility-S-0c912-reduced-motion-cues-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/responsive-accessibility-S-0c912-reduced-motion-cues-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-check/responsive-accessibility-S-0c912-reduced-motion-cues-in-dark-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-check/responsive-accessibility-S-0c912-reduced-motion-cues-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-check/responsive-accessibility-S-0c912-reduced-motion-cues-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in dark 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark 
+    [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light 
+    [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark 
+  14 passed (23.0s)

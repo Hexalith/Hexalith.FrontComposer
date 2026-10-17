@@ -1,0 +1,60 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/responsive-accessibility.spec.ts --project=chromium --project=firefox --project=webkit --workers=3 --grep translucent permanent shadow|normal-flow generated label|clipped text cannot|overlapping sibling backgrounds|generated glyphs outside|R07 sibling|R10 generated|R12 permanent
+
+
+Running 33 tests using 3 workers
+
+(node:23309) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23313) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23320) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › specs/responsive-accessibility.spec.ts:911:1 › R10 generated meaningful text cannot disappear beside passing text (378ms)
+  ✓   1 [chromium] › specs/responsive-accessibility.spec.ts:888:1 › R07 sibling background paint cannot be replaced with ancestor white (442ms)
+  ✓   3 [chromium] › specs/responsive-accessibility.spec.ts:927:1 › R12 permanent shadow cannot certify an invisible focus-only layer (398ms)
+  ✓   5 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:relative;top:40px (361ms)
+  ✓   4 [chromium] › specs/responsive-accessibility.spec.ts:1113:1 › review generated glyphs outside their host require pixel evidence (459ms)
+  ✓   6 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:sticky;top:0 (426ms)
+  ✓   7 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence transform:translateY(40px) (363ms)
+  ✓   8 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence static negative margin (331ms)
+  ✓   9 [chromium] › specs/responsive-accessibility.spec.ts:1205:1 › review translucent permanent shadow cannot certify covered changed focus paint (489ms)
+  ✓  10 [chromium] › specs/responsive-accessibility.spec.ts:1219:1 › review normal-flow generated label spacing remains measured (222ms)
+  ✓  11 [chromium] › specs/responsive-accessibility.spec.ts:1226:1 › review clipped text cannot overlap an adjacent static footer but visible overlap is rejected (233ms)
+(node:24642) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24673) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24640) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  12 [firefox] › specs/responsive-accessibility.spec.ts:911:1 › R10 generated meaningful text cannot disappear beside passing text (2.0s)
+  ✓  15 [firefox] › specs/responsive-accessibility.spec.ts:1113:1 › review generated glyphs outside their host require pixel evidence (636ms)
+  ✓  14 [firefox] › specs/responsive-accessibility.spec.ts:888:1 › R07 sibling background paint cannot be replaced with ancestor white (2.7s)
+  ✓  16 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:relative;top:40px (604ms)
+  ✓  17 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:sticky;top:0 (506ms)
+  ✓  18 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence transform:translateY(40px) (579ms)
+  ✓  19 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence static negative margin (656ms)
+  ✓  13 [firefox] › specs/responsive-accessibility.spec.ts:927:1 › R12 permanent shadow cannot certify an invisible focus-only layer (3.0s)
+  ✓  20 [firefox] › specs/responsive-accessibility.spec.ts:1205:1 › review translucent permanent shadow cannot certify covered changed focus paint (989ms)
+  ✓  21 [firefox] › specs/responsive-accessibility.spec.ts:1219:1 › review normal-flow generated label spacing remains measured (704ms)
+  ✓  22 [firefox] › specs/responsive-accessibility.spec.ts:1226:1 › review clipped text cannot overlap an adjacent static footer but visible overlap is rejected (707ms)
+(node:28191) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28324) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28427) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  23 [webkit] › specs/responsive-accessibility.spec.ts:888:1 › R07 sibling background paint cannot be replaced with ancestor white (836ms)
+  ✓  24 [webkit] › specs/responsive-accessibility.spec.ts:911:1 › R10 generated meaningful text cannot disappear beside passing text (848ms)
+  ✓  25 [webkit] › specs/responsive-accessibility.spec.ts:927:1 › R12 permanent shadow cannot certify an invisible focus-only layer (835ms)
+  ✓  26 [webkit] › specs/responsive-accessibility.spec.ts:1113:1 › review generated glyphs outside their host require pixel evidence (750ms)
+  ✓  27 [webkit] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:relative;top:40px (836ms)
+  ✓  28 [webkit] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:sticky;top:0 (639ms)
+  ✓  29 [webkit] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence transform:translateY(40px) (732ms)
+  ✓  30 [webkit] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence static negative margin (722ms)
+  ✓  32 [webkit] › specs/responsive-accessibility.spec.ts:1219:1 › review normal-flow generated label spacing remains measured (732ms)
+  ✓  31 [webkit] › specs/responsive-accessibility.spec.ts:1205:1 › review translucent permanent shadow cannot certify covered changed focus paint (1.0s)
+  ✓  33 [webkit] › specs/responsive-accessibility.spec.ts:1226:1 › review clipped text cannot overlap an adjacent static footer but visible overlap is rejected (765ms)
+
+  33 passed (13.8s)

@@ -21,7 +21,37 @@ async function ready(page: Page, path: string, theme: string) {
   await settlePaint(page);
 }
 
-async function evidence(page: Page, root: Locator, state: string, info: TestInfo, icons?: Locator) {
+type VisibleSurfaceInspection = { phase: string; retainedFocus?: Locator };
+
+async function evidence(page: Page, root: Locator, state: string, info: TestInfo, icons?: Locator, inspection?: VisibleSurfaceInspection) {
+  // These explicitly opted-in journeys inspect distant paint without moving operator
+  // focus. Each mode measures that focus while visible, before its own root scroll.
+  const inspectBeforeRootScroll = async (mode: 'normal' | 'forced-colors') => {
+    expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(mode === 'forced-colors');
+    const activeElement = await page.evaluateHandle(() => document.activeElement);
+    try {
+      const focused = inspection!.retainedFocus ?? page.locator(':focus').first();
+      const active = await page.evaluate(() => document.activeElement?.tagName ?? 'BODY');
+      const operatorFocused = !['BODY','HTML'].includes(active) && await focused.count() > 0;
+      if (inspection!.retainedFocus) await expect(focused).toBeFocused();
+      let result;
+      if (operatorFocused) {
+        await focused.scrollIntoViewIfNeeded();
+        await expect(focused).toBeFocused();
+        await settlePaint(page);
+        const requireIndicator = await focused.evaluate(element => element.matches(':focus-visible') || Boolean(element.shadowRoot?.querySelector(':focus-visible')));
+        const geometry = await focusGeometry(focused, { requireIndicator });
+        expect(geometry.failures, `Visible ${mode} focus before root scroll: ${state} ${JSON.stringify(geometry)}`).toEqual([]);
+        const contrast = requireIndicator ? await expectSurfaceContrast(focused, 'focus') : null;
+        result = { mode, status: 'measured', phase: inspection!.phase, ...geometry, contrast };
+      } else result = { mode, status: 'none', phase: inspection!.phase, target: active };
+      await root.scrollIntoViewIfNeeded();
+      expect(await activeElement.evaluate(element => document.activeElement === element), `Root inspection retains activeElement: ${state} ${mode}`).toBe(true);
+      if (inspection!.retainedFocus) await expect(focused).toBeFocused();
+      return { ...result, activeElementRetainedAfterRootScroll: true };
+    } finally { await activeElement.dispose(); }
+  };
+
   await expect(root).toBeVisible();
   await expectNoPageOverflow(page);
   await expectNoTextClipping(page);
@@ -37,6 +67,7 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
   expect(themePaint.rgb.reduce((sum, channel) => sum + channel, 0) < 384, 'Actual Fluent theme paint').toBe(theme === 'Dark');
   const reducedMotion = await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   expect(reducedMotion).toBe(true);
+  const normalFocus = inspection ? await inspectBeforeRootScroll('normal') : undefined;
   const collectCues = async () => {
     const cues = [];
     if (state.startsWith('generated-validation-')) cues.push(await expectSurfaceContrast(root, 'focus'));
@@ -62,13 +93,26 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
   const collectBoundaries = async () => {
     const boundaries = [];
     for (const control of await root.locator('fluent-text-input:not([disabled]),fluent-number-input:not([disabled]),fluent-dropdown:not([disabled]),fluent-combobox:not([disabled])').all()) {
-      if (await control.isVisible()) boundaries.push(await expectSurfaceContrast(control, 'border'));
+      if (!await control.isVisible()) continue;
+      // isVisible includes controls fully outside a scrollport. Native intersection
+      // geometry excludes only those whose boundaries currently paint no pixels.
+      const painted = await control.evaluate(node => new Promise<boolean>(resolve => {
+        const observer = new IntersectionObserver(([entry]) => {
+          observer.disconnect();
+          resolve(entry.intersectionRect.width > 0 && entry.intersectionRect.height > 0);
+        });
+        observer.observe(node);
+      }));
+      if (painted) boundaries.push(await expectSurfaceContrast(control, 'border'));
     }
     return boundaries;
   };
   const boundaries = await collectBoundaries();
+  if (state.startsWith('lifecycle-rejected-')) expect(icon.length, 'Required normal rejected-state icon samples').toBeGreaterThan(0);
+  if (state.startsWith('policy-denied-')) expect(boundaries.length, 'Required normal policy control-boundary samples').toBeGreaterThan(0);
   await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
   await settlePaint(page);
+  const inspectedSystemFocus = inspection ? await inspectBeforeRootScroll('forced-colors') : undefined;
   const forcedColors = await page.evaluate(() => matchMedia('(forced-colors: active)').matches);
   const forcedColorsPaint = await page.evaluate(() => {
     const probe = document.createElement('div');
@@ -81,6 +125,10 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
   const systemIcon = forcedColorsPaint && icon.length ? await expectSurfaceContrast(icons ?? root, 'icon') : [];
   const systemBoundaries = forcedColorsPaint ? await collectBoundaries() : [];
   const systemCues = forcedColorsPaint ? await collectCues() : [];
+  if (forcedColorsPaint) {
+    if (state.startsWith('lifecycle-rejected-')) expect(systemIcon.length, 'Required forced-color rejected-state icon samples').toBeGreaterThan(0);
+    if (state.startsWith('policy-denied-')) expect(systemBoundaries.length, 'Required forced-color policy control-boundary samples').toBeGreaterThan(0);
+  }
   const forcedColorsStatus = forcedColorsPaint ? 'painted system palette' : 'unsupported authored-color replacement; media rules only';
   if (!forcedColorsPaint) expect(info.project.name, 'Only the probed WebKit engine lacks forced palette emulation').toBe('webkit');
   await expect(root).toBeVisible();
@@ -89,16 +137,16 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
   const focused = page.locator(':focus').first();
   const active = await page.evaluate(() => document.activeElement?.tagName ?? 'BODY');
   const operatorFocused = !['BODY','HTML'].includes(active) && await focused.count() > 0;
-  const systemFocus = operatorFocused
+  const systemFocus = inspectedSystemFocus ?? (operatorFocused
     ? { mode: 'forced-colors', status: 'measured', ...await focusGeometry(focused, { requireIndicator: await focused.evaluate(element => element.matches(':focus-visible') || Boolean(element.shadowRoot?.querySelector(':focus-visible'))) }) }
-    : { mode: 'forced-colors', status: 'none', target: active };
-  if ('failures' in systemFocus) expect(systemFocus.failures, `Forced-color focused geometry: ${state}`).toEqual([]);
+    : { mode: 'forced-colors', status: 'none', target: active });
+  if ('failures' in systemFocus) expect(systemFocus.failures, `Forced-color focused geometry: ${state} ${JSON.stringify(systemFocus)}`).toEqual([]);
   const systemSnapshot = forcedColorsPaint ? `system-state-${state}.png` : null;
   if (systemSnapshot) await screenshotPreservingScroll(root, { path: info.outputPath(systemSnapshot) });
   await page.emulateMedia({ forcedColors: 'none' });
   await settlePaint(page);
   const path = info.outputPath(`ae-state-${state}.json`);
-  await writeFile(path, JSON.stringify({ state, engine: info.project.name, runId: process.env.FC_A11Y_EVIDENCE_RUN_ID, viewport: page.viewportSize(), theme, themePaint, targets, text, icon, boundaries, cues, decorativeIconExemptions: ['.fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text', '.fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name'], forcedColors, forcedColorsPaint, forcedColorsStatus, systemText, systemIcon, systemBoundaries, systemCues, systemFocus, systemSnapshot, reducedMotion }, null, 2));
+  await writeFile(path, JSON.stringify({ testId: info.testId, attempt: info.retry, state, engine: info.project.name, runId: process.env.FC_A11Y_EVIDENCE_RUN_ID, viewport: page.viewportSize(), theme, themePaint, targets, ...(inspection ? { normalFocus, rootPaintPhase: 'after-root-scroll-with-retained-active-element', fixtureOptions: info.config.metadata.testHostOptions } : {}), text, icon, boundaries, cues, decorativeIconExemptions: ['.fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text', '.fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name'], forcedColors, forcedColorsPaint, forcedColorsStatus, systemText, systemIcon, systemBoundaries, systemCues, systemFocus, systemSnapshot, reducedMotion }, null, 2));
   await info.attach(`state-${state}`, { path, contentType: 'application/json' });
 }
 
@@ -128,9 +176,10 @@ for (const theme of ['light', 'dark']) {
         const copy = (await feedback.innerText()).trim();
         await expect(root.getByTestId('fc-surface-status').filter({ hasText: outcome.includes('rejection') ? /rejected/i : copy })).toHaveCount(1);
         await expect(root.locator('[role="alert"],[aria-live="assertive"]')).toHaveCount(0);
+        await feedback.scrollIntoViewIfNeeded();
         await evidence(page, feedback, `zero-${outcome}-${theme}`, info);
         await expectFocusVisible(trigger);
-        await expectSurfaceContrast(trigger, 'focus');
+        const focusContrast = await expectSurfaceContrast(trigger, 'focus');
         // No automatic pre-accept retry: the independent dispatch counter stays at one (zero for denials).
         await page.waitForTimeout(350);
         await root.getByTestId('fc-ae-select-accepted').click();
@@ -139,8 +188,14 @@ for (const theme of ['light', 'dark']) {
         await trigger.click();
         await expect(feedback).toHaveCount(0);
         await expect(page.locator('.fc-pending-command-summary')).toBeVisible();
-        if (outcome === 'validation') await evidence(page, page.locator('.fc-pending-command-summary'), `zero-accepted-${theme}`, info);
-        await info.attach(`zero-field-${outcome}-${theme}.json`, { body: JSON.stringify({ outcome, theme, copy, preAcceptRetries: 0, observedOwnerCount: 1, heardSpeech: 'not observed' }), contentType: 'application/json' });
+        if (outcome === 'validation') {
+          await expect(trigger).toBeFocused();
+          // Inspect the global accepted summary separately after proving trigger retention.
+          await page.locator('#fc-main-content h1').first().focus();
+          await page.locator('.fc-pending-command-summary').scrollIntoViewIfNeeded();
+          await evidence(page, page.locator('.fc-pending-command-summary'), `zero-accepted-${theme}`, info);
+        }
+        await info.attach(`zero-field-${outcome}-${theme}.json`, { body: JSON.stringify({ outcome, theme, copy, focusContrast, preAcceptRetries: 0, observedOwnerCount: 1, heardSpeech: 'not observed' }), contentType: 'application/json' });
       });
     }
 
@@ -165,7 +220,7 @@ for (const theme of ['light', 'dark']) {
       await controls.getByTestId('fc-ae-rows-repeat').dispatchEvent('click');
       await expect(grid.locator('[data-message-revision]')).toHaveAttribute('data-message-revision', revision!);
       await expect(external).toBeFocused();
-      await evidence(page, explanation, `generated-missing-external-${theme}`, info);
+      await evidence(page, explanation, `generated-missing-external-${theme}`, info, undefined, { phase: 'retained-external-focus-before-root-scroll', retainedFocus: external });
     });
 
     test('real generated detail loss focuses its neutral non-live explanation', async ({ page }, info) => {
@@ -196,7 +251,7 @@ for (const theme of ['light', 'dark']) {
       for (const state of LIFECYCLE_STATES) {
         await root.getByTestId(`fc-ae-lifecycle-${state.replaceAll('-', '')}`).click();
         await expect(wrapper).toHaveAttribute('data-lifecycle-state', state);
-        await evidence(page, wrapper, `lifecycle-${state}-${theme}`, info);
+        await evidence(page, wrapper, `lifecycle-${state}-${theme}`, info, undefined, state === 'rejected' ? { phase: 'operator-focus-before-rejected-lifecycle-scroll' } : undefined);
         await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
         await expect(wrapper).toContainText('Observable lifecycle specimen');
         const adjustment = await wrapper.evaluate(element => getComputedStyle(element).getPropertyValue('forced-color-adjust'));
@@ -349,7 +404,12 @@ for (const theme of ['light', 'dark']) {
     await evidence(page, palette, `palette-default-${theme}`, info);
     const search = page.getByTestId('fc-palette-search').locator('input');
     await search.fill('counter');
-    await expect(palette.locator('[aria-selected="true"]')).toBeVisible();
+    await expect(palette.getByRole('option')).toHaveText(['CounterProjection', 'ConfigureCounterCommand']);
+    const selectedProjection = palette.getByRole('option', { name: 'CounterProjection', exact: true });
+    await expect(selectedProjection).toHaveClass(/(^|\s)fc-palette-option-selected(\s|$)/u);
+    await expect(selectedProjection).toHaveAttribute('aria-selected', 'true');
+    await expect(selectedProjection).toBeInViewport({ ratio: 1 });
+    await settlePaint(page);
     await evidence(page, palette, `palette-selected-${theme}`, info);
     await expectSurfaceContrast(palette.locator('.fc-palette-option-selected'), 'cue');
     await search.fill('no-match-accessibility-136');
@@ -389,7 +449,7 @@ for (const theme of ['light', 'dark']) {
     const summary = destructive.locator('[data-testid="fc-validation-summary"]');
     await expect(summary).toBeVisible();
     await evidence(page, summary, `generated-validation-${theme}`, info);
-    await evidence(page, page.getByTestId('fc-policy-command-specimen'), `policy-denied-${theme}`, info);
+    await evidence(page, page.getByTestId('fc-policy-command-specimen'), `policy-denied-${theme}`, info, undefined, { phase: 'operator-focus-before-policy-surface-scroll' });
     const form = destructive.locator('.fc-command-form');
     await form.getByRole('combobox').click();
     await form.getByRole('combobox').press('ArrowDown');
@@ -431,24 +491,24 @@ for (const theme of ['light', 'dark']) {
       await page.getByTestId(`fc-ae-connection-${connection}`).click();
       const notice = page.getByTestId('fc-projection-connection-status');
       await expect(notice).toBeVisible();
-      await evidence(page, notice, `connection-${connection}-${theme}`, info, notice);
+      await evidence(page, notice, `connection-${connection}-${theme}`, info, notice, { phase: 'operator-focus-before-projection-surface-scroll' });
       if (connection !== 'connected') {
         await expect(grid.getByTestId('fc-projection-stale-notice')).toBeVisible();
-        await evidence(page, grid.getByTestId('fc-projection-stale-notice'), `stale-${connection}-${theme}`, info);
+        await evidence(page, grid.getByTestId('fc-projection-stale-notice'), `stale-${connection}-${theme}`, info, undefined, { phase: 'operator-focus-before-projection-surface-scroll' });
       }
     }
     await page.getByTestId('fc-ae-page-start').click();
     const slow = grid.getByTestId('fc-slow-query-notice');
     await expect(slow).toBeVisible({ timeout: 5_000 });
-    await evidence(page, slow, `slow-query-${theme}`, info);
+    await evidence(page, slow, `slow-query-${theme}`, info, undefined, { phase: 'operator-focus-before-projection-surface-scroll' });
     await page.getByTestId('fc-ae-page-cap').click();
     await expect(slow).toHaveCount(0);
     const cap = grid.getByTestId('fc-max-items-cap-notice');
     await expect(cap).toBeVisible();
-    await evidence(page, cap, `result-limit-${theme}`, info);
+    await evidence(page, cap, `result-limit-${theme}`, info, undefined, { phase: 'operator-focus-before-projection-surface-scroll' });
     await page.getByTestId('fc-ae-filter-empty').click();
     await expect(page.getByTestId('fc-filter-empty-state')).toBeVisible();
-    await evidence(page, page.getByTestId('fc-filter-empty-state'), `filter-empty-${theme}`, info);
+    await evidence(page, page.getByTestId('fc-filter-empty-state'), `filter-empty-${theme}`, info, undefined, { phase: 'operator-focus-before-projection-surface-scroll' });
     await page.getByTestId('fc-ae-filter-reset').click();
     await expect(page.getByTestId('fc-filter-empty-state')).toHaveCount(0);
   });
@@ -543,7 +603,7 @@ for (const theme of ['light', 'dark']) {
     await ready(page, `${scenarioPath}&theme=${theme}`, theme);
     const cue = page.getByTestId('fc-ae-fresh-presentation');
     await expect(cue).toContainText(/new|updated/i);
-    await evidence(page, cue, `fresh-presentation-${theme}`, info);
+    await evidence(page, cue, `fresh-presentation-${theme}`, info, undefined, { phase: 'operator-focus-before-fresh-presentation-scroll' });
     await expectSurfaceContrast(cue, 'border');
   });
 }
@@ -592,3 +652,62 @@ test('G09 forced-color focus geometry rejects a mode-specific clipped ring', asy
   await page.emulateMedia({ forcedColors: 'active' });
   expect((await focusGeometry(page.locator('button'))).failures).toContain('viewport clips target or focus ring');
 });
+
+for (const theme of ['light', 'dark']) for (const scope of ['tenant', 'user']) {
+  test(`held generated recovery cancels after ${scope} scope change in ${theme}`, async ({ page }) => {
+    await page.route('**/fc-focus.js', async route => {
+      const response = await route.fetch();
+      const source = (await response.text()).replace('export function focusReplacementHeading(key, headingId)', 'function originalFocusReplacementHeading(key, headingId)');
+      await route.fulfill({ response, body: source + `
+export async function focusReplacementHeading(key, headingId) {
+  const gate = window.__aeRecoveryGate;
+  if (gate?.hold) {
+    gate.entered = true;
+    gate.capturedDetached = focusBeforeReplacement.get(key) instanceof HTMLElement && !focusBeforeReplacement.get(key).isConnected;
+    await new Promise(resolve => { gate.release = () => { gate.released = true; resolve(); }; });
+  }
+  if (gate?.hold) gate.captureStillOwned = focusBeforeReplacement.has(key);
+  const result = originalFocusReplacementHeading(key, headingId);
+  if (gate?.hold) gate.returned = result;
+  return result;
+}` });
+    });
+    await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+    const grid = page.getByTestId('fc-generated-counter-grid');
+    await grid.scrollIntoViewIfNeeded();
+    await expect(grid.locator('[data-fc-datagrid]')).toBeVisible();
+    await expect(grid.locator('tbody tr.fluent-data-grid-row').first()).toBeVisible();
+    await page.getByTestId('fc-ae-rows-two').click();
+    // The control above the grid may scroll its virtualized rows out of view.
+    // Establish the completed two-row render before entering the focus recovery sequence.
+    await grid.scrollIntoViewIfNeeded();
+    await expect(grid.locator('tbody tr.fluent-data-grid-row')).toHaveCount(2);
+    await expect(grid.getByRole('gridcell', { name: 'FC-AE-2', exact: true })).toBeVisible();
+    await grid.getByRole('gridcell', { name: 'FC-AE-1', exact: true }).click();
+    const detail = grid.locator('.fc-expand-in-row-detail');
+    await expect(detail).toContainText('FC-AE-1');
+    await detail.locator('a,button,fluent-button,[tabindex="0"]').first().focus();
+    const arm = async () => page.evaluate(() => { (window as typeof window & { __aeRecoveryGate: unknown }).__aeRecoveryGate = { hold: true, entered: false, released: false }; });
+    const entered = async () => {
+      await expect.poll(() => page.evaluate(() => (window as typeof window & { __aeRecoveryGate: { entered: boolean; capturedDetached?: boolean } }).__aeRecoveryGate)).toMatchObject({ entered: true, capturedDetached: true });
+      await expect(detail.locator('a,button,fluent-button,[tabindex="0"]')).toHaveCount(0);
+      await expect(grid.locator('.fc-expanded-row-hidden-banner-text')).toBeVisible();
+    };
+    const release = async () => {
+      await page.evaluate(() => (window as typeof window & { __aeRecoveryGate: { release: () => void } }).__aeRecoveryGate.release());
+      await expect.poll(() => page.evaluate(() => (window as typeof window & { __aeRecoveryGate: { returned?: boolean; captureStillOwned?: boolean } }).__aeRecoveryGate)).toMatchObject({ returned: false, captureStillOwned: false });
+    };
+    await arm();
+    await page.getByTestId('fc-ae-rows-missing').dispatchEvent('click');
+    await entered();
+    await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+    const current = page.getByTestId('fc-ae-rows-two');
+    await expect(current).toBeVisible();
+    await current.focus();
+    await release();
+    await expect(current).toBeFocused();
+    await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+    await expect(page.locator('[data-testid="fc-surface-status"]').filter({ hasText: 'not in the current results' })).toHaveCount(0);
+  });
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "export": "raw/apphost-test-start.log",
+    "originalSha256": "3e3a68a1498477504556a369ccee592e74938864e3e89b7370f2ca9fa131001f",
+    "reason": "Local dashboard access token redacted from reviewable export; original CLI logs remain under ~/.aspire/logs."
+  },
+  {
+    "export": "raw/apphost-start.log",
+    "originalSha256": "75a2b26651c97243deafbe23ffcc2e8a82d7d3b9071581e1f3df9b3370faf4c4",
+    "reason": "Local dashboard access token redacted from reviewable export; original CLI logs remain under ~/.aspire/logs."
+  }
+]

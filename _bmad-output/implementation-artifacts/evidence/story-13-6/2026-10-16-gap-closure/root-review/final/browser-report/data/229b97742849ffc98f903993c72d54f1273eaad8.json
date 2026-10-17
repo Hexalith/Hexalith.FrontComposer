@@ -1,0 +1,795 @@
+{
+  "testId": "a542ea7f175527dc3e9c-d2b739cdf1c73609ddf2",
+  "attempt": 0,
+  "state": "theme-menu-dark",
+  "engine": "firefox",
+  "runId": "gap-root-review-13af441b28ac",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Dark",
+  "themePaint": {
+    "background": "#292929",
+    "rgb": [
+      41,
+      41,
+      41
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 156.38333129882812,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9842.616668701172,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 180.43333435058594,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9818.566665649414,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"2\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 16,
+        "top": 4,
+        "right": 48,
+        "bottom": 36
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 128,
+        "right": 60,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#f3ed412d",
+      "width": 150,
+      "height": 32,
+      "box": {
+        "left": 17,
+        "top": 165,
+        "right": 167,
+        "bottom": 197
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#f4788c15",
+      "width": 150,
+      "height": 32,
+      "box": {
+        "left": 17,
+        "top": 199,
+        "right": 167,
+        "bottom": 231
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#f51f7eea",
+      "width": 150,
+      "height": 32,
+      "box": {
+        "left": 17,
+        "top": 233,
+        "right": 167,
+        "bottom": 265
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 68,
+        "top": 128,
+        "right": 100,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 108,
+        "top": 128,
+        "right": 140,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 148,
+        "top": 128,
+        "right": 180,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#overview",
+      "width": 101.60000610351562,
+      "height": 45,
+      "box": {
+        "left": 16,
+        "top": 212.8000030517578,
+        "right": 117.60000610351562,
+        "bottom": 257.8000030517578
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#counter-projection",
+      "width": 107.2833251953125,
+      "height": 45,
+      "box": {
+        "left": 117.60000610351562,
+        "top": 212.8000030517578,
+        "right": 224.88333129882812,
+        "bottom": 257.8000030517578
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 230,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 269.79998779296875,
+        "right": 290,
+        "bottom": 313.79998779296875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-52-CounterId",
+      "width": 230,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 361.79998779296875,
+        "right": 275,
+        "bottom": 393.79998779296875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-52-InitialValue",
+      "width": 222,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 442.79998779296875,
+        "right": 267,
+        "bottom": 474.79998779296875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-CreateCounterCommand-52-submit",
+      "width": 155.78334045410156,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 488.79998779296875,
+        "right": 200.78334045410156,
+        "bottom": 520.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 230,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 533.7999877929688,
+        "right": 290,
+        "bottom": 577.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-52-CounterId",
+      "width": 230,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 625.7999877929688,
+        "right": 275,
+        "bottom": 657.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-52-Amount",
+      "width": 222,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 706.7999877929688,
+        "right": 267,
+        "bottom": 738.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-UpdateCounterCommand-52-submit",
+      "width": 160.88333129882812,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 752.7999877929688,
+        "right": 205.88333129882812,
+        "bottom": 784.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 230,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 797.7999877929688,
+        "right": 290,
+        "bottom": 841.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-52-Amount",
+      "width": 222,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 889.7999877929688,
+        "right": 267,
+        "bottom": 921.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-52-Note",
+      "width": 230,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 970.7999877929688,
+        "right": 275,
+        "bottom": 1002.7999877929688
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-52-EffectiveDate",
+      "width": 230,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 1051.800048828125,
+        "right": 275,
+        "bottom": 1083.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-BatchIncrementCommand-52-submit",
+      "width": 167.81666564941406,
+      "height": 32,
+      "box": {
+        "left": 45,
+        "top": 1097.800048828125,
+        "right": 212.81666564941406,
+        "bottom": 1129.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 212.06666564941406,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 1142.800048828125,
+        "right": 272.06666564941406,
+        "bottom": 1186.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-trigger-Counter-Domain-IncrementCommand",
+      "width": 136.63333129882812,
+      "height": 32,
+      "box": {
+        "left": 32,
+        "top": 1186.800048828125,
+        "right": 168.63333129882812,
+        "bottom": 1218.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 230,
+      "height": 44,
+      "box": {
+        "left": 60,
+        "top": 1218.800048828125,
+        "right": 290,
+        "bottom": 1262.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-anchor-button[inventory-index=\"28\"]",
+      "width": 183.3333282470703,
+      "height": 32,
+      "box": {
+        "left": 32,
+        "top": 1475.800048828125,
+        "right": 215.3333282470703,
+        "bottom": 1507.800048828125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "slot",
+      "paint": "Light",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 10.009758502342363,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "slot",
+      "paint": "Dark",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 10.009758502342363,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "slot",
+      "paint": "System",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 10.009758502342363,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [
+    [
+      {
+        "owner": 0,
+        "node": "fluent-menu-item#f4788c15",
+        "paint": "element outline",
+        "foreground": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 14.5481984654954,
+        "minimum": 3
+      }
+    ]
+  ],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": true,
+  "forcedColorsStatus": "painted system palette",
+  "systemText": [
+    {
+      "owner": 0,
+      "node": "slot",
+      "paint": "Light",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "slot",
+      "paint": "Dark",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "slot",
+      "paint": "System",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [
+    [
+      {
+        "owner": 0,
+        "node": "fluent-menu-item#f4788c15",
+        "paint": "element outline",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-MENU-ITEM#f4788c15",
+    "requireIndicator": true,
+    "box": {
+      "left": 15,
+      "top": 197,
+      "right": 169,
+      "bottom": 233
+    },
+    "ring": 2,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": []
+  },
+  "systemSnapshot": "system-state-theme-menu-dark.png",
+  "reducedMotion": true
+}

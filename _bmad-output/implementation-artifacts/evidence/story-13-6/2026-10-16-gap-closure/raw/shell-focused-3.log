@@ -1,0 +1,141 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.Shell.Tests
+  Discovered:  Hexalith.FrontComposer.Shell.Tests
+  Starting:    Hexalith.FrontComposer.Shell.Tests
+    Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(tenantChange: True) [FAIL]
+      Bunit.Extensions.WaitForHelpers.WaitForFailedException : The assertion did not pass within the timeout period.
+      
+      If this test does not fail consistently, the reason may be that
+      the wait timeout is too short, and the runtime did not have enough
+      time to complete the necessary number of renders of the component under test.
+      This can happen on highly utilized or slower hardware, for example.
+      
+      To determine if this is the cause, compare the check and render count(s) below
+      and see if they match what is expected. If they do not,
+      consider increasing the timeout, either at the individual
+      method call level, e.g. WaitForElement("div", TimeSpan.FromSeconds(15)),
+      or via the static TestContext.DefaultWaitTimeout property.
+      
+      Check count: 1.
+      Component render count: 2.
+      Total render count across all components: 0.
+      ---- Shouldly.ShouldAssertException : cut.WaitForAssertion(cut.FindComponents<ZeroFieldInlineCommandRenderer>().Count
+          should be
+      1
+          but was
+      0
+      
+      Additional Info:
+          
+      
+      <div class="fc-shell-root" style="--fc-accent-base-color: #0097A7;" tabindex="-1" data-fc-interactive="true" blazor:onkeydown="1" b-zbeq395ew8 blazor:elementReference="">
+          <a class="fc-skip-link" href="/#fc-main-content" data-enhance-nav="false" blazor:onclick="2" blazor:onclick:preventDefault b-zbeq395ew8>Skip to content</a><style>#f2df7cc6-container{container-type:inline-size;container-name:layout-f2df7cc6}@container layout-f2df7cc6 (max-width:768px){.fluent-layout{grid-template-areas:"header" "content" "footer";grid-template-columns:1fr;grid-template-rows:auto 1fr auto;overflow-x:auto}.fluent-layout .fluent-layout-item[area="nav"],.fluent-layout .fluent-layout-item[area="aside"]{display:none}.fluent-layout .fluent-layout-item[area="header"] .fluent-layout-hamburger{display:flex}}</style>
+      
+      <div id="f2df7cc6-container"><div id="f2df7cc6" class="fluent-layout" style="height: var(--layout-height); --layout-height: 100dvh; --layout-header-height: auto; --layout-footer-height: 36px; --layout-body-height: calc(var(--layout-height) - var(--layout-header-height) - var(--layout-footer-height));"><div class="pa-0 fluent-layout-item" style="grid-area: header; height: auto;" role="banner" area="header" inside-layout><div class="fluent-stack-horizontal fc-shell-header" style="justify-content: space-between; align-items: center; row-gap: 4px; width: 100%; flex-wrap: wrap; min-height: 48px; min-width: 0; padding: 4px 12px; background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground1); border-block-end: 1px solid var(--colorNeutralStroke2);" Horizontal="true"><div class="fluent-stack-horizontal fc-shell-header-start" style="justify-content: start; align-items: center; row-gap: 4px; width: fit-content; flex-wrap: wrap; min-width: 0; flex: 1 1 auto;" Horizontal="true"><div class="fc-hamburger-toggle" b-twhn506ve6><fluent-button style="color: var(--colorNeutralForeground1);" title="Toggle navigation" appearance="subtle" blazor:onclick="6" role="button" aria-label="Toggle navigation" data-testid="fc-hamburger-toggle" blazor:elementReference="">
+              <svg style="width: 20px; fill: var(--colorNeutralForeground1);" focusable="false" viewBox="0 0 20 20" aria-hidden="true" blazor:onkeydown="11" blazor:onclick="12" blazor:elementReference=""><path d="M2 4.5c0-.28.22-.5.5-.5h15a.5.5 0 0 1 0 1h-15a.5.5 0 0 1-.5-.5m0 5c0-.28.22-.5.5-.5h15a.5.5 0 0 1 0 1h-15a.5.5 0 0 1-.5-.5m.5 4.5a.5.5 0 0 0 0 1h15a.5.5 0 0 0 0-1z"/></svg></fluent-button></div>
+                              <fluent-text size="700" weight="bold"><span>Hexalith FrontComposer</span></fluent-text></div>
+                          <div class="fluent-stack-horizontal fc-shell-header-actions" style="justify-content: start; align-items: center; column-gap: 8px; width: fit-content; flex-wrap: wrap; flex: 0 0 auto; max-inline-size: 100%; overflow-wrap: normal;" Horizontal="true"><fluent-menu id="f74a37f8"><fluent-menu-button style="min-width: 0; width: 48px;" aria-label="Change theme" title="Change theme" appearance="subtle" slot="trigger" blazor:onclick="13" role="button">
+          <span class="fc-sr-only" b-kt1xo9d985>Change theme: Light</span>
+              <span aria-hidden="true" b-kt1xo9d985>Light</span></fluent-menu-button>
+          <fluent-menu-list role="menu"><fluent-menu-item id="f72386f2" aria-label="Light" blazor:onmenuitemchange="18">
+          Light</fluent-menu-item>
+              <fluent-menu-item id="f27488f6" aria-label="Dark" blazor:onmenuitemchange="19">
+          Dark</fluent-menu-item>
+              <fluent-menu-item id="f1b0df19" aria-label="System" blazor:onmenuitemchange="20">
+          System</fluent-menu-item></fluent-menu-list></fluent-menu><fluent-button style="color: var(--colorNeutralForeground1);" icon-only appearance="subtle" blazor:onclick="7" role="button" aria-label="Open command palette" data-testid="fc-palette-trigger" blazor:elementReference="e816914c-0a6f-4145-8707-4437fd9da2b7">
+              <svg style="width: 20px; fill: var(--colorNeutralForeground1);" focusable="false" viewBox="0 0 20 20" aria-hidden="true" blazor:onkeydown="14" blazor:onclick="15" blazor:elementReference="1a074f01-76c5-4d78-8685-b753c401e8ee"><path d="M13.73 14.44a6.5 6.5 0 1 1 .7-.7l3.42 3.4a.5.5 0 0 1-.63.77l-.07-.06zm-.71-.71A5.5 5.5 0 0 0 15 9.5a5.5 5.5 0 1 0-1.98 4.23"/></svg></fluent-button>
+                                  <fluent-button style="color: var(--colorNeutralForeground1);" icon-only title="Open settings" appearance="subtle" blazor:onclick="8" role="button" aria-label="Open settings" data-testid="fc-settings-button" blazor:elementReference="8843869a-1b8c-4e65-bd5f-0e60abb457e0">
+              <svg style="width: 20px; fill: var(--colorNeutralForeground1);" focusable="false" viewBox="0 0 20 20" aria-hidden="true" blazor:onkeydown="16" blazor:onclick="17" blazor:elementReference="8562fc7a-6759-4911-b349-155c0e64abb6"><path d="M1.91 7.38A8.5 8.5 0 0 1 3.7 4.3a.5.5 0 0 1 .54-.13l1.92.68a1 1 0 0 0 1.32-.76l.36-2a.5.5 0 0 1 .4-.4 9 9 0 0 1 3.55 0q.32.08.38.4l.37 2a1 1 0 0 0 1.32.76l1.92-.68a.5.5 0 0 1 .54.13 8.5 8.5 0 0 1 1.78 3.08q.08.31-.15.54l-1.56 1.32a1 1 0 0 0 0 1.52l1.56 1.32a.5.5 0 0 1 .15.54 8.5 8.5 0 0 1-1.78 3.08.5.5 0 0 1-.54.13l-1.92-.68a1 1 0 0 0-1.32.76l-.37 2a.5.5 0 0 1-.38.4 8.5 8.5 0 0 1-3.56 0 .5.5 0 0 1-.39-.4l-.36-2a1 1 0 0 0-1.32-.76l-1.92.68a.5.5 0 0 1-.54-.13 8.5 8.5 0 0 1-1.78-3.08.5.5 0 0 1 .15-.54l1.56-1.32a1 1 0 0 0 0-1.52L2.06 7.92a.5.5 0 0 1-.15-.54m1.06 0 1.3 1.1a2 2 0 0 1 0 3.04l-1.3 1.1q.45 1.19 1.25 2.16l1.6-.58a2 2 0 0 1 2.63 1.53l.3 1.67a8 8 0 0 0 2.5 0l.3-1.67a2 2 0 0 1 2.64-1.53l1.6.58a8 8 0 0 0 1.24-2.16l-1.3-1.1a2 2 0 0 1 0-3.04l1.3-1.1a8 8 0 0 0-1.25-2.16l-1.6.58a2 2 0 0 1-2.63-1.53l-.3-1.67a8 8 0 0 0-2.5 0l-.3 1.67A2 2 0 0 1 5.81 5.8l-1.6-.58a8 8 0 0 0-1.24 2.16M7.5 10a2.5 2.5 0 1 1 5 0 2.5 2.5 0 0 1-5 0m1 0a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0"/></svg></fluent-button><div class="fluent-stack-horizontal fc-account-menu" style="justify-content: start; align-items: center; column-gap: 8px; width: fit-content;" data-testid="fc-account-menu"><fluent-avatar id="fc-account-avatar" style="cursor: pointer;" blazor:onclick="9" blazor:onkeydown="10" Title="Account menu"></fluent-avatar>
+              <fluent-menu id="f6c46cac"><fluent-menu-list style="inset-inline-start: auto; inset-inline-end: anchor(end);" role="menu" aria-label="Account menu"><fluent-menu-item id="f58fb8d5" data-testid="fc-account-sign-in" blazor:onmenuitemchange="21">
+          Sign in</fluent-menu-item></fluent-menu-list></fluent-menu></div></div></div></div><div class="pa-3 fluent-layout-item fc-shell-content" style="grid-area: content;" area="content" inside-layout><span class="fc-layout-breakpoint-watcher" hidden aria-hidden="true"></span>
+                      
+                      
+                      <div role="status" aria-live="polite" aria-atomic="true" class="fc-sr-only"></div>
+                      <div id="fc-main-content" tabindex="-1" role="main" data-fc-page-layout="full-width" class="fc-page-layout" b-zbeq395ew8 blazor:elementReference=""><div class="fc-sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="fc-route-navigation-status" b-zbeq395ew8></div><div class="fluent-card" role="group" blazor:onclick="4" blazor:onkeydown="5" data-testid="fc-scope-blocked"><div class="fluent-stack-vertical" style="justify-content: start; align-items: start; width: 100%;"><h1 tabindex="-1" blazor:elementReference="aeb15018-53b6-45c7-80e5-40b50dcb8b67">Workspace unavailable</h1>
+              <fluent-text>Your workspace identity could not be verified. Sign in again or contact support.</fluent-text></div></div></div></div>
+      
+                  <div class="pa-0 fluent-layout-item" style="grid-area: footer; height: var(--layout-footer-height); background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground2); border-block-start: 1px solid var(--colorNeutralStroke2);" area="footer" inside-layout><div class="fluent-stack-horizontal" style="justify-content: start; align-items: center; width: 100%; padding: 8px 12px; min-height: 36px;"><fluent-text size="200"><span>Hexalith FrontComposer © 2026</span></fluent-text></div></div></div></div>
+      
+          <div class="fluent-providers" style="display: contents;"><div id="f1c1460a" class="fluent-dialog-provider" style="z-index: 999;"><fluent-overlay id="global-overlay" background="color-mix(in srgb, var(--colorBackgroundOverlay) 40%, transparent)" fullscreen close-mode="manual" blazor:ondialogtoggle="3"><div class="fluent-overlay-global"><fluent-spinner></fluent-spinner></div></fluent-overlay></div>
+          <div id="f6010493" class="fluent-toast-provider" style="z-index: 999;"></div>
+          <div id="f6926e1c" class="fluent-tooltip-provider" style="z-index: 9999;"></div>
+          </div></div>
+      Stack Trace:
+        /_/src/bunit/Extensions/WaitForHelpers/RenderedComponentWaitForHelperExtensions.WaitForState.cs(102,0): at Bunit.RenderedComponentWaitForHelperExtensions.WaitForAssertion[TComponent](IRenderedComponent`1 renderedComponent, Action assertion, Nullable`1 timeout)
+        tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs(89,0): at Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(Boolean tenantChange)
+        --- End of stack trace from previous location ---
+        ----- Inner Stack Trace -----
+        tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs(89,0): at Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.<>c__DisplayClass1_0.<ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch>b__4()
+        /_/src/bunit/Extensions/WaitForHelpers/WaitForAssertionHelper.cs(35,0): at Bunit.Extensions.WaitForHelpers.WaitForAssertionHelper`1.<>c__DisplayClass6_0.<.ctor>b__0()
+        /_/src/bunit/Extensions/WaitForHelpers/WaitForHelper.cs(297,0): at Bunit.Extensions.WaitForHelpers.WaitForHelper`2.<>c__DisplayClass32_0.<WrapSynchronousChecker>b__0()
+        /_/src/bunit/Extensions/WaitForHelpers/WaitForHelper.cs(226,0): at Bunit.Extensions.WaitForHelpers.WaitForHelper`2.RunCheckAsync()
+    Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(tenantChange: False) [FAIL]
+      Bunit.Extensions.WaitForHelpers.WaitForFailedException : The assertion did not pass within the timeout period.
+      
+      If this test does not fail consistently, the reason may be that
+      the wait timeout is too short, and the runtime did not have enough
+      time to complete the necessary number of renders of the component under test.
+      This can happen on highly utilized or slower hardware, for example.
+      
+      To determine if this is the cause, compare the check and render count(s) below
+      and see if they match what is expected. If they do not,
+      consider increasing the timeout, either at the individual
+      method call level, e.g. WaitForElement("div", TimeSpan.FromSeconds(15)),
+      or via the static TestContext.DefaultWaitTimeout property.
+      
+      Check count: 1.
+      Component render count: 2.
+      Total render count across all components: 0.
+      ---- Shouldly.ShouldAssertException : cut.WaitForAssertion(cut.FindComponents<ZeroFieldInlineCommandRenderer>().Count
+          should be
+      1
+          but was
+      0
+      
+      Additional Info:
+          
+      
+      <div class="fc-shell-root" style="--fc-accent-base-color: #0097A7;" tabindex="-1" data-fc-interactive="true" blazor:onkeydown="1" b-zbeq395ew8 blazor:elementReference="">
+          <a class="fc-skip-link" href="/#fc-main-content" data-enhance-nav="false" blazor:onclick="2" blazor:onclick:preventDefault b-zbeq395ew8>Skip to content</a><style>#f4367da8-container{container-type:inline-size;container-name:layout-f4367da8}@container layout-f4367da8 (max-width:768px){.fluent-layout{grid-template-areas:"header" "content" "footer";grid-template-columns:1fr;grid-template-rows:auto 1fr auto;overflow-x:auto}.fluent-layout .fluent-layout-item[area="nav"],.fluent-layout .fluent-layout-item[area="aside"]{display:none}.fluent-layout .fluent-layout-item[area="header"] .fluent-layout-hamburger{display:flex}}</style>
+      
+      <div id="f4367da8-container"><div id="f4367da8" class="fluent-layout" style="height: var(--layout-height); --layout-height: 100dvh; --layout-header-height: auto; --layout-footer-height: 36px; --layout-body-height: calc(var(--layout-height) - var(--layout-header-height) - var(--layout-footer-height));"><div class="pa-0 fluent-layout-item" style="grid-area: header; height: auto;" role="banner" area="header" inside-layout><div class="fluent-stack-horizontal fc-shell-header" style="justify-content: space-between; align-items: center; row-gap: 4px; width: 100%; flex-wrap: wrap; min-height: 48px; min-width: 0; padding: 4px 12px; background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground1); border-block-end: 1px solid var(--colorNeutralStroke2);" Horizontal="true"><div class="fluent-stack-horizontal fc-shell-header-start" style="justify-content: start; align-items: center; row-gap: 4px; width: fit-content; flex-wrap: wrap; min-width: 0; flex: 1 1 auto;" Horizontal="true"><div class="fc-hamburger-toggle" b-twhn506ve6><fluent-button style="color: var(--colorNeutralForeground1);" title="Toggle navigation" appearance="subtle" blazor:onclick="6" role="button" aria-label="Toggle navigation" data-testid="fc-hamburger-toggle" blazor:elementReference="">
+              <svg style="width: 20px; fill: var(--colorNeutralForeground1);" focusable="false" viewBox="0 0 20 20" aria-hidden="true" blazor:onkeydown="11" blazor:onclick="12" blazor:elementReference=""><path d="M2 4.5c0-.28.22-.5.5-.5h15a.5.5 0 0 1 0 1h-15a.5.5 0 0 1-.5-.5m0 5c0-.28.22-.5.5-.5h15a.5.5 0 0 1 0 1h-15a.5.5 0 0 1-.5-.5m.5 4.5a.5.5 0 0 0 0 1h15a.5.5 0 0 0 0-1z"/></svg></fluent-button></div>
+                              <fluent-text size="700" weight="bold"><span>Hexalith FrontComposer</span></fluent-text></div>
+                          <div class="fluent-stack-horizontal fc-shell-header-actions" style="justify-content: start; align-items: center; column-gap: 8px; width: fit-content; flex-wrap: wrap; flex: 0 0 auto; max-inline-size: 100%; overflow-wrap: normal;" Horizontal="true"><fluent-menu id="f5603a1b"><fluent-menu-button style="min-width: 0; width: 48px;" aria-label="Change theme" title="Change theme" appearance="subtle" slot="trigger" blazor:onclick="13" role="button">
+          <span class="fc-sr-only" b-kt1xo9d985>Change theme: Light</span>
+              <span aria-hidden="true" b-kt1xo9d985>Light</span></fluent-menu-button>
+          <fluent-menu-list role="menu"><fluent-menu-item id="f1e57e08" aria-label="Light" blazor:onmenuitemchange="18">
+          Light</fluent-menu-item>
+              <fluent-menu-item id="f4e9f046" aria-label="Dark" blazor:onmenuitemchange="19">
+          Dark</fluent-menu-item>
+              <fluent-menu-item id="f2847652" aria-label="System" blazor:onmenuitemchange="20">
+          System</fluent-menu-item></fluent-menu-list></fluent-menu><fluent-button style="color: var(--colorNeutralForeground1);" icon-only appearance="subtle" blazor:onclick="7" role="button" aria-label="Open command palette" data-testid="fc-palette-trigger" blazor:elementReference="0e5b9791-6158-4c6c-9d22-f7e88d4f5256">
+              <svg style="width: 20px; fill: var(--colorNeutralForeground1);" focusable="false" viewBox="0 0 20 20" aria-hidden="true" blazor:onkeydown="14" blazor:onclick="15" blazor:elementReference="9b1ca95f-8163-4bc4-8488-655755999b67"><path d="M13.73 14.44a6.5 6.5 0 1 1 .7-.7l3.42 3.4a.5.5 0 0 1-.63.77l-.07-.06zm-.71-.71A5.5 5.5 0 0 0 15 9.5a5.5 5.5 0 1 0-1.98 4.23"/></svg></fluent-button>
+                                  <fluent-button style="color: var(--colorNeutralForeground1);" icon-only title="Open settings" appearance="subtle" blazor:onclick="8" role="button" aria-label="Open settings" data-testid="fc-settings-button" blazor:elementReference="0dc7205f-0806-419f-bf13-b710a3776f05">
+              <svg style="width: 20px; fill: var(--colorNeutralForeground1);" focusable="false" viewBox="0 0 20 20" aria-hidden="true" blazor:onkeydown="16" blazor:onclick="17" blazor:elementReference="75964ad8-61a1-4d01-9ae4-817ad3f35963"><path d="M1.91 7.38A8.5 8.5 0 0 1 3.7 4.3a.5.5 0 0 1 .54-.13l1.92.68a1 1 0 0 0 1.32-.76l.36-2a.5.5 0 0 1 .4-.4 9 9 0 0 1 3.55 0q.32.08.38.4l.37 2a1 1 0 0 0 1.32.76l1.92-.68a.5.5 0 0 1 .54.13 8.5 8.5 0 0 1 1.78 3.08q.08.31-.15.54l-1.56 1.32a1 1 0 0 0 0 1.52l1.56 1.32a.5.5 0 0 1 .15.54 8.5 8.5 0 0 1-1.78 3.08.5.5 0 0 1-.54.13l-1.92-.68a1 1 0 0 0-1.32.76l-.37 2a.5.5 0 0 1-.38.4 8.5 8.5 0 0 1-3.56 0 .5.5 0 0 1-.39-.4l-.36-2a1 1 0 0 0-1.32-.76l-1.92.68a.5.5 0 0 1-.54-.13 8.5 8.5 0 0 1-1.78-3.08.5.5 0 0 1 .15-.54l1.56-1.32a1 1 0 0 0 0-1.52L2.06 7.92a.5.5 0 0 1-.15-.54m1.06 0 1.3 1.1a2 2 0 0 1 0 3.04l-1.3 1.1q.45 1.19 1.25 2.16l1.6-.58a2 2 0 0 1 2.63 1.53l.3 1.67a8 8 0 0 0 2.5 0l.3-1.67a2 2 0 0 1 2.64-1.53l1.6.58a8 8 0 0 0 1.24-2.16l-1.3-1.1a2 2 0 0 1 0-3.04l1.3-1.1a8 8 0 0 0-1.25-2.16l-1.6.58a2 2 0 0 1-2.63-1.53l-.3-1.67a8 8 0 0 0-2.5 0l-.3 1.67A2 2 0 0 1 5.81 5.8l-1.6-.58a8 8 0 0 0-1.24 2.16M7.5 10a2.5 2.5 0 1 1 5 0 2.5 2.5 0 0 1-5 0m1 0a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0"/></svg></fluent-button><div class="fluent-stack-horizontal fc-account-menu" style="justify-content: start; align-items: center; column-gap: 8px; width: fit-content;" data-testid="fc-account-menu"><fluent-avatar id="fc-account-avatar" style="cursor: pointer;" blazor:onclick="9" blazor:onkeydown="10" Title="Account menu"></fluent-avatar>
+              <fluent-menu id="f19d45f3"><fluent-menu-list style="inset-inline-start: auto; inset-inline-end: anchor(end);" role="menu" aria-label="Account menu"><fluent-menu-item id="f3ad9571" data-testid="fc-account-sign-in" blazor:onmenuitemchange="21">
+          Sign in</fluent-menu-item></fluent-menu-list></fluent-menu></div></div></div></div><div class="pa-3 fluent-layout-item fc-shell-content" style="grid-area: content;" area="content" inside-layout><span class="fc-layout-breakpoint-watcher" hidden aria-hidden="true"></span>
+                      
+                      
+                      <div role="status" aria-live="polite" aria-atomic="true" class="fc-sr-only"></div>
+                      <div id="fc-main-content" tabindex="-1" role="main" data-fc-page-layout="full-width" class="fc-page-layout" b-zbeq395ew8 blazor:elementReference=""><div class="fc-sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="fc-route-navigation-status" b-zbeq395ew8></div><div class="fluent-card" role="group" blazor:onclick="4" blazor:onkeydown="5" data-testid="fc-scope-blocked"><div class="fluent-stack-vertical" style="justify-content: start; align-items: start; width: 100%;"><h1 tabindex="-1" blazor:elementReference="5ebd6e70-4b65-47a7-b3c4-e6908b613d58">Workspace unavailable</h1>
+              <fluent-text>Your workspace identity could not be verified. Sign in again or contact support.</fluent-text></div></div></div></div>
+      
+                  <div class="pa-0 fluent-layout-item" style="grid-area: footer; height: var(--layout-footer-height); background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground2); border-block-start: 1px solid var(--colorNeutralStroke2);" area="footer" inside-layout><div class="fluent-stack-horizontal" style="justify-content: start; align-items: center; width: 100%; padding: 8px 12px; min-height: 36px;"><fluent-text size="200"><span>Hexalith FrontComposer © 2026</span></fluent-text></div></div></div></div>
+      
+          <div class="fluent-providers" style="display: contents;"><div id="f7160bfe" class="fluent-dialog-provider" style="z-index: 999;"><fluent-overlay id="global-overlay" background="color-mix(in srgb, var(--colorBackgroundOverlay) 40%, transparent)" fullscreen close-mode="manual" blazor:ondialogtoggle="3"><div class="fluent-overlay-global"><fluent-spinner></fluent-spinner></div></fluent-overlay></div>
+          <div id="f103e391" class="fluent-toast-provider" style="z-index: 999;"></div>
+          <div id="f5f486d0" class="fluent-tooltip-provider" style="z-index: 9999;"></div>
+          </div></div>
+      Stack Trace:
+        /_/src/bunit/Extensions/WaitForHelpers/RenderedComponentWaitForHelperExtensions.WaitForState.cs(102,0): at Bunit.RenderedComponentWaitForHelperExtensions.WaitForAssertion[TComponent](IRenderedComponent`1 renderedComponent, Action assertion, Nullable`1 timeout)
+        tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs(89,0): at Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(Boolean tenantChange)
+        --- End of stack trace from previous location ---
+        ----- Inner Stack Trace -----
+        tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs(89,0): at Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.<>c__DisplayClass1_0.<ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch>b__4()
+        /_/src/bunit/Extensions/WaitForHelpers/WaitForAssertionHelper.cs(35,0): at Bunit.Extensions.WaitForHelpers.WaitForAssertionHelper`1.<>c__DisplayClass6_0.<.ctor>b__0()
+        /_/src/bunit/Extensions/WaitForHelpers/WaitForHelper.cs(297,0): at Bunit.Extensions.WaitForHelpers.WaitForHelper`2.<>c__DisplayClass32_0.<WrapSynchronousChecker>b__0()
+        /_/src/bunit/Extensions/WaitForHelpers/WaitForHelper.cs(226,0): at Bunit.Extensions.WaitForHelpers.WaitForHelper`2.RunCheckAsync()
+  Finished:    Hexalith.FrontComposer.Shell.Tests (ID = '47ea1885be85e02ea5ab6d4f3f0a3316b9743a6877b49a72f290b3b7fc1a0f08')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.Shell.Tests  Total: 130, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 8.575s

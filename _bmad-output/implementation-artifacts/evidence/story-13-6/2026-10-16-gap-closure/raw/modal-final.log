@@ -1,0 +1,137 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/responsive-accessibility.spec.ts --project=chromium --project=firefox --project=webkit --workers=3 --grep palette and settings retain|page-toolbar: 320|R15|reused owned
+
+
+Running 15 tests using 3 workers
+
+(node:10424) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10412) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10418) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 [chromium] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (3.6s)
+  ✓   1 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (4.0s)
+  ✓   2 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (4.2s)
+(node:12319) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   5 [chromium] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (1.0s)
+(node:12764) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   4 [chromium] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (2.0s)
+(node:12972) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   6 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (9.0s)
+  ✓   7 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (9.3s)
+  ✓   8 [firefox] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (8.5s)
+  ✓   9 [firefox] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (3.1s)
+(node:18410) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  10 [firefox] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (1.6s)
+(node:19157) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:19228) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  11 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (7.5s)
+  ✓  13 [webkit] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (6.8s)
+  ✓  12 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (7.5s)
+  ✘  15 [webkit] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (1.5s)
+  ✓  14 [webkit] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (3.1s)
+
+
+  1) [chromium] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input 
+
+    Error: page.evaluate: Error: later external input was discarded
+        at eval (eval at evaluate (:311:30), <anonymous>:32:103)
+        at async <anonymous>:337:30
+        at eval (eval at evaluate (:311:30), <anonymous>:32:103)
+        at async <anonymous>:337:30
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1020:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [firefox] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input 
+
+    Error: page.evaluate: later external input was discarded
+    @debugger eval code line 311 > eval:32:103
+    async*evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at @debugger eval code line 311 > eval:32:103
+        at async*evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1020:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [webkit] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input 
+
+    Error: page.evaluate: Error: later external input was discarded
+
+      1018 |   await page.goto('/counter');
+      1019 |   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    > 1020 |   await page.evaluate(async () => {
+           |              ^
+      1021 |     const path = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+      1022 |     const focus = await import(path) as { containDialogFocus: (testId: string) => boolean };
+      1023 |     const host = document.createElement('fluent-dialog');
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1020:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-modal-final/responsive-accessibility-r-5773c-serves-later-external-input-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [chromium] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input 
+    [firefox] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input 
+    [webkit] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input 
+  12 passed (29.9s)

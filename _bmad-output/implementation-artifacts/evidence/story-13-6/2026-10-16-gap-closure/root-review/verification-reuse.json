@@ -1,0 +1,69 @@
+{
+  "sourceIdentitySha256": "b7a5fd4a44d8108e8fdb81d3f471077fa20127be943cdba714693e4b685f6632",
+  "parentPriorSourceIdentitySha256": "f25e1bcc03c88921850ae398b0dcf266afeb47330203aa0d73e2b9b64945c3b5",
+  "changesSinceParentShellNodeBuild": [
+    ".github/workflows/quality.yml",
+    "tests/e2e/helpers/responsive-accessibility.ts",
+    "tests/e2e/playwright.config.ts",
+    "tests/e2e/specs/accessibility-state-matrix.spec.ts",
+    "tests/e2e/specs/responsive-accessibility.spec.ts"
+  ],
+  "reusedParentChecks": [
+    "configured Debug Shell 3693/3693; five standard exclusions",
+    "Node authority tests 12/12",
+    "serialized Debug Shell test-project build"
+  ],
+  "parentExecution": "first-run-verification.json",
+  "initialSourceIdentitySha256": "2ad017457f917b89770f291b2deea9c451af0779afd45748478d8010a0e6bef9",
+  "initialSourceToolsUnchanged": {
+    "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs": "5630d4b232587253203623f0364ca1ed8388a695599a213f2a44e0dc035f96ab",
+    "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt": "6c9686134b8f5a4e08307994180a2b9c137bbbdd2b620a58bfedc456265d05db",
+    "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt": "55d6ee48a7a84e9bf370ea129f63c4411a9db7c6a80de6561dcbe4e1293e5370",
+    "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs": "d63e464bb8e66b4b2387c94122bc77ba3441a9976268b504909347a6dc3f58e8"
+  },
+  "reusedInitialChecks": [
+    "SourceTools emitter class 68/68"
+  ],
+  "unchangedParentSourceFiles": {
+    ".gitattributes": "da821385d589dff7561c8b51bbfe2619d8ac126db292f12e70f78ec0cf041449",
+    ".gitignore": "f187f362ee040945db0ce875540626b509279dd25da27dbd0a2627345a3fc2e4",
+    "samples/Counter/Counter.Specimens/AccessibilityScenarioControls.razor": "ee0ddbaeb3d13e0d06c4baccef70e51b5cd61e20ce82e43ff2c8f4fad65e5449",
+    "samples/Counter/Counter.Web/AccessibilitySpecimenSeams.cs": "7e2120ca14108c1dd21f1dc6e387edb260e8a067786a071a77c00e4f43234c57",
+    "samples/Counter/Counter.Web/AccessibilitySpecimenUserContextAccessor.cs": "607395d2df3a00952528f20e3b0a37c9cbd426e31e7b7ecf7988b46d5e88a911",
+    "samples/Counter/Counter.Web/Program.cs": "5db6b5befac65e14cb07f5aca5db80e146cfa3cd7925229f434f37ae67e99449",
+    "src/Hexalith.FrontComposer.AppHost/Program.cs": "a7857536febb9762bedb0af5e8857bdece2220560c6386630eb559894fea24ec",
+    "src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor": "281a891d89de384c0b0c59f372cf629840b7b62a940c4d1378ddfe86aacf49df",
+    "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js": "f53b341d9073a09805fd5af1411983c5a44f05bf1f98e41774d8a44302054f47",
+    "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs": "5630d4b232587253203623f0364ca1ed8388a695599a213f2a44e0dc035f96ab",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs": "20b42047b14c61d0d894a2fa38ba5274ee3502e1ffde80b6c8247401989009ce",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs": "b2d74a879080c3c36d0ac1a0b41bcb7f07bc297d47a42c7e58c544355c97a0fa",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs": "ca9529810a5bf70ba3258f1999631ce1032f0ceba0bdc26c0d4e7a3f99c31ad1",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs": "75975a802c1b8c34dfa003b81ad4cb65603c46b7c0ea3a86a8ac7b8d0d9f6196",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Samples/AccessibilitySpecimenGateTests.cs": "750a28b497b6784f6e0e520a431a3ba26f0fc506e82a384f98a51615891e4859",
+    "tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs": "fff0f5dec08202470fcf1545767edc4269980ad094b88c1ac2dd33bc75ec0542",
+    "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt": "6c9686134b8f5a4e08307994180a2b9c137bbbdd2b620a58bfedc456265d05db",
+    "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt": "55d6ee48a7a84e9bf370ea129f63c4411a9db7c6a80de6561dcbe4e1293e5370",
+    "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs": "d63e464bb8e66b4b2387c94122bc77ba3441a9976268b504909347a6dc3f58e8",
+    "tests/e2e/scripts/a11y-state-evidence.mjs": "60c16b4f5b3ab4362e3006d7656694e334a4d339a8135a74af6ba2d20737120e",
+    "tests/e2e/scripts/a11y-state-evidence.test.mjs": "62881e7ffe444419fb0e049ba2b2f4b95a5b501d32f627e2a668400530de36f2",
+    "tests/e2e/scripts/validate-a11y-artifacts.mjs": "67e2ebb78d5485e4807fd7c165d49013b0da0b06c2a558e994e0955fc650a194"
+  },
+  "finalChangedConfigurationConsumers": {
+    "check": "Shell CiGovernanceTests",
+    "passed": 85,
+    "failed": 0,
+    "execution": "shell-ci-governance.json",
+    "reason": "This class reads quality.yml and Playwright config at runtime; it was rerun on final inputs. Other configured Shell tests reuse unchanged code/data."
+  },
+  "initialCompiledRuntimeInputsUnchanged": {
+    "samples/Counter/Counter.Specimens/AccessibilityScenarioControls.razor": "ee0ddbaeb3d13e0d06c4baccef70e51b5cd61e20ce82e43ff2c8f4fad65e5449",
+    "samples/Counter/Counter.Web/AccessibilitySpecimenSeams.cs": "7e2120ca14108c1dd21f1dc6e387edb260e8a067786a071a77c00e4f43234c57",
+    "samples/Counter/Counter.Web/AccessibilitySpecimenUserContextAccessor.cs": "607395d2df3a00952528f20e3b0a37c9cbd426e31e7b7ecf7988b46d5e88a911",
+    "samples/Counter/Counter.Web/Program.cs": "5db6b5befac65e14cb07f5aca5db80e146cfa3cd7925229f434f37ae67e99449",
+    "src/Hexalith.FrontComposer.AppHost/Program.cs": "a7857536febb9762bedb0af5e8857bdece2220560c6386630eb559894fea24ec",
+    "src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor": "281a891d89de384c0b0c59f372cf629840b7b62a940c4d1378ddfe86aacf49df",
+    "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs": "5630d4b232587253203623f0364ca1ed8388a695599a213f2a44e0dc035f96ab"
+  },
+  "runtimeBuildEvidence": "../raw/apphost-build-test.log",
+  "currentServedJsProof": "runtime-focus.json"
+}

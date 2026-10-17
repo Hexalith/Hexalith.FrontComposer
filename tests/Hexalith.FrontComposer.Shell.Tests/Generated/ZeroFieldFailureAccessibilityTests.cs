@@ -1,3 +1,4 @@
+using System.Globalization;
 using Bunit;
 
 using Hexalith.FrontComposer.Contracts.Communication;
@@ -40,12 +41,14 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
     }
 
     [Theory]
-    [InlineData(CommandWarningKind.NotFound, null)]
-    [InlineData(CommandWarningKind.NotFound, "  ")]
-    [InlineData(CommandWarningKind.RateLimited, null)]
-    [InlineData(CommandWarningKind.RateLimited, "  ")]
-    public async Task BlankWarningUsesNonblankFallbackAndRetainsRetryGuidance(CommandWarningKind kind, string? text)
+    [InlineData(CommandWarningKind.NotFound, null, "en")]
+    [InlineData(CommandWarningKind.NotFound, "  ", "fr")]
+    [InlineData(CommandWarningKind.RateLimited, null, "en")]
+    [InlineData(CommandWarningKind.RateLimited, "  ", "fr")]
+    public async Task BlankWarningUsesNonblankFallbackAndRetainsRetryGuidance(CommandWarningKind kind, string? text, string culture)
     {
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
         ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
         _ = service.DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<CommandResult>(new CommandWarningException(kind,
@@ -55,8 +58,8 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
         await InitializeStoreAsync();
         IRenderedComponent<ZeroFieldInlineCommandRenderer> cut = Render<ZeroFieldInlineCommandRenderer>();
         cut.Find("fluent-button").Click();
-        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-zero-field-outcome']").TextContent.ShouldContain("Please review the warning and try again."));
-        if (kind == CommandWarningKind.RateLimited) cut.Find("[data-testid='fc-zero-field-outcome']").TextContent.ShouldContain("Retry after 17 seconds.");
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-zero-field-outcome']").TextContent.ShouldContain(culture == "fr" ? "Veuillez lire l’avertissement et réessayer." : "Please review the warning and try again."));
+        if (kind == CommandWarningKind.RateLimited) cut.Find("[data-testid='fc-zero-field-outcome']").TextContent.ShouldContain(culture == "fr" ? "Réessayez dans 17 secondes." : "Retry after 17 seconds.");
         cut.FindComponents<Microsoft.FluentUI.AspNetCore.Components.FluentMessageBar>().Single(component => component.Markup.Contains("fc-zero-field-outcome", StringComparison.Ordinal)).Instance.AllowDismiss.ShouldBeFalse();
         _ = service.Received(1).DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
     }

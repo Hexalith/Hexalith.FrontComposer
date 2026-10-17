@@ -482,6 +482,9 @@ public class CommandFormEmitterTests {
 
         source.ShouldContain("CommandWarningKind.RetryableDispatchFailed");
         source.ShouldContain("if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is not null)");
+        source.ShouldContain("new[] { _serverWarning.Detail, _serverWarning.EntityLabel }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))");
+        source.ShouldContain("string.IsNullOrWhiteSpace(_serverWarning.Title)");
+        source.ShouldContain("ShellLocalizer[\"CommandWarningFallback\"].Value");
         warningCatchIndex.ShouldBeGreaterThan(0);
         resetIndex.ShouldBeGreaterThan(warningCatchIndex);
         registerIndex.ShouldBe(-1);

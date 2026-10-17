@@ -1,0 +1,1235 @@
+{
+  "testId": "a542ea7f175527dc3e9c-042bfadd23989e1d0e07",
+  "attempt": 0,
+  "state": "generated-validation-light",
+  "engine": "chromium",
+  "runId": "gap-root-review-13af441b28ac",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 150.296875,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9848.703125,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 173.25,
+      "height": 41,
+      "box": {
+        "left": -9999,
+        "top": 0,
+        "right": -9825.75,
+        "bottom": 41
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"2\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 16,
+        "top": 4,
+        "right": 48,
+        "bottom": 36
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 128,
+        "right": 60,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 68,
+        "top": 128,
+        "right": 100,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 108,
+        "top": 128,
+        "right": 140,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 148,
+        "top": 128,
+        "right": 180,
+        "bottom": 160
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-specimen-skip\"]",
+      "width": 180.375,
+      "height": 24,
+      "box": {
+        "left": 28,
+        "top": -4744.203125,
+        "right": 208.375,
+        "bottom": -4720.203125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-theme-control-light\"]",
+      "width": 264,
+      "height": 24,
+      "box": {
+        "left": 28,
+        "top": -4533.65625,
+        "right": 292,
+        "bottom": -4509.65625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-theme-control-dark\"]",
+      "width": 264,
+      "height": 24,
+      "box": {
+        "left": 28,
+        "top": -4497.65625,
+        "right": 292,
+        "bottom": -4473.65625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-density-control-compact\"]",
+      "width": 264,
+      "height": 24,
+      "box": {
+        "left": 28,
+        "top": -4461.65625,
+        "right": 292,
+        "bottom": -4437.65625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-density-control-comfortable\"]",
+      "width": 264,
+      "height": 24,
+      "box": {
+        "left": 28,
+        "top": -4425.65625,
+        "right": 292,
+        "bottom": -4401.65625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-density-control-roomy\"]",
+      "width": 264,
+      "height": 24,
+      "box": {
+        "left": 28,
+        "top": -4389.65625,
+        "right": 292,
+        "bottom": -4365.65625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"13\"]",
+      "width": 125.71875,
+      "height": 32,
+      "box": {
+        "left": 41,
+        "top": -2442.015625,
+        "right": 166.71875,
+        "bottom": -2410.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "input[inventory-index=\"14\"]",
+      "width": 183,
+      "height": 32,
+      "box": {
+        "left": 41,
+        "top": -2410.015625,
+        "right": 224,
+        "bottom": -2378.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": true,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"15\"]",
+      "width": 125.71875,
+      "height": 40,
+      "box": {
+        "left": 41,
+        "top": -2228.015625,
+        "right": 166.71875,
+        "bottom": -2188.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "input[inventory-index=\"16\"]",
+      "width": 183,
+      "height": 40,
+      "box": {
+        "left": 41,
+        "top": -2188.015625,
+        "right": 224,
+        "bottom": -2148.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": true,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"17\"]",
+      "width": 125.71875,
+      "height": 48,
+      "box": {
+        "left": 41,
+        "top": -2040.015625,
+        "right": 166.71875,
+        "bottom": -1992.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "input[inventory-index=\"18\"]",
+      "width": 183,
+      "height": 48,
+      "box": {
+        "left": 41,
+        "top": -1992.015625,
+        "right": 224,
+        "bottom": -1944.015625
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": true,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"19\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 28,
+        "top": -1647.46875,
+        "right": 124,
+        "bottom": -1619.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"20\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 132,
+        "top": -1647.46875,
+        "right": 228,
+        "bottom": -1619.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"21\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 28,
+        "top": -1611.46875,
+        "right": 124,
+        "bottom": -1583.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"22\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 132,
+        "top": -1611.46875,
+        "right": 228,
+        "bottom": -1583.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"23\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 28,
+        "top": -1575.46875,
+        "right": 124,
+        "bottom": -1547.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"24\"]",
+      "width": 96,
+      "height": 28,
+      "box": {
+        "left": 132,
+        "top": -1575.46875,
+        "right": 228,
+        "bottom": -1547.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "div[inventory-index=\"25\"]",
+      "width": 264,
+      "height": 228,
+      "box": {
+        "left": 28,
+        "top": -1518.46875,
+        "right": 292,
+        "bottom": -1290.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-295",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 252.453125,
+        "top": -1506.46875,
+        "right": 276.453125,
+        "bottom": -1482.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-296",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 225.625,
+        "top": -1472.46875,
+        "right": 249.625,
+        "bottom": -1448.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-297",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 260.21875,
+        "top": -1438.46875,
+        "right": 284.21875,
+        "bottom": -1414.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-298",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 258.921875,
+        "top": -1404.46875,
+        "right": 282.921875,
+        "bottom": -1380.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-299",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 251.546875,
+        "top": -1370.46875,
+        "right": 275.546875,
+        "bottom": -1346.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-300",
+      "width": 24,
+      "height": 24,
+      "box": {
+        "left": 248.4375,
+        "top": -1336.46875,
+        "right": 272.4375,
+        "bottom": -1312.46875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "div[inventory-index=\"32\"]",
+      "width": 264,
+      "height": 99,
+      "box": {
+        "left": 28,
+        "top": -1033.921875,
+        "right": 292,
+        "bottom": -934.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"33\"]",
+      "width": 232,
+      "height": 42,
+      "box": {
+        "left": 770.40625,
+        "top": -998.921875,
+        "right": 1002.40625,
+        "bottom": -956.921875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-input\"]",
+      "width": 264,
+      "height": 40,
+      "box": {
+        "left": 28,
+        "top": -675.375,
+        "right": 292,
+        "bottom": -635.375
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": true,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-number\"]",
+      "width": 264,
+      "height": 40,
+      "box": {
+        "left": 28,
+        "top": -598.375,
+        "right": 292,
+        "bottom": -558.375
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": true,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-submit\"]",
+      "width": 264,
+      "height": 40,
+      "box": {
+        "left": 28,
+        "top": -546.375,
+        "right": 292,
+        "bottom": -506.375
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-cancel\"]",
+      "width": 264,
+      "height": 40,
+      "box": {
+        "left": 28,
+        "top": -494.375,
+        "right": 292,
+        "bottom": -454.375
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"38\"]",
+      "width": 172,
+      "height": 42,
+      "box": {
+        "left": 94,
+        "top": 289.171875,
+        "right": 266,
+        "bottom": 331.171875
+      },
+      "traits": {
+        "runningText": true,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-RecordId",
+      "width": 209,
+      "height": 34,
+      "box": {
+        "left": 54,
+        "top": 438.171875,
+        "right": 263,
+        "bottom": 472.171875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-Reason",
+      "width": 209,
+      "height": 34,
+      "box": {
+        "left": 54,
+        "top": 541.171875,
+        "right": 263,
+        "bottom": 575.171875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-Retention",
+      "width": 238,
+      "height": 34,
+      "box": {
+        "left": 41,
+        "top": 657.171875,
+        "right": 279,
+        "bottom": 691.171875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-submit",
+      "width": 227.59375,
+      "height": 32,
+      "box": {
+        "left": 41,
+        "top": 743.171875,
+        "right": 268.59375,
+        "bottom": 775.171875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId",
+      "width": 209,
+      "height": 34,
+      "box": {
+        "left": 41,
+        "top": 1022.71875,
+        "right": 250,
+        "bottom": 1056.71875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason",
+      "width": 209,
+      "height": 34,
+      "box": {
+        "left": 41,
+        "top": 1105.71875,
+        "right": 250,
+        "bottom": 1139.71875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-submit",
+      "width": 237.4375,
+      "height": 32,
+      "box": {
+        "left": 41,
+        "top": 1153.71875,
+        "right": 278.4375,
+        "bottom": 1185.71875
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-expanded-detail-summary\"]",
+      "width": 238,
+      "height": 42,
+      "box": {
+        "left": 41,
+        "top": 1615.8125,
+        "right": 279,
+        "bottom": 1657.8125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-nav-foundation\"]",
+      "width": 86.859375,
+      "height": 24,
+      "box": {
+        "left": 68,
+        "top": 1921.359375,
+        "right": 154.859375,
+        "bottom": 1945.359375
+      },
+      "traits": {
+        "runningText": true,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-nav-group-generated\"]",
+      "width": 164,
+      "height": 40,
+      "box": {
+        "left": 68,
+        "top": 1953.359375,
+        "right": 232,
+        "bottom": 1993.359375
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"49\"]",
+      "width": 116.9375,
+      "height": 24,
+      "box": {
+        "left": 108,
+        "top": 2001.359375,
+        "right": 224.9375,
+        "bottom": 2025.359375
+      },
+      "traits": {
+        "runningText": true,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"50\"]",
+      "width": 149.0625,
+      "height": 24,
+      "box": {
+        "left": 108,
+        "top": 2033.359375,
+        "right": 257.0625,
+        "bottom": 2057.359375
+      },
+      "traits": {
+        "runningText": true,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "h2",
+      "paint": "Validation failed",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "p#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-validation-summary-description",
+      "paint": "Correct the errors before submitting. One error.",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "a",
+      "paint": "The Retention field is required.",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [
+    [
+      {
+        "owner": 0,
+        "node": "section#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-validation-summary",
+        "paint": "element outline",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": true,
+  "forcedColorsStatus": "painted system palette",
+  "systemText": [
+    {
+      "owner": 0,
+      "node": "h2",
+      "paint": "Validation failed",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "p#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-validation-summary-description",
+      "paint": "Correct the errors before submitting. One error.",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "a",
+      "paint": "The Retention field is required.",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [
+    [
+      {
+        "owner": 0,
+        "node": "section#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-validation-summary",
+        "paint": "element outline",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "SECTION#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-validation-summary",
+    "requireIndicator": false,
+    "box": {
+      "left": 50,
+      "top": 177.171875,
+      "right": 270,
+      "bottom": 335.171875
+    },
+    "ring": 4,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": []
+  },
+  "systemSnapshot": "system-state-generated-validation-light.png",
+  "reducedMotion": true
+}

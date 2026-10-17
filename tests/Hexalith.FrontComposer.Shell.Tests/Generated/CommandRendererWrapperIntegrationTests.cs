@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
+using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
@@ -22,6 +23,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
+using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 using NSubstitute;
@@ -36,6 +38,86 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// emitted <c>&lt;EditForm&gt;</c> in <c>&lt;FcLifecycleWrapper&gt;</c> (Task 4.1).
 /// </summary>
 public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTestBase {
+    [Theory]
+    [InlineData("en", "Please review the warning and try again.", "Retry after 17 seconds.")]
+    [InlineData("fr", "Veuillez lire l’avertissement et réessayer.", "Réessayez dans 17 secondes.")]
+    public async Task OrdinaryBlankWarningUsesSafeLocalizedFallbackAndRetryHint(string culture, string fallback, string retry)
+    {
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+        ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
+        _ = service.DispatchAsync(Arg.Any<TwoFieldCompactCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<CommandResult>(new CommandWarningException(CommandWarningKind.RateLimited,
+                ProblemDetailsPayload.Empty with { Title = "  ", Detail = "  ", EntityLabel = "  " }, TimeSpan.FromSeconds(17))));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(p => p
+            .Add(c => c.InitialValue, new TwoFieldCompactCommand { Name = "Preserved operator value", Amount = 7 }));
+        cut.Find("form").Submit();
+        cut.WaitForAssertion(() => {
+            var warning = cut.FindComponent<FluentMessageBar>();
+            warning.Instance.Title.ShouldBe(fallback);
+            var body = Render<FluentMessageBar>(p => p.Add(c => c.ChildContent, warning.Instance.ChildContent));
+            body.Markup.ShouldContain(fallback);
+            body.Markup.ShouldContain(retry);
+            cut.Find("[name='Name']").GetAttribute("value").ShouldBe("Preserved operator value");
+        });
+        _ = service.Received(1).DispatchAsync(Arg.Any<TwoFieldCompactCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(bool tenantChange)
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.RemoveAll<IPendingCommandOutcomeResolver>();
+        Services.RemoveAll<IPendingCommandOutcomeCoordinator>();
+        Services.AddHexalithFrontComposerQuickstart();
+        Services.Configure<FcShellOptions>(options => options.AllowDemoTenantContext = true);
+        Services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor>(_ => UserContext));
+        AddAuthorization();
+        TaskCompletionSource<CommandResult> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken captured = default;
+        int attempts = 0;
+        ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
+        _ = service.DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>())
+            .Returns(call => {
+                captured = call.ArgAt<CancellationToken>(2);
+                return attempts++ == 0
+                    ? Task.FromException<CommandResult>(new CommandWarningException(CommandWarningKind.NotFound, ProblemDetailsPayload.Empty with { Detail = "Prior scope feedback." }))
+                    : held.Task;
+            });
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        var cut = Render<Hexalith.FrontComposer.Shell.Components.Layout.FrontComposerShell>(p => p.AddChildContent<ZeroFieldInlineCommandRenderer>());
+        cut.WaitForAssertion(() => cut.FindComponents<ZeroFieldInlineCommandRenderer>().Count.ShouldBe(1, cut.Markup));
+        var old = cut.FindComponent<ZeroFieldInlineCommandRenderer>().Instance;
+        string oldSurface = "command-renderer:" + cut.FindComponent<ZeroFieldInlineCommandRenderer>().Find("fluent-button").Id;
+        cut.FindComponent<ZeroFieldInlineCommandRenderer>().Find("fluent-button").Click();
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-zero-field-outcome']").TextContent.ShouldContain("Prior scope feedback."));
+        Task heldSubmit = cut.FindComponent<ZeroFieldInlineCommandRenderer>().Find("fluent-button")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => attempts.ShouldBe(2));
+        await cut.InvokeAsync(() => {
+            if (tenantChange) UserContext.TenantId = "replacement-tenant";
+            else UserContext.UserId = "replacement-user";
+            Services.GetRequiredService<Hexalith.FrontComposer.Shell.Services.ScopeBoundaryService>().Synchronize();
+        });
+        cut.WaitForAssertion(() => {
+            ReferenceEquals(cut.FindComponent<ZeroFieldInlineCommandRenderer>().Instance, old).ShouldBeFalse();
+            cut.FindAll("[data-testid='fc-zero-field-outcome']").ShouldBeEmpty();
+            captured.IsCancellationRequested.ShouldBeTrue();
+        });
+        held.TrySetException(new CommandWarningException(CommandWarningKind.NotFound, ProblemDetailsPayload.Empty with { Detail = "Stale held failure." }));
+        await heldSubmit.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        cut.Markup.ShouldNotContain("Stale held failure.");
+        Services.GetRequiredService<Hexalith.FrontComposer.Shell.Services.Announcements.ISurfaceAnnouncementCoordinator>()
+            .Current(oldSurface).ShouldBeEmpty();
+        Services.GetRequiredService<Hexalith.FrontComposer.Shell.Services.Announcements.ISurfaceAnnouncementCoordinator>()
+            .Current("command-renderer:" + cut.FindComponent<ZeroFieldInlineCommandRenderer>().Find("fluent-button").Id).ShouldBeEmpty();
+    }
+
     [Theory]
     [InlineData("import")]
     [InlineData("observation")]

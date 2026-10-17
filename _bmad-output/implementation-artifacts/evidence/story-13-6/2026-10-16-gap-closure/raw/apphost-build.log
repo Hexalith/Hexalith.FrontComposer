@@ -1,0 +1,130 @@
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Contracts/Hexalith.Parties.Contracts.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Client/Hexalith.Tenants.Client.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/samples/Hexalith.Tenants.Sample/Hexalith.Tenants.Sample.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Security/Hexalith.Parties.Security.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Projections/Hexalith.Parties.Projections.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj (in 301 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Hexalith.Tenants.UI.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties/Hexalith.Parties.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Specimens/Counter.Specimens.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Picker/Hexalith.Parties.Picker.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.Http/Hexalith.Commons.Http.csproj (in 5 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.AdminPortal/Hexalith.Parties.AdminPortal.csproj (in 292 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/Hexalith.Commons.ServiceDefaults.csproj (in 6 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj (in 6 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj (in 58 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj (in 59 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.ConsumerPortal/Hexalith.Parties.ConsumerPortal.csproj (in 58 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj (in 61 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj (in 65 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj (in 5 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj (in 7 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.UI/Hexalith.Parties.UI.csproj (in 293 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj (in 5 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj (in 12 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj (in 70 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Web/Counter.Web.csproj (in 74 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Schema/Hexalith.FrontComposer.Schema.csproj (in 21 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj (in 8 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Authentication/Hexalith.Parties.Authentication.csproj (in 4 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.CounterFixture/Hexalith.FrontComposer.CounterFixture.csproj (in 23 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Client/Hexalith.Parties.Client.csproj (in 7 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj (in 17 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Domain/Counter.Domain.csproj (in 5 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj (in 17 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj (in 7 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj (in 116 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj (in 16 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Specimens.Domain/Counter.Specimens.Domain.csproj (in 17 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.UI/Hexalith.FrontComposer.UI.csproj (in 33 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj (in 15 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj (in 49 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj (in 128 ms).
+  Hexalith.FrontComposer.Contracts -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts/bin/Debug/netstandard2.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.SourceTools -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.SourceTools/bin/Debug/netstandard2.0/Hexalith.FrontComposer.SourceTools.dll
+  Hexalith.FrontComposer.Contracts -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.Contracts.UI -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts.UI/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.UI.dll
+  Hexalith.FrontComposer.Schema -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Schema/bin/Debug/net10.0/Hexalith.FrontComposer.Schema.dll
+  Hexalith.FrontComposer.Mcp -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Mcp/bin/Debug/net10.0/Hexalith.FrontComposer.Mcp.dll
+  Hexalith.FrontComposer.Shell -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll
+  Counter.Domain -> /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Domain/bin/Debug/net10.0/Counter.Domain.dll
+  Counter.Specimens.Domain -> /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Specimens.Domain/bin/Debug/net10.0/Counter.Specimens.Domain.dll
+  Counter.Specimens -> /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Specimens/bin/Debug/net10.0/Counter.Specimens.dll
+  Counter.Web -> /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Web/bin/Debug/net10.0/Counter.Web.dll
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Client -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+  Hexalith.EventStore.ServiceDefaults -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll
+  Hexalith.EventStore.DomainService -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll
+  Hexalith.FrontComposer.CounterFixture -> /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.CounterFixture/bin/Debug/net10.0/Hexalith.FrontComposer.CounterFixture.dll
+  Hexalith.FrontComposer.Contracts -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts/bin/Debug/netstandard2.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.SourceTools -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.SourceTools/bin/Debug/netstandard2.0/Hexalith.FrontComposer.SourceTools.dll
+  Hexalith.Tenants.Contracts -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll
+  Hexalith.Tenants.Client -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Client/bin/Debug/net10.0/Hexalith.Tenants.Client.dll
+  Hexalith.FrontComposer.Contracts -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.Contracts.UI -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts.UI/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.UI.dll
+  Hexalith.FrontComposer.Shell -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll
+  Hexalith.Tenants.UI -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.UI/bin/Debug/net10.0/Hexalith.Tenants.UI.dll
+  Hexalith.Commons.Http -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.Http/bin/Debug/net10.0/Hexalith.Commons.Http.dll
+  Hexalith.Parties.Contracts -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Contracts/bin/Debug/net10.0/Hexalith.Parties.Contracts.dll
+  Hexalith.Parties.Client -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Client/bin/Debug/net10.0/Hexalith.Parties.Client.dll
+  Hexalith.Parties.AdminPortal -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.AdminPortal/bin/Debug/net10.0/Hexalith.Parties.AdminPortal.dll
+  Hexalith.Parties.Authentication -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Authentication/bin/Debug/net10.0/Hexalith.Parties.Authentication.dll
+  Hexalith.Parties.ConsumerPortal -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.ConsumerPortal/bin/Debug/net10.0/Hexalith.Parties.ConsumerPortal.dll
+  Hexalith.Parties.Picker -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Picker/bin/Debug/net10.0/Hexalith.Parties.Picker.dll
+  Hexalith.Commons.ServiceDefaults -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/bin/Debug/net10.0/Hexalith.Commons.ServiceDefaults.dll
+  Hexalith.FrontComposer.Schema -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Schema/bin/Debug/net10.0/Hexalith.FrontComposer.Schema.dll
+  Hexalith.FrontComposer.Mcp -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Mcp/bin/Debug/net10.0/Hexalith.FrontComposer.Mcp.dll
+  Hexalith.Parties.UI -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.UI/bin/Debug/net10.0/Hexalith.Parties.UI.dll
+  Hexalith.Commons.Http -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.Http/bin/Debug/net10.0/Hexalith.Commons.Http.dll
+  Hexalith.Commons.ServiceDefaults -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/bin/Debug/net10.0/Hexalith.Commons.ServiceDefaults.dll
+  Hexalith.Parties.Contracts -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Contracts/bin/Debug/net10.0/Hexalith.Parties.Contracts.dll
+  Hexalith.Parties.Authentication -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Authentication/bin/Debug/net10.0/Hexalith.Parties.Authentication.dll
+  Hexalith.Parties.Client -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Client/bin/Debug/net10.0/Hexalith.Parties.Client.dll
+  Hexalith.Parties.Picker -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Picker/bin/Debug/net10.0/Hexalith.Parties.Picker.dll
+  Hexalith.FrontComposer.UI -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.UI/bin/Debug/net10.0/Hexalith.FrontComposer.UI.dll
+  Hexalith.EventStore.Admin.Abstractions -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll
+  Hexalith.EventStore.Server -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll
+  Hexalith.EventStore.Gateway -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll
+  Hexalith.EventStore -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll
+  Hexalith.EventStore.Admin.Server -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/bin/Debug/net10.0/Hexalith.EventStore.Admin.Server.dll
+  Hexalith.EventStore.Admin.Server.Host -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/bin/Debug/net10.0/Hexalith.EventStore.Admin.Server.Host.dll
+  Hexalith.EventStore.SignalR -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/bin/Debug/net10.0/Hexalith.EventStore.SignalR.dll
+  Hexalith.EventStore.Admin.UI -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/bin/Debug/net10.0/Hexalith.EventStore.Admin.UI.dll
+  Hexalith.Tenants.Contracts -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll
+  Hexalith.Tenants.Server -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Server/bin/Debug/net10.0/Hexalith.Tenants.Server.dll
+  Hexalith.Tenants -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants/bin/Debug/net10.0/Hexalith.Tenants.dll
+  Hexalith.FrontComposer.Contracts -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts/bin/Debug/netstandard2.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.SourceTools -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.SourceTools/bin/Debug/netstandard2.0/Hexalith.FrontComposer.SourceTools.dll
+  Hexalith.Tenants.Contracts -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll
+  Hexalith.Tenants.Client -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Client/bin/Debug/net10.0/Hexalith.Tenants.Client.dll
+  Hexalith.FrontComposer.Contracts -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.Contracts.UI -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts.UI/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.UI.dll
+  Hexalith.FrontComposer.Shell -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll
+  Hexalith.Tenants.UI -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.UI/bin/Debug/net10.0/Hexalith.Tenants.UI.dll
+  Hexalith.Tenants.Client -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Client/bin/Debug/net10.0/Hexalith.Tenants.Client.dll
+  Hexalith.Tenants.Sample -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/samples/Hexalith.Tenants.Sample/bin/Debug/net10.0/Hexalith.Tenants.Sample.dll
+  Hexalith.Parties.Projections -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Projections/bin/Debug/net10.0/Hexalith.Parties.Projections.dll
+  Hexalith.Parties.Security -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Security/bin/Debug/net10.0/Hexalith.Parties.Security.dll
+  Hexalith.Parties -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties/bin/Debug/net10.0/Hexalith.Parties.dll
+  Hexalith.Commons.Http -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.Http/bin/Debug/net10.0/Hexalith.Commons.Http.dll
+  Hexalith.Parties.Contracts -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Contracts/bin/Debug/net10.0/Hexalith.Parties.Contracts.dll
+  Hexalith.Parties.Client -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Client/bin/Debug/net10.0/Hexalith.Parties.Client.dll
+  Hexalith.Parties.AdminPortal -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.AdminPortal/bin/Debug/net10.0/Hexalith.Parties.AdminPortal.dll
+  Hexalith.Parties.Authentication -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Authentication/bin/Debug/net10.0/Hexalith.Parties.Authentication.dll
+  Hexalith.Parties.ConsumerPortal -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.ConsumerPortal/bin/Debug/net10.0/Hexalith.Parties.ConsumerPortal.dll
+  Hexalith.Parties.Picker -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Picker/bin/Debug/net10.0/Hexalith.Parties.Picker.dll
+  Hexalith.Commons.ServiceDefaults -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/bin/Debug/net10.0/Hexalith.Commons.ServiceDefaults.dll
+  Hexalith.FrontComposer.Schema -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Schema/bin/Debug/net10.0/Hexalith.FrontComposer.Schema.dll
+  Hexalith.FrontComposer.Mcp -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Mcp/bin/Debug/net10.0/Hexalith.FrontComposer.Mcp.dll
+  Hexalith.Parties.UI -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.UI/bin/Debug/net10.0/Hexalith.Parties.UI.dll
+  Hexalith.EventStore.Aspire -> /home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/bin/Debug/net10.0/Hexalith.EventStore.Aspire.dll
+  Hexalith.FrontComposer.AppHost -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.AppHost/bin/Debug/net10.0/Hexalith.FrontComposer.AppHost.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:18.78

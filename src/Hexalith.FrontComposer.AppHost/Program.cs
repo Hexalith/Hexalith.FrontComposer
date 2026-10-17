@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Hosting;
+
 using Hexalith.EventStore.Aspire;
 using Hexalith.FrontComposer.AppHost;
 
@@ -160,8 +162,20 @@ IResourceBuilder<ProjectResource> frontComposerUI = builder.AddProject<Projects.
 // whole stack (EventStore, Tenants, Tenants UI, Counter) runs from ONE orchestrator. It stays a
 // self-contained demo (fake auth + seeded specimen data) and is intentionally NOT wired to the
 // EventStore/Tenants/Keycloak backend, to keep the a11y/visual specimen gate deterministic.
-_ = builder.AddProject<Projects.Counter_Web>("counter-web")
+IResourceBuilder<ProjectResource> counterWeb = builder.AddProject<Projects.Counter_Web>("counter-web")
     .WithExternalHttpEndpoints();
+if (builder.ExecutionContext.IsRunMode && builder.Environment.IsEnvironment("Test"))
+{
+    // Launch profiles keep the normal demo in Development. The explicit local Test run
+    // must use the same gated specimen services and timings as the browser verification lane.
+    _ = counterWeb
+        .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Test")
+        .WithEnvironment("DOTNET_ENVIRONMENT", "Test")
+        .WithEnvironment("Hexalith__FrontComposer__Specimens__Enabled", "true")
+        .WithEnvironment("Hexalith__Shell__FormAbandonmentThresholdSeconds", "5")
+        .WithEnvironment("Hexalith__Shell__TimeoutActionThresholdMs", "5000")
+        .WithEnvironment("Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs", "6500");
+}
 
 // Wire Keycloak auth to EventStore, Tenants, Admin.Server, Admin.UI, and Tenants.UI if enabled.
 if (security is not null) {

@@ -1089,11 +1089,11 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             {
                 __b.OpenComponent<FluentMessageBar>(9);
                 __b.AddAttribute(10, "Intent", MessageBarIntent.Warning);
-                __b.AddAttribute(11, "Title", _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedTitle"].Value : (_serverWarning.Title ?? _serverWarning.Kind.ToString()));
+                __b.AddAttribute(11, "Title", _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedTitle"].Value : (string.IsNullOrWhiteSpace(_serverWarning.Title) ? ShellLocalizer["CommandWarningFallback"].Value : _serverWarning.Title));
                 __b.AddAttribute(12, "AllowDismiss", true);
                 __b.AddAttribute(13, "ChildContent", (RenderFragment)(__msg =>
                 {
-                    string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedFallback"].Value : (_serverWarning.Detail ?? _serverWarning.EntityLabel ?? "Please review the warning and try again.");
+                    string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedFallback"].Value : (new[] { _serverWarning.Detail, _serverWarning.EntityLabel }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? ShellLocalizer["CommandWarningFallback"].Value);
                     __msg.AddContent(0, body);
                     if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is not null)
                     {

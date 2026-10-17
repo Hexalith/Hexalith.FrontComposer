@@ -1,0 +1,574 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts --project=chromium --project=firefox --project=webkit --workers=3 --grep held generated recovery
+
+
+Running 12 tests using 3 workers
+
+(node:32461) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32448) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32469) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   3 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light (13.9s)
+  ✘   1 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light (14.1s)
+(node:37532) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   2 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark (14.2s)
+(node:37570) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37748) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   4 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark (11.9s)
+(node:41807) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   6 [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light (12.8s)
+  ✘   5 [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light (13.3s)
+(node:43202) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:43469) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   7 [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark (13.6s)
+(node:49959) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   9 [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light (13.3s)
+(node:50281) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   8 [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark (13.8s)
+(node:50690) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  10 [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light (13.1s)
+  ✘  11 [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark (13.6s)
+  ✘  12 [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark (13.2s)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-c9110-enant-scope-change-in-light-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-734fa--user-scope-change-in-light-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-7515b-tenant-scope-change-in-dark-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.fc-expanded-row-hidden-banner-text')
+    Expected: 0
+    Received: 1
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.fc-expanded-row-hidden-banner-text') with timeout 10000ms
+      - waiting for locator('.fc-expanded-row-hidden-banner-text')
+        24 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      642 |     await entered();
+      643 |     await page.getByTestId(`fc-ae-scope-${scope}`).dispatchEvent('click');
+    > 644 |     await expect(page.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(0);
+          |                                                                       ^
+      645 |     const current = page.getByTestId('fc-ae-rows-two');
+      646 |     await expect(current).toBeVisible();
+      647 |     await current.focus();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:644:71
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc13-scope-test/accessibility-state-matrix-9db51-r-user-scope-change-in-dark-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark 
+    [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light 
+    [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light 
+    [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark 
+    [webkit] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark 

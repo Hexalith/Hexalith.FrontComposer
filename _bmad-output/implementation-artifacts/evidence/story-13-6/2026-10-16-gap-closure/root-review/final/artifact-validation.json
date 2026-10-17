@@ -1,0 +1,122 @@
+[
+  {
+    "view": "raw",
+    "engine": "chromium",
+    "command": [
+      "npm",
+      "--prefix",
+      "tests/e2e",
+      "run",
+      "validate:a11y-artifacts"
+    ],
+    "environment": {
+      "FC_A11Y_EVIDENCE_RUN_ID": "gap-root-review-13af441b28ac",
+      "FC_A11Y_EVIDENCE_ENGINE": "chromium",
+      "FC_E2E_OUTPUT_DIR": "/tmp/gap-root-review-13af441b28ac",
+      "FC_E2E_HTML_REPORT_DIR": "/tmp/gap-root-review-13af441b28ac-report"
+    },
+    "exit": 1,
+    "stdout": "\n> hexalith-frontcomposer-e2e@0.0.0 validate:a11y-artifacts\n> node scripts/validate-a11y-artifacts.mjs\n\n",
+    "stderr": "Accessibility artifact root is unexpectedly large: /tmp/gap-root-review-13af441b28ac, /tmp/gap-root-review-13af441b28ac-report\n"
+  },
+  {
+    "view": "raw",
+    "engine": "firefox",
+    "command": [
+      "npm",
+      "--prefix",
+      "tests/e2e",
+      "run",
+      "validate:a11y-artifacts"
+    ],
+    "environment": {
+      "FC_A11Y_EVIDENCE_RUN_ID": "gap-root-review-13af441b28ac",
+      "FC_A11Y_EVIDENCE_ENGINE": "firefox",
+      "FC_E2E_OUTPUT_DIR": "/tmp/gap-root-review-13af441b28ac",
+      "FC_E2E_HTML_REPORT_DIR": "/tmp/gap-root-review-13af441b28ac-report"
+    },
+    "exit": 1,
+    "stdout": "\n> hexalith-frontcomposer-e2e@0.0.0 validate:a11y-artifacts\n> node scripts/validate-a11y-artifacts.mjs\n\n",
+    "stderr": "Accessibility artifact root is unexpectedly large: /tmp/gap-root-review-13af441b28ac, /tmp/gap-root-review-13af441b28ac-report\n"
+  },
+  {
+    "view": "raw",
+    "engine": "webkit",
+    "command": [
+      "npm",
+      "--prefix",
+      "tests/e2e",
+      "run",
+      "validate:a11y-artifacts"
+    ],
+    "environment": {
+      "FC_A11Y_EVIDENCE_RUN_ID": "gap-root-review-13af441b28ac",
+      "FC_A11Y_EVIDENCE_ENGINE": "webkit",
+      "FC_E2E_OUTPUT_DIR": "/tmp/gap-root-review-13af441b28ac",
+      "FC_E2E_HTML_REPORT_DIR": "/tmp/gap-root-review-13af441b28ac-report"
+    },
+    "exit": 1,
+    "stdout": "\n> hexalith-frontcomposer-e2e@0.0.0 validate:a11y-artifacts\n> node scripts/validate-a11y-artifacts.mjs\n\n",
+    "stderr": "Accessibility artifact root is unexpectedly large: /tmp/gap-root-review-13af441b28ac, /tmp/gap-root-review-13af441b28ac-report\n"
+  },
+  {
+    "view": "curated",
+    "engine": "chromium",
+    "command": [
+      "npm",
+      "--prefix",
+      "tests/e2e",
+      "run",
+      "validate:a11y-artifacts"
+    ],
+    "environment": {
+      "FC_A11Y_EVIDENCE_RUN_ID": "gap-root-review-13af441b28ac",
+      "FC_A11Y_EVIDENCE_ENGINE": "chromium",
+      "FC_E2E_OUTPUT_DIR": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/chromium",
+      "FC_E2E_HTML_REPORT_DIR": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser-report"
+    },
+    "exit": 0,
+    "stdout": "\n> hexalith-frontcomposer-e2e@0.0.0 validate:a11y-artifacts\n> node scripts/validate-a11y-artifacts.mjs\n\nAccessibility artifact validation passed.\n",
+    "stderr": ""
+  },
+  {
+    "view": "curated",
+    "engine": "firefox",
+    "command": [
+      "npm",
+      "--prefix",
+      "tests/e2e",
+      "run",
+      "validate:a11y-artifacts"
+    ],
+    "environment": {
+      "FC_A11Y_EVIDENCE_RUN_ID": "gap-root-review-13af441b28ac",
+      "FC_A11Y_EVIDENCE_ENGINE": "firefox",
+      "FC_E2E_OUTPUT_DIR": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox",
+      "FC_E2E_HTML_REPORT_DIR": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser-report"
+    },
+    "exit": 1,
+    "stdout": "\n> hexalith-frontcomposer-e2e@0.0.0 validate:a11y-artifacts\n> node scripts/validate-a11y-artifacts.mjs\n\n",
+    "stderr": "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"a542ea7f175527dc3e9c-b125e3ed014a066eb3f6\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"a542ea7f175527dc3e9c-ad7ac2435f7db16487e2\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-4733f3821f9630840cc4\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-16326aa150749ec2b8ed\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-12c004cb1a4802243759\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-2cc8fc483960b6273aa3\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-0671136a2c1d6edeee10\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-2c58b1a5e131b2e07a8e\"]\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/ae-state-zero-exception-rejection-dark.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-acknowledged-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-confirmed-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-degraded-exhausted-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-degraded-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-idempotent-confirmed-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-idle-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-needs-review-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-rejected-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-submitting-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-syncing-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/firefox/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-warning-light.json\nMissing state evidence: lifecycle-idle-light in [\"firefox\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: lifecycle-submitting-light in [\"firefox\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: lifecycle-acknowledged-light in [\"firefox\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: lifecycle-syncing-light in [\"firefox\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: lifecycle-confirmed-light in [\"firefox\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: lifecycle-rejected-light in [\"firefox\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: lifecycle-idempotent-confirmed-light in [\"firefox\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: lifecycle-needs-review-light in [\"firefox\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: lifecycle-warning-light in [\"firefox\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: lifecycle-degraded-light in [\"firefox\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: lifecycle-degraded-exhausted-light in [\"firefox\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: zero-exception-rejection-dark in [\"firefox\",\"gap-root-review-13af441b28ac\"]\n"
+  },
+  {
+    "view": "curated",
+    "engine": "webkit",
+    "command": [
+      "npm",
+      "--prefix",
+      "tests/e2e",
+      "run",
+      "validate:a11y-artifacts"
+    ],
+    "environment": {
+      "FC_A11Y_EVIDENCE_RUN_ID": "gap-root-review-13af441b28ac",
+      "FC_A11Y_EVIDENCE_ENGINE": "webkit",
+      "FC_E2E_OUTPUT_DIR": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/webkit",
+      "FC_E2E_HTML_REPORT_DIR": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser-report"
+    },
+    "exit": 1,
+    "stdout": "\n> hexalith-frontcomposer-e2e@0.0.0 validate:a11y-artifacts\n> node scripts/validate-a11y-artifacts.mjs\n\n",
+    "stderr": "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"a542ea7f175527dc3e9c-b2b5603a63450eca2e5f\"]\nAmbiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-897e5447993ba66b3d7c\"]\nAmbiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-0340360035b3ea941177\"]\nAmbiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-3f927a9e71eb9dad1f80\"]\nAmbiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-0e895918642780866f83\"]\nAmbiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-85939b7c29788bfba246\"]\nAmbiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-196b619fca8d446598e1\"]\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/webkit/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/ae-state-filter-popover-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/webkit/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/ae-state-palette-default-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/webkit/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/ae-state-tabs-active-light.json\nUnbound Playwright attempt: /home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/root-review/final/browser/webkit/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/ae-state-view-menu-light.json\nMissing state evidence: filter-popover-light in [\"webkit\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: view-menu-light in [\"webkit\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: tabs-active-light in [\"webkit\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: palette-default-light in [\"webkit\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: palette-selected-light in [\"webkit\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: palette-empty-light in [\"webkit\",\"gap-root-review-13af441b28ac\"]\nMissing state evidence: settings-light in [\"webkit\",\"gap-root-review-13af441b28ac\"]\n"
+  }
+]

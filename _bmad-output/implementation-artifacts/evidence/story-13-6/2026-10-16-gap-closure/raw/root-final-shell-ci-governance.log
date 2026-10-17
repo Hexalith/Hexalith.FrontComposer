@@ -1,0 +1,8 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.Shell.Tests (method display = ClassAndMethod, method display options = None)
+  Discovered:  Hexalith.FrontComposer.Shell.Tests (76 test cases to be run)
+  Starting:    Hexalith.FrontComposer.Shell.Tests (parallel mode = collections [14 threads], stop on fail = off, explicit = off, seed = 920939544)
+    [D::Hexalith.FrontComposer.Shell.Tests] [Long Running Test] 'Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.IdeParityVersionRevalidation_DotnetSdkFeatureBand_FailsClosed', Elapsed: 00:00:30
+  Finished:    Hexalith.FrontComposer.Shell.Tests (ID = '47ea1885be85e02ea5ab6d4f3f0a3316b9743a6877b49a72f290b3b7fc1a0f08')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.Shell.Tests  Total: 85, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 82.422s

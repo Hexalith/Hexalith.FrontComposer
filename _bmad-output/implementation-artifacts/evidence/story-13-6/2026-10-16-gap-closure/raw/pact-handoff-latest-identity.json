@@ -1,0 +1,6 @@
+{
+  "emittedSha256": "d55073dc85493ca4c5143996bd66fdf48c2c6ded8d207514ceb6e88ec70348ef",
+  "baselineSha256": "0a8303a17c7efdf0badca3282dcd2904ab757aa49940e30056e48cae9ef089bd",
+  "different": true,
+  "restoredOnlyOwnGeneratedOutput": true
+}

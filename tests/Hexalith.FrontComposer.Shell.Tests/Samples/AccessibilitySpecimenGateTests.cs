@@ -70,6 +70,8 @@ public sealed class AccessibilitySpecimenGateTests
         _ = services.AddAccessibilitySpecimenSeams(environment);
 
         services.Any(d => d.ServiceType == typeof(AccessibilitySpecimenState)).ShouldBe(registered);
+        services.Any(d => d.ServiceType == typeof(AccessibilitySpecimenUserContextAccessor)).ShouldBe(registered);
+        services.Any(d => d.ServiceType == typeof(Action<bool>)).ShouldBe(registered);
         services.Any(d => d.ServiceType == typeof(AccessibilitySpecimenPendingScope)).ShouldBe(registered);
         services.Any(d => d.ServiceType == typeof(ICommandAuthorizationEvaluator)).ShouldBe(registered);
         services.Any(d => d.ServiceType == typeof(IProjectionPageLoader)).ShouldBe(registered);

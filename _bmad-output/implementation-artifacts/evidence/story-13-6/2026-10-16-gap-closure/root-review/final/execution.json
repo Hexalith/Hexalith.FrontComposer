@@ -1,0 +1,91 @@
+{
+  "run": {
+    "runId": "gap-root-review-13af441b28ac",
+    "output": "/tmp/gap-root-review-13af441b28ac",
+    "html": "/tmp/gap-root-review-13af441b28ac-report",
+    "shellXml": "/tmp/gap-root-review-13af441b28ac-shell.xml",
+    "startedUtc": "2026-10-16T17:55:19.669063+00:00",
+    "testHostFixture": "root-review/final/testhost.json",
+    "testHostOptions": {
+      "Hexalith__Shell__ProjectionReconnectedNoticeDurationMs": "30000"
+    }
+  },
+  "results": [
+    {
+      "lane": "typecheck",
+      "argv": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "typecheck"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {},
+      "exitCode": 0,
+      "durationSeconds": 0.467,
+      "log": "raw/root-fourth-typecheck.log",
+      "logSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2"
+    },
+    {
+      "lane": "browser",
+      "argv": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "test",
+        "--",
+        "specs/specimen-accessibility.spec.ts",
+        "specs/responsive-accessibility.spec.ts",
+        "specs/accessibility-state-matrix.spec.ts",
+        "--project=chromium",
+        "--project=firefox",
+        "--project=webkit",
+        "--workers=3"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {
+        "BASE_URL": "http://localhost:5201",
+        "PLAYWRIGHT_SKIP_WEBSERVER": "1",
+        "Hexalith__Shell__ProjectionReconnectedNoticeDurationMs": "30000",
+        "FC_A11Y_EVIDENCE_RUN_ID": "gap-root-review-13af441b28ac",
+        "FC_E2E_OUTPUT_DIR": "/tmp/gap-root-review-13af441b28ac",
+        "FC_E2E_HTML_REPORT_DIR": "/tmp/gap-root-review-13af441b28ac-report"
+      },
+      "exitCode": 1,
+      "durationSeconds": 854.586,
+      "log": "raw/root-fourth-browser.log",
+      "logSha256": "a2e03dda131d29e1d8d446dbe030d3059ee82bfb9da23f7e30c1010b77c5fe4f"
+    },
+    {
+      "lane": "visual-policy",
+      "argv": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "validate:visual-governance"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {},
+      "exitCode": 0,
+      "durationSeconds": 0.316,
+      "log": "raw/root-fourth-visual-policy.log",
+      "logSha256": "c2ef99051f8c4e2ed1dd96044e2b1df8995c5167b3fab54b188e75b1e8ea9bee"
+    },
+    {
+      "lane": "whitespace",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {},
+      "exitCode": 0,
+      "durationSeconds": 0.116,
+      "log": "raw/root-fourth-whitespace.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

@@ -1,0 +1,349 @@
+{
+  "testId": "a542ea7f175527dc3e9c-90aa8470c61458d7cea0",
+  "attempt": 0,
+  "state": "palette-empty-dark",
+  "engine": "chromium",
+  "runId": "gap-root-review-2c48946e2441",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Dark",
+  "themePaint": {
+    "background": "#292929",
+    "rgb": [
+      41,
+      41,
+      41
+    ]
+  },
+  "targets": [
+    {
+      "target": "#f602133d",
+      "width": 200,
+      "height": 32,
+      "box": {
+        "left": 60,
+        "top": 271,
+        "right": 260,
+        "bottom": 303
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "p",
+      "paint": "No commands or pages match.",
+      "foreground": [
+        173,
+        173,
+        173,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 6.482747494991505,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "::after border-bottom",
+        "foreground": [
+          5,
+          146,
+          161,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 3.902137560412215,
+        "minimum": 3
+      }
+    ]
+  ],
+  "cues": [],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": true,
+  "forcedColorsStatus": "painted system palette",
+  "systemText": [
+    {
+      "owner": 0,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "p",
+      "paint": "No commands or pages match.",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "systemIcon": [],
+  "systemBoundaries": [
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "::after border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-TEXT-INPUT#f602133d",
+    "requireIndicator": true,
+    "box": {
+      "left": 58,
+      "top": 269,
+      "right": 262,
+      "bottom": 305
+    },
+    "ring": 2,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": []
+  },
+  "systemSnapshot": "system-state-palette-empty-dark.png",
+  "reducedMotion": true
+}

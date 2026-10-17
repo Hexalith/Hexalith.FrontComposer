@@ -1,0 +1,34 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts specs/responsive-accessibility.spec.ts --project=chromium --workers=3 --grep held generated recovery|active toolbar|R0[19]|R1[0-5]|narrow specimen|desktop rail flyout|type states
+
+
+Running 19 tests using 3 workers
+
+(node:13805) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13806) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13807) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light (2.9s)
+  ✓   4 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light (2.1s)
+  ✓   5 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark (2.3s)
+  ✓   2 [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in light (9.2s)
+  ✓   1 [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in dark (9.2s)
+  ✓   6 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark (2.2s)
+  ✓   7 [chromium] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in light (2.4s)
+  ✓   8 [chromium] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in dark (2.4s)
+  ✓  11 [chromium] › specs/responsive-accessibility.spec.ts:837:1 › R01 rejects an unprevented boundary Tab that application code refocuses (373ms)
+  ✓  12 [chromium] › specs/responsive-accessibility.spec.ts:903:1 › R09 descendant extending over the target ring is an obstruction (284ms)
+  ✓  13 [chromium] › specs/responsive-accessibility.spec.ts:911:1 › R10 generated meaningful text cannot disappear beside passing text (215ms)
+  ✓  14 [chromium] › specs/responsive-accessibility.spec.ts:918:1 › R11 collapsed offset shadow paints no focus pixels (284ms)
+  ✓  15 [chromium] › specs/responsive-accessibility.spec.ts:927:1 › R12 permanent shadow cannot certify an invisible focus-only layer (214ms)
+  ✓  16 [chromium] › specs/responsive-accessibility.spec.ts:935:1 › R13 inset pseudo focus border compares against control paint (241ms)
+  ✓   9 [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light (4.0s)
+  ✓  17 [chromium] › specs/responsive-accessibility.spec.ts:943:1 › R14 placeholder alpha determines effective contrast (296ms)
+  ✓  19 [chromium] › specs/responsive-accessibility.spec.ts:1032:1 › desktop rail flyout controls fit both 72px and 48px rails without horizontal scrolling (1.4s)
+  ✓  10 [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark (3.5s)
+  ✓  18 [chromium] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (1.8s)
+
+  19 passed (16.2s)

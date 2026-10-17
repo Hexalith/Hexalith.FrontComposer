@@ -1,0 +1,116 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.Shell.Tests (method display = ClassAndMethod, method display options = None)
+  Discovered:  Hexalith.FrontComposer.Shell.Tests (2855 test cases to be run)
+  Starting:    Hexalith.FrontComposer.Shell.Tests (parallel mode = collections [14 threads], stop on fail = off, explicit = off, seed = 528629066)
+Mock driver logs:
+
+2026-10-16T15:48:08.663509Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-16T15:48:08.668105Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.696258Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-16T15:48:08.696921Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.729589Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-16T15:48:08.730367Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.735685Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-16T15:48:08.736389Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.749430Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-16T15:48:08.750055Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.759088Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-16T15:48:08.759730Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.783428Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-16T15:48:08.786079Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.797822Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-16T15:48:08.798704Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.850684Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-16T15:48:08.851303Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.859272Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-16T15:48:08.859924Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.899222Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-16T15:48:08.899851Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.905655Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-16T15:48:08.906502Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.913096Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-16T15:48:08.913792Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.942383Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-16T15:48:08.942961Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.949268Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-16T15:48:08.951551Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:08.969296Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-16T15:48:08.969817Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:09.057304Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-16T15:48:09.058210Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:09.073432Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-16T15:48:09.074050Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-16T15:48:09.107223Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-16T15:48:09.107836Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+    Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(tenantChange: True) [FAIL]
+      Bunit.Rendering.ComponentNotFoundException : A component of type ZeroFieldInlineCommandRenderer was not found in the render tree.
+      Stack Trace:
+        /_/src/bunit/Rendering/BunitRenderer.cs(264,0): at Bunit.Rendering.BunitRenderer.FindComponent[TComponent](IRenderedComponent`1 parentComponent)
+        /_/src/bunit/Extensions/RenderedComponentExtensions.cs(95,0): at Bunit.RenderedComponentExtensions.FindComponent[TChildComponent](IRenderedComponent`1 renderedComponent)
+        tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs(89,0): at Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(Boolean tenantChange)
+        --- End of stack trace from previous location ---
+    Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(tenantChange: False) [FAIL]
+      Bunit.Rendering.ComponentNotFoundException : A component of type ZeroFieldInlineCommandRenderer was not found in the render tree.
+      Stack Trace:
+        /_/src/bunit/Rendering/BunitRenderer.cs(264,0): at Bunit.Rendering.BunitRenderer.FindComponent[TComponent](IRenderedComponent`1 parentComponent)
+        /_/src/bunit/Extensions/RenderedComponentExtensions.cs(95,0): at Bunit.RenderedComponentExtensions.FindComponent[TChildComponent](IRenderedComponent`1 renderedComponent)
+        tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs(89,0): at Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch(Boolean tenantChange)
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.FrontComposer.Shell.Tests (ID = '47ea1885be85e02ea5ab6d4f3f0a3316b9743a6877b49a72f290b3b7fc1a0f08')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.Shell.Tests  Total: 3692, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 64.897s

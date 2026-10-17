@@ -1,0 +1,42 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/responsive-accessibility.spec.ts --project=chromium --project=firefox --project=webkit --workers=3 --grep palette and settings retain|page-toolbar: 320|R15|reused owned
+
+
+Running 15 tests using 3 workers
+
+(node:34075) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34082) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34076) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (5.2s)
+  ✓   1 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (6.2s)
+  ✓   3 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (6.3s)
+(node:37612) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   5 [chromium] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (1.4s)
+(node:38377) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   4 [chromium] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (3.5s)
+(node:38850) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   6 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (8.4s)
+  ✓   8 [firefox] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (6.9s)
+  ✓   7 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (8.0s)
+(node:42440) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  10 [firefox] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (1.1s)
+  ✓   9 [firefox] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (2.5s)
+(node:42717) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42913) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  11 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (5.8s)
+  ✓  12 [webkit] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (6.2s)
+  ✓  13 [webkit] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (5.7s)
+  ✓  15 [webkit] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (1.2s)
+  ✓  14 [webkit] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (3.2s)
+
+  15 passed (28.2s)

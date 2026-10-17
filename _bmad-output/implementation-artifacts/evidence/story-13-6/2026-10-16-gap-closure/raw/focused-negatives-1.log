@@ -1,0 +1,32 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/responsive-accessibility.spec.ts --project=chromium --workers=1 --grep R0[1-9]|R1[0-4]
+
+
+Running 21 tests using 1 worker
+
+(node:780) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › specs/responsive-accessibility.spec.ts:827:1 › R01 rejects an unprevented boundary Tab that application code refocuses (1.4s)
+  ✓   2 [chromium] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 0.01 (492ms)
+  ✓   3 [chromium] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 0.1 (324ms)
+  ✓   4 [chromium] › specs/responsive-accessibility.spec.ts:837:3 › R02 pseudo focus paint composites opacity 1 (236ms)
+  ✓   5 [chromium] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG ellipse without a passing rectangle masking it (348ms)
+  ✓   6 [chromium] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG line without a passing rectangle masking it (288ms)
+  ✓   7 [chromium] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG polyline without a passing rectangle masking it (175ms)
+  ✓   8 [chromium] › specs/responsive-accessibility.spec.ts:846:3 › R03 measures SVG use without a passing rectangle masking it (225ms)
+  ✓   9 [chromium] › specs/responsive-accessibility.spec.ts:855:1 › R04 zero-width SVG stroke does not count as meaningful icon paint (181ms)
+  ✓  10 [chromium] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition filter:brightness(0) (194ms)
+  ✓  11 [chromium] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition mix-blend-mode:multiply (178ms)
+  ✓  12 [chromium] › specs/responsive-accessibility.spec.ts:863:3 › R05 rejects unsupported composition backdrop-filter:brightness(0) (166ms)
+  ✓  13 [chromium] › specs/responsive-accessibility.spec.ts:871:1 › R06 effective glyph fill determines text contrast (182ms)
+  ✓  14 [chromium] › specs/responsive-accessibility.spec.ts:878:1 › R07 sibling background paint cannot be replaced with ancestor white (189ms)
+  ✓  15 [chromium] › specs/responsive-accessibility.spec.ts:885:1 › R08 invisible ancestor cannot certify focus geometry (180ms)
+  ✓  16 [chromium] › specs/responsive-accessibility.spec.ts:893:1 › R09 descendant extending over the target ring is an obstruction (182ms)
+  ✓  17 [chromium] › specs/responsive-accessibility.spec.ts:901:1 › R10 generated meaningful text cannot disappear beside passing text (167ms)
+  ✓  18 [chromium] › specs/responsive-accessibility.spec.ts:908:1 › R11 collapsed offset shadow paints no focus pixels (217ms)
+  ✓  19 [chromium] › specs/responsive-accessibility.spec.ts:917:1 › R12 permanent shadow cannot certify an invisible focus-only layer (194ms)
+  ✓  20 [chromium] › specs/responsive-accessibility.spec.ts:925:1 › R13 inset pseudo focus border compares against control paint (200ms)
+  ✓  21 [chromium] › specs/responsive-accessibility.spec.ts:933:1 › R14 placeholder alpha determines effective contrast (170ms)
+
+  21 passed (8.0s)

@@ -1,0 +1,111 @@
+{
+  "run": {
+    "runId": "gap-root-review-2c48946e2441",
+    "output": "/tmp/gap-root-review-2c48946e2441",
+    "html": "/tmp/gap-root-review-2c48946e2441-report",
+    "shellXml": "/tmp/gap-root-review-2c48946e2441-shell.xml",
+    "startedUtc": "2026-10-16T17:32:18.982995+00:00",
+    "testHostFixture": "root-review/g17-testhost.json",
+    "testHostOptions": {
+      "Hexalith__Shell__ProjectionReconnectedNoticeDurationMs": "30000"
+    }
+  },
+  "results": [
+    {
+      "lane": "ci-governance",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/eng/test_ci_governance.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {},
+      "exitCode": 0,
+      "durationSeconds": 1.738,
+      "log": "raw/root-third-ci-governance.log",
+      "logSha256": "ceb7c0e91b307746cef1880c11f6d66481978e02244bdf24c8bfcb16f09b59c1",
+      "originalLogPath": "raw/root-final-ci-governance.log"
+    },
+    {
+      "lane": "typecheck",
+      "argv": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "typecheck"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {},
+      "exitCode": 0,
+      "durationSeconds": 0.729,
+      "log": "raw/root-third-typecheck.log",
+      "logSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2",
+      "originalLogPath": "raw/root-final-typecheck.log"
+    },
+    {
+      "lane": "browser",
+      "argv": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "test",
+        "--",
+        "specs/specimen-accessibility.spec.ts",
+        "specs/responsive-accessibility.spec.ts",
+        "specs/accessibility-state-matrix.spec.ts",
+        "--project=chromium",
+        "--project=firefox",
+        "--project=webkit",
+        "--workers=3"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {
+        "BASE_URL": "http://localhost:5201",
+        "PLAYWRIGHT_SKIP_WEBSERVER": "1",
+        "Hexalith__Shell__ProjectionReconnectedNoticeDurationMs": "30000",
+        "FC_A11Y_EVIDENCE_RUN_ID": "gap-root-review-2c48946e2441",
+        "FC_E2E_OUTPUT_DIR": "/tmp/gap-root-review-2c48946e2441",
+        "FC_E2E_HTML_REPORT_DIR": "/tmp/gap-root-review-2c48946e2441-report"
+      },
+      "exitCode": 1,
+      "durationSeconds": 1025.989,
+      "log": "raw/root-third-browser.log",
+      "logSha256": "d50ca5ba77f2a39906077fd92a269984c5b5e78944aa0636d385c98b622b3eb6",
+      "originalLogPath": "raw/root-final-browser.log"
+    },
+    {
+      "lane": "visual-policy",
+      "argv": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "validate:visual-governance"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {},
+      "exitCode": 0,
+      "durationSeconds": 0.419,
+      "log": "raw/root-third-visual-policy.log",
+      "logSha256": "c2ef99051f8c4e2ed1dd96044e2b1df8995c5167b3fab54b188e75b1e8ea9bee",
+      "originalLogPath": "raw/root-final-visual-policy.log"
+    },
+    {
+      "lane": "whitespace",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {},
+      "exitCode": 0,
+      "durationSeconds": 0.223,
+      "log": "raw/root-third-whitespace.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "originalLogPath": "raw/root-final-whitespace.log"
+    }
+  ]
+}

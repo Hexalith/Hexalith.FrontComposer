@@ -1,0 +1,1662 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --project=chromium --project=firefox --project=webkit --workers=3
+
+
+Running 531 tests using 3 workers
+
+(node:41639) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41638) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41645) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘    2 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (2.4s)
+  ✘    3 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (2.5s)
+  ✘    1 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt (2.6s)
+(node:43468) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:43562) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:43599) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    5 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field unavailable: safe feedback, focus, owner, next attempt (5.9s)
+  ✓    4 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field forbidden: safe feedback, focus, owner, next attempt (6.0s)
+  ✓    6 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (6.6s)
+  ✓    8 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (4.9s)
+  ✓    7 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (5.0s)
+  ✓    9 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field transport: safe feedback, focus, owner, next attempt (5.2s)
+  ✓   12 [chromium] › specs/accessibility-state-matrix.spec.ts:147:5 › AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results (3.3s)
+  ✓   10 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt (4.6s)
+  ✓   11 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field policy: safe feedback, focus, owner, next attempt (4.6s)
+  ✘   15 [chromium] › specs/accessibility-state-matrix.spec.ts:212:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces (2.2s)
+(node:51887) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   13 [chromium] › specs/accessibility-state-matrix.spec.ts:171:5 › AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation (3.4s)
+  ✓   16 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › home: composed text, targets, current-state and forced-color cues (3.0s)
+  ✓   17 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › navigation-tabs: composed text, targets, current-state and forced-color cues (4.3s)
+  ✘   18 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues (1.7s)
+(node:54390) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   19 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (2.0s)
+(node:55498) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   20 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt (2.8s)
+(node:55916) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   14 [chromium] › specs/accessibility-state-matrix.spec.ts:192:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (11.4s)
+(node:56221) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   21 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (2.7s)
+(node:56969) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   22 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (2.7s)
+(node:57970) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   23 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt (4.5s)
+  ✓   24 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt (4.5s)
+  ✓   25 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (4.5s)
+  ✓   26 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (4.3s)
+  ✓   27 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (4.5s)
+  ✓   28 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field transport: safe feedback, focus, owner, next attempt (4.4s)
+  ✓   29 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field admission: safe feedback, focus, owner, next attempt (4.2s)
+  ✓   30 [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field policy: safe feedback, focus, owner, next attempt (4.3s)
+  ✓   31 [chromium] › specs/accessibility-state-matrix.spec.ts:147:5 › AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results (3.1s)
+  ✓   32 [chromium] › specs/accessibility-state-matrix.spec.ts:171:5 › AE complete state matrix dark › real generated detail loss focuses its neutral non-live explanation (3.3s)
+  ✘   34 [chromium] › specs/accessibility-state-matrix.spec.ts:212:5 › AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces (2.1s)
+(node:63826) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   35 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues (2.7s)
+  ✘   37 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues (1.6s)
+(node:65390) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   36 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix dark › navigation-tabs: composed text, targets, current-state and forced-color cues (4.2s)
+  ✓   39 [chromium] › specs/accessibility-state-matrix.spec.ts:259:1 › contrast measurement rejects empty, low-contrast, unpainted and unsupported samples (521ms)
+  ✓   40 [chromium] › specs/accessibility-state-matrix.spec.ts:277:1 › unrelated controls cannot mask failed focus or boundary contrast (294ms)
+  ✓   41 [chromium] › specs/accessibility-state-matrix.spec.ts:288:1 › forced-color state checks reject a removed cue while text and selected semantics survive (287ms)
+  ✘   38 [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (1.9s)
+(node:66806) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   42 [chromium] › specs/accessibility-state-matrix.spec.ts:300:3 › shell chrome, theme menu and exact desktop navigation rails in light (1.9s)
+(node:67380) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   33 [chromium] › specs/accessibility-state-matrix.spec.ts:192:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (11.1s)
+(node:67862) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   45 [chromium] › specs/accessibility-state-matrix.spec.ts:300:3 › shell chrome, theme menu and exact desktop navigation rails in dark (2.1s)
+  ✘   44 [chromium] › specs/accessibility-state-matrix.spec.ts:384:3 › generated validation, policy, destructive and abandonment states in light (3.1s)
+(node:69294) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:69321) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   47 [chromium] › specs/accessibility-state-matrix.spec.ts:384:3 › generated validation, policy, destructive and abandonment states in dark (3.7s)
+(node:72241) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   43 [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in light (9.8s)
+(node:72490) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   46 [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in dark (10.5s)
+(node:75161) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   50 [chromium] › specs/accessibility-state-matrix.spec.ts:458:3 › real generated filter-hidden detail stays distinct from missing-item results in light (3.2s)
+  ✓   51 [chromium] › specs/accessibility-state-matrix.spec.ts:458:3 › real generated filter-hidden detail stays distinct from missing-item results in dark (2.9s)
+  ✓   52 [chromium] › specs/accessibility-state-matrix.spec.ts:475:3 › delayed generated detail recovery cancels after operator focus and navigation in light (2.5s)
+  ✓   48 [chromium] › specs/accessibility-state-matrix.spec.ts:427:3 › projection reconnect fallback stale slow cap and filter cues in light (17.3s)
+  ✓   49 [chromium] › specs/accessibility-state-matrix.spec.ts:427:3 › projection reconnect fallback stale slow cap and filter cues in dark (17.0s)
+  ✓   53 [chromium] › specs/accessibility-state-matrix.spec.ts:475:3 › delayed generated detail recovery cancels after operator focus and navigation in dark (2.7s)
+  ✓   56 [chromium] › specs/accessibility-state-matrix.spec.ts:551:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (353ms)
+  ✓   57 [chromium] › specs/accessibility-state-matrix.spec.ts:564:1 › validation links keep native same-page href activation when focus enhancement is unavailable (1.4s)
+  ✓   54 [chromium] › specs/accessibility-state-matrix.spec.ts:542:3 › fresh-row presentation retains text boundary and system-color meaning in light (2.9s)
+  ✓   58 [chromium] › specs/accessibility-state-matrix.spec.ts:588:1 › G09 forced-color focus geometry rejects a mode-specific clipped ring (240ms)
+  ✓   55 [chromium] › specs/accessibility-state-matrix.spec.ts:542:3 › fresh-row presentation retains text boundary and system-color meaning in dark (3.0s)
+  ✓   59 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in light (2.0s)
+  ✓   60 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in light (2.2s)
+  ✓   63 [chromium] › specs/responsive-accessibility.spec.ts:19:3 › AE geometry regression fixtures › rejects a clipped ring even when the complete target is inside the viewport (214ms)
+  ✓   61 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after tenant scope change in dark (2.4s)
+  ✓   64 [chromium] › specs/responsive-accessibility.spec.ts:23:3 › AE geometry regression fixtures › includes outer box-shadow rings and offsets in clipping geometry (752ms)
+  ✓   65 [chromium] › specs/responsive-accessibility.spec.ts:47:3 › AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host (269ms)
+  ✓   67 [chromium] › specs/responsive-accessibility.spec.ts:78:3 › AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping (296ms)
+  ✓   68 [chromium] › specs/responsive-accessibility.spec.ts:84:3 › AE geometry regression fixtures › spacing exceptions reject neighboring circles and accept an isolated target (154ms)
+  ✓   69 [chromium] › specs/responsive-accessibility.spec.ts:91:3 › AE geometry regression fixtures › rejects missing and invalid equivalent inventories (140ms)
+  ✓   70 [chromium] › specs/responsive-accessibility.spec.ts:97:3 › AE geometry regression fixtures › spacing overrides reach Fluent-style shadow content and contrast composites alpha (237ms)
+  ✓   62 [chromium] › specs/accessibility-state-matrix.spec.ts:597:3 › held generated recovery cancels after user scope change in dark (2.3s)
+  ✓   66 [chromium] › specs/responsive-accessibility.spec.ts:54:3 › AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes (1.1s)
+  ✓   71 [chromium] › specs/responsive-accessibility.spec.ts:112:1 › spacing reaches a delayed shadow root and cleanup stops later injection (237ms)
+  ✓   73 [chromium] › specs/responsive-accessibility.spec.ts:137:1 › modal decoration cannot substitute for the focused control indicator (236ms)
+  ✓   72 [chromium] › specs/responsive-accessibility.spec.ts:125:1 › focus checks reject an absent indicator and a pointer-transparent opaque occluder (361ms)
+  ✓   74 [chromium] › specs/responsive-accessibility.spec.ts:144:1 › text clipping follows native top-layer popovers while retaining their own clipping checks (208ms)
+  ✓   75 [chromium] › specs/responsive-accessibility.spec.ts:152:1 › a one-control keyboard trap cannot satisfy the expected cycle (313ms)
+  ✓   76 [chromium] › specs/responsive-accessibility.spec.ts:159:1 › an application-prevented Tab at the final control cannot impersonate browser chrome (317ms)
+  ✓   77 [chromium] › specs/responsive-accessibility.spec.ts:166:1 › shell focus scrolling protects the ring and cancels stale or disposed work (794ms)
+  ✓   78 [chromium] › specs/responsive-accessibility.spec.ts:202:1 › delayed overlay disposal preserves an operator Tab after native origin return (1.3s)
+  ✓   79 [chromium] › specs/responsive-accessibility.spec.ts:236:1 › owned palette return cancels the actual Fluent delayed return after an operator Tab (1.3s)
+  ✓   82 [chromium] › specs/responsive-accessibility.spec.ts:337:1 › the real missing-detail component registers recovery before a Fluent shadow action removes detail (1.1s)
+  ✓   80 [chromium] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in light (2.5s)
+  ✓   81 [chromium] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in dark (2.6s)
+  ✓   83 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow (3.6s)
+  ✓   84 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow with all text-spacing overrides (3.4s)
+  ✓   85 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow (3.9s)
+  ✓   86 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides (4.0s)
+  ✓   89 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow (3.4s)
+  ✓   90 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides (3.3s)
+  ✓   87 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow (12.8s)
+  ✓   91 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (3.9s)
+  ✓   88 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides (13.6s)
+  ✓   92 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (4.1s)
+  ✓   93 [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light (4.0s)
+  ✓   96 [chromium] › specs/responsive-accessibility.spec.ts:471:1 › missing-detail recovery consumes only lost detail focus and cancels stale captures (815ms)
+  ✓   94 [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark (3.9s)
+  ✓   97 [chromium] › specs/responsive-accessibility.spec.ts:626:1 › row metrics preserve the compact minimum and report growth with the matching density floor (1.0s)
+  ✓   99 [chromium] › specs/responsive-accessibility.spec.ts:712:3 › review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus (568ms)
+  ✓   95 [chromium] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (3.6s)
+  ✓  100 [chromium] › specs/responsive-accessibility.spec.ts:733:3 › review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring (255ms)
+  ✓   98 [chromium] › specs/responsive-accessibility.spec.ts:658:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes (2.0s)
+  ✓  101 [chromium] › specs/responsive-accessibility.spec.ts:743:3 › review measurement regressions › G03 transparent supported CSS colors are absent focus paint (245ms)
+  ✓  103 [chromium] › specs/responsive-accessibility.spec.ts:759:3 › review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast (212ms)
+  ✓  104 [chromium] › specs/responsive-accessibility.spec.ts:766:3 › review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory (205ms)
+  ✓  102 [chromium] › specs/responsive-accessibility.spec.ts:751:3 › review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry (391ms)
+  ✓  105 [chromium] › specs/responsive-accessibility.spec.ts:773:3 › review measurement regressions › G12 inward outlines contrast with the control paint (155ms)
+  ✓  106 [chromium] › specs/responsive-accessibility.spec.ts:779:3 › review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator (263ms)
+  ✓  107 [chromium] › specs/responsive-accessibility.spec.ts:789:1 › supported clipped paint keeps a focus underline and excludes only fully hidden text (301ms)
+  ✓  108 [chromium] › specs/responsive-accessibility.spec.ts:800:1 › diagnostic screenshots restore scroll without repairing an actually clipped focus ring (502ms)
+  ✓  110 [chromium] › specs/responsive-accessibility.spec.ts:837:1 › R01 rejects an unprevented boundary Tab that application code refocuses (363ms)
+  ✓  111 [chromium] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.01 (246ms)
+  ✓  112 [chromium] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.1 (209ms)
+  ✓  113 [chromium] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 1 (194ms)
+  ✓  114 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG ellipse without a passing rectangle masking it (199ms)
+  ✓  115 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG line without a passing rectangle masking it (209ms)
+  ✓  116 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG polyline without a passing rectangle masking it (208ms)
+  ✓  117 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG use without a passing rectangle masking it (190ms)
+  ✓  118 [chromium] › specs/responsive-accessibility.spec.ts:865:1 › R04 zero-width SVG stroke does not count as meaningful icon paint (246ms)
+  ✓  119 [chromium] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition filter:brightness(0) (248ms)
+  ✓  120 [chromium] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition mix-blend-mode:multiply (239ms)
+  ✓  121 [chromium] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition backdrop-filter:brightness(0) (222ms)
+  ✓  122 [chromium] › specs/responsive-accessibility.spec.ts:881:1 › R06 effective glyph fill determines text contrast (229ms)
+  ✓  123 [chromium] › specs/responsive-accessibility.spec.ts:888:1 › R07 sibling background paint cannot be replaced with ancestor white (241ms)
+  ✓  124 [chromium] › specs/responsive-accessibility.spec.ts:895:1 › R08 invisible ancestor cannot certify focus geometry (236ms)
+  ✓  109 [chromium] › specs/responsive-accessibility.spec.ts:817:1 › real Fluent search and generated editors retain their focus contour with text spacing (2.0s)
+  ✓  125 [chromium] › specs/responsive-accessibility.spec.ts:903:1 › R09 descendant extending over the target ring is an obstruction (263ms)
+  ✓  126 [chromium] › specs/responsive-accessibility.spec.ts:911:1 › R10 generated meaningful text cannot disappear beside passing text (215ms)
+  ✓  127 [chromium] › specs/responsive-accessibility.spec.ts:918:1 › R11 collapsed offset shadow paints no focus pixels (272ms)
+  ✓  129 [chromium] › specs/responsive-accessibility.spec.ts:935:1 › R13 inset pseudo focus border compares against control paint (222ms)
+  ✓  128 [chromium] › specs/responsive-accessibility.spec.ts:927:1 › R12 permanent shadow cannot certify an invisible focus-only layer (268ms)
+  ✓  130 [chromium] › specs/responsive-accessibility.spec.ts:943:1 › R14 placeholder alpha determines effective contrast (280ms)
+  ✓  131 [chromium] › specs/responsive-accessibility.spec.ts:950:1 › reflow rejects unlabelled nested horizontal scrolling and stale or unjustified target exceptions (245ms)
+  ✓  134 [chromium] › specs/responsive-accessibility.spec.ts:1047:1 › forced-color replacement capability is recorded for its engine and run (192ms)
+  ✓  133 [chromium] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (860ms)
+  ✓  136 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line horizontal retains its painted stroke envelope (260ms)
+  ✓  137 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line vertical retains its painted stroke envelope (229ms)
+  ✓  138 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path horizontal retains its painted stroke envelope (273ms)
+  ✓  139 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path vertical retains its painted stroke envelope (251ms)
+  ✓  135 [chromium] › specs/responsive-accessibility.spec.ts:1062:1 › desktop rail flyout controls fit both 72px and 48px rails without horizontal scrolling (1.6s)
+  ✓  132 [chromium] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (2.2s)
+  ✓  140 [chromium] › specs/responsive-accessibility.spec.ts:1095:3 › review actual generated pseudo composition inspects filters (280ms)
+  ✓  141 [chromium] › specs/responsive-accessibility.spec.ts:1095:3 › review actual placeholder pseudo composition inspects filters (288ms)
+  ✓  142 [chromium] › specs/responsive-accessibility.spec.ts:1095:3 › review actual focus pseudo composition inspects filters (331ms)
+  ✓  143 [chromium] › specs/responsive-accessibility.spec.ts:1113:1 › review generated glyphs outside their host require pixel evidence (222ms)
+  ✓  144 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:relative;top:40px (263ms)
+  ✓  145 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:sticky;top:0 (232ms)
+  ✓  146 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence transform:translateY(40px) (250ms)
+  ✓  147 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence static negative margin (228ms)
+  ✓  148 [chromium] › specs/responsive-accessibility.spec.ts:1129:1 › review a sharp shadow concealed by its opaque control is not focus paint (310ms)
+  ✓  150 [chromium] › specs/responsive-accessibility.spec.ts:1149:1 › review margin-shifted pseudo borders use the backdrop outside their host (251ms)
+  ✓  149 [chromium] › specs/responsive-accessibility.spec.ts:1139:1 › review permanent pseudo background cannot certify a same-color focus border (363ms)
+  ✓  152 [chromium] › specs/responsive-accessibility.spec.ts:1165:1 › review generated large text uses the existing 3 to 1 threshold (240ms)
+  ✓  151 [chromium] › specs/responsive-accessibility.spec.ts:1157:1 › review transformed static descendants remain focus obstructions (248ms)
+  ✓  154 [chromium] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects mix-blend-mode:multiply (209ms)
+  ✓  155 [chromium] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (220ms)
+  ✓  156 [chromium] › specs/specimen-accessibility.spec.ts:50:3 › FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations (173ms)
+  ✓  153 [chromium] › specs/responsive-accessibility.spec.ts:1175:1 › review recorded operator focus on SVG survives deferred overlay restoration (819ms)
+  ✓  158 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate (1.9s)
+  ✓  159 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate (1.7s)
+  ✓  157 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate (2.5s)
+  ✓  161 [chromium] › specs/specimen-accessibility.spec.ts:91:3 › FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast (1.2s)
+  ✓  160 [chromium] › specs/specimen-accessibility.spec.ts:66:3 › FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces (1.8s)
+  ✓  163 [chromium] › specs/specimen-accessibility.spec.ts:226:3 › FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names (1.0s)
+  ✓  162 [chromium] › specs/specimen-accessibility.spec.ts:208:5 › FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch (1.9s)
+  ✓  165 [chromium] › specs/specimen-accessibility.spec.ts:276:3 › FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals (1.4s)
+  ✓  166 [chromium] › specs/specimen-accessibility.spec.ts:294:3 › FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion (1.8s)
+  ✓  164 [chromium] › specs/specimen-accessibility.spec.ts:243:3 › FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps (2.6s)
+  ✓  167 [chromium] › specs/specimen-accessibility.spec.ts:403:3 › FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable (1.6s)
+  ✓  168 [chromium] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 1280 CSS pixels (not browser zoom) (1.4s)
+  ✓  169 [chromium] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 640 CSS pixels (not browser zoom) (1.3s)
+  ✓  170 [chromium] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 320 CSS pixels (not browser zoom) (1.3s)
+  ✓  171 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact (1.9s)
+  ✓  172 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable (1.9s)
+  ✓  173 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy (1.8s)
+  ✓  174 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact (1.7s)
+  ✓  175 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable (1.7s)
+(node:99261) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  176 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy (1.7s)
+(node:99911) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  177 [chromium] › specs/specimen-accessibility.spec.ts:498:3 › FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent (2.3s)
+(node:1306) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  179 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (6.6s)
+(node:5855) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  178 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt (9.9s)
+  ✘  180 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (7.8s)
+(node:7114) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  182 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field unavailable: safe feedback, focus, owner, next attempt (6.6s)
+  ✓  181 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field forbidden: safe feedback, focus, owner, next attempt (7.8s)
+  ✓  183 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (7.3s)
+  ✓  184 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (5.4s)
+  ✓  185 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (5.2s)
+  ✓  186 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field transport: safe feedback, focus, owner, next attempt (5.1s)
+  ✓  187 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt (5.0s)
+  ✓  188 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field policy: safe feedback, focus, owner, next attempt (5.4s)
+  ✓  189 [firefox] › specs/accessibility-state-matrix.spec.ts:147:5 › AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results (4.1s)
+  ✓  190 [firefox] › specs/accessibility-state-matrix.spec.ts:171:5 › AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation (4.6s)
+  ✘  192 [firefox] › specs/accessibility-state-matrix.spec.ts:212:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces (2.6s)
+(node:16876) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  193 [firefox] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › home: composed text, targets, current-state and forced-color cues (3.3s)
+  ✓  195 [firefox] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues (3.9s)
+  ✓  194 [firefox] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › navigation-tabs: composed text, targets, current-state and forced-color cues (7.2s)
+  ✘  191 [firefox] › specs/accessibility-state-matrix.spec.ts:192:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (12.9s)
+  ✘  196 [firefox] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (2.0s)
+(node:21394) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21401) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  197 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt (7.1s)
+  ✘  198 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (4.4s)
+(node:23987) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  199 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (4.5s)
+(node:24849) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  202 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (2ms)
+  ✘  200 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt (3.1s)
+  ✘  201 [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt (1.1s)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:131:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:131:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:131:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › specs/accessibility-state-matrix.spec.ts:192:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:199:9
+
+    attachment #1: state-lifecycle-idle-light (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-idle-light-003be96ea33ebb77aa851d797452adf1a5693c30.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-lifecycle-submitting-light (application/json) ─────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-submitting-light-857fd982c09063da3faf30a7cf8496017d3bfb8b.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-lifecycle-acknowledged-light (application/json) ───────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-acknowledged-light-84a2590b5e6b11c32f05a62cfe6e47a05e49daa9.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-lifecycle-syncing-light (application/json) ────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-syncing-light-901ee5b56a315a9543d2c360e30a4af36f02aacd.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-lifecycle-confirmed-light (application/json) ──────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-confirmed-light-229d2b3422c03dc0e72791a723987d9791e56812.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/error-context.md
+
+    attachment #9: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium] › specs/accessibility-state-matrix.spec.ts:212:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:221:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-3d97e--empty-and-failure-surfaces-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-3d97e--empty-and-failure-surfaces-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-3d97e--empty-and-failure-surfaces-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-3d97e--empty-and-failure-surfaces-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-3d97e--empty-and-failure-surfaces-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:237:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-12490-state-and-forced-color-cues-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-12490-state-and-forced-color-cues-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-12490-state-and-forced-color-cues-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-12490-state-and-forced-color-cues-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-12490-state-and-forced-color-cues-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues 
+
+    Error: locator.evaluate: Error: Generated text geometry needs pixel evidence
+        at visit (eval at evaluate (:311:30), <anonymous>:186:254)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:186:254)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:237:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:131:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:131:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:131:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [chromium] › specs/accessibility-state-matrix.spec.ts:192:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:199:9
+
+    attachment #1: state-lifecycle-idle-dark (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-idle-dark-fc51cfa3a417cf99e3f632362b81ec6c3631bc1b.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-lifecycle-submitting-dark (application/json) ──────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-submitting-dark-ce836617ca23f8b00d4f2f59a244b9d5c23a5457.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-lifecycle-acknowledged-dark (application/json) ────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-acknowledged-dark-cc8c6daccd31fee51484162bc0a8b0f308cce310.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-lifecycle-syncing-dark (application/json) ─────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-syncing-dark-70ae7a68f4e0b5176f537cd3a8c73a1f8b00cd29.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-lifecycle-confirmed-dark (application/json) ───────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-confirmed-dark-2c3f6510c56c511a02acf2526954b27fc524d309.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/error-context.md
+
+    attachment #9: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [chromium] › specs/accessibility-state-matrix.spec.ts:212:5 › AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:221:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a997a--empty-and-failure-surfaces-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a997a--empty-and-failure-surfaces-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a997a--empty-and-failure-surfaces-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a997a--empty-and-failure-surfaces-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a997a--empty-and-failure-surfaces-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:237:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-ec449-state-and-forced-color-cues-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-ec449-state-and-forced-color-cues-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-ec449-state-and-forced-color-cues-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-ec449-state-and-forced-color-cues-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-ec449-state-and-forced-color-cues-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  14) [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues 
+
+    Error: locator.evaluate: Error: Generated text geometry needs pixel evidence
+        at visit (eval at evaluate (:311:30), <anonymous>:186:254)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:186:254)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:237:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15) [chromium] › specs/accessibility-state-matrix.spec.ts:300:3 › shell chrome, theme menu and exact desktop navigation rails in light 
+
+    Error: locator.evaluate: Error: Generated text geometry needs pixel evidence
+        at visit (eval at evaluate (:311:30), <anonymous>:186:254)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:186:254)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:303:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  16) [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in light 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:373:5
+
+    attachment #1: state-filter-popover-light (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-filter-popover-light-29f4b6667310f717d89ec4c587f5bd32065d8782.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-view-menu-light (application/json) ────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-view-menu-light-579b5a8c3b558b051b4da91551e771ce45c9c41a.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-tabs-active-light (application/json) ──────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-tabs-active-light-3f7babca7f1e95adc3a74aeed103006306a25c0f.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-palette-default-light (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-default-light-019b4a896f5b4f9d3906dac10cc4306ef872f840.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-palette-selected-light (application/json) ─────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-selected-light-34e8c2c8cff184d19d9311ecd267952979813533.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: state-palette-empty-light (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-empty-light-120eb39550cbdbe6a57d72aa1bfba89b19e5fe50.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/error-context.md
+
+    attachment #10: trace (application/zip) ────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  17) [chromium] › specs/accessibility-state-matrix.spec.ts:384:3 › generated validation, policy, destructive and abandonment states in light 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:392:5
+
+    attachment #1: state-generated-validation-light (application/json) ─────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-generated-validation-light-e85cad707673b63714c168bf400f28bc57f37ab6.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  18) [chromium] › specs/accessibility-state-matrix.spec.ts:300:3 › shell chrome, theme menu and exact desktop navigation rails in dark 
+
+    Error: locator.evaluate: Error: Generated text geometry needs pixel evidence
+        at visit (eval at evaluate (:311:30), <anonymous>:186:254)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:186:254)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:303:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-08167-op-navigation-rails-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-08167-op-navigation-rails-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-08167-op-navigation-rails-in-dark-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-08167-op-navigation-rails-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-08167-op-navigation-rails-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  19) [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in dark 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:268:11)
+        at visit (eval at evaluate (:311:30), <anonymous>:269:80)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:373:5
+
+    attachment #1: state-filter-popover-dark (application/json) ────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-filter-popover-dark-00ba9dd261db22e0a3cfebbf77475ac0d8b54094.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-view-menu-dark (application/json) ─────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-view-menu-dark-468bef65265f003f942977d6a0754513365ecd7f.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-tabs-active-dark (application/json) ───────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-tabs-active-dark-712039dbea00683c79a2c4b06fb717cf53e14e1a.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-palette-default-dark (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-default-dark-c8d35a6168b2e9ed2ba9a9030e0ab6b2a7210a78.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-palette-selected-dark (application/json) ──────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-selected-dark-5f42b2498200692ec18ff372b5431e759c164370.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: state-palette-empty-dark (application/json) ─────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-empty-dark-1d08a4db81f38cc24af8346f84598b8744243e3c.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/error-context.md
+
+    attachment #10: trace (application/zip) ────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  20) [chromium] › specs/accessibility-state-matrix.spec.ts:384:3 › generated validation, policy, destructive and abandonment states in dark 
+
+    Error: locator.evaluate: Error: Overlapping sibling background needs pixel evidence
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at sample (eval at evaluate (:311:30), <anonymous>:121:138)
+        at visit (eval at evaluate (:311:30), <anonymous>:175:13)
+        at visit (eval at evaluate (:311:30), <anonymous>:270:90)
+        at eval (eval at evaluate (:311:30), <anonymous>:272:5)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:392:5
+
+    attachment #1: state-generated-validation-dark (application/json) ──────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/attachments/state-generated-validation-dark-868e744d56d4e3e8f28a05e6a9c6123378fd3953.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  21) [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Overlapping sibling background needs pixel evidence
+    sample@debugger eval code line 311 > eval:121:138
+    visit@debugger eval code line 311 > eval:175:19
+    visit@debugger eval code line 311 > eval:268:16
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:269:85
+    @debugger eval code line 311 > eval:272:10
+    evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at sample@debugger eval code line 311 > eval:121:138
+        at visit@debugger eval code line 311 > eval:175:19
+        at visit@debugger eval code line 311 > eval:268:16
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:269:85
+        at @debugger eval code line 311 > eval:272:10
+        at evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:131:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  22) [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Overlapping sibling background needs pixel evidence
+    sample@debugger eval code line 311 > eval:121:138
+    visit@debugger eval code line 311 > eval:175:19
+    visit@debugger eval code line 311 > eval:268:16
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:269:85
+    @debugger eval code line 311 > eval:272:10
+    evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at sample@debugger eval code line 311 > eval:121:138
+        at visit@debugger eval code line 311 > eval:175:19
+        at visit@debugger eval code line 311 > eval:268:16
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:269:85
+        at @debugger eval code line 311 > eval:272:10
+        at evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:131:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  23) [firefox] › specs/accessibility-state-matrix.spec.ts:192:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues 
+
+    Error: locator.evaluate: Overlapping sibling background needs pixel evidence
+    sample@debugger eval code line 311 > eval:121:138
+    visit@debugger eval code line 311 > eval:175:19
+    visit@debugger eval code line 311 > eval:268:16
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:269:85
+    visit@debugger eval code line 311 > eval:270:95
+    @debugger eval code line 311 > eval:272:10
+    evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at sample@debugger eval code line 311 > eval:121:138
+        at visit@debugger eval code line 311 > eval:175:19
+        at visit@debugger eval code line 311 > eval:268:16
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:269:85
+        at visit@debugger eval code line 311 > eval:270:95
+        at @debugger eval code line 311 > eval:272:10
+        at evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:199:9
+
+    attachment #1: state-lifecycle-idle-light (application/json) ───────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-idle-light-3e22b691a42c082c4f80d134e8bc54ae88217c6d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-lifecycle-submitting-light (application/json) ─────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-submitting-light-be6d6f883168c14034cc9102e7801259baa09c5a.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-lifecycle-acknowledged-light (application/json) ───────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-acknowledged-light-4b72fa0a072022ee46818aeada89f262ab7c8f58.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-lifecycle-syncing-light (application/json) ────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-syncing-light-41e498b1c76257c62177458896f7811e90c37bc0.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: state-lifecycle-confirmed-light (application/json) ──────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-confirmed-light-69f7959531dfe47effd2cd1e7725f1e61ae3d1cb.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/error-context.md
+
+    attachment #9: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  24) [firefox] › specs/accessibility-state-matrix.spec.ts:212:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces 
+
+    Error: locator.evaluate: Overlapping sibling background needs pixel evidence
+    sample@debugger eval code line 311 > eval:121:138
+    visit@debugger eval code line 311 > eval:175:19
+    visit@debugger eval code line 311 > eval:270:95
+    @debugger eval code line 311 > eval:272:10
+    evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at sample@debugger eval code line 311 > eval:121:138
+        at visit@debugger eval code line 311 > eval:175:19
+        at visit@debugger eval code line 311 > eval:270:95
+        at @debugger eval code line 311 > eval:272:10
+        at evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:221:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-3d97e--empty-and-failure-surfaces-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-3d97e--empty-and-failure-surfaces-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-3d97e--empty-and-failure-surfaces-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-3d97e--empty-and-failure-surfaces-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-3d97e--empty-and-failure-surfaces-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  25) [firefox] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues 
+
+    Error: locator.evaluate: Generated text geometry needs pixel evidence
+    visit@debugger eval code line 311 > eval:186:254
+    visit@debugger eval code line 311 > eval:268:16
+    visit@debugger eval code line 311 > eval:269:85
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:268:16
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:269:85
+    visit@debugger eval code line 311 > eval:268:16
+    visit@debugger eval code line 311 > eval:269:85
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:270:95
+    @debugger eval code line 311 > eval:272:10
+    evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at visit@debugger eval code line 311 > eval:186:254
+        at visit@debugger eval code line 311 > eval:268:16
+        at visit@debugger eval code line 311 > eval:269:85
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:268:16
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:269:85
+        at visit@debugger eval code line 311 > eval:268:16
+        at visit@debugger eval code line 311 > eval:269:85
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:270:95
+        at @debugger eval code line 311 > eval:272:10
+        at evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:237:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  26) [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Overlapping sibling background needs pixel evidence
+    sample@debugger eval code line 311 > eval:121:138
+    visit@debugger eval code line 311 > eval:175:19
+    visit@debugger eval code line 311 > eval:268:16
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:269:85
+    @debugger eval code line 311 > eval:272:10
+    evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at sample@debugger eval code line 311 > eval:121:138
+        at visit@debugger eval code line 311 > eval:175:19
+        at visit@debugger eval code line 311 > eval:268:16
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:269:85
+        at @debugger eval code line 311 > eval:272:10
+        at evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:131:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  27) [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt 
+
+    Error: locator.evaluate: Overlapping sibling background needs pixel evidence
+    sample@debugger eval code line 311 > eval:121:138
+    visit@debugger eval code line 311 > eval:175:19
+    visit@debugger eval code line 311 > eval:268:16
+    visit@debugger eval code line 311 > eval:270:95
+    visit@debugger eval code line 311 > eval:269:85
+    @debugger eval code line 311 > eval:272:10
+    evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at sample@debugger eval code line 311 > eval:121:138
+        at visit@debugger eval code line 311 > eval:175:19
+        at visit@debugger eval code line 311 > eval:268:16
+        at visit@debugger eval code line 311 > eval:270:95
+        at visit@debugger eval code line 311 > eval:269:85
+        at @debugger eval code line 311 > eval:272:10
+        at evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:59:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:131:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  28) [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt 
+
+    Test was interrupted.
+
+    Error: locator.evaluate: Test ended.
+
+       at ../helpers/responsive-accessibility.ts:603
+
+      601 | export async function measureSurfaceContrast(root: Locator, kind: ContrastKind = 'text') {
+      602 |   await preparePaintAudit(root);
+    > 603 |   return root.evaluate((scope, sampleKind) => {
+          |               ^
+      604 |     const parent = (node: Element): Element | null => node.assignedSlot ?? node.parentElement ?? (node.getRootNode() instanceof ShadowRoot ? (node.getRootNode() as ShadowRoot).host : null);
+      605 |     const audit = (window as typeof window & { __aePaintAudit: PaintAudit }).__aePaintAudit;
+      606 |     const parse = audit.parse;
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:603:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:805:19)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:80:42)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:131:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-05bf3-ck-focus-owner-next-attempt-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-05bf3-ck-focus-owner-next-attempt-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-05bf3-ck-focus-owner-next-attempt-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-05bf3-ck-focus-owner-next-attempt-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/gap-root-review-fb0c0bb830d5/accessibility-state-matrix-05bf3-ck-focus-owner-next-attempt-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  27 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:192:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:212:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:192:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:212:5 › AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:300:3 › shell chrome, theme menu and exact desktop navigation rails in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:384:3 › generated validation, policy, destructive and abandonment states in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:300:3 › shell chrome, theme menu and exact desktop navigation rails in dark 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:327:3 › active toolbar, tabs, palette and settings states in dark 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:384:3 › generated validation, policy, destructive and abandonment states in dark 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:192:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:212:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:235:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt 
+  3 interrupted
+    [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:112:7 › AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt 
+  329 did not run
+  172 passed (3.2m)
