@@ -1,0 +1,41 @@
+{
+  "sourceIdentitySha256": "d9728b3ffb86041c9e49906a72b374f1c65f478847abc48cf6df6a142ad2677b",
+  "rootCommitUnchanged": true,
+  "sourceFilesVerified": 27,
+  "debugBinariesVerified": 4,
+  "restoreAssetsVerified": 2,
+  "approvedImagesUnchanged": 24,
+  "frozenSpecsUnchanged": [
+    "_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md",
+    "_bmad-output/implementation-artifacts/spec-13-6-complete-automated-accessibility-coverage.md",
+    "_bmad-output/implementation-artifacts/spec-13-6-close-automated-verification-gaps.md"
+  ],
+  "submodulesPreserved": 8,
+  "noIgnoredPacketFiles": true,
+  "documentationLinksValid": true,
+  "whitespaceCommand": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "whitespaceExitCode": 0,
+  "archive": {
+    "archiveSha256": "6c45d46916b37779920630f88b4464258b29920c2335eaf5e472ea96f24c3801",
+    "partsVerified": 11,
+    "uniqueBlobsVerified": 1546,
+    "fileEntriesVerified": 4646,
+    "archiveBytes": 344042602
+  },
+  "png": {
+    "filesInventoried": 440,
+    "uniquePngBytesDecoded": 219,
+    "invalidImages": 0,
+    "validatorPngIntegrityGapStillDeferred": true
+  },
+  "apphostStopped": true,
+  "humanOrOwnerApprovalInferred": false,
+  "dependencyUpgradePerformed": false,
+  "cleanRestoreCompatibilityClaimed": false,
+  "storyStatus": "in-review",
+  "sprintStatus": "in-progress"
+}

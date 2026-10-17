@@ -1,0 +1,124 @@
+{
+  "schema": "story-13-6-resume-source-v1",
+  "rootCommit": "b102b85b148f21fb26d5742e120c344109df7084",
+  "specBaselineCommit": "0129bd39095892283371f97836ade5768fef3809",
+  "branch": "main",
+  "sourceIdentitySha256": "0c0515e506adc241b33fef1acefd7f8b7ee3f3c85d914acd583f2b1f80950971",
+  "identity": {
+    "sourceFiles": {
+      ".gitattributes": "da821385d589dff7561c8b51bbfe2619d8ac126db292f12e70f78ec0cf041449",
+      ".github/workflows/quality.yml": "64170d33e04c3569e5b32c6c576536e709f0d4649f1b51754f8bebd9bbe816f3",
+      ".gitignore": "f187f362ee040945db0ce875540626b509279dd25da27dbd0a2627345a3fc2e4",
+      "samples/Counter/Counter.Specimens/AccessibilityScenarioControls.razor": "ee0ddbaeb3d13e0d06c4baccef70e51b5cd61e20ce82e43ff2c8f4fad65e5449",
+      "samples/Counter/Counter.Web/AccessibilitySpecimenSeams.cs": "7e2120ca14108c1dd21f1dc6e387edb260e8a067786a071a77c00e4f43234c57",
+      "samples/Counter/Counter.Web/AccessibilitySpecimenUserContextAccessor.cs": "607395d2df3a00952528f20e3b0a37c9cbd426e31e7b7ecf7988b46d5e88a911",
+      "samples/Counter/Counter.Web/Program.cs": "5db6b5befac65e14cb07f5aca5db80e146cfa3cd7925229f434f37ae67e99449",
+      "src/Hexalith.FrontComposer.AppHost/Program.cs": "a7857536febb9762bedb0af5e8857bdece2220560c6386630eb559894fea24ec",
+      "src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor": "281a891d89de384c0b0c59f372cf629840b7b62a940c4d1378ddfe86aacf49df",
+      "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js": "f53b341d9073a09805fd5af1411983c5a44f05bf1f98e41774d8a44302054f47",
+      "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs": "5630d4b232587253203623f0364ca1ed8388a695599a213f2a44e0dc035f96ab",
+      "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs": "20b42047b14c61d0d894a2fa38ba5274ee3502e1ffde80b6c8247401989009ce",
+      "tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs": "da3cc4d240911416662afd67ab76bbee3e88732943535d609030884dc421981e",
+      "tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs": "ca9529810a5bf70ba3258f1999631ce1032f0ceba0bdc26c0d4e7a3f99c31ad1",
+      "tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs": "75975a802c1b8c34dfa003b81ad4cb65603c46b7c0ea3a86a8ac7b8d0d9f6196",
+      "tests/Hexalith.FrontComposer.Shell.Tests/Samples/AccessibilitySpecimenGateTests.cs": "750a28b497b6784f6e0e520a431a3ba26f0fc506e82a384f98a51615891e4859",
+      "tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs": "fff0f5dec08202470fcf1545767edc4269980ad094b88c1ac2dd33bc75ec0542",
+      "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt": "6c9686134b8f5a4e08307994180a2b9c137bbbdd2b620a58bfedc456265d05db",
+      "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt": "55d6ee48a7a84e9bf370ea129f63c4411a9db7c6a80de6561dcbe4e1293e5370",
+      "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs": "d63e464bb8e66b4b2387c94122bc77ba3441a9976268b504909347a6dc3f58e8",
+      "tests/e2e/helpers/responsive-accessibility.ts": "9ef31ce646109ac77f3a2e5a912cbcf4e0749e3db60976fed5b537cce5709832",
+      "tests/e2e/playwright.config.ts": "09f72318489cc63fc9c50f2c5bec76f054f051e2c3f1c49af9a76882eb4dea45",
+      "tests/e2e/scripts/a11y-state-evidence.mjs": "60c16b4f5b3ab4362e3006d7656694e334a4d339a8135a74af6ba2d20737120e",
+      "tests/e2e/scripts/a11y-state-evidence.test.mjs": "62881e7ffe444419fb0e049ba2b2f4b95a5b501d32f627e2a668400530de36f2",
+      "tests/e2e/scripts/validate-a11y-artifacts.mjs": "67e2ebb78d5485e4807fd7c165d49013b0da0b06c2a558e994e0955fc650a194",
+      "tests/e2e/specs/accessibility-state-matrix.spec.ts": "4a4d1bcf42d5df0d833c23350619150f86067bdaed11f1f92836892115c6ced9",
+      "tests/e2e/specs/responsive-accessibility.spec.ts": "e4c3879f71102d66060faf81935345b541b99569e150806704dc1d02a3d1b604"
+    },
+    "submodules": [
+      {
+        "path": "references/Hexalith.EventStore",
+        "head": "77d9af18a54d92506e310fe5a45021a395e66f60",
+        "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": ""
+      },
+      {
+        "path": "references/Hexalith.Tenants",
+        "head": "0e1fe111a5b4cce684455948b4fd12960589ef55",
+        "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": ""
+      },
+      {
+        "path": "references/Hexalith.Commons",
+        "head": "9e874b1a3c6e7b6ff07b6f40b81d36e4e1403798",
+        "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": ""
+      },
+      {
+        "path": "references/Hexalith.Builds",
+        "head": "4f53d9f37c5b86cfd43fbcc8fa5dd4df19b84c77",
+        "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": ""
+      },
+      {
+        "path": "references/Hexalith.PolymorphicSerializations",
+        "head": "98de6e013840ece9f0fa7c68ab7dcdf2bba3b375",
+        "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": ""
+      },
+      {
+        "path": "references/Hexalith.AI.Tools",
+        "head": "3f194e17174994d308ec84af9ee2b5aa68674d0d",
+        "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": ""
+      },
+      {
+        "path": "references/Hexalith.Memories",
+        "head": "f6b60d5a2e9b81d84fddad789c7d9bed40d3a533",
+        "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": ""
+      },
+      {
+        "path": "references/Hexalith.Parties",
+        "head": "f5f2f2122847a603883b51acc95844ddb19a1565",
+        "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": ""
+      }
+    ],
+    "approvedImages": {
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-chromium-linux.png": "5e34d851acc153780abc1323b82e7d64d32c95cbcecad68ef342ba1669b3c207",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-chromium-win32.png": "a91b933a9767525dcc051ec86755c94af68ee9a8a2083bedcdad9f5b366c68fb",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-firefox-linux.png": "46b033d271a15d18e8015f678be34e6bfd64cc1b50a4f88cbddf9b1f35368b7d",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-webkit-linux.png": "b9ee6b84800fd4c9b72146145c8fa4801e9f52a210f6b2884e66b85457157452",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-chromium-linux.png": "4152852ef68b45db60be3d318dfad8fdf7153f12c948c6c6db4fd3110347b3ec",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-chromium-win32.png": "ead7d70641eabecd0ec27d5174f9199ee8e6829152c4911c2d9bc6f9302e7fc8",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-firefox-linux.png": "81cf57a0e4927497d9610757b4dc247b02d558b680a5a77198c19adc7640ac92",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-webkit-linux.png": "0a26fdfb2f7b540b9367f9ea40b8128a271e7694b218e002c503e25dc9cb53c3",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-chromium-linux.png": "27728ede65f0e03850f12f2ab1b0c0b90d04ba098af640137a0930ea31780f44",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-chromium-win32.png": "aabd1c01e560331ea05261e6fc47a4ca8aa0171385611e3441b6be1404e05cea",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-firefox-linux.png": "426a564d0d46cc0d9ba2ed75499890d0077cb64e6303c5cd2981d46b4dbc0076",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-webkit-linux.png": "bc8a4007ce5531f312bd0ed2c140825d12ba5f02417c3a3deda600d522fa98eb",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-chromium-linux.png": "c5ccc4239f021d7d3de8bf516ca0f33d83fb8cb8ca3260ade37b2eabe876d97b",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-chromium-win32.png": "3d62d4d458f771f8908485542bcd558e91bf5e2dd7779512407e6abcb52fc285",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-firefox-linux.png": "e12a548edfd20bf9d609a4dde32e8ded4a13bf949e2619db28e89f86466bd0d8",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-webkit-linux.png": "ff35f494d0b8d214e0fb04f27156d1e1c1c8722d932b746040c484d8228c89f2",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-chromium-linux.png": "36782f3bd33b3423e7f902f6c9b51f47dee19375de040d81a45971faff4a42d4",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-chromium-win32.png": "35996faa0373dcd2ec5732e091ab933fae91f53f5ab8029dc8a7dfa9b1f2e550",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-firefox-linux.png": "43c02191d40c0e79069712dc23ab5a3fcf5b7c043bec8d288ffd046583008c72",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-webkit-linux.png": "23930aa317142ff85f5340062c513f39baae2d08967fe1ad5187c47c21008e75",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-chromium-linux.png": "ea632436dad10daa54cf5d90745fefa911132d477d19bee3c5eb6c298fb0a693",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-chromium-win32.png": "3e0037c7ec578506a497244eb33287b29735e89e981f29c0de9b8b43600a9806",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-firefox-linux.png": "7aab51a089e66388329399ae9d19f3f7d0be69299fc97c1bb56b0816efd54b23",
+      "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-webkit-linux.png": "1d39fb0cf432a43742fa1b78acf614fe09081fcdca1b5cd695d19c287b1917e8"
+    },
+    "frozenIntentSha256": "79336efd62c76080bf23e232100c49863b670eb15ebeac0f54c8d13ffef4088d"
+  },
+  "changedFromPreviousSourceFiles": [
+    "tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs",
+    "tests/e2e/helpers/responsive-accessibility.ts",
+    "tests/e2e/specs/responsive-accessibility.spec.ts"
+  ],
+  "approvedImageBytesUnchanged": true,
+  "note": "Current identity replaces the historical packet for this continuation. It includes current root-declared submodule heads; no prior whole-candidate pass is reused.",
+  "attempt": "story-13-6-resume-final-20261017",
+  "status": "interrupted after four canonical surface failures exposed a Fluent-owned label/caret false rejection; not completion evidence"
+}

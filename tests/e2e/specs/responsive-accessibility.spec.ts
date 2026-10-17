@@ -1270,3 +1270,107 @@ test('review opaque native top-layer surfaces shield text from page backgrounds 
   await page.locator('dialog').evaluate(dialog => { const layer = document.createElement('div'); layer.style.cssText = 'position:absolute;inset:0;background:black'; dialog.prepend(layer); });
   await expect(measureSurfaceContrast(page.locator('p'))).rejects.toThrow(/Overlapping sibling background/);
 });
+
+test('resume review offset opaque shadow cannot hide changed focus paint', async ({ page }) => {
+  await page.setContent('<style>body{background:white}button{margin:40px;width:100px;height:40px;background:white;outline:none;border:0;border-radius:0;box-shadow:1px 0 0 10px white}button:focus{box-shadow:1px 0 0 10px white,0 0 0 2px black}</style><button>Action</button>');
+  await page.locator('button').focus();
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('focused target has no visible focus indicator');
+  await expect(expectSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Nonempty/);
+  await page.addStyleTag({ content: 'button:focus{box-shadow:1px 0 0 10px white,0 0 0 14px black}' });
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+});
+
+test('resume review ordinary flow descendant can obscure the target ring', async ({ page }) => {
+  await page.setContent('<style>a{display:block;margin:40px;width:100px;height:40px;outline:none}a:focus{outline:2px solid black}span{display:block;width:140px;height:80px;margin:-50px 0 0 -20px;background:white}</style><a href="#">Action<span></span></a>');
+  await page.locator('a').focus();
+  expect((await focusGeometry(page.locator('a'))).failures).toContain('app content obscures target or focus ring');
+  await page.locator('span').evaluate(node => { node.style.cssText = 'width:10px;height:10px;margin:0'; });
+  expect((await focusGeometry(page.locator('a'))).failures).toEqual([]);
+});
+
+test('resume review fully clipped pseudo borders supply no contrast evidence', async ({ page }) => {
+  await page.setContent('<style>button{position:relative;margin:40px;width:100px;height:40px;background:white;outline:none;border:0}button::after{content:"";position:absolute;inset:0;border:2px solid black;clip-path:inset(50%)}</style><button>Action</button>');
+  for (const kind of ['border', 'cue'] as const) await expect(expectSurfaceContrast(page.locator('button'), kind)).rejects.toThrow(/Nonempty|Clipped pseudo/);
+  await page.addStyleTag({ content: 'button::after{clip-path:none}' });
+  for (const kind of ['border', 'cue'] as const) await expectSurfaceContrast(page.locator('button'), kind);
+});
+
+test('resume review overflowing generated text cannot borrow its host background', async ({ page }) => {
+  await page.setContent('<style>body{background:black}div{background:white;color:black;width:50px;white-space:nowrap}div::after{content:"Long generated label that overflows"}</style><div></div>');
+  await expect(measureSurfaceContrast(page.locator('div'))).rejects.toThrow(/Generated text geometry/);
+  await page.addStyleTag({ content: 'div{width:500px}' });
+  await expectSurfaceContrast(page.locator('div'));
+});
+
+test('resume review descendant background paint cannot cover sampled text', async ({ page }) => {
+  await page.setContent('<style>p{position:relative;background:white;color:black}span{position:absolute;inset:0;background:black;z-index:1}</style><p>Visible label<span></span></p>');
+  await expect(measureSurfaceContrast(page.locator('p'))).rejects.toThrow(/Overlapping sibling background/);
+  await page.locator('span').evaluate(node => node.remove());
+  await expectSurfaceContrast(page.locator('p'));
+});
+
+for (const slotted of [false, true]) test(`resume review cross-root background paint is checked for ${slotted ? 'slotted' : 'shadow'} text`, async ({ page }) => {
+  await page.setContent('<div id="host"></div>');
+  await page.locator('#host').evaluate((host, slotted) => {
+    const root = host.attachShadow({ mode: 'open' });
+    if (slotted) {
+      host.innerHTML = '<p slot="label" style="background:white;color:black;position:relative">Visible label</p>';
+      root.innerHTML = '<slot name="label"></slot><div id="cover" style="position:fixed;inset:0;background:black;z-index:10"></div>';
+    } else {
+      root.innerHTML = '<p style="background:white;color:black">Visible label</p>';
+      const cover = document.createElement('div'); cover.id = 'cover'; cover.style.cssText = 'position:fixed;inset:0;background:black;z-index:10'; document.body.append(cover);
+    }
+  }, slotted);
+  await expect(measureSurfaceContrast(page.locator('p'))).rejects.toThrow(/Overlapping sibling background/);
+  await page.locator('#cover').evaluate(node => node.remove());
+  await expectSurfaceContrast(page.locator('p'));
+});
+
+test('resume review text stroke requires actual glyph paint evidence', async ({ page }) => {
+  await page.setContent('<p style="background:white;color:black;-webkit-text-stroke:10px white">Label</p>');
+  await expect(measureSurfaceContrast(page.locator('p'))).rejects.toThrow(/Text stroke/);
+  await page.locator('p').evaluate(node => node.style.setProperty('-webkit-text-stroke-width', '0px'));
+  await expectSurfaceContrast(page.locator('p'));
+});
+
+test('resume review degenerate SVG fill supplies no painted icon', async ({ page }) => {
+  await page.setContent('<svg width="100" height="100" style="background:white"><path d="M10 10L80 80" fill="black"/></svg>');
+  await expect(expectSurfaceContrast(page.locator('svg'), 'icon')).rejects.toThrow(/Nonempty/);
+  await page.locator('path').evaluate(node => node.setAttribute('d', 'M10 10L80 80L10 80Z'));
+  await expectSurfaceContrast(page.locator('svg'), 'icon');
+});
+
+test('resume review unpainted SVG dash patterns cannot certify an icon', async ({ page }) => {
+  await page.setContent('<svg width="100" height="40" style="background:white"><line x1="10" y1="20" x2="80" y2="20" stroke="black" stroke-width="3" stroke-dasharray="0 1000"/></svg>');
+  await expect(measureSurfaceContrast(page.locator('svg'), 'icon')).rejects.toThrow(/SVG dashed stroke/);
+  await page.locator('line').evaluate(node => node.setAttribute('stroke-dasharray', 'none'));
+  await expectSurfaceContrast(page.locator('svg'), 'icon');
+});
+
+test('resume review transformed static containing block owns pseudo border adjacency', async ({ page }) => {
+  await page.setContent('<style>body{background:white}button{margin:40px;width:100px;height:40px;position:static;transform:translate(0px);background:black;outline:none;border:0}button:focus::after{content:"";position:absolute;inset:0;border:2px solid black}</style><button>Action</button>');
+  await page.locator('button').focus();
+  await expect(expectSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/contrast failures/);
+  await page.addStyleTag({ content: 'button:focus::after{border-color:white}' });
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+});
+
+
+test('resume review scrollport clips its own ordinary flow content before obstruction checks', async ({ page }) => {
+  await page.setContent('<style>div{margin:40px;width:100px;height:40px;overflow:auto;outline:none}div:focus{outline:2px solid black}span{display:block;width:200px;height:100px;background:white}</style><div tabindex="0"><span>Scrollable content</span></div>');
+  await page.locator('div').focus();
+  expect((await focusGeometry(page.locator('div'))).failures).toEqual([]);
+  await page.locator('div').evaluate(node => node.style.overflow = 'visible');
+  expect((await focusGeometry(page.locator('div'))).failures).toContain('app content obscures target or focus ring');
+});
+
+
+test('resume review native slots own plain labels but never hide opaque projected obstructions', async ({ page }) => {
+  await page.setContent('<style>fluent-button{display:block;width:100px;height:40px;margin:40px;outline:none}fluent-button:focus{outline:2px solid black}span{display:block;width:140px;height:80px;margin:-20px 0 0 -20px;background:white}</style><fluent-button tabindex="0">Plain label</fluent-button>');
+  await page.locator('fluent-button').evaluate(element => { element.attachShadow({ mode: 'open' }).innerHTML = '<slot></slot>'; });
+  await page.locator('fluent-button').focus();
+  expect((await focusGeometry(page.locator('fluent-button'))).failures).toEqual([]);
+  await page.locator('fluent-button').evaluate(element => { element.innerHTML = '<span>Opaque obstruction</span>'; });
+  expect((await focusGeometry(page.locator('fluent-button'))).failures).toContain('app content obscures target or focus ring');
+});

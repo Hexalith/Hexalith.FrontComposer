@@ -1,10 +1,10 @@
 # Story 13.6 accessibility result and human checklist
 
-Updated 2026-10-16. **Readiness remains open.** Final parent verification is **529 passed, 12 failed, 2 skipped / 543**. The configured Debug Shell gate passes **3693/3693**. R01–R15, localized warning/scope/retry gaps and all 19 review patch groups have current automated evidence. The 12 unchanged Firefox/WebKit visual baseline cases, Windows execution, actual WebKit forced-palette coverage, manual observations and owner/live-backend acceptance remain open.
+Updated 2026-10-17. **Readiness remains open.** Current complete browser verification: **567 passed, 12 failed, 1 flaky, 2 skipped / 582**. The configured direct Debug Shell lane is **3692 passed / 3 failed / 3695**. Thirteen new measurement regressions per engine and English/French warning payload coverage are implemented. All current nonvisual browser cases pass on their final attempt; one Firefox case required a retry. The twelve unchanged visual comparisons, dependency-policy mismatches, observed timing/focus failures and manual/platform/owner gates remain explicit.
 
-Current source: **`sha256:8a2058c7769a7761d377906fb32f0990c962bd85e2bfa20125e3e6573d5cdd69`**, based on `0129bd39095892283371f97836ade5768fef3809` on `main`. [Final source manifest](evidence/story-13-6/2026-10-16-gap-closure/root-review/verified/source.json), [parent review and verification](evidence/story-13-6/2026-10-16-gap-closure/root-review/verified/report.md), [browser outcomes](evidence/story-13-6/2026-10-16-gap-closure/root-review/verified/browser-verification.json), [state ledger](evidence/story-13-6/2026-10-16-gap-closure/root-review/verified/state-ledger.json), [artifact gates](evidence/story-13-6/2026-10-16-gap-closure/root-review/verified/artifact-validation.json) and [parent audit](evidence/story-13-6/2026-10-16-gap-closure/root-review/verified/parent-audit.json) bind results to this candidate. All 24 image baselines and frozen intent remain unchanged. [Initial implementation evidence](evidence/story-13-6/2026-10-16-gap-closure/report.md) and [incoming result](evidence/story-13-6/2026-10-16-gap-closure/incoming-accessibility-result.md) remain historical evidence.
+Current source: **`sha256:d9728b3ffb86041c9e49906a72b374f1c65f478847abc48cf6df6a142ad2677b`**, root commit `8a2164e64566c9eb89c633652b34e1a12d84f446` on `main`. [Current source manifest](evidence/story-13-6/2026-10-16-gap-closure/resume-2026-10-17/source.json), [current verification and review dispositions](evidence/story-13-6/2026-10-16-gap-closure/resume-2026-10-17/report.md), [browser outcomes](evidence/story-13-6/2026-10-16-gap-closure/resume-2026-10-17/browser-outcomes.json), [state and artifact validation](evidence/story-13-6/2026-10-16-gap-closure/resume-2026-10-17/state-validation.json) and [final audit](evidence/story-13-6/2026-10-16-gap-closure/resume-2026-10-17/audit.json) bind this continuation. All 24 approved image bytes and frozen intent remain unchanged. The [preceding 2026-10-16 packet](evidence/story-13-6/2026-10-16-gap-closure/root-review/verified/report.md) is historical; its 3693/3693 Shell pass and whole-candidate identity are not current evidence.
 
-All nonvisual browser cases pass on their final attempt. No tests required a successful retry. Chromium passes; Firefox/WebKit retain six visual failures and one existing skip each. Every engine/run artifact gate was attempted with unchanged bounds, with original failed diagnostics retained losslessly. Unsupported paint fails closed; media-only records do not establish actual forced-palette coverage. Build review and automated patch checks are recorded; readiness stays open. No staging, commit, push, dependency update, image regeneration or human approval occurred.
+**Dependency limit:** Debug checks used existing Fluent 5.0.0 restore assets. The catalog now requests 5.0.1 and its Localization pin also differs from the policy expectation. No clean-restore compatibility or dependency upgrade is claimed. Failed and interrupted browser attempts are retained separately; passing diagnostics do not replace failed complete gates. Missing human evidence prevents story completion.
 
 ## Human evidence checklist — leave each box open until observed
 
@@ -58,15 +58,15 @@ All gate rows above share task/story `13.6`, release branch `main`, and the immu
 
 ## Remaining acceptance gates
 
-All manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, tablet/phone, heard speech and reviewer observations were not performed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and separate live EventStore fresh-row acceptance remain unresolved. The configured Shell gate now passes; the twelve visual failures, Windows execution, WebKit actual forced-palette coverage and manual/owner gates remain open. The Settings return, R01–R15 and all 19 review patch groups have current passing nonvisual regressions; parent Build review is performed. A passing fixture does not close an uncovered platform or surface cell.
+All manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, tablet/phone, heard speech and reviewer observations were not performed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and separate live EventStore fresh-row acceptance remain unresolved. The configured Shell gate fails at 3692 passed / 3 failed; visual comparisons, Windows execution, WebKit actual forced-palette coverage and manual/owner gates remain open. The earlier Settings/cancellation failures are retained separately from diagnostic passes. The Settings return, R01–R15 and all 19 review patch groups have current passing nonvisual regressions; parent Build review is performed. A passing fixture does not close an uncovered platform or surface cell.
 
 ```yaml
 story: 13.6
 final_classification: open
-configured_shell: passed
+configured_shell: failed; 3692 passed / 3 failed
 visual_comparisons: failed; 12
-additional_browser_focus: passed; 0 failures
-open_evidence_hardening_groups: 0 implementation gaps; automated parent review performed
+additional_browser_focus: current complete run has 0 nonvisual failures; earlier failures retained
+open_evidence_hardening_groups: H01-H11 patched; automated review performed; effective AppHost configuration harness deferred
 webkit_actual_forced_palette_cells: uncovered; 116
 windows_execution: not performed
 manual_at: not performed

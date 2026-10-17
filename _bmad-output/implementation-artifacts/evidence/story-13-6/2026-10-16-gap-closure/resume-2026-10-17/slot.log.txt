@@ -1,0 +1,35 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --project=webkit --grep active toolbar, tabs, palette and settings|generated validation, policy|filter-hidden detail|palette and settings retain reflow|resume review --workers=3
+
+
+Running 20 tests using 3 workers
+
+(node:47067) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:47061) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:47059) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 [webkit] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in light (10.4s)
+  ✓   1 [webkit] › specs/accessibility-state-matrix.spec.ts:382:3 › active toolbar, tabs, palette and settings states in dark (10.5s)
+  ✓   5 [webkit] › specs/accessibility-state-matrix.spec.ts:518:3 › real generated filter-hidden detail stays distinct from missing-item results in light (3.6s)
+  ✓   2 [webkit] › specs/accessibility-state-matrix.spec.ts:444:3 › generated validation, policy, destructive and abandonment states in light (15.0s)
+  ✓   6 [webkit] › specs/accessibility-state-matrix.spec.ts:518:3 › real generated filter-hidden detail stays distinct from missing-item results in dark (3.8s)
+  ✓   8 [webkit] › specs/responsive-accessibility.spec.ts:1274:1 › resume review offset opaque shadow cannot hide changed focus paint (537ms)
+  ✓   9 [webkit] › specs/responsive-accessibility.spec.ts:1284:1 › resume review ordinary flow descendant can obscure the target ring (463ms)
+  ✓  10 [webkit] › specs/responsive-accessibility.spec.ts:1292:1 › resume review fully clipped pseudo borders supply no contrast evidence (507ms)
+  ✓   7 [webkit] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (4.7s)
+  ✓  11 [webkit] › specs/responsive-accessibility.spec.ts:1299:1 › resume review overflowing generated text cannot borrow its host background (438ms)
+  ✓  12 [webkit] › specs/responsive-accessibility.spec.ts:1306:1 › resume review descendant background paint cannot cover sampled text (449ms)
+  ✓  13 [webkit] › specs/responsive-accessibility.spec.ts:1313:38 › resume review cross-root background paint is checked for shadow text (456ms)
+  ✓  14 [webkit] › specs/responsive-accessibility.spec.ts:1313:38 › resume review cross-root background paint is checked for slotted text (447ms)
+  ✓  15 [webkit] › specs/responsive-accessibility.spec.ts:1330:1 › resume review text stroke requires actual glyph paint evidence (412ms)
+  ✓  16 [webkit] › specs/responsive-accessibility.spec.ts:1337:1 › resume review degenerate SVG fill supplies no painted icon (472ms)
+  ✓  17 [webkit] › specs/responsive-accessibility.spec.ts:1344:1 › resume review unpainted SVG dash patterns cannot certify an icon (441ms)
+  ✓  18 [webkit] › specs/responsive-accessibility.spec.ts:1351:1 › resume review transformed static containing block owns pseudo border adjacency (431ms)
+  ✓  19 [webkit] › specs/responsive-accessibility.spec.ts:1360:1 › resume review scrollport clips its own ordinary flow content before obstruction checks (483ms)
+  ✓  20 [webkit] › specs/responsive-accessibility.spec.ts:1369:1 › resume review native slots own plain labels but never hide opaque projected obstructions (531ms)
+  ✓   4 [webkit] › specs/accessibility-state-matrix.spec.ts:444:3 › generated validation, policy, destructive and abandonment states in dark (14.7s)
+
+  20 passed (26.1s)

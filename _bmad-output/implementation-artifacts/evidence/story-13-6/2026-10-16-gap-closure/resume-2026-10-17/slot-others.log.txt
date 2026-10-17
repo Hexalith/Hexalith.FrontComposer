@@ -1,0 +1,47 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/responsive-accessibility.spec.ts --project=chromium --project=firefox --grep resume review --workers=3
+
+
+Running 26 tests using 3 workers
+
+(node:65167) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:65163) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:65173) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › specs/responsive-accessibility.spec.ts:1292:1 › resume review fully clipped pseudo borders supply no contrast evidence (285ms)
+  ✓   3 [chromium] › specs/responsive-accessibility.spec.ts:1284:1 › resume review ordinary flow descendant can obscure the target ring (288ms)
+  ✓   1 [chromium] › specs/responsive-accessibility.spec.ts:1274:1 › resume review offset opaque shadow cannot hide changed focus paint (345ms)
+  ✓   5 [chromium] › specs/responsive-accessibility.spec.ts:1306:1 › resume review descendant background paint cannot cover sampled text (178ms)
+  ✓   4 [chromium] › specs/responsive-accessibility.spec.ts:1299:1 › resume review overflowing generated text cannot borrow its host background (209ms)
+  ✓   6 [chromium] › specs/responsive-accessibility.spec.ts:1313:38 › resume review cross-root background paint is checked for shadow text (238ms)
+  ✓   7 [chromium] › specs/responsive-accessibility.spec.ts:1313:38 › resume review cross-root background paint is checked for slotted text (196ms)
+  ✓   8 [chromium] › specs/responsive-accessibility.spec.ts:1330:1 › resume review text stroke requires actual glyph paint evidence (194ms)
+  ✓   9 [chromium] › specs/responsive-accessibility.spec.ts:1337:1 › resume review degenerate SVG fill supplies no painted icon (180ms)
+  ✓  10 [chromium] › specs/responsive-accessibility.spec.ts:1344:1 › resume review unpainted SVG dash patterns cannot certify an icon (195ms)
+  ✓  11 [chromium] › specs/responsive-accessibility.spec.ts:1351:1 › resume review transformed static containing block owns pseudo border adjacency (229ms)
+  ✓  12 [chromium] › specs/responsive-accessibility.spec.ts:1360:1 › resume review scrollport clips its own ordinary flow content before obstruction checks (226ms)
+  ✓  13 [chromium] › specs/responsive-accessibility.spec.ts:1369:1 › resume review native slots own plain labels but never hide opaque projected obstructions (238ms)
+(node:66117) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66156) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66342) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  14 [firefox] › specs/responsive-accessibility.spec.ts:1274:1 › resume review offset opaque shadow cannot hide changed focus paint (1.4s)
+  ✓  16 [firefox] › specs/responsive-accessibility.spec.ts:1292:1 › resume review fully clipped pseudo borders supply no contrast evidence (1.4s)
+  ✓  17 [firefox] › specs/responsive-accessibility.spec.ts:1299:1 › resume review overflowing generated text cannot borrow its host background (399ms)
+  ✓  19 [firefox] › specs/responsive-accessibility.spec.ts:1313:38 › resume review cross-root background paint is checked for shadow text (388ms)
+  ✓  15 [firefox] › specs/responsive-accessibility.spec.ts:1284:1 › resume review ordinary flow descendant can obscure the target ring (1.5s)
+  ✓  18 [firefox] › specs/responsive-accessibility.spec.ts:1306:1 › resume review descendant background paint cannot cover sampled text (447ms)
+  ✓  22 [firefox] › specs/responsive-accessibility.spec.ts:1337:1 › resume review degenerate SVG fill supplies no painted icon (369ms)
+  ✓  20 [firefox] › specs/responsive-accessibility.spec.ts:1313:38 › resume review cross-root background paint is checked for slotted text (399ms)
+  ✓  21 [firefox] › specs/responsive-accessibility.spec.ts:1330:1 › resume review text stroke requires actual glyph paint evidence (409ms)
+  ✓  23 [firefox] › specs/responsive-accessibility.spec.ts:1344:1 › resume review unpainted SVG dash patterns cannot certify an icon (379ms)
+  ✓  25 [firefox] › specs/responsive-accessibility.spec.ts:1360:1 › resume review scrollport clips its own ordinary flow content before obstruction checks (370ms)
+  ✓  24 [firefox] › specs/responsive-accessibility.spec.ts:1351:1 › resume review transformed static containing block owns pseudo border adjacency (391ms)
+  ✓  26 [firefox] › specs/responsive-accessibility.spec.ts:1369:1 › resume review native slots own plain labels but never hide opaque projected obstructions (378ms)
+
+  26 passed (5.9s)

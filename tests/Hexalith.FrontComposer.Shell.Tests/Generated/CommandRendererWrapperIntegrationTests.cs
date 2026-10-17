@@ -39,16 +39,18 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// </summary>
 public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTestBase {
     [Theory]
-    [InlineData("en", "Please review the warning and try again.", "Retry after 17 seconds.")]
-    [InlineData("fr", "Veuillez lire l’avertissement et réessayer.", "Réessayez dans 17 secondes.")]
-    public async Task OrdinaryBlankWarningUsesSafeLocalizedFallbackAndRetryHint(string culture, string fallback, string retry)
+    [InlineData("en", false, "Please review the warning and try again.", "Retry after 17 seconds.")]
+    [InlineData("en", true, "Please review the warning and try again.", "Retry after 17 seconds.")]
+    [InlineData("fr", false, "Veuillez lire l’avertissement et réessayer.", "Réessayez dans 17 secondes.")]
+    [InlineData("fr", true, "Veuillez lire l’avertissement et réessayer.", "Réessayez dans 17 secondes.")]
+    public async Task OrdinaryBlankWarningUsesSafeLocalizedFallbackAndRetryHint(string culture, bool entityWarning, string fallback, string retry)
     {
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
         ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
         _ = service.DispatchAsync(Arg.Any<TwoFieldCompactCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<CommandResult>(new CommandWarningException(CommandWarningKind.RateLimited,
-                ProblemDetailsPayload.Empty with { Title = "  ", Detail = "  ", EntityLabel = "  " }, TimeSpan.FromSeconds(17))));
+                ProblemDetailsPayload.Empty with { Title = entityWarning ? null : "  ", Detail = "  ", EntityLabel = entityWarning ? "Affected item" : "  " }, TimeSpan.FromSeconds(17))));
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
         await InitializeStoreAsync();
         IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(p => p
@@ -58,7 +60,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             var warning = cut.FindComponent<FluentMessageBar>();
             warning.Instance.Title.ShouldBe(fallback);
             var body = Render<FluentMessageBar>(p => p.Add(c => c.ChildContent, warning.Instance.ChildContent));
-            body.Markup.ShouldContain(fallback);
+            body.Markup.ShouldContain(entityWarning ? "Affected item" : fallback);
             body.Markup.ShouldContain(retry);
             cut.Find("[name='Name']").GetAttribute("value").ShouldBe("Preserved operator value");
         });

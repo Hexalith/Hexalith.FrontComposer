@@ -1,0 +1,214 @@
+{
+  "rootCommit": "b102b85b148f21fb26d5742e120c344109df7084",
+  "checks": [
+    {
+      "lane": "build",
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-m:1",
+        "--no-restore"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {},
+      "exitCode": 0,
+      "log": "build.log.txt",
+      "logSha256": "766cada8354d225bf5f754777afdebd8b084c5475d57bf5388166d8c0f6e701d"
+    },
+    {
+      "lane": "renderer",
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-class",
+        "*CommandRendererWrapperIntegrationTests",
+        "-xml",
+        "/tmp/story-13-6-resume-wrapper.xml"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {
+        "DiffEngine_Disabled": "true"
+      },
+      "exitCode": 0,
+      "log": "wrapper.log.txt",
+      "logSha256": "dcd09d84d05df4f7f40f9f9a56511da8065981c29a1b40a5e9a53ac2f43cb9ce"
+    },
+    {
+      "lane": "shell-project-interrupted",
+      "argv": [
+        "dotnet",
+        "test",
+        "--project",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "--no-build",
+        "--filter-not-trait",
+        "Category=GovernanceBuild",
+        "--filter-not-trait",
+        "Category=Performance",
+        "--filter-not-trait",
+        "Category=e2e-palette",
+        "--filter-not-trait",
+        "Category=NightlyProperty",
+        "--filter-not-trait",
+        "Category=Quarantined"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {
+        "DiffEngine_Disabled": "true"
+      },
+      "exitCode": 130,
+      "log": "shell-project-interrupted.log.txt",
+      "logSha256": "2adf004e9330fa1c94874b888d7f29e82ba23822e7bc3568134f4af9302b4ea4"
+    },
+    {
+      "lane": "shell-direct",
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-trait-",
+        "Category=Performance",
+        "-trait-",
+        "Category=e2e-palette",
+        "-trait-",
+        "Category=NightlyProperty",
+        "-trait-",
+        "Category=Quarantined",
+        "-longRunning",
+        "30",
+        "-result-xml",
+        "/tmp/story-13-6-resume-shell-direct.xml"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {
+        "DiffEngine_Disabled": "true"
+      },
+      "exitCode": 1,
+      "log": "shell.log.txt",
+      "logSha256": "b977613a5697303225ed3e54791b43e65f616e3394906d3dc6f112a99bbd7fda"
+    },
+    {
+      "lane": "emitter",
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+        "-class",
+        "*CommandFormEmitterTests",
+        "-result-xml",
+        "/tmp/story-13-6-resume-emitter.xml"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {
+        "DiffEngine_Disabled": "true"
+      },
+      "exitCode": 0,
+      "log": "emitter.log.txt",
+      "logSha256": "6cd8799d6c4887b75362c990e5caa2daa1d120f863b87e48324c31da485ce2c2"
+    },
+    {
+      "lane": "cancellation-fallback",
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-method",
+        "*UncooperativeAcceptedRecoveryReleasesCleanupAfterFiniteBoundAndIgnoresLateEvidence",
+        "-result-xml",
+        "/tmp/story-13-6-resume-cancellation.xml"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {
+        "DiffEngine_Disabled": "true"
+      },
+      "exitCode": 0,
+      "log": "cancellation.log.txt",
+      "logSha256": "39e41cca67b2672f1daff1c564f30c1704baf05d05181a152c7efa7852494983"
+    },
+    {
+      "lane": "node",
+      "argv": [
+        "node",
+        "--test",
+        "tests/e2e/scripts/a11y-state-evidence.test.mjs"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {},
+      "exitCode": 0,
+      "log": "node.log.txt",
+      "logSha256": "d3b43f7d6c7c3435f879900edd293be9719998d1a81d9fdf734f60c5b5fb6549"
+    },
+    {
+      "lane": "typecheck",
+      "argv": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "typecheck"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {},
+      "exitCode": 0,
+      "log": "typecheck.log.txt",
+      "logSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2"
+    },
+    {
+      "lane": "visual-policy",
+      "argv": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "validate:visual-governance"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {},
+      "exitCode": 0,
+      "log": "visual-policy.log.txt",
+      "logSha256": "c2ef99051f8c4e2ed1dd96044e2b1df8995c5167b3fab54b188e75b1e8ea9bee"
+    },
+    {
+      "lane": "browser-final",
+      "argv": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "test",
+        "--",
+        "specs/specimen-accessibility.spec.ts",
+        "specs/responsive-accessibility.spec.ts",
+        "specs/accessibility-state-matrix.spec.ts",
+        "--project=chromium",
+        "--project=firefox",
+        "--project=webkit",
+        "--workers=3",
+        "--retries=2"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": {
+        "BASE_URL": "http://localhost:5201",
+        "PLAYWRIGHT_SKIP_WEBSERVER": "1",
+        "FC_A11Y_EVIDENCE_RUN_ID": "story-13-6-resume-final4-20261017",
+        "FC_E2E_OUTPUT_DIR": "/tmp/story-13-6-resume-final4-20261017",
+        "FC_E2E_HTML_REPORT_DIR": "/tmp/story-13-6-resume-final4-20261017-report"
+      },
+      "exitCode": 1,
+      "log": "browser.log.txt",
+      "logSha256": "b055eda5a9b6246c6fd5da87f3f476890986ebc83d9be323dee6d984aa591f02",
+      "stats": {
+        "startTime": "2026-10-17T07:13:56.266Z",
+        "duration": 808247.211,
+        "expected": 567,
+        "skipped": 2,
+        "unexpected": 12,
+        "flaky": 1
+      }
+    }
+  ],
+  "browserChecks": "Complete current command above; failed/interrupted/diagnostic runs are separate raw report trees in raw-artifacts.json. No attempt pooling."
+}

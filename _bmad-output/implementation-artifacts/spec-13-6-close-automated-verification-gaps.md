@@ -115,6 +115,32 @@ All three review layers completed before classification. Every finding has an in
 | P06 | medium | Full three-engine browser assertions pass, but the artifact validator rejects four required state inventories per engine: rejected lifecycle icons and policy-denied control boundaries are outside the sampled scrollport in both themes. Their capture calls must explicitly inspect visible required paint and assert it is nonempty. | patch G18 |
 | P07 | medium | Fourth complete parent run captures the old selected palette row 15 ms after query input, before the 150 ms debounced result commit; the subsequent detached-row cue sample is empty although the replacement CounterProjection row has a visible outline. Await the exact filtered result set and its selected state before settling paint and measuring the unchanged strict cue. | patch G19 |
 
+### Resumed Build review — 2026-10-17
+
+All three independent layers returned before classification. Eleven new Chromium regressions reproduce every new measurement failure against the unchanged helper; [red results](evidence/story-13-6/2026-10-16-gap-closure/resume-2026-10-17/red/playwright.json) retain the failed assertions. Current Test AppHost startup and served focus-script identity were separately inspected. Source inputs and approved images match the previous packet; EventStore/Tenants heads have advanced, so its whole-candidate identity is historical.
+
+| Finding | Verdict | Verified evidence | Route |
+|---|---|---|---|
+| R-BH01 | medium | Different offsets bypass opaque shadow coverage despite a fully enclosing white layer; the offset-shadow regression accepts an invisible new black layer before patching. | patch H01 |
+| R-BH02 | medium | Static descendants return related before their bounds are checked; the negative-margin regression covers the target and ring while geometry passes. | patch H02 |
+| R-BH03 | medium | Pseudo contrast samples ignore their own clip; the inset(50%) border/cue regression returns a nonempty passing inventory. | patch H03 |
+| R-BH04 | medium | Generated text uses the host bounds despite horizontal overflow; a nowrap generated label receives its white host background beyond that host. | patch H04 |
+| R-BH05 | medium | The overlap scan exempts descendants; the positioned opaque child covering direct paragraph text remains absent from its reported background. | patch H05 |
+| R-BH06 | medium | The overlap scan visits only one root; both document-over-shadow and shadow-over-slotted regressions return passing black-on-white ratios. | patch H06 |
+| R-BH07 | medium | Effective fill ignores text stroke; the white 10px stroke hiding black glyphs still receives a passing ratio. | patch H07 |
+| R-BH08 | medium | A diagonal two-point path has a nonzero box and no fill area but supplies a passing icon sample. | patch H08 |
+| R-BH09 | medium | A zero-length dash followed by a gap longer than the path supplies a passing stroke sample without visible paint. | patch H09 |
+| R-BH10 | medium | pseudoOutside skips the static transformed containing block; an inset black border on a black button is compared with the white page. | patch H10 |
+| R-EC01 | low | carried: same nativeUnmodified stylesheet-sizing claim as prior BH08/EC01; no current inventory uses User Agent Control, and provenance checks add complexity. | reject: existing disposition |
+| R-EC02 | medium | Independently reproduced same cross-root overlap omission as R-BH06, including slotted text. | patch H06 |
+| R-EC03 | medium | Independently reproduced same static transformed containing-block omission as R-BH10. | patch H10 |
+| R-EC04 | medium | The unresolved-paint claim is contradicted by the two verified paths in R-EC02/R-EC03; both return passing inventories. | patch H06/H10 |
+| R-EC05 | low | carried: claim repeats the unchanged native-control exception concern in R-EC01 and prior BH08/EC01; no real inventory claims it. | reject: existing disposition |
+| R-VG01 | medium | Pre-verified gap: ordinary warning runtime tests use only blank Title/Detail/EntityLabel; they cannot detect null-title or available entity-label regressions. | patch H11 |
+| R-VG02 | medium | Pre-verified gap: AppHost fixture settings have source-text assertions while the usual browser lane starts Counter directly. Executed Test startup does not provide a reusable Development/publish configuration harness. | defer: automated effective AppHost configuration coverage |
+
+All patch groups correct demonstrated existing helper/test paths, introduce no public surface and preserve the frozen intent. H01–H11 do not change production styles or approved screenshots. The single deferred runtime-harness gap is appended to the ledger; carried low findings are neither patched nor deferred again.
+
 ## Verification
 
 Implementation execution evidence: [dated report](evidence/story-13-6/2026-10-16-gap-closure/report.md). Automated implementation tasks and parent Build review patches are complete; retained visual/platform/manual gates remain open. See the [final parent verification](evidence/story-13-6/2026-10-16-gap-closure/root-review/verified/report.md).
@@ -130,3 +156,12 @@ Implementation execution evidence: [dated report](evidence/story-13-6/2026-10-16
 All 19 patch groups G01–G19 are applied. Final candidate `8a2058c7769a7761d377906fb32f0990c962bd85e2bfa20125e3e6573d5cdd69`: browser **529 passed, 12 failed, 2 skipped / 543**, with all nonvisual cases passing on their final attempt; configured Debug Shell **3693/3693**, Node authority regressions **12/12**, SourceTools emitter **68/68** and CI governance **10/10** pass. Input reuse is hash-verified. The interrupted first parent attempt and all failed diagnostics remain retained. The one pre-existing PNG-integrity concern is appended to the deferred-work ledger; current PNG files in the dated views were independently decoded. Frozen intent and all 24 image baselines are unchanged.
 
 Status remains `in-review` and sprint status remains `in-progress`: the twelve preserved visual failures and manual/platform/owner acceptance cannot count as story completion. The Build verification rule halts advancement when a failed check cannot be resolved within approved scope. No image regeneration or human approval is inferred.
+
+
+### Resumed review verification — 2026-10-17
+
+H01–H11 are applied. Real-surface follow-up fixes keep clipped grid content and transparent Fluent labels/carets owned by their controls and resolve WebKit slots to actual projected elements. The opaque flow/slotted-child negative regressions still fail safely. Thirteen new cases per engine execute; current targeted proof is 46/46 passed. All three frozen intent blocks and all 24 image baselines are unchanged.
+
+Final source `sha256:d9728b3ffb86041c9e49906a72b374f1c65f478847abc48cf6df6a142ad2677b`: complete browser **567 passed, 12 failed, 1 flaky, 2 skipped / 582**; configured direct Debug Shell **3692 passed / 3 failed / 3695**; renderer 70/70, emitter 68/68 and Node 12/12 pass. Existing no-restore Fluent 5.0.0 assets are sealed; catalog requests 5.0.1 and a different Localization version, so clean-restore compatibility is unproven. Isolated cancellation and instrumented Settings passes do not erase complete-run failures. [Current verification](evidence/story-13-6/2026-10-16-gap-closure/resume-2026-10-17/report.md) retains every browser attempt and exact attribution.
+
+Verification has unresolved failures outside this continuation's permitted dependency/image changes. The Build verification rule halts advancement. Status stays in-review, sprint stays in-progress, and all manual/platform/owner gates remain open. No commit, push, image update or dependency upgrade occurred.

@@ -1,0 +1,8 @@
+{
+  "apphost": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+  "stopExitCode": 0,
+  "inspectionCommand": "aspire describe --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive",
+  "inspection": "\u2139\ufe0f No AppHost is currently running for 'src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj'. Use 'aspire run' to start it first.",
+  "projectTestRunnerAndInterruptedBrowserRunnersFinished": true,
+  "resourceDataDestroyed": false
+}

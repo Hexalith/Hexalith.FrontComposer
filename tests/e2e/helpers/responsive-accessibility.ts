@@ -331,7 +331,14 @@ async function preparePaintAudit(root: Locator) {
               shadowBounds.get(element)!.set(`${pseudo ?? ''}|${layer}`, bound);
             }
           }
-          return !paint || !preceding.some(cover => paint.blur === 0 && cover.blur === 0 && cover.alpha === 1 && cover.x === paint.x && cover.y === paint.y && cover.spread >= paint.spread);
+          return !paint || !preceding.some(cover => {
+            if (paint.blur !== 0 || cover.blur !== 0 || cover.alpha !== 1) return false;
+            const covered = cover.x - cover.spread <= paint.x - paint.spread && cover.y - cover.spread <= paint.y - paint.spread
+              && cover.x + cover.spread >= paint.x + paint.spread && cover.y + cover.spread >= paint.y + paint.spread;
+            if (covered && (cover.x !== paint.x || cover.y !== paint.y)
+              && (css.transform !== 'none' || [css.borderTopLeftRadius,css.borderTopRightRadius,css.borderBottomLeftRadius,css.borderBottomRightRadius].some(radius => parseFloat(radius) !== 0))) throw new Error('Overlapping opaque shadow geometry needs pixel evidence');
+            return covered;
+          });
         }
         old.splice(index, 1); return false;
       });
@@ -515,16 +522,41 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
     };
     const related = (candidate: Element) => {
       if (contains(candidate, element) || ownsDropdownIndicator(candidate)) return true;
+      const menuIcon = candidate.closest('svg');
+      const menuRoot = menuIcon?.getRootNode();
+      // The menu button's built-in passive caret is part of its own control paint.
+      if (element.matches('fluent-menu-button') && menuRoot instanceof ShadowRoot && menuRoot.host === element
+        && menuIcon && !menuIcon.matches('[tabindex],a[href]') && !menuIcon.querySelector('[tabindex],a[href]')) return true;
       if (!contains(element, candidate)) return false;
-      const bounds = candidate.getBoundingClientRect(), css = getComputedStyle(candidate);
-      // Ordinary flow content belongs to its target; a positioned opaque descendant
-      // crossing the target frame can cover the indicator and must be measured.
-      if (css.position === 'static' && css.transform === 'none' || css.position === 'relative' && css.zIndex === 'auto' && css.transform === 'none'
-        && [css.top, css.right, css.bottom, css.left].every(offset => offset === 'auto' || offset === '0px')) return true;
+      const bounds = { ...candidate.getBoundingClientRect().toJSON() } as PaintBox;
+      const css = getComputedStyle(candidate);
+      // Scrollport contents may have larger layout boxes; only their clipped paint
+      // can cover the target. Keep visible overflow in the obstruction inventory.
+      for (let owner = parent(candidate); owner; owner = parent(owner)) {
+        const style = getComputedStyle(owner), clip = owner.getBoundingClientRect();
+        if (/(auto|scroll|hidden|clip)/u.test(style.overflowX)) {
+          bounds.left = Math.max(bounds.left, clip.left + owner.clientLeft);
+          bounds.right = Math.min(bounds.right, clip.left + owner.clientLeft + owner.clientWidth);
+        }
+        if (/(auto|scroll|hidden|clip)/u.test(style.overflowY)) {
+          bounds.top = Math.max(bounds.top, clip.top + owner.clientTop);
+          bounds.bottom = Math.min(bounds.bottom, clip.top + owner.clientTop + owner.clientHeight);
+        }
+        if (owner === element) break;
+      }
+      // Flow positioning does not keep negatively margined opaque descendants inside the target.
       const contained = bounds.left >= rect.left && bounds.top >= rect.top && bounds.right <= rect.right && bounds.bottom <= rect.bottom;
+      const ordinaryFlow = css.position === 'static' && css.transform === 'none' || css.position === 'relative' && css.zIndex === 'auto' && css.transform === 'none'
+        && [css.top, css.right, css.bottom, css.left].every(offset => offset === 'auto' || offset === '0px');
       const root = candidate.getRootNode();
       const nativePart = root instanceof ShadowRoot && root.host.tagName.startsWith('FLUENT-')
         && contains(element, root.host) && candidate.matches('.control,.content,.indicator,.checked-indicator');
+      // Spaced Fluent labels may overhang their host. Their transparent flow wrappers
+      // and directly slotted text remain owned content; opaque descendants still occlude.
+      const nativeLabel = element.tagName.startsWith('FLUENT-') && (nativePart || root instanceof ShadowRoot && root.host === element || candidate.assignedSlot?.getRootNode() === element.shadowRoot)
+        && candidate.matches('span,slot') && audit.parse(css.backgroundColor)[3] === 0 && css.backgroundImage === 'none' && css.boxShadow === 'none'
+        && ['top','right','bottom','left'].every(side => ['none','hidden'].includes(css.getPropertyValue(`border-${side}-style`)) || parseFloat(css.getPropertyValue(`border-${side}-width`)) === 0);
+      if (ordinaryFlow && (contained || nativeLabel)) return true;
       return contained && (audit.parse(css.backgroundColor)[3] === 0 || nativePart);
     };
     // Test every overlapping app box at its intersection center. This detects even a small
@@ -539,10 +571,21 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
     visitOccluders(document);
     const deepestHit = (x: number, y: number) => {
       let hit = document.elementFromPoint(x, y);
-      while (hit?.shadowRoot) {
-        const inner = hit.shadowRoot.elementFromPoint(x, y);
-        if (!inner || inner === hit) break;
-        hit = inner;
+      while (hit) {
+        if (hit.shadowRoot) {
+          const inner = hit.shadowRoot.elementFromPoint(x, y);
+          if (!inner || inner === hit) break;
+          hit = inner;
+        } else if (hit instanceof HTMLSlotElement) {
+          // WebKit returns the slot for projected paint. Inspect its actual assigned
+          // element so a transparent slot cannot hide an opaque overflowing child.
+          const assigned = hit.assignedElements({ flatten: true }).filter(element => {
+            const box = element.getBoundingClientRect();
+            return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+          }).at(-1);
+          if (!assigned) break;
+          hit = assigned;
+        } else break;
       }
       return hit;
     };
@@ -722,10 +765,17 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
     const pseudoOutside = (element: Element, css: CSSStyleDeclaration, side: string) => {
       if (!['absolute','fixed'].includes(css.position)) {
         if ([css.marginTop,css.marginRight,css.marginBottom,css.marginLeft].some(value => parseFloat(value) < 0)) throw new Error('Flow pseudo border adjacency needs pixel evidence');
+        const clipping = audit.clip(css, element.getBoundingClientRect());
+        if (clipping.kind === 'hidden') return null;
+        if (clipping.kind !== 'none') throw new Error('Clipped pseudo border needs pixel evidence');
         return false;
       }
       let containing: Element | null = css.position === 'fixed' ? null : element;
-      while (containing && getComputedStyle(containing).position === 'static') containing = parent(containing);
+      while (containing && getComputedStyle(containing).position === 'static' && getComputedStyle(containing).transform === 'none') containing = parent(containing);
+      if (containing && getComputedStyle(containing).transform !== 'none') {
+        const transform = new DOMMatrixReadOnly(getComputedStyle(containing).transform);
+        if (!transform.is2D || transform.a !== 1 || transform.d !== 1 || transform.b !== 0 || transform.c !== 0) throw new Error('Transformed pseudo border adjacency needs pixel evidence');
+      }
       const bounds = containing?.getBoundingClientRect();
       const base = containing && bounds ? { left: bounds.left + containing.clientLeft, top: bounds.top + containing.clientTop, width: containing.clientWidth, height: containing.clientHeight } : { left: 0, top: 0, width: innerWidth, height: innerHeight };
       const px = (value: string) => /^-?[\d.]+px$/u.test(value) ? parseFloat(value) : null;
@@ -738,16 +788,29 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
       const x = base.left + (left !== null ? left + parseFloat(css.marginLeft) : base.width - right! - width - extraX - parseFloat(css.marginRight)) + matrix.e;
       const y = base.top + (top !== null ? top + parseFloat(css.marginTop) : base.height - bottom! - height - extraY - parseFloat(css.marginBottom)) + matrix.f;
       const box = { left: x, top: y, right: x + width + extraX, bottom: y + height + extraY };
+      const clipping = audit.clip(css, box);
+      if (clipping.kind === 'hidden') return null;
+      if (clipping.kind === 'unsupported') throw new Error('Clipped pseudo border needs pixel evidence');
       const thickness = parseFloat(css.getPropertyValue(`border-${side}-width`));
       if (side === 'top') box.bottom = box.top + thickness;
       if (side === 'bottom') box.top = box.bottom - thickness;
       if (side === 'left') box.right = box.left + thickness;
       if (side === 'right') box.left = box.right - thickness;
+      if (clipping.box) {
+        box.left = Math.max(box.left, clipping.box.left); box.right = Math.min(box.right, clipping.box.right);
+        box.top = Math.max(box.top, clipping.box.top); box.bottom = Math.min(box.bottom, clipping.box.bottom);
+        if (box.right <= box.left || box.bottom <= box.top) return null;
+      }
       const control = element.getBoundingClientRect();
       if (box.left >= control.left - .5 && box.right <= control.right + .5 && box.top >= control.top - .5 && box.bottom <= control.bottom + .5) return false;
       if (box.right <= control.left + .5 || box.left >= control.right - .5 || box.bottom <= control.top + .5 || box.top >= control.bottom - .5) return true;
       throw new Error('Straddling pseudo border adjacency needs pixel evidence');
     };
+    const pagePaint: Element[] = [];
+    const collectPaint = (root: Document | ShadowRoot) => {
+      for (const candidate of root.querySelectorAll('*')) { pagePaint.push(candidate); if (candidate.shadowRoot) collectPaint(candidate.shadowRoot); }
+    };
+    if (sampleKind === 'text' || sampleKind === 'icon') collectPaint(document);
     const sample = (element: Element, value: string, label: string, minimum: number, outside = false, alpha = 1, paintBoxes?: PaintBox[], shadowBound?: ShadowContrastBound) => {
       let boxes: PaintBox[] = paintBoxes ?? [element.getBoundingClientRect()];
       for (let current: Element | null = element; current; current = parent(current)) {
@@ -787,8 +850,8 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
       // Reject it until a pixel measurement can establish its compositing order.
       if (sampleKind === 'text' || sampleKind === 'icon') {
         const root = element.getRootNode();
-        if (root instanceof Document || root instanceof ShadowRoot) for (const candidate of root.querySelectorAll('*')) {
-          if (candidate === element || containsComposed(candidate, element) || containsComposed(element, candidate)) continue;
+        for (const candidate of pagePaint) {
+          if (candidate === element || containsComposed(candidate, element)) continue;
           // An opaque native plane shields text from ordinary page backgrounds.
           // Another native plane may be above it and remains unresolved paint.
           let candidatePlane: Element | null = null;
@@ -807,7 +870,26 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
       if (!owners.has(owner)) owners.set(owner, owners.size);
       samples.push({ ...(shadowBound ? { measurement: 'conservative-bound' as const, shadowBound } : {}), owner: owners.get(owner)!, node: `${element.tagName.toLowerCase()}${element.id ? '#' + element.id : ''}`, paint: label, foreground: shadowBound?.closestForeground ?? fg, background: shadowBound?.closestBackground ?? bg, ratio: shadowBound?.ratioMinimum ?? (Math.max(a, b) + .05) / (Math.min(a, b) + .05), minimum });
     };
-    const glyphPaint = (css: CSSStyleDeclaration) => matchMedia('(forced-colors: active)').matches && css.forcedColorAdjust !== 'none' ? css.color : css.getPropertyValue('-webkit-text-fill-color') || css.color;
+    const glyphPaint = (css: CSSStyleDeclaration) => {
+      if (parseFloat(css.getPropertyValue('-webkit-text-stroke-width')) > 0) throw new Error('Text stroke composition needs pixel evidence');
+      return matchMedia('(forced-colors: active)').matches && css.forcedColorAdjust !== 'none' ? css.color : css.getPropertyValue('-webkit-text-fill-color') || css.color;
+    };
+    const filledArea = (element: Element) => {
+      if (!element.matches('path,polygon,polyline')) return true;
+      const box = (element as SVGGraphicsElement).getBBox();
+      if (box.width <= 0 || box.height <= 0) return false;
+      const path = element.matches('path') ? new Path2D(element.getAttribute('d') ?? '') : new Path2D();
+      if (!element.matches('path')) {
+        const points = (element as SVGPolygonElement).points;
+        for (let i = 0; i < points.numberOfItems; i++) { const point = points.getItem(i); if (i === 0) path.moveTo(point.x, point.y); else path.lineTo(point.x, point.y); }
+      }
+      // A nonempty bounding box can still describe a zero-area diagonal path.
+      const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
+      const context = canvas.getContext('2d')!;
+      context.setTransform(126 / box.width, 0, 0, 126 / box.height, 1 - box.x * 126 / box.width, 1 - box.y * 126 / box.height);
+      context.fill(path, getComputedStyle(element).fillRule as CanvasFillRule);
+      return context.getImageData(0, 0, 128, 128).data.some((channel, i) => i % 4 === 3 && channel > 0);
+    };
     const sampledText = new Set<Node>();
     const visited = new Set<Element>();
     const visit = (element: Element) => {
@@ -840,6 +922,7 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
           if (['""', "''"].includes(visualContent)) continue;
           audit.composition(generated);
           if (generated.position !== 'static' || generated.transform !== 'none' || generated.cssFloat !== 'none'
+            || element.clientWidth > 0 && element.scrollWidth > element.clientWidth + .5 || element.clientHeight > 0 && element.scrollHeight > element.clientHeight + .5
             || [generated.marginTop, generated.marginRight, generated.marginBottom, generated.marginLeft].some(value => !Number.isFinite(parseFloat(value)) || parseFloat(value) < 0)) throw new Error(`Generated text geometry needs pixel evidence: ${JSON.stringify({ element: element.tagName + '#' + element.id + '.' + element.className, pseudo, content: generated.content, position: generated.position, margins: [generated.marginTop, generated.marginRight, generated.marginBottom, generated.marginLeft], transform: generated.transform, float: generated.cssFloat, root: element.getRootNode() instanceof ShadowRoot ? (element.getRootNode() as ShadowRoot).host.tagName : 'document' })}`);
           if (parse(generated.backgroundColor)[3] > 0 || generated.backgroundImage !== 'none') throw new Error('Generated text background needs pixel evidence');
           const large = parseFloat(generated.fontSize) >= 24 || parseFloat(generated.fontSize) >= 18.667 && parseInt(generated.fontWeight) >= 700;
@@ -852,9 +935,10 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
           if (property === 'stroke' && parseFloat(css.strokeWidth) <= 0 || property === 'fill' && element.matches('line')) continue;
           if (paint !== 'none') {
             const opacity = css.getPropertyValue(`${property}-opacity`), bounds = element.getBoundingClientRect();
-            if (property === 'fill' && (!bounds.width || !bounds.height)) continue;
+            if (property === 'fill' && (!bounds.width || !bounds.height || !filledArea(element))) continue;
             let boxes: PaintBox[] | undefined;
             if (property === 'stroke') {
+              if (css.strokeDasharray !== 'none') throw new Error('SVG dashed stroke needs pixel evidence');
               const matrix = (element as SVGGraphicsElement).getScreenCTM();
               if (!matrix) throw new Error('Unresolved SVG stroke envelope needs pixel evidence');
               const half = parseFloat(css.strokeWidth) / 2, fixed = css.vectorEffect === 'non-scaling-stroke';
@@ -871,7 +955,10 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
           if (edge.transform !== 'none') { const matrix = new DOMMatrixReadOnly(edge.transform); if (matrix.a === 0 || matrix.d === 0) continue; }
           audit.composition(edge);
           if (pseudo && (parse(edge.backgroundColor)[3] > 0 || edge.backgroundImage !== 'none')) throw new Error('Pseudo border background composition needs pixel evidence');
-          for (const side of ['top', 'right', 'bottom', 'left']) if (parseFloat(edge.getPropertyValue(`border-${side}-width`)) > 0 && !['none', 'hidden'].includes(edge.getPropertyValue(`border-${side}-style`))) sample(element, edge.getPropertyValue(`border-${side}-color`), `${pseudo ?? 'element'} border-${side}`, 3, pseudo ? pseudoOutside(element, edge, side) : true, Number(edge.opacity));
+          for (const side of ['top', 'right', 'bottom', 'left']) if (parseFloat(edge.getPropertyValue(`border-${side}-width`)) > 0 && !['none', 'hidden'].includes(edge.getPropertyValue(`border-${side}-style`))) {
+            const outside = pseudo ? pseudoOutside(element, edge, side) : true;
+            if (outside !== null) sample(element, edge.getPropertyValue(`border-${side}-color`), `${pseudo ?? 'element'} border-${side}`, 3, outside, Number(edge.opacity));
+          }
         }
       } else if (sampleKind === 'focus' || sampleKind === 'cue') {
         for (const pseudo of [null, '::before', '::after']) {
@@ -887,18 +974,23 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
             return changed;
           };
           if (qualifies(['outline-width','outline-style','outline-color','outline-offset']) && parseFloat(paint.outlineWidth) > 0 && paint.outlineStyle !== 'none') {
+            if (pseudo && audit.clip(paint, element.getBoundingClientRect()).kind !== 'none') throw new Error('Clipped pseudo focus paint needs pixel evidence');
             const offset = parseFloat(paint.outlineOffset);
             if (offset < 0 && offset + parseFloat(paint.outlineWidth) > 0) throw new Error('Straddling outline adjacency needs pixel evidence');
             sample(element, paint.outlineColor, `${pseudo ?? 'element'} outline`, 3, offset >= 0, Number(paint.opacity));
           }
           if (qualifies(['box-shadow'])) for (const shadow of audit.shadows(element, pseudo, paint, resting)) {
             if (/\binset\b/u.test(shadow)) continue;
+            if (pseudo && audit.clip(paint, element.getBoundingClientRect()).kind !== 'none') throw new Error('Clipped pseudo focus paint needs pixel evidence');
             const lengths = shadow.replace(/[a-z][a-z0-9-]*\([^()]*\)/giu, '').match(/-?[\d.]+px/gu)?.map(Number.parseFloat) ?? [];
             const bounds = element.getBoundingClientRect(), spread = lengths[3] ?? 0;
             if (bounds.width + 2 * spread <= 0 || bounds.height + 2 * spread <= 0 || lengths.length < 2 || (lengths[2] ?? 0) > 0 || lengths[0] === 0 && lengths[1] === 0 && (lengths[3] ?? 0) <= 0) continue;
             for (const color of shadow.match(/[a-z][a-z0-9-]*\([^()]*\)/giu) ?? []) sample(element, color, `${pseudo ?? 'element'} box-shadow${audit.shadowBound(element, pseudo, shadow) ? ' (conservative composite bound)' : ''}`, 3, true, Number(paint.opacity), undefined, audit.shadowBound(element, pseudo, shadow));
           }
-          if (pseudo && qualifies(['border-top-width','border-right-width','border-bottom-width','border-left-width','border-top-color','border-right-color','border-bottom-color','border-left-color'])) for (const side of ['top', 'right', 'bottom', 'left']) if (parseFloat(paint.getPropertyValue(`border-${side}-width`)) > 0 && !['none', 'hidden'].includes(paint.getPropertyValue(`border-${side}-style`))) sample(element, paint.getPropertyValue(`border-${side}-color`), `${pseudo} border-${side}`, 3, pseudoOutside(element, paint, side), Number(paint.opacity));
+          if (pseudo && qualifies(['border-top-width','border-right-width','border-bottom-width','border-left-width','border-top-color','border-right-color','border-bottom-color','border-left-color'])) for (const side of ['top', 'right', 'bottom', 'left']) if (parseFloat(paint.getPropertyValue(`border-${side}-width`)) > 0 && !['none', 'hidden'].includes(paint.getPropertyValue(`border-${side}-style`))) {
+            const outside = pseudoOutside(element, paint, side);
+            if (outside !== null) sample(element, paint.getPropertyValue(`border-${side}-color`), `${pseudo} border-${side}`, 3, outside, Number(paint.opacity));
+          }
         }
       }
       if (element instanceof HTMLSlotElement) for (const child of element.assignedElements({ flatten: true })) visit(child);

@@ -1,0 +1,10 @@
+{
+  "resource": "counter-web",
+  "endpoint": "http://localhost:5201",
+  "state": "Healthy after Debug rebuild",
+  "startupCommand": "env Hexalith__Shell__ProjectionReconnectedNoticeDurationMs=30000 aspire start --no-build --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive -- --environment Test",
+  "readinessCommand": "aspire wait counter-web --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --timeout 60",
+  "focusScriptMatchesSource": true,
+  "dependencyLimitation": "Existing no-restore Fluent 5.0.0 assets, not clean-restore compatibility with catalog 5.0.1.",
+  "liveBackendAcceptance": false
+}

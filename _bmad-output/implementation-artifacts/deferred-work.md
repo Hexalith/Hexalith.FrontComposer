@@ -10424,3 +10424,7 @@ These appended dispositions supersede only the named automated gaps; all histori
 - source_spec: `spec-13-6-close-automated-verification-gaps.md`
   summary: Validate system-snapshot PNG integrity and bind snapshot bytes to the authoritative attempt.
   evidence: Build finding BH12 reproduces acceptance of nonempty non-PNG files; the pre-existing snapshot guard checks only name, same-directory identity and size. Add real PNG positive fixtures and corrupted/foreign snapshot negatives before claiming byte-level snapshot integrity.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-close-automated-verification-gaps.md`
+  summary: Add automated effective Counter resource configuration coverage for explicit Test AppHost runs and Development/publish exclusion.
+  evidence: Resumed review R-VG02 verified that FrontComposerUiAppHostTests checks Program.cs strings while normal Playwright starts Counter directly; changing the AppHost ConfirmDelayMs value would evade both. Current Test startup is executed evidence only; reusable coverage needs an AppHost configuration/launch harness.

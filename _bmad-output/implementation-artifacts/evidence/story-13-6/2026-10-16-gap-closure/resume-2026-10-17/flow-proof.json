@@ -1,0 +1,101 @@
+[
+  {
+    "engine": "chromium",
+    "before": {
+      "target": "A#",
+      "requireIndicator": true,
+      "box": {
+        "left": 45,
+        "top": 37,
+        "right": 151,
+        "bottom": 83
+      },
+      "ring": 3,
+      "failures": [],
+      "occluder": null,
+      "shadowBounds": []
+    },
+    "after": {
+      "target": "A#",
+      "requireIndicator": true,
+      "box": {
+        "left": 45,
+        "top": 37,
+        "right": 151,
+        "bottom": 83
+      },
+      "ring": 3,
+      "failures": [
+        "app content obscures target or focus ring"
+      ],
+      "occluder": "A# by SPAN# at 98,60",
+      "shadowBounds": []
+    }
+  },
+  {
+    "engine": "firefox",
+    "before": {
+      "target": "A#",
+      "requireIndicator": true,
+      "box": {
+        "left": 46,
+        "top": 38,
+        "right": 150,
+        "bottom": 82
+      },
+      "ring": 2,
+      "failures": [],
+      "occluder": null,
+      "shadowBounds": []
+    },
+    "after": {
+      "target": "A#",
+      "requireIndicator": true,
+      "box": {
+        "left": 46,
+        "top": 38,
+        "right": 150,
+        "bottom": 82
+      },
+      "ring": 2,
+      "failures": [
+        "app content obscures target or focus ring"
+      ],
+      "occluder": "A# by SPAN# at 98,60",
+      "shadowBounds": []
+    }
+  },
+  {
+    "engine": "webkit",
+    "before": {
+      "target": "A#",
+      "requireIndicator": true,
+      "box": {
+        "left": 46,
+        "top": 38,
+        "right": 150,
+        "bottom": 82
+      },
+      "ring": 2,
+      "failures": [],
+      "occluder": null,
+      "shadowBounds": []
+    },
+    "after": {
+      "target": "A#",
+      "requireIndicator": true,
+      "box": {
+        "left": 46,
+        "top": 38,
+        "right": 150,
+        "bottom": 82
+      },
+      "ring": 2,
+      "failures": [
+        "app content obscures target or focus ring"
+      ],
+      "occluder": "A# by SPAN# at 98,60",
+      "shadowBounds": []
+    }
+  }
+]
