@@ -1,10 +1,12 @@
 # Story 13.6 accessibility result and human checklist
 
-Updated 2026-10-17. **Readiness remains open; Story 13.6 stays in-review.** The current uncommitted review patch is based on root `12e8b8e1f2a683f9b2c29ca296f2960b47e6602c` on `main`. Its tracked code/test diff has `sha256:391aa1f3684926a4201561809509038657c440eb319570546dac1d5a3b8dd28e` (`git diff --binary HEAD -- src tests | sha256sum`). This identifies the review patch, not a full candidate manifest.
+Updated 2026-10-17. **Readiness remains open; Story 13.6 stays in-review.** The current review patch is based on root `0618c1102d7858c14e3d5f5af13b88b06497ab37` on `main`. Its tracked code/test diff has `sha256:65b5464381deda2e0786e3f8aa3c83ebb7b5fa00c0125aad8e8a47091626b51f` (`git diff --binary 0618c1102d7858c14e3d5f5af13b88b06497ab37 -- src tests | sha256sum`). This identifies the review patch, not a full candidate manifest.
 
-**Current Story 13.6 browser gate:** From `tests/e2e`, `npx playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --workers=4 --retries=0` ran 732 cases across Chromium, Firefox and WebKit: **711 passed, 18 failed, 3 skipped, 0 flaky**. All 18 failures are the retained ordinary visual comparisons; there are **zero nonvisual failures**. [Sanitized current verification summary](evidence/story-13-6/2026-10-17-review-continuation/verification.json) retains the failed-test inventory and SHA-256 of the raw Playwright report. The generated destructive-form validation journey also passed 3/3 across the same engines, proving that its description remains linked while Fluent displays the single validation error. DOM focus and status checks do not establish heard speech.
+**Prior broad Story 13.6 browser gate (before the current review patch):** From `tests/e2e`, `npx playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --workers=4 --retries=0` ran 732 cases across Chromium, Firefox and WebKit: **711 passed, 18 failed, 3 skipped, 0 flaky**. All 18 failures are the retained ordinary visual comparisons; there are **zero nonvisual failures**. [Prior broad verification summary](evidence/story-13-6/2026-10-17-review-continuation/verification.json) retains the failed-test inventory and SHA-256 of the raw Playwright report. The generated destructive-form validation journey also passed 3/3 across the same engines, proving that its description remains linked while Fluent displays the single validation error. DOM focus and status checks do not establish heard speech.
 
-**Current .NET gates:** Debug Shell.Tests and SourceTools.Tests builds pass with zero warnings/errors after local restores against the declared catalog. The full Shell run reported **3709 total, 7 failed, 1 skipped**; failures include existing catalog/governance and Fluent snapshot drift. The full SourceTools run reported **1313 total, 1 failed**: its packaged analyzer expects Fluent 5.0.0 while the declared catalog resolves 5.0.1. Focused `CommandRendererWrapperIntegrationTests` pass 70/70 and `CommandFormEmitterTests` pass 68/68. The affected hidden-banner, StatusOverview and virtualization tests, 6/6 synthetic browser fixtures, TypeScript typecheck and `git diff --check` also pass. No tracked dependency declaration changed.
+**Prior broad .NET gates and current build checks:** Debug Shell.Tests and SourceTools.Tests builds pass with zero warnings/errors after local restores against the declared catalog. The earlier full Shell run reported **3709 total, 7 failed, 1 skipped**; failures include existing catalog/governance and Fluent snapshot drift. The earlier full SourceTools run reported **1313 total, 1 failed**: its packaged analyzer expects Fluent 5.0.0 while the declared catalog resolves 5.0.1. Focused `CommandRendererWrapperIntegrationTests` pass 70/70 and `CommandFormEmitterTests` pass 68/68. The earlier affected hidden-banner, StatusOverview and virtualization tests and 6/6 synthetic browser fixtures passed. Current AppHost, Shell.Tests and SourceTools.Tests serialized Debug builds, TypeScript typecheck and `git diff --check` pass. No tracked dependency declaration changed.
+
+**Current review checks:** Against the gated direct Test host, the full responsive accessibility spec passed **453/453** across Chromium, Firefox and WebKit. The accessibility state matrix passed **224**, with **one WebKit capability skip** and no failures. The new shadow-label, offscreen-target, clipped-cover and transformed-pseudo fixtures passed 12/12 across the three engines. The palette forced-colors journey passed 6/6; Chromium and Firefox assert disabled label and hint `GrayText`, while WebKit retains the actual palette-paint evidence limit. The reduced-motion CSS fixture passed 6/6 and does not establish a live reconciliation transition. [Current review verification](evidence/story-13-6/2026-10-17-review-continuation/review-2026-10-17-verification.json) records commands, counts, the retained state-matrix report digest and limitations. No current combined visual or full .NET test gate was run.
 
 **Prior complete candidate:** Source `sha256:0bfddb4016c3bfe00e84ae88ca698b3a63c373b1ac2be5048577cdae0ee6b77a` at root `008736825376e6e2b419cb8d3b81067a8f9cc3b1` completed the earlier 726-case browser packet: 705 passed, 18 visual comparisons failed and 3 skipped. Its [source manifest](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/source.json), [verification report](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/report.md) and [browser outcomes](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/verification/browser-outcomes.json) are historical evidence; the current review patch has its own results above.
 
@@ -62,18 +64,20 @@ All gate rows above share task/story `13.6` and release branch `main`; human obs
 
 ## Remaining acceptance gates
 
-All 18 manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, tablet/phone, heard speech and human reviewer observations were not performed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and separate live EventStore fresh-row acceptance remain unresolved. The current Shell and browser gates have been rerun and remain failed on catalog/governance, Fluent snapshots and 18 visual comparisons. Raw artifact-size gates, Windows execution and WebKit actual forced-palette coverage remain open. Every prior failed or interrupted attempt retains its own evidence and disposition.
+All 18 manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, tablet/phone, heard speech and human reviewer observations were not performed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and separate live EventStore fresh-row acceptance remain unresolved. The prior broad Shell and browser gates remain failed on catalog/governance, Fluent snapshots and 18 visual comparisons; those broad gates were not rerun for this review patch. Raw artifact-size gates, Windows execution and WebKit actual forced-palette coverage remain open. Every prior failed or interrupted attempt retains its own evidence and disposition.
 
 ```yaml
 story: 13.6
 story_status: in-review
 sprint_status: review
 final_classification: open
-configured_shell: failed; 3709 total / 7 failed / 1 skipped
-source_tools: failed; 1313 total / 1 failed (Fluent 5.0.0 expectation versus 5.0.1 catalog)
-complete_browser: failed; 711 passed / 18 visual failed / 3 skipped / 0 flaky / 732 total
-visual_comparisons: failed; 18
-nonvisual_browser_failures: 0
+prior_configured_shell: failed; 3709 total / 7 failed / 1 skipped
+prior_source_tools: failed; 1313 total / 1 failed (Fluent 5.0.0 expectation versus 5.0.1 catalog)
+prior_complete_browser: failed; 711 passed / 18 visual failed / 3 skipped / 0 flaky / 732 total
+prior_visual_comparisons: failed; 18
+prior_nonvisual_browser_failures: 0
+current_responsive_browser: passed; 453/453
+current_state_matrix_browser: passed; 224 passed / 1 skipped / 0 failed
 prior_candidate_state_rows_per_engine: chromium=116, firefox=116, webkit=116
 prior_candidate_focused_type_header_fresh_row: passed; 18/18 across three engines
 raw_artifact_size_gate: prior candidate failed; current run not evaluated

@@ -415,9 +415,23 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
         expect(testInfo.project.name).toBe('webkit');
         await testInfo.attach('forced-palette-capability-limit', { body: 'WebKit exposes the forced-colors media query but does not implement forced-color-adjust/authored-color replacement. System-palette painting requires the supported platform lane.', contentType: 'text/plain' });
       }
-      const motion = await page.locator('.fc-expand-button,.fc-row-expanded,.fc-reconciliation-sweep').evaluateAll(elements => elements.map(element => ({ transition: getComputedStyle(element).transitionDuration, animation: getComputedStyle(element).animationName })));
-      expect(motion.every(sample => sample.transition.split(',').every(duration => parseFloat(duration) === 0) && sample.animation === 'none')).toBe(true);
       await page.screenshot({ path: testInfo.outputPath(`forced-colors-${theme}.png`) });
+
+      await page.evaluate(() => {
+        const fixture = document.createElement('div');
+        fixture.id = 'ae-motion-fixture';
+        fixture.style.cssText = 'position:fixed;left:24px;top:80px;z-index:1';
+        fixture.innerHTML = '<button class="fc-expand-button" type="button">Expand</button><div class="fc-row-expanded">Expanded row</div><div class="fc-reconciliation-sweep">Reconciled grid</div>';
+        document.body.append(fixture);
+      });
+      for (const selector of ['.fc-expand-button', '.fc-row-expanded', '.fc-reconciliation-sweep']) {
+        const cue = page.locator(`#ae-motion-fixture ${selector}`);
+        await expect(cue).toBeVisible();
+        const motion = await cue.evaluate(element => ({ transition: getComputedStyle(element).transitionDuration, animation: getComputedStyle(element).animationName }));
+        expect(motion.transition.split(',').every(duration => parseFloat(duration) === 0), `${selector} transition`).toBe(true);
+        expect(motion.animation, `${selector} animation`).toBe('none');
+      }
+      await page.locator('#ae-motion-fixture').evaluate(element => element.remove());
 
       await page.emulateMedia({ forcedColors: 'none' });
       await page.setViewportSize({ width: 1280, height: 900 });
@@ -1788,4 +1802,31 @@ test('C2 native popover elevation belongs only to its explicit anchor and never 
     cover.style.left='190px';cover.style.top='40px';cover.style.boxShadow='-150px 0 0 10px white';
   });
   expect((await focusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+});
+
+test('shadow-root scroll labels resolve within their own root', async ({ page }) => {
+  await page.setContent('<div id="host"></div>');
+  await page.locator('#host').evaluate(host => {
+    host.attachShadow({ mode: 'open' }).innerHTML = '<span id="grid-label">Records</span><div role="region" aria-labelledby="grid-label" style="width:80px;overflow-x:auto"><div role="grid" style="width:160px;height:30px">Data</div></div>';
+  });
+  await expectNoPageOverflow(page);
+});
+
+test('offscreen controls must have a reachable viewport position', async ({ page }) => {
+  await page.setContent('<style>html,body{height:100%;overflow:clip;margin:0}</style><button id="unreachable" style="position:absolute;top:2000px;left:20px;width:30px;height:30px">Save</button>');
+  const target = (await inventoryTargets(page)).inventory.find(item => item.target === '#unreachable');
+  expect(target).toMatchObject({ conforming: false, failure: 'Clipping leaves the target without the required reachable area' });
+});
+
+test('clipped pointer covers use their painted edge for target size', async ({ page }) => {
+  await page.setContent('<button id="target" style="position:absolute;left:40px;top:40px;width:30px;height:30px;padding:0">Save</button><div style="position:absolute;left:40px;top:40px;width:60px;height:30px;clip-path:inset(0 88.333333% 0 0);background:black"></div>');
+  const target = (await inventoryTargets(page)).inventory.find(item => item.target === '#target');
+  expect(target?.conforming).toBe(false);
+  expect(target?.width).toBeGreaterThan(22.9);
+  expect(target?.width).toBeLessThan(23.1);
+});
+
+test('fixed pseudo paint inside a transformed containing block needs pixel evidence', async ({ page }) => {
+  await page.setContent('<style>#text{position:absolute;left:50px;top:50px;width:100px;height:30px;color:black;background:white;margin:0}#host{position:absolute;left:100px;top:50px;width:10px;height:10px;transform:translateX(0)}#host::after{content:"";position:fixed;left:-50px;top:0;width:100px;height:30px;background:black;z-index:10}</style><p id="text">Essential warning</p><div id="host"></div>');
+  await expect(measureSurfaceContrast(page.locator('#text'))).rejects.toThrow(/Fixed pseudo transformed containing block needs pixel evidence/);
 });

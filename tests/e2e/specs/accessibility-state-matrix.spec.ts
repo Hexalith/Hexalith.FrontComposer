@@ -510,6 +510,25 @@ for (const theme of ['light', 'dark']) {
     const palette = page.getByTestId('fc-palette-root');
     await evidence(page, palette, `palette-default-${theme}`, info);
     const search = page.getByTestId('fc-palette-search').locator('input');
+    await search.fill('shortcuts');
+    const informationalShortcut = palette.locator('.fc-palette-option[aria-disabled="true"]').first();
+    await expect(informationalShortcut).toBeVisible();
+    await page.emulateMedia({ forcedColors: 'active' });
+    if (info.project.name === 'webkit') {
+      await info.attach('palette-disabled-forced-palette-capability-limit', { body: 'WebKit does not replace authored colors with system palette paint in this lane.', contentType: 'text/plain' });
+    } else {
+      const colors = await informationalShortcut.evaluate(element => {
+        const system = document.createElement('span');
+        system.style.color = 'GrayText';
+        element.append(system);
+        const expected = getComputedStyle(system).color;
+        system.remove();
+        return { expected, label: getComputedStyle(element.querySelector('.fc-palette-option-label')!).color, hint: getComputedStyle(element.querySelector('.fc-palette-option-hint')!).color };
+      });
+      expect(colors.label).toBe(colors.expected);
+      expect(colors.hint).toBe(colors.expected);
+    }
+    await page.emulateMedia({ forcedColors: 'none' });
     await search.fill('counter');
     await expect(palette.getByRole('option')).toHaveText(['CounterProjection', 'ConfigureCounterCommand']);
     const selectedProjection = palette.getByRole('option', { name: 'CounterProjection', exact: true });

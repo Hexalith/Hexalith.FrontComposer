@@ -187,7 +187,39 @@ All findings were classified individually before grouping. G01–G18 are direct 
 
 All fourteen findings were classified individually before grouping. R-G01 joins R-BH02/R-EC03; the other patch groups each have one root. R-BH03 and R-BH06 are deferred under the review rules; no frozen intent change is needed.
 
+### Current Build review — 2026-10-17
+
+The blind, edge-case and verification-gap layers reviewed the baseline-to-current textual diff before any classification. The 453 MB diff includes retained evidence; the source/test findings were verified against current callers, guards and earlier triage. The route below records every finding individually before grouping.
+
+| Finding | Verdict | Verified evidence | Route |
+| --- | --- | --- | --- |
+| BH01 | medium | `13-6-accessibility-result.md` describes the prior committed `12e8b8e1` review patch as currently uncommitted at `0618c110`. Candidate identity is stale. | patch D1 |
+| BH02 | false | `FrontComposerShell.razor` keys the renderer subtree by `ScopeBoundary.Generation`; `ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch` proves tenant and user remount, feedback removal and cancellation. | reject |
+| BH03 | maybe-false | The row observer measures materialized rows and remeasures as rows enter view. A mixed-height virtualized scroll trace is needed to establish a user-visible spacer error for unseen rows. | defer |
+| BH04 | maybe-false | Carried R-BH03: document traversal cost has no representative multi-grid profile, and the observer still traverses on measurement. | carried defer; no new ledger entry |
+| BH05 | low | Carried C2-BH10: a bare `addEventListener` target is not discoverable from DOM semantics, and no current changed consumer uses one. A general listener registry is disproportionate. | carried reject |
+| BH06 | medium | `expectNoPageOverflow` resolved `aria-labelledby` against `ownerDocument`, which cannot find an ID in the same open shadow root. The three-engine fixture reproduces the missed valid grid label. | patch D2 |
+| BH07 | medium | Existing cycle journeys cover palette and Settings, while destructive confirmation, abandonment, filter and view overlays lack the same full forward/reverse keyboard inventory. No new modal behavior is introduced by this review patch. | defer |
+| BH08 | medium | The previous `motion.every` could pass on an empty list. The new three-engine fixture asserts all three CSS cue classes have reduced-motion paint; a live reconciliation-marker transition remains unproved here. | defer live transition; scoped CSS assertion added |
+| BH09 | false | Actual 400% zoom is explicitly `not performed` in the result and blocks completion; neither the spec nor current result claims AE-02 closure. | reject |
+| BH10 | false | NVDA, JAWS, VoiceOver and heard speech are explicitly unperformed and blocking, with the human checklist retained. | reject |
+| BH11 | false | Physical devices, Windows execution and WebKit actual palette paint are explicitly open gates; no platform completion is claimed. | reject |
+| BH12 | false | The result reports all 18 visual failures and the .NET failures as open; no passing broad-gate or story-completion claim is made. | reject |
+| EC01 | medium | An offscreen nonfixed 30px button under a clipped root retained its full target size without a reachability probe. The three-engine fixture now rejects it. | patch D3 |
+| EC02 | medium | Pointer partitioning used an overlapping element's uncut bounds, so a clipped 7px cover left a 23px reachable target certified as 30px. The three-engine fixture now measures the painted edge. | patch D4 |
+| EC03 | medium | Fixed pseudo obstruction geometry assumed viewport coordinates even when its host establishes a transformed containing block. The three-engine painted-text fixture now requires pixel evidence. | patch D5 |
+| EC04 | medium | Same offscreen reachability defect as EC01, independently reported from the B3 claim. | patch D3 |
+| EC05 | medium | Same transformed fixed-pseudo geometry defect as EC03, independently reported from the B2 claim. | patch D5 |
+| VG01 | medium | Pre-verified: no browser assertion checked the forced-colors paint of disabled informational palette shortcuts; generic contrast skips `aria-disabled` rows. The current state journey now does so in Chromium and Firefox. | patch D6 |
+| VG-Other | medium | The hint's explicit color overrode the disabled row's `GrayText`; the CSS now assigns `GrayText` to disabled hints and context text, and the browser assertion checks the hint. | patch D6 |
+
+D1–D6 are direct corrections in existing documentation, CSS and test helpers. No frozen intent, public API, threshold, dependency or approved screenshot changes. The previous full-candidate evidence remains historical; current checks and unresolved gates are recorded below and in the accessibility result.
+
 ## Verification
+
+### Current Build review verification — 2026-10-17
+
+Base `0618c1102d7858c14e3d5f5af13b88b06497ab37`; the current tracked code/test patch is `sha256:65b5464381deda2e0786e3f8aa3c83ebb7b5fa00c0125aad8e8a47091626b51f`. Against the gated direct Debug Test host, `responsive-accessibility.spec.ts` passed 453/453 and `accessibility-state-matrix.spec.ts` passed 224 with one WebKit capability skip, across Chromium, Firefox and WebKit. The added geometry fixtures passed 12/12, forced-colors palette journey 6/6 and reduced-motion CSS fixture 6/6. TypeScript typecheck, serialized AppHost/Shell.Tests/SourceTools.Tests Debug builds and `git diff --check` passed. [Current review verification](evidence/story-13-6/2026-10-17-review-continuation/review-2026-10-17-verification.json) records the commands and report digest; the [result and human checklist](13-6-accessibility-result.md) separates these checks from the prior broad failures. The combined visual and full .NET gates were not rerun on this patch. Manual AT/heard speech, actual zoom and devices, Windows and owner approvals remain open; status stays in-review.
 
 - `npm --prefix tests/e2e run typecheck`; focused Playwright specs against the running Debug host; retain existing accessibility/visual evidence.
 - `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug`; run affected classes through its DLL with xUnit v3 `-class`. Run SourceTools.Tests separately and required broader gates.

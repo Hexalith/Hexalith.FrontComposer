@@ -55,7 +55,8 @@ export async function expectNoPageOverflow(page: Page): Promise<void> {
         if (box.width === 0 || box.height === 0 || style.visibility === 'hidden' || element.closest('[hidden],[aria-hidden="true"]')) continue;
         if (!/(auto|scroll)/u.test(style.overflowX) || element.scrollWidth <= element.clientWidth + 1) continue;
         const labelOwner = element.matches('fluent-tablist') && element.parentElement?.matches('.fluent-tabs') ? element.parentElement : element;
-        const label = labelOwner.getAttribute('aria-label')?.trim() || labelOwner.getAttribute('aria-labelledby')?.split(/\s+/u).map(id => element.ownerDocument.getElementById(id)?.textContent?.trim()).filter(Boolean).join(' ');
+        const labelRoot = labelOwner.getRootNode() as Document | ShadowRoot;
+        const label = labelOwner.getAttribute('aria-label')?.trim() || labelOwner.getAttribute('aria-labelledby')?.split(/\s+/u).map(id => labelRoot.getElementById(id)?.textContent?.trim()).filter(Boolean).join(' ');
         const grid = element.matches('[role="region"]') && Boolean(element.querySelector('[role="grid"],table,[data-fc-datagrid]'));
         const tabs = element.matches('[role="tablist"],fluent-tablist');
         if (!(label && (grid || tabs))) unlabelled.push(`${element.tagName}#${element.id}`);
@@ -114,8 +115,13 @@ export async function inventoryTargets(page: Page, exceptions: TargetException[]
         if (containsComposed(element, candidate.element) || containsComposed(candidate.element, element)) continue;
         const css = getComputedStyle(candidate.element), rect = fresh ? candidate.element.getBoundingClientRect() : candidate.box;
         if (css.pointerEvents === 'none' || css.visibility === 'hidden' || css.display === 'none' || rect.left >= box.right || rect.right <= box.left || rect.top >= box.bottom || rect.bottom <= box.top) continue;
-        xs.add(Math.max(box.left, rect.left)); xs.add(Math.min(box.right, rect.right));
-        ys.add(Math.max(box.top, rect.top)); ys.add(Math.min(box.bottom, rect.bottom));
+        const clip = audit.clip(css, rect);
+        if (clip.kind === 'unsupported') throw new Error('Clipped pointer occlusion needs pixel evidence');
+        if (clip.kind === 'hidden') continue;
+        const painted = clip.box ?? rect;
+        if (painted.left >= box.right || painted.right <= box.left || painted.top >= box.bottom || painted.bottom <= box.top) continue;
+        xs.add(Math.max(box.left, painted.left)); xs.add(Math.min(box.right, painted.right));
+        ys.add(Math.max(box.top, painted.top)); ys.add(Math.min(box.bottom, painted.bottom));
       }
       const x = [...xs].sort((a,b) => a-b), y = [...ys].sort((a,b) => a-b);
       const cells = y.slice(1).map((bottom, row) => x.slice(1).map((right, col) => { const target = hit((x[col] + right) / 2, (y[row] + bottom) / 2); return target !== null && containsComposed(element, target); }));
@@ -166,7 +172,8 @@ export async function inventoryTargets(page: Page, exceptions: TargetException[]
       // pointer paint only while its measured rectangle is currently on screen.
       if (box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight
         && Math.abs(box.left - original.left) < .5 && Math.abs(box.top - original.top) < .5 && box.right > box.left && box.bottom > box.top) box = pointerArea(element, box, !probeScroll);
-      if (probeScroll && (box.right - box.left < 24 || box.bottom - box.top < 24)) {
+      const outsideViewport = !fixed && (box.left < 0 || box.top < 0 || box.right > innerWidth || box.bottom > innerHeight);
+      if (probeScroll && (box.right - box.left < 24 || box.bottom - box.top < 24 || outsideViewport)) {
         const offsets: { element: Element; left: number; top: number }[] = [];
         let scrollable = false;
         for (let current: Element | null = element; current; current = parent(current)) {
@@ -177,6 +184,11 @@ export async function inventoryTargets(page: Page, exceptions: TargetException[]
         }
         const scrolling = document.scrollingElement;
         if (scrolling && !offsets.some(offset => offset.element === scrolling)) offsets.push({ element: scrolling, left: scrolling.scrollLeft, top: scrolling.scrollTop });
+        if (scrolling) {
+          const css = getComputedStyle(scrolling);
+          if (!/(hidden|clip)/u.test(css.overflowX) && scrolling.scrollWidth > scrolling.clientWidth
+            || !/(hidden|clip)/u.test(css.overflowY) && scrolling.scrollHeight > scrolling.clientHeight) scrollable = true;
+        }
         if (scrollable) {
           try {
             element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
@@ -190,6 +202,7 @@ export async function inventoryTargets(page: Page, exceptions: TargetException[]
           }
         }
       }
+      if (!fixed) box = { left: Math.max(0, box.left), top: Math.max(0, box.top), right: Math.min(innerWidth, box.right), bottom: Math.min(innerHeight, box.bottom) };
       const rect = { ...box, width: Math.max(0, box.right - box.left), height: Math.max(0, box.bottom - box.top) };
       return { rect, limitation, clipped: rect.width < original.width - .5 || rect.height < original.height - .5 };
     };
@@ -466,6 +479,9 @@ async function preparePaintAudit(root: Locator) {
         if (transform.is2D && Math.abs(transform.a * transform.d - transform.b * transform.c) < .000001) return [];
         if (!['absolute','fixed'].includes(css.position)) throw new Error('Flow pseudo obstruction needs pixel evidence');
         const parent = (node: Element): Element | null => node.assignedSlot ?? node.parentElement ?? (node.getRootNode() instanceof ShadowRoot ? (node.getRootNode() as ShadowRoot).host : null);
+        if (css.position === 'fixed') for (let ancestor: Element | null = element; ancestor; ancestor = parent(ancestor)) {
+          if (getComputedStyle(ancestor).transform !== 'none') throw new Error('Fixed pseudo transformed containing block needs pixel evidence');
+        }
         let block: Element | null = css.position === 'fixed' ? null : element;
         while (block && getComputedStyle(block).position === 'static' && getComputedStyle(block).transform === 'none') block = parent(block);
         const bounds = block?.getBoundingClientRect(), base = block && bounds ? { left: bounds.left + block.clientLeft, top: bounds.top + block.clientTop, width: block.clientWidth, height: block.clientHeight } : { left: 0, top: 0, width: innerWidth, height: innerHeight };
@@ -1137,6 +1153,9 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
     };
     const pseudoPaint = (element: Element, css: CSSStyleDeclaration): PaintBox[] => {
       if (!['absolute','fixed'].includes(css.position)) throw new Error('Overlapping pseudo paint geometry needs pixel evidence');
+      if (css.position === 'fixed') for (let ancestor: Element | null = element; ancestor; ancestor = parent(ancestor)) {
+        if (getComputedStyle(ancestor).transform !== 'none') throw new Error('Fixed pseudo transformed containing block needs pixel evidence');
+      }
       let block: Element | null = css.position === 'fixed' ? null : element;
       while (block && getComputedStyle(block).position === 'static' && getComputedStyle(block).transform === 'none') block = parent(block);
       const rect = block?.getBoundingClientRect();

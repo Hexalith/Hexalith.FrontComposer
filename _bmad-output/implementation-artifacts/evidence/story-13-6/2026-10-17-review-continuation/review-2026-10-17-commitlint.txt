@@ -1,0 +1,7 @@
+CLI: @commitlint/cli@21.2.2
+Command: ./node_modules/.bin/commitlint --verbose < /tmp/frontcomposer-13-6-current-commit-message.txt
+Exit code: 0
+
+⧗   --- input ---
+fix(a11y): Harden Story 13.6 review checks
+✔   found 0 problems, 0 warnings

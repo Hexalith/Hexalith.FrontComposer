@@ -10434,3 +10434,12 @@ These appended dispositions supersede only the named automated gaps; all histori
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
   summary: Make the committed bmad-loop agent hook executable path portable across workstations.
   evidence: `.codex/hooks.json` invokes `/home/administrator/.local/bin/bmad-loop`, which is user-specific; the hook is an agent-context file outside Story 13.6 and the baseline already used absolute paths.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Verify mixed-height virtualized scrolling does not leave a user-visible spacer error when an unseen taller row enters view.
+  evidence: Review BH03 found that row metrics use materialized rows; no representative scroll trace establishes whether an unseen tall row causes visible incorrect spacing before remeasurement.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Extend full forward and reverse keyboard-cycle proof to destructive confirmation, abandonment, filter and view overlays.
+  evidence: Review BH07 verified that the existing full-cycle browser helper is used for palette and Settings, while the other existing overlay journeys do not establish every stop and both boundaries.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Verify reduced-motion behavior during a live reconciliation-marker transition.
+  evidence: Review BH08 found a vacuous CSS-cue inventory; the current three-engine fixture now proves the three class rules under reduced motion but does not trigger the live reconciliation marker.
