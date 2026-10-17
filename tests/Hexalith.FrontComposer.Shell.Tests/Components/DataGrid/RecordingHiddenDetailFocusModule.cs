@@ -17,6 +17,12 @@ internal sealed class RecordingHiddenDetailFocusModule : IJSObjectReference
     /// <summary>Gets or sets whether module cleanup should report a timeout.</summary>
     public bool TimeoutDisposal { get; set; }
 
+    /// <summary>Gets or sets whether focus cancellation should fail.</summary>
+    public bool FailCancellation { get; set; }
+
+    /// <summary>Gets the number of focus cancellation requests.</summary>
+    public int CancellationCalls { get; private set; }
+
     /// <summary>Signals that the awaited focus attempt has released the module.</summary>
     public TaskCompletionSource<object> Released { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -29,6 +35,11 @@ internal sealed class RecordingHiddenDetailFocusModule : IJSObjectReference
     {
         if (identifier is "focusFirstButtonWithin" or "focusReplacementHeading") { FocusCalls++; }
         if (identifier == "trackDetailFocus") { TrackingCalls++; }
+        if (identifier == "cancelReplacementFocus")
+        {
+            CancellationCalls++;
+            if (FailCancellation) { return ValueTask.FromException<TValue>(new JSException("cancel failed")); }
+        }
         if (TimeoutFocusCallsRemaining > 0)
         {
             TimeoutFocusCallsRemaining--;

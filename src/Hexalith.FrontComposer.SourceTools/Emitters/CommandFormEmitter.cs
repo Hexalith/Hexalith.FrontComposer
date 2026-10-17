@@ -2264,6 +2264,7 @@ public static class CommandFormEmitter {
                 break;
         }
 
+        EmitFieldDescription(sb, propertyName, field.Description);
         _ = sb.AppendLine("            __b.CloseElement();");
         _ = sb.AppendLine("            }");
     }
@@ -2435,7 +2436,7 @@ public static class CommandFormEmitter {
     /// The Fluent field that wraps every generated editor already renders the field's current
     /// EditContext messages once, in Fluent's error styling (including numeric parse errors, which the
     /// form stores for the model field), so no second error node is emitted. A declared description is
-    /// rendered through the editor's Fluent <c>MessageTemplate</c> with a stable id.
+    /// rendered beside the editor with a stable id, independent of Fluent's replaceable message slot.
     /// </para>
     /// <para>
     /// Host <c>aria-invalid</c>/<c>aria-describedby</c> never reach the focusable control inside a
@@ -2453,23 +2454,26 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-invalid\", " + invalidExpression + " ? \"true\" : \"false\");");
         // Fluent text-like editors default to a built-in "required" message after focus loss that is
         // not an EditContext message; it would show error text while the field reports valid. The
-        // EditContext is the single error source, so the Fluent message slot carries only the
-        // declared description.
+        // EditContext is the single error source. A declared description is a persistent sibling
+        // because Fluent replaces its message slot with validation text.
         if (string.IsNullOrWhiteSpace(description)) {
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"MessageCondition\", FluentFieldCondition.Never);");
             return;
         }
 
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"MessageCondition\", FluentFieldCondition.Always);");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"MessageTemplate\", (RenderFragment)(__fieldMessage =>");
-        _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                int fmseq = 0;");
-        _ = sb.AppendLine("                __fieldMessage.OpenElement(fmseq++, \"span\");");
-        _ = sb.AppendLine("                __fieldMessage.AddAttribute(fmseq++, \"id\", _formDomId + \"-" + escapedPropertyName + "-description\");");
-        _ = sb.AppendLine("                __fieldMessage.AddAttribute(fmseq++, \"class\", \"fc-command-field-description\");");
-        _ = sb.AppendLine("                __fieldMessage.AddContent(fmseq++, \"" + EscapeString(description!) + "\");");
-        _ = sb.AppendLine("                __fieldMessage.CloseElement();");
-        _ = sb.AppendLine("            }));");
+    }
+
+    private static void EmitFieldDescription(StringBuilder sb, string propertyName, string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description)) { return; }
+
+        _ = sb.AppendLine("            __b.OpenComponent<FluentText>(cseq++);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + EscapeString(propertyName) + "-description\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"class\", \"fc-command-field-description\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Size\", TextSize.Size200);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__description => __description.AddContent(0, \"" + EscapeString(description!) + "\")));");
+        _ = sb.AppendLine("            __b.CloseComponent();");
     }
 
     private static void EmitPlaceholder(StringBuilder sb, FormFieldModel field) {

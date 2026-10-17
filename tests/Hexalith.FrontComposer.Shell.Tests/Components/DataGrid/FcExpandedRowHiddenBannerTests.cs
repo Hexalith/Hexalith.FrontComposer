@@ -84,6 +84,22 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
     }
 
     [Fact]
+    public async Task FailedFocusCancellationStillDisposesTheImportedModule()
+    {
+        DelayedHiddenDetailFocusRuntime runtime = new();
+        RecordingHiddenDetailFocusModule module = new() { FailCancellation = true };
+        runtime.Import.TrySetResult(module);
+        Services.AddSingleton<IJSRuntime>(runtime);
+        IRenderedComponent<FcExpandedRowHiddenBanner> cut = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders"));
+        cut.WaitForAssertion(() => module.TrackingCalls.ShouldBe(1));
+
+        cut.Instance.Dispose();
+        await module.Released.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        module.CancellationCalls.ShouldBe(1);
+    }
+
+    [Fact]
     public void MissingDetailWithLostFocusUsesOnlyTheNonLiveExplanation()
     {
         BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");

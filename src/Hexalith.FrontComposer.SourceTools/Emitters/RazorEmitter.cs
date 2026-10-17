@@ -1336,7 +1336,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    [global::Microsoft.JSInterop.JSInvokable]");
             _ = sb.AppendLine("    public Task HandleRowMetricsAsync(string instanceId, float height, float defaultHeight)");
             _ = sb.AppendLine("    {");
-            _ = sb.AppendLine("        if (instanceId != _gridInstanceId || defaultHeight != global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density) || !float.IsFinite(height) || height < 24 || height > 4096 || System.Threading.Volatile.Read(ref _disposed) != 0) return Task.CompletedTask;");
+            _ = sb.AppendLine("        if (instanceId != _gridInstanceId || defaultHeight != global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density) || !float.IsFinite(height) || height < 24 || System.Threading.Volatile.Read(ref _disposed) != 0) return Task.CompletedTask;");
             _ = sb.AppendLine("        return InvokeAsync(() => { _measuredRowBaseHeight = defaultHeight; _measuredRowHeight = height; UpdateCurrentViewportSkip(); StateHasChanged(); });");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();

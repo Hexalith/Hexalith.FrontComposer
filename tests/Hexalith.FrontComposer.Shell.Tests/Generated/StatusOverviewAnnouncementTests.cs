@@ -29,6 +29,30 @@ public sealed class StatusOverviewAnnouncementTests : GeneratedComponentTestBase
     }
 
     [Fact]
+    public async Task MeasuredStatusRowsRemountTheVirtualizerWithTheirActualHeight()
+    {
+        Services.AddSingleton(Substitute.For<IEmptyStateCtaResolver>());
+        Services.AddFluxor(options => options.ScanTypes(typeof(StatusOverviewAnnouncementProjectionFeature),
+            typeof(StatusOverviewAnnouncementProjectionReducers)));
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new StatusOverviewAnnouncementProjectionLoadedAction("initial", Rows(true))
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
+        IRenderedComponent<StatusOverviewAnnouncementProjectionView> cut = Render<StatusOverviewAnnouncementProjectionView>();
+        var firstGrid = cut.Find("table.fc-projection-grid[data-fc-grid-item-size]");
+        float defaultHeight = float.Parse(firstGrid.GetAttribute("data-fc-grid-item-size")!, System.Globalization.CultureInfo.InvariantCulture);
+        string instanceId = (string)typeof(StatusOverviewAnnouncementProjectionView)
+            .GetField("_gridInstanceId", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(cut.Instance)!;
+
+        await cut.InvokeAsync(() => cut.Instance.HandleRowMetricsAsync(instanceId, 88, defaultHeight));
+        cut.WaitForAssertion(() => cut.Find("table.fc-projection-grid").GetAttribute("data-fc-grid-item-size").ShouldBe("88"));
+        ReferenceEquals(firstGrid, cut.Find("table.fc-projection-grid")).ShouldBeFalse();
+
+        await cut.InvokeAsync(() => cut.Instance.HandleRowMetricsAsync(instanceId, 4097, defaultHeight));
+        cut.WaitForAssertion(() => cut.Find("table.fc-projection-grid").GetAttribute("data-fc-grid-item-size").ShouldBe("4097"));
+    }
+
+    [Fact]
     public async Task RemovedStatusGroupWithoutExcludingFilterHasNoClearFilterBanner()
     {
         Services.AddSingleton(Substitute.For<IEmptyStateCtaResolver>());

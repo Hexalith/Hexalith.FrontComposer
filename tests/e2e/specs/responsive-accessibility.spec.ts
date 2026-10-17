@@ -95,6 +95,13 @@ test.describe('AE geometry regression fixtures', () => {
     const exception: TargetException = { selector: '#a', kind: 'Equivalent', rationale: 'Fixture', keyboardPath: 'Tab', evidence: 'Fixture', equivalentSelector: '#a' };
     expect((await inventoryTargets(page, [exception])).inventory[0].failure).toContain('Equivalent control');
   });
+  test('a nonmodal dialog does not hide outside pointer targets from evidence', async ({ page }) => {
+    await page.setContent('<button id="outside" style="position:absolute;left:40px;top:40px;width:5px;height:5px;padding:0">Outside</button><dialog><button id="inside" style="width:40px;height:40px">Inside</button></dialog>');
+    await page.locator('dialog').evaluate(dialog => (dialog as HTMLDialogElement).show());
+    const inventory = (await inventoryTargets(page)).inventory;
+    expect(inventory.find(target => target.target === '#outside')?.failure).toContain('lacks an evidenced exception');
+    expect(inventory.find(target => target.target === '#inside')?.failure).toBeNull();
+  });
   test('spacing overrides reach Fluent-style shadow content and contrast composites alpha', async ({ page }) => {
     await page.setContent('<main><p id="text" style="color:rgba(0,0,0,.8);background:white">Readable text</p><div id="host"></div></main>');
     await page.locator('#host').evaluate(element => { element.attachShadow({ mode: 'open' }).innerHTML = '<p>Shadow label</p>'; });
@@ -1314,6 +1321,13 @@ test('resume review overflowing generated text cannot borrow its host background
   await expect(measureSurfaceContrast(page.locator('div'))).rejects.toThrow(/Generated text geometry/);
   await page.addStyleTag({ content: 'div{width:500px}' });
   await expectSurfaceContrast(page.locator('div'));
+});
+
+test('generated pseudo text clipped by its own overflow needs pixel evidence', async ({ page }) => {
+  await page.setContent('<style>p{width:500px;height:100px}p::before{content:"Long generated label";display:block;width:10px;height:10px;overflow:hidden}</style><p></p>');
+  await expect(expectNoTextClipping(page)).rejects.toThrow(/generated text clipping needs pixel evidence/);
+  await page.addStyleTag({ content: 'p::before{width:auto;height:auto;overflow:visible}' });
+  await expectNoTextClipping(page);
 });
 
 test('resume review descendant background paint cannot cover sampled text', async ({ page }) => {

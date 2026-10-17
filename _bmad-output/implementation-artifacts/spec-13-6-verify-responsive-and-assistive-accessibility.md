@@ -166,6 +166,27 @@ Fourteen individual findings were classified after all three independent review 
 
 All findings were classified individually before grouping. G01–G18 are direct corrections in existing implementation/test seams, add no production public surface, and cover the demonstrated states above. No intent change or spec amendment is needed. BH12 is rejected under the low-severity rule; no current result claims that unused exception.
 
+### Review continuation — 2026-10-17
+
+| Finding | Verdict | Evidence | Route |
+| --- | --- | --- | --- |
+| R-BH01 | false | A new result identity while the same detail stays missing is a repeated refresh; the approved decision requires silence. `MissingWithoutFilterEvidenceShowsNeutralReasonAndAnnouncesItOnce` covers the identity change. | reject |
+| R-BH02 | medium | JavaScript acknowledges a measured height above 4096 after the generated C# handler returns without applying it, leaving virtualizer spacing below the rendered row height. | patch R-G01 |
+| R-BH03 | maybe-false | `observeContent` traverses the document on scheduled measurements; user-visible cost has not been measured on a multi-grid page. A representative profile would settle this. | defer |
+| R-BH04 | medium | `CancelMissingFocusAsync` skips module disposal when `cancelReplacementFocus` throws a handled interop exception. | patch R-G02 |
+| R-BH05 | false | AE-09 requires zero critical findings; the established scanner intentionally blocks serious and critical while recording minor and moderate findings. | reject |
+| R-BH06 | medium | The hardcoded `bmad-loop` executable path is not portable, but it is an agent-context hook unrelated to this story; the baseline already contained absolute hook paths. | defer |
+| R-BH07 | false | The pre-existing 50 MiB raw-artifact cap correctly fails the retained oversized run. The result explicitly records this open gate, and splitting or weakening the root check would not make the visual failures pass. | reject |
+| R-BH08 | false | CI supplies `FC_A11Y_EVIDENCE_RUN_ID` to both run and validator. Omitting it is an intentional local replay mode for an existing packet, not a current-run claim. | reject |
+| R-BH09 | false | Eighteen visual failures are explicitly recorded as open; regenerating approved baselines without human visual approval violates the frozen constraints. | reject |
+| R-BH10 | false | Windows, WebKit paint, real zoom/devices and human AT observations are already marked unperformed, and the story remains in-review. | reject |
+| R-EC01 | medium | Any `dialog[open]`, including a nonmodal dialog, currently excludes visible outside controls from target evidence. | patch R-G03 |
+| R-EC02 | medium | The text-clipping check inspects host/ancestor overflow but not the generated pseudo's own hidden overflow, so its clipped label can pass. | patch R-G04 |
+| R-EC03 | medium | Independent confirmation of R-BH02's generated handler ceiling versus JavaScript acknowledgement. | patch R-G01 |
+| R-VG01 | medium | StatusOverview uses the measured grid height but has only generated-source assertions; no rendered test updates its virtualizer after a measurement. | patch R-G05 |
+
+All fourteen findings were classified individually before grouping. R-G01 joins R-BH02/R-EC03; the other patch groups each have one root. R-BH03 and R-BH06 are deferred under the review rules; no frozen intent change is needed.
+
 ## Verification
 
 - `npm --prefix tests/e2e run typecheck`; focused Playwright specs against the running Debug host; retain existing accessibility/visual evidence.
@@ -303,6 +324,19 @@ The fixed-source review3 run remains retained with its failures. Its three newly
 
 ### Final parent verification of resumed Build — 2026-10-17
 
-Current source `sha256:0bfddb4016c3bfe00e84ae88ca698b3a63c373b1ac2be5048577cdae0ee6b77a` binds the complete 726-case three-engine run with zero retries: 705 passed / 18 failed / 3 skipped / 0 flaky; 0 nonvisual failures. Current configured Debug Shell: 3695 passed / 2 existing catalog-policy failures / 3697. The final focused type/header/fresh-row selection passed 18/18 across all three engines. The complete lane also covers real lifecycle Dismiss, theme glyph/caret containment, the native account 24px square, and retained shadow/unsupported-paint negatives. Parent verification additionally corrected lifecycle narrow-grid containment, natural theme-button width and native 36px avatar hit area; no helper exemption or contrast/target threshold was reduced.
+Prior complete-candidate source `sha256:0bfddb4016c3bfe00e84ae88ca698b3a63c373b1ac2be5048577cdae0ee6b77a` binds the earlier 726-case three-engine run with zero retries: 705 passed / 18 failed / 3 skipped / 0 flaky; 0 nonvisual failures. That candidate's configured Debug Shell: 3695 passed / 2 existing catalog-policy failures / 3697. The final focused type/header/fresh-row selection passed 18/18 across all three engines. The complete lane also covers real lifecycle Dismiss, theme glyph/caret containment, the native account 24px square, and retained shadow/unsupported-paint negatives. Parent verification additionally corrected lifecycle narrow-grid containment, natural theme-button width and native 36px avatar hit area; no helper exemption or contrast/target threshold was reduced.
 
-[Current evidence and exact commands](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/report.md) and [single current result/checklist](13-6-accessibility-result.md) supersede whole-candidate claims above while retaining every failed/interrupted attempt. All 24 approved PNG bytes, four frozen intent blocks, original 3c8679628ebdb8995afc09f712a04fcde623695c baseline and eight root submodules are unchanged. Actual WebKit palette, Windows, manual AT/zoom/devices, heard speech, visual/catalog/raw-size and owner/live-backend gates remain open. Status stays in-review, sprint stays review; no completion, staging, commit or push is asserted.
+[Prior complete-candidate evidence and exact commands](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/report.md) and [updated result/checklist](13-6-accessibility-result.md) retain that candidate while separating the later review patch and every failed/interrupted attempt. All 24 approved PNG bytes, four frozen intent blocks, original 3c8679628ebdb8995afc09f712a04fcde623695c baseline and eight root submodules are unchanged. Actual WebKit palette, Windows, manual AT/zoom/devices, heard speech, visual/catalog/raw-size and owner/live-backend gates remain open. Status stays in-review, sprint stays review; no completion, staging, commit or push is asserted.
+
+
+### Review continuation verification — 2026-10-17
+
+The fourteen `R-*` review findings above produced five focused patch groups. The generated row handler now accepts every positive finite measured height acknowledged by JavaScript; the hidden-detail focus module disposes after a handled cancellation failure; target inventory distinguishes active modal dialogs from nonmodal dialogs; generated pseudo text checks its own clipping overflow; and rendered StatusOverview tests prove virtualizer remount at measured heights. R-BH03 and R-BH06 are recorded in `deferred-work.md`.
+
+Parent verification additionally found that Fluent 5.0.1 replaces a described editor's message template with its validation error, removing the description from the DOM. The generated form now renders the stable description beside the editor, while Fluent retains its single validation message. The existing `fc-focus.js` ID lookup links both texts to the focusable control. The generator, bUnit and three-engine generated-form validation checks cover the correction; no threshold, public API or dependency declaration changed.
+
+The current uncommitted code/test patch is based on `12e8b8e1f2a683f9b2c29ca296f2960b47e6602c` and has digest `sha256:391aa1f3684926a4201561809509038657c440eb319570546dac1d5a3b8dd28e` from `git diff --binary HEAD -- src tests | sha256sum`. Shell.Tests and SourceTools.Tests Debug builds both pass with zero warnings/errors after local restores. Focused checks pass: `CommandRendererWrapperIntegrationTests` 70/70; `CommandFormEmitterTests` 68/68; affected hidden-banner 35/35, StatusOverview 9/9 and source virtualization 18/18; responsive synthetic browser fixtures 6/6 across three engines; real destructive generated-form validation 3/3; TypeScript typecheck and `git diff --check`.
+
+Final broad .NET gates were rerun on this patch: Shell.Tests **3709 total / 7 failed / 1 skipped**; SourceTools.Tests **1313 total / 1 failed**. Shell failures include catalog/governance and Fluent snapshot drift; SourceTools' sole packaged-analyzer test expects Fluent 5.0.0 while the declared catalog resolves 5.0.1. From `tests/e2e`, the complete Story 13.6 selection (`npx playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --workers=4 --retries=0`) ran **732 cases: 711 passed / 18 visual failed / 3 skipped / 0 flaky**, with **zero nonvisual failures**. The earlier 726-case packet remains historical. An exploratory 1203-case root-launched sweep used the wrong working directory for several legacy tests; its 37 failures are not a replacement for the correctly launched story gate. Its isolated WebKit abandonment-focus failure passed on a one-worker rerun from `tests/e2e`.
+
+The [current verification summary](evidence/story-13-6/2026-10-17-review-continuation/verification.json) and [result and human checklist](13-6-accessibility-result.md) distinguish this review patch from historical whole-candidate evidence. Manual AT/heard speech, real zoom/devices, Windows/WebKit forced-palette coverage, visual/catalog/raw-size, live EventStore and owner approvals remain open. Status stays `in-review`, sprint status stays `review`; no completion, staging, commit or push is asserted.

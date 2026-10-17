@@ -1,12 +1,14 @@
 # Story 13.6 accessibility result and human checklist
 
-Updated 2026-10-17. **Readiness remains open; Story 13.6 stays in-review.** Current complete three-engine browser run: **705 passed, 18 failed, 0 flaky, 3 skipped / 726**, with zero retries. There are **0 nonvisual failures**; 18 ordinary visual comparisons remain failed. The current configured direct Debug Shell lane is **3695 passed / 2 failed / 3697**, with the two existing package-policy failures retained.
+Updated 2026-10-17. **Readiness remains open; Story 13.6 stays in-review.** The current uncommitted review patch is based on root `12e8b8e1f2a683f9b2c29ca296f2960b47e6602c` on `main`. Its tracked code/test diff has `sha256:391aa1f3684926a4201561809509038657c440eb319570546dac1d5a3b8dd28e` (`git diff --binary HEAD -- src tests | sha256sum`). This identifies the review patch, not a full candidate manifest.
 
-Current source: **`sha256:0bfddb4016c3bfe00e84ae88ca698b3a63c373b1ac2be5048577cdae0ee6b77a`**, root `008736825376e6e2b419cb8d3b81067a8f9cc3b1` on `main`; the original spec baseline remains `3c8679628ebdb8995afc09f712a04fcde623695c`. [Source manifest](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/source.json), [Build review and verification record](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/report.md), [actual Test host and served assets](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/current-startup.json), [browser outcomes](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/verification/browser-outcomes.json), [per-attempt state validation](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/verification/state-validation.json), [remaining automated gates](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/verification/gate-status.json) and [final preservation audit](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/audit.json) bind this candidate. All 24 approved image bytes, four frozen intent blocks and eight root submodules remain unchanged.
+**Current Story 13.6 browser gate:** From `tests/e2e`, `npx playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --workers=4 --retries=0` ran 732 cases across Chromium, Firefox and WebKit: **711 passed, 18 failed, 3 skipped, 0 flaky**. All 18 failures are the retained ordinary visual comparisons; there are **zero nonvisual failures**. [Sanitized current verification summary](evidence/story-13-6/2026-10-17-review-continuation/verification.json) retains the failed-test inventory and SHA-256 of the raw Playwright report. The generated destructive-form validation journey also passed 3/3 across the same engines, proving that its description remains linked while Fluent displays the single validation error. DOM focus and status checks do not establish heard speech.
 
-The corrections cover composed clipping/paint/target measurement, physical-instance and query-safe missing-detail focus, one shared fallback cue, shadow-aware row metrics with bounded delivery retries and quiescent multi-grid observation, truthful later-row ItemSize, and narrow control layout. Real pointer checks now cover lifecycle Dismiss, the naturally sized theme button and a Fluent 36px account avatar with a solid 24×24px hit square. The final three-engine type/header/fresh-row selection passed 18/18 after the earlier 78-case control/paint selection; both records remain retained. DOM focus and status assertions do not establish heard speech.
+**Current .NET gates:** Debug Shell.Tests and SourceTools.Tests builds pass with zero warnings/errors after local restores against the declared catalog. The full Shell run reported **3709 total, 7 failed, 1 skipped**; failures include existing catalog/governance and Fluent snapshot drift. The full SourceTools run reported **1313 total, 1 failed**: its packaged analyzer expects Fluent 5.0.0 while the declared catalog resolves 5.0.1. Focused `CommandRendererWrapperIntegrationTests` pass 70/70 and `CommandFormEmitterTests` pass 68/68. The affected hidden-banner, StatusOverview and virtualization tests, 6/6 synthetic browser fixtures, TypeScript typecheck and `git diff --check` also pass. No tracked dependency declaration changed.
 
-**Dependency and evidence limits:** Debug execution used existing Fluent 5.0.0 restore assets; the catalog requests 5.0.1 and Localization 10.0.13 differs from the policy's 10.0.12. No restore or dependency upgrade was performed. Linux visual failures, Windows execution, WebKit's 116 actual forced-palette cells, real 400% browser zoom, human AT/device observations, owner approvals and live EventStore fresh-row acceptance remain open. Raw artifact size failures remain recorded separately from bounded per-engine replay. [The preceding result](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/historical-result-before-current.md) and [all earlier failed/interrupted/current review attempts](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/report.md#retained-attempts) remain retained; passing diagnostics do not replace complete gates.
+**Prior complete candidate:** Source `sha256:0bfddb4016c3bfe00e84ae88ca698b3a63c373b1ac2be5048577cdae0ee6b77a` at root `008736825376e6e2b419cb8d3b81067a8f9cc3b1` completed the earlier 726-case browser packet: 705 passed, 18 visual comparisons failed and 3 skipped. Its [source manifest](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/source.json), [verification report](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/report.md) and [browser outcomes](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/verification/browser-outcomes.json) are historical evidence; the current review patch has its own results above.
+
+Manual NVDA/JAWS/VoiceOver, actual 400% zoom, tablet/phone and heard-speech observations, Windows execution, WebKit actual forced-palette evidence, owner approvals, visual approval, catalog-policy alignment, raw artifact-size gate and live EventStore fresh-row acceptance remain open. All 24 approved image bytes, four frozen intent blocks and eight root submodules remain unchanged. The original story baseline is `3c8679628ebdb8995afc09f712a04fcde623695c`.
 
 ## Human evidence checklist — leave each box open until observed
 
@@ -21,9 +23,9 @@ Use [the existing manual log template](../../docs/accessibility-verification/man
 | MAN-136-TABLET | `not performed` | Quality/Test role; individual unassigned. Blocks real-device gate. No actual tablet supplied. Exercise touch-adapted tier on a physical tablet; reopen with model, OS/browser, orientation, viewport and dated human results. |
 | MAN-136-PHONE | `not performed` | Quality/Test role; individual unassigned. Blocks real-device gate. No actual phone supplied. Exercise functional fallback on a physical phone; reopen with the same device/version evidence. |
 | MAN-136-ZERO-FIELD | `not performed` | Quality/Test and Accessibility/Stakeholder roles; individuals unassigned. Human AT/heard-speech observations remain open. The gated Test host now exposes the real generated renderer and its automated matrix has run. Execute the approved sequence with a supported AT/browser pairing; automation does not supply heard speech. |
-| UX-136-REVIEW | `performed: scoped automated evidence review` | Both independent Build review passes and parent verification are retained in the current report/spec. Human UX/Product/Fluent sign-off remains open and is not inferred. |
+| UX-136-REVIEW | `performed: scoped automated evidence review` | Both independent Build review passes and parent verification are retained in the prior complete-candidate report and current spec. Human UX/Product/Fluent sign-off remains open and is not inferred. |
 
-All gate rows above share task/story `13.6`, release branch `main`, and the immutable candidate digest in the identity section. The manual gates retain **unassigned** individual testers/reviewer owners and no human approval reference. UX-136-REVIEW records the performed scoped automated review only. NVDA, JAWS, VoiceOver, tablet, phone and zero-field gates cover AE-01–AE-09 plus the manual-evidence acceptance criterion; the zoom gate specifically covers AE-02, and the performed scoped UX review covers the opt-in evidence-review criterion. The remaining rows are prepared checklist entries, not completed manual logs.
+All gate rows above share task/story `13.6` and release branch `main`; human observations must name the candidate actually tested. The review-patch digest above identifies code/test changes only. The manual gates retain **unassigned** individual testers/reviewer owners and no human approval reference. UX-136-REVIEW records the performed scoped automated review only. NVDA, JAWS, VoiceOver, tablet, phone and zero-field gates cover AE-01–AE-09 plus the manual-evidence acceptance criterion; the zoom gate specifically covers AE-02, and the performed scoped UX review covers the opt-in evidence-review criterion. The remaining rows are prepared checklist entries, not completed manual logs.
 
 ### Common operator journey on every supported AT/browser pairing
 
@@ -60,20 +62,21 @@ All gate rows above share task/story `13.6`, release branch `main`, and the immu
 
 ## Remaining acceptance gates
 
-All 18 manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, tablet/phone, heard speech and human reviewer observations were not performed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and separate live EventStore fresh-row acceptance remain unresolved. The configured Shell gate fails at 3695 passed / 2 failed; visual comparisons, raw artifact-size gates, Windows execution and WebKit actual forced-palette coverage remain open. Every prior failed or interrupted attempt retains its own evidence and disposition.
+All 18 manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, tablet/phone, heard speech and human reviewer observations were not performed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and separate live EventStore fresh-row acceptance remain unresolved. The current Shell and browser gates have been rerun and remain failed on catalog/governance, Fluent snapshots and 18 visual comparisons. Raw artifact-size gates, Windows execution and WebKit actual forced-palette coverage remain open. Every prior failed or interrupted attempt retains its own evidence and disposition.
 
 ```yaml
 story: 13.6
 story_status: in-review
 sprint_status: review
 final_classification: open
-configured_shell: failed; 3695 passed / 2 failed
-complete_browser: 705 passed / 18 failed / 3 skipped / 0 flaky / 726 total; zero retries
+configured_shell: failed; 3709 total / 7 failed / 1 skipped
+source_tools: failed; 1313 total / 1 failed (Fluent 5.0.0 expectation versus 5.0.1 catalog)
+complete_browser: failed; 711 passed / 18 visual failed / 3 skipped / 0 flaky / 732 total
 visual_comparisons: failed; 18
 nonvisual_browser_failures: 0
-current_state_rows_per_engine: chromium=116, firefox=116, webkit=116
-focused_type_header_fresh_row: passed; 18/18 across three engines
-raw_artifact_size_gate: failed; retained separately from bounded replay
+prior_candidate_state_rows_per_engine: chromium=116, firefox=116, webkit=116
+prior_candidate_focused_type_header_fresh_row: passed; 18/18 across three engines
+raw_artifact_size_gate: prior candidate failed; current run not evaluated
 webkit_actual_forced_palette_cells: uncovered; 116
 windows_execution: not performed
 manual_at: not performed
@@ -81,7 +84,7 @@ actual_400_percent_zoom: not performed
 real_tablet: not performed
 real_phone: not performed
 heard_speech: not observed
-zero_field_generated_browser_surface: executed
+zero_field_generated_browser_surface: executed in current Story 13.6 browser gate
 ux_evidence_review: scoped automated reviews performed; human sign-off open
 product_approval_inferred: false
 ```

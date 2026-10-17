@@ -238,10 +238,10 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             fields.Select(field => field.GetAttribute("name")).ShouldBe(hideFirstMember ? ["Reason"] : ["RecordId", "Reason"]);
 
             foreach (AngleSharp.Dom.IElement field in fields) {
-                // Descriptions render once, through the editor's own Fluent field message slot.
+                // Descriptions render once beside the editor, beyond Fluent's replaceable message slot.
                 AngleSharp.Dom.IElement description = cut.FindAll("#" + field.Id + "-description").ShouldHaveSingleItem();
-                description.Closest("[slot='message']").ShouldNotBeNull();
-                description.Closest("fluent-field").ShouldBe(field.Closest("fluent-field"));
+                description.Closest("[slot='message']").ShouldBeNull();
+                description.ParentElement.ShouldBe(field.Closest("fluent-field").ShouldNotBeNull().ParentElement);
                 field.GetAttribute("data-fc-invalid").ShouldBe("false");
                 field.HasAttribute("aria-describedby").ShouldBeFalse();
                 field.HasAttribute("aria-invalid").ShouldBeFalse();
@@ -405,8 +405,10 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             AngleSharp.Dom.IElement recordField = cut.Find("[name='RecordId']").Closest("fluent-field").ShouldNotBeNull();
             recordField.QuerySelectorAll(".fluent-validation-message").Length.ShouldBe(1);
             System.Text.RegularExpressions.Regex.Count(recordField.TextContent, "The Record ID field is required\\.").ShouldBe(1);
-            recordField.QuerySelector("[id$='-RecordId-description']").ShouldNotBeNull()
+            recordField.ParentElement.ShouldNotBeNull()
+                .QuerySelector("[id$='-RecordId-description']").ShouldNotBeNull()
                 .TextContent.Trim().ShouldBe("Record to change.");
+            cut.FindAll("[id$='-RecordId-description']").Count.ShouldBe(1);
         });
     }
 

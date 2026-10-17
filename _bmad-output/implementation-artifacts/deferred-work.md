@@ -10428,3 +10428,9 @@ These appended dispositions supersede only the named automated gaps; all histori
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-close-automated-verification-gaps.md`
   summary: Add automated effective Counter resource configuration coverage for explicit Test AppHost runs and Development/publish exclusion.
   evidence: Resumed review R-VG02 verified that FrontComposerUiAppHostTests checks Program.cs strings while normal Playwright starts Counter directly; changing the AppHost ConfirmDelayMs value would evade both. Current Test startup is executed evidence only; reusable coverage needs an AppHost configuration/launch harness.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Profile document traversal in row-metric observation on a representative multi-grid page.
+  evidence: `observeContent` scans the document on scheduled measurements, but no profile shows whether this causes user-visible cost; a representative scrolling and rerender profile would settle it.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Make the committed bmad-loop agent hook executable path portable across workstations.
+  evidence: `.codex/hooks.json` invokes `/home/administrator/.local/bin/bmad-loop`, which is user-specific; the hook is an agent-context file outside Story 13.6 and the baseline already used absolute paths.

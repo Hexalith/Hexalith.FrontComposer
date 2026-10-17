@@ -91,7 +91,7 @@ export async function inventoryTargets(page: Page, exceptions: TargetException[]
       // aria-hidden does not deactivate a painted pointer target.
       return true;
     };
-    const modalDialog = all.find(element => element.matches('dialog[open]'));
+    const modalDialog = all.find(element => element.matches('dialog:modal'));
     const modalRoot = modalDialog?.getRootNode();
     const modal = modalRoot instanceof ShadowRoot ? modalRoot.host : modalDialog;
     const candidates = all.filter(element => element.matches(selector) && visible(element)
@@ -965,6 +965,10 @@ export async function expectNoTextClipping(page: Page): Promise<void> {
           if (!generated.content || ['none','normal','""',"''"].includes(generated.content) || generated.display === 'none' || generated.visibility === 'hidden' || Number(generated.opacity) === 0) continue;
           const visualContent = generated.content.match(/^("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')(?:\s*\/.*)?$/u)?.[1];
           if (visualContent && ['""', "''"].includes(visualContent)) continue;
+          if (/(hidden|clip)/u.test(generated.overflowX + generated.overflowY)) {
+            failures.add(`${identify(node)}: generated text clipping needs pixel evidence`);
+            continue;
+          }
           // Supported normal-flow glyphs fit their host's scroll envelope. Use that
           // conservative envelope through composed clips, including required markers.
           if (visualContent && generated.position === 'static' && generated.transform === 'none' && generated.cssFloat === 'none'

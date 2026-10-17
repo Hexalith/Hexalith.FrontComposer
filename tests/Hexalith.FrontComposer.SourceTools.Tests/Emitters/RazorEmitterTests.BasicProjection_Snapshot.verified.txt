@@ -791,7 +791,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     [global::Microsoft.JSInterop.JSInvokable]
     public Task HandleRowMetricsAsync(string instanceId, float height, float defaultHeight)
     {
-        if (instanceId != _gridInstanceId || defaultHeight != global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density) || !float.IsFinite(height) || height < 24 || height > 4096 || System.Threading.Volatile.Read(ref _disposed) != 0) return Task.CompletedTask;
+        if (instanceId != _gridInstanceId || defaultHeight != global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density) || !float.IsFinite(height) || height < 24 || System.Threading.Volatile.Read(ref _disposed) != 0) return Task.CompletedTask;
         return InvokeAsync(() => { _measuredRowBaseHeight = defaultHeight; _measuredRowHeight = height; UpdateCurrentViewportSkip(); StateHasChanged(); });
     }
 

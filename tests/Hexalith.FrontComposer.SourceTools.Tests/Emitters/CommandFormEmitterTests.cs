@@ -1102,17 +1102,17 @@ public class CommandFormEmitterTests {
         masked.ShouldContain("border: var(--strokeWidthThin) solid var(--colorNeutralStroke2)");
         masked.ShouldContain("__b.AddAttribute(#, \"Weight\", TextWeight.Semibold);");
 
-        // The description is rendered inside the editor through Fluent field messaging, with a stable id.
+        // The description stays beside the editor when Fluent replaces its message slot with validation.
         string firstFieldSource = GeneratedRenderTreeText.MaskSequenceArguments(source[firstField..secondField]);
         int inputStart = firstFieldSource.IndexOf("__b.OpenComponent<FluentTextInput>", StringComparison.Ordinal);
-        int messageTemplate = firstFieldSource.IndexOf("__b.AddAttribute(#, \"MessageTemplate\", (RenderFragment)(__fieldMessage =>", StringComparison.Ordinal);
-        int descriptionId = firstFieldSource.IndexOf("__fieldMessage.AddAttribute(#, \"id\", _formDomId + \"-FirstNote-description\");", StringComparison.Ordinal);
         int inputEnd = firstFieldSource.IndexOf("__b.CloseComponent();", inputStart, StringComparison.Ordinal);
+        int descriptionStart = firstFieldSource.IndexOf("__b.OpenComponent<FluentText>", inputEnd, StringComparison.Ordinal);
+        int descriptionId = firstFieldSource.IndexOf("__b.AddAttribute(#, \"Id\", _formDomId + \"-FirstNote-description\");", StringComparison.Ordinal);
         inputStart.ShouldBeGreaterThanOrEqualTo(0);
-        messageTemplate.ShouldBeGreaterThan(inputStart);
-        descriptionId.ShouldBeGreaterThan(messageTemplate);
-        descriptionId.ShouldBeLessThan(inputEnd);
-        masked.ShouldContain("__fieldMessage.AddAttribute(#, \"id\", _formDomId + \"-SecondNote-description\");");
+        descriptionStart.ShouldBeGreaterThan(inputEnd);
+        descriptionId.ShouldBeGreaterThan(descriptionStart);
+        firstFieldSource.ShouldNotContain("\"MessageTemplate\"");
+        masked.ShouldContain("__b.AddAttribute(#, \"Id\", _formDomId + \"-SecondNote-description\");");
 
         // BH3-08 / BH3-09 — no host ARIA that cannot reach the shadow control, and no second error node:
         // the Fluent field renders each error once. BH17-03 — the only description link is the light-DOM

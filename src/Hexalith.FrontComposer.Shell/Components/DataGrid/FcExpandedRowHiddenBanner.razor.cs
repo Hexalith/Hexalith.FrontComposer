@@ -429,6 +429,14 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
         try
         {
             await module.InvokeVoidAsync("cancelReplacementFocus", _recoveryKey).ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) { }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+        catch (OperationCanceledException) { }
+
+        try
+        {
             await module.DisposeAsync().ConfigureAwait(false);
         }
         catch (JSDisconnectedException) { }

@@ -133,7 +133,7 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     ]);
 
     // Story 13.3 VR-01 / BH3-08 / BH3-09 — the Chromium accessibility tree of each focusable textbox
-    // reports the invalid state and is described by its Fluent-rendered description and error; each
+    // reports the invalid state and is described by its persistent description and Fluent error; each
     // error is visible exactly once.
     if (test.info().project.name === 'chromium') {
       await expect.poll(async () => axField(page, `.fc-command-form[aria-label="${FORM_LABEL}"] fluent-text-input[name="RecordId"]`), { timeout: 10_000 }).toMatchObject({
@@ -155,7 +155,7 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     const recordField = form.locator('fluent-field', { has: page.locator('label[slot="label"]:text-is("Record Id")') });
     await expect(recordField.locator('.fluent-validation-message')).toHaveCount(1);
     await expect(recordField.getByText('The Record Id field is required.', { exact: true })).toHaveCount(1);
-    await expect(recordField.locator('[slot="message"] .fc-command-field-description')).toHaveText('Record to purge.');
+    await expect(form.locator('.fc-command-field:has(fluent-text-input[name="RecordId"]) > fluent-text.fc-command-field-description')).toHaveText('Record to purge.');
     const retentionField = form.locator('fluent-field', { has: page.locator('label[slot="label"]:text-is("Retention")') });
     await expect(retentionField.locator('.fluent-validation-message')).toHaveCount(1);
     await expect(retentionField.getByText('The Retention field is required.', { exact: true })).toHaveCount(1);
