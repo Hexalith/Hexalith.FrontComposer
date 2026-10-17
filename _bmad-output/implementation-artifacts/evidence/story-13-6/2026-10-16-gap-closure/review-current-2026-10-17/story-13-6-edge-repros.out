@@ -1,0 +1,4 @@
+SHADOW_CLIPPING_PASSED {"host":{"x":8,"y":8,"width":60,"height":20,"top":8,"right":68,"bottom":28,"left":8},"text":{"x":8,"y":8,"width":199.09375,"height":17,"top":8,"right":207.09375,"bottom":25,"left":8}}
+FOCUS_GEOMETRY {"target":"BUTTON#","requireIndicator":true,"box":{"left":46,"top":46,"right":150,"bottom":90},"ring":2,"failures":[],"occluder":null,"shadowBounds":[]}
+FOCUS_CONTRAST [{"owner":0,"node":"button","paint":"element outline","foreground":[0,0,0,1],"background":[255,255,255,1],"ratio":21,"minimum":3}]
+DUPLICATE_PROJECTION_RECOVERY {"recovered":true,"activeElement":"first"}

@@ -1,0 +1,59 @@
+
+Running 2 tests using 1 worker
+
+(node:72375) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › specs/accessibility-state-matrix.spec.ts:435:3 › shell chrome, theme menu and exact desktop navigation rails in light (1.4s)
+(node:73303) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium] › specs/accessibility-state-matrix.spec.ts:691:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (400ms)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:435:3 › shell chrome, theme menu and exact desktop navigation rails in light 
+
+    Error: AE-03 clipped text ranges
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "#f1b1bd0f: generated text clipping needs pixel evidence",
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:959
+
+      957 |     return [...failures];
+      958 |   });
+    > 959 |   expect(failures, 'AE-03 clipped text ranges').toEqual([]);
+          |                                                 ^
+      960 | }
+      961 |
+      962 | export type ContrastKind = 'text' | 'border' | 'icon' | 'focus' | 'cue';
+        at expectNoTextClipping (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:959:49)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:57:3)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:438:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-c2-generated-positive-step/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-c2-generated-positive-step/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc-c2-generated-positive-step/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-c2-generated-positive-step/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc-c2-generated-positive-step/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:435:3 › shell chrome, theme menu and exact desktop navigation rails in light 
+  1 passed (3.2s)

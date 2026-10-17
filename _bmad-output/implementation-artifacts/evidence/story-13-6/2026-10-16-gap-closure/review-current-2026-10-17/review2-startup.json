@@ -1,0 +1,24 @@
+{
+  "resource": {
+    "name": "counter-web-kgvjyuyg",
+    "state": "Running",
+    "healthStatus": "Healthy",
+    "source": "Counter.Web.csproj",
+    "startTimestamp": "2026-10-17T15:41:35.67+00:00"
+  },
+  "executablePid": "60479",
+  "actualEnvironment": {
+    "ASPNETCORE_ENVIRONMENT": "Test",
+    "DOTNET_ENVIRONMENT": "Test",
+    "Hexalith__Shell__ProjectionReconnectedNoticeDurationMs": "30000"
+  },
+  "resourceEndpoint": "https://localhost:7201",
+  "fc-focus.js": {
+    "servedSha256": "6b47d8da48d808e20ac72bb337b2426306e54afd664447607e23b35208b98b8a",
+    "diskSha256": "6b47d8da48d808e20ac72bb337b2426306e54afd664447607e23b35208b98b8a"
+  },
+  "fc-datagrid.js": {
+    "servedSha256": "f7f961bb27d25333d45ad72e94270e0408c0bbee9b50c10499506f7d88b41b05",
+    "diskSha256": "f7f961bb27d25333d45ad72e94270e0408c0bbee9b50c10499506f7d88b41b05"
+  }
+}

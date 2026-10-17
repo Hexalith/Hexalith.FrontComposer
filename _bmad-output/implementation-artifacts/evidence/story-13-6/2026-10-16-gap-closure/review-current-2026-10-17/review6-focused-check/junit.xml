@@ -1,0 +1,152 @@
+<testsuites id="" name="" tests="18" failures="0" skipped="0" errors="0" time="26.88359">
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-17T16:49:16.245Z" hostname="chromium" tests="4" failures="0" skipped="0" time="15.588" errors="0">
+<testcase name="header theme and account controls retain focus and pointer geometry in light" classname="accessibility-state-matrix.spec.ts" time="3.282">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-4f4ff-d-pointer-geometry-in-light-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in light" classname="accessibility-state-matrix.spec.ts" time="4.491">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-85ff9-stem-color-meaning-in-light-chromium/attachments/state-fresh-presentation-light-8f92039562c7bef6b0dc2fd52c28d5db54f04f08.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-85ff9-stem-color-meaning-in-light-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="header theme and account controls retain focus and pointer geometry in dark" classname="accessibility-state-matrix.spec.ts" time="3.285">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-14bdf-nd-pointer-geometry-in-dark-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in dark" classname="accessibility-state-matrix.spec.ts" time="4.53">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-chromium/attachments/state-fresh-presentation-dark-346b91be64ef9969e4ed1ed5cbf550c790796acb.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-17T16:49:16.245Z" hostname="chromium" tests="2" failures="0" skipped="0" time="8.593" errors="0">
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light" classname="responsive-accessibility.spec.ts" time="4.523">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-42726-educed-motion-cues-in-light-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark" classname="responsive-accessibility.spec.ts" time="4.07">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-0c912-reduced-motion-cues-in-dark-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-17T16:49:16.245Z" hostname="firefox" tests="4" failures="0" skipped="0" time="23.664" errors="0">
+<testcase name="header theme and account controls retain focus and pointer geometry in light" classname="accessibility-state-matrix.spec.ts" time="3.83">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-4f4ff-d-pointer-geometry-in-light-firefox/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in light" classname="accessibility-state-matrix.spec.ts" time="8.18">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-85ff9-stem-color-meaning-in-light-firefox/attachments/state-fresh-presentation-light-5ab0eb44e54e1f90efd5cbbd58f6c65cfb2e62dd.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-85ff9-stem-color-meaning-in-light-firefox/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="header theme and account controls retain focus and pointer geometry in dark" classname="accessibility-state-matrix.spec.ts" time="4.789">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-14bdf-nd-pointer-geometry-in-dark-firefox/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in dark" classname="accessibility-state-matrix.spec.ts" time="6.865">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-firefox/attachments/state-fresh-presentation-dark-d3191f693a0f322e6b1c7961ef9c4d493c5f7844.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-firefox/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-17T16:49:16.245Z" hostname="firefox" tests="2" failures="0" skipped="0" time="9.535" errors="0">
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light" classname="responsive-accessibility.spec.ts" time="5.449">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-42726-educed-motion-cues-in-light-firefox/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark" classname="responsive-accessibility.spec.ts" time="4.086">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-0c912-reduced-motion-cues-in-dark-firefox/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-17T16:49:16.245Z" hostname="webkit" tests="4" failures="0" skipped="0" time="17.25" errors="0">
+<testcase name="header theme and account controls retain focus and pointer geometry in light" classname="accessibility-state-matrix.spec.ts" time="2.302">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-4f4ff-d-pointer-geometry-in-light-webkit/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in light" classname="accessibility-state-matrix.spec.ts" time="5.814">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-85ff9-stem-color-meaning-in-light-webkit/attachments/state-fresh-presentation-light-c36989b37062e47154786e03bf4b1d921dc7692b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-85ff9-stem-color-meaning-in-light-webkit/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="header theme and account controls retain focus and pointer geometry in dark" classname="accessibility-state-matrix.spec.ts" time="2.924">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-14bdf-nd-pointer-geometry-in-dark-webkit/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in dark" classname="accessibility-state-matrix.spec.ts" time="6.21">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-webkit/attachments/state-fresh-presentation-dark-fb79d083310a52e1b65f6ce9940f17b34b166e44.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-webkit/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-17T16:49:16.245Z" hostname="webkit" tests="2" failures="0" skipped="0" time="10.563" errors="0">
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light" classname="responsive-accessibility.spec.ts" time="5.393">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-42726-educed-motion-cues-in-light-webkit/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark" classname="responsive-accessibility.spec.ts" time="5.17">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-0c912-reduced-motion-cues-in-dark-webkit/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

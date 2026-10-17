@@ -1,0 +1,73 @@
+
+Running 1 test using 1 worker
+
+(node:51451) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › specs/responsive-accessibility.spec.ts:449:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (1.4s)
+
+
+  1) [chromium] › specs/responsive-accessibility.spec.ts:449:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing 
+
+    Error: AE-04 target-size failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 22
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "box": Object {
+    +       "bottom": 566,
+    +       "left": 104,
+    +       "right": 104,
+    +       "top": 566,
+    +     },
+    +     "conforming": false,
+    +     "equivalent": null,
+    +     "exception": null,
+    +     "failure": "Clipping leaves the target without the required reachable area",
+    +     "height": 0,
+    +     "target": "#control",
+    +     "traits": Object {
+    +       "essentialIdentified": false,
+    +       "nativeUnmodified": false,
+    +       "runningText": false,
+    +     },
+    +     "width": 0,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:224
+
+      222 |   expect(result.inventory.length, 'Pointer-target inventory must be nonempty').toBeGreaterThan(0);
+      223 |   expect(result.unusedExceptions, 'Stale or unmatched exception selectors').toEqual([]);
+    > 224 |   expect(result.inventory.filter(target => target.failure), 'AE-04 target-size failures').toEqual([]);
+          |                                                                                           ^
+      225 |   return result.inventory;
+      226 | }
+      227 |
+        at expectTargetSizes (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:224:91)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:464:25
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-c2-positive-red/responsive-accessibility-S-53ae0-focus-at-320px-with-spacing-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-c2-positive-red/responsive-accessibility-S-53ae0-focus-at-320px-with-spacing-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc-c2-positive-red/responsive-accessibility-S-53ae0-focus-at-320px-with-spacing-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-c2-positive-red/responsive-accessibility-S-53ae0-focus-at-320px-with-spacing-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc-c2-positive-red/responsive-accessibility-S-53ae0-focus-at-320px-with-spacing-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › specs/responsive-accessibility.spec.ts:449:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing 

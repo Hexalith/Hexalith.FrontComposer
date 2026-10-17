@@ -1,0 +1,10 @@
+shadowcover THROW locator.evaluate: Error: Competing border/shadow paint needs pixel evidence
+    at sample (eval at evaluate (:311:30), <anonymous>:215:109)
+    at visit (eval at evaluate (:311:30), <anonymous>:291:11)
+    at eval (eval at evaluate (:311:30), <anonymous>:397:5)
+    at UtilityScript.evaluate (<anonymous>:313:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+transparentbordercue {"geom":{"target":"BUTTON#","requireIndicator":true,"box":{"left":8,"top":8,"right":108,"bottom":48},"ring":0,"failures":["focused target has no visible focus indicator"],"occluder":null,"shadowBounds":[]},"contrast":[]}
+focusedtargetborderoccluder {"target":"BUTTON#","requireIndicator":true,"box":{"left":38,"top":38,"right":142,"bottom":82},"ring":2,"failures":["competing pseudo/border/shadow paint needs pixel evidence"],"occluder":"{\"candidate\":\"DIV#cover\",\"pseudo\":null,\"paint\":[{\"left\":40,\"right\":140,\"top\":40,\"bottom\":60},{\"left\":120,\"right\":140,\"top\":40,\"bottom\":80},{\"left\":40,\"right\":140,\"top\":60,\"bottom\":80},{\"left\":40,\"right\":60,\"top\":40,\"bottom\":80}]}","shadowBounds":[]}
+outlinedtarget {"target":"BUTTON#","requireIndicator":true,"box":{"left":38,"top":38,"right":142,"bottom":82},"ring":2,"failures":["competing pseudo/border/shadow paint needs pixel evidence"],"occluder":"{\"candidate\":\"DIV#cover\",\"pseudo\":null,\"paint\":[{\"left\":30,\"right\":150,\"top\":30,\"bottom\":90}]}","shadowBounds":[]}
+smallinputlargeshadowtarget {"inventory":[{"target":"button[inventory-index=\"0\"]","width":10,"height":10,"box":{"left":8,"top":8,"right":18,"bottom":18},"traits":{"runningText":false,"nativeUnmodified":false,"essentialIdentified":false},"equivalent":null,"conforming":false,"exception":null,"failure":"Undersized target lacks an evidenced exception"}],"unusedExceptions":[]}

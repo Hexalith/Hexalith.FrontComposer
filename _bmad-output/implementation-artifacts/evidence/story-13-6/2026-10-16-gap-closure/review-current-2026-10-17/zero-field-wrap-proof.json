@@ -1,0 +1,603 @@
+{
+  "schema": "story-13-6-zero-field-wrap-proof-v1",
+  "scope": "Focused wrap correction; not full candidate verification",
+  "sourceInputs": {
+    "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs": "f35e51925679715655613e51240aa4f712e02275a10fecb3a9a9118248ba6294",
+    "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.Renderer_ZeroFields_InlineSnapshot.verified.txt": "366e3dad0b090fcc676535e15c374f568b40ba8efd2232e77219571bca9e3f7c",
+    "tests/e2e/specs/accessibility-state-matrix.spec.ts": "d7418e3dcb81a156f7afb1c4055d6cb382e6b57d44b4d4bff14f64e356bac294"
+  },
+  "before": {
+    "engine": "chromium",
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "failed": 2,
+    "triggerBottom": 848.078125,
+    "feedbackTop": 848.078125,
+    "ringBottom": 850.078125,
+    "ringClearance": -2
+  },
+  "final": {
+    "passed": 6,
+    "failed": 0,
+    "rows": [
+      {
+        "engine": "chromium",
+        "testId": "a542ea7f175527dc3e9c-23454e8d1a66c642af91",
+        "attempt": 0,
+        "status": "passed",
+        "theme": "light",
+        "triggerBottom": 848.078125,
+        "feedback": {
+          "left": 28,
+          "top": 864.078125,
+          "right": 292,
+          "bottom": 922.078125
+        },
+        "focus": {
+          "target": "FLUENT-BUTTON#fc-trigger-Counter-Specimens-Domain-AccessibilityZeroFieldCommand",
+          "requireIndicator": true,
+          "box": {
+            "left": 26,
+            "top": 802.078125,
+            "right": 294,
+            "bottom": 850.078125
+          },
+          "ring": 2,
+          "failures": [],
+          "occluder": null,
+          "shadowBounds": [
+            {
+              "kind": "conservative-black-shadow-composite",
+              "lowerLayer": "rgb(0, 0, 0) 0px 0px 0px 2px",
+              "layers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.12,
+                  "maximumAlpha": 0.12392156862745098
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.14) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.14,
+                  "maximumAlpha": 0.14392156862745098
+                }
+              ],
+              "backgroundLayers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.12,
+                  "maximumAlpha": 0.12392156862745098
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.14) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.14,
+                  "maximumAlpha": 0.14392156862745098
+                }
+              ],
+              "foreground": {
+                "minimum": [
+                  0,
+                  0,
+                  0
+                ],
+                "maximum": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "background": {
+                "minimum": [
+                  185,
+                  185,
+                  182
+                ],
+                "maximum": [
+                  248,
+                  248,
+                  244
+                ]
+              },
+              "closestForeground": [
+                0,
+                0,
+                0
+              ],
+              "closestBackground": [
+                185,
+                185,
+                182
+              ],
+              "ratioMinimum": 10.6779220892654
+            }
+          ]
+        },
+        "feedbackGap": 16.0,
+        "ringClearance": 14.0,
+        "heardSpeech": "not observed"
+      },
+      {
+        "engine": "firefox",
+        "testId": "a542ea7f175527dc3e9c-a44a262f217e40f825bd",
+        "attempt": 0,
+        "status": "passed",
+        "theme": "light",
+        "triggerBottom": 536.7000122070312,
+        "feedback": {
+          "left": 28,
+          "top": 552.7000122070312,
+          "right": 292,
+          "bottom": 610.7000122070312
+        },
+        "focus": {
+          "target": "FLUENT-BUTTON#fc-trigger-Counter-Specimens-Domain-AccessibilityZeroFieldCommand",
+          "requireIndicator": true,
+          "box": {
+            "left": 26,
+            "top": 490.70001220703125,
+            "right": 294,
+            "bottom": 538.7000122070312
+          },
+          "ring": 2,
+          "failures": [],
+          "occluder": null,
+          "shadowBounds": [
+            {
+              "kind": "conservative-black-shadow-composite",
+              "lowerLayer": "rgb(0, 0, 0) 0px 0px 0px 2px",
+              "layers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.12,
+                  "maximumAlpha": 0.12392156862745098
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.14) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.14,
+                  "maximumAlpha": 0.14392156862745098
+                }
+              ],
+              "backgroundLayers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.12,
+                  "maximumAlpha": 0.12392156862745098
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.14) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.14,
+                  "maximumAlpha": 0.14392156862745098
+                }
+              ],
+              "foreground": {
+                "minimum": [
+                  0,
+                  0,
+                  0
+                ],
+                "maximum": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "background": {
+                "minimum": [
+                  185,
+                  185,
+                  182
+                ],
+                "maximum": [
+                  248,
+                  248,
+                  244
+                ]
+              },
+              "closestForeground": [
+                0,
+                0,
+                0
+              ],
+              "closestBackground": [
+                185,
+                185,
+                182
+              ],
+              "ratioMinimum": 10.6779220892654
+            }
+          ]
+        },
+        "feedbackGap": 16.0,
+        "ringClearance": 14.0,
+        "heardSpeech": "not observed"
+      },
+      {
+        "engine": "webkit",
+        "testId": "a542ea7f175527dc3e9c-f2de8b232d82cf6a21b6",
+        "attempt": 0,
+        "status": "passed",
+        "theme": "light",
+        "triggerBottom": 848.078125,
+        "feedback": {
+          "left": 28,
+          "top": 864.078125,
+          "right": 292,
+          "bottom": 922.078125
+        },
+        "focus": {
+          "target": "FLUENT-BUTTON#fc-trigger-Counter-Specimens-Domain-AccessibilityZeroFieldCommand",
+          "requireIndicator": true,
+          "box": {
+            "left": 26,
+            "top": 802.078125,
+            "right": 294,
+            "bottom": 850.078125
+          },
+          "ring": 2,
+          "failures": [],
+          "occluder": null,
+          "shadowBounds": [
+            {
+              "kind": "conservative-black-shadow-composite",
+              "lowerLayer": "rgb(0, 0, 0) 0px 0px 0px 2px",
+              "layers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.12,
+                  "maximumAlpha": 0.12392156862745098
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.14) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.14,
+                  "maximumAlpha": 0.14392156862745098
+                }
+              ],
+              "backgroundLayers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.12,
+                  "maximumAlpha": 0.12392156862745098
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.14) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.14,
+                  "maximumAlpha": 0.14392156862745098
+                }
+              ],
+              "foreground": {
+                "minimum": [
+                  0,
+                  0,
+                  0
+                ],
+                "maximum": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "background": {
+                "minimum": [
+                  185,
+                  185,
+                  182
+                ],
+                "maximum": [
+                  248,
+                  248,
+                  244
+                ]
+              },
+              "closestForeground": [
+                0,
+                0,
+                0
+              ],
+              "closestBackground": [
+                185,
+                185,
+                182
+              ],
+              "ratioMinimum": 10.6779220892654
+            }
+          ]
+        },
+        "feedbackGap": 16.0,
+        "ringClearance": 14.0,
+        "heardSpeech": "not observed"
+      },
+      {
+        "engine": "chromium",
+        "testId": "a542ea7f175527dc3e9c-a5630b18d0561ae482c7",
+        "attempt": 0,
+        "status": "passed",
+        "theme": "dark",
+        "triggerBottom": 848.078125,
+        "feedback": {
+          "left": 28,
+          "top": 864.078125,
+          "right": 292,
+          "bottom": 922.078125
+        },
+        "focus": {
+          "target": "FLUENT-BUTTON#fc-trigger-Counter-Specimens-Domain-AccessibilityZeroFieldCommand",
+          "requireIndicator": true,
+          "box": {
+            "left": 26,
+            "top": 802.078125,
+            "right": 294,
+            "bottom": 850.078125
+          },
+          "ring": 2,
+          "failures": [],
+          "occluder": null,
+          "shadowBounds": [
+            {
+              "kind": "conservative-black-shadow-composite",
+              "lowerLayer": "rgb(255, 255, 255) 0px 0px 0px 2px",
+              "layers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.24) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.24,
+                  "maximumAlpha": 0.24392156862745096
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.28) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.28,
+                  "maximumAlpha": 0.283921568627451
+                }
+              ],
+              "backgroundLayers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.24) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.24,
+                  "maximumAlpha": 0.24392156862745096
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.28) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.28,
+                  "maximumAlpha": 0.283921568627451
+                }
+              ],
+              "foreground": {
+                "minimum": [
+                  138,
+                  138,
+                  138
+                ],
+                "maximum": [
+                  255,
+                  255,
+                  255
+                ]
+              },
+              "background": {
+                "minimum": [
+                  11,
+                  12,
+                  14
+                ],
+                "maximum": [
+                  21,
+                  23,
+                  26
+                ]
+              },
+              "closestForeground": [
+                138,
+                138,
+                138
+              ],
+              "closestBackground": [
+                21,
+                23,
+                26
+              ],
+              "ratioMinimum": 5.202023905503537
+            }
+          ]
+        },
+        "feedbackGap": 16.0,
+        "ringClearance": 14.0,
+        "heardSpeech": "not observed"
+      },
+      {
+        "engine": "firefox",
+        "testId": "a542ea7f175527dc3e9c-8dc72a818d08619957b5",
+        "attempt": 0,
+        "status": "passed",
+        "theme": "dark",
+        "triggerBottom": 536.7000122070312,
+        "feedback": {
+          "left": 28,
+          "top": 552.7000122070312,
+          "right": 292,
+          "bottom": 610.7000122070312
+        },
+        "focus": {
+          "target": "FLUENT-BUTTON#fc-trigger-Counter-Specimens-Domain-AccessibilityZeroFieldCommand",
+          "requireIndicator": true,
+          "box": {
+            "left": 26,
+            "top": 490.70001220703125,
+            "right": 294,
+            "bottom": 538.7000122070312
+          },
+          "ring": 2,
+          "failures": [],
+          "occluder": null,
+          "shadowBounds": [
+            {
+              "kind": "conservative-black-shadow-composite",
+              "lowerLayer": "rgb(255, 255, 255) 0px 0px 0px 2px",
+              "layers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.24) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.24,
+                  "maximumAlpha": 0.24392156862745096
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.28) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.28,
+                  "maximumAlpha": 0.283921568627451
+                }
+              ],
+              "backgroundLayers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.24) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.24,
+                  "maximumAlpha": 0.24392156862745096
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.28) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.28,
+                  "maximumAlpha": 0.283921568627451
+                }
+              ],
+              "foreground": {
+                "minimum": [
+                  138,
+                  138,
+                  138
+                ],
+                "maximum": [
+                  255,
+                  255,
+                  255
+                ]
+              },
+              "background": {
+                "minimum": [
+                  11,
+                  12,
+                  14
+                ],
+                "maximum": [
+                  21,
+                  23,
+                  26
+                ]
+              },
+              "closestForeground": [
+                138,
+                138,
+                138
+              ],
+              "closestBackground": [
+                21,
+                23,
+                26
+              ],
+              "ratioMinimum": 5.202023905503537
+            }
+          ]
+        },
+        "feedbackGap": 16.0,
+        "ringClearance": 14.0,
+        "heardSpeech": "not observed"
+      },
+      {
+        "engine": "webkit",
+        "testId": "a542ea7f175527dc3e9c-47cf881224e396bfbf2b",
+        "attempt": 0,
+        "status": "passed",
+        "theme": "dark",
+        "triggerBottom": 848.078125,
+        "feedback": {
+          "left": 28,
+          "top": 864.078125,
+          "right": 292,
+          "bottom": 922.078125
+        },
+        "focus": {
+          "target": "FLUENT-BUTTON#fc-trigger-Counter-Specimens-Domain-AccessibilityZeroFieldCommand",
+          "requireIndicator": true,
+          "box": {
+            "left": 26,
+            "top": 802.078125,
+            "right": 294,
+            "bottom": 850.078125
+          },
+          "ring": 2,
+          "failures": [],
+          "occluder": null,
+          "shadowBounds": [
+            {
+              "kind": "conservative-black-shadow-composite",
+              "lowerLayer": "rgb(255, 255, 255) 0px 0px 0px 2px",
+              "layers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.24) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.24,
+                  "maximumAlpha": 0.24392156862745096
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.28) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.28,
+                  "maximumAlpha": 0.283921568627451
+                }
+              ],
+              "backgroundLayers": [
+                {
+                  "layer": "rgba(0, 0, 0, 0.24) 0px 0px 2px 0px",
+                  "declaredAlpha": 0.24,
+                  "maximumAlpha": 0.24392156862745096
+                },
+                {
+                  "layer": "rgba(0, 0, 0, 0.28) 0px 2px 4px 0px",
+                  "declaredAlpha": 0.28,
+                  "maximumAlpha": 0.283921568627451
+                }
+              ],
+              "foreground": {
+                "minimum": [
+                  138,
+                  138,
+                  138
+                ],
+                "maximum": [
+                  255,
+                  255,
+                  255
+                ]
+              },
+              "background": {
+                "minimum": [
+                  11,
+                  12,
+                  14
+                ],
+                "maximum": [
+                  21,
+                  23,
+                  26
+                ]
+              },
+              "closestForeground": [
+                138,
+                138,
+                138
+              ],
+              "closestBackground": [
+                21,
+                23,
+                26
+              ],
+              "ratioMinimum": 5.202023905503537
+            }
+          ]
+        },
+        "feedbackGap": 16.0,
+        "ringClearance": 14.0,
+        "heardSpeech": "not observed"
+      }
+    ]
+  },
+  "generatorMethods": {
+    "passed": 2,
+    "failed": 0
+  },
+  "ordinaryImageSnapshots": "unchanged; not regenerated",
+  "manualAT": "not performed"
+}

@@ -1,0 +1,63 @@
+[
+  {
+    "engine": "chromium",
+    "counts": {
+      "passed": 234,
+      "failed": 8,
+      "flaky": 0,
+      "skipped": 0
+    },
+    "stateCount": 116,
+    "missingStates": [],
+    "strictErrorCount": 8,
+    "attributedErrorCount": 8,
+    "artifactValidation": {
+      "exitCode": 1,
+      "outputBytes": 21053739,
+      "htmlBytes": 377,
+      "reportSha256": "a704247d1ff980404d081bd7de041b97577e2fdb479541cac26527c8219a21b3",
+      "relocatedAttachmentCount": 409
+    }
+  },
+  {
+    "engine": "firefox",
+    "counts": {
+      "passed": 233,
+      "failed": 8,
+      "flaky": 0,
+      "skipped": 1
+    },
+    "stateCount": 116,
+    "missingStates": [],
+    "strictErrorCount": 8,
+    "attributedErrorCount": 8,
+    "artifactValidation": {
+      "exitCode": 1,
+      "outputBytes": 22510406,
+      "htmlBytes": 376,
+      "reportSha256": "81d8f00a384f88030dafc840708058e220b25bcc1ab5ecf11e2ff97476f133fc",
+      "relocatedAttachmentCount": 410
+    }
+  },
+  {
+    "engine": "webkit",
+    "counts": {
+      "passed": 232,
+      "failed": 8,
+      "flaky": 0,
+      "skipped": 2
+    },
+    "stateCount": 116,
+    "missingStates": [],
+    "strictErrorCount": 456,
+    "attributedErrorCount": 8,
+    "artifactValidation": {
+      "exitCode": 1,
+      "outputBytes": 21620617,
+      "htmlBytes": 375,
+      "reportSha256": "414eddf3dc856a0b82e24c4d4e0f522afde3cc784daa956d0fe48573f7993b84",
+      "relocatedAttachmentCount": 294
+    }
+  }
+]
+Evidence validation failed; retained diagnostics distinguish existing failed gates in gate-status.json.

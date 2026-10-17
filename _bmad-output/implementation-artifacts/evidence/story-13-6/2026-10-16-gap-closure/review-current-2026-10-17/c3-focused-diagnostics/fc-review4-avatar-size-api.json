@@ -1,0 +1,809 @@
+{
+  "namespace": "Microsoft.FluentUI.AspNetCore.Components",
+  "name": "AvatarSize",
+  "metadata_name": "AvatarSize",
+  "definition_name": {
+    "namespace": "Microsoft.FluentUI.AspNetCore.Components",
+    "segments": [
+      "AvatarSize"
+    ]
+  },
+  "introduced_type_parameter_counts": [
+    0
+  ],
+  "kind": "enum",
+  "attributes": [],
+  "has_union_attribute": false,
+  "layout": "Auto",
+  "layout_details": {
+    "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+    "type_token": 33554749,
+    "size": 0,
+    "packing_size": 0
+  },
+  "memory_safety": {
+    "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+    "rules": {
+      "kind": "available",
+      "state": 0,
+      "observations": []
+    }
+  },
+  "enum_underlying_type": "int",
+  "is_sealed": true,
+  "is_abstract": false,
+  "is_static": false,
+  "is_by_ref_like": false,
+  "is_read_only": false,
+  "base_type": "System.Enum",
+  "interfaces": [],
+  "derived_types": [],
+  "type_parameters": [],
+  "members": [
+    {
+      "name": "Size16",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002216\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112298
+      },
+      "digest": "26ab4b0174",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size16",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112298,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 16,
+      "enum_value_literal": "16",
+      "documentation": {
+        "summary": "Size 16.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size20",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002220\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112299
+      },
+      "digest": "e743aaa30c",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size20",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112299,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 20,
+      "enum_value_literal": "20",
+      "documentation": {
+        "summary": "Size 20.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size24",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002224\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112300
+      },
+      "digest": "b99e942f54",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size24",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112300,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 24,
+      "enum_value_literal": "24",
+      "documentation": {
+        "summary": "Size 24.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size28",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002228\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112301
+      },
+      "digest": "7cfb4d5eac",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size28",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112301,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 28,
+      "enum_value_literal": "28",
+      "documentation": {
+        "summary": "Size 28.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size32",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002232\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112302
+      },
+      "digest": "7e0a972885",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size32",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112302,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 32,
+      "enum_value_literal": "32",
+      "documentation": {
+        "summary": "Size 32.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size36",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002236\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112303
+      },
+      "digest": "c445c0366a",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size36",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112303,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 36,
+      "enum_value_literal": "36",
+      "documentation": {
+        "summary": "Size 36.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size40",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002240\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112304
+      },
+      "digest": "3020c1c9ed",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size40",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112304,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 40,
+      "enum_value_literal": "40",
+      "documentation": {
+        "summary": "Size 40.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size48",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002248\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112305
+      },
+      "digest": "9c2477e762",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size48",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112305,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 48,
+      "enum_value_literal": "48",
+      "documentation": {
+        "summary": "Size 48.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size56",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002256\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112306
+      },
+      "digest": "2d52eba6bc",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size56",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112306,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 56,
+      "enum_value_literal": "56",
+      "documentation": {
+        "summary": "Size 56.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size64",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002264\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112307
+      },
+      "digest": "f199773ed2",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size64",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112307,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 64,
+      "enum_value_literal": "64",
+      "documentation": {
+        "summary": "Size 64.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size72",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002272\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112308
+      },
+      "digest": "76812f45e9",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size72",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112308,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 72,
+      "enum_value_literal": "72",
+      "documentation": {
+        "summary": "Size 72.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size96",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u002296\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112309
+      },
+      "digest": "a0744de5b5",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size96",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112309,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 96,
+      "enum_value_literal": "96",
+      "documentation": {
+        "summary": "Size 96.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size120",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u0022120\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112310
+      },
+      "digest": "265d7ecbf1",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size120",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112310,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 120,
+      "enum_value_literal": "120",
+      "documentation": {
+        "summary": "Size 120.",
+        "samples": []
+      }
+    },
+    {
+      "name": "Size128",
+      "kind": "field",
+      "attributes": [
+        "System.ComponentModel.Description(\u0022128\u0022)"
+      ],
+      "field_layout": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "declaring_type_token": 33554749,
+        "field_token": 67112311
+      },
+      "digest": "5a97cbe1a4",
+      "canonical_signature": "F:Microsoft.FluentUI.AspNetCore.Components.AvatarSize.Size128",
+      "is_static": true,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": true,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 67112311,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 1,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "is_extension": false,
+      "is_obsolete": false,
+      "enum_value": 128,
+      "enum_value_literal": "128",
+      "documentation": {
+        "summary": "Size 128.",
+        "samples": []
+      }
+    }
+  ],
+  "source_resolution": "XmlDoc",
+  "additional_source_files": [],
+  "is_partial_type": false,
+  "is_forwarded": false,
+  "full_name": "Microsoft.FluentUI.AspNetCore.Components.AvatarSize",
+  "documentation": {
+    "summary": "Represents the size options for an avatar.",
+    "samples": []
+  }
+}

@@ -1,0 +1,5 @@
+transparentText [{"owner":0,"node":"p","paint":"Visible","foreground":[0,0,0,1],"background":[255,255,255,1],"ratio":21,"minimum":4.5}]
+darkCanvas {"contrast":[{"owner":0,"node":"p","paint":"Essential warning","foreground":[0,0,0,1],"background":[255,255,255,1],"ratio":21,"minimum":4.5}],"canvas":"rgb(18, 18, 18)"}
+pseudoshadow [{"owner":0,"node":"p","paint":"Hello","foreground":[255,255,255,1],"background":[255,255,255,1],"ratio":1,"minimum":4.5}]
+selectclipping "PASS"
+focuspseudooccluder {"target":"BUTTON#","requireIndicator":true,"box":{"left":38,"top":38,"right":142,"bottom":82},"ring":2,"failures":[],"occluder":null,"shadowBounds":[]}

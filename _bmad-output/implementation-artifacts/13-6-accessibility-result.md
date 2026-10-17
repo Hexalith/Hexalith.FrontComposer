@@ -1,10 +1,12 @@
 # Story 13.6 accessibility result and human checklist
 
-Updated 2026-10-17. **Readiness remains open.** Current complete browser verification: **588 passed, 12 failed, 0 flaky, 3 skipped / 603**. The configured direct Debug Shell lane is **3693 passed / 2 failed / 3695**. All four cleanup scenarios pass in the rebuilt 69-test client class and configured lane. The original Firefox correction and review geometry regressions have current proof; five dark-shell repeats plus five clipping fixtures pass without retries. Every executed nonvisual case passes on its first attempt. Visual, dependency-policy, platform/manual and owner gates remain explicit.
+Updated 2026-10-17. **Readiness remains open; Story 13.6 stays in-review.** Current complete three-engine browser run: **705 passed, 18 failed, 0 flaky, 3 skipped / 726**, with zero retries. There are **0 nonvisual failures**; 18 ordinary visual comparisons remain failed. The current configured direct Debug Shell lane is **3695 passed / 2 failed / 3697**, with the two existing package-policy failures retained.
 
-Current source: **`sha256:e23d846e6e8f87f26f997866a8e82aa355e8ae89f1f94b67d4fa793add1db7b0`**, root `489f3ad4cbf09965c675d7bf2007c6a8b7a0861e` on `main`. [Current manifest](evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/parent-verification/configured-host/source.json), [parent verification and review dispositions](evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/parent-verification/configured-host/report.md), [loaded binaries and actual Test environment](evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/parent-verification/configured-host/startup-binaries.json), [browser outcomes](evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/parent-verification/configured-host/browser-outcomes.json), [per-attempt state validation](evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/parent-verification/configured-host/state-validation.json) and [final audit](evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/parent-verification/configured-host/audit.json) bind this candidate. All 24 approved image bytes and four frozen intent blocks remain unchanged. The [preceding implementation packet](evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/report.md), earlier 2026-10-17 and 2026-10-16 packets remain historical. Original failures, interrupted runs and the parent launch with an omitted Test notice setting remain separate. The final launch supplies the existing Playwright 30000 ms notice setting; all six reconnect cases pass without retries. No production default changed.
+Current source: **`sha256:0bfddb4016c3bfe00e84ae88ca698b3a63c373b1ac2be5048577cdae0ee6b77a`**, root `008736825376e6e2b419cb8d3b81067a8f9cc3b1` on `main`; the original spec baseline remains `3c8679628ebdb8995afc09f712a04fcde623695c`. [Source manifest](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/source.json), [Build review and verification record](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/report.md), [actual Test host and served assets](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/current-startup.json), [browser outcomes](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/verification/browser-outcomes.json), [per-attempt state validation](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/verification/state-validation.json), [remaining automated gates](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/verification/gate-status.json) and [final preservation audit](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/audit.json) bind this candidate. All 24 approved image bytes, four frozen intent blocks and eight root submodules remain unchanged.
 
-**Dependency limit:** Debug checks used existing Fluent 5.0.0 restore assets. The catalog now requests 5.0.1 and its Localization pin also differs from the policy expectation. No clean-restore compatibility or dependency upgrade is claimed. Failed and interrupted browser attempts are retained separately; passing diagnostics do not replace failed complete gates. Missing human evidence prevents story completion.
+The corrections cover composed clipping/paint/target measurement, physical-instance and query-safe missing-detail focus, one shared fallback cue, shadow-aware row metrics with bounded delivery retries and quiescent multi-grid observation, truthful later-row ItemSize, and narrow control layout. Real pointer checks now cover lifecycle Dismiss, the naturally sized theme button and a Fluent 36px account avatar with a solid 24×24px hit square. The final three-engine type/header/fresh-row selection passed 18/18 after the earlier 78-case control/paint selection; both records remain retained. DOM focus and status assertions do not establish heard speech.
+
+**Dependency and evidence limits:** Debug execution used existing Fluent 5.0.0 restore assets; the catalog requests 5.0.1 and Localization 10.0.13 differs from the policy's 10.0.12. No restore or dependency upgrade was performed. Linux visual failures, Windows execution, WebKit's 116 actual forced-palette cells, real 400% browser zoom, human AT/device observations, owner approvals and live EventStore fresh-row acceptance remain open. Raw artifact size failures remain recorded separately from bounded per-engine replay. [The preceding result](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/historical-result-before-current.md) and [all earlier failed/interrupted/current review attempts](evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/report.md#retained-attempts) remain retained; passing diagnostics do not replace complete gates.
 
 ## Human evidence checklist — leave each box open until observed
 
@@ -19,7 +21,7 @@ Use [the existing manual log template](../../docs/accessibility-verification/man
 | MAN-136-TABLET | `not performed` | Quality/Test role; individual unassigned. Blocks real-device gate. No actual tablet supplied. Exercise touch-adapted tier on a physical tablet; reopen with model, OS/browser, orientation, viewport and dated human results. |
 | MAN-136-PHONE | `not performed` | Quality/Test role; individual unassigned. Blocks real-device gate. No actual phone supplied. Exercise functional fallback on a physical phone; reopen with the same device/version evidence. |
 | MAN-136-ZERO-FIELD | `not performed` | Quality/Test and Accessibility/Stakeholder roles; individuals unassigned. Human AT/heard-speech observations remain open. The gated Test host now exposes the real generated renderer and its automated matrix has run. Execute the approved sequence with a supported AT/browser pairing; automation does not supply heard speech. |
-| UX-136-REVIEW | `performed: scoped automated evidence review` | Previously performed scoped automated reviews remain retained in the historical packets. Current parent Build review verified thirteen findings and ten patch groups; human UX/Product/Fluent sign-off remains separate and is not inferred. |
+| UX-136-REVIEW | `performed: scoped automated evidence review` | Both independent Build review passes and parent verification are retained in the current report/spec. Human UX/Product/Fluent sign-off remains open and is not inferred. |
 
 All gate rows above share task/story `13.6`, release branch `main`, and the immutable candidate digest in the identity section. The manual gates retain **unassigned** individual testers/reviewer owners and no human approval reference. UX-136-REVIEW records the performed scoped automated review only. NVDA, JAWS, VoiceOver, tablet, phone and zero-field gates cover AE-01–AE-09 plus the manual-evidence acceptance criterion; the zoom gate specifically covers AE-02, and the performed scoped UX review covers the opt-in evidence-review criterion. The remaining rows are prepared checklist entries, not completed manual logs.
 
@@ -58,24 +60,28 @@ All gate rows above share task/story `13.6`, release branch `main`, and the immu
 
 ## Remaining acceptance gates
 
-All manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, tablet/phone, heard speech and human reviewer observations were not performed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and separate live EventStore fresh-row acceptance remain unresolved. The configured Shell gate fails at 3693 passed / 2 failed; visual comparisons, Windows execution, WebKit actual forced-palette coverage and manual/owner gates remain open. The retry-cleanup scheduling assertion and Firefox clipping defect now have current passing proof. Earlier Settings/cancellation/contrast failures and prior review dispositions remain historical; no passing diagnostic erases them or closes an uncovered platform or surface cell.
+All 18 manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, tablet/phone, heard speech and human reviewer observations were not performed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and separate live EventStore fresh-row acceptance remain unresolved. The configured Shell gate fails at 3695 passed / 2 failed; visual comparisons, raw artifact-size gates, Windows execution and WebKit actual forced-palette coverage remain open. Every prior failed or interrupted attempt retains its own evidence and disposition.
 
 ```yaml
 story: 13.6
+story_status: in-review
+sprint_status: review
 final_classification: open
-configured_shell: failed; 3693 passed / 2 failed
-visual_comparisons: failed; 12
-additional_browser_focus: current configured complete run has 0 nonvisual failures or flaky cases; earlier failed/interrupted attempts retained
-firefox_dark_shell: causal clipping regression and five zero-retry repeats passed
-accepted_retry_cleanup: four scenarios passed in rebuilt class and configured lane
-open_evidence_hardening_groups: H01-H11 prior review retained; effective AppHost configuration harness deferred
+configured_shell: failed; 3695 passed / 2 failed
+complete_browser: 705 passed / 18 failed / 3 skipped / 0 flaky / 726 total; zero retries
+visual_comparisons: failed; 18
+nonvisual_browser_failures: 0
+current_state_rows_per_engine: chromium=116, firefox=116, webkit=116
+focused_type_header_fresh_row: passed; 18/18 across three engines
+raw_artifact_size_gate: failed; retained separately from bounded replay
 webkit_actual_forced_palette_cells: uncovered; 116
 windows_execution: not performed
 manual_at: not performed
 actual_400_percent_zoom: not performed
 real_tablet: not performed
 real_phone: not performed
+heard_speech: not observed
 zero_field_generated_browser_surface: executed
-ux_evidence_review: historical scoped automated reviews retained; human sign-off open
+ux_evidence_review: scoped automated reviews performed; human sign-off open
 product_approval_inferred: false
 ```

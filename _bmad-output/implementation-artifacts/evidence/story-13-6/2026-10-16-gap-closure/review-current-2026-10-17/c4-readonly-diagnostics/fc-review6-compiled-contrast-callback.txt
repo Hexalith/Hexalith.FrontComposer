@@ -1,0 +1,20 @@
+1: (element, property) => {
+2:     const parse = value => {
+3:       var _value$match$map, _value$match2, _channels$;
+4:       const channels = (_value$match$map = (_value$match2 = value.match(/[\d.]+/gu)) === null || _value$match2 === void 0 ? void 0 : _value$match2.map(Number)) !== null && _value$match$map !== void 0 ? _value$match$map : [];
+5:       if (channels.length < 3) throw new Error('Unsupported computed color');
+6:       return [channels[0], channels[1], channels[2], (_channels$ = channels[3]) !== null && _channels$ !== void 0 ? _channels$ : 1];
+7:     };
+8:     const composite = (fg, bg) => [0, 1, 2].map(i => fg[i] * fg[3] + bg[i] * (1 - fg[3])).concat(1);
+9:     const backgrounds = [];
+10:     for (let current = element; current; current = current.parentElement) backgrounds.push(parse(getComputedStyle(current).backgroundColor));
+11:     const probe = document.createElement('span');
+12:     probe.style.color = 'Canvas';
+13:     document.documentElement.append(probe);
+14:     let background = parse(getComputedStyle(probe).color);
+15:     probe.remove();
+16:     for (const layer of backgrounds.reverse()) background = composite(layer, background);
+17:     const css = getComputedStyle(element),
+18:       foreground = composite(parse(css.getPropertyValue(property)), background);
+19:     const luminance = color => color.slice(0, 3).map(channel => {
+20:       const c = channel / 255;

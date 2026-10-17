@@ -350,7 +350,8 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
 
     private void AnnounceMissingWithoutFocus()
     {
-        if (!_disposed && _missingPending && IsMissing && !IsHiddenByFilter && ResultSettled && _activeGroup is { } group)
+        if (!_disposed && _missingPending && IsMissing && !IsHiddenByFilter && ResultSettled && _activeGroup is { } group
+            && _focusOwnership?.TryOwn(group, this) == true)
         {
             _missingPending = false;
             _focusOwnership?.Complete(group, this);

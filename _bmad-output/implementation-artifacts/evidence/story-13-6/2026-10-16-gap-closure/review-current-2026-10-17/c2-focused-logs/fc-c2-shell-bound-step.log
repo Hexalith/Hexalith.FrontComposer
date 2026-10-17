@@ -1,0 +1,21 @@
+
+Running 6 tests using 3 workers
+
+(node:30939) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30936) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30945) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [firefox] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (1.5s)
+  ✓  3 [firefox] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (1.3s)
+(node:33207) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33237) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  5 [webkit] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (798ms)
+  ✓  6 [webkit] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (437ms)
+  ✓  4 [webkit] › specs/accessibility-state-matrix.spec.ts:435:3 › shell chrome, theme menu and exact desktop navigation rails in light (14.5s)
+  ✓  1 [firefox] › specs/accessibility-state-matrix.spec.ts:435:3 › shell chrome, theme menu and exact desktop navigation rails in light (31.8s)
+
+  6 passed (34.0s)

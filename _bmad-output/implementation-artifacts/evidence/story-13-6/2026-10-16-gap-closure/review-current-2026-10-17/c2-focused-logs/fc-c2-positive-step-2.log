@@ -1,0 +1,14 @@
+
+Running 5 tests using 2 workers
+
+(node:21161) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21162) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › specs/accessibility-state-matrix.spec.ts:691:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (386ms)
+  ✓  3 [chromium] › specs/responsive-accessibility.spec.ts:449:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (3.2s)
+  ✓  4 [chromium] › specs/responsive-accessibility.spec.ts:1635:1 › C2 visible aria-hidden labels and generated labels cannot disappear from clipping proof (258ms)
+  ✓  5 [chromium] › specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported (336ms)
+  ✓  2 [chromium] › specs/accessibility-state-matrix.spec.ts:435:3 › shell chrome, theme menu and exact desktop navigation rails in light (28.9s)
+
+  5 passed (30.1s)

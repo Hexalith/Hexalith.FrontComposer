@@ -1,0 +1,15 @@
+
+Running 6 tests using 2 workers
+
+(node:17369) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17370) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [firefox] › specs/accessibility-state-matrix.spec.ts:316:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (8.8s)
+  ✓  2 [firefox] › specs/accessibility-state-matrix.spec.ts:316:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (8.7s)
+  ✓  4 [firefox] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (639ms)
+  ✓  5 [firefox] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (314ms)
+  ✓  6 [firefox] › specs/responsive-accessibility.spec.ts:1699:1 › C3 disjoint wrapped text fragments keep independent shadow bounds (342ms)
+  ✓  3 [firefox] › specs/accessibility-state-matrix.spec.ts:435:3 › shell chrome, theme menu and exact desktop navigation rails in dark (23.1s)
+
+  6 passed (34.4s)

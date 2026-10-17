@@ -1,0 +1,236 @@
+
+Running 9 tests using 2 workers
+
+(node:1705) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1704) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in light (11.2s)
+  ✓  1 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in dark (11.3s)
+  ✘  3 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1701:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers (206ms)
+(node:6691) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6748) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [firefox] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in light (12.8s)
+  ✓  5 [firefox] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in dark (12.7s)
+(node:12189) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  6 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1701:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers (441ms)
+(node:12219) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  7 [webkit] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in light (2.5s)
+  ✘  8 [webkit] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in dark (2.4s)
+(node:13506) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  9 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1701:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers (440ms)
+
+
+  1) [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1701:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "competing pseudo/border/shadow paint needs pixel evidence",
+    + ]
+
+      1707 |   });
+      1708 |   await page.locator('button').focus();
+    > 1709 |   expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+           |                                                                  ^
+      1710 |   await page.locator('fluent-popover-b').evaluate(host=>host.removeAttribute('anchor-id'));
+      1711 |   expect((await focusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+      1712 |   await page.locator('fluent-popover-b').evaluate(host=>{
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1709:66
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1701:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "competing pseudo/border/shadow paint needs pixel evidence",
+    + ]
+
+      1708 |   });
+      1709 |   await page.locator('button').focus();
+    > 1710 |   expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+           |                                                                  ^
+      1711 |   await page.locator('fluent-popover-b').evaluate(host=>host.removeAttribute('anchor-id'));
+      1712 |   expect((await focusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+      1713 |   await page.locator('fluent-popover-b').evaluate(host=>{
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1710:66
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [webkit] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in light 
+
+    Error: Forced-color focused geometry: filter-popover-light {"mode":"forced-colors","status":"measured","target":"FLUENT-BUTTON#fc-page-toolbar-filter-trigger","requireIndicator":false,"box":{"left":12,"top":677.34375,"right":145.75,"bottom":709.34375},"ring":0,"failures":["competing pseudo/border/shadow paint needs pixel evidence"],"occluder":"{\"candidate\":\"DIV#\",\"pseudo\":null,\"paint\":[{\"left\":9,\"right\":212.609375,\"top\":706.34375,\"bottom\":828.34375},{\"left\":-12,\"right\":233.609375,\"top\":693.34375,\"bottom\":857.34375}]}","shadowBounds":[]}
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "competing pseudo/border/shadow paint needs pixel evidence",
+    + ]
+
+      141 |     ? { mode: 'forced-colors', status: 'measured', ...await focusGeometry(focused, { requireIndicator: await focused.evaluate(element => element.matches(':focus-visible') || Boolean(element.shadowRoot?.querySelector(':focus-visible'))) }) }
+      142 |     : { mode: 'forced-colors', status: 'none', target: active });
+    > 143 |   if ('failures' in systemFocus) expect(systemFocus.failures, `Forced-color focused geometry: ${state} ${JSON.stringify(systemFocus)}`).toEqual([]);
+          |                                                                                                                                         ^
+      144 |   const systemSnapshot = forcedColorsPaint ? `system-state-${state}.png` : null;
+      145 |   if (systemSnapshot) await screenshotPreservingScroll(root, { path: info.outputPath(systemSnapshot) });
+      146 |   await page.emulateMedia({ forcedColors: 'none' });
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:143:137)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:472:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-native-final/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-native-final/accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [webkit] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in dark 
+
+    Error: Forced-color focused geometry: filter-popover-dark {"mode":"forced-colors","status":"measured","target":"FLUENT-BUTTON#fc-page-toolbar-filter-trigger","requireIndicator":false,"box":{"left":12,"top":677.34375,"right":145.75,"bottom":709.34375},"ring":0,"failures":["competing pseudo/border/shadow paint needs pixel evidence"],"occluder":"{\"candidate\":\"DIV#\",\"pseudo\":null,\"paint\":[{\"left\":9,\"right\":212.609375,\"top\":706.34375,\"bottom\":828.34375},{\"left\":-12,\"right\":233.609375,\"top\":693.34375,\"bottom\":857.34375}]}","shadowBounds":[]}
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "competing pseudo/border/shadow paint needs pixel evidence",
+    + ]
+
+      141 |     ? { mode: 'forced-colors', status: 'measured', ...await focusGeometry(focused, { requireIndicator: await focused.evaluate(element => element.matches(':focus-visible') || Boolean(element.shadowRoot?.querySelector(':focus-visible'))) }) }
+      142 |     : { mode: 'forced-colors', status: 'none', target: active });
+    > 143 |   if ('failures' in systemFocus) expect(systemFocus.failures, `Forced-color focused geometry: ${state} ${JSON.stringify(systemFocus)}`).toEqual([]);
+          |                                                                                                                                         ^
+      144 |   const systemSnapshot = forcedColorsPaint ? `system-state-${state}.png` : null;
+      145 |   if (systemSnapshot) await screenshotPreservingScroll(root, { path: info.outputPath(systemSnapshot) });
+      146 |   await page.emulateMedia({ forcedColors: 'none' });
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:143:137)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:472:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-native-final/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-native-final/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1701:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "competing pseudo/border/shadow paint needs pixel evidence",
+    + ]
+
+      1708 |   });
+      1709 |   await page.locator('button').focus();
+    > 1710 |   expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+           |                                                                  ^
+      1711 |   await page.locator('fluent-popover-b').evaluate(host=>host.removeAttribute('anchor-id'));
+      1712 |   expect((await focusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+      1713 |   await page.locator('fluent-popover-b').evaluate(host=>{
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1710:66
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-native-final/responsive-accessibility-C-edbdd-never-excuses-opaque-covers-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5 failed
+    [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1701:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers 
+    [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1701:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers 
+    [webkit] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in light 
+    [webkit] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in dark 
+    [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1701:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers 
+  4 passed (30.1s)

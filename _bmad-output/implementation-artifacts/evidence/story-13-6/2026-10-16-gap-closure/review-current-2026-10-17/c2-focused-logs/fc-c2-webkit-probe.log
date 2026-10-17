@@ -1,0 +1,52 @@
+
+Running 1 test using 1 worker
+
+(node:17243) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [webkit] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in dark (2.0s)
+
+
+  1) [webkit] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in dark 
+
+    Error: Forced-color focused geometry: filter-popover-dark {"mode":"forced-colors","status":"measured","target":"FLUENT-BUTTON#fc-page-toolbar-filter-trigger","requireIndicator":false,"box":{"left":12,"top":677.34375,"right":145.75,"bottom":709.34375},"ring":0,"failures":["competing pseudo/border/shadow paint needs pixel evidence"],"occluder":"{\"candidate\":\"DIV#\",\"pseudo\":null,\"paint\":[{\"left\":9,\"right\":212.609375,\"top\":706.34375,\"bottom\":828.34375},{\"left\":-12,\"right\":233.609375,\"top\":693.34375,\"bottom\":857.34375}]}","shadowBounds":[]}
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "competing pseudo/border/shadow paint needs pixel evidence",
+    + ]
+
+      141 |     ? { mode: 'forced-colors', status: 'measured', ...await focusGeometry(focused, { requireIndicator: await focused.evaluate(element => element.matches(':focus-visible') || Boolean(element.shadowRoot?.querySelector(':focus-visible'))) }) }
+      142 |     : { mode: 'forced-colors', status: 'none', target: active });
+    > 143 |   if ('failures' in systemFocus) expect(systemFocus.failures, `Forced-color focused geometry: ${state} ${JSON.stringify(systemFocus)}`).toEqual([]);
+          |                                                                                                                                         ^
+      144 |   const systemSnapshot = forcedColorsPaint ? `system-state-${state}.png` : null;
+      145 |   if (systemSnapshot) await screenshotPreservingScroll(root, { path: info.outputPath(systemSnapshot) });
+      146 |   await page.emulateMedia({ forcedColors: 'none' });
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:143:137)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:472:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-webkit-probe/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-webkit-probe/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-webkit-probe/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-webkit-probe/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-webkit-probe/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [webkit] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in dark 

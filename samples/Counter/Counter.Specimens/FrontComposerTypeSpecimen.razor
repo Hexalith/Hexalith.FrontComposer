@@ -188,6 +188,18 @@
                 </div>
             }
         </div>
+        <section aria-label="Duplicate projection missing detail fixture" data-testid="fc-duplicate-missing-detail-fixture">
+            @for (int index = 0; index < 2; index++) {
+                <div data-fc-datagrid="specimen-duplicate-missing-detail" data-testid="@("fc-duplicate-missing-detail-" + index)">
+                    <FcExpandedRowHiddenBanner ViewKey="specimen-duplicate-missing-detail" IsHiddenByFilter="false" IsMissing="_duplicateFocusMissing" ResultIdentity="duplicate-removal" />
+                    @if (!_duplicateFocusMissing) {
+                        <div class="fc-expand-in-row-detail">
+                            <Microsoft.FluentUI.AspNetCore.Components.FluentButton OnClick="@(() => _duplicateFocusMissing = true)" data-testid="fc-remove-duplicate-focused-detail">Remove duplicate expanded item</Microsoft.FluentUI.AspNetCore.Components.FluentButton>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
     }
 
     <nav aria-label="Specimen multi-level navigation" data-testid="fc-multi-level-nav">
@@ -231,6 +243,7 @@
 
     private bool _focusHidden;
     private bool _focusMissing;
+    private bool _duplicateFocusMissing;
     private bool _focusSettled = true;
     private bool _focusBlocked;
     private int _focusResult;

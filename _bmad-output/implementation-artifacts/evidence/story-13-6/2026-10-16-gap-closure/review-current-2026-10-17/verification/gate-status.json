@@ -1,0 +1,99 @@
+{
+  "failed": true,
+  "existingFailedGates": [
+    {
+      "engine": "chromium",
+      "title": "visual baseline light compact",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "chromium",
+      "title": "visual baseline light comfortable",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "chromium",
+      "title": "visual baseline light roomy",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "chromium",
+      "title": "visual baseline dark compact",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "chromium",
+      "title": "visual baseline dark comfortable",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "chromium",
+      "title": "visual baseline dark roomy",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline light compact",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline light comfortable",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline light roomy",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline dark compact",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline dark comfortable",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline dark roomy",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline light compact",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline light comfortable",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline light roomy",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline dark compact",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline dark comfortable",
+      "kind": "recorded visual comparison"
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline dark roomy",
+      "kind": "recorded visual comparison"
+    }
+  ],
+  "unsupportedForcedPalette": [
+    "webkit"
+  ],
+  "note": "Existing failed gates remain failures. Replay and bounded projection never imply overall readiness."
+}

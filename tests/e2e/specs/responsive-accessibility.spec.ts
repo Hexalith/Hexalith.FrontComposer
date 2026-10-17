@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, test } from '../fixtures/index.js';
 import { applyTextSpacing, removeTextSpacing, expectFocusVisible, expectNoPageOverflow, expectNoTextClipping, expectTargetSizes, expectTextContrast, expectSurfaceContrast, focusGeometry, inventoryTargets, screenshotPreservingScroll, settlePaint, measureSurfaceContrast, type TargetException } from '../helpers/responsive-accessibility.js';
 import { expectNoBlockingAxeViolations } from '../helpers/a11y.js';
@@ -383,6 +384,12 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
     test(`type states retain contrast, system colors and immediate reduced-motion cues in ${theme}`, async ({ page }, testInfo) => {
       await page.goto(`/__frontcomposer/specimens/type?theme=${theme}&density=compact`);
       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+      const themeLabel = theme === 'dark' ? 'Dark' : 'Light';
+      await page.getByTitle('Change theme').first().click();
+      await page.getByRole('menuitem', { name: themeLabel, exact: true }).click();
+      await expect(page.getByTitle('Change theme').first()).toContainText(themeLabel);
+      await settlePaint(page);
       const samples = [];
       for (const selector of ['#fc-main-content h1', '[data-testid="fc-lifecycle-idle"]']) {
         const target = page.locator(selector).first();
@@ -409,7 +416,6 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.goto('/counter/counter-projection');
       await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
-      const themeLabel = theme === 'dark' ? 'Dark' : 'Light';
       await page.getByTitle('Change theme').first().click();
       await page.getByRole('menuitem', { name: themeLabel, exact: true }).click();
       await expect(page.getByTitle('Change theme').first()).toContainText(themeLabel);
@@ -631,7 +637,7 @@ test('row metrics preserve the compact minimum and report growth with the matchi
     const grid = await import(modulePath);
     const root = document.createElement('div');
     root.id = 'row-metric-fixture'; root.dataset.fcDatagrid = 'fixture'; root.dataset.fcDatagridInstance = 'fixture-instance';
-    root.innerHTML = '<table class="fc-projection-grid"><tbody><tr class="fluent-data-grid-row"><td style="font-size:16px;line-height:20px">Cell</td></tr></tbody></table>';
+    root.innerHTML = '<table class="fc-projection-grid"><tbody><tr class="fluent-data-grid-row"><td style="font-size:16px;line-height:20px">Cell</td></tr><tr class="fluent-data-grid-row"><td style="font-size:16px;line-height:20px">Later row</td></tr></tbody></table>';
     document.body.append(root);
     root.dataset.observed = '0';
     grid.observeRowMetrics('fixture', 'fixture-instance', { invokeMethodAsync: (_: string, _id: string, height: number, floor: number) => {
@@ -641,12 +647,12 @@ test('row metrics preserve the compact minimum and report growth with the matchi
   const root = page.locator('#row-metric-fixture');
   await expect.poll(() => root.evaluate(element => element.style.getPropertyValue('--fc-grid-row-height'))).toBe('32px');
   await expect(root).toHaveAttribute('data-observed', '32');
-  await root.locator('td').evaluate(element => { element.style.fontSize = '28px'; element.style.lineHeight = '42px'; });
+  await root.locator('td').nth(1).evaluate(element => { element.style.fontSize = '28px'; element.style.lineHeight = '42px'; });
   await expect.poll(() => root.evaluate(element => Number((element as HTMLElement).dataset.observed))).toBeGreaterThan(32);
   await expect(root).toHaveAttribute('data-floor', '32');
-  await root.locator('td').evaluate(element => { element.style.fontSize = '16px'; element.style.lineHeight = '20px'; element.innerHTML = '<div>First block</div><div>Second line<br>Third line</div>'; });
+  await root.locator('td').nth(1).evaluate(element => { element.style.fontSize = '16px'; element.style.lineHeight = '20px'; element.innerHTML = '<div>First block</div><div>Second line<br>Third line</div>'; });
   await expect.poll(() => root.evaluate(element => Number((element as HTMLElement).dataset.observed))).toBeGreaterThanOrEqual(60);
-  await root.locator('td').evaluate(element => { element.textContent = 'Cell'; });
+  await root.locator('td').nth(1).evaluate(element => { element.textContent = 'Cell'; });
   await expect(root).toHaveAttribute('data-observed', '32');
   await page.evaluate(async () => {
     const modulePath: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-datagrid.js';
@@ -657,8 +663,9 @@ test('row metrics preserve the compact minimum and report growth with the matchi
 
 test('real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/__frontcomposer/specimens/type?generatedGrid=true&density=compact');
+  await page.goto('/__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true&density=compact');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.getByTestId('fc-ae-rows-two').click();
   const table = page.getByTestId('fc-generated-counter-grid').locator('table.fluent-data-grid');
   await expect(table).toBeVisible();
   const density = async (name: string) => {
@@ -666,7 +673,7 @@ test('real generated compact rows preserve 32px, match ItemSize through spacing,
     await expect(page.getByTestId('fc-type-specimen')).toHaveAttribute('data-density', name.toLowerCase());
   };
   const metrics = () => table.evaluate(element => ({ itemSize: Number(element.getAttribute('data-fc-grid-item-size')), rows: [...element.querySelectorAll('tbody tr.fluent-data-grid-row')].map(row => row.getBoundingClientRect().height) }));
-  await expect.poll(metrics).toEqual({ itemSize: 32, rows: [32] });
+  await expect.poll(metrics).toEqual({ itemSize: 32, rows: [32, 32] });
   const grid = page.getByTestId('fc-generated-counter-grid').locator('[data-fc-datagrid]').first();
   await grid.focus();
   // Use the operator's Tab path so the initial route-heading restoration guard is released.
@@ -674,7 +681,7 @@ test('real generated compact rows preserve 32px, match ItemSize through spacing,
   await expect(table.locator('fluent-button').first()).toBeFocused();
   const focusedControl = await table.locator('fluent-button').first().elementHandle();
   await applyTextSpacing(page);
-  await expect.poll(async () => { const measured = await metrics(); return measured.itemSize >= 32 && measured.rows.length > 0 && measured.rows.every(height => Math.abs(height - measured.itemSize) < .5); }).toBe(true);
+  await expect.poll(async () => { const measured = await metrics(); return measured.itemSize >= 32 && measured.rows.length === 2 && measured.rows.every(height => Math.abs(height - measured.itemSize) < .5); }).toBe(true);
   const spaced = await metrics();
   // Intrinsic widths can keep spaced text on one line. Growth follows painted content,
   // while the density floor stays exact; the larger text below guarantees a remount.
@@ -688,24 +695,30 @@ test('real generated compact rows preserve 32px, match ItemSize through spacing,
   await testInfo.attach('generated-compact-spacing-row-metrics', { body: JSON.stringify(spaced), contentType: 'application/json' });
   // A separately labelled user-text-size stress exercises real generated content
   // beyond canonical spacing, while the virtualizer must follow the rendered height.
-  const largerText = await page.addStyleTag({ content: '[data-testid="fc-generated-counter-grid"] td { font-size:24px !important; }' });
+  const largerText = await page.addStyleTag({ content: '[data-testid="fc-generated-counter-grid"] tbody tr.fluent-data-grid-row:nth-child(2 of .fluent-data-grid-row) td { font-size:64px !important; }' });
   await largerText.evaluate(element => (element as Element).setAttribute('data-ae-text-spacing', 'additional-user-text-size-stress'));
   await expect.poll(async () => (await metrics()).itemSize).toBeGreaterThan(32);
   await expect.poll(() => focusedControl!.evaluate(element => element.isConnected)).toBe(false);
   await expect(grid).toBeFocused();
+  await expect.poll(async () => {
+    const fonts = await table.evaluate(element => [...element.querySelectorAll('tbody tr.fluent-data-grid-row')].map(row => parseFloat(getComputedStyle(row.querySelector('td')!).fontSize)));
+    return fonts.length === 2 && fonts.every(Number.isFinite) && fonts[1] > fonts[0];
+  }, {message:'Only the settled second row receives the larger user-text override'}).toBe(true);
+  await expect.poll(async () => (await metrics()).itemSize).toBeGreaterThan(spaced.itemSize);
+  await expect.poll(async () => { const measured = await metrics(); return measured.rows.length === 2 && measured.rows.every(height => Math.abs(height-measured.itemSize) < .5) && measured.itemSize === Math.ceil(Math.max(...measured.rows)); }).toBe(true);
   const firstGrowth = (await metrics()).itemSize;
   await page.getByTestId('fc-command-input').focus();
-  await largerText.evaluate(element => { element.textContent = element.textContent!.replace('24px', '32px'); });
+  await largerText.evaluate(element => { element.textContent = element.textContent!.replace('64px', '80px'); });
   await expect.poll(async () => (await metrics()).itemSize).toBeGreaterThan(firstGrowth);
-  await expect.poll(async () => { const measured = await metrics(); return measured.rows.length > 0 && measured.rows.every(height => Math.abs(height - measured.itemSize) < .5); }).toBe(true);
+  await expect.poll(async () => { const measured = await metrics(); return measured.rows.length === 2 && measured.rows.every(height => Math.abs(height - measured.itemSize) < .5); }).toBe(true);
   await testInfo.attach('generated-compact-larger-user-text-row-metrics', { body: JSON.stringify(await metrics()), contentType: 'application/json' });
   await expect(page.getByTestId('fc-command-input')).toBeFocused();
   await density('Roomy');
   await expect.poll(async () => (await metrics()).itemSize).toBeGreaterThanOrEqual(56);
   await removeTextSpacing(page);
-  await expect.poll(metrics).toEqual({ itemSize: 56, rows: [56] });
+  await expect.poll(metrics).toEqual({ itemSize: 56, rows: [56, 56] });
   await density('Compact');
-  await expect.poll(metrics).toEqual({ itemSize: 32, rows: [32] });
+  await expect.poll(metrics).toEqual({ itemSize: 32, rows: [32, 32] });
 });
 
 test.describe('review measurement regressions', () => {
@@ -1373,4 +1386,392 @@ test('resume review native slots own plain labels but never hide opaque projecte
   expect((await focusGeometry(page.locator('fluent-button'))).failures).toEqual([]);
   await page.locator('fluent-button').evaluate(element => { element.innerHTML = '<span>Opaque obstruction</span>'; });
   expect((await focusGeometry(page.locator('fluent-button'))).failures).toContain('app content obscures target or focus ring');
+});
+
+// Resumed B1–B4 counterexamples must fail the evidence helpers on every engine.
+test('B1 native value glyphs cannot be vertically clipped inside a short control', async ({ page }) => {
+  await page.setContent('<input aria-label="Value" value="Clipped Ag" style="box-sizing:border-box;width:220px;height:32px;padding:0;font:64px Arial">');
+  await expect(expectNoTextClipping(page)).rejects.toThrow(/native value is vertically clipped/);
+  await page.locator('input').evaluate(input => { input.style.height = '96px'; });
+  await expectNoTextClipping(page);
+});
+
+for (const slotted of [false, true]) test(`B1 text clips follow ${slotted ? 'slotted' : 'shadow'} composed ancestors`, async ({ page }) => {
+  await page.setContent('<div id="clip" style="width:20px;height:50px;overflow:hidden"><div id="host"></div></div>');
+  await page.locator('#host').evaluate((host, slotted) => {
+    host.attachShadow({ mode: 'open' }).innerHTML = slotted ? '<slot></slot>' : '<span style="white-space:nowrap">Composed label must stay readable</span>';
+    if (slotted) host.innerHTML = '<span style="white-space:nowrap">Composed label must stay readable</span>';
+  }, slotted);
+  await expect(expectNoTextClipping(page)).rejects.toThrow(/#clip/);
+  await page.locator('#clip').evaluate(clip => { clip.style.width = '400px'; });
+  await expectNoTextClipping(page);
+});
+
+test('B1 explicit inset text clips are measured and nested scrollports retain their visible portion', async ({ page }) => {
+  await page.setContent('<p id="clip" style="width:200px;clip-path:inset(0 95% 0 0)">Explicitly clipped label</p>');
+  await expect(expectNoTextClipping(page)).rejects.toThrow(/#clip/);
+  await page.locator('#clip').evaluate(clip => { clip.style.clipPath = 'inset(0)'; });
+  await expectNoTextClipping(page);
+  await page.setContent('<div style="width:60px;height:40px;overflow:hidden"><div style="width:60px;height:40px;overflow:auto"><span style="white-space:nowrap">Scrollable unbroken native label</span></div></div>');
+  await expectNoTextClipping(page);
+});
+
+test('B2 decoded replaced paint covering text requires pixel evidence', async ({ page }) => {
+  await page.setContent('<div style="position:relative;width:220px;background:white;color:black"><span id="label">Visible label</span><img alt="" width="220" height="30" style="position:absolute;inset:0" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22220%22 height=%2230%22%3E%3Crect width=%22220%22 height=%2230%22 fill=%22black%22/%3E%3C/svg%3E"></div>');
+  await page.locator('img').evaluate(async image => { await (image as HTMLImageElement).decode(); });
+  await expect(measureSurfaceContrast(page.locator('#label'))).rejects.toThrow(/Overlapping replaced paint needs pixel evidence/);
+  await page.locator('img').evaluate(image => { image.style.clipPath = 'inset(100%)'; });
+  await expectSurfaceContrast(page.locator('#label'));
+});
+
+test('B2 positioned opaque pseudo paint cannot certify the text it covers', async ({ page }) => {
+  await page.setContent('<style>#label{position:relative;display:block;width:220px;background:white;color:black}#label::after{content:"";position:absolute;inset:0;background:black}</style><span id="label">Visible label</span>');
+  await expect(measureSurfaceContrast(page.locator('#label'))).rejects.toThrow(/Overlapping pseudo background needs pixel evidence/);
+  await page.addStyleTag({ content: '#label::after{clip-path:inset(100%)}' });
+  await expectSurfaceContrast(page.locator('#label'));
+});
+
+test('B2 exterior focus contrast cannot borrow white behind unrelated ring-area paint', async ({ page }) => {
+  await page.setContent('<style>body{background:white}button{position:fixed;left:40px;top:40px;width:100px;height:40px;outline:none;background:white;border:0;border-radius:0}button:focus{outline:2px solid black}#under{position:fixed;left:38px;top:38px;width:104px;height:44px;background:black}</style><div id="under"></div><button>Action</button>');
+  await page.locator('button').focus();
+  await expect(measureSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Overlapping sibling background needs pixel evidence/);
+  await page.locator('#under').evaluate(under => { under.style.left = '240px'; });
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+});
+
+test('B3 inventories pointer-active menu checkbox and radio roles beside passing targets', async ({ page }) => {
+  await page.setContent('<button style="width:40px;height:40px">Passing</button><div role="menuitemcheckbox" onclick="void 0" style="position:fixed;left:100px;top:40px;width:5px;height:5px"></div><div role="menuitemradio" onclick="void 0" style="position:fixed;left:140px;top:40px;width:5px;height:5px"></div>');
+  const inventory = (await inventoryTargets(page)).inventory;
+  expect(inventory).toHaveLength(3);
+  expect(inventory.filter(target => target.failure)).toHaveLength(2);
+  await page.locator('[role^="menuitem"]').evaluateAll(controls => controls.forEach(control => { (control as HTMLElement).style.width = '24px'; (control as HTMLElement).style.height = '24px'; }));
+  await expectTargetSizes(page);
+});
+
+test('B3 aria-hidden does not hide a visible pointer-active control from target evidence', async ({ page }) => {
+  await page.setContent('<button style="width:40px;height:40px">Passing</button><div aria-hidden="true"><button id="hidden" style="position:fixed;left:100px;top:40px;width:5px;height:5px;padding:0"></button></div>');
+  expect((await inventoryTargets(page)).inventory.find(target => target.target === '#hidden')?.failure).toContain('lacks an evidenced exception');
+  await page.locator('#hidden').evaluate(control => { control.style.width = control.style.height = '24px'; });
+  await expectTargetSizes(page);
+});
+
+test('B3 minimums and equivalent exceptions use reachable clipped target rectangles', async ({ page }) => {
+  await page.setContent('<div id="clip" style="position:fixed;left:40px;top:40px;width:10px;height:10px;overflow:hidden"><button id="clipped" style="width:100px;height:40px">Action</button></div><button id="small" style="position:fixed;left:200px;top:40px;width:10px;height:10px;padding:0"></button>');
+  const equivalent: TargetException = { selector: '#small', kind: 'Equivalent', rationale: 'Same action', keyboardPath: 'Tab', evidence: 'Retained target fixture', equivalentSelector: '#clipped' };
+  const inventory = (await inventoryTargets(page, [equivalent])).inventory;
+  expect(inventory.find(target => target.target === '#clipped')).toMatchObject({ width: 10, height: 10, conforming: false });
+  expect(inventory.find(target => target.target === '#clipped')?.failure).toContain('Clipping');
+  expect(inventory.find(target => target.target === '#small')?.failure).toContain('Equivalent control');
+  await page.locator('#clip').evaluate(clip => { clip.style.width = '100px'; clip.style.height = '40px'; });
+  await expectTargetSizes(page, [equivalent]);
+});
+
+test('B3 a fully clipped essential target remains an explicit failure', async ({ page }) => {
+  await page.setContent('<button style="width:40px;height:40px">Passing</button><div style="width:0;height:0;overflow:hidden"><button id="essential" data-ae-essential-target style="width:40px;height:40px">Essential action</button></div>');
+  const exception: TargetException = { selector: '#essential', kind: 'Essential', rationale: 'Fixture only', keyboardPath: 'Tab', evidence: 'Retained clip fixture', essentialReason: 'Demonstrates a required control cannot silently disappear' };
+  expect((await inventoryTargets(page, [exception])).inventory.find(target => target.target === '#essential')?.failure).toContain('Clipping');
+});
+
+test('B4 nontranslation transforms require actual indicator-envelope evidence while translation passes', async ({ page }) => {
+  await page.setContent('<style>button{position:fixed;left:3px;top:40px;width:40px;height:30px;transform-origin:0 0;transform:scale(3);outline:none}button:focus{outline:2px solid black}</style><button>Action</button>');
+  await page.locator('button').focus();
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('transformed focus indicator envelope needs pixel evidence');
+  await page.locator('button').evaluate(button => { button.style.transform = 'translate(40px, 0)'; });
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+  await page.locator('button').evaluate(button => { button.style.scale = '3'; });
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('transformed focus indicator envelope needs pixel evidence');
+});
+
+test('B5 query navigation cancels old detail captures before replacement recovery', async ({ page }) => {
+  await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const result = await page.evaluate(async () => {
+    const path: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+    const focus = await import(path);
+    const original = location.href;
+    const host = document.createElement('div');
+    host.setAttribute('data-fc-datagrid', 'query-fixture');
+    host.innerHTML = '<div class="fc-expand-in-row-detail"><button>Old query action</button></div><span id="query-explanation" tabindex="-1">New query explanation</span>';
+    document.body.append(host);
+    focus.trackDetailFocus('query-recovery', 'query-fixture');
+    const detail = host.querySelector('button')!;
+    detail.focus();
+    const pathname = location.pathname;
+    history.pushState({}, '', `${pathname}?query=new`);
+    const samePath = location.pathname === pathname;
+    detail.remove();
+    const cancelled = !focus.focusReplacementHeading('query-recovery', 'query-explanation') && document.activeElement?.id !== 'query-explanation';
+    host.querySelector('.fc-expand-in-row-detail')!.append(detail);
+    focus.trackDetailFocus('query-recovery', 'query-fixture');
+    detail.focus();
+    detail.remove();
+    const currentRecovered = focus.focusReplacementHeading('query-recovery', 'query-explanation');
+    focus.cancelReplacementFocus('query-recovery');
+    host.remove();
+    history.replaceState({}, '', original);
+    return { samePath, cancelled, currentRecovered };
+  });
+  expect(result).toEqual({ samePath: true, cancelled: true, currentRecovered: true });
+});
+
+test('B5 real co-mounted logical owners recover the affected physical projection once', async ({ page }, info) => {
+  await page.goto('/__frontcomposer/specimens/type?announcementFocus=true');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const fixture = page.getByTestId('fc-duplicate-missing-detail-fixture');
+  await expect(fixture.locator('[data-fc-datagrid]')).toHaveCount(2);
+  await fixture.evaluate(root => {
+    const state = { focus: [] as string[], speech: [] as string[] };
+    (window as typeof window & { aeDuplicateRecovery?: typeof state }).aeDuplicateRecovery = state;
+    root.addEventListener('focusin', event => {
+      const target = event.target;
+      if (target instanceof Element && target.matches('.fc-expanded-row-hidden-banner-text')) state.focus.push(target.closest('[data-testid^="fc-duplicate-missing-detail-"]')!.getAttribute('data-testid')!);
+    });
+    new MutationObserver(() => {
+      for (const status of root.querySelectorAll('[data-testid="fc-surface-status"]')) if (status.textContent?.trim()) state.speech.push(status.textContent.trim());
+    }).observe(root, { childList: true, characterData: true, subtree: true });
+  });
+  await page.getByTestId('fc-duplicate-missing-detail-1').getByTestId('fc-remove-duplicate-focused-detail').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('fc-duplicate-missing-detail-1').locator('.fc-expanded-row-hidden-banner-text')).toBeFocused();
+  await expect(fixture.locator('.fc-expanded-row-hidden-banner-text')).toHaveCount(2);
+  const result = await page.evaluate(() => (window as typeof window & { aeDuplicateRecovery?: { focus: string[]; speech: string[] } }).aeDuplicateRecovery);
+  expect(result).toEqual({ focus: ['fc-duplicate-missing-detail-1'], speech: [] });
+  await info.attach('duplicate-projection-recovery', { body: JSON.stringify(result), contentType: 'application/json' });
+});
+
+for (const indicator of ['box-shadow', 'pseudo border']) test(`B2 exterior ${indicator} contrast checks the actual painted ring adjacency`, async ({ page }) => {
+  const focus = indicator === 'box-shadow' ? 'button:focus{box-shadow:0 0 0 2px black}' : 'button:focus::after{content:"";position:absolute;inset:-2px;border:2px solid black}';
+  await page.setContent(`<style>body{background:white}button{position:fixed;left:40px;top:40px;width:100px;height:40px;outline:none;background:white;border:0;border-radius:0}#under{position:fixed;left:38px;top:38px;width:104px;height:44px;background:black}${focus}</style><div id="under"></div><button>Action</button>`);
+  await page.locator('button').focus();
+  await expect(measureSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Overlapping sibling background needs pixel evidence/);
+  await page.locator('#under').evaluate(under => { under.style.left = '240px'; });
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+});
+
+test('B3 offscreen skip links stay excluded while ordinary page and scrollport controls remain reachable', async ({ page }) => {
+  await page.setContent('<style>.fc-skip-link:not(:focus){position:absolute;left:-10000px}</style><a class="fc-skip-link" href="#content">Skip to content</a><div style="position:fixed;left:10px;top:10px;width:160px;height:40px;overflow:hidden"><div style="width:160px;height:40px;overflow:auto"><div style="height:200px"></div><button id="scrollable" style="width:100px;height:32px">Scroll action</button></div></div><main id="content" style="margin-top:1200px"><button id="below" style="width:100px;height:32px">Page action</button></main>');
+  const inventory = await expectTargetSizes(page);
+  expect(inventory.map(target => target.target)).toEqual(['#scrollable', '#below']);
+  expect(inventory.every(target => target.width === 100 && target.height === 32)).toBe(true);
+});
+
+test('B2 transparent SVG viewport gutters leave adjacent focus paint measurable but real vector paint does not', async ({ page }) => {
+  await page.setContent('<style>body{background:white}button{position:fixed;left:40px;top:40px;width:100px;height:40px;background:white;border:0;outline:none}button:focus{outline:2px solid black}svg{position:fixed;left:20px;top:50px}</style><svg width="20" height="20"><rect x="2" y="2" width="10" height="16" fill="black"/></svg><button>Action</button>');
+  await page.locator('button').focus();
+  await expectSurfaceContrast(page.locator('button'), 'focus');
+  await page.locator('rect').evaluate(rect => { rect.setAttribute('width', '20'); });
+  await expect(measureSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Overlapping replaced paint needs pixel evidence/);
+  await page.locator('rect').evaluate(rect => { rect.setAttribute('width', '10'); rect.setAttribute('fill', 'none'); rect.setAttribute('stroke', 'black'); rect.setAttribute('stroke-width', '16'); });
+  await expect(measureSurfaceContrast(page.locator('button'), 'focus')).rejects.toThrow(/Overlapping replaced paint needs pixel evidence/);
+});
+
+
+test('B1 lifecycle focus-only headings are checked when revealed, while visible text clips remain failures', async ({ page }) => {
+  await page.setContent('<style>.fc-lifecycle-heading:not(:focus-within){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}</style><div class="fc-lifecycle-heading"><h2 tabindex="-1" data-fc-lifecycle-heading>Active command heading</h2></div>');
+  await expectNoTextClipping(page);
+  await page.locator('h2').focus();
+  await expectNoTextClipping(page);
+  await page.locator('h2').evaluate(heading => { heading.style.clipPath = 'inset(0 95% 0 0)'; });
+  await expect(expectNoTextClipping(page)).rejects.toThrow(/h2/);
+});
+
+
+async function rowObserverFixture(page: import('@playwright/test').Page, html: string) {
+  await page.setContent(html);
+  const source = await readFile(new URL('../../../src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-datagrid.js', import.meta.url), 'utf8');
+  await page.evaluate(async source => { (window as any).aeGrid = await import('data:text/javascript;charset=utf-8,'+encodeURIComponent(source)); }, source);
+}
+
+test('C2 row metrics observe shadow content and acknowledge a retried same-height delivery', async ({ page }) => {
+  await rowObserverFixture(page, '<div data-fc-datagrid="view" data-fc-datagrid-instance="one" style="height:200px;overflow:auto"><table><tbody><tr class="fluent-data-grid-row"><td><custom-cell></custom-cell></td></tr></tbody></table></div>');
+  await page.evaluate(() => {
+    document.querySelector('custom-cell')!.attachShadow({mode:'open'}).innerHTML='<span style="display:block;font-size:12px">Row</span>';
+    const owner = window as any; owner.aeCalls=[]; owner.aeRejected=false;
+    owner.aeGrid.observeRowMetrics('view','one',{invokeMethodAsync: (_: string,_id: string,height: number) => {
+      owner.aeCalls.push(height);
+      if (height > 32 && !owner.aeRejected) { owner.aeRejected=true; return Promise.reject(new Error('transient')); }
+      return Promise.resolve();
+    }},32);
+  });
+  await expect.poll(() => page.evaluate(() => (window as any).aeCalls)).toEqual([32]);
+  await page.locator('custom-cell span').evaluate(span => { (span as HTMLElement).style.fontSize='80px'; });
+  await expect.poll(() => page.evaluate(() => (window as any).aeCalls.filter((height: number)=>height>32).length)).toBe(2);
+  const result = await page.evaluate(() => ({calls:(window as any).aeCalls, actual:Math.ceil(document.querySelector('tr')!.getBoundingClientRect().height), css:document.querySelector<HTMLElement>('[data-fc-datagrid]')!.style.getPropertyValue('--fc-grid-row-height')}));
+  expect(result.calls.at(-1)).toBe(result.actual);
+  expect(result.css).toBe(`${result.actual}px`);
+});
+
+test('C2 row metrics settle multiple grids and retain external changes and bounded disposal', async ({ page }) => {
+  await rowObserverFixture(page, '<div data-fc-datagrid="a" data-fc-datagrid-instance="a"><table><tbody><tr class="fluent-data-grid-row"><td>A</td></tr></tbody></table></div><div data-fc-datagrid="b" data-fc-datagrid-instance="b"><table><tbody><tr class="fluent-data-grid-row"><td>B</td></tr></tbody></table></div>');
+  await page.evaluate(() => {
+    const owner=window as any; owner.aeMeasures=0; owner.aeCalls=[];
+    const native=Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect=function(){if(this.matches('tr.fluent-data-grid-row'))owner.aeMeasures++;return native.call(this);};
+    for (const key of ['a','b']) owner.aeGrid.observeRowMetrics(key,key,{invokeMethodAsync:(_:string,id:string,height:number)=>{owner.aeCalls.push([id,height]);return Promise.resolve();}},32);
+  });
+  await expect.poll(() => page.evaluate(() => (window as any).aeCalls.length)).toBe(2);
+  await page.waitForTimeout(150);
+  const settled=await page.evaluate(() => (window as any).aeMeasures);
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(() => (window as any).aeMeasures)).toBe(settled);
+  await page.addStyleTag({content:'td{font-size:60px}'});
+  await expect.poll(() => page.evaluate(() => (window as any).aeCalls.filter(([,height]:[string,number])=>height>32).length)).toBe(2);
+  await page.evaluate(() => {
+    const owner=window as any; owner.aeFailures=0;
+    owner.aeGrid.disposeViewKey('a',undefined,'a');
+    owner.aeGrid.observeRowMetrics('a','a',{invokeMethodAsync:()=>{owner.aeFailures++;return Promise.reject(new Error('offline'));}},32);
+  });
+  await expect.poll(() => page.evaluate(() => (window as any).aeFailures)).toBe(3);
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => (window as any).aeFailures)).toBe(3);
+  await page.evaluate(() => { const owner=window as any; owner.aeGrid.observeRowMetrics('a','a',{invokeMethodAsync:()=>{owner.aeFailures++;return Promise.reject(new Error('offline'));}},32);owner.aeGrid.disposeViewKey('a',undefined,'a'); });
+  const disposed=await page.evaluate(() => (window as any).aeFailures);
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => (window as any).aeFailures)).toBe(disposed);
+});
+
+for (const native of ['textarea','select']) test(`C2 clipping measures visible native ${native} values while allowing native scrolling`, async ({ page }) => {
+  await page.setContent(native === 'textarea' ? '<textarea style="font-size:32px;height:10px;padding:0;border:0;resize:none">Important label</textarea>' : '<select style="font-size:32px;height:10px;padding:0;border:0"><option>Important label</option></select>');
+  await expect(expectNoTextClipping(page)).rejects.toThrow(/native value is vertically clipped/);
+  await page.locator(native).evaluate(element => { (element as HTMLElement).style.height='80px'; if (element instanceof HTMLTextAreaElement) element.value='One line\nTwo lines\nThree lines\nFour lines\nFive lines'; });
+  await expectNoTextClipping(page);
+});
+
+test('C2 visible aria-hidden labels and generated labels cannot disappear from clipping proof', async ({ page }) => {
+  await page.setContent('<p aria-hidden="true" style="width:10px;height:8px;overflow:hidden;white-space:nowrap">Important long visible label</p>');
+  await expect(expectNoTextClipping(page)).rejects.toThrow(/clipped text/);
+  await page.locator('p').evaluate(element => { element.style.width='400px';element.style.height='40px'; });
+  await expectNoTextClipping(page);
+  await page.setContent('<style>p::before{content:"Important long visible label"}p{width:10px;height:8px;overflow:hidden;white-space:nowrap}</style><p></p>');
+  await expect(expectNoTextClipping(page)).rejects.toThrow(/generated text clipping needs pixel evidence/);
+  await page.locator('p').evaluate(element => { element.style.overflow='visible'; });
+  await expectNoTextClipping(page);
+  await page.setContent('<style>p::before{content:"" / "Accessible alternate"}div{width:100px;height:8px;overflow:hidden}p{margin:0}</style><div><p></p></div>');
+  await expectNoTextClipping(page);
+  await page.addStyleTag({content:'p::before{content:"Required / *" / ""}'});
+  await expect(expectNoTextClipping(page)).rejects.toThrow(/clipped text/);
+  await page.locator('div').evaluate(element=>{element.style.height='40px';});
+  await expectNoTextClipping(page);
+});
+
+test('C2 transparent dark pages use actual Canvas rather than an invented white backdrop', async ({ page }) => {
+  await page.setContent('<style>:root{color-scheme:dark}p{color:black}</style><p>Essential warning</p>');
+  const samples=await measureSurfaceContrast(page.locator('p'));
+  expect(samples[0].background.slice(0,3).every(channel=>channel<64)).toBe(true);
+  expect(samples[0].ratio).toBeLessThan(4.5);
+  await page.locator('p').evaluate(element=>{element.style.color='white';});
+  await expectSurfaceContrast(page.locator('p'));
+});
+
+for (const paint of ['pseudo','border','shadow']) test(`C2 ${paint}-only pointer-transparent paint cannot obscure focused controls undetected`, async ({ page }) => {
+  const cover=paint==='pseudo' ? '#cover{position:absolute;left:400px;top:200px;width:1px;height:1px}#cover::before{content:"";position:fixed;left:40px;top:40px;width:100px;height:40px;background:white;z-index:100;pointer-events:none}' : paint==='border' ? '#cover{position:absolute;left:40px;top:40px;width:100px;height:40px;border:20px solid white;box-sizing:border-box;z-index:10;pointer-events:none}' : '#cover{position:absolute;left:190px;top:40px;width:100px;height:40px;box-shadow:-150px 0 0 10px white;z-index:10;pointer-events:none}';
+  await page.setContent(`<style>button{position:absolute;left:40px;top:40px;width:100px;height:40px;outline:none}button:focus{outline:2px solid black}${cover}</style><button>Save</button><div id="cover"></div>`);
+  await page.locator('button').focus();
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+  await page.locator('#cover').evaluate(element=>element.remove());
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+});
+
+for (const pseudo of [false,true]) test(`C2 competing ${pseudo?'pseudo':'element'} shadows cannot certify nominal text contrast`, async ({ page }) => {
+  await page.setContent(`<style>#text{position:absolute;left:50px;top:50px;width:100px;height:30px;color:black;background:white;margin:0}#cover{position:absolute;left:300px;top:50px;width:10px;height:30px;z-index:10;pointer-events:none}${pseudo?'#cover::after{content:"";position:absolute;inset:0;box-shadow:-250px 0 0 10px black}':'#cover{box-shadow:-250px 0 0 10px black}'}</style><p id="text">Essential warning</p><div id="cover"></div>`);
+  await expect(measureSurfaceContrast(page.locator('#text'))).rejects.toThrow(/Competing border\/shadow paint needs pixel evidence/);
+  if (!pseudo) {
+    await page.locator('#cover').evaluate(element=>{element.style.boxShadow='-250px 0 2px rgba(0,0,0,.12)';});
+    const supported=await expectSurfaceContrast(page.locator('#text'));
+    expect(supported[0].measurement).toBe('conservative-bound');
+    expect(supported[0].ratio).toBeGreaterThanOrEqual(4.5);
+    expect(supported[0].ratio).toBeLessThan(21);
+    await page.locator('#text').evaluate(element=>{element.style.color='#757575';});
+    expect((await expectTextContrast(page.locator('#text'))).ratio).toBeGreaterThanOrEqual(4.5);
+    await expect(measureSurfaceContrast(page.locator('#text'))).rejects.toThrow(/conservative ratio .* below 4.5/);
+    await page.locator('#text').evaluate(element=>{element.style.color='#555';});
+    await expectSurfaceContrast(page.locator('#text'));
+    await page.evaluate(()=>{const clone=document.querySelector('#cover')!.cloneNode() as HTMLElement;clone.id='second-cover';clone.style.cssText='position:absolute;left:300px;top:50px;width:10px;height:30px;z-index:10;pointer-events:none;box-shadow:-250px 0 2px rgba(0,0,0,.12)';document.body.append(clone);});
+    await expect(measureSurfaceContrast(page.locator('#text'))).rejects.toThrow(/conservative ratio .* below 4.5/);
+    await page.locator('#second-cover').evaluate(element=>element.remove());
+    await page.locator('#cover').evaluate(element=>{element.style.boxShadow='-250px 0 2px rgba(0,0,0,.12), -250px 0 2px rgba(0,0,0,.12)';});
+    await expect(measureSurfaceContrast(page.locator('#text'))).rejects.toThrow(/conservative ratio .* below 4.5/);
+    await page.locator('#text').evaluate(element=>{element.style.color='black';});
+    for (const shadow of ['-250px 0 2px rgba(0,0,0,.99)','-250px 0 2px rgba(0,0,255,.12)','-250px 0 0 rgba(0,0,0,.12)']) {
+      await page.locator('#cover').evaluate((element,shadow)=>{element.style.boxShadow=shadow;},shadow);
+      await expect(measureSurfaceContrast(page.locator('#text'))).rejects.toThrow(/Competing border\/shadow paint needs pixel evidence/);
+    }
+  }
+  await page.locator('#cover').evaluate(element=>element.remove());
+  await expectSurfaceContrast(page.locator('#text'));
+});
+
+test('C3 disjoint wrapped text fragments keep independent shadow bounds', async ({ page }) => {
+  await page.setContent('<style>body{background:white}#text{position:absolute;left:50px;top:50px;width:130px;margin:0;font:20px/40px monospace;color:#555;background:white}.cover{position:absolute;left:300px;width:10px;height:32px;z-index:10;pointer-events:none;box-shadow:-250px 0 2px rgba(0,0,0,.12)}</style><p id="text">AAAAA BBBBB</p><div class="cover" style="top:50px"></div><div class="cover" style="top:90px"></div>');
+  expect(await page.locator('#text').evaluate(element=>{const range=document.createRange();range.selectNodeContents(element);return range.getClientRects().length;})).toBe(2);
+  const samples=await expectSurfaceContrast(page.locator('#text'));
+  expect(samples[0].measurement).toBe('conservative-bound');
+  expect(samples[0].shadowBound?.layers).toHaveLength(1);
+  expect(samples[0].shadowBound?.layers[0].exteriorBlur).toBeUndefined();
+  await page.evaluate(()=>{const cover=document.createElement('div');cover.className='cover';cover.style.cssText='top:50px;height:72px';document.body.append(cover);});
+  await expect(measureSurfaceContrast(page.locator('#text'))).rejects.toThrow(/conservative ratio .* below 4.5/);
+});
+
+test('C2 text shadow composition requires actual glyph evidence', async ({ page }) => {
+  await page.setContent('<p style="color:black;text-shadow:0 0 0 white,0 0 0 white;background:white">Visible label</p>');
+  await expect(measureSurfaceContrast(page.locator('p'))).rejects.toThrow(/Text shadow composition needs pixel evidence/);
+  await page.locator('p').evaluate(element=>{element.style.textShadow='none';});
+  await expectSurfaceContrast(page.locator('p'));
+});
+
+test('C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported', async ({ page }) => {
+  await page.setContent('<button id="target" style="position:absolute;left:40px;top:40px;width:30px;height:30px;padding:0"></button><div id="cover" style="position:absolute;left:40px;top:40px;width:29px;height:30px;background:black"></div>');
+  expect((await inventoryTargets(page)).inventory[0]).toMatchObject({width:1,height:30,conforming:false});
+  await page.locator('#cover').evaluate(cover=>{cover.style.width='6px';});
+  await expectTargetSizes(page);
+  await page.locator('#cover').evaluate(cover=>{cover.style.width='29px';cover.style.pointerEvents='none';});
+  await expectTargetSizes(page);
+  await page.locator('#cover').evaluate(cover=>cover.remove());
+  await page.setContent('<fluent-button id="target" tabindex="0" style="display:block;width:30px;height:30px"></fluent-button>');
+  await page.locator('#target').evaluate(target=>{target.attachShadow({mode:'open'}).innerHTML='<span style="display:block;width:30px;height:30px">Owned</span>';});
+  await expectTargetSizes(page);
+  await page.setContent('<dialog style="position:fixed;left:40px;top:40px;width:200px;height:180px;margin:0;padding:0;border:0;overflow:auto"><div style="position:relative;height:400px"><button id="held" style="position:absolute;left:20px;top:10px;width:80px;height:30px">Keep focus</button><button id="scroll-target" style="position:absolute;left:20px;top:130px;width:30px;height:30px;padding:0">Go</button></div><div id="footer" style="position:sticky;bottom:0;height:60px;background:white">Owned footer</div></dialog>');
+  await page.locator('dialog').evaluate(element=>(element as HTMLDialogElement).showModal());
+  await page.locator('#held').focus();
+  const before=await page.evaluate(()=>({dialog:document.querySelector('dialog')!.scrollTop,page:document.scrollingElement!.scrollTop,focus:document.activeElement?.id}));
+  expect(await page.locator('#scroll-target').evaluate(element=>{const box=element.getBoundingClientRect();return document.elementFromPoint(box.left+box.width/2,box.top+box.height/2)?.id;})).toBe('footer');
+  expect((await inventoryTargets(page)).inventory.find(target=>target.target==='#scroll-target')).toMatchObject({width:30,height:30,conforming:true,failure:null});
+  expect(await page.evaluate(()=>({dialog:document.querySelector('dialog')!.scrollTop,page:document.scrollingElement!.scrollTop,focus:document.activeElement?.id}))).toEqual(before);
+  await page.locator('dialog').evaluate(element=>{const cover=document.createElement('div');cover.style.cssText='position:fixed;inset:0;background:black;z-index:100';element.append(cover);});
+  expect((await inventoryTargets(page)).inventory.find(target=>target.target==='#scroll-target')).toMatchObject({width:0,height:0,conforming:false,failure:'Clipping leaves the target without the required reachable area'});
+  expect(await page.evaluate(()=>({dialog:document.querySelector('dialog')!.scrollTop,page:document.scrollingElement!.scrollTop,focus:document.activeElement?.id}))).toEqual(before);
+});
+
+test('C2 a Fluent-owned contained tab indicator is supported but outward or unrelated pseudo paint still requires proof', async ({ page }) => {
+  await page.setContent('<style>fluent-tablist{position:fixed;left:40px;top:40px;width:100px;height:40px}fluent-tab{display:block;width:100px;height:40px;outline:none}fluent-tab:focus{outline:2px solid black}fluent-tablist::after{content:"";position:absolute;left:10px;right:10px;bottom:-.0004px;height:3px;background:blue}</style><fluent-tablist><fluent-tab aria-selected="true" tabindex="0">Activity</fluent-tab></fluent-tablist>');
+  await page.locator('fluent-tab').focus();
+  await expectSurfaceContrast(page.locator('fluent-tab'),'focus');
+  await page.addStyleTag({content:'fluent-tablist::after{bottom:-1.7px}'});
+  await expect(measureSurfaceContrast(page.locator('fluent-tab'),'focus')).rejects.toThrow(/Overlapping pseudo background needs pixel evidence/);
+  await page.addStyleTag({content:'fluent-tablist::after{display:none}#other::after{content:"";position:fixed;left:38px;top:40px;width:2px;height:40px;background:black}'});
+  await page.evaluate(()=>document.body.append(Object.assign(document.createElement('div'),{id:'other'})));
+  await expect(measureSurfaceContrast(page.locator('fluent-tab'),'focus')).rejects.toThrow(/Overlapping pseudo background needs pixel evidence/);
+});
+
+test('C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers', async ({ page }) => {
+  await page.setContent('<style>button{position:fixed;left:40px;top:40px;width:100px;height:40px;outline:none}button:focus{outline:2px solid black}</style><button id="anchor">Filter</button><fluent-popover-b anchor-id="anchor" opened="true" style="--shadow16:0 0 2px rgba(0,0,0,.12),0 8px 16px rgba(0,0,0,.14)"></fluent-popover-b>');
+  await page.locator('fluent-popover-b').evaluate(host=>{
+    host.attachShadow({mode:'open'}).innerHTML='<div fuib part="dialog" popover="manual" style="position:fixed;left:40px;top:90px;width:100px;height:30px;margin:0;padding:0;border:0"></div>';
+    const sheet=new CSSStyleSheet();sheet.replaceSync(':host div[fuib][popover]{box-shadow:var(--shadow16)}');host.shadowRoot!.adoptedStyleSheets=[sheet];
+    (host.shadowRoot!.firstElementChild as HTMLElement).showPopover();
+  });
+  await page.locator('button').focus();
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+  await page.locator('fluent-popover-b').evaluate(host=>host.removeAttribute('anchor-id'));
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+  await page.locator('fluent-popover-b').evaluate(host=>{
+    host.setAttribute('anchor-id','anchor');
+    (host.shadowRoot!.firstElementChild as HTMLElement).style.boxShadow='0 0 300px 100px rgba(0,0,0,.99)';
+  });
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+  await page.locator('fluent-popover-b').evaluate(host=>{
+    const cover=host.shadowRoot!.firstElementChild as HTMLElement;
+    cover.style.left='190px';cover.style.top='40px';cover.style.boxShadow='-150px 0 0 10px white';
+  });
+  expect((await focusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
 });

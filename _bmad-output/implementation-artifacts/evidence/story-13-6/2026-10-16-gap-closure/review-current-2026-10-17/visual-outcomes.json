@@ -1,0 +1,150 @@
+{
+  "sourceIdentitySha256": "0bfddb4016c3bfe00e84ae88ca698b3a63c373b1ac2be5048577cdae0ee6b77a",
+  "approvedImagesUpdated": false,
+  "failedComparisons": [
+    {
+      "engine": "chromium",
+      "title": "visual baseline light compact",
+      "comparison": [
+        "424 pixels (ratio 0.01 of all image pixels) are different.",
+        "\u001b[2m  - 424 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "visual baseline light comfortable",
+      "comparison": [
+        "424 pixels (ratio 0.01 of all image pixels) are different.",
+        "\u001b[2m  - 424 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "visual baseline light roomy",
+      "comparison": [
+        "424 pixels (ratio 0.01 of all image pixels) are different.",
+        "\u001b[2m  - 424 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "visual baseline dark compact",
+      "comparison": [
+        "424 pixels (ratio 0.01 of all image pixels) are different.",
+        "\u001b[2m  - 424 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "visual baseline dark comfortable",
+      "comparison": [
+        "424 pixels (ratio 0.01 of all image pixels) are different.",
+        "\u001b[2m  - 424 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "visual baseline dark roomy",
+      "comparison": [
+        "424 pixels (ratio 0.01 of all image pixels) are different.",
+        "\u001b[2m  - 424 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline light compact",
+      "comparison": [
+        "Expected an image 1280px by 3778px, received 1280px by 3820px. 189088 pixels (ratio 0.04 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3778px, received 1280px by 3820px. 189088 pixels (ratio 0.04 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline light comfortable",
+      "comparison": [
+        "Expected an image 1280px by 3846px, received 1280px by 3880px. 206379 pixels (ratio 0.05 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3846px, received 1280px by 3880px. 206379 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline light roomy",
+      "comparison": [
+        "Expected an image 1280px by 3914px, received 1280px by 3940px. 217418 pixels (ratio 0.05 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3914px, received 1280px by 3940px. 217418 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline dark compact",
+      "comparison": [
+        "Expected an image 1280px by 3778px, received 1280px by 3820px. 518704 pixels (ratio 0.11 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3778px, received 1280px by 3820px. 518704 pixels (ratio 0.11 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline dark comfortable",
+      "comparison": [
+        "Expected an image 1280px by 3846px, received 1280px by 3880px. 456162 pixels (ratio 0.10 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3846px, received 1280px by 3880px. 456162 pixels (ratio 0.10 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline dark roomy",
+      "comparison": [
+        "Expected an image 1280px by 3914px, received 1280px by 3940px. 405657 pixels (ratio 0.09 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3914px, received 1280px by 3940px. 405657 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline light compact",
+      "comparison": [
+        "Expected an image 1280px by 3818px, received 1280px by 3863px. 182902 pixels (ratio 0.04 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3863px. 182902 pixels (ratio 0.04 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline light comfortable",
+      "comparison": [
+        "Expected an image 1280px by 3886px, received 1280px by 3923px. 199765 pixels (ratio 0.04 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3886px, received 1280px by 3923px. 199765 pixels (ratio 0.04 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline light roomy",
+      "comparison": [
+        "Expected an image 1280px by 3954px, received 1280px by 3983px. 213702 pixels (ratio 0.05 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3954px, received 1280px by 3983px. 213702 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline dark compact",
+      "comparison": [
+        "Expected an image 1280px by 3818px, received 1280px by 3863px. 523157 pixels (ratio 0.11 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3863px. 523157 pixels (ratio 0.11 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline dark comfortable",
+      "comparison": [
+        "Expected an image 1280px by 3886px, received 1280px by 3923px. 458622 pixels (ratio 0.10 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3886px, received 1280px by 3923px. 458622 pixels (ratio 0.10 of all image pixels) are different.\u001b[22m"
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline dark roomy",
+      "comparison": [
+        "Expected an image 1280px by 3954px, received 1280px by 3983px. 402528 pixels (ratio 0.08 of all image pixels) are different.",
+        "\u001b[2m  - Expected an image 1280px by 3954px, received 1280px by 3983px. 402528 pixels (ratio 0.08 of all image pixels) are different.\u001b[22m"
+      ]
+    }
+  ]
+}

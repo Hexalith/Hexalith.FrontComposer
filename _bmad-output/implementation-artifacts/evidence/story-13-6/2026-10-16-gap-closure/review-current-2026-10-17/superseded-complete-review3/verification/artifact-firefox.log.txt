@@ -1,0 +1,47 @@
+Ambiguous or unsuccessful Playwright outcome: ["firefox","a542ea7f175527dc3e9c-d2b739cdf1c73609ddf2"]
+Ambiguous or unsuccessful Playwright outcome: ["firefox","a542ea7f175527dc3e9c-b125e3ed014a066eb3f6"]
+Ambiguous or unsuccessful Playwright outcome: ["firefox","a542ea7f175527dc3e9c-a88a79142a12016cd2b4"]
+Ambiguous or unsuccessful Playwright outcome: ["firefox","a542ea7f175527dc3e9c-26fa852ffe5e8c22dde7"]
+Ambiguous or unsuccessful Playwright outcome: ["firefox","1d4b08b56195ecf56b6b-4733f3821f9630840cc4"]
+Ambiguous or unsuccessful Playwright outcome: ["firefox","1d4b08b56195ecf56b6b-16326aa150749ec2b8ed"]
+Ambiguous or unsuccessful Playwright outcome: ["firefox","1d4b08b56195ecf56b6b-12c004cb1a4802243759"]
+Ambiguous or unsuccessful Playwright outcome: ["firefox","1d4b08b56195ecf56b6b-2cc8fc483960b6273aa3"]
+Ambiguous or unsuccessful Playwright outcome: ["firefox","1d4b08b56195ecf56b6b-0671136a2c1d6edeee10"]
+Ambiguous or unsuccessful Playwright outcome: ["firefox","1d4b08b56195ecf56b6b-2c58b1a5e131b2e07a8e"]
+Unbound Playwright attempt: /tmp/story-13-6-review3-final-browser/bounded-replay/firefox/test-results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-acknowledged-light.json
+Unbound Playwright attempt: /tmp/story-13-6-review3-final-browser/bounded-replay/firefox/test-results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-confirmed-light.json
+Unbound Playwright attempt: /tmp/story-13-6-review3-final-browser/bounded-replay/firefox/test-results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-idle-light.json
+Unbound Playwright attempt: /tmp/story-13-6-review3-final-browser/bounded-replay/firefox/test-results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-submitting-light.json
+Unbound Playwright attempt: /tmp/story-13-6-review3-final-browser/bounded-replay/firefox/test-results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/ae-state-lifecycle-syncing-light.json
+Unbound Playwright attempt: /tmp/story-13-6-review3-final-browser/bounded-replay/firefox/test-results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/ae-state-lifecycle-acknowledged-dark.json
+Unbound Playwright attempt: /tmp/story-13-6-review3-final-browser/bounded-replay/firefox/test-results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/ae-state-lifecycle-confirmed-dark.json
+Unbound Playwright attempt: /tmp/story-13-6-review3-final-browser/bounded-replay/firefox/test-results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/ae-state-lifecycle-idle-dark.json
+Unbound Playwright attempt: /tmp/story-13-6-review3-final-browser/bounded-replay/firefox/test-results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/ae-state-lifecycle-submitting-dark.json
+Unbound Playwright attempt: /tmp/story-13-6-review3-final-browser/bounded-replay/firefox/test-results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/ae-state-lifecycle-syncing-dark.json
+Missing state evidence: lifecycle-idle-light in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-submitting-light in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-acknowledged-light in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-syncing-light in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-confirmed-light in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-rejected-light in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-idempotent-confirmed-light in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-needs-review-light in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-warning-light in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-degraded-light in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-degraded-exhausted-light in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: shell-chrome-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: theme-menu-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: rail-labeled-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: rail-icons-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-idle-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-submitting-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-acknowledged-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-syncing-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-confirmed-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-rejected-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-idempotent-confirmed-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-needs-review-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-warning-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-degraded-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: lifecycle-degraded-exhausted-dark in ["firefox","story-13-6-review3-final-2026-10-17"]
+Missing state evidence: generated-forms-dark in ["firefox","story-13-6-review3-final-2026-10-17"]

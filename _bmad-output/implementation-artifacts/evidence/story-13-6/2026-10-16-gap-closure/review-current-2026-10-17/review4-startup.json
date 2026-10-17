@@ -1,0 +1,29 @@
+{
+  "resource": {
+    "name": "counter-web-yzstansc",
+    "state": "Running",
+    "healthStatus": "Healthy",
+    "source": "Counter.Web.csproj",
+    "startTimestamp": "2026-10-17T16:28:40.68+00:00"
+  },
+  "executablePid": "81690",
+  "actualEnvironment": {
+    "Hexalith__Shell__ProjectionReconnectedNoticeDurationMs": "30000",
+    "DOTNET_ENVIRONMENT": "Test",
+    "ASPNETCORE_ENVIRONMENT": "Test"
+  },
+  "resourceEndpoint": "https://localhost:7201",
+  "fc-focus.js": {
+    "servedSha256": "6b47d8da48d808e20ac72bb337b2426306e54afd664447607e23b35208b98b8a",
+    "diskSha256": "6b47d8da48d808e20ac72bb337b2426306e54afd664447607e23b35208b98b8a"
+  },
+  "fc-datagrid.js": {
+    "servedSha256": "c8fb71f74172f2b49af7c0ae2291242b4a5e0e58241409526c01bb59e03c7c97",
+    "diskSha256": "c8fb71f74172f2b49af7c0ae2291242b4a5e0e58241409526c01bb59e03c7c97"
+  },
+  "scopedCss": {
+    "servedSha256": "52f3b80326fc2b4b986eb4d5cddaab26eb628f898a67965c3fbff966a41bf7cf",
+    "diskSha256": "52f3b80326fc2b4b986eb4d5cddaab26eb628f898a67965c3fbff966a41bf7cf",
+    "nativeGridCorrectionPresent": true
+  }
+}

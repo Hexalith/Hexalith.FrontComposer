@@ -1,0 +1,433 @@
+{
+  "schema": "story-13-6-c2-focused-archive-v1",
+  "scope": "All child C2 focused browser attempts and diagnostic logs, including failed and superseded attempts. No whole-candidate acceptance is inferred.",
+  "frozenSourceInputs": {
+    "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-datagrid.js": "c8fb71f74172f2b49af7c0ae2291242b4a5e0e58241409526c01bb59e03c7c97",
+    "src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs": "55180a63922597cb4ce7ee3a755e8b1110003d4e72949a3c67a301b8994d9b55",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs": "44f2af44e1cd393bde13ac0d5a5363457ea630cd32dbd9c007e34c678e20d89b",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/RecordingHiddenDetailFocusModule.cs": "144f1f38d8d42bc0ab2d23db51f7ef10b400ab396ba67135fa87a496cef179b9",
+    "tests/e2e/helpers/responsive-accessibility.ts": "629cd884eb2fb4fc8d97fab3d23d32bae84631120074724fb6fce3bfc5003b27",
+    "tests/e2e/specs/responsive-accessibility.spec.ts": "7a333babe416e99791beb0f228e86fac088f6c6cf037fe3c25034dafc26d9b06"
+  },
+  "runs": [
+    {
+      "name": "fc-c2-active-tab-2",
+      "log": "/tmp/fc-c2-active-tab-2.log",
+      "rawRoot": "/tmp/fc-c2-active-tab-2",
+      "htmlRoot": "/tmp/fc-c2-active-tab-2-report",
+      "stats": {
+        "startTime": "2026-10-17T15:44:41.057Z",
+        "duration": 6571.561000000001,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-active-tab-5",
+      "log": "/tmp/fc-c2-active-tab-5.log",
+      "rawRoot": "/tmp/fc-c2-active-tab-5",
+      "htmlRoot": "/tmp/fc-c2-active-tab-5-report",
+      "stats": {
+        "startTime": "2026-10-17T15:47:16.329Z",
+        "duration": 22181.877999999997,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-active-tab",
+      "log": "/tmp/fc-c2-active-tab.log",
+      "rawRoot": "/tmp/fc-c2-active-tab",
+      "htmlRoot": "/tmp/fc-c2-active-tab-report",
+      "stats": {
+        "startTime": "2026-10-17T15:43:38.586Z",
+        "duration": 6558.5560000000005,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-actual-3",
+      "log": "/tmp/fc-c2-actual-3.log",
+      "rawRoot": "/tmp/fc-c2-actual-3",
+      "htmlRoot": "/tmp/fc-c2-actual-3-report",
+      "stats": {
+        "startTime": "2026-10-17T15:45:58.019Z",
+        "duration": 7727.817,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-actual-4",
+      "log": "/tmp/fc-c2-actual-4.log",
+      "rawRoot": "/tmp/fc-c2-actual-4",
+      "htmlRoot": "/tmp/fc-c2-actual-4-report",
+      "stats": {
+        "startTime": "2026-10-17T15:46:35.259Z",
+        "duration": 9642.084,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-actual-6",
+      "log": "/tmp/fc-c2-actual-6.log",
+      "rawRoot": "/tmp/fc-c2-actual-6",
+      "htmlRoot": "/tmp/fc-c2-actual-6-report",
+      "stats": {
+        "startTime": "2026-10-17T15:50:52.196Z",
+        "duration": 39734.83,
+        "expected": 11,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-empty-paint-final",
+      "log": "/tmp/fc-c2-empty-paint-final.log",
+      "rawRoot": "/tmp/fc-c2-empty-paint-final",
+      "htmlRoot": "/tmp/fc-c2-empty-paint-final-report",
+      "stats": {
+        "startTime": "2026-10-17T15:56:45.152Z",
+        "duration": 7778.398,
+        "expected": 44,
+        "skipped": 1,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-firefox-probe",
+      "log": "/tmp/fc-c2-firefox-probe.log",
+      "rawRoot": "/tmp/fc-c2-firefox-probe",
+      "htmlRoot": "/tmp/fc-c2-firefox-probe-report",
+      "stats": {
+        "startTime": "2026-10-17T15:48:49.537Z",
+        "duration": 4910.638,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-generated-positive-step",
+      "log": "/tmp/fc-c2-generated-positive-step.log",
+      "rawRoot": "/tmp/fc-c2-generated-positive-step",
+      "htmlRoot": "/tmp/fc-c2-generated-positive-step-report",
+      "stats": {
+        "startTime": "2026-10-17T15:59:50.898Z",
+        "duration": 3184.6730000000002,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-later-row-final",
+      "log": "/tmp/fc-c2-later-row-final.log",
+      "rawRoot": "/tmp/fc-c2-later-row-final",
+      "htmlRoot": "/tmp/fc-c2-later-row-final-report",
+      "stats": {
+        "startTime": "2026-10-17T15:53:23.597Z",
+        "duration": 9891.720000000001,
+        "expected": 6,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-later-row",
+      "log": "/tmp/fc-c2-later-row.log",
+      "rawRoot": "/tmp/fc-c2-later-row",
+      "htmlRoot": "/tmp/fc-c2-later-row-report",
+      "stats": {
+        "startTime": "2026-10-17T15:44:47.392Z",
+        "duration": 10471.171,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-native-final-2",
+      "log": "/tmp/fc-c2-native-final-2.log",
+      "rawRoot": "/tmp/fc-c2-native-final-2",
+      "htmlRoot": "/tmp/fc-c2-native-final-2-report",
+      "stats": {
+        "startTime": "2026-10-17T15:53:58.379Z",
+        "duration": 38496.263000000006,
+        "expected": 9,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-native-final",
+      "log": "/tmp/fc-c2-native-final.log",
+      "rawRoot": "/tmp/fc-c2-native-final",
+      "htmlRoot": "/tmp/fc-c2-native-final-report",
+      "stats": {
+        "startTime": "2026-10-17T15:53:05.359Z",
+        "duration": 30136.453999999998,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 5,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-new-2",
+      "log": "/tmp/fc-c2-new-2.log",
+      "rawRoot": "/tmp/fc-c2-new-2-results",
+      "htmlRoot": "/tmp/fc-c2-new-2-report",
+      "stats": {
+        "startTime": "2026-10-17T15:44:35.584Z",
+        "duration": 12111.024,
+        "expected": 39,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-new",
+      "log": "/tmp/fc-c2-new.log",
+      "rawRoot": "/tmp/fc-c2-new-results",
+      "htmlRoot": "/tmp/fc-c2-new-report",
+      "stats": {
+        "startTime": "2026-10-17T15:43:31.607Z",
+        "duration": 25991.795,
+        "expected": 30,
+        "skipped": 0,
+        "unexpected": 9,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-positive-final-2",
+      "log": "/tmp/fc-c2-positive-final-2.log",
+      "rawRoot": "/tmp/fc-c2-positive-final-2",
+      "htmlRoot": "/tmp/fc-c2-positive-final-2-report",
+      "stats": {
+        "startTime": "2026-10-17T16:07:23.454Z",
+        "duration": 51445.917,
+        "expected": 68,
+        "skipped": 1,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "disposition": "current focused subset; parent complete verification remains authoritative"
+    },
+    {
+      "name": "fc-c2-positive-final",
+      "log": "/tmp/fc-c2-positive-final.log",
+      "rawRoot": "/tmp/fc-c2-positive-final",
+      "htmlRoot": "/tmp/fc-c2-positive-final-report",
+      "stats": {
+        "startTime": "2026-10-17T16:03:05.390Z",
+        "duration": 47055.804000000004,
+        "expected": 66,
+        "skipped": 1,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-positive-red",
+      "log": "/tmp/fc-c2-positive-red.log",
+      "rawRoot": "/tmp/fc-c2-positive-red",
+      "htmlRoot": "/tmp/fc-c2-positive-red-report",
+      "stats": {
+        "startTime": "2026-10-17T15:59:03.356Z",
+        "duration": 2025.0790000000002,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-positive-step-2",
+      "log": "/tmp/fc-c2-positive-step-2.log",
+      "rawRoot": "/tmp/fc-c2-positive-step-2",
+      "htmlRoot": "/tmp/fc-c2-positive-step-2-report",
+      "stats": {
+        "startTime": "2026-10-17T16:01:59.911Z",
+        "duration": 30069.59,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-real-final",
+      "log": "/tmp/fc-c2-real-final.log",
+      "rawRoot": "/tmp/fc-c2-real-final",
+      "htmlRoot": "/tmp/fc-c2-real-final-report",
+      "stats": {
+        "startTime": "2026-10-17T15:48:09.543Z",
+        "duration": 33541.714,
+        "expected": 8,
+        "skipped": 0,
+        "unexpected": 4,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-retained-final",
+      "log": "/tmp/fc-c2-retained-final.log",
+      "rawRoot": "/tmp/fc-c2-retained-final",
+      "htmlRoot": "/tmp/fc-c2-retained-final-report",
+      "stats": {
+        "startTime": "2026-10-17T15:51:41.880Z",
+        "duration": 40463.162000000004,
+        "expected": 297,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-retained",
+      "log": "/tmp/fc-c2-retained.log",
+      "rawRoot": "/tmp/fc-c2-retained",
+      "htmlRoot": "/tmp/fc-c2-retained-report",
+      "stats": {
+        "startTime": "2026-10-17T15:47:42.027Z",
+        "duration": 52346.811,
+        "expected": 294,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-shell-bound-step",
+      "log": "/tmp/fc-c2-shell-bound-step.log",
+      "rawRoot": "/tmp/fc-c2-shell-bound-step",
+      "htmlRoot": "/tmp/fc-c2-shell-bound-step-report",
+      "stats": {
+        "startTime": "2026-10-17T16:06:33.271Z",
+        "duration": 34046.898,
+        "expected": 6,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-shell-paint-probe",
+      "log": "/tmp/fc-c2-shell-paint-probe.log",
+      "rawRoot": "/tmp/fc-c2-shell-paint-probe",
+      "htmlRoot": "/tmp/fc-c2-shell-paint-probe-report",
+      "stats": {
+        "startTime": "2026-10-17T16:04:17.800Z",
+        "duration": 4305.022,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    },
+    {
+      "name": "fc-c2-webkit-probe",
+      "log": "/tmp/fc-c2-webkit-probe.log",
+      "rawRoot": "/tmp/fc-c2-webkit-probe",
+      "htmlRoot": "/tmp/fc-c2-webkit-probe-report",
+      "stats": {
+        "startTime": "2026-10-17T15:49:31.420Z",
+        "duration": 2605.542,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "disposition": "superseded focused implementation stage; retained including all failures"
+    }
+  ],
+  "diagnostics": [
+    {
+      "name": "fc-c2-owned-hit-probe",
+      "log": "/tmp/fc-c2-owned-hit-probe.log"
+    },
+    {
+      "name": "fc-c2-positive-probe",
+      "log": "/tmp/fc-c2-positive-probe.log"
+    },
+    {
+      "name": "fc-c2-settings-hit-probe",
+      "log": "/tmp/fc-c2-settings-hit-probe.log"
+    },
+    {
+      "name": "fc-c2-settings-reachability-probe",
+      "log": "/tmp/fc-c2-settings-reachability-probe.log"
+    },
+    {
+      "name": "fc-c2-settings-reachability-repeat",
+      "log": "/tmp/fc-c2-settings-reachability-repeat.log"
+    },
+    {
+      "name": "fc-c2-settings-settled-probe",
+      "log": "/tmp/fc-c2-settings-settled-probe.log"
+    }
+  ],
+  "diagnosticScripts": [
+    "/tmp/fc-c2-settings-reachability-probe.mjs"
+  ],
+  "originalReviewRepros": [
+    "/tmp/review-row-metrics-probes.mjs",
+    "/tmp/story-13-6-row-metrics-observer-repro.mjs",
+    "/tmp/review-a11y-probes.mjs",
+    "/tmp/review-more-probes.mjs",
+    "/tmp/review-evenmore-probes.mjs",
+    "/tmp/story-13-6-missing-fallback-repro",
+    "/tmp/story-13-6-current-generated-content.mjs"
+  ],
+  "finalChecks": {
+    "typecheck": "npm --prefix tests/e2e run typecheck: passed",
+    "whitespace": "git diff --check: passed",
+    "finalFocused": "68 passed / 1 WebKit overflow-clip-margin capability skip / 0 failed; all three engines; retries=0"
+  },
+  "taskState": "G1\u2013G10 already checked complete; overall spec remains in-review. Parent owns complete verification and remaining manual/platform/catalog/visual/owner gates."
+}

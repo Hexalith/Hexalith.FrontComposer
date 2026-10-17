@@ -27,7 +27,7 @@ internal sealed class RecordingHiddenDetailFocusModule : IJSObjectReference
     /// <inheritdoc />
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
     {
-        if (identifier == "focusFirstButtonWithin") { FocusCalls++; }
+        if (identifier is "focusFirstButtonWithin" or "focusReplacementHeading") { FocusCalls++; }
         if (identifier == "trackDetailFocus") { TrackingCalls++; }
         if (TimeoutFocusCallsRemaining > 0)
         {

@@ -1,0 +1,383 @@
+
+Running 39 tests using 3 workers
+
+(node:28901) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28904) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28921) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native textarea values while allowing native scrolling (501ms)
+  ✓   2 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1586:1 › C2 row metrics observe shadow content and acknowledge a retried same-height delivery (591ms)
+  ✓   4 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native select values while allowing native scrolling (313ms)
+  ✓   5 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1641:1 › C2 visible aria-hidden labels and generated labels cannot disappear from clipping proof (391ms)
+  ✓   6 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1652:1 › C2 transparent dark pages use actual Canvas rather than an invented white backdrop (239ms)
+  ✓   7 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 pseudo-only pointer-transparent paint cannot obscure focused controls undetected (214ms)
+  ✘   1 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal (1.2s)
+  ✘   8 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected (246ms)
+  ✓   9 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 shadow-only pointer-transparent paint cannot obscure focused controls undetected (260ms)
+(node:30084) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30187) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  10 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1677:1 › C2 text shadow composition requires actual glyph evidence (272ms)
+  ✓  11 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (457ms)
+  ✘  12 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported (440ms)
+  ✓  13 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (502ms)
+(node:30864) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30915) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31061) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  16 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native textarea values while allowing native scrolling (1.9s)
+  ✓  15 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1586:1 › C2 row metrics observe shadow content and acknowledge a retried same-height delivery (1.9s)
+  ✓  18 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1641:1 › C2 visible aria-hidden labels and generated labels cannot disappear from clipping proof (677ms)
+  ✓  19 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1652:1 › C2 transparent dark pages use actual Canvas rather than an invented white backdrop (544ms)
+  ✓  20 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 pseudo-only pointer-transparent paint cannot obscure focused controls undetected (525ms)
+  ✘  21 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected (585ms)
+(node:36521) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  17 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native select values while allowing native scrolling (4.4s)
+  ✓  23 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (1.4s)
+  ✓  22 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 shadow-only pointer-transparent paint cannot obscure focused controls undetected (1.5s)
+  ✓  25 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1677:1 › C2 text shadow composition requires actual glyph evidence (406ms)
+  ✓  24 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (1.4s)
+  ✘  26 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported (406ms)
+(node:39001) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39031) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  28 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1586:1 › C2 row metrics observe shadow content and acknowledge a retried same-height delivery (606ms)
+  ✓  29 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native textarea values while allowing native scrolling (426ms)
+  ✘  14 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal (11.3s)
+(node:39933) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  30 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native select values while allowing native scrolling (379ms)
+  ✓  31 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1652:1 › C2 transparent dark pages use actual Canvas rather than an invented white backdrop (420ms)
+  ✓  32 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1641:1 › C2 visible aria-hidden labels and generated labels cannot disappear from clipping proof (520ms)
+  ✓  33 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 pseudo-only pointer-transparent paint cannot obscure focused controls undetected (423ms)
+  ✘  34 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected (427ms)
+  ✓  35 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 shadow-only pointer-transparent paint cannot obscure focused controls undetected (416ms)
+(node:41080) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  36 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (370ms)
+  ✓  37 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (437ms)
+  ✓  38 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1677:1 › C2 text shadow composition requires actual glyph evidence (401ms)
+  ✘  39 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported (481ms)
+  ✘  27 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal (11.1s)
+
+
+  1) [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 3
+    Received: 4
+
+      1625 |   await expect.poll(() => page.evaluate(() => (window as any).aeFailures)).toBe(3);
+      1626 |   await page.waitForTimeout(200);
+    > 1627 |   expect(await page.evaluate(() => (window as any).aeFailures)).toBe(3);
+           |                                                                 ^
+      1628 |   await page.evaluate(() => { const owner=window as any; owner.aeGrid.observeRowMetrics('a','a',{invokeMethodAsync:()=>{owner.aeFailures++;return Promise.reject(new Error('offline'));}},32);owner.aeGrid.disposeViewKey('a',undefined,'a'); });
+      1629 |   const disposed=await page.evaluate(() => (window as any).aeFailures);
+      1630 |   await page.waitForTimeout(200);
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1627:65
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: "competing pseudo/border/shadow paint needs pixel evidence"
+    Received array: []
+
+      1663 |   await page.setContent(`<style>button{position:absolute;left:40px;top:40px;width:100px;height:40px;outline:none}button:focus{outline:2px solid black}${cover}</style><button>Save</button><div id="cover"></div>`);
+      1664 |   await page.locator('button').focus();
+    > 1665 |   expect((await focusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+           |                                                                  ^
+      1666 |   await page.locator('#cover').evaluate(element=>element.remove());
+      1667 |   expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+      1668 | });
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1665:66
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported 
+
+    Error: locator.evaluate: NotSupportedError: Failed to execute 'attachShadow' on 'Element': This element does not support attachShadow
+        at eval (eval at evaluate (:311:30), <anonymous>:2:12)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at eval (eval at evaluate (:311:30), <anonymous>:2:12)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1692:33
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 3
+    Received: 4
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+      1623 |     owner.aeGrid.observeRowMetrics('a','a',{invokeMethodAsync:()=>{owner.aeFailures++;return Promise.reject(new Error('offline'));}},32);
+      1624 |   });
+    > 1625 |   await expect.poll(() => page.evaluate(() => (window as any).aeFailures)).toBe(3);
+           |                                                                            ^
+      1626 |   await page.waitForTimeout(200);
+      1627 |   expect(await page.evaluate(() => (window as any).aeFailures)).toBe(3);
+      1628 |   await page.evaluate(() => { const owner=window as any; owner.aeGrid.observeRowMetrics('a','a',{invokeMethodAsync:()=>{owner.aeFailures++;return Promise.reject(new Error('offline'));}},32);owner.aeGrid.disposeViewKey('a',undefined,'a'); });
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1625:76
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: "competing pseudo/border/shadow paint needs pixel evidence"
+    Received array: []
+
+      1663 |   await page.setContent(`<style>button{position:absolute;left:40px;top:40px;width:100px;height:40px;outline:none}button:focus{outline:2px solid black}${cover}</style><button>Save</button><div id="cover"></div>`);
+      1664 |   await page.locator('button').focus();
+    > 1665 |   expect((await focusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+           |                                                                  ^
+      1666 |   await page.locator('#cover').evaluate(element=>element.remove());
+      1667 |   expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+      1668 | });
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1665:66
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported 
+
+    Error: locator.evaluate: Element.attachShadow: Unable to attach ShadowDOM
+    @debugger eval code line 311 > eval:2:12
+    evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at @debugger eval code line 311 > eval:2:12
+        at evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1692:33
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 3
+    Received: 4
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+      1623 |     owner.aeGrid.observeRowMetrics('a','a',{invokeMethodAsync:()=>{owner.aeFailures++;return Promise.reject(new Error('offline'));}},32);
+      1624 |   });
+    > 1625 |   await expect.poll(() => page.evaluate(() => (window as any).aeFailures)).toBe(3);
+           |                                                                            ^
+      1626 |   await page.waitForTimeout(200);
+      1627 |   expect(await page.evaluate(() => (window as any).aeFailures)).toBe(3);
+      1628 |   await page.evaluate(() => { const owner=window as any; owner.aeGrid.observeRowMetrics('a','a',{invokeMethodAsync:()=>{owner.aeFailures++;return Promise.reject(new Error('offline'));}},32);owner.aeGrid.disposeViewKey('a',undefined,'a'); });
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1625:76
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-24493-hanges-and-bounded-disposal-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: "competing pseudo/border/shadow paint needs pixel evidence"
+    Received array: []
+
+      1663 |   await page.setContent(`<style>button{position:absolute;left:40px;top:40px;width:100px;height:40px;outline:none}button:focus{outline:2px solid black}${cover}</style><button>Save</button><div id="cover"></div>`);
+      1664 |   await page.locator('button').focus();
+    > 1665 |   expect((await focusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+           |                                                                  ^
+      1666 |   await page.locator('#cover').evaluate(element=>element.remove());
+      1667 |   expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+      1668 | });
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1665:66
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-1a37e-focused-controls-undetected-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported 
+
+    Error: locator.evaluate: NotSupportedError: The operation is not supported.
+
+      1690 |   await expectTargetSizes(page);
+      1691 |   await page.locator('#cover').evaluate(cover=>cover.remove());
+    > 1692 |   await page.locator('#target').evaluate(target=>{target.attachShadow({mode:'open'}).innerHTML='<span style="display:block;width:30px;height:30px">Owned</span>';});
+           |                                 ^
+      1693 |   await expectTargetSizes(page);
+      1694 | });
+      1695 |
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1692:33
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-new-results/responsive-accessibility-C-b854e-wned-shadows-stay-supported-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9 failed
+    [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal 
+    [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected 
+    [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported 
+    [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal 
+    [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected 
+    [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported 
+    [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal 
+    [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected 
+    [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported 
+  30 passed (26.0s)

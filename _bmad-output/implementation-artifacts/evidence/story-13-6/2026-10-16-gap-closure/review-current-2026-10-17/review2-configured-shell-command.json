@@ -1,0 +1,24 @@
+{
+  "command": [
+    "dotnet",
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+    "-nologo",
+    "-notrait",
+    "Category=GovernanceBuild",
+    "-notrait",
+    "Category=Performance",
+    "-notrait",
+    "Category=e2e-palette",
+    "-notrait",
+    "Category=NightlyProperty",
+    "-notrait",
+    "Category=Quarantined",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/review2-configured-shell.xml"
+  ],
+  "exitCode": 1,
+  "binarySha256": {
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll": "43b379c1f9b7b36956a211e80a71dc041f9f47c66fbd0c28f77258efe036da09",
+    "src/Hexalith.FrontComposer.Shell/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll": "c60cc4210a1d35d3878e528def716b01933b90f10d0f37122cbd369f58d9dadc"
+  }
+}

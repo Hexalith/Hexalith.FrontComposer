@@ -97,7 +97,7 @@ export function disposeViewKey(viewKey, generation, instanceId = '') {
 
     const key = instanceId || viewKey;
     const metrics = rowMetrics.get(key);
-    if (metrics) { metrics.resize.disconnect(); metrics.mutations.disconnect(); metrics.focus.abort(); cancelAnimationFrame(metrics.frame); rowMetrics.delete(key); }
+    if (metrics) { metrics.dispose(); rowMetrics.delete(key); }
     const entry = perInstance.get(key);
     if (!entry) {
         return;
@@ -161,9 +161,9 @@ export function observeRowMetrics(viewKey, instanceId, dotnetRef, defaultHeight)
     const container = findContainer(viewKey, instanceId);
     if (!container) return;
     const previous = rowMetrics.get(instanceId);
-    if (previous?.container === container && previous.defaultHeight === defaultHeight) { previous.schedule(); return; }
-    if (previous) { previous.resize.disconnect(); previous.mutations.disconnect(); previous.focus.abort(); cancelAnimationFrame(previous.frame); }
-    const state = { container, defaultHeight, frame: 0, height: null, pendingFocus: null, focus: new AbortController() };
+    if (previous?.container === container && previous.defaultHeight === defaultHeight) { previous.dotnetRef = dotnetRef; previous.retries = 0; previous.attempts = 0; previous.schedule(); return; }
+    if (previous) previous.dispose();
+    const state = { container, defaultHeight, dotnetRef, frame: 0, recoveryFrame: 0, retryTimer: 0, retries: 0, attempts: 0, acknowledged: null, desired: null, inFlight: false, pendingFocus: null, focus: new AbortController() };
     const recoverFocus = () => {
         const prior = state.pendingFocus;
         if (!prior || prior.element.isConnected) return;
@@ -182,7 +182,8 @@ export function observeRowMetrics(viewKey, instanceId, dotnetRef, defaultHeight)
     }, { signal: state.focus.signal });
     const measure = () => {
         state.frame = 0;
-        if (!container.isConnected) return;
+        if (!container.isConnected || state.focus.signal.aborted) return;
+        observeContent();
         const cells = container.querySelectorAll('tbody tr.fluent-data-grid-row > td');
         // Virtualize remounts briefly contain no materialized rows. Keep the last measurement
         // through that interval instead of resetting to the floor and remounting forever.
@@ -193,7 +194,10 @@ export function observeRowMetrics(viewKey, instanceId, dotnetRef, defaultHeight)
         // imposed row/cell heights synchronously; restore their exact styles before painting.
         const nodes = [...container.querySelectorAll('tbody tr.fluent-data-grid-row'), ...cells];
         const saved = new Map(nodes.map(node => [node, node.getAttribute('style')]));
-        state.mutations.takeRecords(); // The current measurement includes all preceding external changes.
+        // Every grid observer stays connected. Preserve earlier external records,
+        // then discard this synchronous probe's temporary row/cell style records
+        // from all observers so grids cannot repeatedly wake each other.
+        for (const metrics of rowMetrics.values()) metrics.process(metrics.mutations.takeRecords());
         try {
             for (const node of nodes) {
                 node.style.setProperty('height', 'auto', 'important');
@@ -206,25 +210,65 @@ export function observeRowMetrics(viewKey, instanceId, dotnetRef, defaultHeight)
             }
             // Drain only this synchronous probe's style records. Unexpected external records still
             // schedule a follow-up; the observer otherwise remains connected throughout the probe.
-            if (state.mutations.takeRecords().some(record => record.type !== 'attributes' || record.attributeName !== 'style' || !saved.has(record.target))) state.schedule();
+            for (const metrics of rowMetrics.values()) metrics.process(metrics.mutations.takeRecords().filter(record => record.type !== 'attributes' || record.attributeName !== 'style' || !saved.has(record.target)));
         }
         if (container.style.getPropertyValue('--fc-grid-row-height') !== `${height}px`) container.style.setProperty('--fc-grid-row-height', `${height}px`);
-        if (height !== state.height) {
-            state.height = height;
-            const active = document.activeElement;
-            if (active instanceof HTMLElement && active !== container && container.contains(active)) state.pendingFocus = { element: active, path: location.href };
-            const ownedFocus = state.pendingFocus;
-            dotnetRef.invokeMethodAsync('HandleRowMetricsAsync', instanceId, height, defaultHeight).catch(() => {}).finally(() => requestAnimationFrame(() => {
-                if (state.pendingFocus === ownedFocus) { recoverFocus(); state.pendingFocus = null; }
-            }));
-        }
+        if (height !== state.desired) { state.desired = height; state.retries = 0; state.attempts = 0; clearTimeout(state.retryTimer); state.retryTimer = 0; }
+        deliver();
     };
-    state.schedule = () => { if (!state.frame) state.frame = requestAnimationFrame(measure); };
+    const deliver = () => {
+        if (state.focus.signal.aborted || !container.isConnected || state.inFlight || state.retryTimer || state.attempts >= 3 || state.desired === state.acknowledged || state.desired === null) return;
+        const height = state.desired;
+        state.inFlight = true;
+        state.attempts++;
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && active !== container && container.contains(active)) state.pendingFocus = { element: active, path: location.href };
+        const ownedFocus = state.pendingFocus;
+        Promise.resolve().then(() => state.dotnetRef.invokeMethodAsync('HandleRowMetricsAsync', instanceId, height, defaultHeight)).then(() => {
+            if (state.focus.signal.aborted) return;
+            state.acknowledged = height;
+            state.retries = 0;
+            state.recoveryFrame = requestAnimationFrame(() => {
+                state.recoveryFrame = 0;
+                if (!state.focus.signal.aborted && state.pendingFocus === ownedFocus) { recoverFocus(); state.pendingFocus = null; }
+            });
+        }, () => {
+            if (!state.focus.signal.aborted && state.desired === height && state.retries < 2) {
+                state.retryTimer = setTimeout(() => { state.retryTimer = 0; deliver(); }, 50 * ++state.retries);
+            }
+        }).finally(() => {
+            state.inFlight = false;
+            if (!state.focus.signal.aborted && state.desired !== height) state.schedule();
+        });
+    };
+    state.schedule = () => { if (!state.focus.signal.aborted && !state.frame) state.frame = requestAnimationFrame(measure); };
+    const composedParent = node => node.parentElement ?? (node.getRootNode() instanceof ShadowRoot ? node.getRootNode().host : null);
+    const contains = (owner, node) => { for (let current = node; current; current = composedParent(current)) if (current === owner) return true; return false; };
+    state.process = records => {
+        if (records.some(record => contains(container, record.target) || contains(record.target, container)
+            || (record.target instanceof Element ? record.target : record.target.parentElement)?.closest('style,link[rel="stylesheet"]')
+            || [...record.addedNodes, ...record.removedNodes].some(node => node instanceof Element && (node.matches('style,link[rel="stylesheet"]') || node.querySelector('style,link[rel="stylesheet"]'))))) state.schedule();
+    };
     state.resize = new ResizeObserver(state.schedule);
+    state.mutations = new MutationObserver(state.process);
+    const observed = new WeakSet();
+    const observeContent = () => {
+        const visit = root => {
+            if (!observed.has(root)) { observed.add(root); state.mutations.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['style', 'class'] }); }
+            for (const node of root.querySelectorAll('*')) {
+                if (root !== document.documentElement && !observed.has(node)) { observed.add(node); state.resize.observe(node); }
+                if (node.shadowRoot && (contains(container, node) || contains(node, container))) visit(node.shadowRoot);
+            }
+        };
+        visit(document.documentElement);
+        visit(container);
+    };
     state.resize.observe(container);
-    state.mutations = new MutationObserver(state.schedule);
-    // Styles may be supplied on an ancestor or by a user stylesheet, including shadow-root rules.
-    state.mutations.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+    state.dispose = () => {
+        state.focus.abort(); state.resize.disconnect(); state.mutations.disconnect();
+        cancelAnimationFrame(state.frame); cancelAnimationFrame(state.recoveryFrame); clearTimeout(state.retryTimer); state.pendingFocus = null;
+    };
+    observeContent();
     rowMetrics.set(instanceId, state);
     state.schedule();
 }

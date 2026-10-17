@@ -1,0 +1,102 @@
+AE-03 clipped text ranges
+
+expect(received).toEqual(expected) // deep equality
+
+- Expected  - 1
++ Received  + 4
+
+- Array []
++ Array [
++   "#f374c01d: generated text clipping needs pixel evidence",
++   "div.control: generated text clipping needs pixel evidence",
++ ]
+[
+  {
+    "tag": "LABEL",
+    "id": "fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-160-RecordId-label",
+    "part": null,
+    "pseudo": "::after",
+    "content": "\"*\" / \"\"",
+    "display": "block",
+    "visibility": "visible",
+    "width": "7.14062px",
+    "height": "21px",
+    "position": "static",
+    "clip": "none",
+    "overflow": "visible",
+    "parent": "<fluent-field id=\"fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-160-RecordId-field\" label-position=\"above\" class=\"my-3-o valid fc-command-input\"><label id=\"fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-160-RecordId-label\" slot=\"label\" for=\"fc-command-form-"
+  },
+  {
+    "tag": "LABEL",
+    "id": "fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-160-Reason-label",
+    "part": null,
+    "pseudo": "::after",
+    "content": "\"*\" / \"\"",
+    "display": "block",
+    "visibility": "visible",
+    "width": "7.14062px",
+    "height": "21px",
+    "position": "static",
+    "clip": "none",
+    "overflow": "visible",
+    "parent": "<fluent-field id=\"fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-160-Reason-field\" label-position=\"above\" class=\"my-3-o valid fc-command-input\"><label id=\"fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-160-Reason-label\" slot=\"label\" for=\"fc-command-form-Coun"
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "part": null,
+    "pseudo": "::before",
+    "content": "\"\" / \"\"",
+    "display": "block",
+    "visibility": "visible",
+    "width": "236px",
+    "height": "1px",
+    "position": "absolute",
+    "clip": "none",
+    "overflow": "visible"
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "part": null,
+    "pseudo": "::after",
+    "content": "\"\" / \"\"",
+    "display": "block",
+    "visibility": "visible",
+    "width": "236px",
+    "height": "2px",
+    "position": "absolute",
+    "clip": "none",
+    "overflow": "visible"
+  },
+  {
+    "tag": "LABEL",
+    "id": "fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-160-RecordId-label",
+    "part": null,
+    "pseudo": "::after",
+    "content": "\"*\" / \"\"",
+    "display": "block",
+    "visibility": "visible",
+    "width": "7.14062px",
+    "height": "21px",
+    "position": "static",
+    "clip": "none",
+    "overflow": "visible",
+    "parent": "<fluent-field id=\"fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-160-RecordId-field\" label-position=\"above\" class=\"my-3-o valid fc-command-input\"><label id=\"fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-160-RecordId-label\" slot=\"label\" for=\"fc-command-f"
+  },
+  {
+    "tag": "LABEL",
+    "id": "fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-160-Reason-label",
+    "part": null,
+    "pseudo": "::after",
+    "content": "\"*\" / \"\"",
+    "display": "block",
+    "visibility": "visible",
+    "width": "7.14062px",
+    "height": "21px",
+    "position": "static",
+    "clip": "none",
+    "overflow": "visible",
+    "parent": "<fluent-field id=\"fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-160-Reason-field\" label-position=\"above\" class=\"my-3-o valid fc-command-input\"><label id=\"fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-160-Reason-label\" slot=\"label\" for=\"fc-command-form-"
+  }
+]

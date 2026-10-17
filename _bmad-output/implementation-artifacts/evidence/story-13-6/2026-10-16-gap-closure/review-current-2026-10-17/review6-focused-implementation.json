@@ -1,0 +1,74 @@
+{
+  "schema": "story-13-6-review6-focused-v1",
+  "scope": "Exactly 18 affected type-state, header-controls and fresh-row cases after only the diagnosed Size36 and readiness corrections. Parent complete matrix and full Shell verification are separate.",
+  "frozenSourceInputs": {
+    "src/Hexalith.FrontComposer.Shell/Components/Layout/FcAccountMenu.razor": "97b298ce6c88deec8828e9e7e4d6b65b686086347f58533939423bcc88704c4e",
+    "src/Hexalith.FrontComposer.Shell/Components/Layout/FcThemeToggle.razor": "fbaccfb2dd8122e3602b36cbf62e462c3833f6a7d17f140fd330759f02d89501",
+    "src/Hexalith.FrontComposer.Shell/Components/Lifecycle/FcLifecycleWrapper.razor.css": "3d058216afb8021926f5b174dfaed7914bb07a1367fe4e7b06c15f4b11332eb4",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs": "61f231c3cf4e5c4f2249a780cb612d4b9356fa9f3153c21466a3023c76678e42",
+    "tests/e2e/helpers/responsive-accessibility.ts": "9e296d8434cba6fa0c274b5e69050a53048efd9530a28d211a78d8aa567b950e",
+    "tests/e2e/specs/responsive-accessibility.spec.ts": "c543c68849c658c2d294bb7f3e9460d0e2cb27ef431e7635981be226028b5757",
+    "tests/e2e/specs/accessibility-state-matrix.spec.ts": "874f03cf95d1912c0740c3cb2b678a673e31f7b9c0cd0b78cff166d787c6d88c"
+  },
+  "changedSinceReview5": [
+    "src/Hexalith.FrontComposer.Shell/Components/Layout/FcAccountMenu.razor",
+    "tests/e2e/specs/responsive-accessibility.spec.ts"
+  ],
+  "changes": {
+    "product": "Both principal branches use supported native AvatarSize.Size36, retaining the existing 48px desktop header and the unchanged 24px-square reachability assertion.",
+    "test": "Original type-state journey waits shell interactive readiness, selects/asserts requested real theme and settles paint before the first contrast reads. Reuses the theme label after route navigation.",
+    "unchanged": "Helper parser/paint semantics, all contrast and geometry thresholds, header48/actions<=40 assertions, direct24px-square/menu-action proofs and approved image bytes."
+  },
+  "invocation": {
+    "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 BASE_URL=https://localhost:7201 FC_A11Y_EVIDENCE_RUN_ID=story-13-6-review6-focused FC_E2E_OUTPUT_DIR=/tmp/fc-review6-focused FC_E2E_HTML_REPORT_DIR=/tmp/fc-review6-focused-report FC_E2E_TRACE=on npx playwright test specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --grep 'type states retain contrast|header theme and account controls|fresh-row presentation retains' --workers=4 --retries=0 > /tmp/fc-review6-focused.log 2>&1",
+    "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+    "explicitEnvironmentOverrides": {
+      "PLAYWRIGHT_SKIP_WEBSERVER": "1",
+      "BASE_URL": "https://localhost:7201",
+      "FC_A11Y_EVIDENCE_RUN_ID": "story-13-6-review6-focused",
+      "FC_E2E_OUTPUT_DIR": "/tmp/fc-review6-focused",
+      "FC_E2E_HTML_REPORT_DIR": "/tmp/fc-review6-focused-report",
+      "FC_E2E_TRACE": "on"
+    },
+    "inheritedEnvironment": "Not exhaustively captured; only explicit command overrides are asserted.",
+    "projects": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "workers": 4,
+    "retries": 0,
+    "trace": "on"
+  },
+  "stats": {
+    "startTime": "2026-10-17T16:49:15.896Z",
+    "duration": 26883.59,
+    "expected": 18,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "outputRoots": {
+    "raw": "/tmp/fc-review6-focused",
+    "html": "/tmp/fc-review6-focused-report",
+    "stdoutAndStderr": "/tmp/fc-review6-focused.log",
+    "json": "/tmp/fc-review6-focused/playwright.json",
+    "junit": "/tmp/fc-review6-focused/junit.xml",
+    "tracesAndAttachments": "Per-case directories beneath /tmp/fc-review6-focused",
+    "copiedSummaries": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/review6-focused-check"
+  },
+  "attribution": {
+    "binary": "Parent reported final Size36 Debug/no-restore build passed with zero warnings/errors and exact Test AppHost PID18351 healthy; parent startup and executed-DLL evidence remains separate.",
+    "noticeOptions": {
+      "ProjectionReconnectedNoticeDurationMs": 30000
+    },
+    "earlier78": "review5-focused-implementation.json remains intermediate nativeSize40 evidence and must not be attributed to this corrected product.",
+    "supersededComplete": "Parent preserved prior complete 699passed/24failed/3skipped source52/raw/commands in superseded-complete-review4; it is not current authority."
+  },
+  "causalEvidence": "review6-readonly-diagnosis.json and c4-readonly-diagnostics preserve the detached-target, supportedSize36, actualmenuaction and screenshotcause probes.",
+  "checksBeforeBrowser": {
+    "typecheck": "npm --prefix tests/e2e run typecheck passed after the two edits.",
+    "diffCheck": "git diff --check passed after the two edits."
+  },
+  "overallStory": "in-review; no final complete-matrix, visual-baseline, platform/manual or owner acceptance claimed."
+}

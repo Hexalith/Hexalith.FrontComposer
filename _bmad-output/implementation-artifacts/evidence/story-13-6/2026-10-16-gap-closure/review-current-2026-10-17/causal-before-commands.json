@@ -1,0 +1,42 @@
+[
+  {
+    "script": "review-a11y-probes.mjs",
+    "exitCode": 0,
+    "log": "causal-before-review-a11y-probes.log",
+    "helperSha256": "c5ddbaa3e0694b6c3af2910acc248d3016f071ef39a66ae8512b42562bd285d0",
+    "gridSha256": "09ee97a6d2a3da7d5fa842b4f8fe91a3e6e110b423190fbcd7894ee56871f92f",
+    "replayNote": "Temporary exact helper copy with node_modules symlink; only the probe import/read paths were redirected to preserved before-source bytes."
+  },
+  {
+    "script": "review-more-probes.mjs",
+    "exitCode": 0,
+    "log": "causal-before-review-more-probes.log",
+    "helperSha256": "c5ddbaa3e0694b6c3af2910acc248d3016f071ef39a66ae8512b42562bd285d0",
+    "gridSha256": "09ee97a6d2a3da7d5fa842b4f8fe91a3e6e110b423190fbcd7894ee56871f92f",
+    "replayNote": "Temporary exact helper copy with node_modules symlink; only the probe import/read paths were redirected to preserved before-source bytes."
+  },
+  {
+    "script": "review-evenmore-probes.mjs",
+    "exitCode": 0,
+    "log": "causal-before-review-evenmore-probes.log",
+    "helperSha256": "c5ddbaa3e0694b6c3af2910acc248d3016f071ef39a66ae8512b42562bd285d0",
+    "gridSha256": "09ee97a6d2a3da7d5fa842b4f8fe91a3e6e110b423190fbcd7894ee56871f92f",
+    "replayNote": "Temporary exact helper copy with node_modules symlink; only the probe import/read paths were redirected to preserved before-source bytes."
+  },
+  {
+    "script": "review-row-metrics-probes.mjs",
+    "exitCode": 0,
+    "log": "causal-before-review-row-metrics-probes.log",
+    "helperSha256": "c5ddbaa3e0694b6c3af2910acc248d3016f071ef39a66ae8512b42562bd285d0",
+    "gridSha256": "09ee97a6d2a3da7d5fa842b4f8fe91a3e6e110b423190fbcd7894ee56871f92f",
+    "replayNote": "Temporary exact helper copy with node_modules symlink; only the probe import/read paths were redirected to preserved before-source bytes."
+  },
+  {
+    "script": "story-13-6-row-metrics-observer-repro.mjs",
+    "exitCode": 0,
+    "log": "causal-before-story-13-6-row-metrics-observer-repro.log",
+    "helperSha256": "c5ddbaa3e0694b6c3af2910acc248d3016f071ef39a66ae8512b42562bd285d0",
+    "gridSha256": "09ee97a6d2a3da7d5fa842b4f8fe91a3e6e110b423190fbcd7894ee56871f92f",
+    "replayNote": "Temporary exact helper copy with node_modules symlink; only the probe import/read paths were redirected to preserved before-source bytes."
+  }
+]

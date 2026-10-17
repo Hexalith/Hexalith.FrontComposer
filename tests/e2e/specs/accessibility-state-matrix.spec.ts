@@ -199,6 +199,32 @@ for (const theme of ['light', 'dark']) {
       });
     }
 
+    test('generated zero-field wrapped feedback clears the complete trigger focus ring', async ({ page }, info) => {
+      await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+      const root = page.getByTestId('fc-ae-scenarios');
+      await root.getByTestId('fc-ae-select-validation').click();
+      const trigger = root.getByRole('button', { name: 'Run accessibility specimen', exact: true });
+      await trigger.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Enter');
+      const feedback = root.getByTestId('fc-zero-field-outcome');
+      await expect(feedback).toBeVisible();
+      await expect(trigger).toBeFocused();
+      await trigger.scrollIntoViewIfNeeded();
+      await settlePaint(page);
+      const geometry = await focusGeometry(trigger);
+      const layout = await feedback.evaluate(feedback => {
+        const bounds = feedback.getBoundingClientRect();
+        return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom };
+      });
+      const triggerBottom = await trigger.evaluate(element => element.getBoundingClientRect().bottom);
+      expect(layout.top, 'Feedback is on a wrapped row below its trigger').toBeGreaterThanOrEqual(triggerBottom);
+      expect(layout.top, 'Wrapped feedback clears the complete exterior focus ring').toBeGreaterThan(geometry.box.bottom);
+      expect(geometry.failures, 'The retained trigger and its focus ring remain fully visible').toEqual([]);
+      await info.attach(`zero-field-wrapped-feedback-${theme}`, { body: JSON.stringify({ theme, triggerBottom, feedback: layout, focus: geometry }), contentType: 'application/json' });
+    });
+
     test('real generated detail removal preserves external focus and deduplicates completed results', async ({ page }, info) => {
       await ready(page, `${scenarioPath}&theme=${theme}`, theme);
       const grid = page.getByTestId('fc-generated-counter-grid');
@@ -264,6 +290,33 @@ for (const theme of ['light', 'dark']) {
       await page.screenshot({ path: info.outputPath(`lifecycle-matrix-${theme}.png`) });
     });
 
+    test('narrow lifecycle rejection keeps its native Dismiss target reachable after text spacing', async ({ page }, info) => {
+      await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+      await page.getByTestId('fc-ae-lifecycle-rejected').click();
+      const wrapper = page.getByTestId('fc-lifecycle-ae-state');
+      await expect(wrapper).toHaveAttribute('data-lifecycle-state', 'rejected');
+      const bar = wrapper.locator('fluent-message-bar');
+      const dismiss = bar.getByRole('button', { name: 'Hide this message', exact: true });
+      await dismiss.scrollIntoViewIfNeeded();
+      const geometry = await bar.evaluate(element => ({
+        bar: element.getBoundingClientRect().toJSON(),
+        body: element.shadowRoot!.querySelector('.content')!.getBoundingClientRect().toJSON(),
+        actions: element.shadowRoot!.querySelector('.actions')!.getBoundingClientRect().toJSON(),
+        dismiss: element.querySelector('[slot="dismiss"]')!.getBoundingClientRect().toJSON(),
+      }));
+      expect(geometry.dismiss.width).toBeGreaterThanOrEqual(24);
+      expect(geometry.dismiss.height).toBeGreaterThanOrEqual(24);
+      expect(geometry.dismiss.left).toBeGreaterThanOrEqual(geometry.bar.left);
+      expect(geometry.dismiss.right).toBeLessThanOrEqual(geometry.bar.right);
+      expect(geometry.actions.top).toBeGreaterThanOrEqual(geometry.body.bottom);
+      await expectNoTextClipping(page);
+      await expectNoPageOverflow(page);
+      await expectTargetSizes(page);
+      await dismiss.click();
+      await expect(dismiss).not.toBeVisible();
+      await info.attach(`native-lifecycle-dismiss-${theme}`, { body: JSON.stringify(geometry), contentType: 'application/json' });
+    });
+
     test('generated projection loaded, detail, loading, empty and failure surfaces', async ({ page }, info) => {
       await ready(page, `${scenarioPath}&theme=${theme}`, theme);
       const grid = page.getByTestId('fc-generated-counter-grid');
@@ -312,7 +365,7 @@ for (const theme of ['light', 'dark']) {
 }
 
 test('contrast measurement rejects empty, low-contrast, unpainted and unsupported samples', async ({ page }) => {
-  await page.setContent('<style>#bad:not(:focus){outline:none!important}</style><main style="color:#aaa;background:#fff"><p id="low">Low text</p><div id="empty"></div><div id="host" style="background:#111;color:#fff"></div><button id="bad" style="border:2px solid #eee;outline:2px solid #eee">Bad focus</button><div id="gradient" style="background:linear-gradient(white,black)">Unsupported</div><svg id="icon" width="20" height="20"><path fill="#eee" d="M0 0h20v20H0z"/></svg></main>');
+  await page.setContent('<style>#bad:not(:focus){outline:none!important}</style><main style="color:#aaa;background:#fff"><p id="low">Low text</p><div id="empty"></div><div id="host" style="background:#111;color:#fff"></div><button id="bad" style="border:2px solid #eee;outline:2px solid #eee">Bad focus</button><div id="gradient" style="margin-top:8px;background:linear-gradient(white,black)">Unsupported</div><svg id="icon" width="20" height="20"><path fill="#eee" d="M0 0h20v20H0z"/></svg></main>');
   await expect(expectSurfaceContrast(page.locator('#low'))).rejects.toThrow(/contrast failures/);
   await expect(expectSurfaceContrast(page.locator('#empty'))).rejects.toThrow(/Nonempty/);
   await page.locator('#low').evaluate(element => (element as HTMLElement).style.opacity = '.5');
@@ -384,7 +437,7 @@ for (const fixture of clippingPaintRegressions) {
 }
 
 test('unrelated controls cannot mask failed focus or boundary contrast', async ({ page }) => {
-  await page.setContent('<style>#bad:not(:focus){outline:none!important;box-shadow:none!important}</style><main style="background:white;padding:20px"><button id="bad" style="background:white;border:2px solid #eee;outline:2px solid #eee">Low contrast</button><button id="good" style="background:white;border:2px solid black;outline:2px solid black">Readable</button></main>');
+  await page.setContent('<style>#bad:not(:focus){outline:none!important;box-shadow:none!important}</style><main style="background:white;padding:20px"><button id="bad" style="background:white;border:2px solid #eee;outline:2px solid #eee">Low contrast</button><button id="good" style="margin-left:12px;background:white;border:2px solid black;outline:2px solid black">Readable</button></main>');
   await page.locator('#bad').focus();
   await expect(expectSurfaceContrast(page.locator('main'), 'border')).rejects.toThrow(/contrast failures/);
   await expect(expectSurfaceContrast(page.locator('main'), 'focus')).rejects.toThrow(/contrast failures/);
@@ -653,6 +706,47 @@ export async function focusReplacementHeading(key, headingId) {
 }
 
 for (const theme of ['light', 'dark']) {
+  test(`header theme and account controls retain focus and pointer geometry in ${theme}`, async ({ page }, info) => {
+    await ready(page, '/counter', theme);
+    const button = page.getByTitle('Change theme').first();
+    await button.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(button).toBeFocused();
+    const geometry = await button.evaluate(element => {
+      const caret = element.shadowRoot!.querySelector('slot[name="end"] > svg path')!;
+      return { button: element.getBoundingClientRect().toJSON(), label: element.querySelector('span[aria-hidden="true"]')!.getBoundingClientRect().toJSON(), caret: caret.getBoundingClientRect().toJSON() };
+    });
+    expect(geometry.button.width).toBeGreaterThanOrEqual(48);
+    for (const paint of [geometry.label, geometry.caret]) {
+      expect(paint.left).toBeGreaterThanOrEqual(geometry.button.left);
+      expect(paint.right).toBeLessThanOrEqual(geometry.button.right);
+      expect(paint.top).toBeGreaterThanOrEqual(geometry.button.top);
+      expect(paint.bottom).toBeLessThanOrEqual(geometry.button.bottom);
+    }
+    await expectFocusVisible(button);
+    await expectSurfaceContrast(button, 'focus');
+    const avatar = page.locator('#fc-account-avatar');
+    const pointer = await avatar.evaluate(element => {
+      const box = element.getBoundingClientRect(), center = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+      const misses: { x: number; y: number; hit: string | null }[] = [];
+      for (const dx of [-12,-6,0,6,12]) for (const dy of [-12,-6,0,6,12]) {
+        const x = center.x + dx, y = center.y + dy;
+        let hit = document.elementFromPoint(x,y);
+        while (hit?.shadowRoot) { const child = hit.shadowRoot.elementFromPoint(x,y); if (!child || child === hit) break; hit = child; }
+        let owned = false;
+        for (let node = hit; node; node = node.assignedSlot ?? node.parentElement ?? (node.getRootNode() instanceof ShadowRoot ? (node.getRootNode() as ShadowRoot).host : null)) if (node === element) owned = true;
+        if (!owned) misses.push({ x,y,hit:hit?.tagName ?? null });
+      }
+      return { box:box.toJSON(), square:{left:center.x-12,right:center.x+12,top:center.y-12,bottom:center.y+12}, misses };
+    });
+    expect(pointer.misses, 'Complete centered 24px square, including every corner, must hit the native avatar').toEqual([]);
+    await avatar.click();
+    await expect(page.getByTestId('fc-account-user')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await info.attach(`header-control-geometry-${theme}`, { body: JSON.stringify({ ...geometry,pointer }), contentType: 'application/json' });
+  });
+
   test(`fresh-row presentation retains text boundary and system-color meaning in ${theme}`, async ({ page }, info) => {
     await ready(page, `${scenarioPath}&theme=${theme}`, theme);
     const cue = page.getByTestId('fc-ae-fresh-presentation');

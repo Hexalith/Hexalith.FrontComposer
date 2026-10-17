@@ -1,0 +1,41 @@
+
+Running 24 tests using 2 workers
+
+(node:37498) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37482) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › specs/responsive-accessibility.spec.ts:733:3 › review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring (1.6s)
+  ✓   2 [chromium] › specs/responsive-accessibility.spec.ts:712:3 › review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus (1.9s)
+  ✓   3 [chromium] › specs/responsive-accessibility.spec.ts:743:3 › review measurement regressions › G03 transparent supported CSS colors are absent focus paint (355ms)
+  ✓   5 [chromium] › specs/responsive-accessibility.spec.ts:759:3 › review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast (248ms)
+  ✓   4 [chromium] › specs/responsive-accessibility.spec.ts:751:3 › review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry (435ms)
+  ✓   6 [chromium] › specs/responsive-accessibility.spec.ts:766:3 › review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory (223ms)
+  ✓   7 [chromium] › specs/responsive-accessibility.spec.ts:773:3 › review measurement regressions › G12 inward outlines contrast with the control paint (204ms)
+  ✓   8 [chromium] › specs/responsive-accessibility.spec.ts:779:3 › review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator (236ms)
+(node:39581) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39597) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  10 [firefox] › specs/responsive-accessibility.spec.ts:733:3 › review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring (1.2s)
+  ✓   9 [firefox] › specs/responsive-accessibility.spec.ts:712:3 › review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus (1.8s)
+  ✓  11 [firefox] › specs/responsive-accessibility.spec.ts:743:3 › review measurement regressions › G03 transparent supported CSS colors are absent focus paint (361ms)
+  ✓  13 [firefox] › specs/responsive-accessibility.spec.ts:759:3 › review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast (344ms)
+  ✓  12 [firefox] › specs/responsive-accessibility.spec.ts:751:3 › review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry (544ms)
+  ✓  14 [firefox] › specs/responsive-accessibility.spec.ts:766:3 › review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory (354ms)
+  ✓  15 [firefox] › specs/responsive-accessibility.spec.ts:773:3 › review measurement regressions › G12 inward outlines contrast with the control paint (333ms)
+  ✓  16 [firefox] › specs/responsive-accessibility.spec.ts:779:3 › review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator (413ms)
+(node:41883) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41965) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  18 [webkit] › specs/responsive-accessibility.spec.ts:733:3 › review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring (482ms)
+  ✓  17 [webkit] › specs/responsive-accessibility.spec.ts:712:3 › review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus (1.1s)
+  ✓  19 [webkit] › specs/responsive-accessibility.spec.ts:743:3 › review measurement regressions › G03 transparent supported CSS colors are absent focus paint (426ms)
+  ✓  21 [webkit] › specs/responsive-accessibility.spec.ts:759:3 › review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast (442ms)
+  ✓  20 [webkit] › specs/responsive-accessibility.spec.ts:751:3 › review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry (696ms)
+  ✓  22 [webkit] › specs/responsive-accessibility.spec.ts:766:3 › review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory (416ms)
+  ✓  23 [webkit] › specs/responsive-accessibility.spec.ts:773:3 › review measurement regressions › G12 inward outlines contrast with the control paint (371ms)
+  ✓  24 [webkit] › specs/responsive-accessibility.spec.ts:779:3 › review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator (503ms)
+
+  24 passed (11.3s)

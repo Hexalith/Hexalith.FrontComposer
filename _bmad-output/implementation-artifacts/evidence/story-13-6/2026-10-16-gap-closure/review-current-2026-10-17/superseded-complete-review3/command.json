@@ -1,0 +1,26 @@
+{
+  "command": [
+    "npx",
+    "playwright",
+    "test",
+    "specs/specimen-accessibility.spec.ts",
+    "specs/responsive-accessibility.spec.ts",
+    "specs/accessibility-state-matrix.spec.ts",
+    "--workers=4",
+    "--retries=0"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+  "environment": {
+    "BASE_URL": "https://localhost:7201",
+    "PLAYWRIGHT_SKIP_WEBSERVER": "1",
+    "FC_E2E_BUILD_CONFIGURATION": "Debug",
+    "FC_A11Y_EVIDENCE_RUN_ID": "story-13-6-review3-final-2026-10-17",
+    "FC_E2E_OUTPUT_DIR": "/tmp/story-13-6-review3-final-browser/test-results",
+    "FC_E2E_HTML_REPORT_DIR": "/tmp/story-13-6-review3-final-browser/html",
+    "FC_E2E_JSON_PATH": "/tmp/story-13-6-review3-final-browser/playwright.json",
+    "FC_E2E_JUNIT_PATH": "/tmp/story-13-6-review3-final-browser/test-results/junit.xml"
+  },
+  "sourceIdentitySha256": "2915011cba97e654769c6b6a01c6376d716c106c6ed890bb4f7ac657683a5a18",
+  "exitCode": 1,
+  "elapsedSeconds": 487.728
+}

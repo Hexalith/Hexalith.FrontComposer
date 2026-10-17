@@ -21,6 +21,7 @@
     @if (IsAuthenticated)
     {
         <FluentAvatar Id="@AvatarId"
+                      Size="AvatarSize.Size36"
                       Name="@UserName"
                       Color="AvatarColor.Colorful"
                       Title="@SignedInAsText"
@@ -46,6 +47,7 @@
     else
     {
         <FluentAvatar Id="@AvatarId"
+                      Size="AvatarSize.Size36"
                       Title="@Localizer["AccountMenuAriaLabel"].Value"
                       Style="cursor: pointer;" />
         <FluentMenu Trigger="@AvatarId">

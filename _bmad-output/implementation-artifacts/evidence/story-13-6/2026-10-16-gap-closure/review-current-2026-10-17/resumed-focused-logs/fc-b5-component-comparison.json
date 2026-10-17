@@ -1,0 +1,107 @@
+{
+  "schema": "story-13-6-b5-component-comparison-v1",
+  "results": [
+    {
+      "engine": "chromium",
+      "version": "before",
+      "moduleSha256": "6817503d7cfadd3ddfe0c5b5c06002b28abc9735486fb3824fd94cf454871117",
+      "duplicate": {
+        "focus": [
+          "fc-duplicate-missing-detail-0"
+        ],
+        "domSpeech": [],
+        "activeProjection": "fc-duplicate-missing-detail-0"
+      },
+      "query": {
+        "staleRecovery": true
+      },
+      "expectedPhysicalProjection": "fc-duplicate-missing-detail-1",
+      "heardSpeech": "not observed"
+    },
+    {
+      "engine": "chromium",
+      "version": "after",
+      "moduleSha256": "6b47d8da48d808e20ac72bb337b2426306e54afd664447607e23b35208b98b8a",
+      "duplicate": {
+        "focus": [
+          "fc-duplicate-missing-detail-1"
+        ],
+        "domSpeech": [],
+        "activeProjection": "fc-duplicate-missing-detail-1"
+      },
+      "query": {
+        "staleRecovery": false
+      },
+      "expectedPhysicalProjection": "fc-duplicate-missing-detail-1",
+      "heardSpeech": "not observed"
+    },
+    {
+      "engine": "firefox",
+      "version": "before",
+      "moduleSha256": "6817503d7cfadd3ddfe0c5b5c06002b28abc9735486fb3824fd94cf454871117",
+      "duplicate": {
+        "focus": [
+          "fc-duplicate-missing-detail-0"
+        ],
+        "domSpeech": [],
+        "activeProjection": "fc-duplicate-missing-detail-0"
+      },
+      "query": {
+        "staleRecovery": true
+      },
+      "expectedPhysicalProjection": "fc-duplicate-missing-detail-1",
+      "heardSpeech": "not observed"
+    },
+    {
+      "engine": "firefox",
+      "version": "after",
+      "moduleSha256": "6b47d8da48d808e20ac72bb337b2426306e54afd664447607e23b35208b98b8a",
+      "duplicate": {
+        "focus": [
+          "fc-duplicate-missing-detail-1"
+        ],
+        "domSpeech": [],
+        "activeProjection": "fc-duplicate-missing-detail-1"
+      },
+      "query": {
+        "staleRecovery": false
+      },
+      "expectedPhysicalProjection": "fc-duplicate-missing-detail-1",
+      "heardSpeech": "not observed"
+    },
+    {
+      "engine": "webkit",
+      "version": "before",
+      "moduleSha256": "6817503d7cfadd3ddfe0c5b5c06002b28abc9735486fb3824fd94cf454871117",
+      "duplicate": {
+        "focus": [
+          "fc-duplicate-missing-detail-0"
+        ],
+        "domSpeech": [],
+        "activeProjection": "fc-duplicate-missing-detail-0"
+      },
+      "query": {
+        "staleRecovery": true
+      },
+      "expectedPhysicalProjection": "fc-duplicate-missing-detail-1",
+      "heardSpeech": "not observed"
+    },
+    {
+      "engine": "webkit",
+      "version": "after",
+      "moduleSha256": "6b47d8da48d808e20ac72bb337b2426306e54afd664447607e23b35208b98b8a",
+      "duplicate": {
+        "focus": [
+          "fc-duplicate-missing-detail-1"
+        ],
+        "domSpeech": [],
+        "activeProjection": "fc-duplicate-missing-detail-1"
+      },
+      "query": {
+        "staleRecovery": false
+      },
+      "expectedPhysicalProjection": "fc-duplicate-missing-detail-1",
+      "heardSpeech": "not observed"
+    }
+  ]
+}

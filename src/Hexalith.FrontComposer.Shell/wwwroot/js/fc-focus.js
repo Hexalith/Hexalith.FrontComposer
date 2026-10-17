@@ -518,17 +518,22 @@ const detailFocusTrackers = new Map();
 // Capture the detail's focus while it still exists. A deliberate move, route change, or
 // released owner cancels recovery; after replacement, the existing helper consumes the capture.
 export function trackDetailFocus(key, viewKey) {
-    if (detailFocusTrackers.has(key)) return;
+    const identity = window.location.pathname + window.location.search;
+    const previous = detailFocusTrackers.get(key);
+    if (previous?.identity === identity) return;
+    if (previous) cancelReplacementFocus(key);
     const controller = new AbortController();
-    const path = window.location.pathname;
+    const tracker = { controller, identity, root: null };
     const track = () => {
         const active = document.activeElement;
         const detail = active?.closest('.fc-expand-in-row-detail');
         const root = detail?.closest('[data-fc-datagrid]');
-        if (path === window.location.pathname && root?.getAttribute('data-fc-datagrid') === viewKey) {
+        if (identity === window.location.pathname + window.location.search && root?.getAttribute('data-fc-datagrid') === viewKey) {
             captureFocusBeforeReplacement(key);
-        } else if (active !== document.body) {
+            tracker.root = root;
+        } else if (active !== document.body || identity !== window.location.pathname + window.location.search) {
             focusBeforeReplacement.delete(key);
+            tracker.root = null;
         }
     };
     document.addEventListener('focusin', track, { capture: true, signal: controller.signal });
@@ -539,8 +544,10 @@ export function trackDetailFocus(key, viewKey) {
     };
     document.addEventListener('pointerdown', cancel, { capture: true, signal: controller.signal });
     document.addEventListener('keydown', cancel, { capture: true, signal: controller.signal });
-    detailFocusTrackers.set(key, { controller, path });
-    track();
+    detailFocusTrackers.set(key, tracker);
+    // A query navigation invalidates the old capture. Re-registration must not
+    // recapture still-focused old-query content before the operator moves again.
+    if (!previous) track();
     while (detailFocusTrackers.size > 32) cancelReplacementFocus(detailFocusTrackers.keys().next().value);
 }
 
@@ -565,11 +572,24 @@ export function captureFocusBeforeReplacement(key) {
 export function focusReplacementHeading(key, headingId) {
     const prior = focusBeforeReplacement.get(key);
     focusBeforeReplacement.delete(key);
-    if (detailFocusTrackers.has(key) && detailFocusTrackers.get(key).path !== window.location.pathname) return false;
+    const tracker = detailFocusTrackers.get(key);
+    if (tracker && tracker.identity !== window.location.pathname + window.location.search) {
+        cancelReplacementFocus(key);
+        return false;
+    }
     if (!(prior instanceof HTMLElement) || prior.isConnected) return false;
     const active = document.activeElement;
     if (active instanceof HTMLElement && active !== document.body && active.isConnected) return false;
-    return focusTarget(document.getElementById(headingId));
+    let heading = document.getElementById(headingId);
+    if (tracker?.root && heading?.closest('[data-fc-datagrid]') !== tracker.root) {
+        // Co-mounted projections deliberately share one C# speech/focus owner.
+        // That owner may render before the instance whose detail lost focus;
+        // recover inside the captured physical grid, retaining the single claim.
+        if (!tracker.root.isConnected) return false;
+        heading = Array.from(tracker.root.querySelectorAll('.fc-expanded-row-hidden-banner-text'))
+            .find(candidate => candidate.closest('[data-fc-datagrid]') === tracker.root) ?? null;
+    }
+    return focusTarget(heading);
 }
 
 // Story 13.3 FM-09 / BH3-07 — only a rendered active lifecycle heading counts: a lifecycle inside a

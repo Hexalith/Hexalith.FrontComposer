@@ -1,0 +1,142 @@
+
+Running 2 tests using 1 worker
+
+(node:33962) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in light (2.7s)
+(node:36610) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in dark (2.1s)
+
+
+  1) [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in light 
+
+    Error: AE-04 target-size failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 22
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "box": Object {
+    +       "bottom": 657.34375,
+    +       "left": 12,
+    +       "right": 12,
+    +       "top": 657.34375,
+    +     },
+    +     "conforming": false,
+    +     "equivalent": null,
+    +     "exception": null,
+    +     "failure": "Clipping leaves the target without the required reachable area",
+    +     "height": 0,
+    +     "target": "[data-testid=\"fc-page-toolbar-refresh\"]",
+    +     "traits": Object {
+    +       "essentialIdentified": false,
+    +       "nativeUnmodified": false,
+    +       "runningText": false,
+    +     },
+    +     "width": 0,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:217
+
+      215 |   expect(result.inventory.length, 'Pointer-target inventory must be nonempty').toBeGreaterThan(0);
+      216 |   expect(result.unusedExceptions, 'Stale or unmatched exception selectors').toEqual([]);
+    > 217 |   expect(result.inventory.filter(target => target.failure), 'AE-04 target-size failures').toEqual([]);
+          |                                                                                           ^
+      218 |   return result.inventory;
+      219 | }
+      220 |
+        at expectTargetSizes (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:217:91)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:89:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:472:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-active-tab/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-active-tab/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-active-tab/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-active-tab/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-active-tab/accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in dark 
+
+    Error: AE-04 target-size failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 22
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "box": Object {
+    +       "bottom": 657.34375,
+    +       "left": 12,
+    +       "right": 12,
+    +       "top": 657.34375,
+    +     },
+    +     "conforming": false,
+    +     "equivalent": null,
+    +     "exception": null,
+    +     "failure": "Clipping leaves the target without the required reachable area",
+    +     "height": 0,
+    +     "target": "[data-testid=\"fc-page-toolbar-refresh\"]",
+    +     "traits": Object {
+    +       "essentialIdentified": false,
+    +       "nativeUnmodified": false,
+    +       "runningText": false,
+    +     },
+    +     "width": 0,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:217
+
+      215 |   expect(result.inventory.length, 'Pointer-target inventory must be nonempty').toBeGreaterThan(0);
+      216 |   expect(result.unusedExceptions, 'Stale or unmatched exception selectors').toEqual([]);
+    > 217 |   expect(result.inventory.filter(target => target.failure), 'AE-04 target-size failures').toEqual([]);
+          |                                                                                           ^
+      218 |   return result.inventory;
+      219 | }
+      220 |
+        at expectTargetSizes (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:217:91)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:89:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:472:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-active-tab/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-active-tab/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-c2-active-tab/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-c2-active-tab/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-c2-active-tab/accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in light 
+    [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:462:3 › active toolbar, tabs, palette and settings states in dark 

@@ -1,0 +1,52 @@
+{
+  "schema": "story-13-6-c2-focused-implementation-v1",
+  "scope": "G1\u2013G10 focused implementation checks; complete matrix remains separately authoritative",
+  "sourceInputs": {
+    "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-datagrid.js": "c8fb71f74172f2b49af7c0ae2291242b4a5e0e58241409526c01bb59e03c7c97",
+    "src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs": "55180a63922597cb4ce7ee3a755e8b1110003d4e72949a3c67a301b8994d9b55",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs": "44f2af44e1cd393bde13ac0d5a5363457ea630cd32dbd9c007e34c678e20d89b",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/RecordingHiddenDetailFocusModule.cs": "144f1f38d8d42bc0ab2d23db51f7ef10b400ab396ba67135fa87a496cef179b9",
+    "tests/e2e/helpers/responsive-accessibility.ts": "e03c824e765f80a88676b21722866eb15e30586fd5c01058ff1bb9cd5f376486",
+    "tests/e2e/specs/responsive-accessibility.spec.ts": "9284f98f4c1335d969ade551611f4a03092537641b9419c75bab6bde5600e43d"
+  },
+  "runs": [
+    {
+      "rawRoot": "/tmp/fc-c2-new-2-results",
+      "passed": 39,
+      "failed": 0,
+      "scope": "initial C2 synthetic corrections; before later native ordering/ownership refinements"
+    },
+    {
+      "rawRoot": "/tmp/fc-c2-retained-final",
+      "passed": 297,
+      "failed": 0,
+      "scope": "retained helper + C2 regressions before final native-rule/token tightening"
+    },
+    {
+      "rawRoot": "/tmp/fc-c2-native-final-2",
+      "passed": 9,
+      "failed": 0,
+      "scope": "final native ownership guard, near-opaque negative, actual two-theme toolbar/tabs/palette/settings on all engines"
+    },
+    {
+      "rawRoot": "/tmp/fc-c2-later-row-final",
+      "passed": 6,
+      "failed": 0,
+      "scope": "two-row observer and real ItemSize/default/density/spacing/focus/restoration on all engines"
+    }
+  ],
+  "componentTests": {
+    "owner": "parent verification",
+    "class": "FcExpandedRowHiddenBannerTests",
+    "passed": 34,
+    "failed": 0
+  },
+  "nativePaintDispositions": {
+    "tabUnderline": "owned selected underline edge serialized 0.000375px beyond exact selected-control DOMRect; only proven contained native paint is constrained to exact edge",
+    "menuBorder": "ordinary underlying page border cannot obstruct a target in a higher native plane",
+    "popoverElevation": "explicit native anchor, adopted var(--shadow16) rule, token/signature equality, exact 0/0/2 and 0/8/16 zero-spread layers with catalog light .12/.14 or dark .24/.28 alpha pairs; near-opaque/enlarged/sharp/inset/unrelated shadows require proof"
+  },
+  "ordinaryImageSnapshots": "unchanged",
+  "heardSpeech": "not observed",
+  "manualPlatformOwnerGates": "remain open"
+}

@@ -1,0 +1,310 @@
+
+Running 78 tests using 4 workers
+
+(node:5247) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5249) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5248) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5255) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › specs/accessibility-state-matrix.spec.ts:293:5 › AE complete state matrix light › narrow lifecycle rejection keeps its native Dismiss target reachable after text spacing (2.3s)
+  ✓   5 [chromium] › specs/accessibility-state-matrix.spec.ts:293:5 › AE complete state matrix dark › narrow lifecycle rejection keeps its native Dismiss target reachable after text spacing (1.6s)
+  ✓   4 [chromium] › specs/accessibility-state-matrix.spec.ts:343:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (9.4s)
+  ✓   6 [chromium] › specs/accessibility-state-matrix.spec.ts:343:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (7.9s)
+  ✓   3 [chromium] › specs/accessibility-state-matrix.spec.ts:273:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (31.7s)
+  ✓   2 [chromium] › specs/accessibility-state-matrix.spec.ts:273:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (32.3s)
+  ✓   9 [chromium] › specs/accessibility-state-matrix.spec.ts:709:3 › theme menu label and native caret stay inside the complete focus ring in light (1.6s)
+  ✘  10 [chromium] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in light (1.7s)
+(node:19520) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  11 [chromium] › specs/accessibility-state-matrix.spec.ts:709:3 › theme menu label and native caret stay inside the complete focus ring in dark (1.5s)
+  ✓  13 [chromium] › specs/responsive-accessibility.spec.ts:1103:3 › review actual generated pseudo composition inspects filters (192ms)
+  ✓  14 [chromium] › specs/responsive-accessibility.spec.ts:1103:3 › review actual placeholder pseudo composition inspects filters (183ms)
+  ✓  15 [chromium] › specs/responsive-accessibility.spec.ts:1103:3 › review actual focus pseudo composition inspects filters (219ms)
+  ✓  16 [chromium] › specs/responsive-accessibility.spec.ts:1204:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (184ms)
+  ✓  17 [chromium] › specs/responsive-accessibility.spec.ts:1345:1 › resume review degenerate SVG fill supplies no painted icon (171ms)
+  ✓  18 [chromium] › specs/responsive-accessibility.spec.ts:1352:1 › resume review unpainted SVG dash patterns cannot certify an icon (185ms)
+  ✓  19 [chromium] › specs/responsive-accessibility.spec.ts:1553:1 › B2 transparent SVG viewport gutters leave adjacent focus paint measurable but real vector paint does not (232ms)
+  ✘  12 [chromium] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in dark (1.9s)
+  ✓  20 [chromium] › specs/responsive-accessibility.spec.ts:1661:51 › C2 pseudo-only pointer-transparent paint cannot obscure focused controls undetected (204ms)
+(node:21064) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  21 [chromium] › specs/responsive-accessibility.spec.ts:1661:51 › C2 shadow-only pointer-transparent paint cannot obscure focused controls undetected (205ms)
+  ✓  22 [chromium] › specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected (296ms)
+  ✓  23 [chromium] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (487ms)
+  ✓  24 [chromium] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (233ms)
+  ✓  25 [chromium] › specs/responsive-accessibility.spec.ts:1699:1 › C3 disjoint wrapped text fragments keep independent shadow bounds (227ms)
+  ✓   7 [chromium] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in light (28.3s)
+  ✓  26 [chromium] › specs/responsive-accessibility.spec.ts:1751:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers (280ms)
+(node:21615) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21647) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21685) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   8 [chromium] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in dark (29.4s)
+(node:23624) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  28 [firefox] › specs/accessibility-state-matrix.spec.ts:293:5 › AE complete state matrix light › narrow lifecycle rejection keeps its native Dismiss target reachable after text spacing (2.9s)
+  ✓  31 [firefox] › specs/accessibility-state-matrix.spec.ts:293:5 › AE complete state matrix dark › narrow lifecycle rejection keeps its native Dismiss target reachable after text spacing (1.9s)
+  ✓  29 [firefox] › specs/accessibility-state-matrix.spec.ts:343:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (8.7s)
+  ✓  32 [firefox] › specs/accessibility-state-matrix.spec.ts:343:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (7.7s)
+  ✓  27 [firefox] › specs/accessibility-state-matrix.spec.ts:273:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (32.7s)
+  ✓  35 [firefox] › specs/accessibility-state-matrix.spec.ts:709:3 › theme menu label and native caret stay inside the complete focus ring in light (1.7s)
+  ✓  33 [firefox] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in light (26.9s)
+  ✓  30 [firefox] › specs/accessibility-state-matrix.spec.ts:273:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (32.2s)
+  ✓  37 [firefox] › specs/accessibility-state-matrix.spec.ts:709:3 › theme menu label and native caret stay inside the complete focus ring in dark (1.5s)
+  ✓  39 [firefox] › specs/responsive-accessibility.spec.ts:1103:3 › review actual generated pseudo composition inspects filters (354ms)
+  ✓  40 [firefox] › specs/responsive-accessibility.spec.ts:1103:3 › review actual placeholder pseudo composition inspects filters (371ms)
+  ✓  36 [firefox] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in light (3.7s)
+  ✓  41 [firefox] › specs/responsive-accessibility.spec.ts:1103:3 › review actual focus pseudo composition inspects filters (396ms)
+  ✓  42 [firefox] › specs/responsive-accessibility.spec.ts:1204:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (339ms)
+  ✓  43 [firefox] › specs/responsive-accessibility.spec.ts:1345:1 › resume review degenerate SVG fill supplies no painted icon (335ms)
+  ✓  44 [firefox] › specs/responsive-accessibility.spec.ts:1352:1 › resume review unpainted SVG dash patterns cannot certify an icon (328ms)
+  ✓  45 [firefox] › specs/responsive-accessibility.spec.ts:1553:1 › B2 transparent SVG viewport gutters leave adjacent focus paint measurable but real vector paint does not (388ms)
+  ✓  46 [firefox] › specs/responsive-accessibility.spec.ts:1661:51 › C2 pseudo-only pointer-transparent paint cannot obscure focused controls undetected (373ms)
+  ✓  38 [firefox] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in dark (3.6s)
+  ✓  47 [firefox] › specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected (380ms)
+  ✓  48 [firefox] › specs/responsive-accessibility.spec.ts:1661:51 › C2 shadow-only pointer-transparent paint cannot obscure focused controls undetected (398ms)
+  ✓  51 [firefox] › specs/responsive-accessibility.spec.ts:1699:1 › C3 disjoint wrapped text fragments keep independent shadow bounds (341ms)
+  ✓  49 [firefox] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (674ms)
+  ✓  34 [firefox] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in dark (27.2s)
+  ✓  52 [firefox] › specs/responsive-accessibility.spec.ts:1751:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers (460ms)
+(node:37462) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37575) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  50 [firefox] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (1.4s)
+(node:37615) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38082) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  54 [webkit] › specs/accessibility-state-matrix.spec.ts:293:5 › AE complete state matrix light › narrow lifecycle rejection keeps its native Dismiss target reachable after text spacing (2.6s)
+  ✓  57 [webkit] › specs/accessibility-state-matrix.spec.ts:293:5 › AE complete state matrix dark › narrow lifecycle rejection keeps its native Dismiss target reachable after text spacing (2.3s)
+  ✓  55 [webkit] › specs/accessibility-state-matrix.spec.ts:343:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (5.2s)
+  ✓  58 [webkit] › specs/accessibility-state-matrix.spec.ts:343:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (4.8s)
+  ✓  59 [webkit] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in light (11.9s)
+  ✓  53 [webkit] › specs/accessibility-state-matrix.spec.ts:273:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (18.9s)
+  ✓  61 [webkit] › specs/accessibility-state-matrix.spec.ts:709:3 › theme menu label and native caret stay inside the complete focus ring in light (1.8s)
+  ✓  56 [webkit] › specs/accessibility-state-matrix.spec.ts:273:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (18.9s)
+  ✓  63 [webkit] › specs/accessibility-state-matrix.spec.ts:709:3 › theme menu label and native caret stay inside the complete focus ring in dark (1.9s)
+  ✓  65 [webkit] › specs/responsive-accessibility.spec.ts:1103:3 › review actual generated pseudo composition inspects filters (644ms)
+  ✘  62 [webkit] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in light (3.1s)
+  ✓  60 [webkit] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in dark (12.3s)
+(node:47071) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  66 [webkit] › specs/responsive-accessibility.spec.ts:1103:3 › review actual placeholder pseudo composition inspects filters (721ms)
+  ✓  67 [webkit] › specs/responsive-accessibility.spec.ts:1204:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (413ms)
+  ✓  69 [webkit] › specs/responsive-accessibility.spec.ts:1345:1 › resume review degenerate SVG fill supplies no painted icon (407ms)
+  ✓  70 [webkit] › specs/responsive-accessibility.spec.ts:1352:1 › resume review unpainted SVG dash patterns cannot certify an icon (433ms)
+  ✓  68 [webkit] › specs/responsive-accessibility.spec.ts:1103:3 › review actual focus pseudo composition inspects filters (637ms)
+  ✓  71 [webkit] › specs/responsive-accessibility.spec.ts:1553:1 › B2 transparent SVG viewport gutters leave adjacent focus paint measurable but real vector paint does not (480ms)
+  ✓  72 [webkit] › specs/responsive-accessibility.spec.ts:1661:51 › C2 pseudo-only pointer-transparent paint cannot obscure focused controls undetected (443ms)
+  ✓  73 [webkit] › specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected (435ms)
+  ✓  74 [webkit] › specs/responsive-accessibility.spec.ts:1661:51 › C2 shadow-only pointer-transparent paint cannot obscure focused controls undetected (442ms)
+  ✓  64 [webkit] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in dark (4.4s)
+  ✓  76 [webkit] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (438ms)
+  ✓  77 [webkit] › specs/responsive-accessibility.spec.ts:1699:1 › C3 disjoint wrapped text fragments keep independent shadow bounds (418ms)
+  ✓  75 [webkit] › specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (739ms)
+  ✓  78 [webkit] › specs/responsive-accessibility.spec.ts:1751:1 › C2 native popover elevation belongs only to its explicit anchor and never excuses opaque covers (500ms)
+
+
+  1) [chromium] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in light 
+
+    Error: AE-04 target-size failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 22
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "box": Object {
+    +       "bottom": 160,
+    +       "left": 191.046875,
+    +       "right": 214.296875,
+    +       "top": 128,
+    +     },
+    +     "conforming": false,
+    +     "equivalent": null,
+    +     "exception": null,
+    +     "failure": "Clipping leaves the target without the required reachable area",
+    +     "height": 32,
+    +     "target": "#fc-account-avatar",
+    +     "traits": Object {
+    +       "essentialIdentified": false,
+    +       "nativeUnmodified": false,
+    +       "runningText": false,
+    +     },
+    +     "width": 23.25,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:248
+
+      246 |   expect(result.inventory.length, 'Pointer-target inventory must be nonempty').toBeGreaterThan(0);
+      247 |   expect(result.unusedExceptions, 'Stale or unmatched exception selectors').toEqual([]);
+    > 248 |   expect(result.inventory.filter(target => target.failure), 'AE-04 target-size failures').toEqual([]);
+          |                                                                                           ^
+      249 |   return result.inventory;
+      250 | }
+      251 |
+        at expectTargetSizes (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:248:91)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:89:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:736:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in dark 
+
+    Error: AE-04 target-size failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 22
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "box": Object {
+    +       "bottom": 160,
+    +       "left": 191.046875,
+    +       "right": 214.296875,
+    +       "top": 128,
+    +     },
+    +     "conforming": false,
+    +     "equivalent": null,
+    +     "exception": null,
+    +     "failure": "Clipping leaves the target without the required reachable area",
+    +     "height": 32,
+    +     "target": "#fc-account-avatar",
+    +     "traits": Object {
+    +       "essentialIdentified": false,
+    +       "nativeUnmodified": false,
+    +       "runningText": false,
+    +     },
+    +     "width": 23.25,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:248
+
+      246 |   expect(result.inventory.length, 'Pointer-target inventory must be nonempty').toBeGreaterThan(0);
+      247 |   expect(result.unusedExceptions, 'Stale or unmatched exception selectors').toEqual([]);
+    > 248 |   expect(result.inventory.filter(target => target.failure), 'AE-04 target-size failures').toEqual([]);
+          |                                                                                           ^
+      249 |   return result.inventory;
+      250 | }
+      251 |
+        at expectTargetSizes (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:248:91)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:89:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:736:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [webkit] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in light 
+
+    Error: AE-04 target-size failures
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 22
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "box": Object {
+    +       "bottom": 160,
+    +       "left": 196.90625,
+    +       "right": 217.5,
+    +       "top": 128,
+    +     },
+    +     "conforming": false,
+    +     "equivalent": null,
+    +     "exception": null,
+    +     "failure": "Clipping leaves the target without the required reachable area",
+    +     "height": 32,
+    +     "target": "#fc-account-avatar",
+    +     "traits": Object {
+    +       "essentialIdentified": false,
+    +       "nativeUnmodified": false,
+    +       "runningText": false,
+    +     },
+    +     "width": 20.59375,
+    +   },
+    + ]
+
+       at ../helpers/responsive-accessibility.ts:248
+
+      246 |   expect(result.inventory.length, 'Pointer-target inventory must be nonempty').toBeGreaterThan(0);
+      247 |   expect(result.unusedExceptions, 'Stale or unmatched exception selectors').toEqual([]);
+    > 248 |   expect(result.inventory.filter(target => target.failure), 'AE-04 target-size failures').toEqual([]);
+          |                                                                                           ^
+      249 |   return result.inventory;
+      250 | }
+      251 |
+        at expectTargetSizes (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:248:91)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:89:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:736:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc-review4-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [chromium] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in light 
+    [chromium] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in dark 
+    [webkit] › specs/accessibility-state-matrix.spec.ts:732:3 › fresh-row presentation retains text boundary and system-color meaning in light 
+  75 passed (1.8m)

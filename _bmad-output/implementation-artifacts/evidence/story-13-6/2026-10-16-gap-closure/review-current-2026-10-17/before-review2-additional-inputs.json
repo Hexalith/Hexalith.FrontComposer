@@ -1,0 +1,10 @@
+{
+  "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-datagrid.js": {
+    "sha256": "09ee97a6d2a3da7d5fa842b4f8fe91a3e6e110b423190fbcd7894ee56871f92f",
+    "matchesHead": true
+  },
+  "src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs": {
+    "sha256": "0271965027a4f3306fb420e2f41e85eaec49cd754835f9d095643f05a29fc1fb",
+    "matchesHead": true
+  }
+}

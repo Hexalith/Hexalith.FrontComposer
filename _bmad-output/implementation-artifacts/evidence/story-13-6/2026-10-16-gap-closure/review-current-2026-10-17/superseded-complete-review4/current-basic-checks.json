@@ -1,0 +1,58 @@
+{
+  "sourceIdentitySha256": "635d52ce2dab0601bbe6a773cadcdbc2e9d4f9809664352018571184786436c8",
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "unchangedInputChecks": {
+    "evidenceToolTests": {
+      "command": [
+        "node",
+        "--test",
+        "tests/e2e/scripts/a11y-state-evidence.test.mjs"
+      ],
+      "passed": 12,
+      "failed": 0,
+      "evidence": "superseded-empty-paint/final-basic-checks.json",
+      "unchangedFiles": {
+        "tests/e2e/scripts/a11y-state-evidence.test.mjs": "dcb1c149a52be5f58281b353c0dc721db0a686b921a74c72ea725cf8f5079b12",
+        "tests/e2e/scripts/a11y-state-evidence.mjs": "60c16b4f5b3ab4362e3006d7656694e334a4d339a8135a74af6ba2d20737120e",
+        "tests/e2e/scripts/validate-a11y-artifacts.mjs": "67e2ebb78d5485e4807fd7c165d49013b0da0b06c2a558e994e0955fc650a194"
+      }
+    },
+    "visualGovernance": {
+      "command": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "validate:visual-governance"
+      ],
+      "exitCode": 0,
+      "evidence": "superseded-empty-paint/final-basic-checks.json",
+      "allApprovedImageBytesUnchanged": 24
+    },
+    "affectedGeneratorMethods": {
+      "passed": 2,
+      "failed": 0,
+      "evidence": "review2-generator-command.json",
+      "sameSourceAndDebugTestAssemblyAs": "superseded-empty-paint/source.json"
+    }
+  }
+}

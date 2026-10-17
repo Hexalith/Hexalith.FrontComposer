@@ -1,0 +1,11 @@
+{
+  "command": [
+    "aspire",
+    "stop",
+    "--apphost",
+    "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+    "--non-interactive"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 0.614
+}

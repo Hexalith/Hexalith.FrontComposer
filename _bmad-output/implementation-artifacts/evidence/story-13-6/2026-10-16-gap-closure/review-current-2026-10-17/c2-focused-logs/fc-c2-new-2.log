@@ -1,0 +1,62 @@
+
+Running 39 tests using 3 workers
+
+(node:62008) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:62009) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:62007) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native textarea values while allowing native scrolling (272ms)
+  ✓   3 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1586:1 › C2 row metrics observe shadow content and acknowledge a retried same-height delivery (359ms)
+  ✓   4 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native select values while allowing native scrolling (175ms)
+  ✓   5 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1641:1 › C2 visible aria-hidden labels and generated labels cannot disappear from clipping proof (261ms)
+  ✓   6 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1652:1 › C2 transparent dark pages use actual Canvas rather than an invented white backdrop (207ms)
+  ✓   7 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 pseudo-only pointer-transparent paint cannot obscure focused controls undetected (206ms)
+  ✓   8 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected (192ms)
+  ✓   9 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 shadow-only pointer-transparent paint cannot obscure focused controls undetected (198ms)
+  ✓  10 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (184ms)
+  ✓  12 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1677:1 › C2 text shadow composition requires actual glyph evidence (168ms)
+  ✓  11 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (177ms)
+  ✓   1 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal (1.3s)
+  ✓  13 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported (244ms)
+(node:63128) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63146) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63161) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  14 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1586:1 › C2 row metrics observe shadow content and acknowledge a retried same-height delivery (1.4s)
+  ✓  17 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native select values while allowing native scrolling (486ms)
+  ✓  16 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native textarea values while allowing native scrolling (1.4s)
+  ✓  18 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1641:1 › C2 visible aria-hidden labels and generated labels cannot disappear from clipping proof (689ms)
+  ✓  19 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1652:1 › C2 transparent dark pages use actual Canvas rather than an invented white backdrop (567ms)
+  ✓  15 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal (2.6s)
+  ✓  20 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 pseudo-only pointer-transparent paint cannot obscure focused controls undetected (538ms)
+  ✓  21 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected (567ms)
+  ✓  22 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 shadow-only pointer-transparent paint cannot obscure focused controls undetected (765ms)
+  ✓  23 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (582ms)
+  ✓  24 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (618ms)
+  ✓  25 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1677:1 › C2 text shadow composition requires actual glyph evidence (624ms)
+  ✓  26 [firefox] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported (863ms)
+(node:66937) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:67007) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:67128) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  27 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1586:1 › C2 row metrics observe shadow content and acknowledge a retried same-height delivery (813ms)
+  ✓  29 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native textarea values while allowing native scrolling (643ms)
+  ✓  30 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1634:45 › C2 clipping measures visible native select values while allowing native scrolling (647ms)
+  ✓  31 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1641:1 › C2 visible aria-hidden labels and generated labels cannot disappear from clipping proof (769ms)
+  ✓  32 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1652:1 › C2 transparent dark pages use actual Canvas rather than an invented white backdrop (705ms)
+  ✓  28 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1605:1 › C2 row metrics settle multiple grids and retain external changes and bounded disposal (2.0s)
+  ✓  33 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 pseudo-only pointer-transparent paint cannot obscure focused controls undetected (643ms)
+  ✓  34 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 border-only pointer-transparent paint cannot obscure focused controls undetected (800ms)
+  ✓  35 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1661:51 › C2 shadow-only pointer-transparent paint cannot obscure focused controls undetected (787ms)
+  ✓  36 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing element shadows cannot certify nominal text contrast (598ms)
+  ✓  37 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1670:36 › C2 competing pseudo shadows cannot certify nominal text contrast (475ms)
+  ✓  38 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1677:1 › C2 text shadow composition requires actual glyph evidence (562ms)
+  ✓  39 [webkit] › tests/e2e/specs/responsive-accessibility.spec.ts:1684:1 › C2 target size uses remaining pointer area while valid coverage and owned shadows stay supported (655ms)
+
+  39 passed (12.1s)

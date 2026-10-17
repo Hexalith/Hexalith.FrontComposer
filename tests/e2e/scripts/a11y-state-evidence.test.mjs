@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import specimenManifest from '../specimens/frontcomposer-specimen-manifest.json' with { type: 'json' };
 import { requiredStates, validateStateEvidence } from './a11y-state-evidence.mjs';
@@ -84,7 +85,7 @@ test('successful retry replaces the failed attempt without fragment pooling', ()
   test.status = 'flaky'; test.results = [{ retry: 0, status: 'failed' }, { retry: 1, status: 'passed', attachments }];
   assert.match(validateStateEvidence(all, { report }).join('\n'), /Missing state evidence/);
   const failed = join(root, 'failed-attempt'); mkdirSync(failed);
-  const failedFiles = files.map(file => { const target = join(failed, file.split('/').at(-1)); writeFileSync(target, readFileSync(file)); return target; });
+  const failedFiles = files.map(file => { const target = join(failed, basename(file)); writeFileSync(target, readFileSync(file)); return target; });
   for (let i = 0; i < files.length; i++) update(i, { attempt: 1 });
   assert.deepEqual(validateStateEvidence(all.concat(failedFiles), { report }), []);
   update(0, { attempt: 0 });
@@ -153,7 +154,7 @@ test('CLI resolves capability from the successful retry while retaining the fail
   writeFileSync(join(root, 'junit.xml'), 'Fixture outcomes');
   const reportPath = join(root, 'playwright.json'); writeFileSync(reportPath, JSON.stringify(report));
   for (const artifact of specimenManifest.routes.flatMap(route => route.expectedArtifacts).filter(name => name.startsWith('axe-') || name.startsWith('focus-'))) writeFileSync(join(root, artifact), '{}');
-  const result = spawnSync(process.execPath, [new URL('./validate-a11y-artifacts.mjs', import.meta.url).pathname], { encoding: 'utf8', env: { ...process.env, FC_E2E_OUTPUT_DIR: root, FC_E2E_HTML_REPORT_DIR: html, FC_E2E_JSON_PATH: reportPath, FC_A11Y_EVIDENCE_ENGINE: 'webkit', FC_A11Y_EVIDENCE_RUN_ID: 'fixture-run' } });
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('./validate-a11y-artifacts.mjs', import.meta.url))], { encoding: 'utf8', env: { ...process.env, FC_E2E_OUTPUT_DIR: root, FC_E2E_HTML_REPORT_DIR: html, FC_E2E_JSON_PATH: reportPath, FC_A11Y_EVIDENCE_ENGINE: 'webkit', FC_A11Y_EVIDENCE_RUN_ID: 'fixture-run' } });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /artifact validation passed/);
 }));

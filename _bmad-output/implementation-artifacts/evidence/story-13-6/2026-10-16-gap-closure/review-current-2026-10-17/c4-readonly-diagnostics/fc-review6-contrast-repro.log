@@ -1,0 +1,37 @@
+0 light #fc-main-content h1 {"foreground":[20,20,20,1],"background":[248,248,244,1],"ratio":17.303659231750295,"minimum":3}
+0 light [data-testid="fc-lifecycle-idle"] {"foreground":[20,20,20,1],"background":[248,248,244,1],"ratio":17.303659231750295,"minimum":4.5}
+CONTRAST_FAILURE locator.evaluate: Error: Unsupported computed color {"value":"","connected":false,"target":"H1#fc-type-specimen-title","html":"<h1 id=\"fc-type-specimen-title\" b-u7w7p9v5u1=\"\">Type, theme, density, lifecycle, and navigation specimen</h1>"}
+    at parse (eval at evaluate (:311:30), <anonymous>:5:38)
+    at eval (eval at evaluate (:311:30), <anonymous>:10:92)
+    at UtilityScript.evaluate (<anonymous>:313:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+COMPUTED [{"key":"backgroundColor","value":"","tag":"H1","id":"fc-type-specimen-title","connected":false,"interactive":"false"}]
+1 dark [data-testid="fc-lifecycle-idle"] {"foreground":[247,247,242,1],"background":[21,23,26,1],"ratio":16.71109645481964,"minimum":4.5}
+CONTRAST_FAILURE locator.evaluate: Error: Unsupported computed color {"value":"","connected":false,"target":"H1#fc-type-specimen-title","html":"<h1 id=\"fc-type-specimen-title\" b-u7w7p9v5u1=\"\">Type, theme, density, lifecycle, and navigation specimen</h1>"}
+    at parse (eval at evaluate (:311:30), <anonymous>:5:38)
+    at eval (eval at evaluate (:311:30), <anonymous>:10:92)
+    at UtilityScript.evaluate (<anonymous>:313:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+COMPUTED [{"key":"backgroundColor","value":"","tag":"H1","id":"fc-type-specimen-title","connected":false,"interactive":"false"}]
+2 light [data-testid="fc-lifecycle-idle"] {"foreground":[20,20,20,1],"background":[248,248,244,1],"ratio":17.303659231750295,"minimum":4.5}
+CONTRAST_FAILURE locator.evaluate: Error: Unsupported computed color {"value":"","connected":false,"target":"H1#fc-type-specimen-title","html":"<h1 id=\"fc-type-specimen-title\" b-u7w7p9v5u1=\"\">Type, theme, density, lifecycle, and navigation specimen</h1>"}
+    at parse (eval at evaluate (:311:30), <anonymous>:5:38)
+    at eval (eval at evaluate (:311:30), <anonymous>:10:92)
+    at UtilityScript.evaluate (<anonymous>:313:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+COMPUTED [{"key":"backgroundColor","value":"","tag":"H1","id":"fc-type-specimen-title","connected":false,"interactive":"false"}]
+3 dark [data-testid="fc-lifecycle-idle"] {"foreground":[247,247,242,1],"background":[21,23,26,1],"ratio":16.71109645481964,"minimum":4.5}
+CONTRAST_FAILURE locator.evaluate: Error: Unsupported computed color {"value":"","connected":false,"target":"H1#fc-type-specimen-title","html":"<h1 id=\"fc-type-specimen-title\" b-u7w7p9v5u1=\"\">Type, theme, density, lifecycle, and navigation specimen</h1>"}
+    at parse (eval at evaluate (:311:30), <anonymous>:5:38)
+    at eval (eval at evaluate (:311:30), <anonymous>:10:92)
+    at UtilityScript.evaluate (<anonymous>:313:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+COMPUTED [{"key":"backgroundColor","value":"","tag":"H1","id":"fc-type-specimen-title","connected":false,"interactive":"false"}]
+4 light [data-testid="fc-lifecycle-idle"] {"foreground":[20,20,20,1],"background":[248,248,244,1],"ratio":17.303659231750295,"minimum":4.5}
+CONTRAST_FAILURE locator.evaluate: Error: Unsupported computed color {"value":"","connected":false,"target":"H1#fc-type-specimen-title","html":"<h1 id=\"fc-type-specimen-title\" b-u7w7p9v5u1=\"\">Type, theme, density, lifecycle, and navigation specimen</h1>"}
+    at parse (eval at evaluate (:311:30), <anonymous>:5:38)
+    at eval (eval at evaluate (:311:30), <anonymous>:10:92)
+    at UtilityScript.evaluate (<anonymous>:313:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+COMPUTED [{"key":"backgroundColor","value":"","tag":"H1","id":"fc-type-specimen-title","connected":false,"interactive":"false"}]
+5 dark [data-testid="fc-lifecycle-idle"] {"foreground":[247,247,242,1],"background":[21,23,26,1],"ratio":16.71109645481964,"minimum":4.5}

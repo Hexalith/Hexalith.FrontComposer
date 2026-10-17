@@ -25,6 +25,29 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// "Clear filter" link dispatches FiltersResetAction.
 /// </summary>
 public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void CoMountedMissingImportFailureAndHealthyFocusUseOnlyOneSharedCue(bool failureFirst)
+    {
+        DelayedHiddenDetailFocusRuntime runtime = new() { TimeoutImportsRemaining = failureFirst ? 1 : 0 };
+        RecordingHiddenDetailFocusModule module = new();
+        runtime.Import.TrySetResult(module);
+        Services.AddSingleton<IJSRuntime>(runtime);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("projection:orders:Orders", spoken.Add);
+
+        _ = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "same"));
+        runtime.TimeoutImportsRemaining = failureFirst ? 0 : 1;
+        _ = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "same"));
+
+        spoken.Count(message => message.Length > 0).ShouldBe(failureFirst ? 1 : 0);
+        module.FocusCalls.ShouldBe(failureFirst ? 0 : 1);
+    }
+
     [Fact]
     public async Task ScopeChangeDuringHeldRecoveryImportCancelsPriorFocusAndSpeech()
     {

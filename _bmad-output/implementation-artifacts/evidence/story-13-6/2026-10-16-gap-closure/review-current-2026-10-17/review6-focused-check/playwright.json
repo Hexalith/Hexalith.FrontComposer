@@ -1,0 +1,1019 @@
+{
+  "config": {
+    "argv": [
+      "/home/administrator/.nvm/versions/node/v26.4.0/bin/node",
+      "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/node_modules/.bin/playwright",
+      "test",
+      "specs/responsive-accessibility.spec.ts",
+      "specs/accessibility-state-matrix.spec.ts",
+      "--grep",
+      "type states retain contrast|header theme and account controls|fresh-row presentation retains",
+      "--workers=4",
+      "--retries=0"
+    ],
+    "configFile": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/playwright.config.ts",
+    "rootDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "a11yEvidenceRunId": "story-13-6-review6-focused",
+      "testHostOptions": {
+        "ProjectionReconnectedNoticeDurationMs": 30000
+      },
+      "actualWorkers": 4
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/tmp/fc-review6-focused",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-review6-focused",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 4
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/tmp/fc-review6-focused",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-review6-focused",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 4
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/tmp/fc-review6-focused",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-review6-focused",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 4
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "outputFolder": "/tmp/fc-review6-focused-report",
+          "open": "never"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "/tmp/fc-review6-focused/junit.xml"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/tmp/fc-review6-focused/playwright.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "none",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 4,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "accessibility-state-matrix.spec.ts",
+      "file": "accessibility-state-matrix.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "header theme and account controls retain focus and pointer geometry in light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3282,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:16.589Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "header-control-geometry-light",
+                      "contentType": "application/json",
+                      "body": "eyJidXR0b24iOnsieCI6MTIsInkiOjEzMCwid2lkdGgiOjg4LjYwOTM3NSwiaGVpZ2h0IjozMiwidG9wIjoxMzAsInJpZ2h0IjoxMDAuNjA5Mzc1LCJib3R0b20iOjE2MiwibGVmdCI6MTJ9LCJsYWJlbCI6eyJ4IjoyNSwieSI6MTM1LjUsIndpZHRoIjo0Mi42MDkzNzUsImhlaWdodCI6MjEsInRvcCI6MTM1LjUsInJpZ2h0Ijo2Ny42MDkzNzUsImJvdHRvbSI6MTU2LjUsImxlZnQiOjI1fSwiY2FyZXQiOnsieCI6NzYuMzc0Mzc0Mzg5NjQ4NDQsInkiOjE0NC4yMTQ5OTYzMzc4OTA2Miwid2lkdGgiOjguNDM0OTk3NTU4NTkzNzUsImhlaWdodCI6NC41ODY1MzI1OTI3NzM0Mzc1LCJ0b3AiOjE0NC4yMTQ5OTYzMzc4OTA2MiwicmlnaHQiOjg0LjgwOTM3MTk0ODI0MjE5LCJib3R0b20iOjE0OC44MDE1Mjg5MzA2NjQwNiwibGVmdCI6NzYuMzc0Mzc0Mzg5NjQ4NDR9LCJwb2ludGVyIjp7ImJveCI6eyJ4IjoxODguNjA5Mzc1LCJ5IjoxMjgsIndpZHRoIjozNiwiaGVpZ2h0IjozNiwidG9wIjoxMjgsInJpZ2h0IjoyMjQuNjA5Mzc1LCJib3R0b20iOjE2NCwibGVmdCI6MTg4LjYwOTM3NX0sInNxdWFyZSI6eyJsZWZ0IjoxOTQuNjA5Mzc1LCJyaWdodCI6MjE4LjYwOTM3NSwidG9wIjoxMzQsImJvdHRvbSI6MTU4fSwibWlzc2VzIjpbXX19"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-4f4ff-d-pointer-geometry-in-light-chromium/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-e415f3249ebc538e6e90",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 709,
+          "column": 3
+        },
+        {
+          "title": "fresh-row presentation retains text boundary and system-color meaning in light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 4491,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:16.602Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-fresh-presentation-light",
+                      "contentType": "application/json",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-chromium/attachments/state-fresh-presentation-light-8f92039562c7bef6b0dc2fd52c28d5db54f04f08.json"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-chromium/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-f3a779d323bf6e173ff2",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 750,
+          "column": 3
+        },
+        {
+          "title": "header theme and account controls retain focus and pointer geometry in dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3285,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:16.580Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "header-control-geometry-dark",
+                      "contentType": "application/json",
+                      "body": "eyJidXR0b24iOnsieCI6MTIsInkiOjEzMCwid2lkdGgiOjgzLjg1OTM3NSwiaGVpZ2h0IjozMiwidG9wIjoxMzAsInJpZ2h0Ijo5NS44NTkzNzUsImJvdHRvbSI6MTYyLCJsZWZ0IjoxMn0sImxhYmVsIjp7IngiOjI1LCJ5IjoxMzUuNSwid2lkdGgiOjM3Ljg1OTM3NSwiaGVpZ2h0IjoyMSwidG9wIjoxMzUuNSwicmlnaHQiOjYyLjg1OTM3NSwiYm90dG9tIjoxNTYuNSwibGVmdCI6MjV9LCJjYXJldCI6eyJ4Ijo3MS42MjQzNzQzODk2NDg0NCwieSI6MTQ0LjIxNDk5NjMzNzg5MDYyLCJ3aWR0aCI6OC40MzQ5OTc1NTg1OTM3NSwiaGVpZ2h0Ijo0LjU4NjUzMjU5Mjc3MzQzNzUsInRvcCI6MTQ0LjIxNDk5NjMzNzg5MDYyLCJyaWdodCI6ODAuMDU5MzcxOTQ4MjQyMTksImJvdHRvbSI6MTQ4LjgwMTUyODkzMDY2NDA2LCJsZWZ0Ijo3MS42MjQzNzQzODk2NDg0NH0sInBvaW50ZXIiOnsiYm94Ijp7IngiOjE4My44NTkzNzUsInkiOjEyOCwid2lkdGgiOjM2LCJoZWlnaHQiOjM2LCJ0b3AiOjEyOCwicmlnaHQiOjIxOS44NTkzNzUsImJvdHRvbSI6MTY0LCJsZWZ0IjoxODMuODU5Mzc1fSwic3F1YXJlIjp7ImxlZnQiOjE4OS44NTkzNzUsInJpZ2h0IjoyMTMuODU5Mzc1LCJ0b3AiOjEzNCwiYm90dG9tIjoxNTh9LCJtaXNzZXMiOltdfX0="
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-14bdf-nd-pointer-geometry-in-dark-chromium/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-b3e3619c7a61b4cc0944",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 709,
+          "column": 3
+        },
+        {
+          "title": "fresh-row presentation retains text boundary and system-color meaning in dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 4530,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:16.564Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-fresh-presentation-dark",
+                      "contentType": "application/json",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-chromium/attachments/state-fresh-presentation-dark-346b91be64ef9969e4ed1ed5cbf550c790796acb.json"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-chromium/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-92a77ed36015c23e7871",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 750,
+          "column": 3
+        },
+        {
+          "title": "header theme and account controls retain focus and pointer geometry in light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3830,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:21.763Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "header-control-geometry-light",
+                      "contentType": "application/json",
+                      "body": "eyJidXR0b24iOnsieCI6MTIsInkiOjEzMCwid2lkdGgiOjg5LjU2NjY2NTY0OTQxNDA2LCJoZWlnaHQiOjMyLCJ0b3AiOjEzMCwicmlnaHQiOjEwMS41NjY2NjU2NDk0MTQwNiwiYm90dG9tIjoxNjIsImxlZnQiOjEyfSwibGFiZWwiOnsieCI6MjUsInkiOjEzNS41LCJ3aWR0aCI6NDMuNTY2NjY1NjQ5NDE0MDYsImhlaWdodCI6MjEsInRvcCI6MTM1LjUsInJpZ2h0Ijo2OC41NjY2NjU2NDk0MTQwNiwiYm90dG9tIjoxNTYuNSwibGVmdCI6MjV9LCJjYXJldCI6eyJ4Ijo3Ny4zMTY2NjU2NDk0MTQwNiwieSI6MTQ0LjE5OTk5Njk0ODI0MjIsIndpZHRoIjo4LjQ2NjY3NDgwNDY4NzUsImhlaWdodCI6NC42MTY2Njg3MDExNzE4NzUsInRvcCI6MTQ0LjE5OTk5Njk0ODI0MjIsInJpZ2h0Ijo4NS43ODMzNDA0NTQxMDE1NiwiYm90dG9tIjoxNDguODE2NjY1NjQ5NDE0MDYsImxlZnQiOjc3LjMxNjY2NTY0OTQxNDA2fSwicG9pbnRlciI6eyJib3giOnsieCI6MTg5LjU2NjY2NTY0OTQxNDA2LCJ5IjoxMjgsIndpZHRoIjozNiwiaGVpZ2h0IjozNiwidG9wIjoxMjgsInJpZ2h0IjoyMjUuNTY2NjY1NjQ5NDE0MDYsImJvdHRvbSI6MTY0LCJsZWZ0IjoxODkuNTY2NjY1NjQ5NDE0MDZ9LCJzcXVhcmUiOnsibGVmdCI6MTk1LjU2NjY2NTY0OTQxNDA2LCJyaWdodCI6MjE5LjU2NjY2NTY0OTQxNDA2LCJ0b3AiOjEzNCwiYm90dG9tIjoxNTh9LCJtaXNzZXMiOltdfX0="
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-4f4ff-d-pointer-geometry-in-light-firefox/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-e5cd39977a299f54c6ff",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 709,
+          "column": 3
+        },
+        {
+          "title": "fresh-row presentation retains text boundary and system-color meaning in light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 8180,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:21.764Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-fresh-presentation-light",
+                      "contentType": "application/json",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-firefox/attachments/state-fresh-presentation-light-5ab0eb44e54e1f90efd5cbbd58f6c65cfb2e62dd.json"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-firefox/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-af7d57470e0900c30085",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 750,
+          "column": 3
+        },
+        {
+          "title": "header theme and account controls retain focus and pointer geometry in dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4789,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:25.054Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "header-control-geometry-dark",
+                      "contentType": "application/json",
+                      "body": "eyJidXR0b24iOnsieCI6MTIsInkiOjEzMCwid2lkdGgiOjg1LjY0OTk5Mzg5NjQ4NDM4LCJoZWlnaHQiOjMyLCJ0b3AiOjEzMCwicmlnaHQiOjk3LjY0OTk5Mzg5NjQ4NDM4LCJib3R0b20iOjE2MiwibGVmdCI6MTJ9LCJsYWJlbCI6eyJ4IjoyNSwieSI6MTM1LjUsIndpZHRoIjozOS42NDk5OTM4OTY0ODQzNzUsImhlaWdodCI6MjEsInRvcCI6MTM1LjUsInJpZ2h0Ijo2NC42NDk5OTM4OTY0ODQzOCwiYm90dG9tIjoxNTYuNSwibGVmdCI6MjV9LCJjYXJldCI6eyJ4Ijo3My4zOTk5OTM4OTY0ODQzOCwieSI6MTQ0LjE5OTk5Njk0ODI0MjIsIndpZHRoIjo4LjQ2NjY3NDgwNDY4NzUsImhlaWdodCI6NC42MTY2Njg3MDExNzE4NzUsInRvcCI6MTQ0LjE5OTk5Njk0ODI0MjIsInJpZ2h0Ijo4MS44NjY2Njg3MDExNzE4OCwiYm90dG9tIjoxNDguODE2NjY1NjQ5NDE0MDYsImxlZnQiOjczLjM5OTk5Mzg5NjQ4NDM4fSwicG9pbnRlciI6eyJib3giOnsieCI6MTg1LjY0OTk5Mzg5NjQ4NDM4LCJ5IjoxMjgsIndpZHRoIjozNiwiaGVpZ2h0IjozNiwidG9wIjoxMjgsInJpZ2h0IjoyMjEuNjQ5OTkzODk2NDg0MzgsImJvdHRvbSI6MTY0LCJsZWZ0IjoxODUuNjQ5OTkzODk2NDg0Mzh9LCJzcXVhcmUiOnsibGVmdCI6MTkxLjY0OTk5Mzg5NjQ4NDM4LCJyaWdodCI6MjE1LjY0OTk5Mzg5NjQ4NDM4LCJ0b3AiOjEzNCwiYm90dG9tIjoxNTh9LCJtaXNzZXMiOltdfX0="
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-14bdf-nd-pointer-geometry-in-dark-firefox/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-d6e107a19614480a3446",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 709,
+          "column": 3
+        },
+        {
+          "title": "fresh-row presentation retains text boundary and system-color meaning in dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 7,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 6865,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:25.578Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-fresh-presentation-dark",
+                      "contentType": "application/json",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-firefox/attachments/state-fresh-presentation-dark-d3191f693a0f322e6b1c7961ef9c4d493c5f7844.json"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-firefox/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-2be02a1158c3ae572240",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 750,
+          "column": 3
+        },
+        {
+          "title": "header theme and account controls retain focus and pointer geometry in light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 8,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 2302,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:32.164Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "header-control-geometry-light",
+                      "contentType": "application/json",
+                      "body": "eyJidXR0b24iOnsieCI6MTIsInkiOjEzMCwid2lkdGgiOjg5LjU2MjUsImhlaWdodCI6MzIsInRvcCI6MTMwLCJyaWdodCI6MTAxLjU2MjUsImJvdHRvbSI6MTYyLCJsZWZ0IjoxMn0sImxhYmVsIjp7IngiOjI1LCJ5IjoxMzUuNSwid2lkdGgiOjQzLjU2MjUsImhlaWdodCI6MjEsInRvcCI6MTM1LjUsInJpZ2h0Ijo2OC41NjI1LCJib3R0b20iOjE1Ni41LCJsZWZ0IjoyNX0sImNhcmV0Ijp7IngiOjc3LjMzMTQyMDg5ODQzNzUsInkiOjE0NC4yMTQ5OTYzMzc4OTA2Miwid2lkdGgiOjguNDMxMDc2MDQ5ODA0Njg4LCJoZWlnaHQiOjQuNTg2NTMyNTkyNzczNDM3NSwidG9wIjoxNDQuMjE0OTk2MzM3ODkwNjIsInJpZ2h0Ijo4NS43NjI0OTY5NDgyNDIxOSwiYm90dG9tIjoxNDguODAxNTI4OTMwNjY0MDYsImxlZnQiOjc3LjMzMTQyMDg5ODQzNzV9LCJwb2ludGVyIjp7ImJveCI6eyJ4IjoxODkuNTYyNSwieSI6MTI4LCJ3aWR0aCI6MzYsImhlaWdodCI6MzYsInRvcCI6MTI4LCJyaWdodCI6MjI1LjU2MjUsImJvdHRvbSI6MTY0LCJsZWZ0IjoxODkuNTYyNX0sInNxdWFyZSI6eyJsZWZ0IjoxOTUuNTYyNSwicmlnaHQiOjIxOS41NjI1LCJ0b3AiOjEzNCwiYm90dG9tIjoxNTh9LCJtaXNzZXMiOltdfX0="
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-4f4ff-d-pointer-geometry-in-light-webkit/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-f5b7a285a29731e89055",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 709,
+          "column": 3
+        },
+        {
+          "title": "fresh-row presentation retains text boundary and system-color meaning in light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 9,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 5814,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:32.784Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-fresh-presentation-light",
+                      "contentType": "application/json",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-webkit/attachments/state-fresh-presentation-light-c36989b37062e47154786e03bf4b1d921dc7692b.json"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-85ff9-stem-color-meaning-in-light-webkit/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-8fff5f59356d80aa3c95",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 750,
+          "column": 3
+        },
+        {
+          "title": "header theme and account controls retain focus and pointer geometry in dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 10,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 2924,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:34.252Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "header-control-geometry-dark",
+                      "contentType": "application/json",
+                      "body": "eyJidXR0b24iOnsieCI6MTIsInkiOjEzMCwid2lkdGgiOjg1LjY0MDYyNSwiaGVpZ2h0IjozMiwidG9wIjoxMzAsInJpZ2h0Ijo5Ny42NDA2MjUsImJvdHRvbSI6MTYyLCJsZWZ0IjoxMn0sImxhYmVsIjp7IngiOjI1LCJ5IjoxMzUuNSwid2lkdGgiOjM5LjY0MDYyNSwiaGVpZ2h0IjoyMSwidG9wIjoxMzUuNSwicmlnaHQiOjY0LjY0MDYyNSwiYm90dG9tIjoxNTYuNSwibGVmdCI6MjV9LCJjYXJldCI6eyJ4Ijo3My40MDk1NDU4OTg0Mzc1LCJ5IjoxNDQuMjE0OTk2MzM3ODkwNjIsIndpZHRoIjo4LjQzMTA3NjA0OTgwNDY4OCwiaGVpZ2h0Ijo0LjU4NjUzMjU5Mjc3MzQzNzUsInRvcCI6MTQ0LjIxNDk5NjMzNzg5MDYyLCJyaWdodCI6ODEuODQwNjIxOTQ4MjQyMTksImJvdHRvbSI6MTQ4LjgwMTUyODkzMDY2NDA2LCJsZWZ0Ijo3My40MDk1NDU4OTg0Mzc1fSwicG9pbnRlciI6eyJib3giOnsieCI6MTg1LjY0MDYyNSwieSI6MTI4LCJ3aWR0aCI6MzYsImhlaWdodCI6MzYsInRvcCI6MTI4LCJyaWdodCI6MjIxLjY0MDYyNSwiYm90dG9tIjoxNjQsImxlZnQiOjE4NS42NDA2MjV9LCJzcXVhcmUiOnsibGVmdCI6MTkxLjY0MDYyNSwicmlnaHQiOjIxNS42NDA2MjUsInRvcCI6MTM0LCJib3R0b20iOjE1OH0sIm1pc3NlcyI6W119fQ=="
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-14bdf-nd-pointer-geometry-in-dark-webkit/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-ba66e6e697c69253ee5a",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 709,
+          "column": 3
+        },
+        {
+          "title": "fresh-row presentation retains text boundary and system-color meaning in dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 8,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 6210,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T16:49:34.679Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-fresh-presentation-dark",
+                      "contentType": "application/json",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-webkit/attachments/state-fresh-presentation-dark-fb79d083310a52e1b65f6ce9940f17b34b166e44.json"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/fc-review6-focused/accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-webkit/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-8ebecb2894a5a725f696",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 750,
+          "column": 3
+        }
+      ]
+    },
+    {
+      "title": "responsive-accessibility.spec.ts",
+      "file": "responsive-accessibility.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Story 13.6 responsive operator surfaces",
+          "file": "responsive-accessibility.spec.ts",
+          "line": 358,
+          "column": 6,
+          "specs": [
+            {
+              "title": "type states retain contrast, system colors and immediate reduced-motion cues in light",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 4523,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T16:49:20.155Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "contrast-light",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIjZmMtbWFpbi1jb250ZW50IGgxIiwiZm9yZWdyb3VuZCI6WzIwLDIwLDIwLDFdLCJiYWNrZ3JvdW5kIjpbMjQ4LDI0OCwyNDQsMV0sInJhdGlvIjoxNy4zMDM2NTkyMzE3NTAyOTUsIm1pbmltdW0iOjN9LHsic2VsZWN0b3IiOiJbZGF0YS10ZXN0aWQ9XCJmYy1saWZlY3ljbGUtaWRsZVwiXSIsImZvcmVncm91bmQiOlsyMCwyMCwyMCwxXSwiYmFja2dyb3VuZCI6WzI0OCwyNDgsMjQ0LDFdLCJyYXRpbyI6MTcuMzAzNjU5MjMxNzUwMjk1LCJtaW5pbXVtIjo0LjV9XQ=="
+                        },
+                        {
+                          "name": "palette-contrast-light",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1ncm91cC1oZWFkaW5nIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6Wzk3LDk3LDk3LDFdLCJiYWNrZ3JvdW5kIjpbMjU1LDI1NSwyNTUsMV0sInJhdGlvIjo2LjE5MzI4NjE2MjA3Mzk5OCwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWxhYmVsIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzM2LDM2LDM2LDFdLCJiYWNrZ3JvdW5kIjpbMjU1LDI1NSwyNTUsMV0sInJhdGlvIjoxNS41MjI5MTA0MTc2ODAzODgsIm1pbmltdW0iOjQuNX0seyJzZWxlY3RvciI6Ii5mYy1wYWxldHRlLW9wdGlvbi1oaW50Iiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzY2LDY2LDY2LDFdLCJiYWNrZ3JvdW5kIjpbMjUwLDI1MCwyNTAsMV0sInJhdGlvIjo5LjYyODM1NjU0MjUyMzgxLCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24tY29udGV4dCIsInN0YXRlIjoicXVlcnkvY3VycmVudC1jb250ZXh0IiwiZm9yZWdyb3VuZCI6Wzk3LDk3LDk3LDFdLCJiYWNrZ3JvdW5kIjpbMjUwLDI1MCwyNTAsMV0sInJhdGlvIjo1LjkzMzYwMDgwNzcwODU1NSwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWxhYmVsIiwic3RhdGUiOiJzZWxlY3RlZCIsImZvcmVncm91bmQiOlszNiwzNiwzNiwxXSwiYmFja2dyb3VuZCI6WzI1MCwyNTAsMjUwLDFdLCJyYXRpbyI6MTQuODcyMDMyNjE0MzQ0OTcsIm1pbmltdW0iOjQuNX0seyJzZWxlY3RvciI6Ii5mYy1wYWxldHRlLW9wdGlvbi1jb250ZXh0Iiwic3RhdGUiOiJob3ZlciIsImZvcmVncm91bmQiOls5Nyw5Nyw5NywxXSwiYmFja2dyb3VuZCI6WzI1MCwyNTAsMjUwLDFdLCJyYXRpbyI6NS45MzM2MDA4MDc3MDg1NTUsIm1pbmltdW0iOjQuNX0seyJzZWxlY3RvciI6Ii5mYy1wYWxldHRlLW5vcmVzdWx0cyIsInN0YXRlIjoibm8tcmVzdWx0cyIsImZvcmVncm91bmQiOls5Nyw5Nyw5NywxXSwiYmFja2dyb3VuZCI6WzI1NSwyNTUsMjU1LDFdLCJyYXRpbyI6Ni4xOTMyODYxNjIwNzM5OTgsIm1pbmltdW0iOjQuNX1d"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/tmp/fc-review6-focused/responsive-accessibility-S-42726-educed-motion-cues-in-light-chromium/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-e3dde9b61de1180d0e66",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 384,
+              "column": 5
+            },
+            {
+              "title": "type states retain contrast, system colors and immediate reduced-motion cues in dark",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4070,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T16:49:20.161Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "contrast-dark",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIjZmMtbWFpbi1jb250ZW50IGgxIiwiZm9yZWdyb3VuZCI6WzI0NywyNDcsMjQyLDFdLCJiYWNrZ3JvdW5kIjpbMjEsMjMsMjYsMV0sInJhdGlvIjoxNi43MTEwOTY0NTQ4MTk2NCwibWluaW11bSI6M30seyJzZWxlY3RvciI6IltkYXRhLXRlc3RpZD1cImZjLWxpZmVjeWNsZS1pZGxlXCJdIiwiZm9yZWdyb3VuZCI6WzI0NywyNDcsMjQyLDFdLCJiYWNrZ3JvdW5kIjpbMjEsMjMsMjYsMV0sInJhdGlvIjoxNi43MTEwOTY0NTQ4MTk2NCwibWluaW11bSI6NC41fV0="
+                        },
+                        {
+                          "name": "palette-contrast-dark",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1ncm91cC1oZWFkaW5nIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzE3MywxNzMsMTczLDFdLCJiYWNrZ3JvdW5kIjpbNDEsNDEsNDEsMV0sInJhdGlvIjo2LjQ4Mjc0NzQ5NDk5MTUwNSwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWxhYmVsIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzI1NSwyNTUsMjU1LDFdLCJiYWNrZ3JvdW5kIjpbNDEsNDEsNDEsMV0sInJhdGlvIjoxNC41NDgxOTg0NjU0OTU0LCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24taGludCIsInN0YXRlIjoiZGVmYXVsdCIsImZvcmVncm91bmQiOlsyMTQsMjE0LDIxNCwxXSwiYmFja2dyb3VuZCI6WzMxLDMxLDMxLDFdLCJyYXRpbyI6MTEuMzQwOTY1OTg0MTMyMzY2LCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24tY29udGV4dCIsInN0YXRlIjoicXVlcnkvY3VycmVudC1jb250ZXh0IiwiZm9yZWdyb3VuZCI6WzE3MywxNzMsMTczLDFdLCJiYWNrZ3JvdW5kIjpbMzEsMzEsMzEsMV0sInJhdGlvIjo3LjM0NDg5NDM2NTU1NDczLCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24tbGFiZWwiLCJzdGF0ZSI6InNlbGVjdGVkIiwiZm9yZWdyb3VuZCI6WzI1NSwyNTUsMjU1LDFdLCJiYWNrZ3JvdW5kIjpbMzEsMzEsMzEsMV0sInJhdGlvIjoxNi40ODI5Nzc0NzUzMjg3OSwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWNvbnRleHQiLCJzdGF0ZSI6ImhvdmVyIiwiZm9yZWdyb3VuZCI6WzE3MywxNzMsMTczLDFdLCJiYWNrZ3JvdW5kIjpbMzEsMzEsMzEsMV0sInJhdGlvIjo3LjM0NDg5NDM2NTU1NDczLCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1ub3Jlc3VsdHMiLCJzdGF0ZSI6Im5vLXJlc3VsdHMiLCJmb3JlZ3JvdW5kIjpbMTczLDE3MywxNzMsMV0sImJhY2tncm91bmQiOls0MSw0MSw0MSwxXSwicmF0aW8iOjYuNDgyNzQ3NDk0OTkxNTA1LCJtaW5pbXVtIjo0LjV9XQ=="
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/tmp/fc-review6-focused/responsive-accessibility-S-0c912-reduced-motion-cues-in-dark-chromium/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-b4866c0599d7e86c901b",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 384,
+              "column": 5
+            },
+            {
+              "title": "type states retain contrast, system colors and immediate reduced-motion cues in light",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 5449,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T16:49:26.360Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "contrast-light",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIjZmMtbWFpbi1jb250ZW50IGgxIiwiZm9yZWdyb3VuZCI6WzIwLDIwLDIwLDFdLCJiYWNrZ3JvdW5kIjpbMjQ4LDI0OCwyNDQsMV0sInJhdGlvIjoxNy4zMDM2NTkyMzE3NTAyOTUsIm1pbmltdW0iOjN9LHsic2VsZWN0b3IiOiJbZGF0YS10ZXN0aWQ9XCJmYy1saWZlY3ljbGUtaWRsZVwiXSIsImZvcmVncm91bmQiOlsyMCwyMCwyMCwxXSwiYmFja2dyb3VuZCI6WzI0OCwyNDgsMjQ0LDFdLCJyYXRpbyI6MTcuMzAzNjU5MjMxNzUwMjk1LCJtaW5pbXVtIjo0LjV9XQ=="
+                        },
+                        {
+                          "name": "palette-contrast-light",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1ncm91cC1oZWFkaW5nIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6Wzk3LDk3LDk3LDFdLCJiYWNrZ3JvdW5kIjpbMjU1LDI1NSwyNTUsMV0sInJhdGlvIjo2LjE5MzI4NjE2MjA3Mzk5OCwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWxhYmVsIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzM2LDM2LDM2LDFdLCJiYWNrZ3JvdW5kIjpbMjU1LDI1NSwyNTUsMV0sInJhdGlvIjoxNS41MjI5MTA0MTc2ODAzODgsIm1pbmltdW0iOjQuNX0seyJzZWxlY3RvciI6Ii5mYy1wYWxldHRlLW9wdGlvbi1oaW50Iiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzY2LDY2LDY2LDFdLCJiYWNrZ3JvdW5kIjpbMjUwLDI1MCwyNTAsMV0sInJhdGlvIjo5LjYyODM1NjU0MjUyMzgxLCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24tY29udGV4dCIsInN0YXRlIjoicXVlcnkvY3VycmVudC1jb250ZXh0IiwiZm9yZWdyb3VuZCI6Wzk3LDk3LDk3LDFdLCJiYWNrZ3JvdW5kIjpbMjUwLDI1MCwyNTAsMV0sInJhdGlvIjo1LjkzMzYwMDgwNzcwODU1NSwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWxhYmVsIiwic3RhdGUiOiJzZWxlY3RlZCIsImZvcmVncm91bmQiOlszNiwzNiwzNiwxXSwiYmFja2dyb3VuZCI6WzI1MCwyNTAsMjUwLDFdLCJyYXRpbyI6MTQuODcyMDMyNjE0MzQ0OTcsIm1pbmltdW0iOjQuNX0seyJzZWxlY3RvciI6Ii5mYy1wYWxldHRlLW9wdGlvbi1jb250ZXh0Iiwic3RhdGUiOiJob3ZlciIsImZvcmVncm91bmQiOls5Nyw5Nyw5NywxXSwiYmFja2dyb3VuZCI6WzI1MCwyNTAsMjUwLDFdLCJyYXRpbyI6NS45MzM2MDA4MDc3MDg1NTUsIm1pbmltdW0iOjQuNX0seyJzZWxlY3RvciI6Ii5mYy1wYWxldHRlLW5vcmVzdWx0cyIsInN0YXRlIjoibm8tcmVzdWx0cyIsImZvcmVncm91bmQiOls5Nyw5Nyw5NywxXSwiYmFja2dyb3VuZCI6WzI1NSwyNTUsMjU1LDFdLCJyYXRpbyI6Ni4xOTMyODYxNjIwNzM5OTgsIm1pbmltdW0iOjQuNX1d"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/tmp/fc-review6-focused/responsive-accessibility-S-42726-educed-motion-cues-in-light-firefox/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-42935e2bb866d67c7b78",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 384,
+              "column": 5
+            },
+            {
+              "title": "type states retain contrast, system colors and immediate reduced-motion cues in dark",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4086,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T16:49:30.670Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "contrast-dark",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIjZmMtbWFpbi1jb250ZW50IGgxIiwiZm9yZWdyb3VuZCI6WzI0NywyNDcsMjQyLDFdLCJiYWNrZ3JvdW5kIjpbMjEsMjMsMjYsMV0sInJhdGlvIjoxNi43MTEwOTY0NTQ4MTk2NCwibWluaW11bSI6M30seyJzZWxlY3RvciI6IltkYXRhLXRlc3RpZD1cImZjLWxpZmVjeWNsZS1pZGxlXCJdIiwiZm9yZWdyb3VuZCI6WzI0NywyNDcsMjQyLDFdLCJiYWNrZ3JvdW5kIjpbMjEsMjMsMjYsMV0sInJhdGlvIjoxNi43MTEwOTY0NTQ4MTk2NCwibWluaW11bSI6NC41fV0="
+                        },
+                        {
+                          "name": "palette-contrast-dark",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1ncm91cC1oZWFkaW5nIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzE3MywxNzMsMTczLDFdLCJiYWNrZ3JvdW5kIjpbNDEsNDEsNDEsMV0sInJhdGlvIjo2LjQ4Mjc0NzQ5NDk5MTUwNSwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWxhYmVsIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzI1NSwyNTUsMjU1LDFdLCJiYWNrZ3JvdW5kIjpbNDEsNDEsNDEsMV0sInJhdGlvIjoxNC41NDgxOTg0NjU0OTU0LCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24taGludCIsInN0YXRlIjoiZGVmYXVsdCIsImZvcmVncm91bmQiOlsyMTQsMjE0LDIxNCwxXSwiYmFja2dyb3VuZCI6WzMxLDMxLDMxLDFdLCJyYXRpbyI6MTEuMzQwOTY1OTg0MTMyMzY2LCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24tY29udGV4dCIsInN0YXRlIjoicXVlcnkvY3VycmVudC1jb250ZXh0IiwiZm9yZWdyb3VuZCI6WzE3MywxNzMsMTczLDFdLCJiYWNrZ3JvdW5kIjpbMzEsMzEsMzEsMV0sInJhdGlvIjo3LjM0NDg5NDM2NTU1NDczLCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24tbGFiZWwiLCJzdGF0ZSI6InNlbGVjdGVkIiwiZm9yZWdyb3VuZCI6WzI1NSwyNTUsMjU1LDFdLCJiYWNrZ3JvdW5kIjpbMzEsMzEsMzEsMV0sInJhdGlvIjoxNi40ODI5Nzc0NzUzMjg3OSwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWNvbnRleHQiLCJzdGF0ZSI6ImhvdmVyIiwiZm9yZWdyb3VuZCI6WzE3MywxNzMsMTczLDFdLCJiYWNrZ3JvdW5kIjpbMzEsMzEsMzEsMV0sInJhdGlvIjo3LjM0NDg5NDM2NTU1NDczLCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1ub3Jlc3VsdHMiLCJzdGF0ZSI6Im5vLXJlc3VsdHMiLCJmb3JlZ3JvdW5kIjpbMTczLDE3MywxNzMsMV0sImJhY2tncm91bmQiOls0MSw0MSw0MSwxXSwicmF0aW8iOjYuNDgyNzQ3NDk0OTkxNTA1LCJtaW5pbXVtIjo0LjV9XQ=="
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/tmp/fc-review6-focused/responsive-accessibility-S-0c912-reduced-motion-cues-in-dark-firefox/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-bc0a358cb56b1840272f",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 384,
+              "column": 5
+            },
+            {
+              "title": "type states retain contrast, system colors and immediate reduced-motion cues in light",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 11,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5393,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T16:49:35.908Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "contrast-light",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIjZmMtbWFpbi1jb250ZW50IGgxIiwiZm9yZWdyb3VuZCI6WzIwLDIwLDIwLDFdLCJiYWNrZ3JvdW5kIjpbMjQ4LDI0OCwyNDQsMV0sInJhdGlvIjoxNy4zMDM2NTkyMzE3NTAyOTUsIm1pbmltdW0iOjN9LHsic2VsZWN0b3IiOiJbZGF0YS10ZXN0aWQ9XCJmYy1saWZlY3ljbGUtaWRsZVwiXSIsImZvcmVncm91bmQiOlsyMCwyMCwyMCwxXSwiYmFja2dyb3VuZCI6WzI0OCwyNDgsMjQ0LDFdLCJyYXRpbyI6MTcuMzAzNjU5MjMxNzUwMjk1LCJtaW5pbXVtIjo0LjV9XQ=="
+                        },
+                        {
+                          "name": "forced-palette-capability-limit",
+                          "contentType": "text/plain",
+                          "body": "V2ViS2l0IGV4cG9zZXMgdGhlIGZvcmNlZC1jb2xvcnMgbWVkaWEgcXVlcnkgYnV0IGRvZXMgbm90IGltcGxlbWVudCBmb3JjZWQtY29sb3ItYWRqdXN0L2F1dGhvcmVkLWNvbG9yIHJlcGxhY2VtZW50LiBTeXN0ZW0tcGFsZXR0ZSBwYWludGluZyByZXF1aXJlcyB0aGUgc3VwcG9ydGVkIHBsYXRmb3JtIGxhbmUu"
+                        },
+                        {
+                          "name": "palette-contrast-light",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1ncm91cC1oZWFkaW5nIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6Wzk3LDk3LDk3LDFdLCJiYWNrZ3JvdW5kIjpbMjU1LDI1NSwyNTUsMV0sInJhdGlvIjo2LjE5MzI4NjE2MjA3Mzk5OCwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWxhYmVsIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzM2LDM2LDM2LDFdLCJiYWNrZ3JvdW5kIjpbMjU1LDI1NSwyNTUsMV0sInJhdGlvIjoxNS41MjI5MTA0MTc2ODAzODgsIm1pbmltdW0iOjQuNX0seyJzZWxlY3RvciI6Ii5mYy1wYWxldHRlLW9wdGlvbi1oaW50Iiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzY2LDY2LDY2LDFdLCJiYWNrZ3JvdW5kIjpbMjUwLDI1MCwyNTAsMV0sInJhdGlvIjo5LjYyODM1NjU0MjUyMzgxLCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24tY29udGV4dCIsInN0YXRlIjoicXVlcnkvY3VycmVudC1jb250ZXh0IiwiZm9yZWdyb3VuZCI6Wzk3LDk3LDk3LDFdLCJiYWNrZ3JvdW5kIjpbMjUwLDI1MCwyNTAsMV0sInJhdGlvIjo1LjkzMzYwMDgwNzcwODU1NSwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWxhYmVsIiwic3RhdGUiOiJzZWxlY3RlZCIsImZvcmVncm91bmQiOlszNiwzNiwzNiwxXSwiYmFja2dyb3VuZCI6WzI1MCwyNTAsMjUwLDFdLCJyYXRpbyI6MTQuODcyMDMyNjE0MzQ0OTcsIm1pbmltdW0iOjQuNX0seyJzZWxlY3RvciI6Ii5mYy1wYWxldHRlLW9wdGlvbi1jb250ZXh0Iiwic3RhdGUiOiJob3ZlciIsImZvcmVncm91bmQiOls5Nyw5Nyw5NywxXSwiYmFja2dyb3VuZCI6WzI1MCwyNTAsMjUwLDFdLCJyYXRpbyI6NS45MzM2MDA4MDc3MDg1NTUsIm1pbmltdW0iOjQuNX0seyJzZWxlY3RvciI6Ii5mYy1wYWxldHRlLW5vcmVzdWx0cyIsInN0YXRlIjoibm8tcmVzdWx0cyIsImZvcmVncm91bmQiOls5Nyw5Nyw5NywxXSwiYmFja2dyb3VuZCI6WzI1NSwyNTUsMjU1LDFdLCJyYXRpbyI6Ni4xOTMyODYxNjIwNzM5OTgsIm1pbmltdW0iOjQuNX1d"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/tmp/fc-review6-focused/responsive-accessibility-S-42726-educed-motion-cues-in-light-webkit/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-27d6dd9435a658dd7d5d",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 384,
+              "column": 5
+            },
+            {
+              "title": "type states retain contrast, system colors and immediate reduced-motion cues in dark",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 10,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 5170,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T16:49:37.413Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "contrast-dark",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIjZmMtbWFpbi1jb250ZW50IGgxIiwiZm9yZWdyb3VuZCI6WzI0NywyNDcsMjQyLDFdLCJiYWNrZ3JvdW5kIjpbMjEsMjMsMjYsMV0sInJhdGlvIjoxNi43MTEwOTY0NTQ4MTk2NCwibWluaW11bSI6M30seyJzZWxlY3RvciI6IltkYXRhLXRlc3RpZD1cImZjLWxpZmVjeWNsZS1pZGxlXCJdIiwiZm9yZWdyb3VuZCI6WzI0NywyNDcsMjQyLDFdLCJiYWNrZ3JvdW5kIjpbMjEsMjMsMjYsMV0sInJhdGlvIjoxNi43MTEwOTY0NTQ4MTk2NCwibWluaW11bSI6NC41fV0="
+                        },
+                        {
+                          "name": "forced-palette-capability-limit",
+                          "contentType": "text/plain",
+                          "body": "V2ViS2l0IGV4cG9zZXMgdGhlIGZvcmNlZC1jb2xvcnMgbWVkaWEgcXVlcnkgYnV0IGRvZXMgbm90IGltcGxlbWVudCBmb3JjZWQtY29sb3ItYWRqdXN0L2F1dGhvcmVkLWNvbG9yIHJlcGxhY2VtZW50LiBTeXN0ZW0tcGFsZXR0ZSBwYWludGluZyByZXF1aXJlcyB0aGUgc3VwcG9ydGVkIHBsYXRmb3JtIGxhbmUu"
+                        },
+                        {
+                          "name": "palette-contrast-dark",
+                          "contentType": "application/json",
+                          "body": "W3sic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1ncm91cC1oZWFkaW5nIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzE3MywxNzMsMTczLDFdLCJiYWNrZ3JvdW5kIjpbNDEsNDEsNDEsMV0sInJhdGlvIjo2LjQ4Mjc0NzQ5NDk5MTUwNSwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWxhYmVsIiwic3RhdGUiOiJkZWZhdWx0IiwiZm9yZWdyb3VuZCI6WzI1NSwyNTUsMjU1LDFdLCJiYWNrZ3JvdW5kIjpbNDEsNDEsNDEsMV0sInJhdGlvIjoxNC41NDgxOTg0NjU0OTU0LCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24taGludCIsInN0YXRlIjoiZGVmYXVsdCIsImZvcmVncm91bmQiOlsyMTQsMjE0LDIxNCwxXSwiYmFja2dyb3VuZCI6WzMxLDMxLDMxLDFdLCJyYXRpbyI6MTEuMzQwOTY1OTg0MTMyMzY2LCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24tY29udGV4dCIsInN0YXRlIjoicXVlcnkvY3VycmVudC1jb250ZXh0IiwiZm9yZWdyb3VuZCI6WzE3MywxNzMsMTczLDFdLCJiYWNrZ3JvdW5kIjpbMzEsMzEsMzEsMV0sInJhdGlvIjo3LjM0NDg5NDM2NTU1NDczLCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1vcHRpb24tbGFiZWwiLCJzdGF0ZSI6InNlbGVjdGVkIiwiZm9yZWdyb3VuZCI6WzI1NSwyNTUsMjU1LDFdLCJiYWNrZ3JvdW5kIjpbMzEsMzEsMzEsMV0sInJhdGlvIjoxNi40ODI5Nzc0NzUzMjg3OSwibWluaW11bSI6NC41fSx7InNlbGVjdG9yIjoiLmZjLXBhbGV0dGUtb3B0aW9uLWNvbnRleHQiLCJzdGF0ZSI6ImhvdmVyIiwiZm9yZWdyb3VuZCI6WzE3MywxNzMsMTczLDFdLCJiYWNrZ3JvdW5kIjpbMzEsMzEsMzEsMV0sInJhdGlvIjo3LjM0NDg5NDM2NTU1NDczLCJtaW5pbXVtIjo0LjV9LHsic2VsZWN0b3IiOiIuZmMtcGFsZXR0ZS1ub3Jlc3VsdHMiLCJzdGF0ZSI6Im5vLXJlc3VsdHMiLCJmb3JlZ3JvdW5kIjpbMTczLDE3MywxNzMsMV0sImJhY2tncm91bmQiOls0MSw0MSw0MSwxXSwicmF0aW8iOjYuNDgyNzQ3NDk0OTkxNTA1LCJtaW5pbXVtIjo0LjV9XQ=="
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/tmp/fc-review6-focused/responsive-accessibility-S-0c912-reduced-motion-cues-in-dark-webkit/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-b7fb4c9e4694400f5f9a",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 384,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-17T16:49:15.896Z",
+    "duration": 26883.59,
+    "expected": 18,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

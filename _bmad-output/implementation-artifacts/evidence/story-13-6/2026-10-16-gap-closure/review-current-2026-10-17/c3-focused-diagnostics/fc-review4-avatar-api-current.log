@@ -1,0 +1,183 @@
+{
+  "namespace": "Microsoft.FluentUI.AspNetCore.Components",
+  "name": "FluentAvatar",
+  "metadata_name": "FluentAvatar",
+  "definition_name": {
+    "namespace": "Microsoft.FluentUI.AspNetCore.Components",
+    "segments": [
+      "FluentAvatar"
+    ]
+  },
+  "introduced_type_parameter_counts": [
+    0
+  ],
+  "kind": "class",
+  "attributes": [],
+  "layout": "Auto",
+  "layout_details": {
+    "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+    "type_token": 33554500,
+    "size": 0,
+    "packing_size": 0
+  },
+  "memory_safety": {
+    "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+    "rules": {
+      "kind": "available",
+      "state": 0,
+      "observations": []
+    }
+  },
+  "is_sealed": false,
+  "is_abstract": false,
+  "is_static": false,
+  "is_by_ref_like": false,
+  "is_read_only": false,
+  "base_type": "Microsoft.FluentUI.AspNetCore.Components.FluentComponentBase",
+  "interfaces": [
+    "Microsoft.FluentUI.AspNetCore.Components.ITooltipComponent"
+  ],
+  "derived_types": [],
+  "type_parameters": [],
+  "members": [
+    {
+      "name": "Size",
+      "kind": "property",
+      "attributes": [
+        "Microsoft.AspNetCore.Components.Parameter"
+      ],
+      "signature": "System.Nullable\u003CMicrosoft.FluentUI.AspNetCore.Components.AvatarSize\u003E Size { get; set; }",
+      "digest": "b7cc5bd06f",
+      "canonical_signature": "P:Microsoft.FluentUI.AspNetCore.Components.FluentAvatar.Size",
+      "index_parameter_count": 0,
+      "getter_token": 100663674,
+      "setter_token": 100663675,
+      "getter_has_method_body": true,
+      "setter_has_method_body": true,
+      "is_static": false,
+      "is_virtual": false,
+      "is_abstract": false,
+      "is_override": false,
+      "is_sealed": false,
+      "is_read_only": false,
+      "is_const": false,
+      "is_unsafe": false,
+      "is_async": false,
+      "memory_safety": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "caller_contract": {
+          "kind": "none",
+          "evidence": {
+            "member_token": 385876073,
+            "rules_state": 0,
+            "pointer": "Absent",
+            "fixed_buffer": 0,
+            "direct_attribute": {
+              "state": 1,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            },
+            "associated_attribute": {
+              "state": 0,
+              "valid_row_count": 0,
+              "has_malformed_row": false
+            }
+          }
+        },
+        "signature_pointer": "Absent"
+      },
+      "accessor_memory_safety": [
+        {
+          "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+          "caller_contract": {
+            "kind": "none",
+            "evidence": {
+              "member_token": 100663674,
+              "rules_state": 0,
+              "pointer": "Absent",
+              "fixed_buffer": 0,
+              "direct_attribute": {
+                "state": 1,
+                "valid_row_count": 0,
+                "has_malformed_row": false
+              },
+              "associated_attribute": {
+                "state": 1,
+                "valid_row_count": 0,
+                "has_malformed_row": false
+              },
+              "associated_member_token": 385876073
+            }
+          },
+          "signature_pointer": "Absent"
+        },
+        {
+          "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+          "caller_contract": {
+            "kind": "none",
+            "evidence": {
+              "member_token": 100663675,
+              "rules_state": 0,
+              "pointer": "Absent",
+              "fixed_buffer": 0,
+              "direct_attribute": {
+                "state": 1,
+                "valid_row_count": 0,
+                "has_malformed_row": false
+              },
+              "associated_attribute": {
+                "state": 1,
+                "valid_row_count": 0,
+                "has_malformed_row": false
+              },
+              "associated_member_token": 385876073
+            }
+          },
+          "signature_pointer": "Absent"
+        }
+      ],
+      "backing_storage": {
+        "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+        "convention": "AutoProperty",
+        "state": "Associated",
+        "candidates": [
+          {
+            "field_token": 67108933,
+            "matched_name": "\u003CSize\u003Ek__BackingField",
+            "is_static": false
+          }
+        ]
+      },
+      "accessor_implementations": [
+        {
+          "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+          "method_token": 100663674,
+          "attributes": "Public, HideBySig, SpecialName",
+          "impl_attributes": "IL",
+          "has_body_rva": true
+        },
+        {
+          "module_version_id": "175fa928-7c34-4488-9660-1a236e660c71",
+          "method_token": 100663675,
+          "attributes": "Public, HideBySig, SpecialName",
+          "impl_attributes": "IL",
+          "has_body_rva": true
+        }
+      ],
+      "is_extension": false,
+      "is_obsolete": false,
+      "documentation": {
+        "summary": "Gets or sets the size of the avatar (e.g., Size=\u0022AvatarSize.Size48\u0022).",
+        "samples": []
+      }
+    }
+  ],
+  "additional_source_files": [],
+  "is_partial_type": false,
+  "is_forwarded": false,
+  "full_name": "Microsoft.FluentUI.AspNetCore.Components.FluentAvatar",
+  "documentation": {
+    "summary": "The FluentAvatar component is used to represent a user or entity. It can display an image, initials, or an icon.",
+    "samples": []
+  }
+}

@@ -605,7 +605,8 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
                 .ShouldContain("icon-only", Case.Insensitive);
             string? themeToggleStyle = cut.Find("fluent-menu-button").GetAttribute("style");
             themeToggleStyle.ShouldNotBeNull();
-            themeToggleStyle.ShouldContain("width: 48px", Case.Insensitive);
+            themeToggleStyle.ShouldContain("min-width: 48px", Case.Insensitive);
+            themeToggleStyle.ShouldContain("width: max-content", Case.Insensitive);
         });
     }
 

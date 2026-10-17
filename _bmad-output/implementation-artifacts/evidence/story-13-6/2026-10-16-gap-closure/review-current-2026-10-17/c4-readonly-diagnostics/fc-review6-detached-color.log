@@ -1,0 +1,2 @@
+light {"before":{"interactive":"false","color":"rgb(20, 20, 20)"},"sameNode":true,"old":{"connected":true,"color":"rgb(20, 20, 20)","background":"rgba(0, 0, 0, 0)"},"current":{"connected":true,"color":"rgb(20, 20, 20)","background":"rgba(0, 0, 0, 0)"},"canvas":"rgb(255, 255, 255)"}
+dark {"before":{"interactive":"false","color":"rgb(247, 247, 242)"},"sameNode":true,"old":{"connected":true,"color":"rgb(247, 247, 242)","background":"rgba(0, 0, 0, 0)"},"current":{"connected":true,"color":"rgb(247, 247, 242)","background":"rgba(0, 0, 0, 0)"},"canvas":"rgb(255, 255, 255)"}

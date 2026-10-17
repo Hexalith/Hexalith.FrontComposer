@@ -1,0 +1,24 @@
+{
+  "resource": "counter-web",
+  "state": "Running",
+  "health": "Healthy",
+  "urls": [
+    {
+      "name": "http",
+      "url": "http://localhost:5201"
+    },
+    {
+      "name": "https",
+      "url": "https://localhost:7201"
+    }
+  ],
+  "runtimePid": 2370,
+  "actualRuntimeSettings": {
+    "ASPNETCORE_ENVIRONMENT": "Test",
+    "Hexalith__Shell__ProjectionReconnectedNoticeDurationMs": "30000",
+    "DOTNET_ENVIRONMENT": "Test"
+  },
+  "servedFocusScriptSha256": "6b47d8da48d808e20ac72bb337b2426306e54afd664447607e23b35208b98b8a",
+  "sourceFocusScriptSha256": "6b47d8da48d808e20ac72bb337b2426306e54afd664447607e23b35208b98b8a",
+  "servedMatchesSource": true
+}

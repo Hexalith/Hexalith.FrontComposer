@@ -71,3 +71,13 @@
 .fc-rejection-mapped {
     margin-block-start: var(--spacingVerticalM);
 }
+
+/* Use Fluent's multiline areas when spaced feedback and actions share a narrow
+   surface. Keep the native dismiss control inside the message bar's paint box. */
+@media (max-width: 480px) {
+    .fc-lifecycle-wrapper ::deep fluent-message-bar {
+        grid-template-areas: "icon body dismiss" "actions actions actions";
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-rows: auto auto;
+    }
+}

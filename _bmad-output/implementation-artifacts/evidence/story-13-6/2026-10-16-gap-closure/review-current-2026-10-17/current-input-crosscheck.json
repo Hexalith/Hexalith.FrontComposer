@@ -1,0 +1,11 @@
+{
+  "sourceIdentitySha256": "0bfddb4016c3bfe00e84ae88ca698b3a63c373b1ac2be5048577cdae0ee6b77a",
+  "configuredShellBinaryHashesMatch": true,
+  "executedDependencyCopiesVerified": 3,
+  "bannerClassInCurrentFullRun": {
+    "passed": 34,
+    "failed": 0
+  },
+  "allSevenAgentInputsMatch": true,
+  "focusedProof": "review6-focused-implementation.json"
+}

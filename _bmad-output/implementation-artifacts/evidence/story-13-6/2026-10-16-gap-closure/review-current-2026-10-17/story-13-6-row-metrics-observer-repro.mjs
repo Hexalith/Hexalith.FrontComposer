@@ -1,0 +1,24 @@
+import { chromium } from '/home/administrator/projects/hexalith/frontcomposer/tests/e2e/node_modules/playwright-core/index.mjs';
+import { readFileSync } from 'node:fs';
+const browser = await chromium.launch({headless:true});
+const page = await browser.newPage();
+await page.setContent('<div data-fc-datagrid="a" data-fc-datagrid-instance="a"><table><tbody><tr class="fluent-data-grid-row"><td>A</td></tr></tbody></table></div><div data-fc-datagrid="b" data-fc-datagrid-instance="b"><table><tbody><tr class="fluent-data-grid-row"><td>B</td></tr></tbody></table></div>');
+const src=readFileSync('/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-datagrid.js','utf8');
+await page.evaluate(async source => {
+ const mod=await import(URL.createObjectURL(new Blob([source],{type:'text/javascript'})));
+ window.calls=0;window.measures=0;
+ const native=Element.prototype.getBoundingClientRect;
+ Element.prototype.getBoundingClientRect=function(){if(this.matches?.('tr.fluent-data-grid-row'))window.measures++;return native.call(this);};
+ const ref={invokeMethodAsync(){window.calls++;return Promise.resolve();}};
+ mod.observeRowMetrics('a','a',ref,24);
+ window.mod=mod;window.ref=ref;
+},src);
+await page.waitForTimeout(150);
+console.log('one grid',await page.evaluate(()=>({calls,measures})));
+await page.evaluate(()=>{window.measures=0;window.calls=0;window.mod.observeRowMetrics('b','b',window.ref,24);});
+await page.waitForTimeout(300);
+console.log('two grids',await page.evaluate(()=>({calls,measures})));
+await page.evaluate(()=>{window.measures=0;window.calls=0;});
+await page.waitForTimeout(300);
+console.log('steady state',await page.evaluate(()=>({calls,measures})));
+await browser.close();

@@ -977,6 +977,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Orientation\", Orientation.Horizontal);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Wrap\", true);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"HorizontalGap\", \"8px\");");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"VerticalGap\", \"var(--spacingVerticalS)\");");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(builder =>");
             _ = sb.AppendLine("                {");
             _ = sb.AppendLine("                builder.OpenComponent<FluentButton>(seq++);");

@@ -1,0 +1,94 @@
+{
+  "results": [
+    {
+      "manifest": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/c2-focused-raw/raw-artifacts.json",
+      "archiveSha256": "ab98f3fc91beae1335fd8b14823e47fe767b172286098f74600719d85bb8bd99",
+      "bytes": 86209460,
+      "parts": 3,
+      "entries": 1906,
+      "uniqueBlobs": 700,
+      "verified": true
+    },
+    {
+      "manifest": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/c3-focused-raw/raw-artifacts.json",
+      "archiveSha256": "c6f3c2327208209c146c602d80851fc6409b581abd5632044b79143038667767",
+      "bytes": 171790398,
+      "parts": 6,
+      "entries": 1747,
+      "uniqueBlobs": 712,
+      "verified": true
+    },
+    {
+      "manifest": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/c4-focused-raw/raw-artifacts.json",
+      "archiveSha256": "58d316a2822cf1ba8152cbc5cc077230587e4ab76f0c3f0697015889854a46ed",
+      "bytes": 26557549,
+      "parts": 1,
+      "entries": 123,
+      "uniqueBlobs": 74,
+      "verified": true
+    },
+    {
+      "manifest": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/raw-artifacts.json",
+      "archiveSha256": "775d0a4696baccbfe395eed25926c4e65d6d264e0d00c954a03442985cb5f8ca",
+      "bytes": 75389390,
+      "parts": 3,
+      "entries": 2781,
+      "uniqueBlobs": 674,
+      "verified": true
+    },
+    {
+      "manifest": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/resumed-focused-raw/raw-artifacts.json",
+      "archiveSha256": "e39b192002f466e6753c4d702c109630826d4a3db7025af92d9cda15d615df54",
+      "bytes": 19190073,
+      "parts": 1,
+      "entries": 540,
+      "uniqueBlobs": 222,
+      "verified": true
+    },
+    {
+      "manifest": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/superseded-browser-raw/raw-artifacts.json",
+      "archiveSha256": "87d6557ea982a27a7014b283063d003c3683b999798d96e229fd5fdd3c89a95d",
+      "bytes": 166476181,
+      "parts": 5,
+      "entries": 1243,
+      "uniqueBlobs": 534,
+      "verified": true
+    },
+    {
+      "manifest": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/superseded-complete-review3/raw-artifacts.json",
+      "archiveSha256": "d18306ccbd3216306306b79257f9cec3c05ba28bbd6e27979541ff9fa49114a1",
+      "bytes": 75184534,
+      "parts": 3,
+      "entries": 2527,
+      "uniqueBlobs": 616,
+      "verified": true
+    },
+    {
+      "manifest": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/superseded-complete-review4/raw-artifacts.json",
+      "archiveSha256": "6011c58e219af1421b873db752c53395eac2f18d78eab63edab6a9ceaec5f433",
+      "bytes": 86693620,
+      "parts": 3,
+      "entries": 2838,
+      "uniqueBlobs": 698,
+      "verified": true
+    },
+    {
+      "manifest": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/superseded-complete-review4/source-snapshot/raw-artifacts.json",
+      "archiveSha256": "2b7a823bc841d0fc097fc5342bd2da322c22f97f5792ca792ee9ca40a7f53ab3",
+      "bytes": 333798,
+      "parts": 1,
+      "entries": 52,
+      "uniqueBlobs": 52,
+      "verified": true
+    },
+    {
+      "manifest": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/superseded-empty-paint/raw-artifacts.json",
+      "archiveSha256": "7905f0bca4c25305322fa76f4bae876070136028d7637089f56f64116247bcba",
+      "bytes": 66882403,
+      "parts": 2,
+      "entries": 525,
+      "uniqueBlobs": 263,
+      "verified": true
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+[
+  {
+    "command": [
+      "node",
+      "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/review-a11y-probes.mjs"
+    ],
+    "exitCode": 0,
+    "sourceIdentitySha256": "2915011cba97e654769c6b6a01c6376d716c106c6ed890bb4f7ac657683a5a18",
+    "log": "causal-final-review-a11y-probes.log"
+  },
+  {
+    "command": [
+      "node",
+      "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/review-more-probes.mjs"
+    ],
+    "exitCode": 0,
+    "sourceIdentitySha256": "2915011cba97e654769c6b6a01c6376d716c106c6ed890bb4f7ac657683a5a18",
+    "log": "causal-final-review-more-probes.log"
+  },
+  {
+    "command": [
+      "node",
+      "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/review-evenmore-probes.mjs"
+    ],
+    "exitCode": 0,
+    "sourceIdentitySha256": "2915011cba97e654769c6b6a01c6376d716c106c6ed890bb4f7ac657683a5a18",
+    "log": "causal-final-review-evenmore-probes.log"
+  },
+  {
+    "command": [
+      "node",
+      "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/review-row-metrics-probes.mjs"
+    ],
+    "exitCode": 0,
+    "sourceIdentitySha256": "2915011cba97e654769c6b6a01c6376d716c106c6ed890bb4f7ac657683a5a18",
+    "log": "causal-final-review-row-metrics-probes.log"
+  },
+  {
+    "command": [
+      "node",
+      "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/story-13-6-row-metrics-observer-repro.mjs"
+    ],
+    "exitCode": 0,
+    "sourceIdentitySha256": "2915011cba97e654769c6b6a01c6376d716c106c6ed890bb4f7ac657683a5a18",
+    "log": "causal-final-story-13-6-row-metrics-observer-repro.log"
+  }
+]

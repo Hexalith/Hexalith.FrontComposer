@@ -1,0 +1,976 @@
+{
+  "config": {
+    "argv": [
+      "/home/administrator/.nvm/versions/node/v26.4.0/bin/node",
+      "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/node_modules/.bin/playwright",
+      "test",
+      "specs/responsive-accessibility.spec.ts",
+      "--grep",
+      "review measurement regressions",
+      "--workers=2",
+      "--retries=0"
+    ],
+    "configFile": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/playwright.config.ts",
+    "rootDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "a11yEvidenceRunId": "5bcac6a0-7107-4940-87e0-29e43e0156e9",
+      "testHostOptions": {
+        "ProjectionReconnectedNoticeDurationMs": 30000
+      },
+      "actualWorkers": 2
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/tmp/story-13-6-review-checks/geometry/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "5bcac6a0-7107-4940-87e0-29e43e0156e9",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 2
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/tmp/story-13-6-review-checks/geometry/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "5bcac6a0-7107-4940-87e0-29e43e0156e9",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 2
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/tmp/story-13-6-review-checks/geometry/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "5bcac6a0-7107-4940-87e0-29e43e0156e9",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 2
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "outputFolder": "/tmp/story-13-6-review-checks/geometry/html",
+          "open": "never"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "/tmp/story-13-6-review-checks/geometry/junit.xml"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/tmp/story-13-6-review-checks/geometry/playwright.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "none",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 2,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "responsive-accessibility.spec.ts",
+      "file": "responsive-accessibility.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "review measurement regressions",
+          "file": "responsive-accessibility.spec.ts",
+          "line": 711,
+          "column": 6,
+          "specs": [
+            {
+              "title": "G01 permanent shadows and inset decoration cannot establish or mask focus",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1868,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:24.874Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-e382599ea00e4658ae98",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 712,
+              "column": 3
+            },
+            {
+              "title": "G02 same-level later paint and nested stacking contexts can occlude an outer ring",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1602,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:24.758Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-143995c28634321d0bab",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 733,
+              "column": 3
+            },
+            {
+              "title": "G03 transparent supported CSS colors are absent focus paint",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 355,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:26.962Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-d9e67ef3eaccb3b71349",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 743,
+              "column": 3
+            },
+            {
+              "title": "G04 focus clipping and masks fail closed on the target and its ancestry",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 435,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:27.213Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-c75741ef93107ee25157",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 751,
+              "column": 3
+            },
+            {
+              "title": "G05 SVG fill and stroke opacity contribute to effective contrast",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 248,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:27.341Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-4288138acbbbb1435357",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 759,
+              "column": 3
+            },
+            {
+              "title": "G06 visible clipped low-contrast text cannot disappear from the inventory",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 223,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:27.605Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-ffaaebabafb0f48a6d82",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 766,
+              "column": 3
+            },
+            {
+              "title": "G12 inward outlines contrast with the control paint",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 204,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:27.658Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-fbf7670f84568ade6e2a",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 773,
+              "column": 3
+            },
+            {
+              "title": "G13 zero and negative spread shadows without offset or blur draw no outer indicator",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 236,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:27.840Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-36132c5510a16dd2e14f",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 779,
+              "column": 3
+            },
+            {
+              "title": "G01 permanent shadows and inset decoration cannot establish or mask focus",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1764,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:28.398Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-5f982982bf164f5e57cd",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 712,
+              "column": 3
+            },
+            {
+              "title": "G02 same-level later paint and nested stacking contexts can occlude an outer ring",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1162,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:28.437Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-88e716f742cd29c71dd8",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 733,
+              "column": 3
+            },
+            {
+              "title": "G03 transparent supported CSS colors are absent focus paint",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 361,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:30.667Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-66953a4305b8e2664b06",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 743,
+              "column": 3
+            },
+            {
+              "title": "G04 focus clipping and masks fail closed on the target and its ancestry",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 544,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:30.925Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-98fad242797374db0572",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 751,
+              "column": 3
+            },
+            {
+              "title": "G05 SVG fill and stroke opacity contribute to effective contrast",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 344,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:31.048Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-7b8388c09d629fc5511f",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 759,
+              "column": 3
+            },
+            {
+              "title": "G06 visible clipped low-contrast text cannot disappear from the inventory",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 354,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:31.401Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-446663ce7e2d2ed1e00f",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 766,
+              "column": 3
+            },
+            {
+              "title": "G12 inward outlines contrast with the control paint",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 333,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:31.476Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-3ced34c10af02c54d03f",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 773,
+              "column": 3
+            },
+            {
+              "title": "G13 zero and negative spread shadows without offset or blur draw no outer indicator",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 413,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:31.761Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-1088e6fc1b5644dcb838",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 779,
+              "column": 3
+            },
+            {
+              "title": "G01 permanent shadows and inset decoration cannot establish or mask focus",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1067,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:32.505Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-0775dce3576f08528034",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 712,
+              "column": 3
+            },
+            {
+              "title": "G02 same-level later paint and nested stacking contexts can occlude an outer ring",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 482,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:32.894Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-c3fd0ae2d65a1908de66",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 733,
+              "column": 3
+            },
+            {
+              "title": "G03 transparent supported CSS colors are absent focus paint",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 426,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:33.464Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-a19df41324b1d0e2dd3e",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 743,
+              "column": 3
+            },
+            {
+              "title": "G04 focus clipping and masks fail closed on the target and its ancestry",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 696,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:33.792Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-fec3070f31aada8c11f4",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 751,
+              "column": 3
+            },
+            {
+              "title": "G05 SVG fill and stroke opacity contribute to effective contrast",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 442,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:33.898Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-0c39d98d4ee66f62651b",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 759,
+              "column": 3
+            },
+            {
+              "title": "G06 visible clipped low-contrast text cannot disappear from the inventory",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 416,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:34.346Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-8fb0358836bd5d888a3a",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 766,
+              "column": 3
+            },
+            {
+              "title": "G12 inward outlines contrast with the control paint",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 371,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:34.496Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-cd0a9c31aaad3cacbf6e",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 773,
+              "column": 3
+            },
+            {
+              "title": "G13 zero and negative spread shadows without offset or blur draw no outer indicator",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 503,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-17T14:57:34.770Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "91a1faa62bcf8b254d39-9e2d95c8876321c38b85",
+              "file": "responsive-accessibility.spec.ts",
+              "line": 779,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-17T14:57:24.017Z",
+    "duration": 11328.145,
+    "expected": 24,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

@@ -1,0 +1,109 @@
+
+Running 6 tests using 2 workers
+
+(node:15163) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15147) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix light › generated zero-field wrapped feedback clears the complete trigger focus ring (3.9s)
+  ✓  2 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix dark › generated zero-field wrapped feedback clears the complete trigger focus ring (3.9s)
+(node:18190) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18211) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 [firefox] › tests/e2e/specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix light › generated zero-field wrapped feedback clears the complete trigger focus ring (4.7s)
+(node:22155) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  4 [firefox] › tests/e2e/specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix dark › generated zero-field wrapped feedback clears the complete trigger focus ring (5.5s)
+(node:22318) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  5 [webkit] › tests/e2e/specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix light › generated zero-field wrapped feedback clears the complete trigger focus ring (3.0s)
+  ✓  6 [webkit] › tests/e2e/specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix dark › generated zero-field wrapped feedback clears the complete trigger focus ring (3.0s)
+
+
+  1) [firefox] › tests/e2e/specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix light › generated zero-field wrapped feedback clears the complete trigger focus ring 
+
+    Error: The retained trigger and its focus ring remain fully visible
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "focused target has no visible focus indicator",
+    + ]
+
+      220 |       expect(layout.top, 'Feedback is on a wrapped row below its trigger').toBeGreaterThanOrEqual(triggerBottom);
+      221 |       expect(layout.top, 'Wrapped feedback clears the complete exterior focus ring').toBeGreaterThan(geometry.box.bottom);
+    > 222 |       expect(geometry.failures, 'The retained trigger and its focus ring remain fully visible').toEqual([]);
+          |                                                                                                 ^
+      223 |       await info.attach(`zero-field-wrapped-feedback-${theme}`, { body: JSON.stringify({ theme, triggerBottom, feedback: layout, focus: geometry }), contentType: 'application/json' });
+      224 |     });
+      225 |
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:222:97
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-zero-field-wrap-after/accessibility-state-matrix-a985b-complete-trigger-focus-ring-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-zero-field-wrap-after/accessibility-state-matrix-a985b-complete-trigger-focus-ring-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-zero-field-wrap-after/accessibility-state-matrix-a985b-complete-trigger-focus-ring-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-zero-field-wrap-after/accessibility-state-matrix-a985b-complete-trigger-focus-ring-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-zero-field-wrap-after/accessibility-state-matrix-a985b-complete-trigger-focus-ring-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [firefox] › tests/e2e/specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix dark › generated zero-field wrapped feedback clears the complete trigger focus ring 
+
+    Error: The retained trigger and its focus ring remain fully visible
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "focused target has no visible focus indicator",
+    + ]
+
+      220 |       expect(layout.top, 'Feedback is on a wrapped row below its trigger').toBeGreaterThanOrEqual(triggerBottom);
+      221 |       expect(layout.top, 'Wrapped feedback clears the complete exterior focus ring').toBeGreaterThan(geometry.box.bottom);
+    > 222 |       expect(geometry.failures, 'The retained trigger and its focus ring remain fully visible').toEqual([]);
+          |                                                                                                 ^
+      223 |       await info.attach(`zero-field-wrapped-feedback-${theme}`, { body: JSON.stringify({ theme, triggerBottom, feedback: layout, focus: geometry }), contentType: 'application/json' });
+      224 |     });
+      225 |
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:222:97
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-zero-field-wrap-after/accessibility-state-matrix-f23f4-complete-trigger-focus-ring-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-zero-field-wrap-after/accessibility-state-matrix-f23f4-complete-trigger-focus-ring-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../tmp/fc-zero-field-wrap-after/accessibility-state-matrix-f23f4-complete-trigger-focus-ring-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/fc-zero-field-wrap-after/accessibility-state-matrix-f23f4-complete-trigger-focus-ring-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../tmp/fc-zero-field-wrap-after/accessibility-state-matrix-f23f4-complete-trigger-focus-ring-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [firefox] › tests/e2e/specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix light › generated zero-field wrapped feedback clears the complete trigger focus ring 
+    [firefox] › tests/e2e/specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix dark › generated zero-field wrapped feedback clears the complete trigger focus ring 
+  4 passed (15.6s)

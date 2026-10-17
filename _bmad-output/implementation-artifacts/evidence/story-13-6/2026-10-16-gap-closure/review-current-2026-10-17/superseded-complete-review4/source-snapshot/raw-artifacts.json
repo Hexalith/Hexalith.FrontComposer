@@ -1,0 +1,330 @@
+{
+  "format": "content-addressed-tar-gzip-v1",
+  "archiveSha256": "2b7a823bc841d0fc097fc5342bd2da322c22f97f5792ca792ee9ca40a7f53ab3",
+  "parts": [
+    {
+      "file": "raw-artifacts.2b7a823bc841d0fc097fc5342bd2da322c22f97f5792ca792ee9ca40a7f53ab3.tar.gz.part-01",
+      "bytes": 333798,
+      "sha256": "2b7a823bc841d0fc097fc5342bd2da322c22f97f5792ca792ee9ca40a7f53ab3"
+    }
+  ],
+  "roots": {
+    "source-tree": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/superseded-complete-review4/source-tree"
+  },
+  "entries": [
+    {
+      "tree": "source-tree",
+      "path": ".gitattributes",
+      "sha256": "da821385d589dff7561c8b51bbfe2619d8ac126db292f12e70f78ec0cf041449",
+      "bytes": 2613
+    },
+    {
+      "tree": "source-tree",
+      "path": ".github/workflows/quality.yml",
+      "sha256": "64170d33e04c3569e5b32c6c576536e709f0d4649f1b51754f8bebd9bbe816f3",
+      "bytes": 60800
+    },
+    {
+      "tree": "source-tree",
+      "path": ".gitignore",
+      "sha256": "f187f362ee040945db0ce875540626b509279dd25da27dbd0a2627345a3fc2e4",
+      "bytes": 9336
+    },
+    {
+      "tree": "source-tree",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/audit.mjs",
+      "sha256": "d00da8f84f21c6b5a802e767a19b3dcdd894cb2842c85356cbd40c49b5b4986b",
+      "bytes": 9930
+    },
+    {
+      "tree": "source-tree",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/audit.mjs",
+      "sha256": "cf247411d9a5ae7fb9c090b86167754faa66b998f1d56e7ba1184d951c84f597",
+      "bytes": 9965
+    },
+    {
+      "tree": "source-tree",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/evidence_tools_test.py",
+      "sha256": "d6c2e0ef9418f0ec4c3cb770eff911b4f50ce411af0aca00b30a71a0f6f2bfbf",
+      "bytes": 6310
+    },
+    {
+      "tree": "source-tree",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/exact-red/baseline-helper.ts",
+      "sha256": "fcda1eb553e9f7faf89e8615340efd411c46fdc6eee326ca79ece50dbd827895",
+      "bytes": 86615
+    },
+    {
+      "tree": "source-tree",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/exact-red/clipping.spec.ts",
+      "sha256": "e6e0b2a1b5af143a1e2e513024d44122fb0991eff1f8b4fdaa079b1ea9ade17a",
+      "bytes": 2630
+    },
+    {
+      "tree": "source-tree",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/exact-red/playwright.config.ts",
+      "sha256": "7a9244d378553ab029c5317444ce7bc1e73a8fea4e7886e745b8e782a7c0d5be",
+      "bytes": 197
+    },
+    {
+      "tree": "source-tree",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/pack.py",
+      "sha256": "e42747b44590cce12c5a30989a0000ed190b04240975641f47c502c13ec9968f",
+      "bytes": 4142
+    },
+    {
+      "tree": "source-tree",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/real-paint-probe-final.mjs",
+      "sha256": "f587541fb34d99e2e2fbe6177ce4f97f6ec620d70d7e378a6b39f967b1cac040",
+      "bytes": 2896
+    },
+    {
+      "tree": "source-tree",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/real-paint-probe-first.mjs",
+      "sha256": "982a6426784a7d016846bd44060984a69bd1a4f5b27ac4987003b48957aca097",
+      "bytes": 2872
+    },
+    {
+      "tree": "source-tree",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/real-paint-probe.mjs",
+      "sha256": "08902d9a8c1b1a6c1d5fdcf6ae83e9d264155de8c31781285a08842f3d4af8d7",
+      "bytes": 2890
+    },
+    {
+      "tree": "source-tree",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/restore.py",
+      "sha256": "e1ef128d942874be095c32434d8c8781717969a604a726c199e3e12e576ba48f",
+      "bytes": 2607
+    },
+    {
+      "tree": "source-tree",
+      "path": "samples/Counter/Counter.Specimens/AccessibilityScenarioControls.razor",
+      "sha256": "ee0ddbaeb3d13e0d06c4baccef70e51b5cd61e20ce82e43ff2c8f4fad65e5449",
+      "bytes": 9994
+    },
+    {
+      "tree": "source-tree",
+      "path": "samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor",
+      "sha256": "a0a7aa5ca314fb29ab22e9c0eced01114ce30a3e698ebced46fcb18a09362def",
+      "bytes": 15977
+    },
+    {
+      "tree": "source-tree",
+      "path": "samples/Counter/Counter.Web/AccessibilitySpecimenSeams.cs",
+      "sha256": "7e2120ca14108c1dd21f1dc6e387edb260e8a067786a071a77c00e4f43234c57",
+      "bytes": 2637
+    },
+    {
+      "tree": "source-tree",
+      "path": "samples/Counter/Counter.Web/AccessibilitySpecimenUserContextAccessor.cs",
+      "sha256": "607395d2df3a00952528f20e3b0a37c9cbd426e31e7b7ecf7988b46d5e88a911",
+      "bytes": 437
+    },
+    {
+      "tree": "source-tree",
+      "path": "samples/Counter/Counter.Web/Program.cs",
+      "sha256": "5db6b5befac65e14cb07f5aca5db80e146cfa3cd7925229f434f37ae67e99449",
+      "bytes": 12346
+    },
+    {
+      "tree": "source-tree",
+      "path": "src/Hexalith.FrontComposer.AppHost/Program.cs",
+      "sha256": "a7857536febb9762bedb0af5e8857bdece2220560c6386630eb559894fea24ec",
+      "bytes": 14886
+    },
+    {
+      "tree": "source-tree",
+      "path": "src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs",
+      "sha256": "55180a63922597cb4ce7ee3a755e8b1110003d4e72949a3c67a301b8994d9b55",
+      "bytes": 18631
+    },
+    {
+      "tree": "source-tree",
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Layout/FcAccountMenu.razor",
+      "sha256": "38ec540f1b7a5307f4de157f5c9e56624fc01f05bee673e6001db32dcedbc804",
+      "bytes": 3316
+    },
+    {
+      "tree": "source-tree",
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Layout/FcThemeToggle.razor",
+      "sha256": "fbaccfb2dd8122e3602b36cbf62e462c3833f6a7d17f140fd330759f02d89501",
+      "bytes": 2141
+    },
+    {
+      "tree": "source-tree",
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor",
+      "sha256": "281a891d89de384c0b0c59f372cf629840b7b62a940c4d1378ddfe86aacf49df",
+      "bytes": 17333
+    },
+    {
+      "tree": "source-tree",
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Lifecycle/FcLifecycleWrapper.razor.css",
+      "sha256": "3d058216afb8021926f5b174dfaed7914bb07a1367fe4e7b06c15f4b11332eb4",
+      "bytes": 2676
+    },
+    {
+      "tree": "source-tree",
+      "path": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+      "sha256": "f7ad9292f76072f7c6a0ca5cf941b72c83ea0ba321ea4bbe49047399177298c0",
+      "bytes": 25351
+    },
+    {
+      "tree": "source-tree",
+      "path": "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-datagrid.js",
+      "sha256": "c8fb71f74172f2b49af7c0ae2291242b4a5e0e58241409526c01bb59e03c7c97",
+      "bytes": 13628
+    },
+    {
+      "tree": "source-tree",
+      "path": "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js",
+      "sha256": "6b47d8da48d808e20ac72bb337b2426306e54afd664447607e23b35208b98b8a",
+      "bytes": 50508
+    },
+    {
+      "tree": "source-tree",
+      "path": "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs",
+      "sha256": "5630d4b232587253203623f0364ca1ed8388a695599a213f2a44e0dc035f96ab",
+      "bytes": 212023
+    },
+    {
+      "tree": "source-tree",
+      "path": "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs",
+      "sha256": "f35e51925679715655613e51240aa4f712e02275a10fecb3a9a9118248ba6294",
+      "bytes": 91520
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs",
+      "sha256": "44f2af44e1cd393bde13ac0d5a5363457ea630cd32dbd9c007e34c678e20d89b",
+      "bytes": 38180
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/RecordingHiddenDetailFocusModule.cs",
+      "sha256": "144f1f38d8d42bc0ab2d23db51f7ef10b400ab396ba67135fa87a496cef179b9",
+      "bytes": 2093
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs",
+      "sha256": "61f231c3cf4e5c4f2249a780cb612d4b9356fa9f3153c21466a3023c76678e42",
+      "bytes": 43448
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs",
+      "sha256": "da3cc4d240911416662afd67ab76bbee3e88732943535d609030884dc421981e",
+      "bytes": 128239
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs",
+      "sha256": "ca9529810a5bf70ba3258f1999631ce1032f0ceba0bdc26c0d4e7a3f99c31ad1",
+      "bytes": 15303
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreClientTests.cs",
+      "sha256": "b4f392ccebd333682cdfe6a5a571971c285c594ec9aaf4d31b09d42401a5a48f",
+      "bytes": 74150
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/UncooperativeAcceptedContent.cs",
+      "sha256": "b5cfbaf03c545636783c0aaaeabd504d4fef27df4458709455f2db0acbcb5add",
+      "bytes": 2202
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs",
+      "sha256": "75975a802c1b8c34dfa003b81ad4cb65603c46b7c0ea3a86a8ac7b8d0d9f6196",
+      "bytes": 8269
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Samples/AccessibilitySpecimenGateTests.cs",
+      "sha256": "750a28b497b6784f6e0e520a431a3ba26f0fc506e82a384f98a51615891e4859",
+      "bytes": 4520
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs",
+      "sha256": "fff0f5dec08202470fcf1545767edc4269980ad094b88c1ac2dd33bc75ec0542",
+      "bytes": 67003
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt",
+      "sha256": "6c9686134b8f5a4e08307994180a2b9c137bbbdd2b620a58bfedc456265d05db",
+      "bytes": 82108
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt",
+      "sha256": "55d6ee48a7a84e9bf370ea129f63c4411a9db7c6a80de6561dcbe4e1293e5370",
+      "bytes": 82008
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs",
+      "sha256": "d63e464bb8e66b4b2387c94122bc77ba3441a9976268b504909347a6dc3f58e8",
+      "bytes": 93981
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.Renderer_ZeroFields_InlineSnapshot.verified.txt",
+      "sha256": "366e3dad0b090fcc676535e15c374f568b40ba8efd2232e77219571bca9e3f7c",
+      "bytes": 25330
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/e2e/helpers/responsive-accessibility.ts",
+      "sha256": "9e296d8434cba6fa0c274b5e69050a53048efd9530a28d211a78d8aa567b950e",
+      "bytes": 129976
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/e2e/playwright.config.ts",
+      "sha256": "09f72318489cc63fc9c50f2c5bec76f054f051e2c3f1c49af9a76882eb4dea45",
+      "bytes": 2893
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/e2e/scripts/a11y-state-evidence.mjs",
+      "sha256": "60c16b4f5b3ab4362e3006d7656694e334a4d339a8135a74af6ba2d20737120e",
+      "bytes": 14553
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/e2e/scripts/a11y-state-evidence.test.mjs",
+      "sha256": "dcb1c149a52be5f58281b353c0dc721db0a686b921a74c72ea725cf8f5079b12",
+      "bytes": 14741
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/e2e/scripts/validate-a11y-artifacts.mjs",
+      "sha256": "67e2ebb78d5485e4807fd7c165d49013b0da0b06c2a558e994e0955fc650a194",
+      "bytes": 4719
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/e2e/specs/accessibility-state-matrix.spec.ts",
+      "sha256": "874f03cf95d1912c0740c3cb2b678a673e31f7b9c0cd0b78cff166d787c6d88c",
+      "bytes": 63293
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/e2e/specs/responsive-accessibility.spec.ts",
+      "sha256": "d59d8dd8883ede400ef89053f86498400801da3c54a222d93e6514b23ea8e4e9",
+      "bytes": 143817
+    },
+    {
+      "tree": "source-tree",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts",
+      "sha256": "b4e96be5bc5eb771f088db11f92b4854e933806a4d42cd5083b1a7e1ad1d6133",
+      "bytes": 32768
+    }
+  ],
+  "uniqueBlobCount": 52,
+  "note": "All declared roots validated before publication. Every byte is retained; failed and interrupted runs remain separate trees."
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "case": "specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium",
+    "actual": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/frontcomposer-type-dark-compact-actual.png",
+    "expected": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/frontcomposer-type-dark-compact-expected.png",
+    "actualSize": [
+      1280,
+      3819
+    ],
+    "expectedSize": [
+      1280,
+      3818
+    ],
+    "bodyMismatchedPixelsBefore": 267999,
+    "bodyMismatchedPixelsAfterRemovingActualHeaderExtraRow": 0
+  },
+  {
+    "case": "specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium",
+    "actual": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/frontcomposer-type-dark-roomy-actual.png",
+    "expected": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/frontcomposer-type-dark-roomy-expected.png",
+    "actualSize": [
+      1280,
+      3939
+    ],
+    "expectedSize": [
+      1280,
+      3938
+    ],
+    "bodyMismatchedPixelsBefore": 268981,
+    "bodyMismatchedPixelsAfterRemovingActualHeaderExtraRow": 10
+  },
+  {
+    "case": "specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium",
+    "actual": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/frontcomposer-type-dark-comfortable-actual.png",
+    "expected": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/frontcomposer-type-dark-comfortable-expected.png",
+    "actualSize": [
+      1280,
+      3879
+    ],
+    "expectedSize": [
+      1280,
+      3878
+    ],
+    "bodyMismatchedPixelsBefore": 267711,
+    "bodyMismatchedPixelsAfterRemovingActualHeaderExtraRow": 0
+  },
+  {
+    "case": "specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium",
+    "actual": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/frontcomposer-type-light-roomy-actual.png",
+    "expected": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/frontcomposer-type-light-roomy-expected.png",
+    "actualSize": [
+      1280,
+      3939
+    ],
+    "expectedSize": [
+      1280,
+      3938
+    ],
+    "bodyMismatchedPixelsBefore": 271312,
+    "bodyMismatchedPixelsAfterRemovingActualHeaderExtraRow": 10
+  },
+  {
+    "case": "specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium",
+    "actual": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/frontcomposer-type-light-comfortable-actual.png",
+    "expected": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/frontcomposer-type-light-comfortable-expected.png",
+    "actualSize": [
+      1280,
+      3879
+    ],
+    "expectedSize": [
+      1280,
+      3878
+    ],
+    "bodyMismatchedPixelsBefore": 270062,
+    "bodyMismatchedPixelsAfterRemovingActualHeaderExtraRow": 0
+  },
+  {
+    "case": "specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium",
+    "actual": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/frontcomposer-type-light-compact-actual.png",
+    "expected": "/tmp/story-13-6-review4-final-browser/test-results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/frontcomposer-type-light-compact-expected.png",
+    "actualSize": [
+      1280,
+      3819
+    ],
+    "expectedSize": [
+      1280,
+      3818
+    ],
+    "bodyMismatchedPixelsBefore": 270324,
+    "bodyMismatchedPixelsAfterRemovingActualHeaderExtraRow": 0
+  }
+]

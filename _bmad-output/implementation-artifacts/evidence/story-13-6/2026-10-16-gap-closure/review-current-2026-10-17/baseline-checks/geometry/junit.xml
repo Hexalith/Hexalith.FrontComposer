@@ -1,0 +1,56 @@
+<testsuites id="" name="" tests="24" failures="0" skipped="0" errors="0" time="11.328145000000001">
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-17T14:57:24.213Z" hostname="chromium" tests="8" failures="0" skipped="0" time="5.171" errors="0">
+<testcase name="review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus" classname="responsive-accessibility.spec.ts" time="1.868">
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="1.602">
+</testcase>
+<testcase name="review measurement regressions › G03 transparent supported CSS colors are absent focus paint" classname="responsive-accessibility.spec.ts" time="0.355">
+</testcase>
+<testcase name="review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry" classname="responsive-accessibility.spec.ts" time="0.435">
+</testcase>
+<testcase name="review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast" classname="responsive-accessibility.spec.ts" time="0.248">
+</testcase>
+<testcase name="review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory" classname="responsive-accessibility.spec.ts" time="0.223">
+</testcase>
+<testcase name="review measurement regressions › G12 inward outlines contrast with the control paint" classname="responsive-accessibility.spec.ts" time="0.204">
+</testcase>
+<testcase name="review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator" classname="responsive-accessibility.spec.ts" time="0.236">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-17T14:57:24.213Z" hostname="firefox" tests="8" failures="0" skipped="0" time="5.275" errors="0">
+<testcase name="review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus" classname="responsive-accessibility.spec.ts" time="1.764">
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="1.162">
+</testcase>
+<testcase name="review measurement regressions › G03 transparent supported CSS colors are absent focus paint" classname="responsive-accessibility.spec.ts" time="0.361">
+</testcase>
+<testcase name="review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry" classname="responsive-accessibility.spec.ts" time="0.544">
+</testcase>
+<testcase name="review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast" classname="responsive-accessibility.spec.ts" time="0.344">
+</testcase>
+<testcase name="review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory" classname="responsive-accessibility.spec.ts" time="0.354">
+</testcase>
+<testcase name="review measurement regressions › G12 inward outlines contrast with the control paint" classname="responsive-accessibility.spec.ts" time="0.333">
+</testcase>
+<testcase name="review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator" classname="responsive-accessibility.spec.ts" time="0.413">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-17T14:57:24.213Z" hostname="webkit" tests="8" failures="0" skipped="0" time="4.403" errors="0">
+<testcase name="review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus" classname="responsive-accessibility.spec.ts" time="1.067">
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="0.482">
+</testcase>
+<testcase name="review measurement regressions › G03 transparent supported CSS colors are absent focus paint" classname="responsive-accessibility.spec.ts" time="0.426">
+</testcase>
+<testcase name="review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry" classname="responsive-accessibility.spec.ts" time="0.696">
+</testcase>
+<testcase name="review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast" classname="responsive-accessibility.spec.ts" time="0.442">
+</testcase>
+<testcase name="review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory" classname="responsive-accessibility.spec.ts" time="0.416">
+</testcase>
+<testcase name="review measurement regressions › G12 inward outlines contrast with the control paint" classname="responsive-accessibility.spec.ts" time="0.371">
+</testcase>
+<testcase name="review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator" classname="responsive-accessibility.spec.ts" time="0.503">
+</testcase>
+</testsuite>
+</testsuites>

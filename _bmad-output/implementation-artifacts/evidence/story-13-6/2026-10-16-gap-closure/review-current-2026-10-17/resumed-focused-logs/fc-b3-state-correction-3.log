@@ -1,0 +1,32 @@
+
+Running 23 tests using 2 workers
+
+(node:69702) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:69690) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › home: composed text, targets, current-state and forced-color cues (2.8s)
+  ✓   2 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces (6.8s)
+  ✓   3 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces (7.0s)
+  ✓   4 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues (3.0s)
+  ✓   6 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:386:1 › unrelated controls cannot mask failed focus or boundary contrast (252ms)
+  ✓   5 [chromium] › tests/e2e/specs/accessibility-state-matrix.spec.ts:314:1 › contrast measurement rejects empty, low-contrast, unpainted and unsupported samples (393ms)
+  ✓   7 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1379:1 › B1 native value glyphs cannot be vertically clipped inside a short control (171ms)
+  ✓   8 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1386:38 › B1 text clips follow shadow composed ancestors (181ms)
+  ✓   9 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1386:38 › B1 text clips follow slotted composed ancestors (173ms)
+  ✓  10 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1397:1 › B1 explicit inset text clips are measured and nested scrollports retain their visible portion (185ms)
+  ✓  11 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1406:1 › B2 decoded replaced paint covering text requires pixel evidence (209ms)
+  ✓  12 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1414:1 › B2 positioned opaque pseudo paint cannot certify the text it covers (183ms)
+  ✓  14 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1429:1 › B3 inventories pointer-active menu checkbox and radio roles beside passing targets (169ms)
+  ✓  13 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1421:1 › B2 exterior focus contrast cannot borrow white behind unrelated ring-area paint (215ms)
+  ✓  15 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1438:1 › B3 aria-hidden does not hide a visible pointer-active control from target evidence (169ms)
+  ✓  16 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1445:1 › B3 minimums and equivalent exceptions use reachable clipped target rectangles (174ms)
+  ✓  17 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1456:1 › B3 a fully clipped essential target remains an explicit failure (143ms)
+  ✓  18 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1462:1 › B4 nontranslation transforms require actual indicator-envelope evidence while translation passes (244ms)
+  ✓  19 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1472:1 › B5 query navigation cancels old detail captures before replacement recovery (794ms)
+  ✓  21 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1529:58 › B2 exterior box-shadow contrast checks the actual painted ring adjacency (237ms)
+  ✓  20 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1504:1 › B5 real co-mounted logical owners recover the affected physical projection once (987ms)
+  ✓  22 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1529:58 › B2 exterior pseudo border contrast checks the actual painted ring adjacency (219ms)
+  ✓  23 [chromium] › tests/e2e/specs/responsive-accessibility.spec.ts:1538:1 › B3 offscreen skip links stay excluded while ordinary page and scrollport controls remain reachable (174ms)
+
+  23 passed (13.4s)
