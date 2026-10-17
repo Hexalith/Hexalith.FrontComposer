@@ -1,0 +1,10 @@
+test_missing_input_does_not_replace_existing_evidence (__main__.EvidenceToolsTests.test_missing_input_does_not_replace_existing_evidence) ... ok
+test_optimized_restore_preserves_bytes (__main__.EvidenceToolsTests.test_optimized_restore_preserves_bytes) ... ok
+test_optimized_restore_rejects_corrupted_part (__main__.EvidenceToolsTests.test_optimized_restore_rejects_corrupted_part) ... ok
+test_optimized_restore_rejects_entry_size_and_path_escape (__main__.EvidenceToolsTests.test_optimized_restore_rejects_entry_size_and_path_escape) ... ok
+test_portable_audit_projects_complete_report_and_returns_failure (__main__.EvidenceToolsTests.test_portable_audit_projects_complete_report_and_returns_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 2.276s
+
+OK

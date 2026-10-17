@@ -1,0 +1,33 @@
+{
+  "eventstore": {
+    "counts": {
+      "total": 69,
+      "passed": 69,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "failures": []
+  },
+  "shell": {
+    "counts": {
+      "total": 3695,
+      "passed": 3693,
+      "failed": 2,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "failures": [
+      {
+        "name": "Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests.Fluent_package_versions_are_v5_only_and_icons_match_components",
+        "message": "Shouldly.ShouldAssertException : mismatchedV5Pins\n    should be empty but had\n2\n    items and was\n[\\\"references/Hexalith.Builds/Props/Directory.Packages.props: Microsoft.FluentUI.AspNetCore.Components 5.0.1\\\", \\\"references/Hexalith.Builds/Props/Directory.Packages.props: Microsoft.FluentUI.AspNetCore.Components.Icons 5.0.1\\\"]\n\nAdditional Info:\n    Fluent UI component and icon packages must stay on the same validated v5 pin 5.0.0. Mismatches: references/Hexalith.Builds/Props/Directory.Packages.props: Microsoft.FluentUI.AspNetCore.Components 5.0.1; references/Hexalith.Builds/Props/Directory.Packages.props: Microsoft.FluentUI.AspNetCore.Components.Icons 5.0.1"
+      },
+      {
+        "name": "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+        "message": "Shouldly.ShouldAssertException : result.Ok\n    should be\nTrue\n    but was\nFalse\n\nAdditional Info:\n    github.com/hexalith/hexalith.frontcomposer@489f3ad4cbf09965c675d7bf2007c6a8b7a0861e -> references/Hexalith.Builds -> github.com/hexalith/hexalith.builds@4f53d9f37c5b86cfd43fbcc8fa5dd4df19b84c77: Microsoft.Extensions.Localization expected version '10.0.12', found '10.0.13'"
+      }
+    ]
+  }
+}

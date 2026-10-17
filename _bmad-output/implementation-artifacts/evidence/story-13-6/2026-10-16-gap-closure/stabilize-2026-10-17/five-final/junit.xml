@@ -1,0 +1,87 @@
+<testsuites id="" name="" tests="10" failures="0" skipped="0" errors="0" time="208.023406">
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-17T08:55:43.443Z" hostname="firefox" tests="2" failures="0" skipped="0" time="48.213" errors="0">
+<testcase name="contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap" classname="accessibility-state-matrix.spec.ts" time="5.318">
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in dark" classname="accessibility-state-matrix.spec.ts" time="42.895">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-shell-chrome-dark-e58a85a447909ce9e334fa53857b1986793d0242.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-theme-menu-dark-797317c075c6ff3a1a183b489c239cdb00b6c4a9.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-rail-labeled-dark-c4707602fe677b8d81ee287a1b63c12a07a7b9f3.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-rail-icons-dark-86afd635e84fc4ab723dd508b6f0dc9240a52daf.json]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-17T08:55:43.443Z" hostname="firefox" tests="2" failures="0" skipped="0" time="35.892" errors="0">
+<testcase name="contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap" classname="accessibility-state-matrix.spec.ts" time="3.01">
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in dark" classname="accessibility-state-matrix.spec.ts" time="32.882">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-shell-chrome-dark-f51656c6a04d275394775ac77007e4ec70868ef8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-theme-menu-dark-0f08d413994540f47f60819d6c57b808f45c6f4b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-rail-labeled-dark-20116960dcf285489024cfd18c7de1be437c1c4f.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-rail-icons-dark-4591cb6b18f9efe700117a938f3019be29a5973d.json]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-17T08:55:43.443Z" hostname="firefox" tests="2" failures="0" skipped="0" time="33.56" errors="0">
+<testcase name="contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap" classname="accessibility-state-matrix.spec.ts" time="2.929">
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in dark" classname="accessibility-state-matrix.spec.ts" time="30.631">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat2/attachments/state-shell-chrome-dark-55c045a43807a73e30e9373011ff34e8bd3de416.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat2/attachments/state-theme-menu-dark-c6263b33f77e19d127633382ab1b5bff215a4874.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat2/attachments/state-rail-labeled-dark-f707bb8697e5a4cd5b8832acd6e94ec12e6b01c5.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat2/attachments/state-rail-icons-dark-ac1b20642fb52cb04136dd58fe30fb5b9977ee1b.json]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-17T08:55:43.443Z" hostname="firefox" tests="2" failures="0" skipped="0" time="36.805" errors="0">
+<testcase name="contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap" classname="accessibility-state-matrix.spec.ts" time="2.848">
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in dark" classname="accessibility-state-matrix.spec.ts" time="33.957">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat3/attachments/state-shell-chrome-dark-673b1c6b8ef76f1b2a6a8f4e67663dfee27252ef.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat3/attachments/state-theme-menu-dark-fc5c890d571150b313627fd0f0142e4b64d7c76b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat3/attachments/state-rail-labeled-dark-2d525d299e6f1390d5939ede6e14cc23a6bc3e52.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat3/attachments/state-rail-icons-dark-b25fca08997c915f164d377efb894edcde70312a.json]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-17T08:55:43.443Z" hostname="firefox" tests="2" failures="0" skipped="0" time="40.811" errors="0">
+<testcase name="contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap" classname="accessibility-state-matrix.spec.ts" time="3.39">
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in dark" classname="accessibility-state-matrix.spec.ts" time="37.421">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat4/attachments/state-shell-chrome-dark-c359e1195229c511f8a967df69950c5b39da097d.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat4/attachments/state-theme-menu-dark-6be0b2184ae4e32d31579b98f76207e39c11ee63.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat4/attachments/state-rail-labeled-dark-15f46261a5cc89aba7090d0ff2ea357967bd1643.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat4/attachments/state-rail-icons-dark-0c60ea6b8e8369a5dc0edf5244e67710bac2fab7.json]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

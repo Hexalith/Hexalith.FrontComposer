@@ -1,0 +1,1 @@
+{"candidateCount":1,"rawOverlap":[5.70001220703125],"passedTextSamples":1}

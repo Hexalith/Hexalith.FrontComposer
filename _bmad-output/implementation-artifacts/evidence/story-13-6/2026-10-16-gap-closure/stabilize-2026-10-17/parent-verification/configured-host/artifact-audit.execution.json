@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "node",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/parent-verification/configured-host/audit.mjs",
+    "--repo-root",
+    "/home/administrator/projects/hexalith/frontcomposer",
+    "--evidence-root",
+    "/tmp/story-13-6-parent-configured-uzh72_bn",
+    "--output-root",
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/parent-verification/configured-host"
+  ],
+  "exitCode": 1,
+  "log": "artifact-audit.log.txt",
+  "logSha256": "3e0b4ff33c664327f7b3e132736f87c31855c73ba93954679ef2ff41b4c47cbc",
+  "note": "Failed exit is required: raw-size, retained visual failures and WebKit actual forced-palette limitations remain failed gates. Bounded Chromium and all 116 authoritative state rows per engine are recorded separately."
+}

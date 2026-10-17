@@ -1,0 +1,29 @@
+{
+  "lane": "start",
+  "argv": [
+    "aspire",
+    "start",
+    "--apphost",
+    "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+    "--no-build",
+    "--non-interactive",
+    "--format",
+    "Json",
+    "--",
+    "--environment",
+    "Test"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+  "environment": {
+    "ASPIRE_ENVIRONMENT": "Test",
+    "ASPNETCORE_ENVIRONMENT": "Test",
+    "DOTNET_ENVIRONMENT": "Test",
+    "EnableKeycloak": "false"
+  },
+  "exitCode": 0,
+  "durationSeconds": 3.4550375938415527,
+  "rawLogSha256": "8c33f3a38be67a211278247de263fed79fe186bd30d61f7c410deb1efd2afa63",
+  "rawLogRetained": false,
+  "sanitizedEvidence": "apphost.json",
+  "note": "Raw lifecycle output can contain dashboard credentials; sanitized resource/startup receipts are retained."
+}

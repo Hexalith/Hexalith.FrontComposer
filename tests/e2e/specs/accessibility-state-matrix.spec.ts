@@ -329,6 +329,60 @@ test('contrast measurement rejects empty, low-contrast, unpainted and unsupporte
   expect(await measureSurfaceContrast(page.locator('#empty'), 'icon')).toEqual([]);
 });
 
+test('contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap', async ({ page }, info) => {
+  await page.setContent('<style>body{background:white}#port{position:absolute;left:40px;top:40px;width:222px;height:60px;overflow:hidden}#host{position:relative;left:0}#label{position:absolute;left:40px;top:100px;margin:0;color:black;font:14px/20px sans-serif}</style><div id="port"><div id="host"></div></div><p id="label">Footer label</p>');
+  const geometry = await page.locator('#host').evaluate(host => {
+    const background = document.createElement('div');
+    background.style.cssText = 'position:relative;width:222px;height:32px;background:black';
+    host.attachShadow({ mode: 'open' }).append(background);
+    const label = document.querySelector('#label')!;
+    const range = document.createRange(); range.selectNodeContents(label);
+    const text = range.getBoundingClientRect(), port = host.parentElement!.getBoundingClientRect();
+    (host as HTMLElement).style.top = `${text.bottom - 1.7 - port.top}px`;
+    const candidate = background.getBoundingClientRect();
+    return { text: text.toJSON(), port: port.toJSON(), candidate: candidate.toJSON(), rawOverlap: text.bottom - candidate.top };
+  });
+  expect(geometry.rawOverlap).toBeCloseTo(1.7, 1);
+  expect(geometry.candidate.top).toBeGreaterThan(geometry.port.bottom);
+  await info.attach('shadow-background-scrollport-geometry', { body: JSON.stringify(geometry), contentType: 'application/json' });
+  for (const overflow of ['hidden', 'auto', 'clip']) {
+    await page.locator('#port').evaluate((port, value) => { (port as HTMLElement).style.overflow = value; }, overflow);
+    const samples = await expectSurfaceContrast(page.locator('#label'));
+    expect(samples).toHaveLength(1);
+    expect(samples[0].background.slice(0, 3)).toEqual([255, 255, 255]);
+    await page.locator('#port').evaluate(port => { (port as HTMLElement).style.overflow = 'visible'; });
+    await expect(measureSurfaceContrast(page.locator('#label'))).rejects.toThrow(/Overlapping sibling background/);
+  }
+  await page.locator('#port').evaluate(port => { (port as HTMLElement).style.overflow = 'hidden'; });
+  await page.locator('#host').evaluate((host, top) => { (host as HTMLElement).style.cssText = `position:fixed;left:40px;top:${top}px`; }, geometry.candidate.top);
+  await expect(measureSurfaceContrast(page.locator('#label'))).rejects.toThrow(/Overlapping sibling background/);
+});
+
+const clippingPaintRegressions = [
+  { name: 'scaled ancestor', port: 'position:relative;left:40px;top:40px;width:100px;height:60px;overflow:hidden;transform:scale(2);transform-origin:0 0', background: 'display:block;position:relative;top:40px;width:100px;height:20px', labelTop: 120, tag: 'div' },
+  { name: 'overflow clip margin', port: 'position:relative;left:40px;top:40px;width:100px;height:60px;overflow:clip;overflow-clip-margin:30px', background: 'display:block;position:relative;top:70px;width:100px;height:20px', labelTop: 110, tag: 'div' },
+  { name: 'inline ancestor', port: 'overflow:hidden', background: 'display:inline-block;position:relative;width:200px;height:20px', labelTop: 0, tag: 'span' },
+  { name: 'display contents ancestor', port: 'display:contents;overflow:hidden', background: 'display:block;position:relative;left:40px;top:100px;width:222px;height:32px', labelTop: 110, tag: 'div' },
+  { name: 'fractional scrollport', port: 'position:relative;left:40px;top:40px;width:100px;height:60.2px;overflow:hidden', background: 'display:block;position:relative;top:60.1px;width:100px;height:20px', labelTop: 85, tag: 'div' },
+  { name: 'expanded negative inset', port: 'position:relative;left:40px;top:40px;width:100px;height:60px;clip-path:inset(-30px)', background: 'display:block;position:relative;top:70px;width:100px;height:20px', labelTop: 110, tag: 'div' },
+];
+for (const fixture of clippingPaintRegressions) {
+  test(`review clipping preserves visible competing paint: ${fixture.name}`, async ({ page }) => {
+    await page.setContent(`<style>body{margin:0;background:white}#port{${fixture.port}}#bg{${fixture.background};background:black}#label{position:absolute;left:40px;top:${fixture.labelTop}px;margin:0;color:black;font:14px/20px sans-serif}</style><${fixture.tag} id="port"><span id="bg"></span></${fixture.tag}><p id="label">Footer label</p>`);
+    if (fixture.name === 'overflow clip margin') test.skip(!await page.evaluate(() => CSS.supports('overflow-clip-margin', '30px')), 'Engine does not implement expanded overflow clip margins');
+    if (fixture.name === 'fractional scrollport') {
+      const overlap = await page.locator('#port').evaluate(port => port.getBoundingClientRect().bottom - document.querySelector('#bg')!.getBoundingClientRect().top);
+      expect(overlap).toBeGreaterThan(0);
+      expect(overlap).toBeLessThan(.2);
+    }
+    await expect(measureSurfaceContrast(page.locator('#label'))).rejects.toThrow(/pixel evidence/);
+    await page.locator('#bg').evaluate(background => background.remove());
+    const samples = await expectSurfaceContrast(page.locator('#label'));
+    expect(samples).toHaveLength(1);
+    expect(samples[0].ratio).toBe(21);
+  });
+}
+
 test('unrelated controls cannot mask failed focus or boundary contrast', async ({ page }) => {
   await page.setContent('<style>#bad:not(:focus){outline:none!important;box-shadow:none!important}</style><main style="background:white;padding:20px"><button id="bad" style="background:white;border:2px solid #eee;outline:2px solid #eee">Low contrast</button><button id="good" style="background:white;border:2px solid black;outline:2px solid black">Readable</button></main>');
   await page.locator('#bad').focus();

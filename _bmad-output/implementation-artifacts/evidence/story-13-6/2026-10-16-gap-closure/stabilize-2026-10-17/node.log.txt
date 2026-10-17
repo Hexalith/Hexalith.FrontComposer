@@ -1,0 +1,20 @@
+✔ rejects another run when a run is expected (42.769774ms)
+✔ requires all owned state, cue, contrast and actual mode evidence (303.279654ms)
+✔ target evidence requires real finite dimensions, consistent conformity and evidenced exceptions (157.007808ms)
+✔ never pools partial engine/run matrices or another owners snapshot (104.61228ms)
+✔ WebKit capability attribution never weakens the mandatory Chromium artifact policy (69.356977ms)
+✔ successful retry replaces the failed attempt without fragment pooling (107.100242ms)
+✔ missing or mixed authoritative reports cannot certify a matrix (19.763336ms)
+✔ target geometry mirrors stale, spacing and essential exception applicability (127.841026ms)
+✔ state payload must match the final successful attempt attachment (80.411291ms)
+✔ expected unrelated skips supply no state authority and cannot fill a skipped owner (36.490725ms)
+✔ runner, setup and teardown errors invalidate an otherwise passing report (92.579538ms)
+✔ CLI resolves capability from the successful retry while retaining the failed file (82.83346ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1309.609899

@@ -1,0 +1,16 @@
+{
+  "lane": "typecheck",
+  "argv": [
+    "npm",
+    "--prefix",
+    "tests/e2e",
+    "run",
+    "typecheck"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+  "environment": {},
+  "exitCode": 0,
+  "durationSeconds": 0.5057229995727539,
+  "log": "typecheck.log.txt",
+  "logSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2"
+}

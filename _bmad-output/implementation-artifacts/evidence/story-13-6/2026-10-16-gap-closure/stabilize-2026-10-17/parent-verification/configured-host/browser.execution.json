@@ -1,0 +1,28 @@
+{
+  "lane": "browser",
+  "argv": [
+    "npm",
+    "--prefix",
+    "tests/e2e",
+    "test",
+    "--",
+    "specs/specimen-accessibility.spec.ts",
+    "specs/responsive-accessibility.spec.ts",
+    "specs/accessibility-state-matrix.spec.ts",
+    "--workers=3",
+    "--retries=2"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+  "environment": {
+    "BASE_URL": "http://localhost:5201",
+    "PLAYWRIGHT_SKIP_WEBSERVER": "1",
+    "CI": "true",
+    "FC_A11Y_EVIDENCE_RUN_ID": "story-13-6-parent-configured-final-20261017",
+    "FC_E2E_OUTPUT_DIR": "/tmp/story-13-6-parent-configured-uzh72_bn/browser/results",
+    "FC_E2E_HTML_REPORT_DIR": "/tmp/story-13-6-parent-configured-uzh72_bn/browser/report"
+  },
+  "exitCode": 1,
+  "durationSeconds": 961.8561010360718,
+  "log": "browser.log.txt",
+  "logSha256": "4dd98d7898bb996e3e2142eda25a7a16205054dec1fdad574d59f00ff600c769"
+}

@@ -1,0 +1,29 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts --project=firefox --grep contrast clips a shadow background|shell chrome, theme menu and exact desktop navigation rails in dark --workers=1 --retries=0 --repeat-each=5
+
+
+Running 10 tests using 1 worker
+
+(node:10575) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [firefox] › specs/accessibility-state-matrix.spec.ts:332:1 › contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap (3.2s)
+  ✓   2 [firefox] › specs/accessibility-state-matrix.spec.ts:409:3 › shell chrome, theme menu and exact desktop navigation rails in dark (41.6s)
+(node:34739) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 [firefox] › specs/accessibility-state-matrix.spec.ts:332:1 › contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap (3.0s)
+  ✓   4 [firefox] › specs/accessibility-state-matrix.spec.ts:409:3 › shell chrome, theme menu and exact desktop navigation rails in dark (33.8s)
+(node:53082) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   5 [firefox] › specs/accessibility-state-matrix.spec.ts:332:1 › contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap (2.5s)
+  ✓   6 [firefox] › specs/accessibility-state-matrix.spec.ts:409:3 › shell chrome, theme menu and exact desktop navigation rails in dark (55.5s)
+(node:80249) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   7 [firefox] › specs/accessibility-state-matrix.spec.ts:332:1 › contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap (3.1s)
+  ✓   8 [firefox] › specs/accessibility-state-matrix.spec.ts:409:3 › shell chrome, theme menu and exact desktop navigation rails in dark (44.7s)
+(node:10155) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   9 [firefox] › specs/accessibility-state-matrix.spec.ts:332:1 › contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap (4.7s)
+  ✓  10 [firefox] › specs/accessibility-state-matrix.spec.ts:409:3 › shell chrome, theme menu and exact desktop navigation rails in dark (34.2s)
+
+  10 passed (4.0m)

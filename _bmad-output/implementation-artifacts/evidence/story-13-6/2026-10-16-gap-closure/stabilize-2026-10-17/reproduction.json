@@ -1,0 +1,113 @@
+{
+  "before": {
+    "run": "story-13-6-stabilize-red-20261017",
+    "stats": {
+      "startTime": "2026-10-17T08:44:47.020Z",
+      "duration": 81271.45,
+      "expected": 2,
+      "skipped": 0,
+      "unexpected": 3,
+      "flaky": 0
+    },
+    "tests": [
+      {
+        "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+        "engine": "firefox",
+        "status": "unexpected",
+        "attempts": [
+          {
+            "retry": 0,
+            "status": "failed",
+            "error": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":157.0500030517578,\"top\":41.5,\"bottom\":80.5},{\"left\":12,\"right\":272.066650390625,\"top\":83.5,\"bottom\":122.5}],\"candidateBox\":{\"x\":45,\"y\":10.800003051757812,\"width\":230,\"height\":32,\"top\":10.800003051757812,\"right\":275,\"bottom\":42.80000305175781,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n"
+          }
+        ]
+      },
+      {
+        "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+        "engine": "firefox",
+        "status": "unexpected",
+        "attempts": [
+          {
+            "retry": 0,
+            "status": "failed",
+            "error": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":240.73333740234375,\"top\":874.5,\"bottom\":891.5}],\"candidateBox\":{\"x\":45,\"y\":885.7999877929688,\"width\":222,\"height\":32,\"top\":885.7999877929688,\"right\":267,\"bottom\":917.7999877929688,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n"
+          }
+        ]
+      },
+      {
+        "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+        "engine": "firefox",
+        "status": "expected",
+        "attempts": [
+          {
+            "retry": 0,
+            "status": "passed",
+            "error": null
+          }
+        ]
+      },
+      {
+        "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+        "engine": "firefox",
+        "status": "expected",
+        "attempts": [
+          {
+            "retry": 0,
+            "status": "passed",
+            "error": null
+          }
+        ]
+      },
+      {
+        "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+        "engine": "firefox",
+        "status": "unexpected",
+        "attempts": [
+          {
+            "retry": 0,
+            "status": "failed",
+            "error": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":240.73333740234375,\"top\":874.5,\"bottom\":891.5}],\"candidateBox\":{\"x\":45,\"y\":889.7999877929688,\"width\":222,\"height\":32,\"top\":889.7999877929688,\"right\":267,\"bottom\":921.7999877929688,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n"
+          }
+        ]
+      }
+    ],
+    "replayedHelperBlobSha256": "36a5cff1bfb01fbbaad8c9bdd2d73dee4b183de0d8cc8ae7876f624f1f679877",
+    "sourceHelperSha256": "d28eddbbe9a0b39a35c9802a5ee838492028391d16ee63974536f372112d1e05",
+    "replayLineEndings": "Replayed git blob has LF; original worktree helper has CRLF. Normalized content is identical."
+  },
+  "causalRegression": {
+    "baselineHelperExactFinalFixture": "exact-red/",
+    "baselineHelperResult": "failed at clipped positive before patch",
+    "finalHelperResult": "passes clipped positive and rejects visible 1.7px/fixed escape negatives"
+  },
+  "preRestartDiagnostic": {
+    "run": "story-13-6-stabilize-five-20261017",
+    "stats": {
+      "startTime": "2026-10-17T08:47:54.643Z",
+      "duration": 189439.18300000002,
+      "expected": 10,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "retries": 0,
+    "repeatEach": 5,
+    "sourceIdentitySha256": "babffe65f80705c4661aebcad2692ac688543f30dc6e3a002a091d3906e3b08b",
+    "note": "Historical diagnostic; the web resource had not restarted after the Debug rebuild."
+  },
+  "after": {
+    "run": "story-13-6-stabilize-five2-20261017",
+    "stats": {
+      "startTime": "2026-10-17T08:55:43.358Z",
+      "duration": 208023.406,
+      "expected": 10,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "retries": 0,
+    "repeatEach": 5,
+    "sourceIdentitySha256": "babffe65f80705c4661aebcad2692ac688543f30dc6e3a002a091d3906e3b08b",
+    "startupBinaryProof": "startup-binaries.json"
+  }
+}

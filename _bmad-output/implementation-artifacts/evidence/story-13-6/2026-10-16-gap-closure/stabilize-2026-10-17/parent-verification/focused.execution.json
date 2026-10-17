@@ -1,0 +1,19 @@
+{
+  "lane": "focused",
+  "argv": [
+    "dotnet",
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+    "-class",
+    "*EventStoreClientTests",
+    "-result-xml",
+    "/tmp/story-13-6-parent-verification-uo2amkr5/eventstore.xml"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+  "environment": {
+    "DiffEngine_Disabled": "true"
+  },
+  "exitCode": 0,
+  "durationSeconds": 3.163999319076538,
+  "log": "focused.log.txt",
+  "logSha256": "22eb7c1ed286e21616170d2ffdc6384450a72c22d2aac8f1bb699acf8f0067d3"
+}

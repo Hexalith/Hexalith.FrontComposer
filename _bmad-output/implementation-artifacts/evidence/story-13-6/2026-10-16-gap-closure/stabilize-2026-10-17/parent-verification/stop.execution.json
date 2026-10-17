@@ -1,0 +1,16 @@
+{
+  "lane": "stop",
+  "argv": [
+    "aspire",
+    "stop",
+    "--apphost",
+    "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+    "--non-interactive"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+  "environment": {},
+  "exitCode": 0,
+  "durationSeconds": 0.6774358749389648,
+  "log": "stop.log.txt",
+  "logSha256": "3262a972a2c7471d49f5b343311350c8ba17e3ea402051500ba5a10a935c5a0a"
+}

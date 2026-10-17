@@ -1,0 +1,38 @@
+[
+  {
+    "path": "_bmad-output/implementation-artifacts/spec-13-6-close-automated-verification-gaps.md",
+    "matchesHeadFrozenBlock": true,
+    "retainedManifestRecipe": [
+      "full-lf",
+      "full-lf-stripped"
+    ],
+    "fullBlockLfSha256": "79336efd62c76080bf23e232100c49863b670eb15ebeac0f54c8d13ffef4088d"
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/spec-13-6-complete-automated-accessibility-coverage.md",
+    "matchesHeadFrozenBlock": true,
+    "retainedManifestRecipe": [
+      "full-lf",
+      "full-lf-stripped"
+    ],
+    "fullBlockLfSha256": "f87668911f9402572b5c62b6ef51e9ee9123af9d190857b0c24168f4bbc5d363"
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/spec-13-6-stabilize-remaining-automated-verification.md",
+    "matchesHeadFrozenBlock": true,
+    "retainedManifestRecipe": [
+      "full-lf",
+      "full-lf-stripped"
+    ],
+    "fullBlockLfSha256": "c2f49e69bf008faa6e491597a36d34c271a239cb5dca8675f05270d317c7cde4"
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md",
+    "matchesHeadFrozenBlock": true,
+    "retainedManifestRecipe": [
+      "full-lf",
+      "full-lf-stripped"
+    ],
+    "fullBlockLfSha256": "d175f671d64935cff6cfbfe3b46a60394806d09386a2ad61258227d70feff358"
+  }
+]

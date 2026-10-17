@@ -188,7 +188,7 @@ async function preparePaintAudit(root: Locator) {
         if (!tokens || tokens.length > 4) return { kind: 'unsupported' };
         const sides = [tokens[0], tokens[1] ?? tokens[0], tokens[2] ?? tokens[0], tokens[3] ?? tokens[1] ?? tokens[0]];
         const values = sides.map((value, side) => length(value, side % 2 ? width : height));
-        if (values.some(value => value === null)) return { kind: 'unsupported' };
+        if (values.some(value => value === null || value < 0)) return { kind: 'unsupported' };
         result = { left: Math.max(result.left, box.left + values[3]!), top: Math.max(result.top, box.top + values[0]!), right: Math.min(result.right, box.right - values[1]!), bottom: Math.min(result.bottom, box.bottom - values[2]!) }; clipped = true;
       }
       if (clipped && (result.right <= result.left || result.bottom <= result.top)) return { kind: 'hidden' };
@@ -811,28 +811,48 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
       for (const candidate of root.querySelectorAll('*')) { pagePaint.push(candidate); if (candidate.shadowRoot) collectPaint(candidate.shadowRoot); }
     };
     if (sampleKind === 'text' || sampleKind === 'icon') collectPaint(document);
-    const sample = (element: Element, value: string, label: string, minimum: number, outside = false, alpha = 1, paintBoxes?: PaintBox[], shadowBound?: ShadowContrastBound) => {
-      let boxes: PaintBox[] = paintBoxes ?? [element.getBoundingClientRect()];
+    const clippedPaint = (element: Element, boxes: PaintBox[], content = true): PaintBox[] => {
       for (let current: Element | null = element; current; current = parent(current)) {
         const css = getComputedStyle(current);
         if (css.filter !== 'none' || css.mixBlendMode !== 'normal' || css.getPropertyValue('backdrop-filter') && css.getPropertyValue('backdrop-filter') !== 'none') throw new Error('Filtered or blended paint needs pixel evidence');
         const clipping = audit.clip(css, current.getBoundingClientRect());
-        if (clipping.kind === 'hidden') return;
+        if (clipping.kind === 'hidden') return [];
         if (clipping.kind === 'unsupported') throw new Error('Clipped contrast paint needs pixel evidence');
         if (clipping.box) boxes = boxes.map(box => ({ left: Math.max(box.left, clipping.box!.left), right: Math.min(box.right, clipping.box!.right), top: Math.max(box.top, clipping.box!.top), bottom: Math.min(box.bottom, clipping.box!.bottom) }));
         // Scrollports paint only the visible part of a descendant's text range. The
         // offscreen remainder cannot overlap a footer or another neighboring surface.
         const bounds = current.getBoundingClientRect();
-        const left = bounds.left + current.clientLeft, top = bounds.top + current.clientTop;
-        boxes = boxes.map(box => ({
-          left: /(auto|scroll|hidden|clip)/u.test(css.overflowX) ? Math.max(box.left, left) : box.left,
-          right: /(auto|scroll|hidden|clip)/u.test(css.overflowX) ? Math.min(box.right, left + current.clientWidth) : box.right,
-          top: /(auto|scroll|hidden|clip)/u.test(css.overflowY) ? Math.max(box.top, top) : box.top,
-          bottom: /(auto|scroll|hidden|clip)/u.test(css.overflowY) ? Math.min(box.bottom, top + current.clientHeight) : box.bottom,
-        }));
-        if (current.matches(':popover-open,:modal')) break;
+        const clipX = /(auto|scroll|hidden|clip)/u.test(css.overflowX), clipY = /(auto|scroll|hidden|clip)/u.test(css.overflowY);
+        // Non-replaced inline boxes and display:contents have no overflow clip box.
+        if ((content || current !== element) && !['inline', 'contents'].includes(css.display) && (clipX || clipY)) {
+          for (let ancestor: Element | null = current; ancestor; ancestor = parent(ancestor)) {
+            const style = getComputedStyle(ancestor), transform = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
+            if (!transform.is2D || transform.a !== 1 || transform.d !== 1 || transform.b !== 0 || transform.c !== 0
+              || style.scale && !['none', '1'].includes(style.scale) || style.rotate && style.rotate !== 'none'
+              || style.zoom && !['normal', '1'].includes(style.zoom)) throw new Error('Transformed contrast clipping needs pixel evidence');
+          }
+          const margin = css.getPropertyValue('overflow-clip-margin').trim();
+          if ((css.overflowX === 'clip' || css.overflowY === 'clip') && margin && margin !== '0px') throw new Error('Expanded overflow clipping needs pixel evidence');
+          // Viewport rectangles and computed borders preserve fractional padding-box
+          // edges. Including a scrollbar gutter is conservative; integer client sizes
+          // can round away real paint and must not certify an overlap as absent.
+          const left = bounds.left + parseFloat(css.borderLeftWidth), right = bounds.right - parseFloat(css.borderRightWidth);
+          const top = bounds.top + parseFloat(css.borderTopWidth), bottom = bounds.bottom - parseFloat(css.borderBottomWidth);
+          boxes = boxes.map(box => ({
+            left: clipX ? Math.max(box.left, left) : box.left,
+            right: clipX ? Math.min(box.right, right) : box.right,
+            top: clipY ? Math.max(box.top, top) : box.top,
+            bottom: clipY ? Math.min(box.bottom, bottom) : box.bottom,
+          }));
+        }
+        // Out-of-flow backgrounds can escape an outer overflow clip. Without
+        // resolving their containing block, retain the overlap for pixel evidence.
+        if (current.matches(':popover-open,:modal') || !content && ['absolute', 'fixed'].includes(css.position)) break;
       }
-      boxes = boxes.filter(box => box.right > box.left && box.bottom > box.top);
+      return boxes.filter(box => box.right > box.left && box.bottom > box.top);
+    };
+    const sample = (element: Element, value: string, label: string, minimum: number, outside = false, alpha = 1, paintBoxes?: PaintBox[], shadowBound?: ShadowContrastBound) => {
+      const boxes = clippedPaint(element, paintBoxes ?? [element.getBoundingClientRect()]);
       if (!boxes.length) return;
       const containsComposed = (ancestor: Element, child: Element) => {
         for (let current: Element | null = child; current; current = parent(current)) if (current === ancestor) return true;
@@ -859,7 +879,12 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
           if (plane && opaquePlaneBackdrop && !candidatePlane) continue;
           const css = getComputedStyle(candidate), rect = candidate.getBoundingClientRect();
           if (css.visibility === 'hidden' || Number(css.opacity) === 0 || parse(css.backgroundColor)[3] === 0) continue;
-          if (boxes.some(box => rect.left < box.right && rect.right > box.left && rect.top < box.bottom && rect.bottom > box.top)) throw new Error(`Overlapping sibling background needs pixel evidence: ${JSON.stringify({ element: element.tagName + '#' + element.id + '.' + element.className, candidate: candidate.tagName + '#' + candidate.id + '.' + candidate.className, boxes, candidateBox: rect.toJSON(), candidateClip: audit.clip(css, rect), candidatePosition: css.position, root: root instanceof ShadowRoot ? root.host.tagName : 'document' })}`);
+          const intersects = (rect: PaintBox) => boxes.some(box => rect.left < box.right && rect.right > box.left && rect.top < box.bottom && rect.bottom > box.top);
+          if (!intersects(rect)) continue;
+          // A background behind a composed-tree scrollport cannot paint over adjacent
+          // text. Keep real visible intersections, including tiny shadow-root overlaps.
+          const candidateBoxes = clippedPaint(candidate, [rect], false);
+          if (candidateBoxes.some(intersects)) throw new Error(`Overlapping sibling background needs pixel evidence: ${JSON.stringify({ element: element.tagName + '#' + element.id + '.' + element.className, candidate: candidate.tagName + '#' + candidate.id + '.' + candidate.className, boxes, candidateBox: rect.toJSON(), candidateBoxes, candidateClip: audit.clip(css, rect), candidatePosition: css.position, root: root instanceof ShadowRoot ? root.host.tagName : 'document' })}`);
         }
       }
       const color = parse(value); color[3] *= alpha;

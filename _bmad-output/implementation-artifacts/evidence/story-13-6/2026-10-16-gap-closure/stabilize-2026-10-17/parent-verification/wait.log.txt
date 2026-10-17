@@ -1,0 +1,3 @@
+Waiting for resource 'counter-web' to be healthy...
+
+✅ Resource 'counter-web' is healthy. (0.0s)

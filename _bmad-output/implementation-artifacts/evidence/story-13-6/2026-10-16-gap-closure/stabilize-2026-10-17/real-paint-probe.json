@@ -1,0 +1,477 @@
+{
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "dark",
+  "reducedMotion": true,
+  "spacing": "all four overrides",
+  "geometry": {
+    "text": {
+      "x": 12,
+      "y": 874.5,
+      "width": 228.73333740234375,
+      "height": 17,
+      "top": 874.5,
+      "right": 240.73333740234375,
+      "bottom": 891.5,
+      "left": 12
+    },
+    "candidates": [
+      {
+        "host": "FLUENT-TEXT-INPUT",
+        "node": "DIV.root",
+        "rect": {
+          "x": 45,
+          "y": 889.7999877929688,
+          "width": 222,
+          "height": 32,
+          "top": 889.7999877929688,
+          "right": 267,
+          "bottom": 921.7999877929688,
+          "left": 45
+        },
+        "rawOverlap": 1.70001220703125,
+        "ancestors": [
+          {
+            "node": "DIV#.root",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "relative",
+            "rect": {
+              "x": 45,
+              "y": 889.7999877929688,
+              "width": 222,
+              "height": 32,
+              "top": 889.7999877929688,
+              "right": 267,
+              "bottom": 921.7999877929688,
+              "left": 45
+            }
+          },
+          {
+            "node": "FLUENT-TEXT-INPUT#fc-command-form-Counter-Domain-BatchIncrementCommand-78-Amount.",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 45,
+              "y": 889.7999877929688,
+              "width": 222,
+              "height": 32,
+              "top": 889.7999877929688,
+              "right": 267,
+              "bottom": 921.7999877929688,
+              "left": 45
+            }
+          },
+          {
+            "node": "SLOT#.",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "node": "FLUENT-FIELD#fc-command-form-Counter-Domain-BatchIncrementCommand-78-Amount-field.my-3-o valid fc-command-input",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 45,
+              "y": 866.7999877929688,
+              "width": 222,
+              "height": 57,
+              "top": 866.7999877929688,
+              "right": 267,
+              "bottom": 923.7999877929688,
+              "left": 45
+            }
+          },
+          {
+            "node": "DIV#.fc-command-field",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 45,
+              "y": 854.7999877929688,
+              "width": 230,
+              "height": 81,
+              "top": 854.7999877929688,
+              "right": 275,
+              "bottom": 935.7999877929688,
+              "left": 45
+            }
+          },
+          {
+            "node": "FORM#.",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 45,
+              "y": 854.7999877929688,
+              "width": 230,
+              "height": 275,
+              "top": 854.7999877929688,
+              "right": 275,
+              "bottom": 1129.7999877929688,
+              "left": 45
+            }
+          },
+          {
+            "node": "DIV#.fc-lifecycle-wrapper ",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "relative",
+            "rect": {
+              "x": 45,
+              "y": 854.7999877929688,
+              "width": 230,
+              "height": 275,
+              "top": 854.7999877929688,
+              "right": 275,
+              "bottom": 1129.7999877929688,
+              "left": 45
+            }
+          },
+          {
+            "node": "DIV#fc-command-form-Counter-Domain-BatchIncrementCommand-78.fc-command-form fc-density-comfortable",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 45,
+              "y": 854.7999877929688,
+              "width": 230,
+              "height": 275,
+              "top": 854.7999877929688,
+              "right": 275,
+              "bottom": 1129.7999877929688,
+              "left": 45
+            }
+          },
+          {
+            "node": "DIV#.fluent-card",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 32,
+              "y": 841.7999877929688,
+              "width": 256,
+              "height": 301,
+              "top": 841.7999877929688,
+              "right": 288,
+              "bottom": 1142.7999877929688,
+              "left": 32
+            }
+          },
+          {
+            "node": "DIV#.fc-expand-in-row",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 32,
+              "y": 841.7999877929688,
+              "width": 256,
+              "height": 301,
+              "top": 841.7999877929688,
+              "right": 288,
+              "bottom": 1142.7999877929688,
+              "left": 32
+            }
+          },
+          {
+            "node": "SLOT#.",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "node": "DIV#panel.content",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 32,
+              "y": 841.7999877929688,
+              "width": 256,
+              "height": 301,
+              "top": 841.7999877929688,
+              "right": 288,
+              "bottom": 1142.7999877929688,
+              "left": 32
+            }
+          },
+          {
+            "node": "FLUENT-ACCORDION-ITEM#f66a0a42.command-section",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 20,
+              "y": 797.7999877929688,
+              "width": 280,
+              "height": 345,
+              "top": 797.7999877929688,
+              "right": 300,
+              "bottom": 1142.7999877929688,
+              "left": 20
+            }
+          },
+          {
+            "node": "SLOT#.",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "node": "FLUENT-ACCORDION#.",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 20,
+              "y": 269.79998779296875,
+              "width": 280,
+              "height": 1238,
+              "top": 269.79998779296875,
+              "right": 300,
+              "bottom": 1507.7999877929688,
+              "left": 20
+            }
+          },
+          {
+            "node": "DIV#.page-container",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 20,
+              "y": 269.79998779296875,
+              "width": 280,
+              "height": 1238,
+              "top": 269.79998779296875,
+              "right": 300,
+              "bottom": 1507.7999877929688,
+              "left": 20
+            }
+          },
+          {
+            "node": "DIV#overview-panel.fluent-tab-panel",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 12,
+              "y": 261.79998779296875,
+              "width": 296,
+              "height": 1254,
+              "top": 261.79998779296875,
+              "right": 308,
+              "bottom": 1515.7999877929688,
+              "left": 12
+            }
+          },
+          {
+            "node": "DIV#f49a0547.fluent-tabs",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 12,
+              "y": 208.8000030517578,
+              "width": 296,
+              "height": 1307,
+              "top": 208.8000030517578,
+              "right": 308,
+              "bottom": 1515.8000030517578,
+              "left": 12
+            }
+          },
+          {
+            "node": "DIV#.",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 12,
+              "y": 122,
+              "width": 296,
+              "height": 1393.800048828125,
+              "top": 122,
+              "right": 308,
+              "bottom": 1515.800048828125,
+              "left": 12
+            }
+          },
+          {
+            "node": "DIV#fc-main-content.fc-page-layout",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 12,
+              "y": 122,
+              "width": 296,
+              "height": 1393.800048828125,
+              "top": 122,
+              "right": 308,
+              "bottom": 1515.800048828125,
+              "left": 12
+            }
+          },
+          {
+            "node": "DIV#.pa-3 fluent-layout-item fc-shell-content",
+            "overflowX": "auto",
+            "overflowY": "auto",
+            "position": "static",
+            "rect": {
+              "x": 0,
+              "y": 165,
+              "width": 320,
+              "height": 699,
+              "top": 165,
+              "right": 320,
+              "bottom": 864,
+              "left": 0
+            }
+          },
+          {
+            "node": "DIV#f3a72e60.fluent-layout",
+            "overflowX": "auto",
+            "overflowY": "hidden",
+            "position": "static",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 900,
+              "top": 0,
+              "right": 320,
+              "bottom": 900,
+              "left": 0
+            }
+          },
+          {
+            "node": "DIV#f3a72e60-container.",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 900,
+              "top": 0,
+              "right": 320,
+              "bottom": 900,
+              "left": 0
+            }
+          },
+          {
+            "node": "DIV#.fc-shell-root",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 900,
+              "top": 0,
+              "right": 320,
+              "bottom": 900,
+              "left": 0
+            }
+          },
+          {
+            "node": "BODY#.",
+            "overflowX": "hidden",
+            "overflowY": "hidden",
+            "position": "static",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 900,
+              "top": 0,
+              "right": 320,
+              "bottom": 900,
+              "left": 0
+            }
+          },
+          {
+            "node": "HTML#.",
+            "overflowX": "visible",
+            "overflowY": "visible",
+            "position": "static",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 900,
+              "top": 0,
+              "right": 320,
+              "bottom": 900,
+              "left": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "samples": [
+    {
+      "owner": 0,
+      "node": "span",
+      "paint": "Hexalith FrontComposer © 2026",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 11.340965984132366,
+      "minimum": 4.5
+    }
+  ]
+}

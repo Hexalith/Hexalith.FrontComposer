@@ -1,0 +1,52 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/accessibility-state-matrix.spec.ts --project=firefox --grep contrast clips a shadow background --workers=1 --retries=0
+
+
+Running 1 test using 1 worker
+
+(node:23546) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [firefox] › specs/accessibility-state-matrix.spec.ts:332:1 › contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap (1.9s)
+
+
+  1) [firefox] › specs/accessibility-state-matrix.spec.ts:332:1 › contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap 
+
+    Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {"element":"P#label.","candidate":"DIV#.","boxes":[{"left":40,"right":118.16667175292969,"top":100,"bottom":120}],"candidateBox":{"x":40,"y":118.30000305175781,"width":222,"height":32,"top":118.30000305175781,"right":262,"bottom":150.3000030517578,"left":40},"candidateClip":{"kind":"none"},"candidatePosition":"relative","root":"document"}
+    sample@debugger eval code line 311 > eval:185:138
+    visit@debugger eval code line 311 > eval:275:19
+    @debugger eval code line 311 > eval:390:10
+    evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at sample@debugger eval code line 311 > eval:185:138
+        at visit@debugger eval code line 311 > eval:275:19
+        at @debugger eval code line 311 > eval:390:10
+        at evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:726:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1006:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:350:21
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-stabilize-20261017/fixture-red/results/accessibility-state-matrix-b5dad-ng-1-7px-of-visible-overlap-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-stabilize-20261017/fixture-red/results/accessibility-state-matrix-b5dad-ng-1-7px-of-visible-overlap-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-stabilize-20261017/fixture-red/results/accessibility-state-matrix-b5dad-ng-1-7px-of-visible-overlap-firefox/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-stabilize-20261017/fixture-red/results/accessibility-state-matrix-b5dad-ng-1-7px-of-visible-overlap-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-stabilize-20261017/fixture-red/results/accessibility-state-matrix-b5dad-ng-1-7px-of-visible-overlap-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [firefox] › specs/accessibility-state-matrix.spec.ts:332:1 › contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap 

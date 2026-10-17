@@ -1,0 +1,497 @@
+{
+  "config": {
+    "argv": [
+      "/home/administrator/.nvm/versions/node/v26.4.0/bin/node",
+      "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/node_modules/.bin/playwright",
+      "test",
+      "specs/accessibility-state-matrix.spec.ts",
+      "--project=firefox",
+      "--grep",
+      "shell chrome, theme menu and exact desktop navigation rails in dark",
+      "--workers=1",
+      "--retries=0",
+      "--repeat-each=5"
+    ],
+    "configFile": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/playwright.config.ts",
+    "rootDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "a11yEvidenceRunId": "story-13-6-stabilize-red-20261017",
+      "testHostOptions": {
+        "ProjectionReconnectedNoticeDurationMs": 30000
+      },
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/tmp/story-13-6-stabilize-20261017/red/results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-stabilize-red-20261017",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/tmp/story-13-6-stabilize-20261017/red/results",
+        "repeatEach": 5,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-stabilize-red-20261017",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/tmp/story-13-6-stabilize-20261017/red/results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-stabilize-red-20261017",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "outputFolder": "/tmp/story-13-6-stabilize-20261017/red/report",
+          "open": "never"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "/tmp/story-13-6-stabilize-20261017/red/results/junit.xml"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/tmp/story-13-6-stabilize-20261017/red/results/playwright.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "none",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "accessibility-state-matrix.spec.ts",
+      "file": "accessibility-state-matrix.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 4780,
+                  "error": {
+                    "message": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":157.0500030517578,\"top\":41.5,\"bottom\":80.5},{\"left\":12,\"right\":272.066650390625,\"top\":83.5,\"bottom\":122.5}],\"candidateBox\":{\"x\":45,\"y\":10.800003051757812,\"width\":230,\"height\":32,\"top\":10.800003051757812,\"right\":275,\"bottom\":42.80000305175781,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n",
+                    "stack": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":157.0500030517578,\"top\":41.5,\"bottom\":80.5},{\"left\":12,\"right\":272.066650390625,\"top\":83.5,\"bottom\":122.5}],\"candidateBox\":{\"x\":45,\"y\":10.800003051757812,\"width\":230,\"height\":32,\"top\":10.800003051757812,\"right\":275,\"bottom\":42.80000305175781,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n    at sample@debugger eval code line 311 > eval:185:138\n    at visit@debugger eval code line 311 > eval:275:19\n    at visit@debugger eval code line 311 > eval:386:16\n    at visit@debugger eval code line 311 > eval:387:85\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at @debugger eval code line 311 > eval:390:10\n    at evaluate@debugger eval code:313:16\n    at @debugger eval code:1:44\n    at @debugger eval code:1:62\n    at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:726:15)\n    at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1006:19)\n    at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:90:16)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:358:5",
+                    "location": {
+                      "file": "sample@debugger eval code line 311 > eval",
+                      "column": 138,
+                      "line": 185
+                    }
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "sample@debugger eval code line 311 > eval",
+                        "column": 138,
+                        "line": 185
+                      },
+                      "message": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":157.0500030517578,\"top\":41.5,\"bottom\":80.5},{\"left\":12,\"right\":272.066650390625,\"top\":83.5,\"bottom\":122.5}],\"candidateBox\":{\"x\":45,\"y\":10.800003051757812,\"width\":230,\"height\":32,\"top\":10.800003051757812,\"right\":275,\"bottom\":42.80000305175781,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n    at sample@debugger eval code line 311 > eval:185:138\n    at visit@debugger eval code line 311 > eval:275:19\n    at visit@debugger eval code line 311 > eval:386:16\n    at visit@debugger eval code line 311 > eval:387:85\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at @debugger eval code line 311 > eval:390:10\n    at evaluate@debugger eval code:313:16\n    at @debugger eval code:1:44\n    at @debugger eval code:1:62\n    at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:726:15)\n    at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1006:19)\n    at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:90:16)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:358:5"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T08:44:47.483Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/video.webm"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "sample@debugger eval code line 311 > eval",
+                    "column": 138,
+                    "line": 185
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-d2b739cdf1c73609ddf2",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 355,
+          "column": 3
+        },
+        {
+          "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 4060,
+                  "error": {
+                    "message": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":240.73333740234375,\"top\":874.5,\"bottom\":891.5}],\"candidateBox\":{\"x\":45,\"y\":885.7999877929688,\"width\":222,\"height\":32,\"top\":885.7999877929688,\"right\":267,\"bottom\":917.7999877929688,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n",
+                    "stack": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":240.73333740234375,\"top\":874.5,\"bottom\":891.5}],\"candidateBox\":{\"x\":45,\"y\":885.7999877929688,\"width\":222,\"height\":32,\"top\":885.7999877929688,\"right\":267,\"bottom\":917.7999877929688,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n    at sample@debugger eval code line 311 > eval:185:138\n    at visit@debugger eval code line 311 > eval:275:19\n    at visit@debugger eval code line 311 > eval:386:16\n    at visit@debugger eval code line 311 > eval:387:85\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at @debugger eval code line 311 > eval:390:10\n    at evaluate@debugger eval code:313:16\n    at @debugger eval code:1:44\n    at @debugger eval code:1:62\n    at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:726:15)\n    at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1006:19)\n    at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:90:16)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:358:5",
+                    "location": {
+                      "file": "sample@debugger eval code line 311 > eval",
+                      "column": 138,
+                      "line": 185
+                    }
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "sample@debugger eval code line 311 > eval",
+                        "column": 138,
+                        "line": 185
+                      },
+                      "message": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":240.73333740234375,\"top\":874.5,\"bottom\":891.5}],\"candidateBox\":{\"x\":45,\"y\":885.7999877929688,\"width\":222,\"height\":32,\"top\":885.7999877929688,\"right\":267,\"bottom\":917.7999877929688,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n    at sample@debugger eval code line 311 > eval:185:138\n    at visit@debugger eval code line 311 > eval:275:19\n    at visit@debugger eval code line 311 > eval:386:16\n    at visit@debugger eval code line 311 > eval:387:85\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at @debugger eval code line 311 > eval:390:10\n    at evaluate@debugger eval code:313:16\n    at @debugger eval code:1:44\n    at @debugger eval code:1:62\n    at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:726:15)\n    at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1006:19)\n    at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:90:16)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:358:5"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T08:44:55.485Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/video.webm"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "sample@debugger eval code line 311 > eval",
+                    "column": 138,
+                    "line": 185
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-8e7774cca80e39a684ac",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 355,
+          "column": 3
+        },
+        {
+          "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 28538,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T08:45:01.480Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-shell-chrome-dark",
+                      "contentType": "application/json",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat2/attachments/state-shell-chrome-dark-f49110ad1d0329a11421bc7f933097348f173602.json"
+                    },
+                    {
+                      "name": "state-theme-menu-dark",
+                      "contentType": "application/json",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat2/attachments/state-theme-menu-dark-3fc3318ec765299c73a379449b909746463e784d.json"
+                    },
+                    {
+                      "name": "state-rail-labeled-dark",
+                      "contentType": "application/json",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat2/attachments/state-rail-labeled-dark-314985e08c080f60bcf3c02920be1b88ba19103b.json"
+                    },
+                    {
+                      "name": "state-rail-icons-dark",
+                      "contentType": "application/json",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat2/attachments/state-rail-icons-dark-9aef59dea87e66a5fae330275bdc885452e322e7.json"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-133759dbdac059178784",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 355,
+          "column": 3
+        },
+        {
+          "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 27763,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T08:45:31.978Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-shell-chrome-dark",
+                      "contentType": "application/json",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat3/attachments/state-shell-chrome-dark-a17e39295fdde3d986bd9f797c09572583554e43.json"
+                    },
+                    {
+                      "name": "state-theme-menu-dark",
+                      "contentType": "application/json",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat3/attachments/state-theme-menu-dark-c933c266da4bcc0be6ab6b5a8b2775768f18ca10.json"
+                    },
+                    {
+                      "name": "state-rail-labeled-dark",
+                      "contentType": "application/json",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat3/attachments/state-rail-labeled-dark-5a9beb4f76b237342bd8d9dab0426c0470a9ea01.json"
+                    },
+                    {
+                      "name": "state-rail-icons-dark",
+                      "contentType": "application/json",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat3/attachments/state-rail-icons-dark-e900e421ed3caf3c3907196c801b39ea9dcd7df5.json"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-d2cad0944ed153237525",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 355,
+          "column": 3
+        },
+        {
+          "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 5369,
+                  "error": {
+                    "message": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":240.73333740234375,\"top\":874.5,\"bottom\":891.5}],\"candidateBox\":{\"x\":45,\"y\":889.7999877929688,\"width\":222,\"height\":32,\"top\":889.7999877929688,\"right\":267,\"bottom\":921.7999877929688,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n",
+                    "stack": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":240.73333740234375,\"top\":874.5,\"bottom\":891.5}],\"candidateBox\":{\"x\":45,\"y\":889.7999877929688,\"width\":222,\"height\":32,\"top\":889.7999877929688,\"right\":267,\"bottom\":921.7999877929688,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n    at sample@debugger eval code line 311 > eval:185:138\n    at visit@debugger eval code line 311 > eval:275:19\n    at visit@debugger eval code line 311 > eval:386:16\n    at visit@debugger eval code line 311 > eval:387:85\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at @debugger eval code line 311 > eval:390:10\n    at evaluate@debugger eval code:313:16\n    at @debugger eval code:1:44\n    at @debugger eval code:1:62\n    at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:726:15)\n    at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1006:19)\n    at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:90:16)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:358:5",
+                    "location": {
+                      "file": "sample@debugger eval code line 311 > eval",
+                      "column": 138,
+                      "line": 185
+                    }
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "sample@debugger eval code line 311 > eval",
+                        "column": 138,
+                        "line": 185
+                      },
+                      "message": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"SPAN#.\",\"candidate\":\"DIV#.root\",\"boxes\":[{\"left\":12,\"right\":240.73333740234375,\"top\":874.5,\"bottom\":891.5}],\"candidateBox\":{\"x\":45,\"y\":889.7999877929688,\"width\":222,\"height\":32,\"top\":889.7999877929688,\"right\":267,\"bottom\":921.7999877929688,\"left\":45},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\nvisit@debugger eval code line 311 > eval:386:16\nvisit@debugger eval code line 311 > eval:387:85\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\nvisit@debugger eval code line 311 > eval:388:95\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n    at sample@debugger eval code line 311 > eval:185:138\n    at visit@debugger eval code line 311 > eval:275:19\n    at visit@debugger eval code line 311 > eval:386:16\n    at visit@debugger eval code line 311 > eval:387:85\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at visit@debugger eval code line 311 > eval:388:95\n    at @debugger eval code line 311 > eval:390:10\n    at evaluate@debugger eval code:313:16\n    at @debugger eval code:1:44\n    at @debugger eval code:1:62\n    at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:726:15)\n    at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1006:19)\n    at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:90:16)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:358:5"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T08:46:01.292Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat4/test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat4/video.webm"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat4/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/story-13-6-stabilize-20261017/red/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat4/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "sample@debugger eval code line 311 > eval",
+                    "column": 138,
+                    "line": 185
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-8474b5e71ef9e248c553",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 355,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-17T08:44:47.020Z",
+    "duration": 81271.45,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 3,
+    "flaky": 0
+  }
+}

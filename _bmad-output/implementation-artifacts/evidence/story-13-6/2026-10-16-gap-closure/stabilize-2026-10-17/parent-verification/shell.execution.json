@@ -1,0 +1,29 @@
+{
+  "lane": "shell",
+  "argv": [
+    "dotnet",
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+    "-trait-",
+    "Category=GovernanceBuild",
+    "-trait-",
+    "Category=Performance",
+    "-trait-",
+    "Category=e2e-palette",
+    "-trait-",
+    "Category=NightlyProperty",
+    "-trait-",
+    "Category=Quarantined",
+    "-longRunning",
+    "30",
+    "-result-xml",
+    "/tmp/story-13-6-parent-verification-uo2amkr5/shell.xml"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+  "environment": {
+    "DiffEngine_Disabled": "true"
+  },
+  "exitCode": 1,
+  "durationSeconds": 94.07349705696106,
+  "log": "shell.log.txt",
+  "logSha256": "d96bb1db561861b5d767d23715fc1ab55cbd5993e38ac7eaed11e042b5b4b9c1"
+}

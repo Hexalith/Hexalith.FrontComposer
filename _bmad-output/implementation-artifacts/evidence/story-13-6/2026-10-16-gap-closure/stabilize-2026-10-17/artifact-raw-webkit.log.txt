@@ -1,0 +1,1 @@
+Accessibility artifact root is unexpectedly large: /tmp/story-13-6-stabilize-20261017/browser-final/results, /tmp/story-13-6-stabilize-20261017/browser-final/report

@@ -1,0 +1,169 @@
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreClientTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreClientTests.cs
+index ef2646d8..53d833ed 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreClientTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreClientTests.cs
+@@ -1325,8 +1325,11 @@ public sealed class EventStoreClientTests {
+             time.Advance(TimeSpan.FromMilliseconds(250));
+         }
+         await content.ReadAttempted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
++        TaskCompletionSource cancellationObserved = new(TaskCreationOptions.RunContinuationsAsynchronously);
++        using CancellationTokenRegistration cancellationRegistration = content.ObservedToken.Register(() => cancellationObserved.TrySetResult());
+         time.Advance(TimeSpan.FromMilliseconds(duringRetry ? 1750 : 2000));
+         CommandResult accepted = await dispatch.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
++        await cancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+         accepted.Status.ShouldBe(CommandResultStatus.Accepted);
+         accepted.MessageId.ShouldBe("01HVTESTULID");
+         accepted.CorrelationId.ShouldBeNull();
+diff --git a/tests/e2e/helpers/responsive-accessibility.ts b/tests/e2e/helpers/responsive-accessibility.ts
+index ae6cd8a9..17ebf262 100644
+--- a/tests/e2e/helpers/responsive-accessibility.ts
++++ b/tests/e2e/helpers/responsive-accessibility.ts
+@@ -188,7 +188,7 @@ async function preparePaintAudit(root: Locator) {
+         if (!tokens || tokens.length > 4) return { kind: 'unsupported' };
+         const sides = [tokens[0], tokens[1] ?? tokens[0], tokens[2] ?? tokens[0], tokens[3] ?? tokens[1] ?? tokens[0]];
+         const values = sides.map((value, side) => length(value, side % 2 ? width : height));
+-        if (values.some(value => value === null)) return { kind: 'unsupported' };
++        if (values.some(value => value === null || value < 0)) return { kind: 'unsupported' };
+         result = { left: Math.max(result.left, box.left + values[3]!), top: Math.max(result.top, box.top + values[0]!), right: Math.min(result.right, box.right - values[1]!), bottom: Math.min(result.bottom, box.bottom - values[2]!) }; clipped = true;
+       }
+       if (clipped && (result.right <= result.left || result.bottom <= result.top)) return { kind: 'hidden' };
+@@ -811,28 +811,48 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
+       for (const candidate of root.querySelectorAll('*')) { pagePaint.push(candidate); if (candidate.shadowRoot) collectPaint(candidate.shadowRoot); }
+     };
+     if (sampleKind === 'text' || sampleKind === 'icon') collectPaint(document);
+-    const sample = (element: Element, value: string, label: string, minimum: number, outside = false, alpha = 1, paintBoxes?: PaintBox[], shadowBound?: ShadowContrastBound) => {
+-      let boxes: PaintBox[] = paintBoxes ?? [element.getBoundingClientRect()];
++    const clippedPaint = (element: Element, boxes: PaintBox[], content = true): PaintBox[] => {
+       for (let current: Element | null = element; current; current = parent(current)) {
+         const css = getComputedStyle(current);
+         if (css.filter !== 'none' || css.mixBlendMode !== 'normal' || css.getPropertyValue('backdrop-filter') && css.getPropertyValue('backdrop-filter') !== 'none') throw new Error('Filtered or blended paint needs pixel evidence');
+         const clipping = audit.clip(css, current.getBoundingClientRect());
+-        if (clipping.kind === 'hidden') return;
++        if (clipping.kind === 'hidden') return [];
+         if (clipping.kind === 'unsupported') throw new Error('Clipped contrast paint needs pixel evidence');
+         if (clipping.box) boxes = boxes.map(box => ({ left: Math.max(box.left, clipping.box!.left), right: Math.min(box.right, clipping.box!.right), top: Math.max(box.top, clipping.box!.top), bottom: Math.min(box.bottom, clipping.box!.bottom) }));
+         // Scrollports paint only the visible part of a descendant's text range. The
+         // offscreen remainder cannot overlap a footer or another neighboring surface.
+         const bounds = current.getBoundingClientRect();
+-        const left = bounds.left + current.clientLeft, top = bounds.top + current.clientTop;
+-        boxes = boxes.map(box => ({
+-          left: /(auto|scroll|hidden|clip)/u.test(css.overflowX) ? Math.max(box.left, left) : box.left,
+-          right: /(auto|scroll|hidden|clip)/u.test(css.overflowX) ? Math.min(box.right, left + current.clientWidth) : box.right,
+-          top: /(auto|scroll|hidden|clip)/u.test(css.overflowY) ? Math.max(box.top, top) : box.top,
+-          bottom: /(auto|scroll|hidden|clip)/u.test(css.overflowY) ? Math.min(box.bottom, top + current.clientHeight) : box.bottom,
+-        }));
+-        if (current.matches(':popover-open,:modal')) break;
++        const clipX = /(auto|scroll|hidden|clip)/u.test(css.overflowX), clipY = /(auto|scroll|hidden|clip)/u.test(css.overflowY);
++        // Non-replaced inline boxes and display:contents have no overflow clip box.
++        if ((content || current !== element) && !['inline', 'contents'].includes(css.display) && (clipX || clipY)) {
++          for (let ancestor: Element | null = current; ancestor; ancestor = parent(ancestor)) {
++            const style = getComputedStyle(ancestor), transform = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
++            if (!transform.is2D || transform.a !== 1 || transform.d !== 1 || transform.b !== 0 || transform.c !== 0
++              || style.scale && !['none', '1'].includes(style.scale) || style.rotate && style.rotate !== 'none'
++              || style.zoom && !['normal', '1'].includes(style.zoom)) throw new Error('Transformed contrast clipping needs pixel evidence');
++          }
++          const margin = css.getPropertyValue('overflow-clip-margin').trim();
++          if ((css.overflowX === 'clip' || css.overflowY === 'clip') && margin && margin !== '0px') throw new Error('Expanded overflow clipping needs pixel evidence');
++          // Viewport rectangles and computed borders preserve fractional padding-box
++          // edges. Including a scrollbar gutter is conservative; integer client sizes
++          // can round away real paint and must not certify an overlap as absent.
++          const left = bounds.left + parseFloat(css.borderLeftWidth), right = bounds.right - parseFloat(css.borderRightWidth);
++          const top = bounds.top + parseFloat(css.borderTopWidth), bottom = bounds.bottom - parseFloat(css.borderBottomWidth);
++          boxes = boxes.map(box => ({
++            left: clipX ? Math.max(box.left, left) : box.left,
++            right: clipX ? Math.min(box.right, right) : box.right,
++            top: clipY ? Math.max(box.top, top) : box.top,
++            bottom: clipY ? Math.min(box.bottom, bottom) : box.bottom,
++          }));
++        }
++        // Out-of-flow backgrounds can escape an outer overflow clip. Without
++        // resolving their containing block, retain the overlap for pixel evidence.
++        if (current.matches(':popover-open,:modal') || !content && ['absolute', 'fixed'].includes(css.position)) break;
+       }
+-      boxes = boxes.filter(box => box.right > box.left && box.bottom > box.top);
++      return boxes.filter(box => box.right > box.left && box.bottom > box.top);
++    };
++    const sample = (element: Element, value: string, label: string, minimum: number, outside = false, alpha = 1, paintBoxes?: PaintBox[], shadowBound?: ShadowContrastBound) => {
++      const boxes = clippedPaint(element, paintBoxes ?? [element.getBoundingClientRect()]);
+       if (!boxes.length) return;
+       const containsComposed = (ancestor: Element, child: Element) => {
+         for (let current: Element | null = child; current; current = parent(current)) if (current === ancestor) return true;
+@@ -859,7 +879,12 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
+           if (plane && opaquePlaneBackdrop && !candidatePlane) continue;
+           const css = getComputedStyle(candidate), rect = candidate.getBoundingClientRect();
+           if (css.visibility === 'hidden' || Number(css.opacity) === 0 || parse(css.backgroundColor)[3] === 0) continue;
+-          if (boxes.some(box => rect.left < box.right && rect.right > box.left && rect.top < box.bottom && rect.bottom > box.top)) throw new Error(`Overlapping sibling background needs pixel evidence: ${JSON.stringify({ element: element.tagName + '#' + element.id + '.' + element.className, candidate: candidate.tagName + '#' + candidate.id + '.' + candidate.className, boxes, candidateBox: rect.toJSON(), candidateClip: audit.clip(css, rect), candidatePosition: css.position, root: root instanceof ShadowRoot ? root.host.tagName : 'document' })}`);
++          const intersects = (rect: PaintBox) => boxes.some(box => rect.left < box.right && rect.right > box.left && rect.top < box.bottom && rect.bottom > box.top);
++          if (!intersects(rect)) continue;
++          // A background behind a composed-tree scrollport cannot paint over adjacent
++          // text. Keep real visible intersections, including tiny shadow-root overlaps.
++          const candidateBoxes = clippedPaint(candidate, [rect], false);
++          if (candidateBoxes.some(intersects)) throw new Error(`Overlapping sibling background needs pixel evidence: ${JSON.stringify({ element: element.tagName + '#' + element.id + '.' + element.className, candidate: candidate.tagName + '#' + candidate.id + '.' + candidate.className, boxes, candidateBox: rect.toJSON(), candidateBoxes, candidateClip: audit.clip(css, rect), candidatePosition: css.position, root: root instanceof ShadowRoot ? root.host.tagName : 'document' })}`);
+         }
+       }
+       const color = parse(value); color[3] *= alpha;
+diff --git a/tests/e2e/specs/accessibility-state-matrix.spec.ts b/tests/e2e/specs/accessibility-state-matrix.spec.ts
+index a144008e..46cfae79 100644
+--- a/tests/e2e/specs/accessibility-state-matrix.spec.ts
++++ b/tests/e2e/specs/accessibility-state-matrix.spec.ts
+@@ -329,6 +329,60 @@ test('contrast measurement rejects empty, low-contrast, unpainted and unsupporte
+   expect(await measureSurfaceContrast(page.locator('#empty'), 'icon')).toEqual([]);
+ });
+ 
++test('contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap', async ({ page }, info) => {
++  await page.setContent('<style>body{background:white}#port{position:absolute;left:40px;top:40px;width:222px;height:60px;overflow:hidden}#host{position:relative;left:0}#label{position:absolute;left:40px;top:100px;margin:0;color:black;font:14px/20px sans-serif}</style><div id="port"><div id="host"></div></div><p id="label">Footer label</p>');
++  const geometry = await page.locator('#host').evaluate(host => {
++    const background = document.createElement('div');
++    background.style.cssText = 'position:relative;width:222px;height:32px;background:black';
++    host.attachShadow({ mode: 'open' }).append(background);
++    const label = document.querySelector('#label')!;
++    const range = document.createRange(); range.selectNodeContents(label);
++    const text = range.getBoundingClientRect(), port = host.parentElement!.getBoundingClientRect();
++    (host as HTMLElement).style.top = `${text.bottom - 1.7 - port.top}px`;
++    const candidate = background.getBoundingClientRect();
++    return { text: text.toJSON(), port: port.toJSON(), candidate: candidate.toJSON(), rawOverlap: text.bottom - candidate.top };
++  });
++  expect(geometry.rawOverlap).toBeCloseTo(1.7, 1);
++  expect(geometry.candidate.top).toBeGreaterThan(geometry.port.bottom);
++  await info.attach('shadow-background-scrollport-geometry', { body: JSON.stringify(geometry), contentType: 'application/json' });
++  for (const overflow of ['hidden', 'auto', 'clip']) {
++    await page.locator('#port').evaluate((port, value) => { (port as HTMLElement).style.overflow = value; }, overflow);
++    const samples = await expectSurfaceContrast(page.locator('#label'));
++    expect(samples).toHaveLength(1);
++    expect(samples[0].background.slice(0, 3)).toEqual([255, 255, 255]);
++    await page.locator('#port').evaluate(port => { (port as HTMLElement).style.overflow = 'visible'; });
++    await expect(measureSurfaceContrast(page.locator('#label'))).rejects.toThrow(/Overlapping sibling background/);
++  }
++  await page.locator('#port').evaluate(port => { (port as HTMLElement).style.overflow = 'hidden'; });
++  await page.locator('#host').evaluate((host, top) => { (host as HTMLElement).style.cssText = `position:fixed;left:40px;top:${top}px`; }, geometry.candidate.top);
++  await expect(measureSurfaceContrast(page.locator('#label'))).rejects.toThrow(/Overlapping sibling background/);
++});
++
++const clippingPaintRegressions = [
++  { name: 'scaled ancestor', port: 'position:relative;left:40px;top:40px;width:100px;height:60px;overflow:hidden;transform:scale(2);transform-origin:0 0', background: 'display:block;position:relative;top:40px;width:100px;height:20px', labelTop: 120, tag: 'div' },
++  { name: 'overflow clip margin', port: 'position:relative;left:40px;top:40px;width:100px;height:60px;overflow:clip;overflow-clip-margin:30px', background: 'display:block;position:relative;top:70px;width:100px;height:20px', labelTop: 110, tag: 'div' },
++  { name: 'inline ancestor', port: 'overflow:hidden', background: 'display:inline-block;position:relative;width:200px;height:20px', labelTop: 0, tag: 'span' },
++  { name: 'display contents ancestor', port: 'display:contents;overflow:hidden', background: 'display:block;position:relative;left:40px;top:100px;width:222px;height:32px', labelTop: 110, tag: 'div' },
++  { name: 'fractional scrollport', port: 'position:relative;left:40px;top:40px;width:100px;height:60.2px;overflow:hidden', background: 'display:block;position:relative;top:60.1px;width:100px;height:20px', labelTop: 85, tag: 'div' },
++  { name: 'expanded negative inset', port: 'position:relative;left:40px;top:40px;width:100px;height:60px;clip-path:inset(-30px)', background: 'display:block;position:relative;top:70px;width:100px;height:20px', labelTop: 110, tag: 'div' },
++];
++for (const fixture of clippingPaintRegressions) {
++  test(`review clipping preserves visible competing paint: ${fixture.name}`, async ({ page }) => {
++    await page.setContent(`<style>body{margin:0;background:white}#port{${fixture.port}}#bg{${fixture.background};background:black}#label{position:absolute;left:40px;top:${fixture.labelTop}px;margin:0;color:black;font:14px/20px sans-serif}</style><${fixture.tag} id="port"><span id="bg"></span></${fixture.tag}><p id="label">Footer label</p>`);
++    if (fixture.name === 'overflow clip margin') test.skip(!await page.evaluate(() => CSS.supports('overflow-clip-margin', '30px')), 'Engine does not implement expanded overflow clip margins');
++    if (fixture.name === 'fractional scrollport') {
++      const overlap = await page.locator('#port').evaluate(port => port.getBoundingClientRect().bottom - document.querySelector('#bg')!.getBoundingClientRect().top);
++      expect(overlap).toBeGreaterThan(0);
++      expect(overlap).toBeLessThan(.2);
++    }
++    await expect(measureSurfaceContrast(page.locator('#label'))).rejects.toThrow(/pixel evidence/);
++    await page.locator('#bg').evaluate(background => background.remove());
++    const samples = await expectSurfaceContrast(page.locator('#label'));
++    expect(samples).toHaveLength(1);
++    expect(samples[0].ratio).toBe(21);
++  });
++}
++
+ test('unrelated controls cannot mask failed focus or boundary contrast', async ({ page }) => {
+   await page.setContent('<style>#bad:not(:focus){outline:none!important;box-shadow:none!important}</style><main style="background:white;padding:20px"><button id="bad" style="background:white;border:2px solid #eee;outline:2px solid #eee">Low contrast</button><button id="good" style="background:white;border:2px solid black;outline:2px solid black">Readable</button></main>');
+   await page.locator('#bad').focus();

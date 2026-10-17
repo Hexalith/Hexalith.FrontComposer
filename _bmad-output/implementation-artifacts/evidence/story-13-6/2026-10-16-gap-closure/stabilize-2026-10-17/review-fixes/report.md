@@ -1,0 +1,9 @@
+# Review corrections — focused verification only
+
+Paint clipping now rejects unsupported transforms, expanded overflow clip margins and negative inset clips. Applicable overflow boxes use fractional viewport padding edges; inline and display:contents ancestors do not supply overflow clipping boxes. Six demonstrated negative fixtures and the existing 1.7px positive/negative regression ran on each engine: 20 passed, one explicit WebKit capability skip. Typecheck passed.
+
+Five focused evidence-tool tests passed. Missing roots fail before prior evidence changes; staged generation-specific archive parts preserve the earlier publication. Explicit restore integrity checks reject corrupt parts, entry sizes and destination escapes with PYTHONOPTIMIZE=1. Portable audit replay retains its input report bytes, produces linked bounded projections and exits nonzero for failed validation while recording existing failed gates. The portable exact-red replay reaches the expected original-helper failure. Its baseline helper changes only the test-library import path; original captured helper bytes, raw commands, reports and archives remain retained unchanged.
+
+Replay the repaired audit with `node audit.mjs --repo-root <checkout> --evidence-root <restored-tree> --output-root <new-receipts>`. Bounded projections are generated under `<restored-tree>/bounded-replay/` and link to the complete raw HTML report and its retained attachment tree. The audit emits failure for the historical failed gates. `pack.py --evidence-root <restored-tree> --output-dir <new-packet>` supports restored roots; it does not republish during these focused checks. Run `python3 evidence_tools_test.py` for the small script fixtures.
+
+The preceding complete-run/source packet remains historical to these corrections. No full verification or new readiness claim is made here; the parent owns the rerun.

@@ -1,0 +1,36 @@
+{
+  "sourceIdentitySha256": "babffe65f80705c4661aebcad2692ac688543f30dc6e3a002a091d3906e3b08b",
+  "rootCommit": "489f3ad4cbf09965c675d7bf2007c6a8b7a0861e",
+  "sourceCount": 30,
+  "approvedImageCount": 24,
+  "frozenIntentCount": 4,
+  "sourceImagesIntentsAssetsAndBinariesMatch": true,
+  "rootDeclaredSubmodulesUnchanged": true,
+  "manualCheckboxesUnchanged": true,
+  "manualCheckboxCount": 18,
+  "noNonvisualBrowserFailures": true,
+  "browserStats": {
+    "startTime": "2026-10-17T08:55:42.255Z",
+    "duration": 912832.636,
+    "expected": 571,
+    "skipped": 2,
+    "unexpected": 12,
+    "flaky": 0
+  },
+  "stateAndArtifactValidation": "state-validation.json",
+  "rawArchivePartsVerified": 5,
+  "rawArchiveEntries": 4406,
+  "rawArchiveRestore": "restore-validation.log.txt",
+  "cleanup": "cleanup.log.txt; exact AppHost stopped",
+  "diffCheck": {
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0
+  },
+  "currentReview": "Implementation verification performed; parent review and human/platform sign-offs are not inferred.",
+  "finalClassification": "open",
+  "errors": []
+}

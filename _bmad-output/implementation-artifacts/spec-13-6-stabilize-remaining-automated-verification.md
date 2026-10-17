@@ -2,7 +2,7 @@
 title: 'Story 13.6: Stabilize remaining automated verification'
 type: 'bugfix'
 created: '2026-10-17'
-status: 'ready-for-dev'
+status: 'done'
 route: 'dispatch'
 story_id: '13.6'
 baseline_commit: '27e7605d0032cb118332f131e6b022d9cb534ac9'
@@ -45,9 +45,9 @@ context:
 
 **Execution:**
 
-- [ ] `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreClientTests.cs:1307` — register cancellation after `ReadAttempted`, before advancing fake time; reuse line 1185's pattern. Await bounded dispatch, then cancellation within five seconds. Preserve identity, sends, unfinished read, disposal and late-outcome assertions.
-- [ ] `tests/e2e/specs/accessibility-state-matrix.spec.ts:358` — reproduce dark-shell contrast five times without retries; inspect the reported 1.7px shadow-root overlap. Patch only a demonstrated defect here or in the mapped helper; add positive/negative regression proof. Otherwise retain the unresolved flake.
-- [ ] `_bmad-output/implementation-artifacts/13-6-accessibility-result.md` — bind current outcomes/blockers to the candidate; preserve historical evidence, manual boxes and open status.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreClientTests.cs:1307` — register cancellation after `ReadAttempted`, before advancing fake time; reuse line 1185's pattern. Await bounded dispatch, then cancellation within five seconds. Preserve identity, sends, unfinished read, disposal and late-outcome assertions.
+- [x] `tests/e2e/specs/accessibility-state-matrix.spec.ts:358` — reproduce dark-shell contrast five times without retries; inspect the reported 1.7px shadow-root overlap. Patch only a demonstrated defect here or in the mapped helper; add positive/negative regression proof. Otherwise retain the unresolved flake.
+- [x] `_bmad-output/implementation-artifacts/13-6-accessibility-result.md` — bind current outcomes/blockers to the candidate; preserve historical evidence, manual boxes and open status.
 
 **Acceptance Criteria:**
 
@@ -67,9 +67,33 @@ Open: five catalog-policy mismatches; Parties-owned overrides; Fluent 5.0.0 asse
 
 ## Review Triage Log
 
+| Finding | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| BH-01 transformed scrollport | medium | patch P1 | Parent replay confirms the original helper rejects visible background paint while the new candidate clipping reports 21:1; viewport rectangles and unscaled client dimensions diverge under scale(2). |
+| BH-02 overflow clip margin | medium | patch P2 | Parent replay confirms a 30px overflow clip margin visibly retains background paint that the new padding-box intersection removes. |
+| BH-03 inline overflow | medium | patch P3 | Parent replay confirms a non-replaced inline ancestor has zero client dimensions but does not clip the visible background; the new helper accepts it. |
+| BH-04 fractional scrollport | medium | patch P4 | Parent replay confirms a 60.1875px scrollport rounds to clientHeight 60 and removes a real 0.09375px overlap that the original rejects. |
+| BH-05 negative inset | medium | patch P5 | Parent replay confirms applying the inherited inset parser to competing backgrounds clamps an expanded negative inset, newly hiding visible paint. |
+| BH-06 bounded report assets | medium | patch P6 | audit.mjs copies only index.html from a 502-file report; restored bounded indexes retain links to attachment assets absent from their report tree. |
+| BH-07 missing archive roots | medium | patch P7 | pack.py unconditionally continues for absent declared roots before publishing a new completeness manifest; rerunning it can silently omit evidence. |
+| BH-08 audit exit status | medium | patch P8 | audit.mjs records validator status and state errors without setting a failing exit status; automation cannot rely on process success to establish validity. |
+| BH-09 replay portability | medium | patch P9 | Exact causal replay imports the author's absolute checkout and testDir; audit.mjs hardcodes temporary input roots. Restored evidence cannot be replayed from another location. |
+| BH-10 optimized restore checks | medium | patch P10 | restore.py uses assert for hashes, byte counts and destination containment; Python optimization removes those claimed verification checks. |
+| EC-01 transformed scrollport | medium | patch P1 | Independent parent replay confirms this scaled fixture accepts visible black background paint as 21:1; same demonstrated coordinate defect as BH-01. |
+| EC-02 overflow clip margin | medium | patch P2 | Independent parent replay confirms expanded clip paint disappears from the measured background; same demonstrated defect as BH-02. |
+| EC-03 display contents | medium | patch P3 | Independent parent replay confirms a display:contents ancestor has no clipping box, but its zero client dimensions erase the visible candidate. |
+
+All three review layers returned before classification. The verification-gap layer found no gaps. Every filed finding was verified before grouping; none was dropped or deferred. P1–P10 are bounded corrections to the changed measurement/evidence code, add no public surface, and guard only reproduced conditions. Historical raw observations must remain retained. The evidence and full browser results above describe the pre-review candidate; a new candidate and affected verification are required after the measurement patches.
+
 ## Verification
 
 - Debug-build Shell.Tests; run `EventStoreClientTests` with xUnit `-class`, then the configured lane/five exclusions. Set `DiffEngine_Disabled=true`; record restore/asset limitations.
 - `npm --prefix tests/e2e run typecheck`; Firefox dark-shell case: `--workers=1 --retries=0 --repeat-each=5`.
 - Browser changes require the existing three accessibility specs on all three engines and existing per-run/attempt validators; preserve failures/images.
 - `node --test tests/e2e/scripts/a11y-state-evidence.test.mjs`; visual governance; `git diff --check`.
+
+Parent implementation audit: all three execution tasks and the three acceptance criteria are satisfied for this bounded stabilization. The four initial/retry × late-success/fault cleanup cases passed in the rebuilt 69-test class and configured Shell lane. Firefox causal replay fails on the original helper; the current helper passes all five zero-retry journeys and five positive/negative fixtures. The complete three-engine lane covers 320px, spacing and reduced-motion cases and retains every visual failure and skip. Artifact-authority tests pass 12/12; all 116 state rows per engine have final-attempt attribution. The refreshed result explicitly retains version/visual, platform/manual and owner gates as open. Parent source/image hash audit passed. [Verification report](evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/report.md) records 571/12/0/2 browser and 3693/2 Shell outcomes; this does not establish Story 13.6 completion.
+
+Post-review verification: P1–P10 are patched; all thirteen individual findings retain their verified verdicts above. Six new geometry negatives plus the original clipping fixture execute 20 passes and one explicit WebKit capability skip. Five evidence-tool checks pass, including optimized-Python corrupt-input and missing-root preservation cases. Parent replay confirms the five former geometry false passes now reject. The final configured browser lane is 588 passed / 12 visual failures / 0 flaky / 3 skipped / 603; the Firefox five-repeat lane is 10/10 without retries. The configured Shell lane remains 3693 passed / 2 policy failures, with all four cleanup rows passing. An omitted existing Test notice setting was corrected in the parent verification launch; its interrupted failed attempt remains retained and no production default changed. [Current verification](evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/parent-verification/configured-host/report.md) binds `sha256:e23d846e6e8f87f26f997866a8e82aa355e8ae89f1f94b67d4fa793add1db7b0`. Story 13.6 remains in-review and incomplete for retained visual/catalog/platform/manual/owner gates.
+
+The done status closes this bounded stabilization specification only. Sprint Story 13.6 remains in review and incomplete until its retained automated, platform, manual and owner gates are satisfied. The explicit no-staging/no-commit/no-push constraint remains in force.

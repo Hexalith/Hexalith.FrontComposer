@@ -1,0 +1,14 @@
+{
+  "lane": "diff",
+  "argv": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+  "environment": {},
+  "exitCode": 0,
+  "durationSeconds": 0.07719731330871582,
+  "log": "diff.log.txt",
+  "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,29 @@
+{
+  "scope": "Focused review corrections only; full verification belongs to the parent run.",
+  "sourceSha256": {
+    "tests/e2e/helpers/responsive-accessibility.ts": "35c07d0acf2f33b78788f5e446033ea45dd24a24b409c7c430ee647c74cac267",
+    "tests/e2e/specs/accessibility-state-matrix.spec.ts": "937213357d33a44be77243dd1bf07e68c54bceb27dd5af16d6862d9474ecb7c9",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/audit.mjs": "cf247411d9a5ae7fb9c090b86167754faa66b998f1d56e7ba1184d951c84f597",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/pack.py": "e42747b44590cce12c5a30989a0000ed190b04240975641f47c502c13ec9968f",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/restore.py": "e1ef128d942874be095c32434d8c8781717969a604a726c199e3e12e576ba48f",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/exact-red/playwright.config.ts": "7a9244d378553ab029c5317444ce7bc1e73a8fea4e7886e745b8e782a7c0d5be",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/exact-red/clipping.spec.ts": "e6e0b2a1b5af143a1e2e513024d44122fb0991eff1f8b4fdaa079b1ea9ade17a",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/exact-red/baseline-helper.ts": "fcda1eb553e9f7faf89e8615340efd411c46fdc6eee326ca79ece50dbd827895",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/evidence_tools_test.py": "d6c2e0ef9418f0ec4c3cb770eff911b4f50ce411af0aca00b30a71a0f6f2bfbf"
+  },
+  "browser": {
+    "passed": 20,
+    "skipped": 1,
+    "skipReason": "WebKit does not implement overflow-clip-margin"
+  },
+  "typecheckExit": 0,
+  "evidenceToolTests": {
+    "passed": 5,
+    "optimization": "PYTHONOPTIMIZE=1 for restore fixtures"
+  },
+  "portableBaselineReplay": {
+    "exit": 1,
+    "expectedFailure": "Original helper rejects clipped positive at the overlap guard"
+  },
+  "historicalRawArchiveUnchanged": true
+}

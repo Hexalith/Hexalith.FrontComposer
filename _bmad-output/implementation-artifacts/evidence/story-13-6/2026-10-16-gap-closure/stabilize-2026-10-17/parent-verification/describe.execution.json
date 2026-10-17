@@ -1,0 +1,20 @@
+{
+  "lane": "describe",
+  "argv": [
+    "aspire",
+    "describe",
+    "--apphost",
+    "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+    "--non-interactive",
+    "--format",
+    "Json"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+  "environment": {},
+  "exitCode": 0,
+  "durationSeconds": 0.5061502456665039,
+  "rawLogSha256": "f2d6d62043c3d27db9956cb5c2ca3d8c9cec916bc5ecb3fbbbde842c58c20ff2",
+  "rawLogRetained": false,
+  "sanitizedEvidence": "apphost.json",
+  "note": "Raw lifecycle output can contain dashboard credentials; sanitized resource/startup receipts are retained."
+}

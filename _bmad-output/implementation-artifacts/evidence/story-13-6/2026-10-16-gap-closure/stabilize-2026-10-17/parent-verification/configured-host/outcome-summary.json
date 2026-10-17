@@ -1,0 +1,598 @@
+{
+  "sourceIdentitySha256": "e23d846e6e8f87f26f997866a8e82aa355e8ae89f1f94b67d4fa793add1db7b0",
+  "run": "story-13-6-parent-configured-final-20261017",
+  "stats": {
+    "startTime": "2026-10-17T09:41:40.222Z",
+    "duration": 958485.194,
+    "expected": 588,
+    "skipped": 3,
+    "unexpected": 12,
+    "flaky": 0
+  },
+  "engineCounts": {
+    "chromium": {
+      "expected": 201,
+      "unexpected": 0,
+      "flaky": 0,
+      "skipped": 0
+    },
+    "firefox": {
+      "expected": 194,
+      "unexpected": 6,
+      "flaky": 0,
+      "skipped": 1
+    },
+    "webkit": {
+      "expected": 193,
+      "unexpected": 6,
+      "flaky": 0,
+      "skipped": 2
+    }
+  },
+  "failures": [
+    {
+      "engine": "firefox",
+      "title": "visual baseline light compact",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline light comfortable",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline light roomy",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline dark compact",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline dark comfortable",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "visual baseline dark roomy",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline light compact",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline light comfortable",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline light roomy",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline dark compact",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline dark comfortable",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "visual baseline dark roomy",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "failed"
+        },
+        {
+          "retry": 1,
+          "status": "failed"
+        },
+        {
+          "retry": 2,
+          "status": "failed"
+        }
+      ]
+    }
+  ],
+  "skips": [
+    {
+      "engine": "webkit",
+      "title": "review clipping preserves visible competing paint: overflow clip margin",
+      "status": "skipped",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "skipped"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion",
+      "status": "skipped",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "skipped"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion",
+      "status": "skipped",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "skipped"
+        }
+      ]
+    }
+  ],
+  "reconnectTests": [
+    {
+      "engine": "chromium",
+      "title": "projection reconnect fallback stale slow cap and filter cues in light",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "projection reconnect fallback stale slow cap and filter cues in dark",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "projection reconnect fallback stale slow cap and filter cues in light",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "projection reconnect fallback stale slow cap and filter cues in dark",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "projection reconnect fallback stale slow cap and filter cues in light",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "projection reconnect fallback stale slow cap and filter cues in dark",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    }
+  ],
+  "reviewRegressions": [
+    {
+      "engine": "chromium",
+      "title": "contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "review clipping preserves visible competing paint: scaled ancestor",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "review clipping preserves visible competing paint: overflow clip margin",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "review clipping preserves visible competing paint: inline ancestor",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "review clipping preserves visible competing paint: display contents ancestor",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "review clipping preserves visible competing paint: fractional scrollport",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "title": "review clipping preserves visible competing paint: expanded negative inset",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "review clipping preserves visible competing paint: scaled ancestor",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "review clipping preserves visible competing paint: overflow clip margin",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "review clipping preserves visible competing paint: inline ancestor",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "review clipping preserves visible competing paint: display contents ancestor",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "review clipping preserves visible competing paint: fractional scrollport",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "title": "review clipping preserves visible competing paint: expanded negative inset",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "review clipping preserves visible competing paint: scaled ancestor",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "review clipping preserves visible competing paint: overflow clip margin",
+      "status": "skipped",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "skipped"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "review clipping preserves visible competing paint: inline ancestor",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "review clipping preserves visible competing paint: display contents ancestor",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "review clipping preserves visible competing paint: fractional scrollport",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "title": "review clipping preserves visible competing paint: expanded negative inset",
+      "status": "expected",
+      "attempts": [
+        {
+          "retry": 0,
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

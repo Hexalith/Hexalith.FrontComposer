@@ -1,0 +1,121 @@
+{
+  "resources": [
+    {
+      "displayName": "counter-web",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "eventstore-admin-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "eventstore-admin",
+      "state": "Finished"
+    },
+    {
+      "displayName": "eventstore-admin-ui-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "eventstore-admin-ui",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "eventstore-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "eventstore",
+      "state": "Finished"
+    },
+    {
+      "displayName": "frontcomposer-ui",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "parties-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "parties",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "sample-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "sample",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "tenants",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "tenants-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "tenants-ui",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    }
+  ],
+  "counterWeb": {
+    "at": "2026-10-17T09:30:47.087595+00:00",
+    "sourceIdentitySha256": "ca8b773841deb2dfde19252733c67bc0c50b68d3d6010a5cd879ef452b22bf5d",
+    "resource": "counter-web",
+    "resourcePid": 86644,
+    "healthStatus": "Healthy",
+    "urls": [
+      {
+        "name": "http",
+        "url": "http://localhost:5201"
+      },
+      {
+        "name": "https",
+        "url": "https://localhost:7201"
+      }
+    ],
+    "environment": {
+      "DOTNET_ENVIRONMENT": "Test",
+      "Hexalith__FrontComposer__Specimens__Enabled": "true",
+      "ASPNETCORE_ENVIRONMENT": "Test",
+      "Hexalith__Shell__FormAbandonmentThresholdSeconds": "5",
+      "Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs": "6500",
+      "Hexalith__Shell__TimeoutActionThresholdMs": "5000"
+    },
+    "loadedBinaries": [
+      {
+        "path": "samples/Counter/Counter.Web/bin/Debug/net10.0/Counter.Web.dll",
+        "sha256": "2c83742b69a07b9b317b1e2a850acfd2bcb4d0cb99eb0107279921b70532c8b4",
+        "mappedInode": 8197784,
+        "diskInodeMatches": true,
+        "process": 87602,
+        "matchesSealedBinary": "samples/Counter/Counter.Web/bin/Debug/net10.0/Counter.Web.dll"
+      },
+      {
+        "path": "samples/Counter/Counter.Web/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll",
+        "sha256": "07d4d18f1c6d5b0766f25d2161e519d0c5e2a279b09106385d780c7ddf190b87",
+        "mappedInode": 8197779,
+        "diskInodeMatches": true,
+        "process": 87602,
+        "matchesSealedBinary": "src/Hexalith.FrontComposer.Shell/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll"
+      }
+    ],
+    "note": "Aspire resource PID is the launcher. Its actual runtime child maps the exact sealed Counter and Shell DLL bytes. Started after parent Debug build; no builds or source edits during browser verification."
+  }
+}

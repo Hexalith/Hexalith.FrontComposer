@@ -1,0 +1,919 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test
+> playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --workers=3 --retries=2
+
+
+Running 603 tests using 3 workers
+
+(node:10583) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10586) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10584) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    1 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (9.9s)
+  ✓    3 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (10.0s)
+  ✓    2 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt (12.2s)
+  ✓    5 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field unavailable: safe feedback, focus, owner, next attempt (6.8s)
+  ✓    4 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field forbidden: safe feedback, focus, owner, next attempt (7.3s)
+  ✓    6 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (6.6s)
+  ✓    7 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (8.1s)
+  ✓    8 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (7.9s)
+  ✓    9 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field transport: safe feedback, focus, owner, next attempt (7.1s)
+  ✓   12 [chromium] › specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results (4.1s)
+  ✓   10 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt (5.4s)
+  ✓   11 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field policy: safe feedback, focus, owner, next attempt (5.3s)
+  ✓   13 [chromium] › specs/accessibility-state-matrix.spec.ts:226:5 › AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation (4.3s)
+  ✓   16 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › home: composed text, targets, current-state and forced-color cues (4.4s)
+  ✓   15 [chromium] › specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces (9.1s)
+  ✓   17 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › navigation-tabs: composed text, targets, current-state and forced-color cues (6.1s)
+  ✓   18 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues (5.7s)
+  ✓   20 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt (7.5s)
+  ✓   19 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (9.5s)
+  ✓   21 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (5.1s)
+  ✓   22 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (5.6s)
+  ✓   23 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt (6.0s)
+  ✓   14 [chromium] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (35.6s)
+  ✓   24 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt (5.9s)
+  ✓   25 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (5.2s)
+  ✓   26 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (5.6s)
+  ✓   27 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (5.6s)
+  ✓   28 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field transport: safe feedback, focus, owner, next attempt (5.8s)
+  ✓   29 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field admission: safe feedback, focus, owner, next attempt (5.6s)
+  ✓   30 [chromium] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field policy: safe feedback, focus, owner, next attempt (5.8s)
+  ✓   31 [chromium] › specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results (4.4s)
+  ✓   32 [chromium] › specs/accessibility-state-matrix.spec.ts:226:5 › AE complete state matrix dark › real generated detail loss focuses its neutral non-live explanation (4.4s)
+  ✓   35 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues (3.5s)
+  ✓   34 [chromium] › specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces (8.1s)
+  ✓   36 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › navigation-tabs: composed text, targets, current-state and forced-color cues (5.6s)
+  ✓   37 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues (5.6s)
+  ✓   39 [chromium] › specs/accessibility-state-matrix.spec.ts:314:1 › contrast measurement rejects empty, low-contrast, unpainted and unsupported samples (504ms)
+  ✓   40 [chromium] › specs/accessibility-state-matrix.spec.ts:332:1 › contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap (604ms)
+  ✓   41 [chromium] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: scaled ancestor (529ms)
+  ✓   42 [chromium] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: overflow clip margin (728ms)
+  ✓   43 [chromium] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: inline ancestor (670ms)
+  ✓   44 [chromium] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: display contents ancestor (464ms)
+  ✓   45 [chromium] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: fractional scrollport (579ms)
+  ✓   46 [chromium] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: expanded negative inset (428ms)
+  ✓   47 [chromium] › specs/accessibility-state-matrix.spec.ts:386:1 › unrelated controls cannot mask failed focus or boundary contrast (645ms)
+  ✓   48 [chromium] › specs/accessibility-state-matrix.spec.ts:397:1 › forced-color state checks reject a removed cue while text and selected semantics survive (428ms)
+  ✓   38 [chromium] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (12.9s)
+  ✓   50 [chromium] › specs/accessibility-state-matrix.spec.ts:436:3 › active toolbar, tabs, palette and settings states in light (22.6s)
+  ✓   33 [chromium] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (54.2s)
+  ✓   51 [chromium] › specs/accessibility-state-matrix.spec.ts:498:3 › generated validation, policy, destructive and abandonment states in light (22.5s)
+  ✓   49 [chromium] › specs/accessibility-state-matrix.spec.ts:409:3 › shell chrome, theme menu and exact desktop navigation rails in light (54.7s)
+  ✓   53 [chromium] › specs/accessibility-state-matrix.spec.ts:436:3 › active toolbar, tabs, palette and settings states in dark (15.5s)
+  ✓   54 [chromium] › specs/accessibility-state-matrix.spec.ts:498:3 › generated validation, policy, destructive and abandonment states in dark (22.9s)
+  ✓   52 [chromium] › specs/accessibility-state-matrix.spec.ts:409:3 › shell chrome, theme menu and exact desktop navigation rails in dark (52.4s)
+  ✓   57 [chromium] › specs/accessibility-state-matrix.spec.ts:572:3 › real generated filter-hidden detail stays distinct from missing-item results in light (3.7s)
+  ✓   58 [chromium] › specs/accessibility-state-matrix.spec.ts:572:3 › real generated filter-hidden detail stays distinct from missing-item results in dark (4.6s)
+  ✓   59 [chromium] › specs/accessibility-state-matrix.spec.ts:589:3 › delayed generated detail recovery cancels after operator focus and navigation in light (5.8s)
+  ✓   55 [chromium] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in light (38.5s)
+  ✓   60 [chromium] › specs/accessibility-state-matrix.spec.ts:589:3 › delayed generated detail recovery cancels after operator focus and navigation in dark (5.5s)
+  ✓   61 [chromium] › specs/accessibility-state-matrix.spec.ts:656:3 › fresh-row presentation retains text boundary and system-color meaning in light (7.9s)
+  ✓   63 [chromium] › specs/accessibility-state-matrix.spec.ts:665:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (368ms)
+  ✓   62 [chromium] › specs/accessibility-state-matrix.spec.ts:656:3 › fresh-row presentation retains text boundary and system-color meaning in dark (7.8s)
+  ✘   56 [chromium] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in dark (33.8s)
+  ✓   65 [chromium] › specs/accessibility-state-matrix.spec.ts:702:1 › G09 forced-color focus geometry rejects a mode-specific clipped ring (600ms)
+(node:16674) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   64 [chromium] › specs/accessibility-state-matrix.spec.ts:678:1 › validation links keep native same-page href activation when focus enhancement is unavailable (2.3s)
+  ✓   66 [chromium] › specs/accessibility-state-matrix.spec.ts:711:3 › held generated recovery cancels after tenant scope change in light (3.8s)
+  ✓   68 [chromium] › specs/accessibility-state-matrix.spec.ts:711:3 › held generated recovery cancels after user scope change in light (3.3s)
+  ✓   69 [chromium] › specs/accessibility-state-matrix.spec.ts:711:3 › held generated recovery cancels after tenant scope change in dark (2.9s)
+  ✓   71 [chromium] › specs/responsive-accessibility.spec.ts:19:3 › AE geometry regression fixtures › rejects a clipped ring even when the complete target is inside the viewport (289ms)
+  ✓   72 [chromium] › specs/responsive-accessibility.spec.ts:23:3 › AE geometry regression fixtures › includes outer box-shadow rings and offsets in clipping geometry (903ms)
+  ✓   70 [chromium] › specs/accessibility-state-matrix.spec.ts:711:3 › held generated recovery cancels after user scope change in dark (3.5s)
+  ✓   73 [chromium] › specs/responsive-accessibility.spec.ts:47:3 › AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host (341ms)
+  ✓   75 [chromium] › specs/responsive-accessibility.spec.ts:78:3 › AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping (299ms)
+  ✓   76 [chromium] › specs/responsive-accessibility.spec.ts:84:3 › AE geometry regression fixtures › spacing exceptions reject neighboring circles and accept an isolated target (224ms)
+  ✓   77 [chromium] › specs/responsive-accessibility.spec.ts:91:3 › AE geometry regression fixtures › rejects missing and invalid equivalent inventories (296ms)
+  ✓   74 [chromium] › specs/responsive-accessibility.spec.ts:54:3 › AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes (1.2s)
+  ✓   78 [chromium] › specs/responsive-accessibility.spec.ts:97:3 › AE geometry regression fixtures › spacing overrides reach Fluent-style shadow content and contrast composites alpha (493ms)
+  ✓   79 [chromium] › specs/responsive-accessibility.spec.ts:112:1 › spacing reaches a delayed shadow root and cleanup stops later injection (406ms)
+  ✓   81 [chromium] › specs/responsive-accessibility.spec.ts:137:1 › modal decoration cannot substitute for the focused control indicator (518ms)
+  ✓   80 [chromium] › specs/responsive-accessibility.spec.ts:125:1 › focus checks reject an absent indicator and a pointer-transparent opaque occluder (753ms)
+  ✓   82 [chromium] › specs/responsive-accessibility.spec.ts:144:1 › text clipping follows native top-layer popovers while retaining their own clipping checks (338ms)
+  ✓   84 [chromium] › specs/responsive-accessibility.spec.ts:159:1 › an application-prevented Tab at the final control cannot impersonate browser chrome (470ms)
+  ✓   83 [chromium] › specs/responsive-accessibility.spec.ts:152:1 › a one-control keyboard trap cannot satisfy the expected cycle (655ms)
+  ✓   85 [chromium] › specs/responsive-accessibility.spec.ts:166:1 › shell focus scrolling protects the ring and cancels stale or disposed work (972ms)
+  ✓   86 [chromium] › specs/responsive-accessibility.spec.ts:202:1 › delayed overlay disposal preserves an operator Tab after native origin return (1.7s)
+  ✓   87 [chromium] › specs/responsive-accessibility.spec.ts:236:1 › owned palette return cancels the actual Fluent delayed return after an operator Tab (1.5s)
+  ✓   88 [chromium] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in light (2.8s)
+  ✓   89 [chromium] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in dark (2.6s)
+  ✓   90 [chromium] › specs/responsive-accessibility.spec.ts:337:1 › the real missing-detail component registers recovery before a Fluent shadow action removes detail (1.1s)
+  ✓   91 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow (3.4s)
+  ✓   92 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow with all text-spacing overrides (3.4s)
+  ✓   93 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow (4.2s)
+  ✓   94 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides (4.4s)
+  ✓   67 [chromium] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in dark (retry #1) (28.9s)
+  ✓   97 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow (3.3s)
+  ✓   98 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides (3.3s)
+  ✓   95 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow (12.7s)
+  ✓   96 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides (13.4s)
+  ✓   99 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (4.0s)
+  ✓  100 [chromium] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (3.9s)
+  ✓  101 [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light (3.7s)
+  ✓  104 [chromium] › specs/responsive-accessibility.spec.ts:471:1 › missing-detail recovery consumes only lost detail focus and cancels stale captures (809ms)
+  ✓  105 [chromium] › specs/responsive-accessibility.spec.ts:626:1 › row metrics preserve the compact minimum and report growth with the matching density floor (957ms)
+  ✓  102 [chromium] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark (3.8s)
+  ✓  103 [chromium] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (3.4s)
+  ✓  108 [chromium] › specs/responsive-accessibility.spec.ts:733:3 › review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring (221ms)
+  ✓  107 [chromium] › specs/responsive-accessibility.spec.ts:712:3 › review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus (530ms)
+  ✓  109 [chromium] › specs/responsive-accessibility.spec.ts:743:3 › review measurement regressions › G03 transparent supported CSS colors are absent focus paint (204ms)
+  ✓  111 [chromium] › specs/responsive-accessibility.spec.ts:759:3 › review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast (242ms)
+  ✓  110 [chromium] › specs/responsive-accessibility.spec.ts:751:3 › review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry (409ms)
+  ✓  112 [chromium] › specs/responsive-accessibility.spec.ts:766:3 › review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory (211ms)
+  ✓  113 [chromium] › specs/responsive-accessibility.spec.ts:773:3 › review measurement regressions › G12 inward outlines contrast with the control paint (172ms)
+  ✓  114 [chromium] › specs/responsive-accessibility.spec.ts:779:3 › review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator (281ms)
+  ✓  115 [chromium] › specs/responsive-accessibility.spec.ts:789:1 › supported clipped paint keeps a focus underline and excludes only fully hidden text (313ms)
+  ✓  106 [chromium] › specs/responsive-accessibility.spec.ts:658:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes (2.0s)
+  ✓  116 [chromium] › specs/responsive-accessibility.spec.ts:800:1 › diagnostic screenshots restore scroll without repairing an actually clipped focus ring (536ms)
+  ✓  119 [chromium] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.01 (209ms)
+  ✓  118 [chromium] › specs/responsive-accessibility.spec.ts:837:1 › R01 rejects an unprevented boundary Tab that application code refocuses (409ms)
+  ✓  120 [chromium] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.1 (215ms)
+  ✓  121 [chromium] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 1 (248ms)
+  ✓  122 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG ellipse without a passing rectangle masking it (252ms)
+  ✓  123 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG line without a passing rectangle masking it (226ms)
+  ✓  124 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG polyline without a passing rectangle masking it (188ms)
+  ✓  125 [chromium] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG use without a passing rectangle masking it (197ms)
+  ✓  126 [chromium] › specs/responsive-accessibility.spec.ts:865:1 › R04 zero-width SVG stroke does not count as meaningful icon paint (197ms)
+  ✓  127 [chromium] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition filter:brightness(0) (199ms)
+  ✓  128 [chromium] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition mix-blend-mode:multiply (186ms)
+  ✓  129 [chromium] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition backdrop-filter:brightness(0) (190ms)
+  ✓  130 [chromium] › specs/responsive-accessibility.spec.ts:881:1 › R06 effective glyph fill determines text contrast (220ms)
+  ✓  117 [chromium] › specs/responsive-accessibility.spec.ts:817:1 › real Fluent search and generated editors retain their focus contour with text spacing (2.0s)
+  ✓  131 [chromium] › specs/responsive-accessibility.spec.ts:888:1 › R07 sibling background paint cannot be replaced with ancestor white (208ms)
+  ✓  132 [chromium] › specs/responsive-accessibility.spec.ts:895:1 › R08 invisible ancestor cannot certify focus geometry (217ms)
+  ✓  133 [chromium] › specs/responsive-accessibility.spec.ts:903:1 › R09 descendant extending over the target ring is an obstruction (255ms)
+  ✓  134 [chromium] › specs/responsive-accessibility.spec.ts:911:1 › R10 generated meaningful text cannot disappear beside passing text (224ms)
+  ✓  136 [chromium] › specs/responsive-accessibility.spec.ts:927:1 › R12 permanent shadow cannot certify an invisible focus-only layer (206ms)
+  ✓  135 [chromium] › specs/responsive-accessibility.spec.ts:918:1 › R11 collapsed offset shadow paints no focus pixels (264ms)
+  ✓  137 [chromium] › specs/responsive-accessibility.spec.ts:935:1 › R13 inset pseudo focus border compares against control paint (206ms)
+  ✓  139 [chromium] › specs/responsive-accessibility.spec.ts:950:1 › reflow rejects unlabelled nested horizontal scrolling and stale or unjustified target exceptions (136ms)
+  ✓  138 [chromium] › specs/responsive-accessibility.spec.ts:943:1 › R14 placeholder alpha determines effective contrast (183ms)
+  ✓  142 [chromium] › specs/responsive-accessibility.spec.ts:1047:1 › forced-color replacement capability is recorded for its engine and run (183ms)
+  ✓  141 [chromium] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (788ms)
+  ✓  144 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line horizontal retains its painted stroke envelope (212ms)
+  ✓  145 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line vertical retains its painted stroke envelope (225ms)
+  ✓  146 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path horizontal retains its painted stroke envelope (239ms)
+  ✓  143 [chromium] › specs/responsive-accessibility.spec.ts:1062:1 › desktop rail flyout controls fit both 72px and 48px rails without horizontal scrolling (1.5s)
+  ✓  147 [chromium] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path vertical retains its painted stroke envelope (241ms)
+  ✓  140 [chromium] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (1.9s)
+  ✓  148 [chromium] › specs/responsive-accessibility.spec.ts:1095:3 › review actual generated pseudo composition inspects filters (229ms)
+  ✓  149 [chromium] › specs/responsive-accessibility.spec.ts:1095:3 › review actual placeholder pseudo composition inspects filters (217ms)
+  ✓  151 [chromium] › specs/responsive-accessibility.spec.ts:1113:1 › review generated glyphs outside their host require pixel evidence (188ms)
+  ✓  150 [chromium] › specs/responsive-accessibility.spec.ts:1095:3 › review actual focus pseudo composition inspects filters (269ms)
+  ✓  152 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:relative;top:40px (240ms)
+  ✓  153 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:sticky;top:0 (224ms)
+  ✓  154 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence transform:translateY(40px) (231ms)
+  ✓  155 [chromium] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence static negative margin (229ms)
+  ✓  156 [chromium] › specs/responsive-accessibility.spec.ts:1129:1 › review a sharp shadow concealed by its opaque control is not focus paint (255ms)
+  ✓  157 [chromium] › specs/responsive-accessibility.spec.ts:1139:1 › review permanent pseudo background cannot certify a same-color focus border (274ms)
+  ✓  158 [chromium] › specs/responsive-accessibility.spec.ts:1149:1 › review margin-shifted pseudo borders use the backdrop outside their host (243ms)
+  ✓  160 [chromium] › specs/responsive-accessibility.spec.ts:1165:1 › review generated large text uses the existing 3 to 1 threshold (195ms)
+  ✓  159 [chromium] › specs/responsive-accessibility.spec.ts:1157:1 › review transformed static descendants remain focus obstructions (228ms)
+  ✓  162 [chromium] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects mix-blend-mode:multiply (229ms)
+  ✓  163 [chromium] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (237ms)
+  ✓  165 [chromium] › specs/responsive-accessibility.spec.ts:1244:1 › review normal-flow generated label spacing remains measured (239ms)
+  ✓  166 [chromium] › specs/responsive-accessibility.spec.ts:1251:1 › review clipped text cannot overlap an adjacent static footer but visible overlap is rejected (200ms)
+  ✓  161 [chromium] › specs/responsive-accessibility.spec.ts:1175:1 › review recorded operator focus on SVG survives deferred overlay restoration (963ms)
+  ✓  164 [chromium] › specs/responsive-accessibility.spec.ts:1205:1 › review translucent permanent shadow cannot certify covered changed focus paint (603ms)
+  ✓  167 [chromium] › specs/responsive-accessibility.spec.ts:1259:1 › review opaque native top-layer surfaces shield text from page backgrounds only (254ms)
+  ✓  169 [chromium] › specs/responsive-accessibility.spec.ts:1284:1 › resume review ordinary flow descendant can obscure the target ring (192ms)
+  ✓  168 [chromium] › specs/responsive-accessibility.spec.ts:1274:1 › resume review offset opaque shadow cannot hide changed focus paint (255ms)
+  ✓  171 [chromium] › specs/responsive-accessibility.spec.ts:1299:1 › resume review overflowing generated text cannot borrow its host background (173ms)
+  ✓  170 [chromium] › specs/responsive-accessibility.spec.ts:1292:1 › resume review fully clipped pseudo borders supply no contrast evidence (245ms)
+  ✓  172 [chromium] › specs/responsive-accessibility.spec.ts:1306:1 › resume review descendant background paint cannot cover sampled text (232ms)
+  ✓  174 [chromium] › specs/responsive-accessibility.spec.ts:1313:38 › resume review cross-root background paint is checked for slotted text (220ms)
+  ✓  173 [chromium] › specs/responsive-accessibility.spec.ts:1313:38 › resume review cross-root background paint is checked for shadow text (248ms)
+  ✓  175 [chromium] › specs/responsive-accessibility.spec.ts:1330:1 › resume review text stroke requires actual glyph paint evidence (197ms)
+  ✓  176 [chromium] › specs/responsive-accessibility.spec.ts:1337:1 › resume review degenerate SVG fill supplies no painted icon (224ms)
+  ✓  177 [chromium] › specs/responsive-accessibility.spec.ts:1344:1 › resume review unpainted SVG dash patterns cannot certify an icon (233ms)
+  ✓  178 [chromium] › specs/responsive-accessibility.spec.ts:1351:1 › resume review transformed static containing block owns pseudo border adjacency (267ms)
+  ✓  179 [chromium] › specs/responsive-accessibility.spec.ts:1360:1 › resume review scrollport clips its own ordinary flow content before obstruction checks (236ms)
+  ✓  181 [chromium] › specs/specimen-accessibility.spec.ts:50:3 › FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations (147ms)
+  ✓  180 [chromium] › specs/responsive-accessibility.spec.ts:1369:1 › resume review native slots own plain labels but never hide opaque projected obstructions (258ms)
+  ✓  184 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate (1.6s)
+  ✓  183 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate (1.7s)
+  ✓  182 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate (2.4s)
+  ✓  186 [chromium] › specs/specimen-accessibility.spec.ts:91:3 › FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast (1.0s)
+  ✓  185 [chromium] › specs/specimen-accessibility.spec.ts:66:3 › FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces (1.6s)
+  ✓  188 [chromium] › specs/specimen-accessibility.spec.ts:226:3 › FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names (1.1s)
+  ✓  187 [chromium] › specs/specimen-accessibility.spec.ts:208:5 › FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch (1.7s)
+  ✓  190 [chromium] › specs/specimen-accessibility.spec.ts:276:3 › FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals (1.3s)
+  ✓  191 [chromium] › specs/specimen-accessibility.spec.ts:294:3 › FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion (1.7s)
+  ✓  189 [chromium] › specs/specimen-accessibility.spec.ts:243:3 › FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps (2.7s)
+  ✓  192 [chromium] › specs/specimen-accessibility.spec.ts:403:3 › FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable (1.7s)
+  ✓  193 [chromium] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 1280 CSS pixels (not browser zoom) (1.3s)
+  ✓  194 [chromium] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 640 CSS pixels (not browser zoom) (1.2s)
+  ✓  195 [chromium] › specs/specimen-accessibility.spec.ts:470:5 › FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 320 CSS pixels (not browser zoom) (1.2s)
+  ✓  196 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light compact (1.7s)
+  ✓  197 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable (1.7s)
+  ✓  198 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy (1.8s)
+  ✓  199 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact (1.6s)
+  ✓  200 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable (1.6s)
+(node:44291) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  201 [chromium] › specs/specimen-accessibility.spec.ts:483:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy (1.7s)
+(node:45070) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  202 [chromium] › specs/specimen-accessibility.spec.ts:498:3 › FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent (2.2s)
+(node:46017) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  204 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (9.1s)
+  ✓  205 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (10.5s)
+  ✓  203 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt (12.7s)
+  ✓  206 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field forbidden: safe feedback, focus, owner, next attempt (10.2s)
+  ✓  207 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field unavailable: safe feedback, focus, owner, next attempt (8.8s)
+  ✓  208 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (8.6s)
+  ✓  209 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (5.5s)
+  ✓  210 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (5.2s)
+  ✓  211 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field transport: safe feedback, focus, owner, next attempt (5.7s)
+  ✓  212 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt (5.2s)
+  ✓  213 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix light › generated zero-field policy: safe feedback, focus, owner, next attempt (5.3s)
+  ✓  214 [firefox] › specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results (4.9s)
+  ✓  215 [firefox] › specs/accessibility-state-matrix.spec.ts:226:5 › AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation (4.3s)
+  ✓  218 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › home: composed text, targets, current-state and forced-color cues (3.6s)
+  ✓  217 [firefox] › specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces (8.7s)
+  ✓  219 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › navigation-tabs: composed text, targets, current-state and forced-color cues (5.7s)
+  ✓  220 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues (4.5s)
+  ✓  222 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt (7.3s)
+  ✓  221 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues (9.1s)
+  ✓  223 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt (7.4s)
+  ✓  224 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt (8.3s)
+  ✓  216 [firefox] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (37.1s)
+  ✓  225 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt (9.4s)
+  ✓  226 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt (9.3s)
+  ✓  227 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt (6.5s)
+  ✓  228 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field rate-limited: safe feedback, focus, owner, next attempt (6.5s)
+  ✓  229 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt (5.9s)
+  ✓  230 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field transport: safe feedback, focus, owner, next attempt (7.3s)
+  ✓  231 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field admission: safe feedback, focus, owner, next attempt (7.5s)
+  ✓  232 [firefox] › specs/accessibility-state-matrix.spec.ts:160:7 › AE complete state matrix dark › generated zero-field policy: safe feedback, focus, owner, next attempt (8.5s)
+  ✓  233 [firefox] › specs/accessibility-state-matrix.spec.ts:202:5 › AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results (6.9s)
+  ✓  234 [firefox] › specs/accessibility-state-matrix.spec.ts:226:5 › AE complete state matrix dark › real generated detail loss focuses its neutral non-live explanation (6.0s)
+  ✓  237 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues (3.7s)
+  ✓  236 [firefox] › specs/accessibility-state-matrix.spec.ts:267:5 › AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces (9.0s)
+  ✓  238 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › navigation-tabs: composed text, targets, current-state and forced-color cues (5.7s)
+  ✓  239 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues (5.6s)
+  ✓  241 [firefox] › specs/accessibility-state-matrix.spec.ts:314:1 › contrast measurement rejects empty, low-contrast, unpainted and unsupported samples (821ms)
+  ✓  242 [firefox] › specs/accessibility-state-matrix.spec.ts:332:1 › contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap (798ms)
+  ✓  243 [firefox] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: scaled ancestor (489ms)
+  ✓  244 [firefox] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: overflow clip margin (533ms)
+  ✓  245 [firefox] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: inline ancestor (575ms)
+  ✓  240 [firefox] › specs/accessibility-state-matrix.spec.ts:290:7 › AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues (8.8s)
+  ✓  246 [firefox] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: display contents ancestor (568ms)
+  ✓  248 [firefox] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: expanded negative inset (693ms)
+  ✓  247 [firefox] › specs/accessibility-state-matrix.spec.ts:370:3 › review clipping preserves visible competing paint: fractional scrollport (818ms)
+  ✓  250 [firefox] › specs/accessibility-state-matrix.spec.ts:397:1 › forced-color state checks reject a removed cue while text and selected semantics survive (882ms)
+  ✓  249 [firefox] › specs/accessibility-state-matrix.spec.ts:386:1 › unrelated controls cannot mask failed focus or boundary contrast (1.0s)
+  ✓  235 [firefox] › specs/accessibility-state-matrix.spec.ts:247:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (47.1s)
+  ✓  252 [firefox] › specs/accessibility-state-matrix.spec.ts:436:3 › active toolbar, tabs, palette and settings states in light (26.5s)
+  ✓  251 [firefox] › specs/accessibility-state-matrix.spec.ts:409:3 › shell chrome, theme menu and exact desktop navigation rails in light (41.6s)
+  ✓  253 [firefox] › specs/accessibility-state-matrix.spec.ts:498:3 › generated validation, policy, destructive and abandonment states in light (19.7s)
+  ✓  255 [firefox] › specs/accessibility-state-matrix.spec.ts:436:3 › active toolbar, tabs, palette and settings states in dark (16.1s)
+  ✓  254 [firefox] › specs/accessibility-state-matrix.spec.ts:409:3 › shell chrome, theme menu and exact desktop navigation rails in dark (33.9s)
+  ✓  256 [firefox] › specs/accessibility-state-matrix.spec.ts:498:3 › generated validation, policy, destructive and abandonment states in dark (20.6s)
+  ✓  259 [firefox] › specs/accessibility-state-matrix.spec.ts:572:3 › real generated filter-hidden detail stays distinct from missing-item results in light (4.0s)
+  ✓  260 [firefox] › specs/accessibility-state-matrix.spec.ts:572:3 › real generated filter-hidden detail stays distinct from missing-item results in dark (3.8s)
+  ✓  261 [firefox] › specs/accessibility-state-matrix.spec.ts:589:3 › delayed generated detail recovery cancels after operator focus and navigation in light (4.3s)
+  ✓  262 [firefox] › specs/accessibility-state-matrix.spec.ts:589:3 › delayed generated detail recovery cancels after operator focus and navigation in dark (4.5s)
+  ✓  263 [firefox] › specs/accessibility-state-matrix.spec.ts:656:3 › fresh-row presentation retains text boundary and system-color meaning in light (5.7s)
+  ✘  258 [firefox] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in dark (29.3s)
+(node:35178) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  264 [firefox] › specs/accessibility-state-matrix.spec.ts:656:3 › fresh-row presentation retains text boundary and system-color meaning in dark (6.7s)
+  ✓  266 [firefox] › specs/accessibility-state-matrix.spec.ts:665:1 › paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors (1.3s)
+  ✘  257 [firefox] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in light (34.4s)
+(node:36270) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  267 [firefox] › specs/accessibility-state-matrix.spec.ts:678:1 › validation links keep native same-page href activation when focus enhancement is unavailable (2.6s)
+  ✓  269 [firefox] › specs/accessibility-state-matrix.spec.ts:702:1 › G09 forced-color focus geometry rejects a mode-specific clipped ring (603ms)
+  ✓  270 [firefox] › specs/accessibility-state-matrix.spec.ts:711:3 › held generated recovery cancels after tenant scope change in light (6.9s)
+  ✓  271 [firefox] › specs/accessibility-state-matrix.spec.ts:711:3 › held generated recovery cancels after user scope change in light (6.8s)
+  ✓  272 [firefox] › specs/accessibility-state-matrix.spec.ts:711:3 › held generated recovery cancels after tenant scope change in dark (5.4s)
+  ✓  273 [firefox] › specs/accessibility-state-matrix.spec.ts:711:3 › held generated recovery cancels after user scope change in dark (6.7s)
+  ✓  274 [firefox] › specs/responsive-accessibility.spec.ts:19:3 › AE geometry regression fixtures › rejects a clipped ring even when the complete target is inside the viewport (1.0s)
+  ✓  275 [firefox] › specs/responsive-accessibility.spec.ts:23:3 › AE geometry regression fixtures › includes outer box-shadow rings and offsets in clipping geometry (3.2s)
+  ✓  276 [firefox] › specs/responsive-accessibility.spec.ts:47:3 › AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host (826ms)
+  ✓  277 [firefox] › specs/responsive-accessibility.spec.ts:54:3 › AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes (1.2s)
+  ✓  278 [firefox] › specs/responsive-accessibility.spec.ts:78:3 › AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping (957ms)
+  ✓  279 [firefox] › specs/responsive-accessibility.spec.ts:84:3 › AE geometry regression fixtures › spacing exceptions reject neighboring circles and accept an isolated target (681ms)
+  ✓  280 [firefox] › specs/responsive-accessibility.spec.ts:91:3 › AE geometry regression fixtures › rejects missing and invalid equivalent inventories (388ms)
+  ✓  281 [firefox] › specs/responsive-accessibility.spec.ts:97:3 › AE geometry regression fixtures › spacing overrides reach Fluent-style shadow content and contrast composites alpha (729ms)
+  ✓  282 [firefox] › specs/responsive-accessibility.spec.ts:112:1 › spacing reaches a delayed shadow root and cleanup stops later injection (459ms)
+  ✓  283 [firefox] › specs/responsive-accessibility.spec.ts:125:1 › focus checks reject an absent indicator and a pointer-transparent opaque occluder (712ms)
+  ✓  284 [firefox] › specs/responsive-accessibility.spec.ts:137:1 › modal decoration cannot substitute for the focused control indicator (472ms)
+  ✓  285 [firefox] › specs/responsive-accessibility.spec.ts:144:1 › text clipping follows native top-layer popovers while retaining their own clipping checks (2.4s)
+  ✓  286 [firefox] › specs/responsive-accessibility.spec.ts:152:1 › a one-control keyboard trap cannot satisfy the expected cycle (692ms)
+  ✓  287 [firefox] › specs/responsive-accessibility.spec.ts:159:1 › an application-prevented Tab at the final control cannot impersonate browser chrome (1.1s)
+  ✓  288 [firefox] › specs/responsive-accessibility.spec.ts:166:1 › shell focus scrolling protects the ring and cancels stale or disposed work (1.1s)
+  ✓  289 [firefox] › specs/responsive-accessibility.spec.ts:202:1 › delayed overlay disposal preserves an operator Tab after native origin return (1.6s)
+  ✓  290 [firefox] › specs/responsive-accessibility.spec.ts:236:1 › owned palette return cancels the actual Fluent delayed return after an operator Tab (2.1s)
+  ✘  268 [firefox] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in light (retry #1) (47.4s)
+  ✘  265 [firefox] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in dark (retry #1) (49.5s)
+(node:60685) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:60695) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  291 [firefox] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in light (3.5s)
+  ✓  294 [firefox] › specs/responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in dark (3.5s)
+  ✓  295 [firefox] › specs/responsive-accessibility.spec.ts:337:1 › the real missing-detail component registers recovery before a Fluent shadow action removes detail (1.3s)
+  ✓  296 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow (4.8s)
+  ✓  297 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow with all text-spacing overrides (6.0s)
+  ✓  298 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow (6.4s)
+  ✓  299 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides (6.1s)
+  ✘  293 [firefox] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in dark (retry #2) (29.0s)
+(node:76513) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  292 [firefox] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in light (retry #2) (35.2s)
+(node:79317) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  300 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow (18.2s)
+  ✓  302 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow (8.0s)
+  ✓  303 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides (5.6s)
+  ✓  304 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow (7.0s)
+  ✓  301 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides (22.0s)
+  ✓  306 [firefox] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light (3.8s)
+  ✓  307 [firefox] › specs/responsive-accessibility.spec.ts:383:5 › Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark (3.6s)
+  ✓  305 [firefox] › specs/responsive-accessibility.spec.ts:364:7 › Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides (6.7s)
+  ✓  309 [firefox] › specs/responsive-accessibility.spec.ts:471:1 › missing-detail recovery consumes only lost detail focus and cancels stale captures (979ms)
+  ✓  310 [firefox] › specs/responsive-accessibility.spec.ts:626:1 › row metrics preserve the compact minimum and report growth with the matching density floor (1.6s)
+  ✓  312 [firefox] › specs/responsive-accessibility.spec.ts:712:3 › review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus (1.2s)
+  ✓  313 [firefox] › specs/responsive-accessibility.spec.ts:733:3 › review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring (487ms)
+  ✓  311 [firefox] › specs/responsive-accessibility.spec.ts:658:1 › real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes (3.0s)
+  ✓  314 [firefox] › specs/responsive-accessibility.spec.ts:743:3 › review measurement regressions › G03 transparent supported CSS colors are absent focus paint (471ms)
+  ✓  315 [firefox] › specs/responsive-accessibility.spec.ts:751:3 › review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry (784ms)
+  ✓  308 [firefox] › specs/responsive-accessibility.spec.ts:448:3 › Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing (5.7s)
+  ✓  317 [firefox] › specs/responsive-accessibility.spec.ts:766:3 › review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory (468ms)
+  ✓  318 [firefox] › specs/responsive-accessibility.spec.ts:773:3 › review measurement regressions › G12 inward outlines contrast with the control paint (465ms)
+  ✓  319 [firefox] › specs/responsive-accessibility.spec.ts:779:3 › review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator (647ms)
+  ✓  316 [firefox] › specs/responsive-accessibility.spec.ts:759:3 › review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast (1.8s)
+  ✓  320 [firefox] › specs/responsive-accessibility.spec.ts:789:1 › supported clipped paint keeps a focus underline and excludes only fully hidden text (697ms)
+  ✓  321 [firefox] › specs/responsive-accessibility.spec.ts:800:1 › diagnostic screenshots restore scroll without repairing an actually clipped focus ring (1.2s)
+  ✓  323 [firefox] › specs/responsive-accessibility.spec.ts:837:1 › R01 rejects an unprevented boundary Tab that application code refocuses (941ms)
+  ✓  324 [firefox] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.01 (647ms)
+  ✓  325 [firefox] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 0.1 (734ms)
+  ✓  327 [firefox] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG ellipse without a passing rectangle masking it (615ms)
+  ✓  322 [firefox] › specs/responsive-accessibility.spec.ts:817:1 › real Fluent search and generated editors retain their focus contour with text spacing (3.3s)
+  ✓  329 [firefox] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG polyline without a passing rectangle masking it (480ms)
+  ✓  326 [firefox] › specs/responsive-accessibility.spec.ts:847:3 › R02 pseudo focus paint composites opacity 1 (2.2s)
+  ✓  328 [firefox] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG line without a passing rectangle masking it (1.6s)
+  ✓  330 [firefox] › specs/responsive-accessibility.spec.ts:856:3 › R03 measures SVG use without a passing rectangle masking it (427ms)
+  ✓  331 [firefox] › specs/responsive-accessibility.spec.ts:865:1 › R04 zero-width SVG stroke does not count as meaningful icon paint (481ms)
+  ✓  332 [firefox] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition filter:brightness(0) (527ms)
+  ✓  333 [firefox] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition mix-blend-mode:multiply (476ms)
+  ✓  334 [firefox] › specs/responsive-accessibility.spec.ts:873:3 › R05 rejects unsupported composition backdrop-filter:brightness(0) (472ms)
+  ✓  335 [firefox] › specs/responsive-accessibility.spec.ts:881:1 › R06 effective glyph fill determines text contrast (488ms)
+  ✓  336 [firefox] › specs/responsive-accessibility.spec.ts:888:1 › R07 sibling background paint cannot be replaced with ancestor white (505ms)
+  ✓  337 [firefox] › specs/responsive-accessibility.spec.ts:895:1 › R08 invisible ancestor cannot certify focus geometry (568ms)
+  ✓  338 [firefox] › specs/responsive-accessibility.spec.ts:903:1 › R09 descendant extending over the target ring is an obstruction (481ms)
+  ✓  339 [firefox] › specs/responsive-accessibility.spec.ts:911:1 › R10 generated meaningful text cannot disappear beside passing text (610ms)
+  ✓  340 [firefox] › specs/responsive-accessibility.spec.ts:918:1 › R11 collapsed offset shadow paints no focus pixels (532ms)
+  ✓  341 [firefox] › specs/responsive-accessibility.spec.ts:927:1 › R12 permanent shadow cannot certify an invisible focus-only layer (460ms)
+  ✓  342 [firefox] › specs/responsive-accessibility.spec.ts:935:1 › R13 inset pseudo focus border compares against control paint (446ms)
+  ✓  343 [firefox] › specs/responsive-accessibility.spec.ts:943:1 › R14 placeholder alpha determines effective contrast (442ms)
+  ✓  344 [firefox] › specs/responsive-accessibility.spec.ts:950:1 › reflow rejects unlabelled nested horizontal scrolling and stale or unjustified target exceptions (433ms)
+  ✓  347 [firefox] › specs/responsive-accessibility.spec.ts:1047:1 › forced-color replacement capability is recorded for its engine and run (394ms)
+  ✓  346 [firefox] › specs/responsive-accessibility.spec.ts:1017:1 › reused owned dialog dismissal resets only its current return and preserves later external input (1.1s)
+  ✓  349 [firefox] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line horizontal retains its painted stroke envelope (506ms)
+  ✓  350 [firefox] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG line vertical retains its painted stroke envelope (477ms)
+  ✓  348 [firefox] › specs/responsive-accessibility.spec.ts:1062:1 › desktop rail flyout controls fit both 72px and 48px rails without horizontal scrolling (2.0s)
+  ✓  345 [firefox] › specs/responsive-accessibility.spec.ts:959:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (2.7s)
+  ✓  351 [firefox] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path horizontal retains its painted stroke envelope (665ms)
+  ✓  353 [firefox] › specs/responsive-accessibility.spec.ts:1095:3 › review actual generated pseudo composition inspects filters (461ms)
+  ✓  352 [firefox] › specs/responsive-accessibility.spec.ts:1083:3 › review axis-aligned SVG path vertical retains its painted stroke envelope (479ms)
+  ✓  356 [firefox] › specs/responsive-accessibility.spec.ts:1113:1 › review generated glyphs outside their host require pixel evidence (426ms)
+  ✓  354 [firefox] › specs/responsive-accessibility.spec.ts:1095:3 › review actual placeholder pseudo composition inspects filters (1.9s)
+  ✓  355 [firefox] › specs/responsive-accessibility.spec.ts:1095:3 › review actual focus pseudo composition inspects filters (1.9s)
+  ✓  358 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:sticky;top:0 (499ms)
+  ✓  357 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence position:relative;top:40px (2.0s)
+  ✓  359 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence transform:translateY(40px) (533ms)
+  ✓  360 [firefox] › specs/responsive-accessibility.spec.ts:1121:3 › review overlapping sibling backgrounds require evidence static negative margin (440ms)
+  ✓  361 [firefox] › specs/responsive-accessibility.spec.ts:1129:1 › review a sharp shadow concealed by its opaque control is not focus paint (581ms)
+  ✓  362 [firefox] › specs/responsive-accessibility.spec.ts:1139:1 › review permanent pseudo background cannot certify a same-color focus border (556ms)
+  ✓  363 [firefox] › specs/responsive-accessibility.spec.ts:1149:1 › review margin-shifted pseudo borders use the backdrop outside their host (519ms)
+  ✓  365 [firefox] › specs/responsive-accessibility.spec.ts:1165:1 › review generated large text uses the existing 3 to 1 threshold (403ms)
+  ✓  364 [firefox] › specs/responsive-accessibility.spec.ts:1157:1 › review transformed static descendants remain focus obstructions (441ms)
+  ✓  367 [firefox] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects mix-blend-mode:multiply (428ms)
+  ✓  368 [firefox] › specs/responsive-accessibility.spec.ts:1196:3 › review actual generated pseudo composition rejects backdrop-filter:brightness(0) (427ms)
+  ✓  366 [firefox] › specs/responsive-accessibility.spec.ts:1175:1 › review recorded operator focus on SVG survives deferred overlay restoration (987ms)
+  ✓  370 [firefox] › specs/responsive-accessibility.spec.ts:1244:1 › review normal-flow generated label spacing remains measured (432ms)
+  ✓  371 [firefox] › specs/responsive-accessibility.spec.ts:1251:1 › review clipped text cannot overlap an adjacent static footer but visible overlap is rejected (454ms)
+  ✓  369 [firefox] › specs/responsive-accessibility.spec.ts:1205:1 › review translucent permanent shadow cannot certify covered changed focus paint (951ms)
+  ✓  372 [firefox] › specs/responsive-accessibility.spec.ts:1259:1 › review opaque native top-layer surfaces shield text from page backgrounds only (740ms)
+  ✓  373 [firefox] › specs/responsive-accessibility.spec.ts:1274:1 › resume review offset opaque shadow cannot hide changed focus paint (873ms)
+  ✓  374 [firefox] › specs/responsive-accessibility.spec.ts:1284:1 › resume review ordinary flow descendant can obscure the target ring (677ms)
+  ✓  375 [firefox] › specs/responsive-accessibility.spec.ts:1292:1 › resume review fully clipped pseudo borders supply no contrast evidence (605ms)
+  ✓  376 [firefox] › specs/responsive-accessibility.spec.ts:1299:1 › resume review overflowing generated text cannot borrow its host background (467ms)
+  ✓  377 [firefox] › specs/responsive-accessibility.spec.ts:1306:1 › resume review descendant background paint cannot cover sampled text (432ms)
+  ✓  378 [firefox] › specs/responsive-accessibility.spec.ts:1313:38 › resume review cross-root background paint is checked for shadow text (406ms)
+  ✓  379 [firefox] › specs/responsive-accessibility.spec.ts:1313:38 › resume review cross-root background paint is checked for slotted text (410ms)
+  ✓  380 [firefox] › specs/responsive-accessibility.spec.ts:1330:1 › resume review text stroke requires actual glyph paint evidence (444ms)
+  ✓  381 [firefox] › specs/responsive-accessibility.spec.ts:1337:1 › resume review degenerate SVG fill supplies no painted icon (504ms)
+  ✓  382 [firefox] › specs/responsive-accessibility.spec.ts:1344:1 › resume review unpainted SVG dash patterns cannot certify an icon (423ms)
+  ✓  383 [firefox] › specs/responsive-accessibility.spec.ts:1351:1 › resume review transformed static containing block owns pseudo border adjacency (599ms)
+  ✓  384 [firefox] › specs/responsive-accessibility.spec.ts:1360:1 › resume review scrollport clips its own ordinary flow content before obstruction checks (651ms)
+  ✓  386 [firefox] › specs/specimen-accessibility.spec.ts:50:3 › FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations (1.8s)
+  ✓  385 [firefox] › specs/responsive-accessibility.spec.ts:1369:1 › resume review native slots own plain labels but never hide opaque projected obstructions (2.1s)
+  ✓  389 [firefox] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate (2.7s)
+  ✓  388 [firefox] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate (2.9s)
+  ✓  387 [firefox] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate (6.0s)
+  ✓  391 [firefox] › specs/specimen-accessibility.spec.ts:91:3 › FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast (1.7s)
+  ✓  390 [firefox] › specs/specimen-accessibility.spec.ts:66:3 › FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces (3.2s)
+  ✘  394 [firefox] › specs/specimen-accessibility.spec.ts:243:3 › FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps (1.1s)
+  ✘  392 [firefox] › specs/specimen-accessibility.spec.ts:208:5 › FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch (2.3s)
+  ✘  393 [firefox] › specs/specimen-accessibility.spec.ts:226:3 › FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names (2.1s)
+
+
+  1) [firefox] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in light 
+
+    TimeoutError: locator.evaluate: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for getByTestId('fc-projection-connection-status')
+
+
+       at ../helpers/responsive-accessibility.ts:159
+
+      157 | /** Observe resting pseudo-class paint synchronously, suppressing application focus callbacks. */
+      158 | async function preparePaintAudit(root: Locator) {
+    > 159 |   await root.evaluate(() => {
+          |              ^
+      160 |     const parse = (value: string): number[] => {
+      161 |       if (!CSS.supports('color', value)) throw new Error(`Unsupported computed paint: ${value}`);
+      162 |       const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+        at preparePaintAudit (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:159:14)
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:725:9)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1031:25)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:125:63)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:548:7
+
+    attachment #1: state-connection-reconnecting-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-connection-reconnecting-light-07d81d17b7741fd64a3167b3a111e8be71bf6f5f.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-stale-reconnecting-light-99b2a1c3eb345e116ceab84b5b5780803cdf82a3.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-connection-disconnected-light-ff843d652b8a924b89f3abcca205ff3a3a2ee10d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-stale-disconnected-light-553ebecfa17fe594ad20f1a71659d0711757d2fe.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for getByTestId('fc-projection-connection-status')
+
+
+      46 |         result = { mode, status: 'measured', phase: inspection!.phase, ...geometry, contrast };
+      47 |       } else result = { mode, status: 'none', phase: inspection!.phase, target: active };
+    > 48 |       await root.scrollIntoViewIfNeeded();
+         |                  ^
+      49 |       expect(await activeElement.evaluate(element => document.activeElement === element), `Root inspection retains activeElement: ${state} ${mode}`).toBe(true);
+      50 |       if (inspection!.retainedFocus) await expect(focused).toBeFocused();
+      51 |       return { ...result, activeElementRetainedAfterRootScroll: true };
+        at inspectBeforeRootScroll (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:48:18)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:115:45)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:548:7
+
+    attachment #1: state-connection-reconnecting-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry1/attachments/state-connection-reconnecting-light-0ab7da1541dc7781ac2c847a350a3d27eed33153.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry1/attachments/state-stale-reconnecting-light-3b32fb719d69e1f7f51fa4b99e945d450dd2c4df.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry1/attachments/state-connection-disconnected-light-c932a06fe790464045dde93f2d4fb1e44a2e2be2.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry1/attachments/state-stale-disconnected-light-0fd13a11caa9a5b855e1c1cdf687926cc6b1a2c1.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry1/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry1/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    TimeoutError: locator.evaluateHandle: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for getByTestId('fc-projection-connection-status')
+
+
+       at ../helpers/responsive-accessibility.ts:1044
+
+      1042 | /** Diagnostic element captures must leave the operator's scroll/focus geometry unchanged. */
+      1043 | export async function screenshotPreservingScroll(target: Locator, options?: Parameters<Locator['screenshot']>[0]) {
+    > 1044 |   const positions = await target.evaluateHandle(() => {
+           |                                  ^
+      1045 |     const elements = new Set<Element>([document.scrollingElement ?? document.documentElement]);
+      1046 |     const visit = (root: Document | ShadowRoot) => { for (const element of root.querySelectorAll('*')) {
+      1047 |       if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth || element.scrollTop || element.scrollLeft) elements.add(element);
+        at screenshotPreservingScroll (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1044:34)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:145:29)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:548:7
+
+    attachment #1: state-connection-reconnecting-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry2/attachments/state-connection-reconnecting-light-d0adfb67d8da54968ea9f9f6ec93700dd08f7f19.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry2/attachments/state-stale-reconnecting-light-7a94d3980749819938847accb97793118bbe9bc0.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-light (application/json) ──────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry2/attachments/state-connection-disconnected-light-cecfe62a0cacd76bd55e4a84f1b2fe68aa00530b.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-light (application/json) ───────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry2/attachments/state-stale-disconnected-light-c7c3cc77c6fad7ea724bf6c28d00453e6f6718e5.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry2/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry2/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry2/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [firefox] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in dark 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('fc-projection-connection-status')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('fc-projection-connection-status') with timeout 10000ms
+      - waiting for getByTestId('fc-projection-connection-status')
+
+
+      132 |   const forcedColorsStatus = forcedColorsPaint ? 'painted system palette' : 'unsupported authored-color replacement; media rules only';
+      133 |   if (!forcedColorsPaint) expect(info.project.name, 'Only the probed WebKit engine lacks forced palette emulation').toBe('webkit');
+    > 134 |   await expect(root).toBeVisible();
+          |                      ^
+      135 |   await expectNoPageOverflow(page);
+      136 |   await expectNoTextClipping(page);
+      137 |   const focused = page.locator(':focus').first();
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:134:22)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:548:7
+
+    attachment #1: state-connection-reconnecting-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-connection-reconnecting-dark-b930ae11e14a56cf12b64bacef9ccfd88d0ebb0d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-stale-reconnecting-dark-216a20079cc9e6e972f12d2664ed64f0df409bdc.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-connection-disconnected-dark-3367907bd44ee3b2c74f8ab7e49bddf67a270f37.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-stale-disconnected-dark-51be4e2b72a26f8893d69e3bdd6df512e66be4dd.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for getByTestId('fc-projection-connection-status')
+
+
+      46 |         result = { mode, status: 'measured', phase: inspection!.phase, ...geometry, contrast };
+      47 |       } else result = { mode, status: 'none', phase: inspection!.phase, target: active };
+    > 48 |       await root.scrollIntoViewIfNeeded();
+         |                  ^
+      49 |       expect(await activeElement.evaluate(element => document.activeElement === element), `Root inspection retains activeElement: ${state} ${mode}`).toBe(true);
+      50 |       if (inspection!.retainedFocus) await expect(focused).toBeFocused();
+      51 |       return { ...result, activeElementRetainedAfterRootScroll: true };
+        at inspectBeforeRootScroll (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:48:18)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:115:45)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:548:7
+
+    attachment #1: state-connection-reconnecting-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry1/attachments/state-connection-reconnecting-dark-1eb8e4a7269692189537806908247ceefe8e158d.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry1/attachments/state-stale-reconnecting-dark-f73089343c53516b954a258e0366e35192bccf93.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry1/attachments/state-connection-disconnected-dark-adf005944033b2919a7ee5da2a28584d2143dfb1.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry1/attachments/state-stale-disconnected-dark-5aaa5518d4cdde3cbc0e53bd467968fa550a0750.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry1/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry1/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('fc-projection-connection-status')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('fc-projection-connection-status') with timeout 10000ms
+      - waiting for getByTestId('fc-projection-connection-status')
+
+
+      132 |   const forcedColorsStatus = forcedColorsPaint ? 'painted system palette' : 'unsupported authored-color replacement; media rules only';
+      133 |   if (!forcedColorsPaint) expect(info.project.name, 'Only the probed WebKit engine lacks forced palette emulation').toBe('webkit');
+    > 134 |   await expect(root).toBeVisible();
+          |                      ^
+      135 |   await expectNoPageOverflow(page);
+      136 |   await expectNoTextClipping(page);
+      137 |   const focused = page.locator(':focus').first();
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:134:22)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:548:7
+
+    attachment #1: state-connection-reconnecting-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry2/attachments/state-connection-reconnecting-dark-31b62d8141618b00ad90aa8c61cdfc10bf983904.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry2/attachments/state-stale-reconnecting-dark-77d0bd7c7422e1fa4a946e1adb3f00c5d7b2d90e.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry2/attachments/state-connection-disconnected-dark-3c197a76b2af799cafe0f557dc44eae996df7057.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry2/attachments/state-stale-disconnected-dark-d6ea0d7fae12d82a96964132743f134fb7a7dc9f.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry2/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry2/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry2/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in dark 
+
+    TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for getByTestId('fc-projection-connection-status')
+
+
+      46 |         result = { mode, status: 'measured', phase: inspection!.phase, ...geometry, contrast };
+      47 |       } else result = { mode, status: 'none', phase: inspection!.phase, target: active };
+    > 48 |       await root.scrollIntoViewIfNeeded();
+         |                  ^
+      49 |       expect(await activeElement.evaluate(element => document.activeElement === element), `Root inspection retains activeElement: ${state} ${mode}`).toBe(true);
+      50 |       if (inspection!.retainedFocus) await expect(focused).toBeFocused();
+      51 |       return { ...result, activeElementRetainedAfterRootScroll: true };
+        at inspectBeforeRootScroll (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:48:18)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:115:45)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:548:7
+
+    attachment #1: state-connection-reconnecting-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-connection-reconnecting-dark-47ab91d3c1a9a172023b21e70c19fec346035aa5.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: state-stale-reconnecting-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-stale-reconnecting-dark-7aec63e390e6ef9682c9d8435fdf7cab9694a807.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: state-connection-disconnected-dark (application/json) ───────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-connection-disconnected-dark-67a5799a9b585527b8b8a80ff970f7657ae32997.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: state-stale-disconnected-dark (application/json) ────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-stale-disconnected-dark-652cd8e371d4f2ffa2f7733d83d7b04ea4d00cfe.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [firefox] › specs/specimen-accessibility.spec.ts:208:5 › FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch 
+
+    Test was interrupted.
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator:  locator('fluent-tooltip').filter({ hasText: 'Danger' })
+    Expected: visible
+    Received: hidden
+
+    Call log:
+      - Expect "toBeVisible" locator('fluent-tooltip').filter({ hasText: 'Danger' }) with timeout 10000ms
+      - waiting for locator('fluent-tooltip').filter({ hasText: 'Danger' })
+        - locator resolved to <fluent-tooltip popover="" id="f3523be5" aria-hidden="true" positioning="above" anchor="fc-status-icon-1137">Danger</fluent-tooltip>
+        - unexpected value "hidden"
+      - Test ended.
+
+
+      217 |       const dangerIcon = page.getByLabel(/Status.*Danger/u);
+      218 |       await dangerIcon.hover();
+    > 219 |       await expect(page.locator('fluent-tooltip').filter({ hasText: 'Danger' })).toBeVisible();
+          |                                                                                  ^
+      220 |
+      221 |       await dangerIcon.tap();
+      222 |       await expect(page.locator('fluent-tooltip').filter({ hasText: 'Danger' })).toBeVisible();
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:219:82
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/specimen-accessibility-Fro-b521a-ps-on-focus-hover-and-touch-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/specimen-accessibility-Fro-b521a-ps-on-focus-hover-and-touch-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/specimen-accessibility-Fro-b521a-ps-on-focus-hover-and-touch-firefox/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/specimen-accessibility-Fro-b521a-ps-on-focus-hover-and-touch-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/specimen-accessibility-Fro-b521a-ps-on-focus-hover-and-touch-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [firefox] › specs/specimen-accessibility.spec.ts:243:3 › FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps 
+
+    Test was interrupted.
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('.fc-shell-root')
+    Expected: "true"
+    Received: "false"
+
+    Call log:
+      - Expect "toHaveAttribute" locator('.fc-shell-root') with timeout 10000ms
+      - waiting for locator('.fc-shell-root')
+      - 
+
+
+      576 |     .filter((element) => element.localName.includes('-'))
+      577 |     .every((element) => customElements.get(element.localName) !== undefined));
+    > 578 |   await expect(page.locator('.fc-shell-root')).toHaveAttribute('data-fc-interactive', 'true');
+          |                                                ^
+      579 |   for (const form of await page.locator('.fc-command-form').all()) {
+      580 |     await waitForGeneratedFormReady(form);
+      581 |   }
+        at gotoSpecimen (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:578:48)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:245:5
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/specimen-accessibility-Fro-03a0c-etail-and-nav-without-traps-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/specimen-accessibility-Fro-03a0c-etail-and-nav-without-traps-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/specimen-accessibility-Fro-03a0c-etail-and-nav-without-traps-firefox/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/specimen-accessibility-Fro-03a0c-etail-and-nav-without-traps-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-parent-verification-uo2amkr5/browser/results/specimen-accessibility-Fro-03a0c-etail-and-nav-without-traps-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [firefox] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in light 
+    [firefox] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in dark 
+  3 interrupted
+    [firefox] › specs/specimen-accessibility.spec.ts:208:5 › FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch 
+    [firefox] › specs/specimen-accessibility.spec.ts:226:3 › FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names 
+    [firefox] › specs/specimen-accessibility.spec.ts:243:3 › FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps 
+  1 flaky
+    [chromium] › specs/accessibility-state-matrix.spec.ts:541:3 › projection reconnect fallback stale slow cap and filter cues in dark 
+  214 did not run
+  383 passed (10.4m)

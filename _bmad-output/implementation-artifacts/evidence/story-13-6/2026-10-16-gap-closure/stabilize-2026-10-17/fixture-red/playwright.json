@@ -1,0 +1,235 @@
+{
+  "config": {
+    "argv": [
+      "/home/administrator/.nvm/versions/node/v26.4.0/bin/node",
+      "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/node_modules/.bin/playwright",
+      "test",
+      "specs/accessibility-state-matrix.spec.ts",
+      "--project=firefox",
+      "--grep",
+      "contrast clips a shadow background",
+      "--workers=1",
+      "--retries=0"
+    ],
+    "configFile": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/playwright.config.ts",
+    "rootDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "a11yEvidenceRunId": "story-13-6-stabilize-fixture-red-20261017",
+      "testHostOptions": {
+        "ProjectionReconnectedNoticeDurationMs": 30000
+      },
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/tmp/story-13-6-stabilize-20261017/fixture-red/results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-stabilize-fixture-red-20261017",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/tmp/story-13-6-stabilize-20261017/fixture-red/results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-stabilize-fixture-red-20261017",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/tmp/story-13-6-stabilize-20261017/fixture-red/results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-stabilize-fixture-red-20261017",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "outputFolder": "/tmp/story-13-6-stabilize-20261017/fixture-red/report",
+          "open": "never"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "/tmp/story-13-6-stabilize-20261017/fixture-red/results/junit.xml"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/tmp/story-13-6-stabilize-20261017/fixture-red/results/playwright.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "none",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "accessibility-state-matrix.spec.ts",
+      "file": "accessibility-state-matrix.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 1921,
+                  "error": {
+                    "message": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"P#label.\",\"candidate\":\"DIV#.\",\"boxes\":[{\"left\":40,\"right\":118.16667175292969,\"top\":100,\"bottom\":120}],\"candidateBox\":{\"x\":40,\"y\":118.30000305175781,\"width\":222,\"height\":32,\"top\":118.30000305175781,\"right\":262,\"bottom\":150.3000030517578,\"left\":40},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n",
+                    "stack": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"P#label.\",\"candidate\":\"DIV#.\",\"boxes\":[{\"left\":40,\"right\":118.16667175292969,\"top\":100,\"bottom\":120}],\"candidateBox\":{\"x\":40,\"y\":118.30000305175781,\"width\":222,\"height\":32,\"top\":118.30000305175781,\"right\":262,\"bottom\":150.3000030517578,\"left\":40},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n    at sample@debugger eval code line 311 > eval:185:138\n    at visit@debugger eval code line 311 > eval:275:19\n    at @debugger eval code line 311 > eval:390:10\n    at evaluate@debugger eval code:313:16\n    at @debugger eval code:1:44\n    at @debugger eval code:1:62\n    at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:726:15)\n    at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1006:19)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:350:21",
+                    "location": {
+                      "file": "sample@debugger eval code line 311 > eval",
+                      "column": 138,
+                      "line": 185
+                    }
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "sample@debugger eval code line 311 > eval",
+                        "column": 138,
+                        "line": 185
+                      },
+                      "message": "Error: locator.evaluate: Overlapping sibling background needs pixel evidence: {\"element\":\"P#label.\",\"candidate\":\"DIV#.\",\"boxes\":[{\"left\":40,\"right\":118.16667175292969,\"top\":100,\"bottom\":120}],\"candidateBox\":{\"x\":40,\"y\":118.30000305175781,\"width\":222,\"height\":32,\"top\":118.30000305175781,\"right\":262,\"bottom\":150.3000030517578,\"left\":40},\"candidateClip\":{\"kind\":\"none\"},\"candidatePosition\":\"relative\",\"root\":\"document\"}\nsample@debugger eval code line 311 > eval:185:138\nvisit@debugger eval code line 311 > eval:275:19\n@debugger eval code line 311 > eval:390:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n    at sample@debugger eval code line 311 > eval:185:138\n    at visit@debugger eval code line 311 > eval:275:19\n    at @debugger eval code line 311 > eval:390:10\n    at evaluate@debugger eval code:313:16\n    at @debugger eval code:1:44\n    at @debugger eval code:1:62\n    at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:726:15)\n    at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1006:19)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:350:21"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-17T08:46:17.091Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "shadow-background-scrollport-geometry",
+                      "contentType": "application/json",
+                      "body": "eyJ0ZXh0Ijp7IngiOjQwLCJ5IjoxMDAsIndpZHRoIjo3OC4xNjY2NzE3NTI5Mjk2OSwiaGVpZ2h0IjoyMCwidG9wIjoxMDAsInJpZ2h0IjoxMTguMTY2NjcxNzUyOTI5NjksImJvdHRvbSI6MTIwLCJsZWZ0Ijo0MH0sInBvcnQiOnsieCI6NDAsInkiOjQwLCJ3aWR0aCI6MjIyLCJoZWlnaHQiOjYwLCJ0b3AiOjQwLCJyaWdodCI6MjYyLCJib3R0b20iOjEwMCwibGVmdCI6NDB9LCJjYW5kaWRhdGUiOnsieCI6NDAsInkiOjExOC4zMDAwMDMwNTE3NTc4MSwid2lkdGgiOjIyMiwiaGVpZ2h0IjozMiwidG9wIjoxMTguMzAwMDAzMDUxNzU3ODEsInJpZ2h0IjoyNjIsImJvdHRvbSI6MTUwLjMwMDAwMzA1MTc1NzgsImxlZnQiOjQwfSwicmF3T3ZlcmxhcCI6MS42OTk5OTY5NDgyNDIxODc1fQ=="
+                    },
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/tmp/story-13-6-stabilize-20261017/fixture-red/results/accessibility-state-matrix-b5dad-ng-1-7px-of-visible-overlap-firefox/test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/tmp/story-13-6-stabilize-20261017/fixture-red/results/accessibility-state-matrix-b5dad-ng-1-7px-of-visible-overlap-firefox/video.webm"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/tmp/story-13-6-stabilize-20261017/fixture-red/results/accessibility-state-matrix-b5dad-ng-1-7px-of-visible-overlap-firefox/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/story-13-6-stabilize-20261017/fixture-red/results/accessibility-state-matrix-b5dad-ng-1-7px-of-visible-overlap-firefox/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "sample@debugger eval code line 311 > eval",
+                    "column": 138,
+                    "line": 185
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-06f1b6b380469b6d4bf7",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 332,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-17T08:46:16.473Z",
+    "duration": 4480.391,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

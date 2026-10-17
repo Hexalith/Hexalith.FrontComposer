@@ -1325,8 +1325,11 @@ public sealed class EventStoreClientTests {
             time.Advance(TimeSpan.FromMilliseconds(250));
         }
         await content.ReadAttempted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        TaskCompletionSource cancellationObserved = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using CancellationTokenRegistration cancellationRegistration = content.ObservedToken.Register(() => cancellationObserved.TrySetResult());
         time.Advance(TimeSpan.FromMilliseconds(duringRetry ? 1750 : 2000));
         CommandResult accepted = await dispatch.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await cancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         accepted.Status.ShouldBe(CommandResultStatus.Accepted);
         accepted.MessageId.ShouldBe("01HVTESTULID");
         accepted.CorrelationId.ShouldBeNull();

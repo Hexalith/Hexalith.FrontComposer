@@ -1,0 +1,20 @@
+{
+  "lane": "build",
+  "argv": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+    "--configuration",
+    "Debug",
+    "--no-restore",
+    "-m:1"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+  "environment": {
+    "DiffEngine_Disabled": "true"
+  },
+  "exitCode": 0,
+  "durationSeconds": 3.6376793384552,
+  "log": "build.log.txt",
+  "logSha256": "62671e2c9b189ac2272ed81e2be7f0f701638efa811486244d61d26acd21f92f"
+}
