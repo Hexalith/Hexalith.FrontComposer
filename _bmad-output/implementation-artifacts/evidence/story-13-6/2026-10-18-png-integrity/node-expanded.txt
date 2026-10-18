@@ -1,0 +1,29 @@
+✔ rejects another run when a run is expected (31.970517ms)
+✔ requires all owned state, cue, contrast and actual mode evidence (286.340969ms)
+✔ target evidence requires real finite dimensions, consistent conformity and evidenced exceptions (167.990186ms)
+✔ never pools partial engine/run matrices or another owners snapshot (84.919828ms)
+✔ WebKit capability attribution exempts absent images without weakening Chromium policy (32.06257ms)
+✔ successful retry replaces the failed attempt without fragment pooling (81.328235ms)
+✔ missing or mixed authoritative reports cannot certify a matrix (17.674668ms)
+✔ target geometry mirrors stale, spacing and essential exception applicability (104.337045ms)
+✔ state payload must match the final successful attempt attachment (60.884165ms)
+✔ system screenshots require one readable image attachment from their authoritative attempt (221.057931ms)
+✔ a changed or unreadable state-local screenshot cannot reuse its original report attachment (84.40119ms)
+✔ a failed retry or different test cannot provide a successful attempts missing screenshot (72.756816ms)
+✔ exchanged state images and another engines attachments cannot certify a screenshot (80.793065ms)
+✔ retained failed-attempt pixels cannot replace the successful retry image (66.773803ms)
+✔ empty or malformed screenshot evidence returns a validation error (124.45452ms)
+✔ decodes genuine RGB, RGBA, grayscale, indexed, 16-bit and Adam7 screenshots (143.567458ms)
+✔ matching corrupt PNG bytes cannot certify a system screenshot (495.705618ms)
+✔ invalid PNG header formats cannot reach pixel decoding (128.078396ms)
+✔ expected unrelated skips supply no state authority and cannot fill a skipped owner (43.993757ms)
+✔ runner, setup and teardown errors invalidate an otherwise passing report (101.115121ms)
+✔ CLI resolves capability from the successful retry while retaining the failed file (263.125605ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2902.330477

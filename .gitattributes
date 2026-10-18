@@ -38,3 +38,5 @@ _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/
 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/** -text
 # Story 13.6 screenshot-attempt proof retains exact reports and attachment bytes.
 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-attempt-ownership/** -text
+# Story 13.6 PNG-integrity replay retains exact source and verification bytes.
+_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-png-integrity/** -text

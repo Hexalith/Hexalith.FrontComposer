@@ -1,0 +1,195 @@
+diff --git a/tests/e2e/scripts/a11y-state-evidence.mjs b/tests/e2e/scripts/a11y-state-evidence.mjs
+index abe0f00f..81a00742 100644
+--- a/tests/e2e/scripts/a11y-state-evidence.mjs
++++ b/tests/e2e/scripts/a11y-state-evidence.mjs
+@@ -1,5 +1,7 @@
+ import { basename, dirname, join, resolve } from 'node:path';
+ import { readFileSync, statSync } from 'node:fs';
++import { crc32, inflateSync } from 'node:zlib';
++import { PNG } from 'playwright-core/lib/utilsBundle';
+ 
+ const outcomes = ['validation', 'returned-rejection', 'exception-rejection', 'forbidden', 'unavailable', 'blank-unavailable', 'rate-limited', 'blank-rate-limited', 'transport', 'admission', 'policy'];
+ const lifecycle = ['idle', 'submitting', 'acknowledged', 'syncing', 'confirmed', 'rejected', 'idempotent-confirmed', 'needs-review', 'warning', 'degraded', 'degraded-exhausted'];
+@@ -139,7 +141,10 @@ export function validateStateEvidence(files, { unsupportedForcedColorsCapability
+           } else {
+             if (snapshotAttachments.length !== 1) throw new Error(`Expected one image/png attachment named system-state-${state}; found ${snapshotAttachments.length}`);
+             if (!snapshotAttachments[0].path) throw new Error(`Attachment system-state-${state} has no file path`);
+-            if (!readFileSync(snapshotAttachments[0].path).equals(readFileSync(snapshot))) throw new Error(`Image bytes differ: ${snapshot} and ${snapshotAttachments[0].path}`);
++            const snapshotBytes = readFileSync(snapshot);
++            if (!readFileSync(snapshotAttachments[0].path).equals(snapshotBytes)) throw new Error(`Image bytes differ: ${snapshot} and ${snapshotAttachments[0].path}`);
++            try { decodeSystemSnapshot(snapshotBytes); }
++            catch (error) { errors.push(`Invalid system-state PNG: ${file}; ${error instanceof Error ? error.message : String(error)}`); }
+           }
+         } catch (error) { errors.push(`System-state snapshot does not match authoritative attempt attachment: ${file}; ${error instanceof Error ? error.message : String(error)}`); }
+       }
+@@ -147,3 +152,55 @@ export function validateStateEvidence(files, { unsupportedForcedColorsCapability
+   }
+   return errors;
+ }
++
++function decodeSystemSnapshot(bytes) {
++  if (!bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) throw new Error('Invalid PNG signature');
++  let header, ended = false, dataEnded = false;
++  const imageData = [];
++  for (let offset = 8; offset < bytes.length;) {
++    if (bytes.length - offset < 12) throw new Error('Truncated PNG chunk');
++    const length = bytes.readUInt32BE(offset), end = offset + 12 + length;
++    if (end > bytes.length) throw new Error('Truncated PNG chunk data');
++    const type = bytes.toString('latin1', offset + 4, offset + 8);
++    if (!/^[A-Za-z]{4}$/u.test(type) || crc32(bytes.subarray(offset + 4, end - 4)) !== bytes.readUInt32BE(end - 4)) throw new Error(`Invalid PNG chunk type or checksum: ${type}`);
++    const data = bytes.subarray(offset + 8, end - 4);
++    if (type === 'IHDR') {
++      if (header || offset !== 8 || length !== 13) throw new Error('PNG requires one first 13-byte IHDR');
++      const width = data.readUInt32BE(0), height = data.readUInt32BE(4), depth = data[8], color = data[9];
++      // Bound allocation before either inflater or decoder sees untrusted dimensions.
++      // This is a decoding resource limit, separate from the artifact-root byte gate.
++      if (!width || !height || width * height > 16 * 1024 * 1024) throw new Error('PNG dimensions must be positive and at most 16777216 pixels');
++      const depths = { 0: [1, 2, 4, 8, 16], 2: [8, 16], 3: [1, 2, 4, 8], 4: [8, 16], 6: [8, 16] };
++      if (!depths[color]?.includes(depth) || data[10] !== 0 || data[11] !== 0 || ![0, 1].includes(data[12])) throw new Error('Unsupported PNG header');
++      header = { width, height, depth, channels: { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[color], interlaced: data[12] === 1 };
++    } else {
++      if (!header) throw new Error('PNG must start with IHDR');
++      if (type === 'IDAT') {
++        if (dataEnded) throw new Error('PNG image data must be contiguous');
++        imageData.push(data);
++      } else {
++        if (imageData.length) dataEnded = true;
++        if (type === 'IEND') {
++          if (length !== 0 || end !== bytes.length) throw new Error('PNG requires a terminal empty IEND without trailing bytes');
++          ended = true; break;
++        }
++      }
++    }
++    offset = end;
++  }
++  if (!header || !ended || !imageData.length) throw new Error('Incomplete PNG: IHDR, IDAT and IEND required');
++  const passes = header.interlaced
++    ? [[0, 0, 8, 8], [4, 0, 8, 8], [0, 4, 4, 8], [2, 0, 4, 4], [0, 2, 2, 4], [1, 0, 2, 2], [0, 1, 1, 2]]
++    : [[0, 0, 1, 1]];
++  const expectedBytes = passes.reduce((total, [x, y, dx, dy]) => {
++    const width = Math.max(0, Math.ceil((header.width - x) / dx)), height = Math.max(0, Math.ceil((header.height - y) / dy));
++    return total + (width && height ? height * (1 + Math.ceil(width * header.channels * header.depth / 8)) : 0);
++  }, 0);
++  const compressed = Buffer.concat(imageData);
++  // pngjs' bounded noninterlaced inflater can ignore a damaged/truncated zlib
++  // footer and extra pixels. Validate the complete stream before pixel decoding.
++  const inflated = inflateSync(compressed, { maxOutputLength: expectedBytes, info: true });
++  if (inflated.buffer.length !== expectedBytes || inflated.engine.bytesWritten !== compressed.length) throw new Error('PNG image-data length or stream consumption mismatch');
++  const decoded = PNG.sync.read(bytes, { checkCRC: true });
++  if (decoded.width !== header.width || decoded.height !== header.height || decoded.data.length !== header.width * header.height * 4) throw new Error('PNG pixel decoding is incomplete');
++}
+diff --git a/tests/e2e/scripts/a11y-state-evidence.test.mjs b/tests/e2e/scripts/a11y-state-evidence.test.mjs
+index 3c790899..d1af9065 100644
+--- a/tests/e2e/scripts/a11y-state-evidence.test.mjs
++++ b/tests/e2e/scripts/a11y-state-evidence.test.mjs
+@@ -5,13 +5,30 @@ import { tmpdir } from 'node:os';
+ import { basename, join } from 'node:path';
+ import { fileURLToPath } from 'node:url';
+ import { spawnSync } from 'node:child_process';
++import { crc32, deflateSync, inflateSync } from 'node:zlib';
+ import specimenManifest from '../specimens/frontcomposer-specimen-manifest.json' with { type: 'json' };
+ import { requiredStates, validateStateEvidence } from './a11y-state-evidence.mjs';
+ 
+-// A real 1x1 PNG; image decoding is outside this attempt-ownership check.
++// Genuine 1x1 RGBA PNGs with different pixels and equal encoded lengths.
+ const fixturePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWMAgv8AAQQBAP8H9UQAAAAASUVORK5CYII=', 'base64');
+ const alternatePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=', 'base64');
+ 
++function rewriteChunk(png, type, edit) {
++  for (let offset = 8; offset < png.length;) {
++    const length = png.readUInt32BE(offset), end = offset + 12 + length;
++    if (png.toString('ascii', offset + 4, offset + 8) === type) {
++      const data = edit(Buffer.from(png.subarray(offset + 8, end - 4)));
++      const chunk = Buffer.alloc(data.length + 12);
++      chunk.writeUInt32BE(data.length);
++      chunk.write(type, 4, 'ascii'); data.copy(chunk, 8);
++      chunk.writeUInt32BE(crc32(chunk.subarray(4, -4)), chunk.length - 4);
++      return Buffer.concat([png.subarray(0, offset), chunk, png.subarray(end)]);
++    }
++    offset = end;
++  }
++  throw new Error(`Fixture PNG has no ${type} chunk`);
++}
++
+ function matrix(run) {
+   const root = mkdtempSync(join(tmpdir(), 'ae-evidence-test-'));
+   try {
+@@ -227,6 +244,78 @@ test('empty or malformed screenshot evidence returns a validation error', () =>
+   }
+ }));
+ 
++test('decodes genuine RGB, RGBA, grayscale, indexed, 16-bit and Adam7 screenshots', () => matrix(({ report, all, snapshots, imageAttachments }) => {
++  for (const [label, base64] of [
++    ['RGB8', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC'],
++    ['grayscale1', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQAAAAA3bvkkAAAACklEQVR4nGNoAAAAggCBd81ytgAAAABJRU5ErkJggg=='],
++    ['grayscale16', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAAAAABq7kcWAAAAC0lEQVR4nGP4/x8AAwAB//wl3FEAAAAASUVORK5CYII='],
++    ['RGBA16', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAYAAABPhRjKAAAAEUlEQVR4nGP4/5+BgYHh/38AEfcD/Z36ZyYAAAAASUVORK5CYII='],
++    ['indexed1', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEX/AAAZ4gk3AAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg=='],
++    // 8x8 transparent pixels, all seven Adam7 passes, 271 filtered bytes.
++    ['Adam7', 'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAAGzCI4dAAAADUlEQVR4nGNgGAVIAAABDwABP/8fGgAAAABJRU5ErkJggg=='],
++  ]) {
++    const bytes = Buffer.from(base64, 'base64');
++    writeFileSync(snapshots[0], bytes); writeFileSync(imageAttachments[0], bytes);
++    assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: 'chromium' }), [], label);
++  }
++}));
++
++test('matching corrupt PNG bytes cannot certify a system screenshot', () => matrix(({ report, all, snapshots, imageAttachments }) => {
++  const badCrc = Buffer.from(fixturePng); badCrc[29] ^= 1;
++  const corruptStream = rewriteChunk(fixturePng, 'IDAT', data => { data[0] ^= 255; return data; });
++  const badAdler = rewriteChunk(fixturePng, 'IDAT', data => { data[data.length - 1] ^= 1; return data; });
++  const truncatedStream = rewriteChunk(fixturePng, 'IDAT', data => data.subarray(0, -1));
++  const extraPixels = rewriteChunk(fixturePng, 'IDAT', data => deflateSync(Buffer.concat([inflateSync(data), Buffer.from([0])])));
++  const shortPixels = rewriteChunk(fixturePng, 'IDAT', data => deflateSync(inflateSync(data).subarray(0, -1)));
++  const zeroWidth = rewriteChunk(fixturePng, 'IHDR', data => { data.writeUInt32BE(0); return data; });
++  const zeroHeight = rewriteChunk(fixturePng, 'IHDR', data => { data.writeUInt32BE(0, 4); return data; });
++  const hugeDimensions = rewriteChunk(fixturePng, 'IHDR', data => { data.writeUInt32BE(100_000); data.writeUInt32BE(100_000, 4); return data; });
++  const excessivePixels = rewriteChunk(fixturePng, 'IHDR', data => { data.writeUInt32BE(4096); data.writeUInt32BE(4097, 4); return data; });
++  const trailingCompressed = rewriteChunk(fixturePng, 'IDAT', data => Buffer.concat([data, Buffer.from([0])]));
++  const invalidFilter = rewriteChunk(fixturePng, 'IDAT', () => deflateSync(Buffer.from([5, 0, 0, 0, 0])));
++  const duplicateHeader = Buffer.concat([fixturePng.subarray(0, 33), fixturePng.subarray(8)]);
++  const missingData = Buffer.concat([fixturePng.subarray(0, 33), fixturePng.subarray(-12)]);
++  for (const [label, bytes] of [
++    ['non-PNG', Buffer.from('matching text is not an image')],
++    ['signature only', fixturePng.subarray(0, 8)],
++    ['truncated header', fixturePng.subarray(0, 20)],
++    ['truncated image data', fixturePng.subarray(0, 50)],
++    ['missing IEND', fixturePng.subarray(0, -12)],
++    ['truncated IEND', fixturePng.subarray(0, -1)],
++    ['bad chunk CRC', badCrc], ['bad zlib header', corruptStream],
++    ['bad zlib checksum with valid chunk CRC', badAdler],
++    ['truncated zlib footer with valid chunk CRC', truncatedStream],
++    ['extra decompressed pixels', extraPixels], ['missing decompressed pixels', shortPixels],
++    ['zero width', zeroWidth], ['zero height', zeroHeight],
++    ['oversized dimensions', hugeDimensions], ['pixel allocation limit', excessivePixels],
++    ['trailing compressed bytes', trailingCompressed], ['invalid row filter', invalidFilter],
++    ['duplicate IHDR', duplicateHeader], ['missing IDAT', missingData],
++    ['trailing bytes', Buffer.concat([fixturePng, Buffer.from([0])])],
++  ]) {
++    // Corrupt both independent copies: byte ownership must pass before decoding fails.
++    writeFileSync(snapshots[0], bytes); writeFileSync(imageAttachments[0], bytes);
++    const errors = validateStateEvidence(all, { report, expectedEngine: 'chromium' });
++    assert.equal(errors.length, 1, `${label}: ${errors.join('\n')}`);
++    assert.match(errors[0], /Invalid system-state PNG/, label);
++    assert.ok(errors[0].includes(requiredStates[0]), `${label}: diagnostic must identify its state`);
++  }
++  writeFileSync(snapshots[0], fixturePng); writeFileSync(imageAttachments[0], fixturePng);
++  assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: 'chromium' }), []);
++}));
++
++test('invalid PNG header formats cannot reach pixel decoding', () => matrix(({ report, all, snapshots, imageAttachments }) => {
++  for (const [label, index, value] of [
++    ['bit depth', 8, 3], ['color type', 9, 1], ['compression', 10, 1],
++    ['filter method', 11, 1], ['interlace', 12, 2],
++  ]) {
++    const bytes = rewriteChunk(fixturePng, 'IHDR', data => { data[index] = value; return data; });
++    writeFileSync(snapshots[0], bytes); writeFileSync(imageAttachments[0], bytes);
++    const errors = validateStateEvidence(all, { report, expectedEngine: 'chromium' });
++    assert.equal(errors.length, 1, label);
++    assert.match(errors[0], /Invalid system-state PNG.*Unsupported PNG header/, label);
++  }
++}));
++
+ 
+ test('expected unrelated skips supply no state authority and cannot fill a skipped owner', () => matrix(({ report, all }) => {
+   report.suites[0].specs.push({ id: 'existing-platform-skip', tests: [{ projectName: 'chromium', expectedStatus: 'skipped', status: 'skipped', results: [{ retry: 0, status: 'skipped' }] }] });

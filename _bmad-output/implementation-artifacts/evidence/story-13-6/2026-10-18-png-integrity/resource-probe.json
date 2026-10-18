@@ -1,0 +1,14 @@
+{
+  "sourceSha256": "ea400943e29009ce23428c54654af77629e50040e927ca25fd1571ed014ea1ea",
+  "pngSha256": "35070811a3920e447d0c33f6d1d04a689a25523e5028101a605d843f6496ff75",
+  "encodedBytes": 130527,
+  "width": 4096,
+  "height": 4096,
+  "bitDepth": 16,
+  "expandedBytes": 134221824,
+  "inflations": 0,
+  "decodes": 0,
+  "elapsedMs": 0.4953740000000266,
+  "beforeRss": 97640448,
+  "afterRss": 97771520
+}

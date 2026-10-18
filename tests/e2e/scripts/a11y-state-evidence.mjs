@@ -1,5 +1,7 @@
 import { basename, dirname, join, resolve } from 'node:path';
 import { readFileSync, statSync } from 'node:fs';
+import { crc32, inflateSync } from 'node:zlib';
+import { PNG } from 'playwright-core/lib/utilsBundle';
 
 const outcomes = ['validation', 'returned-rejection', 'exception-rejection', 'forbidden', 'unavailable', 'blank-unavailable', 'rate-limited', 'blank-rate-limited', 'transport', 'admission', 'policy'];
 const lifecycle = ['idle', 'submitting', 'acknowledged', 'syncing', 'confirmed', 'rejected', 'idempotent-confirmed', 'needs-review', 'warning', 'degraded', 'degraded-exhausted'];
@@ -139,11 +141,67 @@ export function validateStateEvidence(files, { unsupportedForcedColorsCapability
           } else {
             if (snapshotAttachments.length !== 1) throw new Error(`Expected one image/png attachment named system-state-${state}; found ${snapshotAttachments.length}`);
             if (!snapshotAttachments[0].path) throw new Error(`Attachment system-state-${state} has no file path`);
-            if (!readFileSync(snapshotAttachments[0].path).equals(readFileSync(snapshot))) throw new Error(`Image bytes differ: ${snapshot} and ${snapshotAttachments[0].path}`);
+            const snapshotBytes = readFileSync(snapshot);
+            if (!readFileSync(snapshotAttachments[0].path).equals(snapshotBytes)) throw new Error(`Image bytes differ: ${snapshot} and ${snapshotAttachments[0].path}`);
+            try { decodeSystemSnapshot(snapshotBytes); }
+            catch (error) { errors.push(`Invalid system-state PNG: ${file}; ${error instanceof Error ? error.message : String(error)}`); }
           }
         } catch (error) { errors.push(`System-state snapshot does not match authoritative attempt attachment: ${file}; ${error instanceof Error ? error.message : String(error)}`); }
       }
     }
   }
   return errors;
+}
+
+function decodeSystemSnapshot(bytes) {
+  if (!bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) throw new Error('Invalid PNG signature');
+  let header, ended = false, dataEnded = false;
+  const imageData = [];
+  for (let offset = 8; offset < bytes.length;) {
+    if (bytes.length - offset < 12) throw new Error('Truncated PNG chunk');
+    const length = bytes.readUInt32BE(offset), end = offset + 12 + length;
+    if (end > bytes.length) throw new Error('Truncated PNG chunk data');
+    const type = bytes.toString('latin1', offset + 4, offset + 8);
+    if (!/^[A-Za-z]{4}$/u.test(type) || crc32(bytes.subarray(offset + 4, end - 4)) !== bytes.readUInt32BE(end - 4)) throw new Error(`Invalid PNG chunk type or checksum: ${type}`);
+    const data = bytes.subarray(offset + 8, end - 4);
+    if (type === 'IHDR') {
+      if (header || offset !== 8 || length !== 13) throw new Error('PNG requires one first 13-byte IHDR');
+      const width = data.readUInt32BE(0), height = data.readUInt32BE(4), depth = data[8], color = data[9];
+      // Bound allocation before either inflater or decoder sees untrusted dimensions.
+      // This is a decoding resource limit, separate from the artifact-root byte gate.
+      if (!width || !height || width * height > 16 * 1024 * 1024) throw new Error('PNG dimensions must be positive and at most 16777216 pixels');
+      const depths = { 0: [1, 2, 4, 8, 16], 2: [8, 16], 3: [1, 2, 4, 8], 4: [8, 16], 6: [8, 16] };
+      if (!depths[color]?.includes(depth) || data[10] !== 0 || data[11] !== 0 || ![0, 1].includes(data[12])) throw new Error('Unsupported PNG header');
+      header = { width, height, depth, channels: { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[color], interlaced: data[12] === 1 };
+    } else {
+      if (!header) throw new Error('PNG must start with IHDR');
+      if (type === 'IDAT') {
+        if (dataEnded) throw new Error('PNG image data must be contiguous');
+        imageData.push(data);
+      } else {
+        if (imageData.length) dataEnded = true;
+        if (type === 'IEND') {
+          if (length !== 0 || end !== bytes.length) throw new Error('PNG requires a terminal empty IEND without trailing bytes');
+          ended = true; break;
+        }
+      }
+    }
+    offset = end;
+  }
+  if (!header || !ended || !imageData.length) throw new Error('Incomplete PNG: IHDR, IDAT and IEND required');
+  const passes = header.interlaced
+    ? [[0, 0, 8, 8], [4, 0, 8, 8], [0, 4, 4, 8], [2, 0, 4, 4], [0, 2, 2, 4], [1, 0, 2, 2], [0, 1, 1, 2]]
+    : [[0, 0, 1, 1]];
+  const expectedBytes = passes.reduce((total, [x, y, dx, dy]) => {
+    const width = Math.max(0, Math.ceil((header.width - x) / dx)), height = Math.max(0, Math.ceil((header.height - y) / dy));
+    return total + (width && height ? height * (1 + Math.ceil(width * header.channels * header.depth / 8)) : 0);
+  }, 0);
+  if (expectedBytes > 32 * 1024 * 1024) throw new Error('PNG expanded image data exceeds the 33554432-byte decoding limit');
+  const compressed = Buffer.concat(imageData);
+  // pngjs' bounded noninterlaced inflater can ignore a damaged/truncated zlib
+  // footer and extra pixels. Validate the complete stream before pixel decoding.
+  const inflated = inflateSync(compressed, { maxOutputLength: expectedBytes, info: true });
+  if (inflated.buffer.length !== expectedBytes || inflated.engine.bytesWritten !== compressed.length) throw new Error('PNG image-data length or stream consumption mismatch');
+  const decoded = PNG.sync.read(bytes, { checkCRC: true });
+  if (decoded.width !== header.width || decoded.height !== header.height || decoded.data.length !== header.width * header.height * 4) throw new Error('PNG pixel decoding is incomplete');
 }

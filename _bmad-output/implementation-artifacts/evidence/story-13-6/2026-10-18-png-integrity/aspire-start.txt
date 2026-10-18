@@ -1,0 +1,197 @@
+Starting Aspire AppHost in the background...
+❌ Failed to start the AppHost.
+ℹ️ Recent AppHost startup output:
+  Hexalith.EventStore.ServiceDefaults -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore
+.ServiceDefaults.dll
+  Hexalith.EventStore.Client -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.d
+ll
+  Hexalith.Commons.ServiceDefaults -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/bin/Debug/net10.0/Hexalith.Common
+s.ServiceDefaults.dll
+  Hexalith.Parties.Client -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Client/bin/Debug/net10.0/Hexalith.Parties.Client.dll
+  Hexalith.Parties.Contracts -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Contracts/bin/Debug/net10.0/Hexalith.Parties.Contracts.dll
+  Hexalith.EventStore.Admin.Server -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/bin/Debug/net10.0/Hexalith.EventStore.Ad
+min.Server.dll
+  Hexalith.Commons.Http -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.Http/bin/Debug/net10.0/Hexalith.Commons.Http.dll
+  Hexalith.Parties -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties/bin/Debug/net10.0/Hexalith.Parties.dll
+  Hexalith.EventStore.DomainService -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.D
+omainService.dll
+  Hexalith.FrontComposer.Contracts.UI -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts.UI/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.UI.dll
+  Hexalith.FrontComposer.Contracts -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.Contracts -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts/bin/Debug/netstandard2.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.SourceTools -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.SourceTools/bin/Debug/netstandard2.0/Hexalith.FrontComposer.SourceTools.dll
+  Hexalith.EventStore.Server -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.d
+ll
+  Hexalith.Parties.Contracts -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Contracts/bin/Debug/net10.0/Hexalith.Parties.Contracts.dll
+  Hexalith.Commons.ServiceDefaults -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/bin/Debug/net10.0/Hexalith.Common
+s.ServiceDefaults.dll
+  Hexalith.Tenants.Contracts -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll
+  Hexalith.FrontComposer.Contracts -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.Commons.Http -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.Http/bin/Debug/net10.0/Hexalith.Commons.Http.dll
+  Hexalith.FrontComposer.Contracts.UI -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts.UI/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.UI.dll
+  Hexalith.FrontComposer.SourceTools -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.SourceTools/bin/Debug/netstandard2.0/Hexalith.FrontComposer.SourceTools.dll
+  Hexalith.Parties.Picker -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Picker/bin/Debug/net10.0/Hexalith.Parties.Picker.dll
+  Hexalith.Tenants.Client -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Client/bin/Debug/net10.0/Hexalith.Tenants.Client.dll
+  Hexalith.Commons.ServiceDefaults -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/bin/Debug/net10.0/Hexalith.Common
+s.ServiceDefaults.dll
+  Hexalith.FrontComposer.Contracts.UI -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts.UI/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.UI.dll
+  Hexalith.Tenants.Contracts -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll
+  Hexalith.Parties.Authentication -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Authentication/bin/Debug/net10.0/Hexalith.Parties.Authentic
+ation.dll
+  Hexalith.Parties.Client -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Client/bin/Debug/net10.0/Hexalith.Parties.Client.dll
+  Hexalith.Tenants.Client -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.Client/bin/Debug/net10.0/Hexalith.Tenants.Client.dll
+  Hexalith.FrontComposer.Schema -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Schema/bin/Debug/net10.0/Hexalith.FrontComposer.Schema.dll
+  Hexalith.Parties.Client -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Client/bin/Debug/net10.0/Hexalith.Parties.Client.dll
+  Hexalith.FrontComposer.Schema -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Schema/bin/Debug/net10.0/Hexalith.FrontComposer.Schema.dll
+  Hexalith.EventStore.Admin.Server.Host -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/bin/Debug/net10.0/Hexalith.EventSto
+re.Admin.Server.Host.dll
+  Hexalith.Parties.Picker -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Picker/bin/Debug/net10.0/Hexalith.Parties.Picker.dll
+  Hexalith.EventStore.Admin.UI -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/bin/Debug/net10.0/Hexalith.EventStore.Admin.
+UI.dll
+  Hexalith.Parties.Picker -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Picker/bin/Debug/net10.0/Hexalith.Parties.Picker.dll
+  Hexalith.FrontComposer.CounterFixture -> 
+/home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.CounterFixture/bin/Debug/net10.0/Hexalith.FrontComposer.CounterFixture.dll
+  Hexalith.FrontComposer.Mcp -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Mcp/bin/Debug/net10.0/Hexalith.FrontComposer.Mcp.dll
+  Hexalith.FrontComposer.SourceTools -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.SourceTools/bin/Debug/netstandard2.0/Hexalith.FrontComposer.SourceTools.dll
+  Hexalith.FrontComposer.Mcp -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Mcp/bin/Debug/net10.0/Hexalith.FrontComposer.Mcp.dll
+  Hexalith.FrontComposer.Shell -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018: The "GetAssemblyAttributes" task 
+failed unexpectedly. [/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018: System.IO.IOException: The process 
+cannot access the file '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/Hexalith.FrontComposer.Shell.dll'
+because it is being used by another process. 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 
+preallocationSize, UnixFileMode openPermissions, Int64& fileLength, UnixFileMode& filePermissions, Boolean failForSymlink, Boolean& wasSymlink, Func`4 
+createOpenException) [/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, 
+Nullable`1 unixCreateMode) [/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.NET.Build.Tasks.FileUtilities.<GetAssemblyVersion>g__GetAssemblyVersionFromFile|4_0(String sourcePath) 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.NET.Build.Tasks.FileUtilities.GetAssemblyVersion(String sourcePath) 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.NET.Build.Tasks.FileUtilities.TryGetAssemblyVersion(String sourcePath) 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.NET.Build.Tasks.GetAssemblyAttributes.ExecuteCore() 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.NET.Build.Tasks.TaskBase.Execute() 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.Build.BackEnd.TaskBuilder.ExecuteInstantiatedTask(TaskExecutionHost taskExecutionHost, TaskLoggingContext taskLoggingContext, TaskHost taskHost, 
+ItemBucket bucket, TaskExecutionMode howToExecuteTask) 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+  Hexalith.Parties.Authentication -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.Authentication/bin/Debug/net10.0/Hexalith.Parties.Authentic
+ation.dll
+  Hexalith.FrontComposer.Schema -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Schema/bin/Debug/net10.0/Hexalith.FrontComposer.Schema.dll
+  Hexalith.EventStore.Gateway -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway
+.dll
+  Hexalith.FrontComposer.Mcp -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Mcp/bin/Debug/net10.0/Hexalith.FrontComposer.Mcp.dll
+  Hexalith.FrontComposer.Shell -> 
+/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll
+  Counter.Domain -> /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Domain/bin/Debug/net10.0/Counter.Domain.dll
+  Counter.Specimens.Domain -> 
+/home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Specimens.Domain/bin/Debug/net10.0/Counter.Specimens.Domain.dll
+  Hexalith.EventStore -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.EventStore/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll
+  Counter.Specimens -> /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Specimens/bin/Debug/net10.0/Counter.Specimens.dll
+  Hexalith.Parties.ConsumerPortal -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.ConsumerPortal/bin/Debug/net10.0/Hexalith.Parties.ConsumerP
+ortal.dll
+  Hexalith.Parties.AdminPortal -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.AdminPortal/bin/Debug/net10.0/Hexalith.Parties.AdminPortal.
+dll
+  Counter.Web -> /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Web/bin/Debug/net10.0/Counter.Web.dll
+  Hexalith.Tenants.UI -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Tenants/src/Hexalith.Tenants.UI/bin/Debug/net10.0/Hexalith.Tenants.UI.dll
+  Hexalith.Parties.UI -> 
+/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties/src/Hexalith.Parties.UI/bin/Debug/net10.0/Hexalith.Parties.UI.dll
+  Hexalith.FrontComposer.UI -> /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.UI/bin/Debug/net10.0/Hexalith.FrontComposer.UI.dll
+Build FAILED.
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018: The "GetAssemblyAttributes" task 
+failed unexpectedly. [/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018: System.IO.IOException: The process 
+cannot access the file '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/Hexalith.FrontComposer.Shell.dll'
+because it is being used by another process. 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 
+preallocationSize, UnixFileMode openPermissions, Int64& fileLength, UnixFileMode& filePermissions, Boolean failForSymlink, Boolean& wasSymlink, Func`4 
+createOpenException) [/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, 
+Nullable`1 unixCreateMode) [/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.NET.Build.Tasks.FileUtilities.<GetAssemblyVersion>g__GetAssemblyVersionFromFile|4_0(String sourcePath) 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.NET.Build.Tasks.FileUtilities.GetAssemblyVersion(String sourcePath) 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.NET.Build.Tasks.FileUtilities.TryGetAssemblyVersion(String sourcePath) 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.NET.Build.Tasks.GetAssemblyAttributes.ExecuteCore() 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.NET.Build.Tasks.TaskBase.Execute() 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(1200,5): error MSB4018:    at 
+Microsoft.Build.BackEnd.TaskBuilder.ExecuteInstantiatedTask(TaskExecutionHost taskExecutionHost, TaskLoggingContext taskLoggingContext, TaskHost taskHost, 
+ItemBucket bucket, TaskExecutionMode howToExecuteTask) 
+[/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj]
+    0 Warning(s)
+    1 Error(s)
+Time Elapsed 00:00:15.06
+❌ AppHost failed to build.
+📄 See logs at /home/administrator/.aspire/logs/cli_20261018T094048_73ddf796.log
+🔍 See AppHost logs at /home/administrator/.aspire/logs/cli_20261018T094048733_detach-child_1ed5c947899d4e3880b5cf19e4ba2638.log

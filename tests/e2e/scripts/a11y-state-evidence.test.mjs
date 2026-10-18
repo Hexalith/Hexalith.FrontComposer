@@ -5,12 +5,33 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { crc32, deflateSync, inflateSync } from 'node:zlib';
 import specimenManifest from '../specimens/frontcomposer-specimen-manifest.json' with { type: 'json' };
 import { requiredStates, validateStateEvidence } from './a11y-state-evidence.mjs';
 
-// A real 1x1 PNG; image decoding is outside this attempt-ownership check.
+// Genuine 1x1 RGBA PNGs with different pixels and equal encoded lengths.
 const fixturePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWMAgv8AAQQBAP8H9UQAAAAASUVORK5CYII=', 'base64');
 const alternatePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=', 'base64');
+
+function pngChunk(type, data) {
+  const chunk = Buffer.alloc(data.length + 12);
+  chunk.writeUInt32BE(data.length);
+  chunk.write(type, 4, 'ascii'); data.copy(chunk, 8);
+  chunk.writeUInt32BE(crc32(chunk.subarray(4, -4)), chunk.length - 4);
+  return chunk;
+}
+
+function rewriteChunk(png, type, edit) {
+  for (let offset = 8; offset < png.length;) {
+    const length = png.readUInt32BE(offset), end = offset + 12 + length;
+    if (png.toString('ascii', offset + 4, offset + 8) === type) {
+      const data = edit(Buffer.from(png.subarray(offset + 8, end - 4)));
+      return Buffer.concat([png.subarray(0, offset), pngChunk(type, data), png.subarray(end)]);
+    }
+    offset = end;
+  }
+  throw new Error(`Fixture PNG has no ${type} chunk`);
+}
 
 function matrix(run) {
   const root = mkdtempSync(join(tmpdir(), 'ae-evidence-test-'));
@@ -224,6 +245,124 @@ test('empty or malformed screenshot evidence returns a validation error', () => 
   for (const systemSnapshot of [42, {}, [], null]) {
     update(0, { systemSnapshot });
     assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /Missing system-state snapshot/);
+  }
+}));
+
+test('decodes genuine RGB, RGBA, grayscale, indexed, 16-bit and Adam7 screenshots', () => matrix(({ report, all, snapshots, imageAttachments }) => {
+  for (const [label, base64] of [
+    ['RGB8', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC'],
+    ['grayscale1', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQAAAAA3bvkkAAAACklEQVR4nGNoAAAAggCBd81ytgAAAABJRU5ErkJggg=='],
+    ['grayscale16', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAAAAABq7kcWAAAAC0lEQVR4nGP4/x8AAwAB//wl3FEAAAAASUVORK5CYII='],
+    ['RGBA16', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAYAAABPhRjKAAAAEUlEQVR4nGP4/5+BgYHh/38AEfcD/Z36ZyYAAAAASUVORK5CYII='],
+    ['indexed1', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEX/AAAZ4gk3AAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg=='],
+    ['grayscale-alpha8', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNo+A8AAgIBgG5WixMAAAAASUVORK5CYII='],
+    ['packed grayscale2', 'iVBORw0KGgoAAAANSUhEUgAAAAMAAAABAgAAAAB0O1PJAAAACklEQVR4nGNwAAAAQgBBKTf07wAAAABJRU5ErkJggg=='],
+    ['packed grayscale4', 'iVBORw0KGgoAAAANSUhEUgAAAAMAAAABBAAAAAD7e6ZpAAAAC0lEQVR4nGP40AAAAmMBcc99mVEAAAAASUVORK5CYII='],
+    // 8x8 transparent pixels, all seven Adam7 passes, 271 filtered bytes.
+    ['Adam7', 'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAAGzCI4dAAAADUlEQVR4nGNgGAVIAAABDwABP/8fGgAAAABJRU5ErkJggg=='],
+    ['Adam7 1x1', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAFoEvQfAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII='],
+    ['Adam7 1x9', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAJCAYAAAGEQXZyAAAADElEQVR4nGNgIAEAAAAtAAHF18CGAAAAAElFTkSuQmCC'],
+    ['Adam7 9x5', 'iVBORw0KGgoAAAANSUhEUgAAAAkAAAAFCAYAAAHgVPb9AAAADElEQVR4nGNgGNIAAAC/AAH3Q/0IAAAAAElFTkSuQmCC'],
+  ]) {
+    const bytes = Buffer.from(base64, 'base64');
+    writeFileSync(snapshots[0], bytes); writeFileSync(imageAttachments[0], bytes);
+    assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: 'chromium' }), [], label);
+  }
+}));
+
+test('matching corrupt PNG bytes cannot certify a system screenshot', () => matrix(({ report, all, snapshots, imageAttachments }) => {
+  const badCrc = Buffer.from(fixturePng); badCrc[29] ^= 1;
+  const corruptStream = rewriteChunk(fixturePng, 'IDAT', data => { data[0] ^= 255; return data; });
+  const badAdler = rewriteChunk(fixturePng, 'IDAT', data => { data[data.length - 1] ^= 1; return data; });
+  const truncatedStream = rewriteChunk(fixturePng, 'IDAT', data => data.subarray(0, -1));
+  const extraPixels = rewriteChunk(fixturePng, 'IDAT', data => deflateSync(Buffer.concat([inflateSync(data), Buffer.from([0])])));
+  const shortPixels = rewriteChunk(fixturePng, 'IDAT', data => deflateSync(inflateSync(data).subarray(0, -1)));
+  const zeroWidth = rewriteChunk(fixturePng, 'IHDR', data => { data.writeUInt32BE(0); return data; });
+  const zeroHeight = rewriteChunk(fixturePng, 'IHDR', data => { data.writeUInt32BE(0, 4); return data; });
+  const hugeDimensions = rewriteChunk(fixturePng, 'IHDR', data => { data.writeUInt32BE(100_000); data.writeUInt32BE(100_000, 4); return data; });
+  const excessivePixels = rewriteChunk(fixturePng, 'IHDR', data => { data.writeUInt32BE(4096); data.writeUInt32BE(4097, 4); return data; });
+  const trailingCompressed = rewriteChunk(fixturePng, 'IDAT', data => Buffer.concat([data, Buffer.from([0])]));
+  const invalidFilter = rewriteChunk(fixturePng, 'IDAT', () => deflateSync(Buffer.from([5, 0, 0, 0, 0])));
+  const duplicateHeader = Buffer.concat([fixturePng.subarray(0, 33), fixturePng.subarray(8)]);
+  const missingData = Buffer.concat([fixturePng.subarray(0, 33), fixturePng.subarray(-12)]);
+  for (const [label, bytes] of [
+    ['non-PNG', Buffer.from('matching text is not an image')],
+    ['signature only', fixturePng.subarray(0, 8)],
+    ['truncated header', fixturePng.subarray(0, 20)],
+    ['truncated image data', fixturePng.subarray(0, 50)],
+    ['missing IEND', fixturePng.subarray(0, -12)],
+    ['truncated IEND', fixturePng.subarray(0, -1)],
+    ['bad chunk CRC', badCrc], ['bad zlib header', corruptStream],
+    ['bad zlib checksum with valid chunk CRC', badAdler],
+    ['truncated zlib footer with valid chunk CRC', truncatedStream],
+    ['extra decompressed pixels', extraPixels], ['missing decompressed pixels', shortPixels],
+    ['zero width', zeroWidth], ['zero height', zeroHeight],
+    ['oversized dimensions', hugeDimensions], ['pixel allocation limit', excessivePixels],
+    ['trailing compressed bytes', trailingCompressed], ['invalid row filter', invalidFilter],
+    ['duplicate IHDR', duplicateHeader], ['missing IDAT', missingData],
+    ['trailing bytes', Buffer.concat([fixturePng, Buffer.from([0])])],
+  ]) {
+    // Corrupt both independent copies: byte ownership must pass before decoding fails.
+    writeFileSync(snapshots[0], bytes); writeFileSync(imageAttachments[0], bytes);
+    const errors = validateStateEvidence(all, { report, expectedEngine: 'chromium' });
+    assert.equal(errors.length, 1, `${label}: ${errors.join('\n')}`);
+    assert.match(errors[0], /Invalid system-state PNG/, label);
+    assert.ok(errors[0].includes(requiredStates[0]), `${label}: diagnostic must identify its state`);
+  }
+  writeFileSync(snapshots[0], fixturePng); writeFileSync(imageAttachments[0], fixturePng);
+  assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: 'chromium' }), []);
+}));
+
+test('invalid PNG header formats cannot reach pixel decoding', () => matrix(({ report, all, snapshots, imageAttachments }) => {
+  for (const [label, index, value] of [
+    ['bit depth', 8, 3], ['color type', 9, 1], ['compression', 10, 1],
+    ['filter method', 11, 1], ['interlace', 12, 2],
+  ]) {
+    const bytes = rewriteChunk(fixturePng, 'IHDR', data => { data[index] = value; return data; });
+    writeFileSync(snapshots[0], bytes); writeFileSync(imageAttachments[0], bytes);
+    const errors = validateStateEvidence(all, { report, expectedEngine: 'chromium' });
+    assert.equal(errors.length, 1, label);
+    assert.match(errors[0], /Invalid system-state PNG.*Unsupported PNG header/, label);
+  }
+  for (const [label, color, depth] of [['RGB1', 2, 1], ['indexed16', 3, 16]]) {
+    const bytes = rewriteChunk(fixturePng, 'IHDR', data => { data[8] = depth; data[9] = color; return data; });
+    writeFileSync(snapshots[0], bytes); writeFileSync(imageAttachments[0], bytes);
+    assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /Invalid system-state PNG.*Unsupported PNG header/, label);
+  }
+}));
+
+test('expanded PNG byte budget applies before inflation even within the pixel limit', () => matrix(({ report, all, snapshots, imageAttachments }) => {
+  // This valid-CRC header requests 128 MiB of filtered RGBA16 data. The small
+  // original IDAT must never reach inflation: the resource diagnostic comes first.
+  const bytes = rewriteChunk(fixturePng, 'IHDR', data => { data.writeUInt32BE(4096); data.writeUInt32BE(4096, 4); data[8] = 16; return data; });
+  writeFileSync(snapshots[0], bytes); writeFileSync(imageAttachments[0], bytes);
+  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /Invalid system-state PNG.*expanded image data exceeds the 33554432-byte decoding limit/);
+}));
+
+test('accepts consecutive and empty IDAT chunks but rejects interrupted image data', () => matrix(({ report, all, snapshots, imageAttachments }) => {
+  const data = fixturePng.subarray(41, 41 + fixturePng.readUInt32BE(33));
+  const header = fixturePng.subarray(0, 33), end = fixturePng.subarray(-12);
+  for (const [label, chunks, valid] of [
+    ['consecutive', [pngChunk('IDAT', data.subarray(0, 3)), pngChunk('IDAT', data.subarray(3))], true],
+    ['empty', [pngChunk('IDAT', Buffer.alloc(0)), pngChunk('IDAT', data), pngChunk('IDAT', Buffer.alloc(0))], true],
+    ['interrupted', [pngChunk('IDAT', data.subarray(0, 3)), pngChunk('tEXt', Buffer.from('Comment\0Fixture')), pngChunk('IDAT', data.subarray(3))], false],
+  ]) {
+    const bytes = Buffer.concat([header, ...chunks, end]);
+    writeFileSync(snapshots[0], bytes); writeFileSync(imageAttachments[0], bytes);
+    const errors = validateStateEvidence(all, { report, expectedEngine: 'chromium' });
+    if (valid) assert.deepEqual(errors, [], label);
+    else assert.match(errors.join('\n'), /Invalid system-state PNG.*image data must be contiguous/, label);
+  }
+}));
+
+test('Adam7 screenshots require exactly the complete filtered pixel data', () => matrix(({ report, all, snapshots, imageAttachments }) => {
+  const interlaced = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAAGzCI4dAAAADUlEQVR4nGNgGAVIAAABDwABP/8fGgAAAABJRU5ErkJggg==', 'base64');
+  for (const [label, length] of [['missing byte', 270], ['extra byte', 272]]) {
+    const bytes = rewriteChunk(interlaced, 'IDAT', () => deflateSync(Buffer.alloc(length)));
+    writeFileSync(snapshots[0], bytes); writeFileSync(imageAttachments[0], bytes);
+    const errors = validateStateEvidence(all, { report, expectedEngine: 'chromium' });
+    assert.equal(errors.length, 1, label);
+    assert.match(errors[0], /Invalid system-state PNG/, label);
   }
 }));
 

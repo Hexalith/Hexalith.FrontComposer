@@ -1,0 +1,29 @@
+{
+  "baselineRevision": "4ee1009c947886a0437b3b93b8cabd433920b8de",
+  "baselineValidatorBlob": "abe0f00f548a1769e2a39631fadcf4aa22b8fdc7",
+  "inputs": [
+    {
+      "source": "red-replay/a11y-state-evidence.mjs",
+      "target": "tests/e2e/scripts/a11y-state-evidence.mjs",
+      "sha256": "466246f9bce09578aaf48a7447a9f34dff7921026400c27b5208a35ecce2e5d1"
+    },
+    {
+      "source": "red-replay/a11y-state-evidence.test.mjs",
+      "target": "tests/e2e/scripts/a11y-state-evidence.test.mjs",
+      "sha256": "f2aed5597051ceeb9b1b02f570a89f27390d7eb26f2e118ef65820585cd90c88"
+    },
+    {
+      "source": "../../../../../tests/e2e/scripts/validate-a11y-artifacts.mjs",
+      "target": "tests/e2e/scripts/validate-a11y-artifacts.mjs",
+      "sha256": "67e2ebb78d5485e4807fd7c165d49013b0da0b06c2a558e994e0955fc650a194"
+    },
+    {
+      "source": "../../../../../tests/e2e/specimens/frontcomposer-specimen-manifest.json",
+      "target": "tests/e2e/specimens/frontcomposer-specimen-manifest.json",
+      "sha256": "26790fdd08841bbace37649b6b64be6fe714d92cbb3f5853a342455f685806af"
+    }
+  ],
+  "node": "v26.4.0",
+  "originalWarmupRedSourceIdentity": "not captured; retain original node-red.txt as diagnostic only",
+  "command": "node _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-png-integrity/reproduce-red.mjs"
+}

@@ -1,0 +1,32 @@
+✔ rejects another run when a run is expected (45.576513ms)
+✔ requires all owned state, cue, contrast and actual mode evidence (331.426387ms)
+✔ target evidence requires real finite dimensions, consistent conformity and evidenced exceptions (191.054283ms)
+✔ never pools partial engine/run matrices or another owners snapshot (102.907553ms)
+✔ WebKit capability attribution exempts absent images without weakening Chromium policy (42.934829ms)
+✔ successful retry replaces the failed attempt without fragment pooling (77.317936ms)
+✔ missing or mixed authoritative reports cannot certify a matrix (22.225717ms)
+✔ target geometry mirrors stale, spacing and essential exception applicability (115.532945ms)
+✔ state payload must match the final successful attempt attachment (61.398181ms)
+✔ system screenshots require one readable image attachment from their authoritative attempt (224.372299ms)
+✔ a changed or unreadable state-local screenshot cannot reuse its original report attachment (85.148945ms)
+✔ a failed retry or different test cannot provide a successful attempts missing screenshot (72.969933ms)
+✔ exchanged state images and another engines attachments cannot certify a screenshot (90.209931ms)
+✔ retained failed-attempt pixels cannot replace the successful retry image (67.923221ms)
+✔ empty or malformed screenshot evidence returns a validation error (129.857478ms)
+✔ decodes genuine RGB, RGBA, grayscale, indexed, 16-bit and Adam7 screenshots (280.271452ms)
+✔ matching corrupt PNG bytes cannot certify a system screenshot (513.840664ms)
+✔ invalid PNG header formats cannot reach pixel decoding (158.434734ms)
+✔ expanded PNG byte budget applies before inflation even within the pixel limit (41.538044ms)
+✔ accepts consecutive and empty IDAT chunks but rejects interrupted image data (94.064916ms)
+✔ Adam7 screenshots require exactly the complete filtered pixel data (65.606734ms)
+✔ expected unrelated skips supply no state authority and cannot fill a skipped owner (42.211593ms)
+✔ runner, setup and teardown errors invalidate an otherwise passing report (78.615694ms)
+✔ CLI resolves capability from the successful retry while retaining the failed file (250.807654ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3377.023826

@@ -1,0 +1,20 @@
+[
+  {
+    "engine": "chromium",
+    "report": "browser/results/playwright.json",
+    "requiredStates": 116,
+    "errors": []
+  },
+  {
+    "engine": "firefox",
+    "report": "browser/results/playwright.json",
+    "requiredStates": 116,
+    "errors": []
+  },
+  {
+    "engine": "webkit",
+    "report": "browser-webkit/results/playwright.json",
+    "requiredStates": 116,
+    "errors": []
+  }
+]
