@@ -1,0 +1,42 @@
+The '-parallel' switch has been deprecated in favor of '-parallelMode' and will be removed in the next major version
+
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.Shell.Tests
+  Discovered:  Hexalith.FrontComposer.Shell.Tests
+  Starting:    Hexalith.FrontComposer.Shell.Tests
+    Hexalith.FrontComposer.Shell.Tests.Components.DataGrid.FcExpandedRowHiddenBannerTests.MissingRecoveryCompletionDuringUnsettledRefreshKeepsSpeechPending [FAIL]
+      Bunit.Extensions.WaitForHelpers.WaitForFailedException : The assertion did not pass within the timeout period.
+      
+      If this test does not fail consistently, the reason may be that
+      the wait timeout is too short, and the runtime did not have enough
+      time to complete the necessary number of renders of the component under test.
+      This can happen on highly utilized or slower hardware, for example.
+      
+      To determine if this is the cause, compare the check and render count(s) below
+      and see if they match what is expected. If they do not,
+      consider increasing the timeout, either at the individual
+      method call level, e.g. WaitForElement("div", TimeSpan.FromSeconds(15)),
+      or via the static TestContext.DefaultWaitTimeout property.
+      
+      Check count: 1.
+      Component render count: 4.
+      Total render count across all components: 0.
+      ---- Bunit.JSInvokeCountExpectedException : VerifyInvoke failed: "focusReplacementHeading" was not called the expected number of times.
+      
+      Expected number of calls: 2
+      Actual number of calls:   1
+      
+      Stack Trace:
+        /_/src/bunit/Extensions/WaitForHelpers/RenderedComponentWaitForHelperExtensions.WaitForState.cs(102,0): at Bunit.RenderedComponentWaitForHelperExtensions.WaitForAssertion[TComponent](IRenderedComponent`1 renderedComponent, Action assertion, Nullable`1 timeout)
+        tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs(44,0): at Hexalith.FrontComposer.Shell.Tests.Components.DataGrid.FcExpandedRowHiddenBannerTests.MissingRecoveryCompletionDuringUnsettledRefreshKeepsSpeechPending()
+        --- End of stack trace from previous location ---
+        ----- Inner Stack Trace -----
+        /_/src/bunit/Asserting/JSRuntimeAssertExtensions.cs(115,0): at Bunit.JSRuntimeAssertExtensions.VerifyInvoke(JSRuntimeInvocationDictionary allInvocations, String identifier, Int32 calledTimes, String userMessage)
+        /_/src/bunit/Asserting/JSRuntimeAssertExtensions.cs(48,0): at Bunit.JSRuntimeAssertExtensions.VerifyInvoke(BunitJSInterop jsInterop, String identifier, Int32 calledTimes, String userMessage)
+        tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs(44,0): at Hexalith.FrontComposer.Shell.Tests.Components.DataGrid.FcExpandedRowHiddenBannerTests.<>c__DisplayClass0_0.<MissingRecoveryCompletionDuringUnsettledRefreshKeepsSpeechPending>b__5()
+        /_/src/bunit/Extensions/WaitForHelpers/WaitForAssertionHelper.cs(35,0): at Bunit.Extensions.WaitForHelpers.WaitForAssertionHelper`1.<>c__DisplayClass6_0.<.ctor>b__0()
+        /_/src/bunit/Extensions/WaitForHelpers/WaitForHelper.cs(297,0): at Bunit.Extensions.WaitForHelpers.WaitForHelper`2.<>c__DisplayClass32_0.<WrapSynchronousChecker>b__0()
+        /_/src/bunit/Extensions/WaitForHelpers/WaitForHelper.cs(226,0): at Bunit.Extensions.WaitForHelpers.WaitForHelper`2.RunCheckAsync()
+  Finished:    Hexalith.FrontComposer.Shell.Tests (ID = '47ea1885be85e02ea5ab6d4f3f0a3316b9743a6877b49a72f290b3b7fc1a0f08')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.Shell.Tests  Total: 2, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 1.435s

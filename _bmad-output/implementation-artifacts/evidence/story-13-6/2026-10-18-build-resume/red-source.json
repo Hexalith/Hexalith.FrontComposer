@@ -1,0 +1,9 @@
+{
+  "base": "1d2cc12eb467db048c41d1aee9c056f1e29e5fc1",
+  "sourceSha256": {
+    "tests/e2e/helpers/responsive-accessibility.ts": "54db1a6667ce1b99b499717fce7e765c0570bd9641f9a16e563eccdcb73d5ab1",
+    "tests/e2e/specs/responsive-accessibility.spec.ts": "17935c009ffa64b1ba5dd7c165b62d9953f8957bbb4b38545ec5d53619a8d828",
+    "src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs": "284927f52f7535dec9f32f15467ec438993a713ea3abdc4701673599bf766232",
+    "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs": "d72f59a1bf9083fe490e42575d95dabfff7b89f7b7a6dea23a6d85a7e34d0415"
+  }
+}

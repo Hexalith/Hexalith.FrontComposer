@@ -1,6 +1,32 @@
 # Story 13.6 accessibility result and human checklist
 
-## Current scoped PNG-integrity validation — 2026-10-18
+## Current resumed Build review — 2026-10-18
+
+**Story 13.6 remains in review; release accessibility classification is blocked.** This candidate is root `1d2cc12eb467db048c41d1aee9c056f1e29e5fc1` plus source/test patch `sha256:3aa1747eb36b3f774c4bf71a81864f877ed9eb4addd77d7614edb600a262d837`. The [source manifest and exact patch](evidence/story-13-6/2026-10-18-build-resume/source.json) bind all five changed source/test files, eight unchanged root submodules and 26 unchanged approved PNG/text baselines. No dependency declaration or approval changed.
+
+The three independent Build review layers returned ten blind findings, two edge findings and no verification gaps. Every finding has an individual verdict in the main story spec. Four private corrections are applied: simple text contrast rejects opacity across composed ancestors; fixed pseudo focus checks include the transformed target itself; unrelated overlapping text cannot certify nominal warning contrast; and missing-detail completion revalidates settlement, result identity, scope, surface and group ownership, including handled stale interop failure. Existing successful focus/speech behavior stays covered. One unverified detached-observer retention concern was appended to the deferred ledger; exact prior findings retain their existing dispositions.
+
+| Current lane | Executed result | Retained proof |
+| --- | --- | --- |
+| New helper counterexamples and valid positives, three engines | Before fix: 9 failed. After fix: 9 passed; zero retries | [Red log](evidence/story-13-6/2026-10-18-build-resume/browser-red.log), [green log](evidence/story-13-6/2026-10-18-build-resume/browser-green.log), [red source](evidence/story-13-6/2026-10-18-build-resume/red-source.json) |
+| Missing-detail delayed completion | Two original awaited lifecycle regressions fail on baseline production source. Final banner class: 39 passed, including four completion/exception cases | [Red log](evidence/story-13-6/2026-10-18-build-resume/recovery-red-final.log), [red source](evidence/story-13-6/2026-10-18-build-resume/recovery-red-source.json), [39 passing tests](evidence/story-13-6/2026-10-18-build-resume/banner-green.log) |
+| Debug Shell.Tests build, with Counter.Web project reference | Passed; 0 warnings / 0 errors | [Build](evidence/story-13-6/2026-10-18-build-resume/shell-build-final.log) |
+| TypeScript | Passed | [Exact command/result](evidence/story-13-6/2026-10-18-build-resume/verification.json) |
+| Configured Debug Shell lane | 3,703 total: 3,699 passed / 4 failed / 0 skipped / 0 errors | [Log](evidence/story-13-6/2026-10-18-build-resume/shell-full.log); includes the required Shell chrome Fluent guard |
+| Complete three-spec browser gate, three engines, 4 workers, no retries | 759 total: 736 passed / 20 failed / 3 skipped / 0 flaky; no runner errors | [Console](evidence/story-13-6/2026-10-18-build-resume/browser-full.log), [raw JSON](evidence/story-13-6/2026-10-18-build-resume/browser-full.playwright.json), [JUnit](evidence/story-13-6/2026-10-18-build-resume/browser-full.junit.xml), [all outcomes](evidence/story-13-6/2026-10-18-build-resume/browser-outcomes.json) |
+| Browser breakdown | Responsive/helper: 468 passed. State matrix: 222 passed / 2 failed / 1 skip. Specimen: 46 passed / 18 visual failed / 2 skips | [Per-file outcomes](evidence/story-13-6/2026-10-18-build-resume/browser-outcomes.json) |
+| Complete artifact validator | Failed under unchanged 52,428,800-byte limit: results 120,809,278 / HTML 102,705,183 file bytes | [Validator log](evidence/story-13-6/2026-10-18-build-resume/artifact-validation.log) |
+
+The four .NET failures are the two existing generated-grid text snapshots plus centralized-catalog and Fluent-version assertions. SourceTools was not rerun because its producer source is unchanged; its prior Fluent-version approval failure remains open. All 18 browser visual comparisons fail, and their approved image bytes remain unchanged. This run supplies no visual or catalog approval.
+
+The two nonvisual browser failures remain **open**. Chromium's light palette-to-settings journey fails its expected Tab focus destination; an isolated one-worker repeat passes, but does not replace the canonical failure. Firefox's light theme-menu journey fails on competing underlying card border/shadow paint while measuring the focused menu item; a current one-worker repeat fails again. A temporary import-relocated copy using the HEAD helper passes, so causal attribution remains unresolved rather than being called a proven pre-existing issue. [Chromium failure](evidence/story-13-6/2026-10-18-build-resume/chromium-full-failure.md), [Firefox failure](evidence/story-13-6/2026-10-18-build-resume/firefox-full-failure.md), [diagnostic commands and limitations](evidence/story-13-6/2026-10-18-build-resume/verification.json) preserve those distinctions. No complete current state matrix or nonvisual gate pass is claimed.
+
+Aspire successfully launched this time. The launch profile initially overrode environment-only selection; the corrected command explicitly passes `-- --environment Test`. `aspire wait counter-web` reports Healthy, and sanitized [resource state](evidence/story-13-6/2026-10-18-build-resume/aspire-described.json) confirms both Counter environment names are Test. Security remains unhealthy and dependent backend resources wait, so this is no live EventStore proof. The owned topology is [stopped](evidence/story-13-6/2026-10-18-build-resume/aspire-stop.log); [final inspection](evidence/story-13-6/2026-10-18-build-resume/aspire-stopped.log) finds no AppHost running.
+
+The bounded retained record contains exact outcome reports and regression/build logs. Full raw browser results/HTML, including attachment captures, remain at `/tmp/story-13-6-resume-full/{results,html}`; copied reports still reference those local attachments. This is **not** a portable or complete artifact-validation packet. Historical packets remain untouched. At the start of this review, the unchanged Node evidence suite passed 24/24 and historical state replay returned zero errors for 116 rows per engine; those checks do not certify new current browser paint. WebKit actual forced-palette coverage, Windows execution, all manual AT/heard speech, actual 400% zoom, physical devices, live-backend acceptance and owner approvals remain unperformed/open. No staging, commit or push occurred.
+
+
+## Prior scoped PNG-integrity validation — 2026-10-18
 
 **Story 13.6 remains in review.** This correction uses root `4ee1009c947886a0437b3b93b8cabd433920b8de` plus source/test patch `sha256:f36c6f62d0a2c753deb8ea3db6faa398dd50f980382b348ddd4f32da39ba6fcb`. The [source manifest](evidence/story-13-6/2026-10-18-png-integrity/source-reviewed.json) records the two changed JavaScript files, eight unchanged root submodules and 26 unchanged approved PNG/text baselines. Browser producers and host source are unchanged. This run replays the retained hash-bound browser packet through the new validator; it performs no new browser, .NET, manual AT or device execution.
 
@@ -207,31 +233,23 @@ All 18 manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, t
 story: 13.6
 story_status: in-review
 sprint_status: review
-final_classification: open
-current_tested_base_root: 6ab8d2daac6d2ee8ef2f0ce8686cb446d0b6dd0b
-current_source_diff_sha256: d193180d49fc3d5a827fecdcdd7cb7a79b3626f5c93348acb9768e26e22d2064
-current_production_fix_browser: failed; 90 total / 70 passed / 18 visual failed / 2 skipped / 0 flaky; initial regression revision
-current_final_regression: passed; 3 engines; final reviewed regression revision
-current_reflow: passed; 9 across 3 engines; initial regression revision
-current_generator: passed; 68
-current_analyzer_governance: passed; 3 after consistent declared-catalog restore
-current_source_tools: failed; 1313 total / 1312 passed / 1 Fluent approval failure
-current_shell_scope: failed; 30 total / 26 passed / 4 snapshot-or-catalog failures; full assembly not rerun
-current_artifact_size_gate: failed; 52428800-byte limit per root; browser results=78296904 / html=79731410
-current_focused_followup_sizes: results=10112 / html=543243 file bytes; both within root limit
-current_visual_inventory: evidence/story-13-6/2026-10-18-field-layout/visual-diff-inventory.json
-prior_full_candidate_root: acfc74c7e90acf7f55d0a9af7137859c77a4a09f
-prior_full_source_diff_sha256: 0c1217adfe38e3a488dba91350ff098f6eab0de227714eee99f12b456374af60
-prior_full_browser: failed; 750 total / 729 passed / 18 visual failed / 3 skipped / 0 flaky
-prior_full_browser_visual_comparisons: failed; 18, classified in visual-diff-inventory-parent-final.json; approved PNGs unchanged
-prior_full_browser_nonvisual: 0 failed; prior intermittent Chromium palette-to-settings Tab passed
-prior_full_shell: failed; 3709 total / 7 failed / 1 skipped / 0 errors
-prior_full_source_tools: failed; 1313 total / 1 failed / 0 skipped / 0 errors
-prior_full_debug_builds: passed; Counter.Web, Shell.Tests, SourceTools.Tests; 0 warnings/errors
-approved_browser_images_changed: 0
-approved_dotnet_snapshots_changed: 0
+final_classification: blocked
+current_tested_base_root: 1d2cc12eb467db048c41d1aee9c056f1e29e5fc1
+current_source_diff_sha256: 3aa1747eb36b3f774c4bf71a81864f877ed9eb4addd77d7614edb600a262d837
+current_debug_shell_build: passed; 0 warnings / 0 errors
+current_banner_tests: passed; 39 / 39
+current_helper_regressions: passed; 9 across 3 engines; 9 red before correction
+current_responsive_spec: passed; 468
+current_browser: failed; 759 total / 736 passed / 20 failed / 3 skipped / 0 flaky
+current_browser_visual: failed; 18 comparisons; approved images unchanged
+current_browser_nonvisual: failed; Chromium palette-to-settings focus and Firefox theme-menu focus-paint measurement
+current_shell_configured: failed; 3703 total / 3699 passed / 4 snapshot-or-catalog failures / 0 skipped
+current_source_tools: not rerun; prior Fluent-version approval failure remains open
+current_artifact_size_gate: failed; 52428800-byte limit per root; results=120809278 / html=102705183
+current_evidence: evidence/story-13-6/2026-10-18-build-resume/verification.json
+complete_portable_artifact_packet: false
+protected_baselines_changed: 0
 root_submodules_changed: 0
-raw_artifact_size_gate: failed; existing 52428800-byte limit per root; retained results=103254316 and html=87959744 file bytes
 windows_execution: not performed
 manual_at: not performed
 actual_400_percent_zoom: not performed
@@ -241,4 +259,6 @@ heard_speech: not observed
 webkit_actual_forced_palette: not observed
 visual_and_catalog_owner_approval: not supplied
 product_approval_inferred: false
+apphost_running: false
+staged_committed_pushed: false
 ```

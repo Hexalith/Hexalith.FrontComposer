@@ -1,0 +1,126 @@
+{
+  "resources": [
+    {
+      "displayName": "counter-web",
+      "state": "Running",
+      "healthStatus": "Healthy",
+      "waitingFor": null,
+      "urls": [
+        {
+          "name": "http",
+          "url": "http://localhost:5201"
+        },
+        {
+          "name": "https",
+          "url": "https://localhost:7201"
+        }
+      ]
+    },
+    {
+      "displayName": "eventstore-admin-ui",
+      "state": "Waiting",
+      "healthStatus": null,
+      "waitingFor": [
+        "eventstore-admin",
+        "security"
+      ],
+      "urls": []
+    },
+    {
+      "displayName": "eventstore-admin",
+      "state": "Waiting",
+      "healthStatus": null,
+      "waitingFor": [
+        "security"
+      ],
+      "urls": []
+    },
+    {
+      "displayName": "eventstore",
+      "state": "Waiting",
+      "healthStatus": null,
+      "waitingFor": [
+        "security"
+      ],
+      "urls": []
+    },
+    {
+      "displayName": "frontcomposer-ui",
+      "state": "Waiting",
+      "healthStatus": null,
+      "waitingFor": [
+        "tenants",
+        "parties",
+        "eventstore",
+        "security"
+      ],
+      "urls": []
+    },
+    {
+      "displayName": "parties",
+      "state": "Waiting",
+      "healthStatus": null,
+      "waitingFor": [
+        "eventstore",
+        "tenants",
+        "security"
+      ],
+      "urls": []
+    },
+    {
+      "displayName": "sample",
+      "state": "Waiting",
+      "healthStatus": null,
+      "waitingFor": [
+        "eventstore"
+      ],
+      "urls": []
+    },
+    {
+      "displayName": "security",
+      "state": "Running",
+      "healthStatus": "Unhealthy",
+      "waitingFor": null,
+      "urls": [
+        {
+          "name": "management",
+          "url": "https://localhost:8543",
+          "isInternal": true
+        },
+        {
+          "name": "http",
+          "url": "https://localhost:8180"
+        }
+      ]
+    },
+    {
+      "displayName": "tenants",
+      "state": "Waiting",
+      "healthStatus": null,
+      "waitingFor": [
+        "eventstore",
+        "security"
+      ],
+      "urls": []
+    },
+    {
+      "displayName": "tenants-ui",
+      "state": "Waiting",
+      "healthStatus": null,
+      "waitingFor": [
+        "tenants",
+        "eventstore",
+        "security"
+      ],
+      "urls": []
+    }
+  ],
+  "counterEnvironment": {
+    "ASPNETCORE_ENVIRONMENT": "Test",
+    "DOTNET_ENVIRONMENT": "Test",
+    "Hexalith__FrontComposer__Specimens__Enabled": "true",
+    "Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs": "6500",
+    "Hexalith__Shell__FormAbandonmentThresholdSeconds": "5",
+    "Hexalith__Shell__TimeoutActionThresholdMs": "5000"
+  }
+}

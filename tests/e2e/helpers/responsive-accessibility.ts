@@ -575,7 +575,7 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
       }
       let block: Element | null = css.position === 'fixed' ? null : visual;
       if (css.position === 'fixed') {
-        for (let ancestor = composedParent(visual); ancestor; ancestor = composedParent(ancestor)) {
+        for (let ancestor: Element | null = visual; ancestor; ancestor = composedParent(ancestor)) {
           if (getComputedStyle(ancestor).transform !== 'none') { geometryLimits.push('fixed pseudo in transformed ancestry needs pixel evidence'); break; }
         }
       }
@@ -888,7 +888,11 @@ export async function expectTextContrast(target: Locator, minimum?: number, colo
     };
     const composite = (fg: number[], bg: number[]) => [0, 1, 2].map(i => fg[i] * fg[3] + bg[i] * (1 - fg[3])).concat(1);
     const backgrounds: number[][] = [];
-    for (let current: Element | null = element; current; current = current.parentElement) backgrounds.push(parse(getComputedStyle(current).backgroundColor));
+    for (let current: Element | null = element; current; current = current.assignedSlot ?? current.parentElement ?? (current.getRootNode() instanceof ShadowRoot ? (current.getRootNode() as ShadowRoot).host : null)) {
+      const css = getComputedStyle(current);
+      if (Number(css.opacity) !== 1) throw new Error('Group opacity needs pixel evidence');
+      backgrounds.push(parse(css.backgroundColor));
+    }
     const probe = document.createElement('span'); probe.style.color = 'Canvas'; document.documentElement.append(probe);
     let background = parse(getComputedStyle(probe).color); probe.remove();
     for (const layer of backgrounds.reverse()) background = composite(layer, background);
@@ -1277,6 +1281,14 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
             }
           }
           if (ancestor) continue;
+          if (sampleKind === 'text' && !containsComposed(element, candidate) && parse(glyphPaint(css))[3] > 0) {
+            const glyphBoxes = [...candidate.childNodes].flatMap(node => {
+              if (!(node instanceof Text) || !node.textContent?.trim()) return [];
+              const range = document.createRange(); range.selectNodeContents(node);
+              return [...range.getClientRects()];
+            });
+            if (clippedPaint(candidate, glyphBoxes, false).some(intersects)) throw new Error('Overlapping text needs pixel evidence');
+          }
           const vector = candidate.matches('svg path,svg polygon,svg circle,svg rect,svg ellipse,svg line,svg polyline,svg use,svg text');
           const vectorPaint = vector && (css.fill !== 'none' && Number(css.fillOpacity) > 0 && parse(css.fill)[3] > 0
             || css.stroke !== 'none' && parseFloat(css.strokeWidth) > 0 && Number(css.strokeOpacity) > 0 && parse(css.stroke)[3] > 0);

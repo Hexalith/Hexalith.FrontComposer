@@ -1,0 +1,177 @@
+The '-notrait' switch has been deprecated in favor of '-trait-' and will be removed in the next major version
+The '-notrait' switch has been deprecated in favor of '-trait-' and will be removed in the next major version
+The '-notrait' switch has been deprecated in favor of '-trait-' and will be removed in the next major version
+The '-notrait' switch has been deprecated in favor of '-trait-' and will be removed in the next major version
+The '-notrait' switch has been deprecated in favor of '-trait-' and will be removed in the next major version
+The '-parallel' switch has been deprecated in favor of '-parallelMode' and will be removed in the next major version
+
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.Shell.Tests
+  Discovered:  Hexalith.FrontComposer.Shell.Tests
+  Starting:    Hexalith.FrontComposer.Shell.Tests
+    Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot [FAIL]
+      VerifyTests.VerifyException : Directory: /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.Shell.Tests/Generated
+      NotEqual:
+        - Received: CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot.received.txt
+          Verified: CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot.verified.txt
+      
+      FileContent:
+      
+      NotEqual:
+      
+      Received: CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot.received.txt
+      Verified: CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot.verified.txt
+      Diff:
+      2 
+      -         <table class="fluent-data-grid fc-projection-grid" style="border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed;" aria-rowcount="4" display-mode="table" data-fc-grid-item-size="44"><thead><tr class="fluent-data-grid-row" role="row" row-type="sticky-header"><th col-index="1" class="fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Name</div></div></div></th><th col-index="2" class="fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Is Enabled</div></div></div></th><th col-index="3" class="fc-row-action-column fc-projection-grid" style="width: 40px; height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text></div></div></div></th></tr></thead><tbody><tr style="height: 0px; flex-shrink: 0;" aria-hidden="true"></tr><tr class="fluent-data-grid-row" role="row" aria-rowindex="2"><td col-index="1" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">—</td><td col-index="2" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">Yes</td><td col-index="3" class="fc-row-action-column" style="width: 40px; height: 44px;" role="gridcell" tabindex="0" col-justify="start"><fluent-button class="fc-expand-button" size="small" icon-only appearance="subtle" aria-label="Expand details for Hexalith.FrontComposer.Shell.Tests.Generated.StatusProjection" aria-expanded="false" aria-controls="fc-expand-panel-Status-Hexalith-FrontComposer-Shell-Tests-Generated-StatusProjection-{guid}"><svg style="width: 20px; fill: currentColor;" focusable="false" viewBox="0 0 20 20" aria-hidden="true"><path d="M7.65 4.15c.2-.2.5-.2.7 0l5.49 5.46c.21.22.21.57 0 .78l-5.49 5.47a.5.5 0 0 1-.7-.71L12.8 10 7.65 4.85a.5.5 0 0 1 0-.7"/></svg>
+      +         <table class="fluent-data-grid fc-projection-grid" style="border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed;" aria-rowcount="4" role="grid" display-mode="table" data-fc-grid-item-size="44"><thead><tr class="fluent-data-grid-row" role="row" row-type="sticky-header"><th col-index="1" class="fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Name</div></div></div></th><th col-index="2" class="fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Is Enabled</div></div></div></th><th col-index="3" class="fc-row-action-column fc-projection-grid" style="width: 40px; height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text></div></div></div></th></tr></thead><tbody><tr style="height: 0px; flex-shrink: 0;" aria-hidden="true"></tr><tr class="fluent-data-grid-row" role="row" aria-rowindex="2"><td col-index="1" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">—</td><td col-index="2" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">Yes</td><td col-index="3" class="fc-row-action-column" style="width: 40px; height: 44px;" role="gridcell" tabindex="0" col-justify="start"><fluent-button class="fc-expand-button" size="small" icon-only appearance="subtle" aria-label="Expand details for Hexalith.FrontComposer.Shell.Tests.Generated.StatusProjection" aria-expanded="false" aria-controls="fc-expand-panel-Status-Hexalith-FrontComposer-Shell-Tests-Generated-StatusProjection-{guid}"><svg style="width: 20px; fill: currentColor;" focusable="false" viewBox="0 0 20 20" aria-hidden="true"><path d="M7.65 4.15c.2-.2.5-.2.7 0l5.49 5.46c.21.22.21.57 0 .78l-5.49 5.47a.5.5 0 0 1-.7-.71L12.8 10 7.65 4.85a.5.5 0 0 1 0-.7"/></svg>
+      4         </fluent-button></td></tr><tr class="fluent-data-grid-row" role="row" aria-rowindex="3"><td col-index="1" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">Beta</td><td col-index="2" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">No</td><td col-index="3" class="fc-row-action-column" style="width: 40px; height: 44px;" role="gridcell" tabindex="0" col-justify="start"><fluent-button class="fc-expand-button" size="small" icon-only appearance="subtle" aria-label="Expand details for Hexalith.FrontComposer.Shell.Tests.Generated.StatusProjection" aria-expanded="false" aria-controls="fc-expand-panel-Status-Hexalith-FrontComposer-Shell-Tests-Generated-StatusProjection-{guid}"><svg style="width: 20px; fill: currentColor;" focusable="false" viewBox="0 0 20 20" aria-hidden="true"><path d="M7.65 4.15c.2-.2.5-.2.7 0l5.49 5.46c.21.22.21.57 0 .78l-5.49 5.47a.5.5 0 0 1-.7-.71L12.8 10 7.65 4.85a.5.5 0 0 1 0-.7"/></svg>
+      
+      
+    Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting [FAIL]
+      VerifyTests.VerifyException : Directory: /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.Shell.Tests/Generated
+      NotEqual:
+        - Received: CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting.received.txt
+          Verified: CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting.verified.txt
+      
+      FileContent:
+      
+      NotEqual:
+      
+      Received: CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting.received.txt
+      Verified: CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting.verified.txt
+      Diff:
+      2 
+      -         <table class="fluent-data-grid fc-projection-grid" style="border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed;" aria-rowcount="2" display-mode="table" data-fc-grid-item-size="44"><thead><tr class="fluent-data-grid-row" role="row" row-type="sticky-header"><th col-index="1" class="fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Id</div></div></div></th><th col-index="2" class="fc-col-numeric fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Count</div></div></div></th><th col-index="3" class="fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Last changed</div></div></div></th><th col-index="4" class="fc-col-unsupported fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Metadata (custom renderer needed)</div></div></div></th><th col-index="5" class="fc-row-action-column fc-projection-grid" style="width: 40px; height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text></div></div></div></th></tr></thead><tbody><tr style="height: 0px; flex-shrink: 0;" aria-hidden="true"></tr><tr class="fluent-data-grid-row" role="row" aria-rowindex="2"><td col-index="1" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">counter-1</td><td col-index="2" class="fc-col-numeric" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">1,234</td><td col-index="3" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">04/14/2026</td><td col-index="4" class="fc-col-unsupported" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start"><div aria-label="Metadata with unsupported type System.Collections.Generic.Dictionary requires a custom renderer" class="fc-field-placeholder" b-{scope}><strong b-{scope}>Metadata</strong>
+      +         <table class="fluent-data-grid fc-projection-grid" style="border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed;" aria-rowcount="2" role="grid" display-mode="table" data-fc-grid-item-size="44"><thead><tr class="fluent-data-grid-row" role="row" row-type="sticky-header"><th col-index="1" class="fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Id</div></div></div></th><th col-index="2" class="fc-col-numeric fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Count</div></div></div></th><th col-index="3" class="fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Last changed</div></div></div></th><th col-index="4" class="fc-col-unsupported fc-projection-grid" style="height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text>Metadata (custom renderer needed)</div></div></div></th><th col-index="5" class="fc-row-action-column fc-projection-grid" style="width: 40px; height: 44px; min-height: 40px;" cell-type="columnheader" col-justify="start" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div col-title><div col-title-text></div></div></div></th></tr></thead><tbody><tr style="height: 0px; flex-shrink: 0;" aria-hidden="true"></tr><tr class="fluent-data-grid-row" role="row" aria-rowindex="2"><td col-index="1" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">counter-1</td><td col-index="2" class="fc-col-numeric" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">1,234</td><td col-index="3" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start">04/14/2026</td><td col-index="4" class="fc-col-unsupported" style="height: 44px;" role="gridcell" tabindex="0" col-justify="start"><div aria-label="Metadata with unsupported type System.Collections.Generic.Dictionary requires a custom renderer" class="fc-field-placeholder" b-{scope}><strong b-{scope}>Metadata</strong>
+      4     <span b-{scope}>(System.Collections.Generic.Dictionary)</span>
+      
+      
+    Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds [FAIL]
+      Shouldly.ShouldAssertException : result.Ok
+          should be
+      True
+          but was
+      False
+      
+      Additional Info:
+          github.com/hexalith/hexalith.frontcomposer@1d2cc12eb467db048c41d1aee9c056f1e29e5fc1 -> references/Hexalith.Builds -> github.com/hexalith/hexalith.builds@9d9e82a091c212f17f751d65aca2b9cd3d3ecde5: Microsoft.Extensions.Localization expected version '10.0.12', found '10.0.13'
+      Stack Trace:
+        tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs(39,0): at Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds()
+           at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+           at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+    Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests.Fluent_package_versions_are_v5_only_and_icons_match_components [FAIL]
+      Shouldly.ShouldAssertException : mismatchedV5Pins
+          should be empty but had
+      2
+          items and was
+      ["references/Hexalith.Builds/Props/Directory.Packages.props: Microsoft.FluentUI.AspNetCore.Components 5.0.1", "references/Hexalith.Builds/Props/Directory.Packages.props: Microsoft.FluentUI.AspNetCore.Components.Icons 5.0.1"]
+      
+      Additional Info:
+          Fluent UI component and icon packages must stay on the same validated v5 pin 5.0.0. Mismatches: references/Hexalith.Builds/Props/Directory.Packages.props: Microsoft.FluentUI.AspNetCore.Components 5.0.1; references/Hexalith.Builds/Props/Directory.Packages.props: Microsoft.FluentUI.AspNetCore.Components.Icons 5.0.1
+      Stack Trace:
+        tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs(312,0): at Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests.Fluent_package_versions_are_v5_only_and_icons_match_components()
+           at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+           at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+Mock driver logs:
+
+2026-10-18T11:15:37.634938Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-18T11:15:37.643192Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.659356Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-18T11:15:37.659867Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.662290Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-18T11:15:37.662703Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.665742Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-18T11:15:37.666352Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.670662Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-18T11:15:37.671351Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.674469Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-18T11:15:37.675002Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.677587Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-18T11:15:37.678337Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.680324Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-18T11:15:37.680866Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.689867Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-18T11:15:37.690445Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.694468Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-18T11:15:37.695180Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.699377Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-18T11:15:37.700162Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.702840Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-18T11:15:37.703266Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.705329Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-18T11:15:37.705930Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.708542Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-18T11:15:37.710566Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.715521Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-18T11:15:37.716436Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.719721Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-18T11:15:37.720211Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.729309Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-18T11:15:37.729965Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.737480Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-18T11:15:37.738475Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-18T11:15:37.743227Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-18T11:15:37.743727Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+  Finished:    Hexalith.FrontComposer.Shell.Tests (ID = '47ea1885be85e02ea5ab6d4f3f0a3316b9743a6877b49a72f290b3b7fc1a0f08')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.Shell.Tests  Total: 3703, Errors: 0, Failed: 4, Skipped: 0, Not Run: 0, Time: 148.420s

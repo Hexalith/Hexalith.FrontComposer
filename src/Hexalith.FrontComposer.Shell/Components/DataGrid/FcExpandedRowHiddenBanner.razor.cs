@@ -242,10 +242,23 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
                 {
                     string surface = _boundSurface;
                     long generation = ScopeGeneration;
-                    bool focused = await _missingFocusModule.InvokeAsync<bool>(
-                        "focusReplacementHeading", _recoveryKey, _descriptionId).ConfigureAwait(true);
-                    if (!_disposed && _missingPending && IsMissing && !IsHiddenByFilter
-                        && generation == ScopeGeneration && surface == _boundSurface)
+                    string? resultIdentity = ResultIdentity;
+                    bool IsCurrentRecovery() => !_disposed && _missingPending && IsMissing && !IsHiddenByFilter && ResultSettled
+                        && generation == ScopeGeneration && surface == _boundSurface
+                        && string.Equals(resultIdentity, ResultIdentity, StringComparison.Ordinal)
+                        && string.Equals(missingGroup, _focusGroupKey, StringComparison.Ordinal)
+                        && _focusOwnership?.TryOwn(missingGroup, this) == true;
+                    bool focused;
+                    try
+                    {
+                        focused = await _missingFocusModule.InvokeAsync<bool>(
+                            "focusReplacementHeading", _recoveryKey, _descriptionId).ConfigureAwait(true);
+                    }
+                    catch (Exception exception) when ((exception is JSException or InvalidOperationException or OperationCanceledException) && !IsCurrentRecovery())
+                    {
+                        return;
+                    }
+                    if (IsCurrentRecovery())
                     {
                         _missingPending = false;
                         _focusOwnership.Complete(missingGroup, this);

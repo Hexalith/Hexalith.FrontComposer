@@ -1,0 +1,204 @@
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs b/src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs
+index 4d10dc59..49370ddf 100644
+--- a/src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs
++++ b/src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs
+@@ -242,10 +242,23 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
+                 {
+                     string surface = _boundSurface;
+                     long generation = ScopeGeneration;
+-                    bool focused = await _missingFocusModule.InvokeAsync<bool>(
+-                        "focusReplacementHeading", _recoveryKey, _descriptionId).ConfigureAwait(true);
+-                    if (!_disposed && _missingPending && IsMissing && !IsHiddenByFilter
+-                        && generation == ScopeGeneration && surface == _boundSurface)
++                    string? resultIdentity = ResultIdentity;
++                    bool IsCurrentRecovery() => !_disposed && _missingPending && IsMissing && !IsHiddenByFilter && ResultSettled
++                        && generation == ScopeGeneration && surface == _boundSurface
++                        && string.Equals(resultIdentity, ResultIdentity, StringComparison.Ordinal)
++                        && string.Equals(missingGroup, _focusGroupKey, StringComparison.Ordinal)
++                        && _focusOwnership?.TryOwn(missingGroup, this) == true;
++                    bool focused;
++                    try
++                    {
++                        focused = await _missingFocusModule.InvokeAsync<bool>(
++                            "focusReplacementHeading", _recoveryKey, _descriptionId).ConfigureAwait(true);
++                    }
++                    catch (Exception exception) when ((exception is JSException or InvalidOperationException or OperationCanceledException) && !IsCurrentRecovery())
++                    {
++                        return;
++                    }
++                    if (IsCurrentRecovery())
+                     {
+                         _missingPending = false;
+                         _focusOwnership.Complete(missingGroup, this);
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs
+index afce8fc4..93f09fd6 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs
+@@ -25,6 +25,65 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
+ /// "Clear filter" link dispatches FiltersResetAction.
+ /// </summary>
+ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
++    /// <summary>Completion from a settled result cannot announce during a replacement load.</summary>
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public async Task MissingRecoveryCompletionDuringUnsettledRefreshKeepsSpeechPending(bool failedInterop)
++    {
++        BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
++        var recovery = module.Setup<bool>("focusReplacementHeading", _ => true);
++        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
++        IRenderedComponent<AwaitableHiddenDetailBanner> cut = Render<AwaitableHiddenDetailBanner>(p => p
++            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "first"));
++        module.VerifyInvoke("focusReplacementHeading", 1);
++        Task firstRender = cut.Instance.AfterRender;
++
++        cut.Render(p => p.Add(c => c.ResultSettled, false));
++        await cut.InvokeAsync(() =>
++        {
++            if (failedInterop) { recovery.SetException(new JSException("stale recovery")); }
++            else { recovery.SetResult(false); }
++        });
++        await firstRender.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
++        announcements.Current("projection:orders:Orders").ShouldBeEmpty();
++
++        cut.Render(p => p.Add(c => c.ResultSettled, true));
++        cut.WaitForAssertion(() => module.VerifyInvoke("focusReplacementHeading", 2));
++        cut.WaitForAssertion(() => announcements.Current("projection:orders:Orders")
++            .ShouldBe("The expanded item is not in the current results."));
++    }
++
++    /// <summary>An older missing episode cannot complete the next episode's focus claim.</summary>
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public async Task MissingRecoveryCompletionCannotConsumeAReplacementEpisode(bool failedInterop)
++    {
++        BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
++        var firstRecovery = module.Setup<bool>("focusReplacementHeading", _ => true);
++        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
++        IRenderedComponent<AwaitableHiddenDetailBanner> cut = Render<AwaitableHiddenDetailBanner>(p => p
++            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "first"));
++        module.VerifyInvoke("focusReplacementHeading", 1);
++        Task firstRender = cut.Instance.AfterRender;
++        cut.Render(p => p.Add(c => c.IsMissing, false));
++        var nextRecovery = module.Setup<bool>("focusReplacementHeading", _ => true);
++        cut.Render(p => p.Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "next"));
++        module.VerifyInvoke("focusReplacementHeading", 2);
++
++        await cut.InvokeAsync(() =>
++        {
++            if (failedInterop) { firstRecovery.SetException(new JSException("stale recovery")); }
++            else { firstRecovery.SetResult(false); }
++        });
++        await firstRender.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
++        announcements.Current("projection:orders:Orders").ShouldBeEmpty();
++        await cut.InvokeAsync(() => nextRecovery.SetResult(false));
++        cut.WaitForAssertion(() => announcements.Current("projection:orders:Orders")
++            .ShouldBe("The expanded item is not in the current results."));
++    }
++
+     [Theory]
+     [InlineData(true)]
+     [InlineData(false)]
+diff --git a/tests/e2e/helpers/responsive-accessibility.ts b/tests/e2e/helpers/responsive-accessibility.ts
+index 235a9e7e..ef8c3de5 100644
+--- a/tests/e2e/helpers/responsive-accessibility.ts
++++ b/tests/e2e/helpers/responsive-accessibility.ts
+@@ -575,7 +575,7 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
+       }
+       let block: Element | null = css.position === 'fixed' ? null : visual;
+       if (css.position === 'fixed') {
+-        for (let ancestor = composedParent(visual); ancestor; ancestor = composedParent(ancestor)) {
++        for (let ancestor: Element | null = visual; ancestor; ancestor = composedParent(ancestor)) {
+           if (getComputedStyle(ancestor).transform !== 'none') { geometryLimits.push('fixed pseudo in transformed ancestry needs pixel evidence'); break; }
+         }
+       }
+@@ -888,7 +888,11 @@ export async function expectTextContrast(target: Locator, minimum?: number, colo
+     };
+     const composite = (fg: number[], bg: number[]) => [0, 1, 2].map(i => fg[i] * fg[3] + bg[i] * (1 - fg[3])).concat(1);
+     const backgrounds: number[][] = [];
+-    for (let current: Element | null = element; current; current = current.parentElement) backgrounds.push(parse(getComputedStyle(current).backgroundColor));
++    for (let current: Element | null = element; current; current = current.assignedSlot ?? current.parentElement ?? (current.getRootNode() instanceof ShadowRoot ? (current.getRootNode() as ShadowRoot).host : null)) {
++      const css = getComputedStyle(current);
++      if (Number(css.opacity) !== 1) throw new Error('Group opacity needs pixel evidence');
++      backgrounds.push(parse(css.backgroundColor));
++    }
+     const probe = document.createElement('span'); probe.style.color = 'Canvas'; document.documentElement.append(probe);
+     let background = parse(getComputedStyle(probe).color); probe.remove();
+     for (const layer of backgrounds.reverse()) background = composite(layer, background);
+@@ -1277,6 +1281,14 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
+             }
+           }
+           if (ancestor) continue;
++          if (sampleKind === 'text' && !containsComposed(element, candidate) && parse(glyphPaint(css))[3] > 0) {
++            const glyphBoxes = [...candidate.childNodes].flatMap(node => {
++              if (!(node instanceof Text) || !node.textContent?.trim()) return [];
++              const range = document.createRange(); range.selectNodeContents(node);
++              return [...range.getClientRects()];
++            });
++            if (clippedPaint(candidate, glyphBoxes, false).some(intersects)) throw new Error('Overlapping text needs pixel evidence');
++          }
+           const vector = candidate.matches('svg path,svg polygon,svg circle,svg rect,svg ellipse,svg line,svg polyline,svg use,svg text');
+           const vectorPaint = vector && (css.fill !== 'none' && Number(css.fillOpacity) > 0 && parse(css.fill)[3] > 0
+             || css.stroke !== 'none' && parseFloat(css.strokeWidth) > 0 && Number(css.strokeOpacity) > 0 && parse(css.stroke)[3] > 0);
+diff --git a/tests/e2e/specs/responsive-accessibility.spec.ts b/tests/e2e/specs/responsive-accessibility.spec.ts
+index 056236bf..9f720a59 100644
+--- a/tests/e2e/specs/responsive-accessibility.spec.ts
++++ b/tests/e2e/specs/responsive-accessibility.spec.ts
+@@ -15,6 +15,33 @@ async function fixtureFocusGeometry(target: import('@playwright/test').Locator)
+   return focusGeometry(target);
+ }
+ 
++test('resumed review simple contrast rejects translucent composed ancestors', async ({ page }) => {
++  await page.setContent('<div id="host" style="opacity:.01;background:white"></div>');
++  await page.locator('#host').evaluate(host => {
++    host.attachShadow({ mode: 'open' }).innerHTML = '<p style="color:black;background:white">Essential warning</p>';
++  });
++  await expect(expectTextContrast(page.locator('#host p'))).rejects.toThrow(/opacity.*pixel evidence/);
++  await page.locator('#host').evaluate(host => { host.style.opacity = '1'; });
++  expect((await expectTextContrast(page.locator('#host p'))).ratio).toBe(21);
++  await page.locator('#host p').evaluate(text => { (text as HTMLElement).style.opacity = '.01'; });
++  await expect(expectTextContrast(page.locator('#host p'))).rejects.toThrow(/opacity.*pixel evidence/);
++});
++
++test('resumed review fixed pseudo focus checks the transformed target containing block', async ({ page }) => {
++  await page.setViewportSize({ width: 1280, height: 900 });
++  await page.setContent('<style>button{position:absolute;left:1200px;top:40px;width:60px;height:40px;transform:translateX(0);outline:none}button:focus::after{content:"";position:fixed;left:50px;top:50px;width:100px;height:40px;border:2px solid black}</style><button>Save</button>');
++  expect((await fixtureFocusGeometry(page.locator('button'))).failures).toContain('fixed pseudo in transformed ancestry needs pixel evidence');
++  await page.locator('button').evaluate(button => { button.style.transform = 'none'; });
++  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
++});
++
++test('resumed review transparent sibling glyphs cannot certify the warning they cover', async ({ page }) => {
++  await page.setContent('<style>body{background:white}p{position:absolute;left:40px;top:40px;margin:0;font:20px monospace}#warning{color:black}#cover{color:white;z-index:1;pointer-events:none}</style><p id="warning">Essential warning</p><p id="cover">Essential warning</p>');
++  await expect(measureSurfaceContrast(page.locator('#warning'))).rejects.toThrow(/Overlapping text needs pixel evidence/);
++  await page.locator('#cover').evaluate(cover => { cover.style.top = '100px'; });
++  expect((await measureSurfaceContrast(page.locator('#warning'))).every(sample => sample.ratio === 21)).toBe(true);
++});
++
+ // Synthetic failures protect the assertions themselves. These are geometry fixtures, never AT proof.
+ test.describe('AE geometry regression fixtures', () => {
+   test('rejects a clipped ring even when the complete target is inside the viewport', async ({ page }) => {
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/AwaitableHiddenDetailBanner.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/AwaitableHiddenDetailBanner.cs
+new file mode 100644
+index 00000000..6fac05a2
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/AwaitableHiddenDetailBanner.cs
+@@ -0,0 +1,17 @@
++using Hexalith.FrontComposer.Shell.Components.DataGrid;
++
++namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
++
++/// <summary>Exposes completion of the real banner lifecycle for delayed interop tests.</summary>
++internal sealed class AwaitableHiddenDetailBanner : FcExpandedRowHiddenBanner
++{
++    /// <summary>Gets the latest after-render operation.</summary>
++    public Task AfterRender { get; private set; } = Task.CompletedTask;
++
++    /// <inheritdoc />
++    protected override Task OnAfterRenderAsync(bool firstRender)
++    {
++        AfterRender = base.OnAfterRenderAsync(firstRender);
++        return AfterRender;
++    }
++}

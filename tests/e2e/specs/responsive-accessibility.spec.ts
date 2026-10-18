@@ -15,6 +15,33 @@ async function fixtureFocusGeometry(target: import('@playwright/test').Locator) 
   return focusGeometry(target);
 }
 
+test('resumed review simple contrast rejects translucent composed ancestors', async ({ page }) => {
+  await page.setContent('<div id="host" style="opacity:.01;background:white"></div>');
+  await page.locator('#host').evaluate(host => {
+    host.attachShadow({ mode: 'open' }).innerHTML = '<p style="color:black;background:white">Essential warning</p>';
+  });
+  await expect(expectTextContrast(page.locator('#host p'))).rejects.toThrow(/opacity.*pixel evidence/);
+  await page.locator('#host').evaluate(host => { host.style.opacity = '1'; });
+  expect((await expectTextContrast(page.locator('#host p'))).ratio).toBe(21);
+  await page.locator('#host p').evaluate(text => { (text as HTMLElement).style.opacity = '.01'; });
+  await expect(expectTextContrast(page.locator('#host p'))).rejects.toThrow(/opacity.*pixel evidence/);
+});
+
+test('resumed review fixed pseudo focus checks the transformed target containing block', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setContent('<style>button{position:absolute;left:1200px;top:40px;width:60px;height:40px;transform:translateX(0);outline:none}button:focus::after{content:"";position:fixed;left:50px;top:50px;width:100px;height:40px;border:2px solid black}</style><button>Save</button>');
+  expect((await fixtureFocusGeometry(page.locator('button'))).failures).toContain('fixed pseudo in transformed ancestry needs pixel evidence');
+  await page.locator('button').evaluate(button => { button.style.transform = 'none'; });
+  expect((await focusGeometry(page.locator('button'))).failures).toEqual([]);
+});
+
+test('resumed review transparent sibling glyphs cannot certify the warning they cover', async ({ page }) => {
+  await page.setContent('<style>body{background:white}p{position:absolute;left:40px;top:40px;margin:0;font:20px monospace}#warning{color:black}#cover{color:white;z-index:1;pointer-events:none}</style><p id="warning">Essential warning</p><p id="cover">Essential warning</p>');
+  await expect(measureSurfaceContrast(page.locator('#warning'))).rejects.toThrow(/Overlapping text needs pixel evidence/);
+  await page.locator('#cover').evaluate(cover => { cover.style.top = '100px'; });
+  expect((await measureSurfaceContrast(page.locator('#warning'))).every(sample => sample.ratio === 21)).toBe(true);
+});
+
 // Synthetic failures protect the assertions themselves. These are geometry fixtures, never AT proof.
 test.describe('AE geometry regression fixtures', () => {
   test('rejects a clipped ring even when the complete target is inside the viewport', async ({ page }) => {

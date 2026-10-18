@@ -215,7 +215,39 @@ The blind, edge-case and verification-gap layers reviewed the baseline-to-curren
 
 D1–D6 are direct corrections in existing documentation, CSS and test helpers. No frozen intent, public API, threshold, dependency or approved screenshot changes. The previous full-candidate evidence remains historical; current checks and unresolved gates are recorded below and in the accessibility result.
 
+### Resumed three-layer Build review — 2026-10-18
+
+All three context-free layers returned before classification: ten Blind Hunter findings, two Edge Case Hunter findings and no Verification Gap findings. The full canonical baseline `3c8679628ebdb8995afc09f712a04fcde623695c` to candidate `1d2cc12eb467db048c41d1aee9c056f1e29e5fc1` diff was written to a system temporary file (940,978,821 bytes); nothing was staged in Git. Each finding is dispositioned separately below.
+
+| Finding | Verdict | Verified evidence | Route |
+| --- | --- | --- | --- |
+| BR-BH01 native sizing exception | low | Carried BH12: User Agent Control validates appearance/inline styling rather than stylesheet provenance. Current real inventories use Spacing and make no User Agent Control claim; proving stylesheet origin adds machinery to the unused exception path. | carried reject; no new patch or deferral |
+| BR-BH02 simple contrast opacity | medium | The simple helper used by real type/palette journeys ignores group opacity and stops at shadow boundaries. The new composed-ancestor regression fails on all three engines before correction. | patch P1 |
+| BR-BH03 selected-option width | low | A closed 30px native select truncates its long selection. The current generated UI uses Fluent dropdown buttons, not this native-select value path; the existing native fixture deliberately permits native scrolling. Probing the native option popup or adding label-width policy is a nontrivial extension without a demonstrated changed operator consumer. | reject: unlikely current use, nontrivial fix |
+| BR-BH04 missing recovery freshness | medium | Two awaited real component regressions fail against unchanged production source: a completion announces while ResultSettled is false, and an old episode consumes a replacement episode. Scope/surface checks alone do not guard result/group ownership. | patch P4 |
+| BR-BH05 removed resize observations | maybe-false | observeContent registers successive materialized descendants without explicit unobserve; whether detached targets stay retained and create material memory or delivery cost is unmeasured. A pinned-engine detached-node/heap trace across repeated virtual windows would settle the outcome. | defer unverified medium |
+| BR-BH06 mixed virtual windows | maybe-false | Carried current-review BH03: real tests cover materialized/later-row measurement, but a mixed-height virtual-scroll trace is still needed to establish an unseen-row spacer defect. | carried defer; no new ledger entry |
+| BR-BH07 artifact size | false | Carried R-BH07/current-review BH12: the unchanged root byte gate correctly rejects retained oversized packets, and the result explicitly preserves failure rather than claiming a complete packet pass. | carried reject |
+| BR-BH08 visual comparisons | false | Carried R-BH09/current-review BH12: all eighteen visual failures and the required owner decisions are recorded as open. Approved baselines cannot be regenerated as a substitute for approval. | carried reject |
+| BR-BH09 human acceptance | false | Carried R-BH10/current-review BH10: all manual AT/heard-speech/actual zoom/device gates remain unperformed and block completion. No human observation or approval is inferred. | carried reject |
+| BR-BH10 integrated .NET | false | Carried current-review BH12: prior broad .NET failures and later focused limitations are explicitly attributed; no full-suite pass is asserted. Current validation remains separate from those failed prior candidates. | carried reject |
+| BR-EC01 fixed pseudo on transformed target | medium | pseudoBox checks ancestors starting at the target's parent. An identity-transformed target itself establishes a fixed containing block, while its clipped pseudo is incorrectly measured against the viewport. The new fixture fails on all three engines before correction. | patch P2 |
+| BR-EC02 overlapping sibling glyphs | medium | Transparent-background sibling glyphs bypass the unrelated paint inventory and can erase a warning while nominal contrast certifies 21:1. The new fixture fails on all three engines before correction. | patch P3 |
+
+P1–P4 are direct private implementation corrections under the existing opacity/paint/focus/stale-recovery requirements. No frozen intent change, public API, threshold reduction, baseline regeneration or dependency update is needed. The three helper regressions retain valid positive cases. Component regressions await the actual lifecycle task before asserting stale-completion effects. Prior evidence remains historical; manual/platform/visual/catalog/raw-size/owner/live-backend gates remain open.
+
 ## Verification
+
+### Resumed Build verification — 2026-10-18
+
+Root `1d2cc12eb467db048c41d1aee9c056f1e29e5fc1` plus source/test patch `sha256:3aa1747eb36b3f774c4bf71a81864f877ed9eb4addd77d7614edb600a262d837` binds P1–P4 and all final code/test inputs. The three helper counterexamples fail in all three engines before correction (9 failed), then pass with their valid positives (9 passed). Two original lifecycle regressions both fail on baseline production source. The final banner class passes 39 tests, including four delayed completion/exception cases. Debug Shell.Tests and its Counter.Web project reference build pass with 0 warnings/errors; TypeScript passes.
+
+The complete current browser gate runs 759 cases with no retries: 736 passed / 20 failed / 3 skipped / 0 flaky. All 468 responsive/helper cases pass. The state matrix has 222 passed / 2 failed / 1 skip; the specimen suite has 46 passed / 18 visual failed / 2 skips. Chromium light palette-to-settings Tab focus fails canonically then passes in isolation. Firefox light theme-menu focus contrast fails on competing card border/shadow paint, including an isolated current repeat; an import-relocated HEAD-helper diagnostic passes, leaving attribution unresolved. Neither diagnostic replaces the failed gate. The configured Shell lane runs 3703 tests: 3699 passed / 4 existing snapshot/catalog failures / 0 skipped. The unchanged artifact cap rejects raw results (120809278 bytes) and HTML (102705183 bytes). No baseline/policy/catalog weakening is applied.
+
+[Exact commands, source identities and bounded reports](evidence/story-13-6/2026-10-18-build-resume/verification.json) and the [current accessibility result](13-6-accessibility-result.md) retain all failures separately from passing focused evidence. Raw browser attachments remain local in `/tmp/story-13-6-resume-full/`; copied reports are not a portable complete state packet. All 26 protected PNG/text approvals and eight root submodules match prior recorded bytes/identities. Aspire starts successfully with explicit Test selection, Counter is healthy, and the owned topology is stopped after validation. Security/backend readiness and live EventStore proof remain open. SourceTools is not rerun for this private component/helper change; its prior approval failure remains historical.
+
+Story status stays in-review and sprint stays review. Required manual AT/heard speech, actual zoom/devices, Windows, WebKit actual palette, visual/catalog/raw-size and owner/live-backend gates remain open. No completion, staging, commit or push is asserted.
+
 
 ### Current Build review verification — 2026-10-17
 

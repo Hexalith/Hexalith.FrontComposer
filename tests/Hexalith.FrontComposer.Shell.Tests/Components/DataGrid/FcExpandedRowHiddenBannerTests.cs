@@ -25,6 +25,65 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// "Clear filter" link dispatches FiltersResetAction.
 /// </summary>
 public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
+    /// <summary>Completion from a settled result cannot announce during a replacement load.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingRecoveryCompletionDuringUnsettledRefreshKeepsSpeechPending(bool failedInterop)
+    {
+        BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+        var recovery = module.Setup<bool>("focusReplacementHeading", _ => true);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        IRenderedComponent<AwaitableHiddenDetailBanner> cut = Render<AwaitableHiddenDetailBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "first"));
+        module.VerifyInvoke("focusReplacementHeading", 1);
+        Task firstRender = cut.Instance.AfterRender;
+
+        cut.Render(p => p.Add(c => c.ResultSettled, false));
+        await cut.InvokeAsync(() =>
+        {
+            if (failedInterop) { recovery.SetException(new JSException("stale recovery")); }
+            else { recovery.SetResult(false); }
+        });
+        await firstRender.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        announcements.Current("projection:orders:Orders").ShouldBeEmpty();
+
+        cut.Render(p => p.Add(c => c.ResultSettled, true));
+        cut.WaitForAssertion(() => module.VerifyInvoke("focusReplacementHeading", 2));
+        cut.WaitForAssertion(() => announcements.Current("projection:orders:Orders")
+            .ShouldBe("The expanded item is not in the current results."));
+    }
+
+    /// <summary>An older missing episode cannot complete the next episode's focus claim.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingRecoveryCompletionCannotConsumeAReplacementEpisode(bool failedInterop)
+    {
+        BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+        var firstRecovery = module.Setup<bool>("focusReplacementHeading", _ => true);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        IRenderedComponent<AwaitableHiddenDetailBanner> cut = Render<AwaitableHiddenDetailBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "first"));
+        module.VerifyInvoke("focusReplacementHeading", 1);
+        Task firstRender = cut.Instance.AfterRender;
+        cut.Render(p => p.Add(c => c.IsMissing, false));
+        var nextRecovery = module.Setup<bool>("focusReplacementHeading", _ => true);
+        cut.Render(p => p.Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "next"));
+        module.VerifyInvoke("focusReplacementHeading", 2);
+
+        await cut.InvokeAsync(() =>
+        {
+            if (failedInterop) { firstRecovery.SetException(new JSException("stale recovery")); }
+            else { firstRecovery.SetResult(false); }
+        });
+        await firstRender.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        announcements.Current("projection:orders:Orders").ShouldBeEmpty();
+        await cut.InvokeAsync(() => nextRecovery.SetResult(false));
+        cut.WaitForAssertion(() => announcements.Current("projection:orders:Orders")
+            .ShouldBe("The expanded item is not in the current results."));
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
