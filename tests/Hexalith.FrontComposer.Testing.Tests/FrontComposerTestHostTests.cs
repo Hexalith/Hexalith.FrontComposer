@@ -692,7 +692,11 @@ public sealed class FrontComposerTestHostTests {
         IDispatcher dispatcher = context.Services.GetRequiredService<IDispatcher>();
         dispatcher.Dispatch(new CounterProjectionLoadedAction(
             Guid.NewGuid().ToString(),
-            [new CounterProjection { Id = "counter-1", Count = 12, LastUpdated = DateTimeOffset.Parse("2026-04-14T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture) }]));
+            [new CounterProjection { Id = "counter-1", Count = 12, LastUpdated = DateTimeOffset.Parse("2026-04-14T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture) }])
+        {
+            ScopeTenantId = host.UserContext.TenantId,
+            ScopeUserId = host.UserContext.UserId,
+        });
 
         IRenderedComponent<CounterProjectionView> cut = context.Render<CounterProjectionView>();
 

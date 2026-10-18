@@ -1,0 +1,55 @@
+@namespace Hexalith.FrontComposer.Testing.Tests
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Linq.Expressions
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Hexalith.FrontComposer.Shell.Components.Forms
+@implements IDisposable
+
+<EditForm EditContext="FormContext">
+    <fieldset id="command" aria-labelledby="command-label" aria-describedby="command-description">
+        <legend id="command-label"><FluentText>Command fields</FluentText></legend>
+        <FluentText Id="command-description">Editable command details</FluentText>
+        @foreach (FcValidationFieldDescriptor field in Descriptors)
+        {
+            string[] messages = FormContext.GetValidationMessages(new FieldIdentifier(FormContext.Model, field.FieldName)).ToArray();
+            string errorId = field.InputId + "-error";
+            <label for="@field.InputId"><FluentText>@field.Label</FluentText></label>
+            <FluentTextInput Id="@field.InputId" AriaLabel="@(field.Label + " (editable)")"
+                Value="@Read(field.FieldName)" ValueExpression="@FieldExpression(field.FieldName)" MessageCondition="FluentFieldCondition.Never"
+                aria-invalid="@(messages.Length > 0 ? "true" : "false")"
+                aria-describedby="@(messages.Length > 0 ? errorId : null)" />
+            @if (messages.Length > 0)
+            {
+                <FluentText Id="@errorId">@string.Join(" ", messages)</FluentText>
+            }
+        }
+    </fieldset>
+    <FcValidationSummary @ref="_summary" EditContext="FormContext" Fields="Descriptors"
+        SummaryId="command-errors" FormLevelErrors="FormErrors" />
+</EditForm>
+
+@code {
+    private FcValidationSummary _summary = default!;
+    /// <summary>Gets or sets the form context that owns measured validation messages.</summary>
+    [Parameter] public EditContext FormContext { get; set; } = default!;
+    /// <summary>Gets or sets declared fields in their expected order.</summary>
+    [Parameter] public IReadOnlyList<FcValidationFieldDescriptor> Descriptors { get; set; } = [];
+    /// <summary>Gets or sets support-safe form-level rejection messages.</summary>
+    [Parameter] public IReadOnlyList<string> FormErrors { get; set; } = [];
+
+    /// <summary>Renders and focuses the complete validation summary.</summary>
+    public async Task ShowAsync(FcValidationSummaryKind kind)
+    {
+        await InvokeAsync(StateHasChanged);
+        await _summary.ShowAndFocusAsync(kind);
+    }
+
+    /// <inheritdoc />
+    protected override void OnInitialized() => FormContext.OnValidationStateChanged += Changed;
+    private void Changed(object? sender, ValidationStateChangedEventArgs args) => _ = InvokeAsync(StateHasChanged);
+    private Expression<Func<string?>> FieldExpression(string field) => Expression.Lambda<Func<string?>>(Expression.Property(Expression.Constant(FormContext.Model), field));
+    private string? Read(string field) => (string?)FormContext.Model.GetType().GetProperty(field)!.GetValue(FormContext.Model);
+    /// <inheritdoc />
+    public void Dispose() => FormContext.OnValidationStateChanged -= Changed;
+}

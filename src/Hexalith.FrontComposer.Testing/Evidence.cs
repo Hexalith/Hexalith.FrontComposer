@@ -50,6 +50,11 @@ public sealed record FaultEvidence(
 public static class RedactedEvidenceFormatter {
     private const string SerializationUnavailableMarker = "<serialization-unavailable>";
     private static readonly JsonSerializerOptions RedactedJsonOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+    private static readonly JsonSerializerOptions AccessibilityJsonOptions = new()
+    {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
+    };
     private static readonly string[] SensitiveKeyFragments = [
         "token",
         "secret",
@@ -59,6 +64,15 @@ public static class RedactedEvidenceFormatter {
         "cookie",
         "privatekey",
         "connectionstring",
+        "jwt",
+        "tenantpayload",
+        "stacktrace",
+        "backendmetadata",
+        "email",
+        "phone",
+        "address",
+        "person",
+        "fullname",
     ];
 
     /// <summary>
@@ -90,6 +104,27 @@ public static class RedactedEvidenceFormatter {
         }
 
         return redacted[..options.MaxDiagnosticPayloadCharacters] + "...<truncated>";
+    }
+
+    /// <summary>Formats the fixed AE measurement schema. It accepts no arbitrary text, AX names, backend metadata, or payloads.</summary>
+    public static string FormatAccessibility(AccessibilityMeasurements measurements, FrontComposerTestOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(measurements);
+        ArgumentNullException.ThrowIfNull(options);
+        // The sealed schema contains only measured geometry, numeric facts, booleans, and enums.
+        try
+        {
+            JsonObject packet = (JsonObject)JsonSerializer.SerializeToNode(measurements, AccessibilityJsonOptions)!;
+            foreach (string key in packet.Where(p => p.Value is JsonArray { Count: 0 }).Select(p => p.Key).ToArray())
+            {
+                _ = packet.Remove(key);
+            }
+            return Format(packet, options);
+        }
+        catch (Exception ex) when (!MustPropagate(ex))
+        {
+            return SerializationUnavailableMarker;
+        }
     }
 
     internal static string FormatText(string value, FrontComposerTestOptions options) {

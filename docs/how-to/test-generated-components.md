@@ -103,3 +103,69 @@ public sealed class CommandDispatchTests
 ```
 
 The fake providers keep evidence per test context. They do not open EventStore, SignalR, DAPR, browser storage, or a running app host. Use `TestProjectionPageLoader.SucceedWith(...)` or `TestProjectionPageLoader.NotModified(...)` for server-side virtualization paths, `TestQueryService.SucceedWith<T>(...)` or `TestQueryService.NotModifiedWith<T>(...)` for query seams, and `TestFaultEvidenceRecorder` to record deterministic drop, delay, partial delivery, reorder, and reconnect-nudge evidence. Evidence formatting redacts configured tenant/user values and token, secret, or password keyed values before assertion output.
+
+## Assert failure UX with canonical identities
+
+Use the package clock through the existing options seam. The following example observes a rejection that supersedes a pending accepted message. Observe actual events from the component or coordinator; retain every event so duplicate, stale, and silent-behavior drift remains visible.
+
+```csharp compile
+using Hexalith.FrontComposer.Shell.Services.Announcements;
+using Hexalith.FrontComposer.Testing;
+
+namespace FrontComposer.Snippets;
+
+public static class RejectionAnnouncementExample
+{
+    public static void AssertRejectedOperation()
+    {
+        TestTimeProvider clock = new();
+        using SurfaceAnnouncementCoordinator coordinator = new(clock);
+        UxAnnouncement rejected = UxAnnouncementCatalog.Expected("AM-14", "operation", "Rejected");
+        List<UxAnnouncement> observed = [];
+        using IDisposable subscription = coordinator.Subscribe("command", text =>
+            observed.Add(rejected with { Copy = text }));
+        coordinator.Announce("command", "lifecycle:operation", "Acknowledged",
+            UxAnnouncementCatalog.Expected("AM-11", "operation", "Acknowledged").Copy);
+        coordinator.Announce("command", "lifecycle:operation", "Rejected", rejected.Copy, terminal: true);
+        UxAnnouncementAssertions.AssertImmediateCancellation(clock, () => observed, rejected);
+    }
+}
+```
+
+Set `options.TimeProvider = clock` when composing `AddFrontComposerTestHost`. Advance fake time on the bUnit dispatcher for UI transitions. Use `UxAnnouncementAssertions.AssertCoalescingBoundary` immediately after the last eligible change to test 249/250 ms; use `UxTimingAssertions.AssertBoundary` from the operation start for 1,999/2,000 ms SlowQuery and 119,999/120,000 ms exhaustion. `UxTiming` supplies the remaining canonical retry, polling, notice and expiry budgets.
+
+For client or mapped rejection summaries, pass a measured `UxValidationSummarySnapshot` containing the summary description and error count independently of its accessible label. Supply all observed `UxFieldSnapshot` values, invalid-only summary-link targets, complete ordered `UxFieldDeclaration` / `UxFieldGroupDeclaration` metadata, and `UxFieldIdentity` values captured on the prior render. The helper compares measured group membership, labels, name and description with those declarations; it also rejects regenerated control/error IDs. Extra accessible-name context such as `Name (required)` is valid when it retains the visible `Name` label. Compare useful input with `AssertInputPreserved`. `UxStateAssertions.AssertState` requires row-specific caller-measured `UxSurfaceFacts` and covers SS-01..49; its canonical `State` names correspond to the matrix cases (for example `Rejected`, `AuthorizationDenied`, `Offline`, `FilterNoMatches`, `DegradedExhausted`). `AssertBlockedSubmit` additionally verifies AM-20, no dispatch/queue, and retained attempted-submit focus.
+
+`UxAnnouncementAssertions.AssertChannel` takes measured role/name/focus/live attributes. A polite status may have an empty accessible name; assert its canonical message content separately with `AssertSequence`. For AM-28 also supply the number of speech owners and any inherited result-count speech; one atomic polite owner and zero inherited speakers are required. Focused summaries and headings must have no live attributes. Resolve accessible roles and names before using optional `data-testid` locators.
+
+Capture an overlay/guard invoker with `UxFocusAssertions.CaptureOrigin` before activation, retaining the same direct element object for reference comparison. After close, pass the current origin's connected/enabled/visible status to `AssertRestored`; a removed origin uses `null`. FM-04/05 require a current route `h1` fallback; FM-11 permits a named form heading. `AssertUnobscured` accepts measured CSS rectangles for the full target and painted focus indicator, every active viewport/scrollport, and app-owned sticky/overlay/message rectangles.
+
+Record AE-01..09 with `new TestAccessibilityEvidenceRecorder(host.Options)`. Pass `AccessibilityEvidenceContext(surfaceNumber, stateNumber, theme)` to each `Record` call; these positive ordinals reference your surface/journey inventory without storing routes or identifiers. `UxTheme.Light` and `UxTheme.Dark` distinguish contrast packets captured at the same instant. `AccessibilityMeasurements` retains row-specific setup plus observed content loss, clipping, overlap, control truncation, forced-color cue preservation, animation suppression, immediate focus, silent expiry, keyboard and axe outcomes, WCAG 2.2 AA findings and measured geometry. The recorder rejects an incomplete row and retains failed findings without changing them. Target exceptions use `AccessibilityTargetEvidence` with ordinal target/equivalent references, typed rationale and keyboard keys. `UxAccessibilityAssertions.AssertTargetSize` verifies minimum dimensions or an evidenced exception. The recorder has no free-text or raw AX-snapshot field, uses the shared redactor, and respects record/payload bounds; increase the diagnostic payload limit for a full packet.
+
+
+```csharp compile
+using Hexalith.FrontComposer.Testing;
+
+namespace FrontComposer.Snippets;
+
+public static class MeasuredValidationExample
+{
+    public static void AssertSummary(UxValidationSummarySnapshot measuredSummary,
+        IReadOnlyList<UxFieldSnapshot> measuredFields, IReadOnlyList<string> measuredLinks,
+        IReadOnlyList<UxFieldIdentity> priorRenderTargets)
+    {
+        UxFieldDeclaration[] declaredFields = [new("Name", "Name", "command")];
+        UxFieldGroupDeclaration[] declaredGroups =
+            [new("command", "Command fields", "Command fields", "Editable command details", ["Name"])];
+        UxValidationAssertions.AssertLinkedSummary(measuredSummary, "Validation failed", measuredFields,
+            measuredLinks, declaredFields, declaredGroups, priorRenderTargets);
+    }
+
+    public static AccessibilityEvidence RecordContrast(FrontComposerTestOptions options,
+        int surfaceNumber, int stateNumber, UxTheme activeTheme, double measuredRatio, bool passed)
+        => new TestAccessibilityEvidenceRecorder(options).Record(AccessibilityEvidenceRow.AE06,
+            new(surfaceNumber, stateNumber, activeTheme), new() { Passed = passed, ContrastRatio = measuredRatio });
+}
+```
+
+The .NET helpers assert caller measurements; browser acquisition and required manual assistive checks remain separate. This implementation does not close OI-16, G-4, FLUENT-APP-1, or Product approval.
