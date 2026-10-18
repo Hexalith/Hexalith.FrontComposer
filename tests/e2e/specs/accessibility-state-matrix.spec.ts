@@ -283,14 +283,17 @@ for (const theme of ['light', 'dark']) {
       await expectFocusVisible(explanation);
     });
 
-    test('all eleven actual lifecycle wrapper states retain immediate text and system-color cues', async ({ page }, info) => {
-      test.setTimeout(120_000);
-      await ready(page, `${scenarioPath}&theme=${theme}`, theme);
-      const root = page.getByTestId('fc-ae-scenarios');
-      const wrapper = page.getByTestId('fc-lifecycle-ae-state');
-      for (const state of LIFECYCLE_STATES) {
-        await root.getByTestId(`fc-ae-lifecycle-${state.replaceAll('-', '')}`).click();
-        await expect(wrapper).toHaveAttribute('data-lifecycle-state', state);
+    for (const [stateIndex, state] of LIFECYCLE_STATES.entries()) {
+      test(`actual lifecycle wrapper ${state} retains immediate text and system-color cues`, async ({ page }, info) => {
+        test.setTimeout(120_000);
+        await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+        const root = page.getByTestId('fc-ae-scenarios');
+        const wrapper = page.getByTestId('fc-lifecycle-ae-state');
+        // Keep the original transition history; each state owns its complete audit budget.
+        for (const precedingState of LIFECYCLE_STATES.slice(0, stateIndex + 1)) {
+          await root.getByTestId(`fc-ae-lifecycle-${precedingState.replaceAll('-', '')}`).click();
+          await expect(wrapper).toHaveAttribute('data-lifecycle-state', precedingState);
+        }
         const transient = state === 'confirmed' || state === 'idempotent-confirmed';
         const refresh = transient ? async (rerender: boolean) => {
           if (rerender) await root.getByTestId(`fc-ae-lifecycle-${state.replaceAll('-', '')}`).click();
@@ -306,9 +309,9 @@ for (const theme of ['light', 'dark']) {
         const animations = await wrapper.evaluate(element => [element, ...element.querySelectorAll('.fc-lifecycle-pulse,.fc-lifecycle-still-syncing')].map(node => ({ animation: getComputedStyle(node).animationName, transition: getComputedStyle(node).transitionDuration })));
         expect(animations.every(paint => paint.animation === 'none' && paint.transition.split(',').every(value => parseFloat(value) === 0))).toBe(true);
         await page.emulateMedia({ forcedColors: 'none' });
-      }
-      await page.screenshot({ path: info.outputPath(`lifecycle-matrix-${theme}.png`) });
-    });
+        if (stateIndex === LIFECYCLE_STATES.length - 1) await page.screenshot({ path: info.outputPath(`lifecycle-matrix-${theme}.png`) });
+      });
+    }
 
     test('narrow lifecycle rejection keeps its native Dismiss target reachable after text spacing', async ({ page }, info) => {
       await ready(page, `${scenarioPath}&theme=${theme}`, theme);
@@ -479,7 +482,7 @@ test('forced-color state checks reject a removed cue while text and selected sem
 });
 
 for (const theme of ['light', 'dark']) {
-  test(`shell chrome, theme menu and exact desktop navigation rails in ${theme}`, async ({ page }, info) => {
+  test(`shell chrome and theme menu in ${theme}`, async ({ page }, info) => {
     test.setTimeout(120_000);
     await ready(page, '/counter', theme);
     const shell = page.locator('.fc-shell-root');
@@ -496,14 +499,22 @@ for (const theme of ['light', 'dark']) {
     await expectSurfaceContrast(darkItem, 'focus');
     await expectNoBlockingAxeViolations(page, { route: '/counter#theme-menu', artifactPath: info.outputPath(`axe-shell-menu-${theme}.json`) });
     await page.keyboard.press('Escape');
+  });
+
+  test(`exact desktop navigation rail transitions in ${theme}`, async ({ page }, info) => {
+    test.setTimeout(120_000);
+    await ready(page, '/counter', theme);
+    const shell = page.locator('.fc-shell-root');
     await page.setViewportSize({ width: 1600, height: 900 });
     const rail = page.getByTestId('fc-shell-navigation').getByTestId('fc-navigation-rail');
     await expect(rail).toHaveAttribute('data-rail-width', '72');
     await expect.poll(async () => (await rail.boundingBox())?.width).toBe(72);
+    await expect(rail.locator('[aria-current="page"]')).toHaveCount(1);
     await evidence(page, shell, `rail-labeled-${theme}`, info, rail);
     await page.getByTestId('fc-hamburger-toggle').click();
     await expect(rail).toHaveAttribute('data-rail-width', '48');
     await expect.poll(async () => (await rail.boundingBox())?.width).toBe(48);
+    await expect(rail.locator('[aria-current="page"]')).toHaveCount(1);
     await evidence(page, shell, `rail-icons-${theme}`, info, rail);
   });
 
@@ -631,18 +642,31 @@ for (const theme of ['light', 'dark']) {
 }
 
 for (const theme of ['light', 'dark']) {
-  test(`projection reconnect fallback stale slow cap and filter cues in ${theme}`, async ({ page }, info) => {
-    await ready(page, `${scenarioPath}&theme=${theme}`, theme);
-    const grid = page.getByTestId('fc-generated-counter-grid');
-    for (const connection of ['reconnecting', 'disconnected', 'connected']) {
-      await page.getByTestId(`fc-ae-connection-${connection}`).click();
+  const connections = ['reconnecting', 'disconnected', 'connected'] as const;
+  for (const [connectionIndex, connection] of connections.entries()) {
+    test(`projection ${connection} connection and stale cues in ${theme}`, async ({ page }, info) => {
+      await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+      const grid = page.getByTestId('fc-generated-counter-grid');
       const notice = page.getByTestId('fc-projection-connection-status');
-      await expect(notice).toBeVisible();
+      // Exercise the same real transitions before auditing this connection state.
+      for (const precedingConnection of connections.slice(0, connectionIndex + 1)) {
+        await page.getByTestId(`fc-ae-connection-${precedingConnection}`).click();
+        await expect(notice).toBeVisible();
+      }
       await evidence(page, notice, `connection-${connection}-${theme}`, info, notice, { phase: 'operator-focus-before-projection-surface-scroll' });
       if (connection !== 'connected') {
         await expect(grid.getByTestId('fc-projection-stale-notice')).toBeVisible();
         await evidence(page, grid.getByTestId('fc-projection-stale-notice'), `stale-${connection}-${theme}`, info, undefined, { phase: 'operator-focus-before-projection-surface-scroll' });
       }
+    });
+  }
+
+  test(`projection slow cap and filter cues in ${theme}`, async ({ page }, info) => {
+    await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+    const grid = page.getByTestId('fc-generated-counter-grid');
+    for (const connection of connections) {
+      await page.getByTestId(`fc-ae-connection-${connection}`).click();
+      await expect(page.getByTestId('fc-projection-connection-status')).toBeVisible();
     }
     await page.getByTestId('fc-ae-page-start').click();
     const slow = grid.getByTestId('fc-slow-query-notice');

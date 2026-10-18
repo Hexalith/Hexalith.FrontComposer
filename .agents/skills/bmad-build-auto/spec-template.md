@@ -77,6 +77,13 @@ deferred: [] # append-only machine-readable deferred review findings; each item 
      reviewer finding: verdict, route, and evidence — the refutation for false, what would settle
      it for maybe-false, the action taken for patches. Empty until the first review pass. -->
 
+## Commit Scope Dispositions
+
+<!-- Optional; DELETE THIS ENTIRE SECTION when unused. Each declaration must contain a
+     backtick-wrapped full 40-character commit SHA, a `shared` or `process` kind, and
+     a non-empty reason, separated by ` | `. `bootstrap-owned` is reserved for an
+     explicit code-authorized recovery and must never be copied as a routine bypass. -->
+
 ## Design Notes
 
 <!-- If the approach is straightforward, DELETE THIS ENTIRE SECTION. Do not write "N/A" or "None". -->

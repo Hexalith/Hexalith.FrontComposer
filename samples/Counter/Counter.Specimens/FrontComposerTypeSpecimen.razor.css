@@ -217,4 +217,5 @@
 }
 
 /* Specimen actions obey the same pointer-target floor as production surfaces. */
-.fc-specimen a, .fc-specimen summary { display: inline-block; min-block-size: 24px; }
+.fc-specimen a:not(.fc-specimen__control) { display: inline-block; min-block-size: 24px; }
+.fc-specimen summary { min-block-size: 24px; }

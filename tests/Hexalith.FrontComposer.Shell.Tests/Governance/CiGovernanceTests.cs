@@ -376,27 +376,60 @@ public sealed class CiGovernanceTests {
 
     [Fact]
     public void QualityWorkflow_RunsAllPinnedBrowsersOnLinux() {
-        string quality = StripYamlComments(File.ReadAllText(Path.Combine(RepositoryRoot(), ".github/workflows/quality.yml")));
+        string quality = StripYamlComments(File.ReadAllText(Path.Combine(RepositoryRoot(), ".github/workflows/quality.yml")))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
         int start = quality.IndexOf("  browser-regressions-linux:", StringComparison.Ordinal);
         start.ShouldBeGreaterThanOrEqualTo(0);
         int end = quality.IndexOf("  epic9-live-acceptance:", start, StringComparison.Ordinal);
         end.ShouldBeGreaterThan(start);
         string job = quality[start..end];
-        job.ShouldContain("runs-on: ubuntu-latest");
+        int steps = job.IndexOf("    steps:", StringComparison.Ordinal);
+        steps.ShouldBeGreaterThan(0);
+        string header = job[..steps];
+        header.ShouldContain("runs-on: ubuntu-latest");
+        header.ShouldContain("timeout-minutes: 30");
+        Regex.IsMatch(header, @"^[ \t]*if[ \t]*:", RegexOptions.Multiline).ShouldBeFalse();
+        Regex.Count(header, @"^    strategy:", RegexOptions.Multiline).ShouldBe(1);
+        Match strategy = Regex.Match(header, @"^    strategy:\n(?<body>(?: {6,}[^\n]*\n)+)", RegexOptions.Multiline);
+        strategy.Success.ShouldBeTrue("all three engines must run in separate matrix jobs");
+        strategy.Groups["body"].Value.ShouldBe(
+            "      fail-fast: false\n      matrix:\n        engine: [chromium, firefox, webkit]\n",
+            "the explicit engine matrix must not omit an engine or add include/exclude overrides");
+        job.ShouldNotContain("include:");
+        job.ShouldNotContain("exclude:");
         job.ShouldContain("submodules: false");
         job.ShouldContain("git -c submodule.recurse=false submodule update --init references/Hexalith.Builds");
         job.ShouldNotContain("--recursive");
         job.ShouldNotContain("continue-on-error:");
-        Regex.IsMatch(job[..job.IndexOf("    steps:", StringComparison.Ordinal)], @"^[ \t]*if[ \t]*:", RegexOptions.Multiline).ShouldBeFalse();
         ExtractNamedStep(job, "Install pinned Playwright workspace").ShouldContain("npm ci");
+        // Some specs launch another engine explicitly, so each job still installs every pinned browser.
         ExtractNamedStep(job, "Install all pinned Playwright browsers").ShouldContain("npx playwright install --with-deps chromium firefox webkit");
         ExtractNamedStep(job, "Build Counter browser host").ShouldContain("dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Release -m:1");
         ExtractNamedStep(job, "Build CLI browser fixture").ShouldContain("dotnet build src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release -m:1");
-        string run = ExtractNamedStep(job, "Run all configured browser projects");
-        run.ShouldContain("npx playwright test --workers 4");
-        run.ShouldNotContain("--project");
+        ExtractNamedStep(job, "Build Debug Counter diagnostic host").ShouldContain("--configuration Debug --disable-build-servers -m:1");
+        ExtractNamedStep(job, "Run browser launch and scroll regressions").ShouldContain("node --test scripts/owned-process.test.mjs scripts/expand-in-row.test.mjs scripts/run-epic9-live-proof.test.mjs");
+        ExtractNamedStep(job, "Typecheck browser regressions").ShouldContain("npm run typecheck");
+        ExtractNamedStep(job, "Test accessibility evidence attempt validation").ShouldContain("node --test scripts/a11y-state-evidence.test.mjs");
+        const string evidenceRunId = "FC_A11Y_EVIDENCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-linux-${{ matrix.engine }}";
+        string run = ExtractNamedStep(job, "Run all specs for selected browser engine");
+        run.ShouldContain(evidenceRunId);
+        run[run.IndexOf("        run:", StringComparison.Ordinal)..].Trim()
+            .ShouldBe("run: npx playwright test --project=${{ matrix.engine }} --workers 2");
         run.ShouldNotContain("--grep");
-        ExtractNamedStep(job, "Upload Linux browser results").ShouldContain("if: always()");
+        run.ShouldNotContain("--shard");
+        Regex.IsMatch(run, @"^[ \t]*if[ \t]*:", RegexOptions.Multiline).ShouldBeFalse();
+        string evidence = ExtractNamedStep(job, "Validate selected Linux accessibility engine and run");
+        evidence.ShouldContain("if: always()");
+        evidence.ShouldContain(evidenceRunId);
+        evidence.ShouldContain("FC_A11Y_EVIDENCE_ENGINE: ${{ matrix.engine }}");
+        evidence[evidence.IndexOf("        run:", StringComparison.Ordinal)..].Trim()
+            .ShouldBe("run: npm run validate:a11y-artifacts");
+        ExtractNamedStep(job, "Validate Linux visual governance").ShouldContain("npm run validate:visual-governance");
+        string upload = ExtractNamedStep(job, "Upload Linux browser results");
+        upload.ShouldContain("if: always()");
+        upload.ShouldContain("name: browser-regressions-linux-results-${{ matrix.engine }}-${{ github.run_attempt }}");
+        upload.ShouldNotContain("overwrite:");
+        upload.ShouldContain("if-no-files-found: error");
     }
 
     [Fact]
@@ -3889,9 +3922,9 @@ public sealed class CiGovernanceTests {
         const string activePacketVersion = "3.106.0";
         const string activePacketBuildsSha = "4f522a8caa62ad82584bdf56d54e16109b717b1c";
         const string sealedV3IdentitySha = "6dc9aaa586cf35531de112bd68dd4d724a81d7ad76a11930684e8e9fe6c98892";
-        const string successorSourceSha = "0dc44e46ccb7f56c3182b855c21f337173a1307f";
-        const string successorBuildsSha = "360a2b9c4e96809365a7de785be9a68152d5ac28";
-        const string successorVersion = "3.112.0";
+        const string successorSourceSha = "fcf78d6cafb6c0c9f52dc350a9a09aff54ded288";
+        const string successorBuildsSha = "5c04dab754e269f52306b9582cacd7cf1dc1540f";
+        const string successorVersion = "3.125.1";
         // The immutable Story 11.24 owner capture remains historical evidence. Current source,
         // package, and Builds values are compatibility provenance, not migration approval.
         string root = RepositoryRoot();

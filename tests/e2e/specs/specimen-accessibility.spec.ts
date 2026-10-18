@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/index.js';
 import { expectNoBlockingAxeViolations } from '../helpers/a11y.js';
+import { expectSurfaceContrast, expectTargetSizes } from '../helpers/responsive-accessibility.js';
 import { fieldEditorByLabel, waitForGeneratedFormReady } from '../helpers/fluent-fields.js';
 import { spawn } from 'node:child_process';
 import {
@@ -86,6 +87,73 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     await expect(page.getByTestId('fc-lifecycle-confirmed-rejected')).toContainText('Terminal confirmation');
     await expect(page.getByTestId('fc-expanded-detail')).toContainText('fc-correlation-0002');
     await expect(page.getByRole('navigation', { name: 'Specimen multi-level navigation' })).toBeVisible();
+  });
+
+  for (const combination of specimenManifest.themeDensityCombinations) {
+    test(`theme and density controls retain centered ${combination.theme} ${combination.density} geometry`, async ({ page }) => {
+      const route = getSpecimenRoute('type');
+      await gotoSpecimen(page, { ...route, path: `${route.path}?theme=${combination.theme}&density=${combination.density}` });
+      const controls = page.getByTestId('fc-specimen-controls').locator('a.fc-specimen__control');
+      await expect(controls).toHaveCount(5);
+      const minimumHeight = { compact: 32, comfortable: 40, roomy: 48 }[combination.density];
+      const geometry = await controls.evaluateAll(elements => elements.map(element => {
+        const style = getComputedStyle(element);
+        const bounds = element.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const text = range.getBoundingClientRect();
+        return {
+          target: element.getAttribute('data-testid'),
+          display: style.display,
+          alignItems: style.alignItems,
+          justifyContent: style.justifyContent,
+          minHeight: style.minHeight,
+          width: bounds.width,
+          height: bounds.height,
+          horizontalCenterOffset: Math.abs((text.left + text.right - bounds.left - bounds.right) / 2),
+          verticalCenterOffset: Math.abs((text.top + text.bottom - bounds.top - bounds.bottom) / 2),
+        };
+      }));
+      for (const control of geometry) {
+        // Grid items blockify inline-flex to flex; the text must still be centered in its real box.
+        expect(control.display, control.target ?? '').toBe('flex');
+        expect(control.alignItems).toBe('center');
+        expect(control.justifyContent).toBe('center');
+        expect(control.minHeight).toBe(`${minimumHeight}px`);
+        expect(control.height).toBeGreaterThanOrEqual(minimumHeight);
+        expect(control.width).toBeGreaterThanOrEqual(24);
+        expect(control.horizontalCenterOffset).toBeLessThanOrEqual(1);
+        expect(control.verticalCenterOffset).toBeLessThanOrEqual(2);
+      }
+      for (const control of await controls.all()) await expectSurfaceContrast(control);
+      const targets = await expectTargetSizes(page);
+      for (const id of ['fc-specimen-skip', ...geometry.map(control => control.target)]) {
+        expect(targets.find(target => target.target === `[data-testid="${id}"]`), `${id} remains a reachable pointer target`)
+          .toMatchObject({ conforming: true, failure: null });
+      }
+    });
+  }
+
+  test('expanded specimen detail retains its native disclosure marker and keyboard behavior', async ({ page }) => {
+    await gotoSpecimen(page, getSpecimenRoute('type'));
+    const summary = page.getByTestId('fc-expanded-detail-summary');
+    const details = page.getByTestId('fc-expanded-detail').locator('details');
+    await summary.scrollIntoViewIfNeeded();
+    await expect(summary).toHaveCSS('display', 'list-item');
+    await expect(summary).toHaveCSS('list-style-type', 'disclosure-open');
+    await expect(summary).toHaveAccessibleName('Open projection details for FC-1002');
+    expect((await summary.boundingBox())!.height).toBeGreaterThanOrEqual(24);
+    await expectSurfaceContrast(summary);
+    await expect(details).toHaveJSProperty('open', true);
+    await summary.focus();
+    await page.keyboard.press('Enter');
+    await expect(details).toHaveJSProperty('open', false);
+    await expect(summary).toHaveCSS('list-style-type', 'disclosure-closed');
+    await expect(details.locator('dl')).toBeHidden();
+    await page.keyboard.press('Space');
+    await expect(details).toHaveJSProperty('open', true);
+    await expect(details.locator('dl')).toBeVisible();
+    await expect(summary).toBeFocused();
   });
 
   test('dark generated command specimens keep readable foreground contrast', async ({ page }) => {

@@ -206,9 +206,9 @@ jobs:
         shell: bash
         env:
           TARGET_FRONTCOMPOSER_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.frontcomposer_revision || github.sha }}
-          TARGET_EVENTSTORE_SOURCE_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || '0dc44e46ccb7f56c3182b855c21f337173a1307f' }}
-          TARGET_EVENTSTORE_PACKAGE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '3.112.0' }}
-          TARGET_BUILDS_CATALOG_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '360a2b9c4e96809365a7de785be9a68152d5ac28' }}
+          TARGET_EVENTSTORE_SOURCE_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || 'fcf78d6cafb6c0c9f52dc350a9a09aff54ded288' }}
+          TARGET_EVENTSTORE_PACKAGE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '3.125.1' }}
+          TARGET_BUILDS_CATALOG_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '5c04dab754e269f52306b9582cacd7cf1dc1540f' }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
@@ -428,9 +428,9 @@ jobs:
             -RequireProviderVerification `
             -PrepareRuntimeSuccessor `
             -SuccessorFrontComposerRevision "${{ github.sha }}" `
-            -SuccessorEventStoreSourceRevision "0dc44e46ccb7f56c3182b855c21f337173a1307f" `
-            -SuccessorEventStorePackageVersion "3.112.0" `
-            -SuccessorBuildsCatalogRevision "360a2b9c4e96809365a7de785be9a68152d5ac28" `
+            -SuccessorEventStoreSourceRevision "fcf78d6cafb6c0c9f52dc350a9a09aff54ded288" `
+            -SuccessorEventStorePackageVersion "3.125.1" `
+            -SuccessorBuildsCatalogRevision "5c04dab754e269f52306b9582cacd7cf1dc1540f" `
             -AppHostPackageRoot "" `
             -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
 
@@ -948,6 +948,10 @@ jobs:
   browser-regressions-linux:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox, webkit]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -995,31 +999,27 @@ jobs:
         working-directory: tests/e2e
         run: npm run typecheck
 
-      - name: Run all configured browser projects
+      - name: Run all specs for selected browser engine
         working-directory: tests/e2e
         env:
           CI: true
-          FC_A11Y_EVIDENCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-linux
+          FC_A11Y_EVIDENCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-linux-${{ matrix.engine }}
           ASPNETCORE_ENVIRONMENT: Test
           Hexalith__FrontComposer__Specimens__Enabled: true
           Hexalith__Shell__ProjectionReconnectedNoticeDurationMs: 30000
-        run: npx playwright test --workers 4
+        run: npx playwright test --project=${{ matrix.engine }} --workers 2
 
       - name: Test accessibility evidence attempt validation
         working-directory: tests/e2e
         run: node --test scripts/a11y-state-evidence.test.mjs
 
-      - name: Validate each Linux accessibility engine and run
+      - name: Validate selected Linux accessibility engine and run
         if: always()
         working-directory: tests/e2e
         env:
-          FC_A11Y_EVIDENCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-linux
-        run: |
-          result=0
-          for engine in chromium firefox webkit; do
-            FC_A11Y_EVIDENCE_ENGINE="$engine" npm run validate:a11y-artifacts || result=1
-          done
-          exit "$result"
+          FC_A11Y_EVIDENCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-linux-${{ matrix.engine }}
+          FC_A11Y_EVIDENCE_ENGINE: ${{ matrix.engine }}
+        run: npm run validate:a11y-artifacts
 
       - name: Validate Linux visual governance
         if: always()
@@ -1030,7 +1030,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: browser-regressions-linux-results
+          name: browser-regressions-linux-results-${{ matrix.engine }}-${{ github.run_attempt }}
           retention-days: 14
           if-no-files-found: error
           path: |

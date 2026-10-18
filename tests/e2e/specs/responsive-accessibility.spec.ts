@@ -1962,7 +1962,7 @@ for (const pseudo of [false,true]) test(`C2 competing ${pseudo?'pseudo':'element
 });
 
 test('C3 disjoint wrapped text fragments keep independent shadow bounds', async ({ page }) => {
-  await page.setContent('<style>body{background:white}#text{position:absolute;left:50px;top:50px;width:130px;margin:0;font:20px/40px monospace;color:#555;background:white}.cover{position:absolute;left:300px;width:10px;height:32px;z-index:10;pointer-events:none;box-shadow:-250px 0 2px rgba(0,0,0,.12)}</style><p id="text">AAAAA BBBBB</p><div class="cover" style="top:50px"></div><div class="cover" style="top:90px"></div>');
+  await page.setContent('<style>body{background:white}#text{position:absolute;left:50px;top:50px;width:6ch;margin:0;font:20px/40px monospace;color:#555;background:white}.cover{position:absolute;left:300px;width:10px;height:32px;z-index:10;pointer-events:none;box-shadow:-250px 0 2px rgba(0,0,0,.12)}</style><p id="text">AAAAA BBBBB</p><div class="cover" style="top:50px"></div><div class="cover" style="top:90px"></div>');
   expect(await page.locator('#text').evaluate(element=>{const range=document.createRange();range.selectNodeContents(element);return range.getClientRects().length;})).toBe(2);
   const samples=await expectSurfaceContrast(page.locator('#text'));
   expect(samples[0].measurement).toBe('conservative-bound');

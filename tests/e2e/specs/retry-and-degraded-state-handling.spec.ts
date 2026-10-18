@@ -61,7 +61,16 @@ test.describe('Story 4.5: retry and degraded-state handling', () => {
 
     const summary = page.getByTestId('fc-pending-command-summary');
     await expect(summary).toBeVisible();
-    await expect(summary).toHaveAttribute('aria-live', 'polite');
+    // The lifecycle status owns speech; the bounded visual summary must not duplicate it.
+    await expect(summary).toHaveAttribute('aria-live', 'off');
+    const commandStatus = lifecycle.locator(COMMAND_ID).getByTestId('fc-surface-status');
+    await expect(lifecycle.locator(COMMAND_ID).locator('[aria-live="polite"]')).toHaveCount(1);
+    await expect(commandStatus).toHaveAttribute('role', 'status');
+    await expect(commandStatus).toHaveAttribute('aria-live', 'polite');
+    await expect(commandStatus).toHaveAttribute('aria-atomic', 'true');
+    await expect(commandStatus).toHaveText('Command accepted. Updating the view.');
+    await expect(commandStatus).not.toContainText('token=secret');
+    await expect(commandStatus).not.toContainText(tenant.tenantId);
     await expect(summary).toContainText('1 pending, 0 confirmed, 0 rejected, 0 needs review');
     await expect(summary).toContainText('is still pending. EventStore accepted it and FrontComposer is checking status.');
     await expect(summary).not.toContainText('token=secret');
@@ -69,6 +78,7 @@ test.describe('Story 4.5: retry and degraded-state handling', () => {
 
     const actionPrompt = form.getByTestId('fc-action-prompt');
     await expect(actionPrompt).toBeVisible({ timeout: 8_000 });
+    await expect(actionPrompt).toHaveAttribute('aria-live', 'off');
     await expect(actionPrompt).toContainText("Action needed: the system hasn't confirmed your submission");
     await expect(summary).toContainText('1 pending, 0 confirmed, 0 rejected, 0 needs review');
     await lifecycle.expectState(COMMAND_ID, 'syncing');
@@ -76,6 +86,7 @@ test.describe('Story 4.5: retry and degraded-state handling', () => {
     await lifecycle.expectState(COMMAND_ID, 'confirmed');
     await expect(actionPrompt).toHaveCount(0);
     await expect(summary).toContainText('0 pending, 1 confirmed, 0 rejected, 0 needs review');
+    await expect(commandStatus).toHaveText('Command confirmed.');
     await expect(form.getByTestId('fc-confirmed')).toBeVisible();
   });
 });
