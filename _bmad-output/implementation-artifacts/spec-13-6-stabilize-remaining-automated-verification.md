@@ -65,6 +65,8 @@ Open: five catalog-policy mismatches; Parties-owned overrides; Fluent 5.0.0 asse
 
 ## Spec Change Log
 
+- 2026-10-18 (code review of `02626ead`): production fix accepted as in-scope. The footprint sentence "existing tests/helper/result" and "No production fix is established" predate the finding. A fast Escape leaves Fluent's delayed 25ms `previousActiveElement` return live and undoes the operator's Tab. `fc-focus.js` (`containDialogFocus`, palette and Settings dialogs only) and `FcCommandPalette.razor.cs` (containment before entry focus, `_disposed` guards) fix it. The e2e test `repeatable palette dismissal preserves Tab through delayed entry and native return callbacks` proves it, and Story 13.6 permits correcting demonstrated accessibility failures.
+
 ## Review Triage Log
 
 | Finding | Verdict | Route | Evidence |
@@ -97,3 +99,28 @@ Parent implementation audit: all three execution tasks and the three acceptance 
 Post-review verification: P1–P10 are patched; all thirteen individual findings retain their verified verdicts above. Six new geometry negatives plus the original clipping fixture execute 20 passes and one explicit WebKit capability skip. Five evidence-tool checks pass, including optimized-Python corrupt-input and missing-root preservation cases. Parent replay confirms the five former geometry false passes now reject. The final configured browser lane is 588 passed / 12 visual failures / 0 flaky / 3 skipped / 603; the Firefox five-repeat lane is 10/10 without retries. The configured Shell lane remains 3693 passed / 2 policy failures, with all four cleanup rows passing. An omitted existing Test notice setting was corrected in the parent verification launch; its interrupted failed attempt remains retained and no production default changed. [Current verification](evidence/story-13-6/2026-10-16-gap-closure/stabilize-2026-10-17/parent-verification/configured-host/report.md) binds `sha256:e23d846e6e8f87f26f997866a8e82aa355e8ae89f1f94b67d4fa793add1db7b0`. Story 13.6 remains in-review and incomplete for retained visual/catalog/platform/manual/owner gates.
 
 The done status closes this bounded stabilization specification only. Sprint Story 13.6 remains in review and incomplete until its retained automated, platform, manual and owner gates are satisfied. The explicit no-staging/no-commit/no-push constraint remains in force.
+
+### Review Findings
+
+Code review of `02626ead` (5 code files, +186/−14), 2026-10-18.
+
+- [x] [Review][Decision] Production source changed beyond the spec footprint — Implementation Notes limit the footprint to "existing tests/helper/result" and the Code Map says "No production fix is established", yet `FcCommandPalette.razor.cs` (entry focus now follows `containDialogFocus`, two `_disposed` returns) and `fc-focus.js` (permanent `previousActiveElement` override, native `cancel`/`close` listeners) changed. The diff is not tied to the two stated problems (retry-cleanup assertion, Firefox dark-shell contrast). Options: (1) accept as a sanctioned production fix and record it in Spec Change Log / Code Map; (2) split it into its own story or spec and revert it from this one. **Resolved 2026-10-18: option 1 — accepted; recorded in Spec Change Log.** [src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js:273, src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs:113]
+- [x] [Review][Defer] Palette `_disposed` guards are untested — no bUnit test holds the keyboard/focus interop pending, disposes, then releases and asserts `focusElement` is not invoked. Removing both guards keeps every existing test green. [src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs:113] — deferred: narrow harm (post-dispose focus/interop call); the ordering change itself is covered by the new e2e test.
+- [x] [Review][Defer] `host.shadowRoot?.querySelector('dialog')` read once at registration; if Fluent has not rendered the native dialog yet, `cancel`/`close` listeners are never attached and `containedDialogs.add` blocks retry [src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js:296] — deferred (unverified medium): already recorded in `deferred-work.md` from `spec-13-6-make-browser-accessibility-verification-repeatable.md`; settle with the actual Settings/palette component under delayed Fluent native initialization.
+
+#### Rejected
+
+- `previousActiveElement` override unscoped (Blind, Edge, Auditor) — false: it sits inside `if (testId === 'fc-palette-root' || testId === 'fc-settings-dialog')`; the destructive dialog is untouched.
+- `state.dismissed` never reset on reuse (Blind, Edge) — false: `dialogReturns.set(host, {...})` builds a fresh state on every opening, and the reuse regression test covers it.
+- `defineProperty` may throw on a non-configurable property (Edge) — false/unreached: the property is writable (`host.previousActiveElement = null` just ran) and the e2e lanes pass.
+- Cancelled Escape disarms tracking (Edge) — low, no demonstrated path where the palette or Settings cancel is prevented; the fix adds a branch.
+- `_disposed` early return suppresses palette feedback/speech (Auditor, Edge) — false: `QueueActivationFailureStatus` already stops on `_disposed` (line 494), so a disposed palette never spoke.
+- R15 test dropped its explicit `containDialogFocus` call (Blind, Auditor) — low: the test now exercises the component's own containment and fails on its focus assertions if it never attached.
+- Zoom guard only when `plane` is set / `'1.0'`, `'100%'` forms (Blind, Edge) — low: browsers serialize computed zoom as a number, and the non-plane path is not circular-radius coverage.
+- NaN / percent / elliptical radii (Blind, Edge) — false: they fail closed (`covered()` returns false), never over-certify.
+- Missing `filter`/`clip-path`/`mask`/`mix-blend-mode` check, `corner-shape` absent on engine (Edge) — pre-existing and low; engines without `corner-shape` cannot paint bevel either.
+- Untested `scale`/`rotate`/`transform`/`backgroundClip` disqualifiers and capability-skipped bevel test (Blind, Verification Gap) — low: fail-closed conditions; adding per-branch tests is disproportionate.
+- Brittle `setTimeout` stack match / `fc-keyboard.js` route rewrite / leaked `__aeReleasePaletteEntry` (Blind, Edge, Auditor, Verification Gap) — low/false: a miss fails loudly via `queued > 0`, and the page is fresh per test.
+- `.gitattributes` names directories that do not exist (Blind, Auditor) — false: both are tracked (104 and 36 files).
+- No `EventStoreClientTests` / `accessibility-state-matrix` / result hunks, unseen P6–P10 patches (Auditor) — false: those changes live in earlier commits, outside the reviewed diff.
+- Spec status `done` vs `review_loop_iteration: 0` (Auditor) — rejected: the fix would edit the spec under review.

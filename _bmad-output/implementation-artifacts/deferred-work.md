@@ -10490,3 +10490,8 @@ Review follow-up for the PNG-integrity resolution adds a separate 33,554,432-byt
 - source_spec: `spec-13-6-make-browser-accessibility-verification-repeatable.md`
   summary: Verify owned dialog return remains correct when Fluent initializes its native shadow dialog after containment registration (unverified medium).
   evidence: Fluent schedules native initialization from connectedCallback, while containment may cache a host before native cancel/close listeners attach. Establish observable operator harm with delayed real initialization after the new permanent vendor-slot guard.
+
+## Deferred from: code review of spec-13-6-stabilize-remaining-automated-verification.md (2026-10-18)
+
+- Palette `OnAfterRenderAsync` `_disposed` guards (`FcCommandPalette.razor.cs:113,119`) have no test: add a bUnit case that holds keyboard/focus interop pending, disposes, releases, and asserts `focusElement` is not invoked. Narrow harm; ordering covered by the e2e palette-dismissal test.
+- Native-dialog listener registration race in `containDialogFocus` is already tracked above (Fluent native initialization after containment); no new entry.

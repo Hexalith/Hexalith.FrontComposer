@@ -68,7 +68,7 @@ jobs:
 
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.402'
 
       - name: Record full CI lane start
         shell: bash
@@ -841,7 +841,7 @@ jobs:
 
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.402'
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -960,7 +960,7 @@ jobs:
 
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.402'
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -1053,9 +1053,9 @@ jobs:
 
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.402'
 
-      # The root/default remains 10.0.401. This one live source-resource lane also loads
+      # The root/default remains 10.0.402. This one live source-resource lane also loads
       # remote-equal roots that still pin 10.0.302, so install that SDK side-by-side only here.
       - name: Install source-resource compatibility SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -1067,12 +1067,12 @@ jobs:
         run: |
           set -euo pipefail
           active_sdk="$(dotnet --version)"
-          if [[ ! "$active_sdk" =~ ^10\.0\.([0-9]+)$ ]] || (( 10#${BASH_REMATCH[1]} < 401 || 10#${BASH_REMATCH[1]} >= 500 )); then
-            echo "::error::Active .NET SDK $active_sdk is outside the supported [10.0.401, 10.0.500) range."
+          if [[ ! "$active_sdk" =~ ^10\.0\.([0-9]+)$ ]] || (( 10#${BASH_REMATCH[1]} < 402 || 10#${BASH_REMATCH[1]} >= 500 )); then
+            echo "::error::Active .NET SDK $active_sdk is outside the supported [10.0.402, 10.0.500) range."
             exit 1
           fi
           dotnet --list-sdks | grep -E '^10\.0\.302\s'
-          dotnet --list-sdks | grep -E '^10\.0\.401\s'
+          dotnet --list-sdks | grep -E '^10\.0\.402\s'
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
