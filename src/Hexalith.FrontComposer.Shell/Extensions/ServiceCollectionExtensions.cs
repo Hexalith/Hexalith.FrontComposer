@@ -180,6 +180,8 @@ public static class ServiceCollectionExtensions {
         Action<FluxorOptions>? configureFluxor = null) {
         ArgumentNullException.ThrowIfNull(services);
         _ = services.AddLogging();
+        ServiceDescriptor? pageEffectsRegistration = services.LastOrDefault(
+            static descriptor => descriptor.ServiceType == typeof(LoadPageEffects));
 
         // Story 1.1 AC2 — bootstrap fail-fast guard. Append the foundational ordering marker and
         // register the validation gate. Both registrations are idempotent (TryAddEnumerable —
@@ -370,7 +372,16 @@ public static class ServiceCollectionExtensions {
         // Default fail-fast loader keeps wiring compilable while surfacing missing adopter paging
         // integration as an explicit LoadPageFailedAction once the server-side lane is needed.
         services.TryAddScoped<LoadedPageReducers>();
-        services.TryAddScoped<LoadPageEffects>();
+        // Fluxor registers scanned effects directly. Preserve adopter registrations while selecting
+        // the context-aware overload even when localization services are absent.
+        services.Replace(pageEffectsRegistration ?? ServiceDescriptor.Scoped(sp => new LoadPageEffects(
+            sp.GetRequiredService<IState<LoadedPageState>>(),
+            sp.GetRequiredService<IProjectionPageLoader>(),
+            sp.GetRequiredService<ILogger<LoadPageEffects>>(),
+            sp.GetRequiredService<IOptionsMonitor<FcShellOptions>>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetService<IStringLocalizer<Resources.FcShellResources>>(),
+            sp.GetRequiredService<IUserContextAccessor>())));
         services.TryAddScoped<ScrollPersistenceEffect>();
         services.TryAddScoped<ColumnVisibilityPersistenceEffect>();
         services.TryAddScoped<IProjectionPageLoader, NullProjectionPageLoader>();

@@ -47,6 +47,23 @@ public sealed class ProjectionFallbackRefreshScheduler(
     private long _reconciliationSweepCursor;
     private int _replayPumpRunning;
 
+    /// <summary>Initializes a scheduler using the published six-parameter constructor.</summary>
+    /// <param name="connectionState">Current projection connection state.</param>
+    /// <param name="loader">Projection page loader.</param>
+    /// <param name="dispatcher">Dispatcher for refreshed pages.</param>
+    /// <param name="loadedPages">Current loaded-page state.</param>
+    /// <param name="options">Shell polling options.</param>
+    /// <param name="logger">Scheduler logger.</param>
+    public ProjectionFallbackRefreshScheduler(
+        IProjectionConnectionState connectionState,
+        IProjectionPageLoader loader,
+        IDispatcher dispatcher,
+        IState<LoadedPageState> loadedPages,
+        IOptionsMonitor<FcShellOptions> options,
+        ILogger<ProjectionFallbackRefreshScheduler> logger)
+        : this(connectionState, loader, dispatcher, loadedPages, options, logger, null, null) {
+    }
+
     public ProjectionFallbackRefreshScheduler(
         IProjectionConnectionState connectionState,
         IProjectionPageLoader loader,

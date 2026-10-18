@@ -45,8 +45,26 @@ public sealed class LoadPageEffects {
         ILogger<LoadPageEffects> logger,
         IOptionsMonitor<FcShellOptions> options,
         TimeProvider? timeProvider = null,
-        IStringLocalizer<FcShellResources>? localizer = null,
-        IUserContextAccessor? userContextAccessor = null) {
+        IStringLocalizer<FcShellResources>? localizer = null)
+        : this(state, loader, logger, options, timeProvider, localizer, null) {
+    }
+
+    /// <summary>Initializes an effect with authenticated page-origin validation.</summary>
+    /// <param name="state">Read-only loaded-page state.</param>
+    /// <param name="loader">Projection page loader.</param>
+    /// <param name="logger">Effect logger.</param>
+    /// <param name="options">Shell virtualization options.</param>
+    /// <param name="timeProvider">Optional time source for elapsed measurement.</param>
+    /// <param name="localizer">Optional shell-resources localizer.</param>
+    /// <param name="userContextAccessor">Authenticated tenant and user context.</param>
+    public LoadPageEffects(
+        IState<LoadedPageState> state,
+        IProjectionPageLoader loader,
+        ILogger<LoadPageEffects> logger,
+        IOptionsMonitor<FcShellOptions> options,
+        TimeProvider? timeProvider,
+        IStringLocalizer<FcShellResources>? localizer,
+        IUserContextAccessor? userContextAccessor) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(loader);
         ArgumentNullException.ThrowIfNull(logger);
