@@ -273,22 +273,42 @@ export function containDialogFocus(testId, retryOnce = true) {
         // Associate every opening, including reuse of a host whose listener already exists.
         dialogReturns.set(host, { reservation: window.__fcModalReservation, intent: window.__fcOverlayOpenIntent });
         if (!containedDialogs.has(host)) {
-            host.addEventListener('beforetoggle', (event) => {
-                if ((event.detail?.newState ?? event.newState) !== 'closed') return;
+            // Fluent's asynchronous opening notification can populate this slot after
+            // registration. These two shell dialogs already own their guarded return,
+            // so keep only this redundant vendor return disabled for the host lifetime.
+            Object.defineProperty(host, 'previousActiveElement', {
+                configurable: true,
+                get: () => null,
+                set: () => {},
+            });
+            const prepareReturn = () => {
                 host.previousActiveElement = null;
-                // Escape inside the modal can make the native dialog restore the previously
-                // active page control. That dismissal is not a later operator focus move.
-                // A subsequent external key or pointer input re-arms the keyboard tracker.
                 const state = dialogReturns.get(host);
+                // Native Escape and Fluent's host notification can both complete the
+                // same dismissal. A later close event must not erase an operator's Tab.
+                if (!state || state.dismissed) return;
+                state.dismissed = true;
+                // Native dismissal restores its invoker before our guarded return.
+                // A subsequent external key or pointer input re-arms the tracker.
                 for (const [current, captured] of [
-                    [window.__fcModalReservation, state?.reservation],
-                    [window.__fcOverlayOpenIntent, state?.intent],
+                    [window.__fcModalReservation, state.reservation],
+                    [window.__fcOverlayOpenIntent, state.intent],
                 ]) {
                     if (current && current === captured) {
                         current.watchFocus = false;
                         current.moved = false;
                     }
                 }
+            };
+            host.addEventListener('beforetoggle', (event) => {
+                if ((event.detail?.newState ?? event.newState) === 'closed') prepareReturn();
+            }, true);
+            // Escape can close the native shadow dialog directly, without Fluent's
+            // host beforetoggle. Clear the same owned slot on that path as well.
+            const nativeDialog = host.shadowRoot?.querySelector('dialog');
+            nativeDialog?.addEventListener('cancel', prepareReturn, true);
+            nativeDialog?.addEventListener('close', () => {
+                if (!nativeDialog.open) prepareReturn();
             }, true);
         }
     }

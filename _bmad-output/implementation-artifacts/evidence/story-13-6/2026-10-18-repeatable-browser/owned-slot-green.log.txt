@@ -1,0 +1,39 @@
+
+Running 18 tests using 3 workers
+
+(node:22640) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22638) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22639) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 [chromium] › specs/responsive-accessibility.spec.ts:45:1 › repeatable rounded native planes shield only contained focus paint (518ms)
+  ✓   4 [chromium] › specs/responsive-accessibility.spec.ts:1142:1 › repeatable palette dismissal preserves Tab through delayed entry and native return callbacks (961ms)
+  ✓   5 [chromium] › specs/responsive-accessibility.spec.ts:1196:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (1.7s)
+  ✓   6 [chromium] › specs/responsive-accessibility.spec.ts:1251:1 › reused owned dialog dismissal resets only its current return and preserves later external input (711ms)
+(node:24441) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › specs/accessibility-state-matrix.spec.ts:510:3 › active toolbar, tabs, palette and settings states in light (12.6s)
+(node:27064) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   8 [firefox] › specs/accessibility-state-matrix.spec.ts:510:3 › active toolbar, tabs, palette and settings states in light (13.8s)
+  ✓   9 [firefox] › specs/responsive-accessibility.spec.ts:45:1 › repeatable rounded native planes shield only contained focus paint (670ms)
+  ✓  10 [firefox] › specs/responsive-accessibility.spec.ts:1142:1 › repeatable palette dismissal preserves Tab through delayed entry and native return callbacks (1.1s)
+  ✓  11 [firefox] › specs/responsive-accessibility.spec.ts:1196:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (2.1s)
+  ✓  12 [firefox] › specs/responsive-accessibility.spec.ts:1251:1 › reused owned dialog dismissal resets only its current return and preserves later external input (825ms)
+(node:32965) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › specs/accessibility-state-matrix.spec.ts:482:3 › shell chrome, theme menu and exact desktop navigation rails in light (37.2s)
+(node:34461) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   7 [firefox] › specs/accessibility-state-matrix.spec.ts:482:3 › shell chrome, theme menu and exact desktop navigation rails in light (36.6s)
+(node:36251) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  15 [webkit] › specs/responsive-accessibility.spec.ts:45:1 › repeatable rounded native planes shield only contained focus paint (1.1s)
+  ✓  16 [webkit] › specs/responsive-accessibility.spec.ts:1142:1 › repeatable palette dismissal preserves Tab through delayed entry and native return callbacks (1.5s)
+  ✓  17 [webkit] › specs/responsive-accessibility.spec.ts:1196:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (2.8s)
+  ✓  18 [webkit] › specs/responsive-accessibility.spec.ts:1251:1 › reused owned dialog dismissal resets only its current return and preserves later external input (1.2s)
+  ✓  13 [webkit] › specs/accessibility-state-matrix.spec.ts:482:3 › shell chrome, theme menu and exact desktop navigation rails in light (16.7s)
+  ✓  14 [webkit] › specs/accessibility-state-matrix.spec.ts:510:3 › active toolbar, tabs, palette and settings states in light (13.0s)
+
+  18 passed (51.8s)

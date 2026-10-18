@@ -1,0 +1,184 @@
+{
+  "capturedAt": "2026-10-18T13:16:24.784916+00:00",
+  "root": "1f8c7b2b4424b6232121a7cc567f7129e46577d3",
+  "sourcePatchSha256": "b6b5b7a761b4927d21ee0fe9ba5daf78ce31ea87928f28b3e2a3b842e8fe5fc3",
+  "candidateSha256": "81771b18be0b73f2dd39d6690268ae52c788c05211e12a910e350bc6f94d7b19",
+  "storyStatus": "in-review",
+  "sprintStatus": "review",
+  "finalClassification": "blocked",
+  "browser": {
+    "command": "node _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/run-browser-lanes.mjs",
+    "runnerExitCode": 1,
+    "completeCoverage": true,
+    "gatesPassed": false,
+    "totals": {
+      "passed": 752,
+      "failedVisual": 18,
+      "skipped": 4,
+      "flaky": 0
+    },
+    "byFile": {
+      "accessibility-state-matrix.spec.ts": {
+        "passed": 224,
+        "failed": 0,
+        "skipped": 1
+      },
+      "responsive-accessibility.spec.ts": {
+        "passed": 482,
+        "failed": 0,
+        "skipped": 1
+      },
+      "specimen-accessibility.spec.ts": {
+        "passed": 46,
+        "failed": 18,
+        "skipped": 2
+      }
+    },
+    "overallAccessibilityClassification": "blocked",
+    "engines": [
+      {
+        "engine": "chromium",
+        "runId": "story-13-6-repeatable-20261018-chromium-38c9edc9-9f7c-4a9a-b631-5709472254bf",
+        "complete": true,
+        "exitCode": 1,
+        "validationExitCode": 1,
+        "stats": {
+          "startTime": "2026-10-18T13:04:20.848Z",
+          "duration": 155229.51299999998,
+          "expected": 252,
+          "skipped": 0,
+          "unexpected": 6,
+          "flaky": 0
+        },
+        "bytes": {
+          "results": 33343714,
+          "html": 28418229
+        }
+      },
+      {
+        "engine": "firefox",
+        "runId": "story-13-6-repeatable-20261018-firefox-0d8b7af9-5095-4fba-b183-13447a415b0f",
+        "complete": true,
+        "exitCode": 1,
+        "validationExitCode": 1,
+        "stats": {
+          "startTime": "2026-10-18T13:06:57.302Z",
+          "duration": 202603.767,
+          "expected": 250,
+          "skipped": 2,
+          "unexpected": 6,
+          "flaky": 0
+        },
+        "bytes": {
+          "results": 41588245,
+          "html": 36146414
+        }
+      },
+      {
+        "engine": "webkit",
+        "runId": "story-13-6-repeatable-20261018-webkit-ef0540d9-81d7-4380-b7a9-fcf5146ceb1b",
+        "complete": true,
+        "exitCode": 1,
+        "validationExitCode": 1,
+        "stats": {
+          "startTime": "2026-10-18T13:10:21.166Z",
+          "duration": 147284.484,
+          "expected": 250,
+          "skipped": 2,
+          "unexpected": 6,
+          "flaky": 0
+        },
+        "bytes": {
+          "results": 34263532,
+          "html": 29970027
+        }
+      }
+    ]
+  },
+  "checks": [
+    {
+      "command": "npm --prefix tests/e2e run typecheck",
+      "exitCode": 0,
+      "output": "typecheck.txt"
+    },
+    {
+      "command": "node --test tests/e2e/scripts/a11y-state-evidence.test.mjs",
+      "exitCode": 0,
+      "result": "24 passed",
+      "output": "node-evidence.txt"
+    },
+    {
+      "command": "node --test _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs",
+      "exitCode": 0,
+      "result": "25 passed; focused review guard contracts",
+      "evidence": "../2026-10-18-repeatable-browser/review-fixes/verification.json"
+    },
+    {
+      "command": "python3 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/verify-git-visible-copy.py",
+      "exitCode": 0,
+      "result": "Independent Git-visible-only replay with pinned dependencies",
+      "evidence": "git-visible-copy-proof.json"
+    }
+  ],
+  "portability": {
+    "integrityExitCode": 0,
+    "runtimeInputsVerified": 3,
+    "completePortableCapture": true,
+    "artifactGatePassed": false,
+    "rawReplayExitCode": 1,
+    "files": 2079,
+    "jsonPaths": 709,
+    "junitMarkers": 709,
+    "originalOutcomesUnchanged": true,
+    "copiedIgnoredLogs": 0,
+    "originalCheckoutSupportFilesUsed": false
+  },
+  "dotnet": {
+    "newExecutionAfterHelperReview": false,
+    "reason": "Review edits change TypeScript measurement and packet tools only; all 37 built host assembly hashes and C# source remain unchanged",
+    "build": "passed; 0 warnings/errors",
+    "configuredLane": "3703 total / 3699 passed / 4 existing snapshot-or-catalog failures / 0 skipped",
+    "requiredFluentChromeGuard": "passed",
+    "evidence": "../2026-10-18-repeatable-browser/verification.json",
+    "sourceTools": "not rerun; prior approval failure remains open"
+  },
+  "unchanged": {
+    "sourceInputs": 7,
+    "hostAssemblies": 37,
+    "protectedBaselines": 26,
+    "rootSubmodules": 8,
+    "dependencies": true,
+    "manualChecklist": true
+  },
+  "runtime": {
+    "baseline": "aspire-baseline-sanitized.json",
+    "finalResources": "aspire-final-resources-sanitized.json",
+    "stopExitCode": 0,
+    "stopLog": "aspire-stop.txt",
+    "stoppedInspectionExitCode": 0,
+    "stoppedInspection": "aspire-stopped.txt",
+    "appHostRunning": false,
+    "liveBackendAcceptance": false
+  },
+  "manual": {
+    "AT": "not performed",
+    "heardSpeech": "not observed",
+    "actual400PercentZoom": "not performed",
+    "tablet": "not performed",
+    "phone": "not performed",
+    "Windows": "not performed",
+    "WebKitActualForcedPalette": "not observed",
+    "visualCatalogOwnerApproval": "not supplied",
+    "productApprovalInferred": false
+  },
+  "priorPacketsPreserved": true,
+  "stagedCommittedPushed": false,
+  "sanitization": "Synthetic fixture journeys only. Aspire resource evidence retains allowlisted state/Test environment and omits credentials, parameter values and dashboard login URLs. No manual speech transcript is supplied.",
+  "evidenceTools": {
+    "capture-packets.mjs": "ef97fb893d19f794c7e12ab4d1fa8c6c46b6b03ad6130ef6d0e56e5f2a158f76",
+    "validate-state-packet.mjs": "fe66e7285feab188f9c21771e54436a23dcc14ddd61b7fe5e5ee913b5fb6b348",
+    "verify-git-visible-copy.py": "508a0c15bbc638b7b6d3d011fed801840f3b5a25454086b6fd69df33113aabba",
+    "run-browser-lanes.mjs": "29d5cfb2c655573aee7709a4fa0cf26ed411d24ffa39193820b760e362f75818",
+    "audit-relocation.mjs": "8a54273b4cba303c6a9187d57a6b0297a8af2706f0b8e3f7417a2c895cac6127"
+  }
+}

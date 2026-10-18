@@ -1,0 +1,39 @@
+
+Running 15 tests using 3 workers
+
+(node:10485) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10483) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10484) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 [chromium] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom (287ms)
+  ✓   1 [chromium] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom (290ms)
+  ✓   2 [chromium] › specs/responsive-accessibility.spec.ts:45:1 › repeatable rounded native planes shield only contained focus paint (435ms)
+  ✓   4 [chromium] › specs/responsive-accessibility.spec.ts:91:1 › review native-plane circular corner proof rejects supported bevel paint (218ms)
+  ✓   5 [chromium] › specs/responsive-accessibility.spec.ts:1525:1 › review opaque native top-layer surfaces shield text from page backgrounds only (224ms)
+(node:10828) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10836) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10844) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   6 [firefox] › specs/responsive-accessibility.spec.ts:45:1 › repeatable rounded native planes shield only contained focus paint (1.3s)
+  ✓   7 [firefox] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom (1.2s)
+  -   9 [firefox] › specs/responsive-accessibility.spec.ts:91:1 › review native-plane circular corner proof rejects supported bevel paint
+  ✓   8 [firefox] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom (1.2s)
+  ✓  10 [firefox] › specs/responsive-accessibility.spec.ts:1525:1 › review opaque native top-layer surfaces shield text from page backgrounds only (379ms)
+(node:12160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12256) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12300) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  11 [webkit] › specs/responsive-accessibility.spec.ts:45:1 › repeatable rounded native planes shield only contained focus paint (797ms)
+  ✓  12 [webkit] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom (545ms)
+  ✓  13 [webkit] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom (556ms)
+  ✓  14 [webkit] › specs/responsive-accessibility.spec.ts:91:1 › review native-plane circular corner proof rejects supported bevel paint (432ms)
+  ✓  15 [webkit] › specs/responsive-accessibility.spec.ts:1525:1 › review opaque native top-layer surfaces shield text from page backgrounds only (456ms)
+
+  1 skipped
+  14 passed (5.4s)

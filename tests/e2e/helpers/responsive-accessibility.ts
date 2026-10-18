@@ -1194,10 +1194,38 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
       let plane: Element | null = null, opaquePlaneBackdrop = false;
       for (let current: Element | null = element; current; current = parent(current)) {
         const css = getComputedStyle(current), bounds = current.getBoundingClientRect();
-        const radii = [css.borderTopLeftRadius, css.borderTopRightRadius, css.borderBottomLeftRadius, css.borderBottomRightRadius];
-        const inset = radii.every(value => /^\d+(?:\.\d+)?px$/u.test(value)) ? Math.max(...radii.map(Number.parseFloat)) : Infinity;
-        if (parse(css.backgroundColor)[3] === 1 && Number(css.opacity) === 1 && boxes.every(box => box.left >= bounds.left + inset && box.right <= bounds.right - inset && box.top >= bounds.top + inset && box.bottom <= bounds.bottom - inset)) opaquePlaneBackdrop = true;
+        // Rounded corners remove only their corner arcs, not a radius-wide strip
+        // along every edge. Prove each complete ring rectangle lies in the fill;
+        // the rounded rectangle is convex, so its four corners suffice.
+        const radii = [css.borderTopLeftRadius, css.borderTopRightRadius, css.borderBottomRightRadius, css.borderBottomLeftRadius]
+          .map(value => /^\d+(?:\.\d+)?px$/u.test(value) ? Number.parseFloat(value) : NaN);
+        const [tl, tr, br, bl] = radii;
+        const scale = Math.min(1, bounds.width / (tl + tr || 1), bounds.width / (bl + br || 1), bounds.height / (tl + bl || 1), bounds.height / (tr + br || 1));
+        const covered = (x: number, y: number) => {
+          if (x < bounds.left || x > bounds.right || y < bounds.top || y > bounds.bottom) return false;
+          return radii.every((declared, corner) => {
+            const radius = declared * scale;
+            if (!Number.isFinite(radius)) return false;
+            const right = corner === 1 || corner === 2, bottom = corner >= 2;
+            const cx = right ? bounds.right - radius : bounds.left + radius;
+            const cy = bottom ? bounds.bottom - radius : bounds.top + radius;
+            return (right ? x <= cx : x >= cx) || (bottom ? y <= cy : y >= cy)
+              || (x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2;
+          });
+        };
+        const roundCorners = ['corner-shape', 'corner-top-left-shape', 'corner-top-right-shape', 'corner-bottom-right-shape', 'corner-bottom-left-shape']
+          .every(property => css.getPropertyValue(property).trim().split(/\s+/u).every(shape => !shape || ['round', 'superellipse(1)'].includes(shape)));
+        if (roundCorners && parse(css.backgroundColor)[3] === 1 && Number(css.opacity) === 1 && css.backgroundClip === 'border-box'
+          && css.transform === 'none' && (!css.scale || ['none','1'].includes(css.scale)) && (!css.rotate || css.rotate === 'none')
+          && boxes.every(box => covered(box.left, box.top) && covered(box.right, box.top) && covered(box.left, box.bottom) && covered(box.right, box.bottom))) opaquePlaneBackdrop = true;
         if (current.matches(':popover-open,:modal')) { plane = current; break; }
+      }
+      // DOMRects already include effective CSS zoom, while computed corner radii
+      // remain CSS lengths. Any nonunit zoom in the full composed ancestry makes
+      // this circular coverage proof unsupported, including beyond a top layer.
+      if (plane) for (let current: Element | null = element; current; current = parent(current)) {
+        const zoom = getComputedStyle(current).zoom;
+        if (zoom && !['normal', '1'].includes(zoom)) throw new Error('Native-plane CSS zoom needs pixel evidence');
       }
       // Unrelated overlapping paint under glyphs is not represented by ancestor colors.
       // Reject it until a pixel measurement can establish its compositing order.

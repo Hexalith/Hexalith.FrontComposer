@@ -1,0 +1,3 @@
+chromium: 789 files, 275 attachment paths
+firefox: 791 files, 275 attachment paths
+webkit: 499 files, 159 attachment paths

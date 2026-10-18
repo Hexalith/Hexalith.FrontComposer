@@ -1,0 +1,606 @@
+✖ runner refuses existing browser-runs.json before mutating evidence (152.827527ms)
+✖ runner refuses existing chromium-browser.log before mutating evidence (30.680298ms)
+✖ runner refuses existing firefox-artifacts.log.txt before mutating evidence (134.929466ms)
+✖ runner persists lane intent before launch and binds both reports despite caller overrides (73.540089ms)
+✖ runner records invalid/missing reports as incomplete and continues later engines (73.63153ms)
+✖ runner records failed launches and unavailable roots, continuing all engines (49.850213ms)
+✖ runner records a signal as incomplete and continues remaining engines (67.363315ms)
+✖ runner distinguishes a complete failed gate from successful verification (139.35167ms)
+✖ audit preserves complete failed outcomes while verifying all lane identities (51.260201ms)
+✖ audit rejects runtime mutation before execution: tests/e2e/scripts/a11y-state-evidence.mjs (52.083697ms)
+✖ audit rejects runtime mutation before execution: tests/e2e/scripts/validate-a11y-artifacts.mjs (54.041241ms)
+✖ audit rejects runtime mutation before execution: tests/e2e/specimens/frontcomposer-specimen-manifest.json (54.578025ms)
+✖ audit rejects three duplicate engine records before execution (53.627153ms)
+✖ audit rejects wrong candidate identity before execution (53.049252ms)
+✖ audit rejects wrong mapping candidate identity before execution (76.883632ms)
+✖ audit rejects wrong mapping run identity before execution (54.404028ms)
+✖ audit rejects wrong environment run identity before execution (60.59278ms)
+✖ audit rejects wrong environment engine identity before execution (54.84869ms)
+✖ audit rejects duplicate complete mapping before execution (57.151162ms)
+✖ audit rejects duplicate complete replay row without accepting original failures as success (69.330275ms)
+✖ audit rejects missing complete replay row without accepting original failures as success (71.223825ms)
+✖ audit rejects unaccounted retained row without accepting original failures as success (59.421115ms)
+✖ audit rejects wrong report run identity without accepting original failures as success (55.180718ms)
+✖ audit rejects wrong report engine identity without accepting original failures as success (56.893162ms)
+✖ audit rejects wrong recorded report outcomes without accepting original failures as success (55.88939ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 0
+ℹ fail 25
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1769.363618
+
+✖ failing tests:
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:52:3
+✖ runner refuses existing browser-runs.json before mutating evidence (152.827527ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:55:36)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:52:3
+✖ runner refuses existing chromium-browser.log before mutating evidence (30.680298ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Refusing to replace retained evidence/. Input:
+  
+  'node:fs:697\n' +
+    '  return binding.open(\n' +
+    '                 ^\n' +
+    '\n' +
+    "Error: EEXIST: file already exists, open '/tmp/story-13-6-tool-regression-kLlwWi/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/chromium-browser.log'\n" +
+    '    at openSync (node:fs:697:18)\n' +
+    '    at file:///tmp/story-13-6-tool-regression-kLlwWi/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/run-browser-lanes.mjs:41:15\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:447:25)\n' +
+    '    at async node:internal/modules/esm/loader:646:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n' +
+    '  errno: -17,\n' +
+    "  code: 'EEXIST',\n" +
+    "  syscall: 'open',\n" +
+    "  path: '/tmp/story-13-6-tool-regression-kLlwWi/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/chromium-browser.log'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.4.0\n'
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:55:68)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "node:fs:697\n  return binding.open(\n                 ^\n\nError: EEXIST: file already exists, open '/tmp/story-13-6-tool-regression-kLlwWi/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/chromium-browser.log'\n    at openSync (node:fs:697:18)\n    at file:///tmp/story-13-6-tool-regression-kLlwWi/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/run-browser-lanes.mjs:41:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:447:25)\n    at async node:internal/modules/esm/loader:646:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n  errno: -17,\n  code: 'EEXIST',\n  syscall: 'open',\n  path: '/tmp/story-13-6-tool-regression-kLlwWi/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/chromium-browser.log'\n}\n\nNode.js v26.4.0\n",
+    expected: /Refusing to replace retained evidence/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:52:3
+✖ runner refuses existing firefox-artifacts.log.txt before mutating evidence (134.929466ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:55:36)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:61:1
+✖ runner persists lane intent before launch and binds both reports despite caller overrides (73.540089ms)
+  AssertionError [ERR_ASSERTION]: node:fs:697
+    return binding.open(
+                   ^
+  
+  Error: ENOENT: no such file or directory, open '/tmp/story-13-6-repeatable-full-OFuvrd/chromium/results/playwright.json'
+      at Object.openSync (node:fs:697:18)
+      at readFileSync (node:fs:543:35)
+      at file:///tmp/story-13-6-tool-regression-D9tGuB/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/run-browser-lanes.mjs:48:29
+      at ModuleJob.run (node:internal/modules/esm/module_job:447:25)
+      at async node:internal/modules/esm/loader:646:26
+      at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/tmp/story-13-6-repeatable-full-OFuvrd/chromium/results/playwright.json'
+  }
+  
+  Node.js v26.4.0
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:65:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:78:1
+✖ runner records invalid/missing reports as incomplete and continues later engines (73.63153ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - false
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:80:75)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:88:1
+✖ runner records failed launches and unavailable roots, continuing all engines (49.850213ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - false
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:90:75)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:97:1
+✖ runner records a signal as incomplete and continues remaining engines (67.363315ms)
+  TypeError: Cannot read properties of undefined (reading 'termination')
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:99:59)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:102:1
+✖ runner distinguishes a complete failed gate from successful verification (139.35167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:103:71)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:133:1
+✖ audit preserves complete failed outcomes while verifying all lane identities (51.260201ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  undefined !== 3
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:135:49)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 3,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:139:34
+✖ audit rejects runtime mutation before execution: tests/e2e/scripts/a11y-state-evidence.mjs (52.083697ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:141:34)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:139:34
+✖ audit rejects runtime mutation before execution: tests/e2e/scripts/validate-a11y-artifacts.mjs (54.041241ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:141:34)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:139:34
+✖ audit rejects runtime mutation before execution: tests/e2e/specimens/frontcomposer-specimen-manifest.json (54.578025ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:141:34)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:153:67
+✖ audit rejects three duplicate engine records before execution (53.627153ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:155:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:153:67
+✖ audit rejects wrong candidate identity before execution (53.049252ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:155:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:153:67
+✖ audit rejects wrong mapping candidate identity before execution (76.883632ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:155:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:153:67
+✖ audit rejects wrong mapping run identity before execution (54.404028ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:155:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:153:67
+✖ audit rejects wrong environment run identity before execution (60.59278ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:155:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:153:67
+✖ audit rejects wrong environment engine identity before execution (54.84869ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:155:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:153:67
+✖ audit rejects duplicate complete mapping before execution (57.151162ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:155:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:171:5
+✖ audit rejects duplicate complete replay row without accepting original failures as success (69.330275ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:173:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:171:5
+✖ audit rejects missing complete replay row without accepting original failures as success (71.223825ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Replay must account|identity mismatch|outcomes mismatch/. Input:
+  
+  'file:///tmp/story-13-6-tool-regression-AqOIft/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/audit-relocation.mjs:29\n' +
+    '  if (!row || !row.outcomesUnchanged || row.requiredStates !== 116) throw new Error(`Incomplete replay: ${lane.engine}`);\n' +
+    '                                                                          ^\n' +
+    '\n' +
+    'Error: Incomplete replay: webkit\n' +
+    '    at file:///tmp/story-13-6-tool-regression-AqOIft/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/audit-relocation.mjs:29:75\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:447:25)\n' +
+    '    at async node:internal/modules/esm/loader:646:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n' +
+    '\n' +
+    'Node.js v26.4.0\n'
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:173:42)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'file:///tmp/story-13-6-tool-regression-AqOIft/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/audit-relocation.mjs:29\n  if (!row || !row.outcomesUnchanged || row.requiredStates !== 116) throw new Error(`Incomplete replay: ${lane.engine}`);\n                                                                          ^\n\nError: Incomplete replay: webkit\n    at file:///tmp/story-13-6-tool-regression-AqOIft/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/audit-relocation.mjs:29:75\n    at ModuleJob.run (node:internal/modules/esm/module_job:447:25)\n    at async node:internal/modules/esm/loader:646:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v26.4.0\n',
+    expected: /Replay must account|identity mismatch|outcomes mismatch/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:171:5
+✖ audit rejects unaccounted retained row without accepting original failures as success (59.421115ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:173:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:171:5
+✖ audit rejects wrong report run identity without accepting original failures as success (55.180718ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:173:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:171:5
+✖ audit rejects wrong report engine identity without accepting original failures as success (56.893162ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Replay must account|identity mismatch|outcomes mismatch/. Input:
+  
+  'file:///tmp/story-13-6-tool-regression-gwh2Df/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/audit-relocation.mjs:43\n' +
+    '  if (!same(row.errors, expectedFailures) || row.artifactValidationOutput !== original || row.artifactValidationExitCode !== lane.validationExitCode) throw new Error(`Relocation changed gate/ownership results: ${lane.engine}`);\n' +
+    '                                                                                                                                                            ^\n' +
+    '\n' +
+    'Error: Relocation changed gate/ownership results: chromium\n' +
+    '    at file:///tmp/story-13-6-tool-regression-gwh2Df/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/audit-relocation.mjs:43:157\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:447:25)\n' +
+    '    at async node:internal/modules/esm/loader:646:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n' +
+    '\n' +
+    'Node.js v26.4.0\n'
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:173:42)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'file:///tmp/story-13-6-tool-regression-gwh2Df/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/audit-relocation.mjs:43\n  if (!same(row.errors, expectedFailures) || row.artifactValidationOutput !== original || row.artifactValidationExitCode !== lane.validationExitCode) throw new Error(`Relocation changed gate/ownership results: ${lane.engine}`);\n                                                                                                                                                            ^\n\nError: Relocation changed gate/ownership results: chromium\n    at file:///tmp/story-13-6-tool-regression-gwh2Df/_bmad-output/implementation-artifacts/evidence/story-13-6/packet/audit-relocation.mjs:43:157\n    at ModuleJob.run (node:internal/modules/esm/module_job:447:25)\n    at async node:internal/modules/esm/loader:646:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v26.4.0\n',
+    expected: /Replay must account|identity mismatch|outcomes mismatch/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:171:5
+✖ audit rejects wrong recorded report outcomes without accepting original failures as success (55.88939ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs:173:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,7 @@
+{
+  "tests/e2e/specs/responsive-accessibility.spec.ts": "1575d2fc6c7fdc8f1cccfc97738674b093aed899f5c2e8b23dece6dff4fa37ac",
+  "tests/e2e/helpers/responsive-accessibility.ts": "f856dfeb98a65b1ae069e7e0c6f4b28f73b4caa9649e13bbe162cf389f9fcf1c",
+  "src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs": "1612f9a920fb78b106a10a7c13b326f3858432070da5ab00a63f3716b1fedb49",
+  "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js": "f3464f07ed59a677cefcdc87a29e2ed8729c539badcfc3fee4ee45b25c6c7c2a",
+  "samples/Counter/Counter.Web/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll": "62d41f6ac759bb248657e5aec7c4f36bdeccf4ee0ec2455cea0d70a4da677319"
+}

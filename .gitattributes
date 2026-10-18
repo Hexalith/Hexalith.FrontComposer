@@ -42,3 +42,9 @@ _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-attempt-own
 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-png-integrity/** -text
 # Story 13.6 resumed Build preserves exact regression and verification bytes.
 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-build-resume/** -text
+
+# Story 13.6 repeatable browser packets preserve exact reports and capture bytes.
+_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/** -text
+
+# Reviewed Story 13.6 final browser proof retains exact evidence bytes.
+_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/** -text

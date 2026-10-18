@@ -1,0 +1,12 @@
+{
+  "assemblies": {
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Mcp.dll": "2d6ad274a0db5714f20aa5981f0f9c3984149a539ef873b12c1293f549bbfc13",
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll": "48ee71c2b07e3bdf955136d70d9bb19d6ae1a189d9fd4d82c2b353ce5f1b9f5f",
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Testing.dll": "628035f7205c05271d47b9b4a7c6ecdd9821cff4b56001904eeb7abf3e7b5649",
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll": "5d9d0f84450c1fa1f0b4dd5ed8ab2757a67993f031c3acf76ca4cf4cbe711157",
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.UI.dll": "f3b80d2b3e8331003a0a2315b52eca22c65464460acda0a69056a78265e9b009",
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.dll": "7f775a1431f812cd104956b7e33d9cb7d4d37a439b5571d22c18644cc5aa5a96",
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Schema.dll": "2ea7f2f5426d90f53bdbcbc35696cf6fb6da63526f1866f4440353fe031fd74c"
+  },
+  "testAndBrowserShellMatch": true
+}

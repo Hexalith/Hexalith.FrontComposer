@@ -1,0 +1,38 @@
+{
+  "scopedVerificationOnly": true,
+  "browserRed": {
+    "exitCode": 1,
+    "failed": 8,
+    "skipped": 1
+  },
+  "browserGreen": {
+    "exitCode": 0,
+    "passed": 14,
+    "skipped": 1
+  },
+  "toolingGreen": {
+    "exitCode": 0,
+    "passed": 25
+  },
+  "historicalRelocationAudit": {
+    "exitCode": 0,
+    "runtimeInputsVerified": 3,
+    "originalVisualFailuresPreserved": 18,
+    "underlyingReplayExitCode": 1,
+    "overallAccessibilityClassification": "blocked"
+  },
+  "focusedArchivesVerified": {
+    "archives": 4,
+    "files": 262,
+    "attachmentPaths": 104
+  },
+  "historicalCandidateSha256": "ca29b359d7e87cb34736a60b654055c390d6faeadeb83dbf1e063173b8d8aa57",
+  "currentSourceSha256": {
+    "tests/e2e/helpers/responsive-accessibility.ts": "fb2ec5b6ef96cf667fbcd4f930b721a4de44fadd74432abd37dc42f779cae836",
+    "tests/e2e/specs/responsive-accessibility.spec.ts": "540b63ac8ed806c76e2fc4ff176f1f1bebc0c6e2923ff469897cc635b61d8fad",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/run-browser-lanes.mjs": "29d5cfb2c655573aee7709a4fa0cf26ed411d24ffa39193820b760e362f75818",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/audit-relocation.mjs": "8a54273b4cba303c6a9187d57a6b0297a8af2706f0b8e3f7417a2c895cac6127",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/runtime-inputs.json": "260d23f370292387f48457b91f9d4c66973d86a94282916a2ea94e2bd77cd1d4",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/tooling.test.mjs": "b509d00568b4e72873cd9e1ff9f933057c9cde274ada17fdb15c2982cd869a79"
+  }
+}

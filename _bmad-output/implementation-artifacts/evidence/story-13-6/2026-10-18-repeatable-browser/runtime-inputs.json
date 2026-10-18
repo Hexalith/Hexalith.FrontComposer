@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "purpose": "Replay runtime inputs bound separately from the immutable historical candidate and reports. Verify before executing either validator.",
+  "files": {
+    "tests/e2e/scripts/a11y-state-evidence.mjs": {
+      "bytes": 19699,
+      "sha256": "ea400943e29009ce23428c54654af77629e50040e927ca25fd1571ed014ea1ea"
+    },
+    "tests/e2e/scripts/validate-a11y-artifacts.mjs": {
+      "bytes": 4719,
+      "sha256": "67e2ebb78d5485e4807fd7c165d49013b0da0b06c2a558e994e0955fc650a194"
+    },
+    "tests/e2e/specimens/frontcomposer-specimen-manifest.json": {
+      "bytes": 4098,
+      "sha256": "26790fdd08841bbace37649b6b64be6fe714d92cbb3f5853a342455f685806af"
+    }
+  }
+}

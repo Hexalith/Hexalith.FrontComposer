@@ -1,0 +1,149 @@
+{
+  "files": [
+    {
+      "path": "archive-deduplication.log.txt",
+      "bytes": 3215,
+      "sha256": "d71fa750b863b77c56ea42978a684b2e2f9dfa5a076409773d8d0f6fd8aa8006"
+    },
+    {
+      "path": "aspire-start.log.txt",
+      "bytes": 419,
+      "sha256": "7a26752f10a240731a825cd980b55781bb8558854044d6ddb5737d1f9a7b3bcc"
+    },
+    {
+      "path": "aspire-stop.log.txt",
+      "bytes": 423,
+      "sha256": "3262a972a2c7471d49f5b343311350c8ba17e3ea402051500ba5a10a935c5a0a"
+    },
+    {
+      "path": "aspire-stopped.log.txt",
+      "bytes": 155,
+      "sha256": "29f7d99063dcc47784f583b1e48d39680666353ed7cb51092a83bee592cb6889"
+    },
+    {
+      "path": "capture.log.txt",
+      "bytes": 498,
+      "sha256": "e0de647dbcd54f1d115a90184fffe046ae87ca7d1e1a3a38f1ddb48943798ccd"
+    },
+    {
+      "path": "causal-green.log.txt",
+      "bytes": 7520,
+      "sha256": "30eea008059f2cbd79937b9206939d9ec694e4d865b6eeee131bd1589f65f8c3"
+    },
+    {
+      "path": "causal-red.log.txt",
+      "bytes": 15339,
+      "sha256": "5ccfc0a6b39fbf0967524966062381cfd26293c286533df631406e81d7abb25f"
+    },
+    {
+      "path": "chromium-artifacts.log.txt",
+      "bytes": 618,
+      "sha256": "c21c7e03d6bdbad6e8efa257ad702d53506a09ddf2d4d7a242b9fa2b6c7a2819"
+    },
+    {
+      "path": "chromium-browser.log.txt",
+      "bytes": 78607,
+      "sha256": "48f7b25277ec337b5365f6236748fc308463f2b7ffd5720bccbe1ae94515c76e"
+    },
+    {
+      "path": "diff-check.log.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final-causal-green.log.txt",
+      "bytes": 8247,
+      "sha256": "230977cf0e10102e1e4e0be4cc885691f945409a64b026d64a7ea69f4844f6be"
+    },
+    {
+      "path": "firefox-artifacts.log.txt",
+      "bytes": 612,
+      "sha256": "46d545b40d96f67c7965ebb365ed6abe97ec96d296eabb215f6edb6053d2ab1c"
+    },
+    {
+      "path": "firefox-browser.log.txt",
+      "bytes": 79399,
+      "sha256": "6b993853b0c534b15ff65c27182495a03eb1e0afb003c2a6e570ec8db85abec0"
+    },
+    {
+      "path": "fluent-chrome-final.log.txt",
+      "bytes": 602,
+      "sha256": "cbb0a8d9760dbc0affa3290ca08fc4966d638ef40f9caf73cc9d14245cc3b347"
+    },
+    {
+      "path": "initial-red.log.txt",
+      "bytes": 7606,
+      "sha256": "6858b772bb4602b188ac7e0322cae094861aac28ee3c76e2c0b6095b43aa78ed"
+    },
+    {
+      "path": "intermediate-full-chromium.log.txt",
+      "bytes": 11135,
+      "sha256": "e891069f958c48ae6f6ea5e406aa78b96a3041a089b05a5d99e0cc1d372dc43d"
+    },
+    {
+      "path": "node-candidate.log.txt",
+      "bytes": 2338,
+      "sha256": "1046ebfa6cb932e34b477f096ec6ec83ee8a00e9149610dd1812ec4e5e56b029"
+    },
+    {
+      "path": "node-evidence.log.txt",
+      "bytes": 2337,
+      "sha256": "815b5b6cfca08fb86e18a5b851ba4748223b513190eab74919f0c3a1c61bb9cb"
+    },
+    {
+      "path": "owned-slot-green.log.txt",
+      "bytes": 4256,
+      "sha256": "07921c2ad5d6d1a94385df2faa35f8d51f5699bea1e55c1109f024b737dda603"
+    },
+    {
+      "path": "paint-green.log.txt",
+      "bytes": 1760,
+      "sha256": "2897bb463fb0c5ffb20d07ce621f1e3f0f1052018d798dfe6ecef7546595a060"
+    },
+    {
+      "path": "palette-red.log.txt",
+      "bytes": 12377,
+      "sha256": "dbc07187382501501232b6ff0d1ce4131bb5d7aec074f9c47cd94414679c1149"
+    },
+    {
+      "path": "relocation-audit.stderr.log.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "shell-build.log.txt",
+      "bytes": 2824,
+      "sha256": "961084196010fbfa7132de72577f9c21ed7e38dc7fde2fcc6edce433d723498d"
+    },
+    {
+      "path": "shell-full.log.txt",
+      "bytes": 21926,
+      "sha256": "b8cb70ca002856875b3a11bc9af2902db8c6f11b65c3c246be0c182b6ef34634"
+    },
+    {
+      "path": "typecheck-candidate.log.txt",
+      "bytes": 62,
+      "sha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2"
+    },
+    {
+      "path": "typecheck-final.log.txt",
+      "bytes": 62,
+      "sha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2"
+    },
+    {
+      "path": "typecheck.log.txt",
+      "bytes": 62,
+      "sha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2"
+    },
+    {
+      "path": "webkit-artifacts.log.txt",
+      "bytes": 606,
+      "sha256": "a035845209c7d5ce7f15181d6501bbde119a0953c0c4d3437524f5939478c527"
+    },
+    {
+      "path": "webkit-browser.log.txt",
+      "bytes": 79029,
+      "sha256": "c54c01eb6e25c65a257a73b2f931608317052ca0547be65d1c538f20a9f67832"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "resources": [
+    {
+      "name": "counter-web-vdbpnzrv",
+      "displayName": "counter-web",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-dapr-cli-ffvawkha",
+      "displayName": "eventstore-admin-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-fvwtykqx",
+      "displayName": "eventstore-admin",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-ui-dapr-cli-qzkfapuu",
+      "displayName": "eventstore-admin-ui-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-ui-djgazvnx",
+      "displayName": "eventstore-admin-ui",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-ui-local-auth-password",
+      "displayName": "eventstore-admin-ui-local-auth-password",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-ui-local-auth-username",
+      "displayName": "eventstore-admin-ui-local-auth-username",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-dapr-cli-ueceywhe",
+      "displayName": "eventstore-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-xsvqehgh",
+      "displayName": "eventstore",
+      "state": "Finished",
+      "healthStatus": null
+    },
+    {
+      "name": "frontcomposer-ui-sucvqgmk",
+      "displayName": "frontcomposer-ui",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "parties-dapr-cli-adamjsjq",
+      "displayName": "parties-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "parties-sqkysgqc",
+      "displayName": "parties",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-aakuxjmv",
+      "displayName": "sample",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-dapr-cli-ujpwqjnk",
+      "displayName": "sample-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "security-eventstore-client-password",
+      "displayName": "security-eventstore-client-password",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "security-eventstore-client-username",
+      "displayName": "security-eventstore-client-username",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "security-jruagqqa",
+      "displayName": "security",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "tenants-dapr-cli-muxuzbhx",
+      "displayName": "tenants-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "tenants-njnnazfq",
+      "displayName": "tenants",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "tenants-ui-sfzspsfq",
+      "displayName": "tenants-ui",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    }
+  ]
+}

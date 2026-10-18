@@ -1,6 +1,50 @@
 # Story 13.6 accessibility result and human checklist
 
-## Current resumed Build review — 2026-10-18
+## Current reviewed verification — 2026-10-18
+
+**Story 13.6 remains in review; accessibility classification is blocked.** The final candidate is root `1f8c7b2b4424b6232121a7cc567f7129e46577d3` plus source/test/configuration patch `sha256:b6b5b7a761b4927d21ee0fe9ba5daf78ce31ea87928f28b3e2a3b842e8fe5fc3`. Its [candidate](evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/candidate.json) binds seven source/config inputs, 37 unchanged host assemblies, eight unchanged submodules and 26 unchanged approved PNG/text baselines.
+
+The palette focus restoration and menu measurement corrections remain. Review also makes circular native-plane coverage fail closed for effective CSS zoom and nonround corners, protects retained runner records, persists incomplete lane metadata, binds JSON/JUnit paths, and verifies runtime inputs and unique candidate/engine/run/report identities. [Individual review dispositions](spec-13-6-make-browser-accessibility-verification-repeatable.md) record every finding; two unverified dialog-timing hypotheses are deferred separately.
+
+| Final engine | Complete outcome | Results / HTML bytes | Full artifact validator |
+|---|---|---|---|
+| Chromium | 252 passed / 6 visual failed | 33,343,714 / 28,418,229 | Failed on six visual outcomes |
+| Firefox | 250 passed / 6 visual failed / 2 capability skips | 41,588,245 / 36,146,414 | Failed on six visual outcomes |
+| WebKit | 250 passed / 6 visual failed / 2 capability skips | 34,263,532 / 29,970,027 | Failed on six visual outcomes |
+
+The aggregate is **774 total / 752 passed / 18 visual failures / 4 capability skips / 0 flaky / 0 runner errors**. All executed nonvisual checks pass, including both originally failing journeys. Responsive/helper cases are 482 passed with one explicit Firefox bevel-capability skip; the state matrix is 224 passed with one existing capability skip. All six final roots meet the unchanged 52,428,800-byte limit. Full artifact gates remain failed on visual outcomes. [Exact commands and outcomes](evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/browser-runs.json) and [verification](evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/verification.json) preserve that distinction.
+
+The [complete portable capture](evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/README.md) retains all raw reports, captures, expected images and HTML assets. [Independent Git-visible-only replay](evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/git-visible-copy-proof.json) passes integrity for 2,079 files, 709 JSON paths and 709 JUnit markers, with three validator/runtime hashes and all engine/run identities checked. Raw validator exit 1 and the original eighteen visual failures remain unchanged; portability supplies no accessibility approval. Earlier packets and every failed/interrupted attempt remain retained.
+
+Final TypeScript checking and 24 evidence regressions pass; [25 tooling regressions and 14 focused browser passes](evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/README.md) cover review corrections, with one explicit capability skip. Debug build and configured Shell evidence are reused from the preceding run because C# source and all 37 host assemblies match: build has zero warnings/errors, the lane has 3,699 passes and four existing snapshot/catalog failures, and the required Fluent chrome guard passes. No new full .NET execution after the helper/tool-only review is claimed.
+
+The [owned Aspire topology is stopped](evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/aspire-stopped.txt). Manual AT/heard speech, actual 400% browser zoom, physical tablet/phone, Windows, actual WebKit forced-palette paint, visual/catalog/owner approvals and live-backend acceptance remain open. The 18 manual boxes below are unchanged. Nothing was staged, committed or pushed.
+
+## Prior repeatable browser verification — 2026-10-18
+
+**Story 13.6 remains in review; release accessibility classification is blocked.** The tested candidate is root `1f8c7b2b4424b6232121a7cc567f7129e46577d3` plus application/test/configuration patch `sha256:1728a6ab1753d21e18dd95d171f9e275ccb07852f4eba6f410d04af7f4a06cfe`. The [candidate manifest](evidence/story-13-6/2026-10-18-repeatable-browser/candidate.json) binds source, 37 Debug host assemblies, eight unchanged root submodules and 26 unchanged approved PNG/text baselines. The [.NET assembly manifest](evidence/story-13-6/2026-10-18-repeatable-browser/dotnet-assemblies.json) also confirms the browser and test lanes used identical Shell assembly bytes. Dependencies, thresholds, capture policy and approvals are unchanged.
+
+Both demonstrated browser defects are corrected. The palette installs its return guard before entry focus; its two owned shell dialogs keep Fluent's redundant return slot disabled even when delayed opening callbacks assign it again. Dismissal notifications are handled once per opening, preserving the operator's next Tab. The focus sampler checks actual circular corner coverage instead of removing a radius-wide strip from every opaque native-menu edge. Transparent surfaces, outside/corner rings and competing native planes remain fail-closed. The actual palette delayed-entry/native-return journey fails on all three engines before correction, and the final causal batch passes 18/18, including Settings without added test-only containment registration. [Causal history and commands](evidence/story-13-6/2026-10-18-repeatable-browser/verification.json) retain every failed intermediate attempt.
+
+All three accessibility specs ran independently per engine, with four workers, no retries and unique run IDs bound to that one frozen candidate:
+
+| Engine | Complete suite outcome | Original results / HTML file bytes | Full artifact validator |
+| --- | --- | --- | --- |
+| Chromium | 255 total: 249 passed / 6 visual failed / 0 skipped | 33,234,618 / 28,329,422 | Failed: six unsuccessful visual outcomes |
+| Firefox | 255 total: 248 passed / 6 visual failed / 1 capability skip | 43,944,218 / 38,509,133 | Failed: six unsuccessful visual outcomes |
+| WebKit | 255 total: 247 passed / 6 visual failed / 2 capability skips | 35,832,621 / 31,548,420 | Failed: six unsuccessful visual outcomes |
+
+The aggregate is **765 total: 744 passed / 18 visual failed / 3 skipped / 0 flaky / 0 runner errors**. Every executed nonvisual case passes. Each final results/HTML root meets the unchanged 52,428,800-byte limit. The full artifact validators remain failed on the eighteen visual outcome IDs; they report no additional size or state-evidence errors. These results supply no visual or catalog approval. [Exact commands, all outcomes and run IDs](evidence/story-13-6/2026-10-18-repeatable-browser/browser-runs.json), [Chromium validator](evidence/story-13-6/2026-10-18-repeatable-browser/chromium-artifacts.log.txt), [Firefox validator](evidence/story-13-6/2026-10-18-repeatable-browser/firefox-artifacts.log.txt), [WebKit validator](evidence/story-13-6/2026-10-18-repeatable-browser/webkit-artifacts.log.txt).
+
+The [portable packet instructions](evidence/story-13-6/2026-10-18-repeatable-browser/README.md) provide complete raw JSON/JUnit reports, captures and HTML assets in lossless archives, together with a hash-bound relocation map. The [relocation audit](evidence/story-13-6/2026-10-18-repeatable-browser/relocation-audit.json) passes structural integrity and attachment ownership for all 116 required state rows per engine, verifies every retained attachment, and checks path-only JSON/JUnit replay with unchanged outcomes. The underlying replay/full validators still exit 1 with exactly the original visual failures. Successful portability is not an overall accessibility or artifact-gate pass. Normal tar hard links deduplicate identical archive members; every restored path and byte is retained, and logical root sizes stay unchanged. All 29 support logs are retained as byte-identical, hash-bound nonignored `.log.txt` files. A [Git-visible-only copy replay](evidence/story-13-6/2026-10-18-repeatable-browser/git-visible-copy-proof.json), with independent locked dependencies and zero original checkout support files, also passes; its [output](evidence/story-13-6/2026-10-18-repeatable-browser/git-visible-copy-replay.json) preserves the same failed gate outcomes.
+
+All raw failed/intermediate captures remain available. An initial Chromium full-run attempt was interrupted before report generation while the palette correction was incomplete. Its 4,358 raw files occupy 234,234,008 results bytes, exceed the same limit, and have no JSON/JUnit/HTML completion report. That attempt remains explicitly **incomplete and failed history**, separate from the final three-engine proof. The historical packets below are untouched.
+
+The Debug Shell.Tests build passed with zero warnings/errors. Its configured lane with all five exclusions executed 3,703 tests: 3,699 passed and the same four existing failures (two generated-grid text snapshots, centralized catalog and Fluent-version approval). The required `Shell_chrome_styles_never_use_accent_as_surface_background` guard also passed independently. Final TypeScript checking and the existing 24 Node evidence regressions passed. [Build](evidence/story-13-6/2026-10-18-repeatable-browser/shell-build.log.txt), [configured .NET lane](evidence/story-13-6/2026-10-18-repeatable-browser/shell-full.log.txt), [required Fluent guard](evidence/story-13-6/2026-10-18-repeatable-browser/fluent-chrome-final.log.txt), [verification manifest](evidence/story-13-6/2026-10-18-repeatable-browser/verification.json).
+
+Aspire started and was inspected before code edits; Counter ran Healthy in Test and was restarted after the Debug build. Final [sanitized resource state](evidence/story-13-6/2026-10-18-repeatable-browser/aspire-final-resources-sanitized.json) records EventStore as Finished; these synthetic Counter journeys provide no live-backend acceptance. The owned topology is [stopped](evidence/story-13-6/2026-10-18-repeatable-browser/aspire-stop.log.txt), and [inspection confirms no AppHost running](evidence/story-13-6/2026-10-18-repeatable-browser/aspire-stopped.log.txt). Manual AT/heard speech, actual 400% browser zoom, physical tablet/phone, Windows execution, actual WebKit forced-palette paint, visual/catalog decisions and owner approvals remain open in the unchanged checklist below. Nothing was staged, committed or pushed.
+
+## Prior resumed Build review — 2026-10-18
 
 **Story 13.6 remains in review; release accessibility classification is blocked.** This candidate is root `1d2cc12eb467db048c41d1aee9c056f1e29e5fc1` plus source/test patch `sha256:3aa1747eb36b3f774c4bf71a81864f877ed9eb4addd77d7614edb600a262d837`. The [source manifest and exact patch](evidence/story-13-6/2026-10-18-build-resume/source.json) bind all five changed source/test files, eight unchanged root submodules and 26 unchanged approved PNG/text baselines. No dependency declaration or approval changed.
 
@@ -227,27 +271,36 @@ All gate rows above share task/story `13.6` and release branch `main`; human obs
 
 ## Remaining acceptance gates
 
-All 18 manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, tablet/phone, heard speech and human reviewer observations were not performed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and separate live EventStore fresh-row acceptance remain unresolved. The retained full Shell, SourceTools and browser gates failed as detailed above; protected baseline and catalog/policy dispositions remain open. The prior raw evidence packet measures 1,199,053,461 bytes (`du -sb`). Contrary to the earlier report, `tests/e2e/scripts/validate-a11y-artifacts.mjs` enforces **50 MiB (52,428,800 file bytes) per configured output root**, rather than a cap on the aggregate historical packet. The retained final browser `results` root contains 103,254,316 file bytes and its `html` root 87,959,744: both fail that existing limit. The [read-only validator replay](evidence/story-13-6/2026-10-18-field-layout/prior-artifact-validation.log) also rejects the retained packet as unexpectedly large. Failed proof is preserved and the limit is unchanged. Windows execution and WebKit actual forced-palette coverage remain open. Every failed or interrupted attempt retains its own evidence and disposition.
+All 18 manual boxes stay open. NVDA/JAWS/VoiceOver, heard speech, actual browser zoom, physical tablet/phone and human reviewer observations remain unperformed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and live EventStore acceptance remain unresolved. The final reviewed browser run passes every executed nonvisual case and the unchanged per-root size limit; eighteen visual comparisons and four existing .NET snapshot/catalog tests remain failed. Complete capture/portability integrity passes, while the full artifact validators and accessibility classification remain blocked. Historical oversized and interrupted packets remain failed history, without changing the cap. Windows and actual WebKit forced-palette coverage stay open.
 
 ```yaml
 story: 13.6
 story_status: in-review
 sprint_status: review
 final_classification: blocked
-current_tested_base_root: 1d2cc12eb467db048c41d1aee9c056f1e29e5fc1
-current_source_diff_sha256: 3aa1747eb36b3f774c4bf71a81864f877ed9eb4addd77d7614edb600a262d837
-current_debug_shell_build: passed; 0 warnings / 0 errors
-current_banner_tests: passed; 39 / 39
-current_helper_regressions: passed; 9 across 3 engines; 9 red before correction
-current_responsive_spec: passed; 468
-current_browser: failed; 759 total / 736 passed / 20 failed / 3 skipped / 0 flaky
+current_tested_base_root: 1f8c7b2b4424b6232121a7cc567f7129e46577d3
+current_source_diff_sha256: b6b5b7a761b4927d21ee0fe9ba5daf78ce31ea87928f28b3e2a3b842e8fe5fc3
+current_debug_shell_build: passed; 0 warnings / 0 errors; reused unchanged assemblies
+current_banner_tests: included in the current configured Shell lane; prior standalone 39/39 is historical
+current_helper_regressions: passed; 14 focused browser / 1 capability skip; 25 tooling; 24 evidence tests
+current_responsive_spec: passed; 482 passed / 1 capability skip
+current_browser: failed; 774 total / 752 passed / 18 visual failed / 4 capability skips / 0 flaky
 current_browser_visual: failed; 18 comparisons; approved images unchanged
-current_browser_nonvisual: failed; Chromium palette-to-settings focus and Firefox theme-menu focus-paint measurement
-current_shell_configured: failed; 3703 total / 3699 passed / 4 snapshot-or-catalog failures / 0 skipped
+current_browser_nonvisual: passed; all executed cases across three engines
+current_shell_configured: failed; reused 3703 total / 3699 passed / 4 existing snapshot-or-catalog failures / 0 skipped
 current_source_tools: not rerun; prior Fluent-version approval failure remains open
-current_artifact_size_gate: failed; 52428800-byte limit per root; results=120809278 / html=102705183
-current_evidence: evidence/story-13-6/2026-10-18-build-resume/verification.json
-complete_portable_artifact_packet: false
+current_artifact_size_gate: passed; all six roots below 52428800 bytes
+current_artifact_root_bytes:
+  chromium: { results: 33234618, html: 28329422 }
+  firefox: { results: 43944218, html: 38509133 }
+  webkit: { results: 35832621, html: 31548420 }
+current_full_artifact_gate: failed; exactly six unsuccessful visual outcomes per engine; no additional state-evidence errors
+current_portability_integrity: passed; 7310 files / 968 JSON attachment paths / 709 JUnit markers; failed gate outcomes preserved
+current_evidence: evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/verification.json
+complete_portable_artifact_packet: true
+full_artifact_validator_passed: false
+accessibility_approval_inferred: false
+complete_portable_artifact_packet_scope: complete final reports, captures and HTML assets; no overall accessibility or artifact-gate pass
 protected_baselines_changed: 0
 root_submodules_changed: 0
 windows_execution: not performed

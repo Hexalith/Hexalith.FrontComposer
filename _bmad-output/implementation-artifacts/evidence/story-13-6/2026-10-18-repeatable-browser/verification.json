@@ -1,0 +1,378 @@
+{
+  "capturedAt": "2026-10-18T12:31:55.280659+00:00",
+  "root": "1f8c7b2b4424b6232121a7cc567f7129e46577d3",
+  "sourcePatchSha256": "1728a6ab1753d21e18dd95d171f9e275ccb07852f4eba6f410d04af7f4a06cfe",
+  "candidateManifestSha256": "ca29b359d7e87cb34736a60b654055c390d6faeadeb83dbf1e063173b8d8aa57",
+  "attachmentMapSha256": "8799f79b79095719ac4fa1a77ca801b7ee01b62b2c2bd3cabd7f8a874e9950d3",
+  "frozenIntentSha256": "9a5945a30e897feea242457848dbc6cf97aee0b13cab5e7a079a5b21fc2271ce",
+  "storyStatus": "review",
+  "sprintStatus": "review",
+  "overallAccessibilityClassification": "blocked",
+  "commands": [
+    {
+      "command": "Hexalith__Shell__ProjectionReconnectedNoticeDurationMs=30000 aspire start --no-build --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json -- --environment Test",
+      "exitCode": 0,
+      "result": "Started and inspected before code edits; counter-web Healthy in Test"
+    },
+    {
+      "command": "aspire wait counter-web --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive",
+      "exitCode": 0
+    },
+    {
+      "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug -m:1",
+      "exitCode": 0,
+      "result": "0 warnings / 0 errors",
+      "log": "shell-build.log.txt"
+    },
+    {
+      "command": "aspire resource counter-web stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive",
+      "exitCode": 0
+    },
+    {
+      "command": "aspire resource counter-web restart --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive",
+      "exitCode": 0
+    },
+    {
+      "command": "aspire wait counter-web --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive",
+      "exitCode": 0
+    },
+    {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -notrait Category=GovernanceBuild -notrait Category=Performance -notrait Category=e2e-palette -notrait Category=NightlyProperty -notrait Category=Quarantined -parallel none",
+      "exitCode": 1,
+      "result": "3703 total / 3699 passed / 4 existing snapshot/catalog failures / 0 skipped/errors",
+      "log": "shell-full.log.txt"
+    },
+    {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method '*Shell_chrome_styles_never_use_accent_as_surface_background' -parallel none",
+      "exitCode": 0,
+      "result": "1 passed",
+      "log": "fluent-chrome-final.log.txt"
+    },
+    {
+      "command": "npm --prefix tests/e2e run typecheck",
+      "exitCode": 0,
+      "log": "typecheck-candidate.log.txt"
+    },
+    {
+      "command": "node --test tests/e2e/scripts/a11y-state-evidence.test.mjs",
+      "exitCode": 0,
+      "result": "24 passed / 0 failed / 0 skipped",
+      "log": "node-candidate.log.txt"
+    },
+    {
+      "command": "node _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/run-browser-lanes.mjs",
+      "exitCode": 0,
+      "result": "All three lanes executed; each browser exit 1 and full artifact validator exit 1 due six visual failures",
+      "details": "browser-runs.json"
+    },
+    {
+      "command": "node _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/capture-packets.mjs",
+      "exitCode": 0,
+      "log": "capture.log.txt"
+    },
+    {
+      "command": "python3 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/deduplicate-archives.py",
+      "exitCode": 0,
+      "log": "archive-deduplication.log.txt"
+    },
+    {
+      "command": "node _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/audit-relocation.mjs",
+      "exitCode": 0,
+      "result": "Structural integrity/attachment ownership/path-only report replay pass; original failed accessibility gates preserved",
+      "output": "relocation-audit.json"
+    },
+    {
+      "command": "aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive",
+      "exitCode": 0,
+      "log": "aspire-stop.log.txt"
+    },
+    {
+      "command": "aspire describe --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive",
+      "exitCode": 0,
+      "result": "No AppHost is currently running",
+      "log": "aspire-stopped.log.txt"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "log": "diff-check.log.txt"
+    },
+    {
+      "command": "node _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/retain-support-logs.mjs",
+      "exitCode": 0,
+      "result": "29 raw support logs retained byte-identically under nonignored .log.txt names"
+    },
+    {
+      "command": "python3 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/verify-git-visible-copy.py",
+      "exitCode": 0,
+      "result": "Git-visible-only copy replay passed with 29 retained support logs, independent pinned npm dependencies and unchanged failed gates"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "output": "post-portability-diff-check.txt",
+      "scope": "After ignored-log retention and current summary refresh"
+    }
+  ],
+  "causalRuns": [
+    {
+      "lane": "initial-red",
+      "cwd": "tests/e2e",
+      "command": "BASE_URL=https://localhost:7201 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=repeatable-initial-red FC_E2E_OUTPUT_DIR=/tmp/story-13-6-repeatable-initial-red/results FC_E2E_HTML_REPORT_DIR=/tmp/story-13-6-repeatable-initial-red/html npx playwright test specs/accessibility-state-matrix.spec.ts --grep 'active toolbar, tabs, palette and settings states in light|shell chrome, theme menu and exact desktop navigation rails in light' --project=firefox --project=chromium --workers=4 --retries=0",
+      "stats": {
+        "startTime": "2026-10-18T12:02:49.229Z",
+        "duration": 38505.02,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "archive": "initial-red.tar.gz",
+      "runId": "repeatable-initial-red",
+      "exitCode": 1,
+      "log": "initial-red.log.txt"
+    },
+    {
+      "lane": "causal-red",
+      "cwd": "tests/e2e",
+      "command": "BASE_URL=https://localhost:7201 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=repeatable-causal-red FC_E2E_OUTPUT_DIR=/tmp/story-13-6-repeatable-causal-red/results FC_E2E_HTML_REPORT_DIR=/tmp/story-13-6-repeatable-causal-red/html npx playwright test specs/responsive-accessibility.spec.ts --grep 'repeatable rounded|R15 owned Settings' --workers=3 --retries=0",
+      "stats": {
+        "startTime": "2026-10-18T12:04:39.711Z",
+        "duration": 5586.423,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 3,
+        "flaky": 0
+      },
+      "archive": "causal-red.tar.gz",
+      "runId": "repeatable-causal-red",
+      "exitCode": 1,
+      "log": "causal-red.log.txt"
+    },
+    {
+      "lane": "paint-green",
+      "cwd": "tests/e2e",
+      "command": "BASE_URL=https://localhost:7201 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=repeatable-paint-green FC_E2E_OUTPUT_DIR=/tmp/story-13-6-repeatable-paint-green/results FC_E2E_HTML_REPORT_DIR=/tmp/story-13-6-repeatable-paint-green/html npx playwright test specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --grep 'repeatable rounded|shell chrome, theme menu and exact desktop navigation rails in light' --workers=3 --retries=0",
+      "stats": {
+        "startTime": "2026-10-18T12:05:22.800Z",
+        "duration": 39576.143,
+        "expected": 6,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "archive": "paint-green.tar.gz",
+      "runId": "repeatable-paint-green",
+      "exitCode": 0,
+      "log": "paint-green.log.txt"
+    },
+    {
+      "lane": "palette-red",
+      "cwd": "tests/e2e",
+      "command": "BASE_URL=https://localhost:7201 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=repeatable-palette-red FC_E2E_OUTPUT_DIR=/tmp/story-13-6-repeatable-palette-red/results FC_E2E_HTML_REPORT_DIR=/tmp/story-13-6-repeatable-palette-red/html npx playwright test specs/responsive-accessibility.spec.ts --grep 'repeatable palette dismissal' --workers=3 --retries=0",
+      "stats": {
+        "startTime": "2026-10-18T12:06:10.545Z",
+        "duration": 13292.218,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 3,
+        "flaky": 0
+      },
+      "archive": "palette-red.tar.gz",
+      "runId": "repeatable-palette-red",
+      "exitCode": 1,
+      "log": "palette-red.log.txt"
+    },
+    {
+      "lane": "causal-green",
+      "cwd": "tests/e2e",
+      "command": "BASE_URL=https://localhost:7201 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=repeatable-causal-green FC_E2E_OUTPUT_DIR=/tmp/story-13-6-repeatable-causal-green/results FC_E2E_HTML_REPORT_DIR=/tmp/story-13-6-repeatable-causal-green/html npx playwright test specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --grep 'repeatable rounded|repeatable palette dismissal|R15 owned Settings|active toolbar, tabs, palette and settings states in light|shell chrome, theme menu and exact desktop navigation rails in light' --workers=3 --retries=0",
+      "stats": {
+        "startTime": "2026-10-18T12:07:47.797Z",
+        "duration": 54513.375,
+        "expected": 14,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "archive": "causal-green.tar.gz",
+      "runId": "repeatable-causal-green",
+      "exitCode": 1,
+      "log": "causal-green.log.txt"
+    },
+    {
+      "lane": "final-causal-green",
+      "cwd": "tests/e2e",
+      "command": "BASE_URL=https://localhost:7201 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=repeatable-final-causal-green FC_E2E_OUTPUT_DIR=/tmp/story-13-6-repeatable-final-causal-green/results FC_E2E_HTML_REPORT_DIR=/tmp/story-13-6-repeatable-final-causal-green/html npx playwright test specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --grep 'repeatable rounded|repeatable palette dismissal|R15 owned Settings|reused owned dialog|active toolbar, tabs, palette and settings states in light|shell chrome, theme menu and exact desktop navigation rails in light' --workers=3 --retries=0",
+      "stats": {
+        "startTime": "2026-10-18T12:09:48.456Z",
+        "duration": 54031.977999999996,
+        "expected": 17,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "archive": "final-causal-green.tar.gz",
+      "runId": "repeatable-final-causal-green",
+      "exitCode": 1,
+      "log": "final-causal-green.log.txt"
+    },
+    {
+      "lane": "owned-slot-green",
+      "cwd": "tests/e2e",
+      "command": "BASE_URL=https://localhost:7201 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=repeatable-owned-slot-green FC_E2E_OUTPUT_DIR=/tmp/story-13-6-repeatable-owned-slot-green/results FC_E2E_HTML_REPORT_DIR=/tmp/story-13-6-repeatable-owned-slot-green/html npx playwright test specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --grep 'repeatable rounded|repeatable palette dismissal|R15 owned Settings|reused owned dialog|active toolbar, tabs, palette and settings states in light|shell chrome, theme menu and exact desktop navigation rails in light' --workers=3 --retries=0",
+      "stats": {
+        "startTime": "2026-10-18T12:13:22.805Z",
+        "duration": 51828.839,
+        "expected": 18,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "archive": "owned-slot-green.tar.gz",
+      "runId": "repeatable-owned-slot-green",
+      "exitCode": 0,
+      "log": "owned-slot-green.log.txt"
+    }
+  ],
+  "finalBrowserRecord": "browser-runs.json",
+  "totalFinalOutcomes": {
+    "total": 765,
+    "passed": 744,
+    "failedVisual": 18,
+    "skipped": 3,
+    "flaky": 0,
+    "runnerErrors": 0
+  },
+  "fullArtifactValidation": "failed per engine on exactly six retained visual outcomes; no state-evidence/size errors",
+  "relocation": {
+    "auditExitCode": 0,
+    "structuralIntegrity": "passed",
+    "attachmentOwnership": "passed; no additional errors beyond the identical original visual outcomes",
+    "rawValidatorExitCode": 1,
+    "retainedFilesVerified": 7310,
+    "jsonAttachmentPathsVerified": 968,
+    "junitMarkersVerified": 709,
+    "outcomesUnchanged": true,
+    "overallPacketPassClaimed": false
+  },
+  "allRetainedOriginalRootBytes": {
+    "chromium": {
+      "results": 33234618,
+      "html": 28329422
+    },
+    "firefox": {
+      "results": 43944218,
+      "html": 38509133
+    },
+    "webkit": {
+      "results": 35832621,
+      "html": 31548420
+    },
+    "initial-red": {
+      "results": 5488892,
+      "html": 6817362
+    },
+    "causal-red": {
+      "results": 397905,
+      "html": 2248944
+    },
+    "paint-green": {
+      "results": 1497259,
+      "html": 1342832
+    },
+    "palette-red": {
+      "results": 5691571,
+      "html": 7549215
+    },
+    "causal-green": {
+      "results": 3892825,
+      "html": 4862978
+    },
+    "final-causal-green": {
+      "results": 3803448,
+      "html": 4766183
+    },
+    "owned-slot-green": {
+      "results": 2116504,
+      "html": 1741981
+    },
+    "interrupted-full-chromium": {
+      "results": 234234008,
+      "html": 0
+    }
+  },
+  "interruptedAttempt": {
+    "record": "intermediate-full-browser-runs.json",
+    "termination": "SIGINT to the exact owned browser-run process group; shell exit 130",
+    "reason": "Started before the remaining Chromium return race was corrected; interrupted to finish the correction",
+    "files": 4358,
+    "resultsBytes": 234234008,
+    "sizeGate": "failed",
+    "reports": "JSON/JUnit/HTML not generated; incomplete history only; never final proof"
+  },
+  "unchanged": {
+    "candidateSources": true,
+    "hostAssemblies": 37,
+    "protectedBaselines": 26,
+    "rootSubmodules": 8,
+    "frozenIntent": true,
+    "dependencyDeclarations": true,
+    "policy": true
+  },
+  "runtime": {
+    "counter": "Healthy, Test",
+    "backend": "EventStore Finished at final inspection; no live-backend acceptance",
+    "ownedAppHostStopped": true
+  },
+  "manualAndOwnerGates": {
+    "AT": "not performed",
+    "heardSpeech": "not observed",
+    "actual400PercentZoom": "not performed",
+    "physicalDevices": "not performed",
+    "Windows": "not performed",
+    "WebKitActualForcedPalette": "unsupported in this lane; same-run capability-bound media-only evidence",
+    "visualCatalogApproval": "not supplied",
+    "ownerApproval": "not supplied"
+  },
+  "evidenceToolHashes": {
+    "capture-packets.mjs": "d9484f82885363010f154122b5e5054eb912f03979c6b03ee7a9edd2fce3d718",
+    "retain-support-logs.mjs": "edfe709fe6ba0b941956abdbd703ff9c7900aae74f567b6d16fbe9b6cb0b5a2b",
+    "validate-state-packet.mjs": "fe66e7285feab188f9c21771e54436a23dcc14ddd61b7fe5e5ee913b5fb6b348",
+    "run-browser-lanes.mjs": "c5a68c548bd7a3c0bb4d9b449cad7919c3c4e92c0d55d3a2074a01d13bb96621",
+    "audit-relocation.mjs": "b53263a5355c68905c7816e7b1bd8bf64ab2c34c8dfcd93aa68846cd9c8f82ec",
+    "verify-git-visible-copy.py": "3754874b00a470a654b297d7a9e088ff87d71289e4c09b7ae0a7750cca618d17",
+    "deduplicate-archives.py": "4647fc9884ab508c5f1535a6b94b4a7cbd9156890723a2022107bc496a2d5dd9"
+  },
+  "sanitization": "Synthetic fixture journeys and tool/compiler paths. Sanitized Aspire state omits login/OTLP credentials and parameter values. No real tenant payload or manual speech transcript retained.",
+  "stagedCommittedPushed": false,
+  "supportLogsManifest": {
+    "path": "support-logs.json",
+    "sha256": "ea3e8121e181dc00dff01f47041d88c2d241da0d0a278e69f38c8e40486bcb26",
+    "files": 29,
+    "rawBytesPreserved": true
+  },
+  "gitVisibleOnlyReplay": {
+    "proof": "git-visible-copy-proof.json",
+    "output": "git-visible-copy-replay.json",
+    "installOutput": "git-visible-copy-npm-ci.txt",
+    "installExitCode": 0,
+    "replayExitCode": 0,
+    "copiedIgnoredSupportLogs": 0,
+    "copiedVisibleSupportLogs": 29,
+    "originalCheckoutSupportFilesUsed": false,
+    "retainedFilesVerified": 7310,
+    "jsonAttachmentPathsVerified": 968,
+    "junitMarkersVerified": 709,
+    "fullValidatorExitCode": 1,
+    "overallAccessibilityClassification": "blocked",
+    "offlineInstallAttempt": {
+      "command": "npm ci --ignore-scripts --no-audit --fund=false --offline",
+      "exitCode": 1,
+      "result": "ENOTCACHED for pinned playwright-core 1.63.0; normal pinned npm ci succeeded afterward",
+      "output": "git-visible-copy-npm-ci-offline-failed.txt"
+    },
+    "authoritativeAudit": "relocation-audit.json",
+    "authoritativeAuditSha256": "068188663acc458b7748dc5eefee7071d938d40b70390959d8ce69bdd1adcae8"
+  }
+}

@@ -1,0 +1,32 @@
+✔ rejects another run when a run is expected (50.195866ms)
+✔ requires all owned state, cue, contrast and actual mode evidence (304.848966ms)
+✔ target evidence requires real finite dimensions, consistent conformity and evidenced exceptions (180.677256ms)
+✔ never pools partial engine/run matrices or another owners snapshot (112.083827ms)
+✔ WebKit capability attribution exempts absent images without weakening Chromium policy (47.622557ms)
+✔ successful retry replaces the failed attempt without fragment pooling (93.343021ms)
+✔ missing or mixed authoritative reports cannot certify a matrix (38.306632ms)
+✔ target geometry mirrors stale, spacing and essential exception applicability (125.420376ms)
+✔ state payload must match the final successful attempt attachment (83.20651ms)
+✔ system screenshots require one readable image attachment from their authoritative attempt (233.343573ms)
+✔ a changed or unreadable state-local screenshot cannot reuse its original report attachment (98.745586ms)
+✔ a failed retry or different test cannot provide a successful attempts missing screenshot (90.684026ms)
+✔ exchanged state images and another engines attachments cannot certify a screenshot (106.923515ms)
+✔ retained failed-attempt pixels cannot replace the successful retry image (83.81519ms)
+✔ empty or malformed screenshot evidence returns a validation error (141.315772ms)
+✔ decodes genuine RGB, RGBA, grayscale, indexed, 16-bit and Adam7 screenshots (325.046796ms)
+✔ matching corrupt PNG bytes cannot certify a system screenshot (618.749785ms)
+✔ invalid PNG header formats cannot reach pixel decoding (196.190601ms)
+✔ expanded PNG byte budget applies before inflation even within the pixel limit (56.519312ms)
+✔ accepts consecutive and empty IDAT chunks but rejects interrupted image data (99.362052ms)
+✔ Adam7 screenshots require exactly the complete filtered pixel data (83.319945ms)
+✔ expected unrelated skips supply no state authority and cannot fill a skipped owner (61.939615ms)
+✔ runner, setup and teardown errors invalidate an otherwise passing report (101.516696ms)
+✔ CLI resolves capability from the successful retry while retaining the failed file (265.694162ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3812.701372

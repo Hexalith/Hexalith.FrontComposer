@@ -1,0 +1,87 @@
+
+Running 18 tests using 3 workers
+
+(node:26392) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26393) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26399) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 [chromium] › specs/responsive-accessibility.spec.ts:45:1 › repeatable rounded native planes shield only contained focus paint (502ms)
+  ✓   2 [chromium] › specs/accessibility-state-matrix.spec.ts:510:3 › active toolbar, tabs, palette and settings states in light (11.7s)
+  ✘   4 [chromium] › specs/responsive-accessibility.spec.ts:1142:1 › repeatable palette dismissal preserves Tab through delayed entry and native return callbacks (11.1s)
+(node:31310) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   6 [chromium] › specs/responsive-accessibility.spec.ts:1251:1 › reused owned dialog dismissal resets only its current return and preserves later external input (815ms)
+  ✓   5 [chromium] › specs/responsive-accessibility.spec.ts:1196:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (1.7s)
+(node:32329) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32567) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   8 [firefox] › specs/accessibility-state-matrix.spec.ts:510:3 › active toolbar, tabs, palette and settings states in light (13.1s)
+  ✓   9 [firefox] › specs/responsive-accessibility.spec.ts:45:1 › repeatable rounded native planes shield only contained focus paint (696ms)
+  ✓  10 [firefox] › specs/responsive-accessibility.spec.ts:1142:1 › repeatable palette dismissal preserves Tab through delayed entry and native return callbacks (1.3s)
+  ✓  11 [firefox] › specs/responsive-accessibility.spec.ts:1196:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (2.0s)
+  ✓  12 [firefox] › specs/responsive-accessibility.spec.ts:1251:1 › reused owned dialog dismissal resets only its current return and preserves later external input (810ms)
+(node:45731) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › specs/accessibility-state-matrix.spec.ts:482:3 › shell chrome, theme menu and exact desktop navigation rails in light (36.0s)
+(node:46715) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  13 [webkit] › specs/accessibility-state-matrix.spec.ts:482:3 › shell chrome, theme menu and exact desktop navigation rails in light (16.3s)
+  ✓  14 [webkit] › specs/accessibility-state-matrix.spec.ts:510:3 › active toolbar, tabs, palette and settings states in light (13.3s)
+  ✓  15 [webkit] › specs/responsive-accessibility.spec.ts:45:1 › repeatable rounded native planes shield only contained focus paint (776ms)
+  ✓   7 [firefox] › specs/accessibility-state-matrix.spec.ts:482:3 › shell chrome, theme menu and exact desktop navigation rails in light (36.5s)
+  ✓  16 [webkit] › specs/responsive-accessibility.spec.ts:1142:1 › repeatable palette dismissal preserves Tab through delayed entry and native return callbacks (1.4s)
+(node:52543) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  17 [webkit] › specs/responsive-accessibility.spec.ts:1196:1 › R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab (2.6s)
+  ✓  18 [webkit] › specs/responsive-accessibility.spec.ts:1251:1 › reused owned dialog dismissal resets only its current return and preserves later external input (1.1s)
+
+
+  1) [chromium] › specs/responsive-accessibility.spec.ts:1142:1 › repeatable palette dismissal preserves Tab through delayed entry and native return callbacks 
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  getByTestId('fc-settings-button')
+    Expected: focused
+    Received: inactive
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toBeFocused" getByTestId('fc-settings-button') with timeout 10000ms
+      - waiting for getByTestId('fc-settings-button')
+        24 × locator resolved to <fluent-button icon-only="" tabindex="0" role="button" appearance="subtle" title="Open settings" aria-label="Open settings" data-testid="fc-settings-button" _bl_2e223dde-3932-47c7-af8b-c05674217eb5="">…</fluent-button>
+           - unexpected value "inactive"
+
+
+      1190 |   await info.attach('palette-delayed-return', { body: JSON.stringify(proof), contentType: 'application/json' });
+      1191 |   expect(proof.queued).toBeGreaterThan(0);
+    > 1192 |   await expect(next).toBeFocused();
+           |                      ^
+      1193 |   expect(proof.cleared).toBe(true);
+      1194 | });
+      1195 |
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:1192:22
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-final-causal-green/results/responsive-accessibility-r-56171-and-native-return-callbacks-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-final-causal-green/results/responsive-accessibility-r-56171-and-native-return-callbacks-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-repeatable-final-causal-green/results/responsive-accessibility-r-56171-and-native-return-callbacks-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-final-causal-green/results/responsive-accessibility-r-56171-and-native-return-callbacks-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-repeatable-final-causal-green/results/responsive-accessibility-r-56171-and-native-return-callbacks-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › specs/responsive-accessibility.spec.ts:1142:1 › repeatable palette dismissal preserves Tab through delayed entry and native return callbacks 
+  17 passed (54.0s)

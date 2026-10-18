@@ -102,15 +102,23 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             // A failure from an earlier palette session must not speak in this one.
             _lastFailureVersion = PaletteState.Value.ActivationFailureVersion;
             await RegisterKeyboardInteropAsync();
-            await FocusSearchAsync();
             IJSObjectReference? focus = await EnsureFocusModuleAsync();
             if (focus is not null)
             {
                 try { await focus.InvokeVoidAsync("containDialogFocus", "fc-palette-root"); }
                 catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException) { }
             }
+            // Entry focus makes the palette immediately usable. Install its native-return
+            // guard first so a fast Escape cannot leave Fluent's delayed focus return live.
+            if (_disposed) {
+                return;
+            }
+            await FocusSearchAsync();
         }
 
+        if (_disposed) {
+            return;
+        }
         FrontComposerCommandPaletteState state = PaletteState.Value;
         if (state.ActivationDenialVersion != _lastDenialVersion) {
             _lastDenialVersion = state.ActivationDenialVersion;

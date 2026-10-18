@@ -1,0 +1,240 @@
+diff --git a/.gitattributes b/.gitattributes
+index 681db817..5d4be0d1 100644
+--- a/.gitattributes
++++ b/.gitattributes
+@@ -42,3 +42,6 @@ _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-attempt-own
+ _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-png-integrity/** -text
+ # Story 13.6 resumed Build preserves exact regression and verification bytes.
+ _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-build-resume/** -text
++
++# Story 13.6 repeatable browser packets preserve exact reports and capture bytes.
++_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/** -text
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs
+index afef77fd..32270947 100644
+--- a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs
+@@ -102,15 +102,23 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
+             // A failure from an earlier palette session must not speak in this one.
+             _lastFailureVersion = PaletteState.Value.ActivationFailureVersion;
+             await RegisterKeyboardInteropAsync();
+-            await FocusSearchAsync();
+             IJSObjectReference? focus = await EnsureFocusModuleAsync();
+             if (focus is not null)
+             {
+                 try { await focus.InvokeVoidAsync("containDialogFocus", "fc-palette-root"); }
+                 catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException) { }
+             }
++            // Entry focus makes the palette immediately usable. Install its native-return
++            // guard first so a fast Escape cannot leave Fluent's delayed focus return live.
++            if (_disposed) {
++                return;
++            }
++            await FocusSearchAsync();
+         }
+ 
++        if (_disposed) {
++            return;
++        }
+         FrontComposerCommandPaletteState state = PaletteState.Value;
+         if (state.ActivationDenialVersion != _lastDenialVersion) {
+             _lastDenialVersion = state.ActivationDenialVersion;
+diff --git a/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js b/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js
+index 641434f5..d5dafb48 100644
+--- a/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js
++++ b/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js
+@@ -273,22 +273,34 @@ export function containDialogFocus(testId, retryOnce = true) {
+         // Associate every opening, including reuse of a host whose listener already exists.
+         dialogReturns.set(host, { reservation: window.__fcModalReservation, intent: window.__fcOverlayOpenIntent });
+         if (!containedDialogs.has(host)) {
+-            host.addEventListener('beforetoggle', (event) => {
+-                if ((event.detail?.newState ?? event.newState) !== 'closed') return;
++            const prepareReturn = () => {
+                 host.previousActiveElement = null;
+-                // Escape inside the modal can make the native dialog restore the previously
+-                // active page control. That dismissal is not a later operator focus move.
+-                // A subsequent external key or pointer input re-arms the keyboard tracker.
+                 const state = dialogReturns.get(host);
++                // Native Escape and Fluent's host notification can both complete the
++                // same dismissal. A later close event must not erase an operator's Tab.
++                if (!state || state.dismissed) return;
++                state.dismissed = true;
++                // Native dismissal restores its invoker before our guarded return.
++                // A subsequent external key or pointer input re-arms the tracker.
+                 for (const [current, captured] of [
+-                    [window.__fcModalReservation, state?.reservation],
+-                    [window.__fcOverlayOpenIntent, state?.intent],
++                    [window.__fcModalReservation, state.reservation],
++                    [window.__fcOverlayOpenIntent, state.intent],
+                 ]) {
+                     if (current && current === captured) {
+                         current.watchFocus = false;
+                         current.moved = false;
+                     }
+                 }
++            };
++            host.addEventListener('beforetoggle', (event) => {
++                if ((event.detail?.newState ?? event.newState) === 'closed') prepareReturn();
++            }, true);
++            // Escape can close the native shadow dialog directly, without Fluent's
++            // host beforetoggle. Clear the same owned slot on that path as well.
++            const nativeDialog = host.shadowRoot?.querySelector('dialog');
++            nativeDialog?.addEventListener('cancel', prepareReturn, true);
++            nativeDialog?.addEventListener('close', () => {
++                if (!nativeDialog.open) prepareReturn();
+             }, true);
+         }
+     }
+diff --git a/tests/e2e/helpers/responsive-accessibility.ts b/tests/e2e/helpers/responsive-accessibility.ts
+index ef8c3de5..47d0e10b 100644
+--- a/tests/e2e/helpers/responsive-accessibility.ts
++++ b/tests/e2e/helpers/responsive-accessibility.ts
+@@ -1194,9 +1194,28 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
+       let plane: Element | null = null, opaquePlaneBackdrop = false;
+       for (let current: Element | null = element; current; current = parent(current)) {
+         const css = getComputedStyle(current), bounds = current.getBoundingClientRect();
+-        const radii = [css.borderTopLeftRadius, css.borderTopRightRadius, css.borderBottomLeftRadius, css.borderBottomRightRadius];
+-        const inset = radii.every(value => /^\d+(?:\.\d+)?px$/u.test(value)) ? Math.max(...radii.map(Number.parseFloat)) : Infinity;
+-        if (parse(css.backgroundColor)[3] === 1 && Number(css.opacity) === 1 && boxes.every(box => box.left >= bounds.left + inset && box.right <= bounds.right - inset && box.top >= bounds.top + inset && box.bottom <= bounds.bottom - inset)) opaquePlaneBackdrop = true;
++        // Rounded corners remove only their corner arcs, not a radius-wide strip
++        // along every edge. Prove each complete ring rectangle lies in the fill;
++        // the rounded rectangle is convex, so its four corners suffice.
++        const radii = [css.borderTopLeftRadius, css.borderTopRightRadius, css.borderBottomRightRadius, css.borderBottomLeftRadius]
++          .map(value => /^\d+(?:\.\d+)?px$/u.test(value) ? Number.parseFloat(value) : NaN);
++        const [tl, tr, br, bl] = radii;
++        const scale = Math.min(1, bounds.width / (tl + tr || 1), bounds.width / (bl + br || 1), bounds.height / (tl + bl || 1), bounds.height / (tr + br || 1));
++        const covered = (x: number, y: number) => {
++          if (x < bounds.left || x > bounds.right || y < bounds.top || y > bounds.bottom) return false;
++          return radii.every((declared, corner) => {
++            const radius = declared * scale;
++            if (!Number.isFinite(radius)) return false;
++            const right = corner === 1 || corner === 2, bottom = corner >= 2;
++            const cx = right ? bounds.right - radius : bounds.left + radius;
++            const cy = bottom ? bounds.bottom - radius : bounds.top + radius;
++            return (right ? x <= cx : x >= cx) || (bottom ? y <= cy : y >= cy)
++              || (x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2;
++          });
++        };
++        if (parse(css.backgroundColor)[3] === 1 && Number(css.opacity) === 1 && css.backgroundClip === 'border-box'
++          && css.transform === 'none' && (!css.scale || ['none','1'].includes(css.scale)) && (!css.rotate || css.rotate === 'none')
++          && boxes.every(box => covered(box.left, box.top) && covered(box.right, box.top) && covered(box.left, box.bottom) && covered(box.right, box.bottom))) opaquePlaneBackdrop = true;
+         if (current.matches(':popover-open,:modal')) { plane = current; break; }
+       }
+       // Unrelated overlapping paint under glyphs is not represented by ancestor colors.
+diff --git a/tests/e2e/specs/responsive-accessibility.spec.ts b/tests/e2e/specs/responsive-accessibility.spec.ts
+index 9f720a59..87f62c93 100644
+--- a/tests/e2e/specs/responsive-accessibility.spec.ts
++++ b/tests/e2e/specs/responsive-accessibility.spec.ts
+@@ -42,6 +42,33 @@ test('resumed review transparent sibling glyphs cannot certify the warning they
+   expect((await measureSurfaceContrast(page.locator('#warning'))).every(sample => sample.ratio === 21)).toBe(true);
+ });
+ 
++test('repeatable rounded native planes shield only contained focus paint', async ({ page }) => {
++  await page.setContent('<style>body{background:white}#under{position:fixed;inset:0;background:black;border:3px solid black;box-shadow:0 0 20px black}button{position:absolute;left:3px;top:60px;width:100px;height:32px;background:white;color:black;border:0;outline:none}button:focus{outline:2px solid black}</style><div id="under"></div><div id="host"><button>Action</button></div>');
++  await page.locator('#host').evaluate(host => {
++    host.attachShadow({ mode: 'open' }).innerHTML = '<div id="plane" popover="manual" style="position:fixed;left:40px;top:40px;width:160px;height:160px;margin:0;padding:0;border:0;border-radius:12px;background:white"><slot></slot></div>';
++    (host.shadowRoot!.querySelector('#plane') as HTMLElement).showPopover();
++  });
++  const target = page.getByRole('button');
++  await target.focus();
++  await expectSurfaceContrast(target, 'focus');
++  await page.locator('#plane').evaluate(plane => { (plane as HTMLElement).style.background = 'transparent'; });
++  await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/Overlapping sibling background|Competing border\/shadow/);
++  await page.locator('#plane').evaluate(plane => { (plane as HTMLElement).style.background = 'white'; });
++  await target.evaluate(button => { button.style.left = '-1px'; });
++  await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/Overlapping sibling background|Competing border\/shadow/);
++  await target.evaluate(button => { button.style.left = '3px'; button.style.top = '3px'; });
++  await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/Overlapping sibling background|Competing border\/shadow/);
++  await target.evaluate(button => { button.style.top = '60px'; });
++  await page.evaluate(() => {
++    const cover = document.createElement('div'); cover.id = 'cover'; cover.setAttribute('popover', 'manual');
++    cover.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;margin:0;border:0;padding:0;background:black';
++    document.body.append(cover); cover.showPopover();
++  });
++  await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/Overlapping sibling background|Competing border\/shadow/);
++  await page.locator('#cover').evaluate(cover => { (cover as HTMLElement).hidePopover(); cover.remove(); });
++  await expectSurfaceContrast(target, 'focus');
++});
++
+ // Synthetic failures protect the assertions themselves. These are geometry fixtures, never AT proof.
+ test.describe('AE geometry regression fixtures', () => {
+   test('rejects a clipped ring even when the complete target is inside the viewport', async ({ page }) => {
+@@ -1112,6 +1139,60 @@ test('reflow rejects unlabelled nested horizontal scrolling and stale or unjusti
+   expect((await inventoryTargets(page, [record])).inventory[0].failure).toContain('stale');
+ });
+ 
++test('repeatable palette dismissal preserves Tab through delayed entry and native return callbacks', async ({ page }, info) => {
++  // Delay only the completion reply of the real entry interop. Its focus behavior,
++  // component registration/disposal and the keyboard dismissal all remain genuine.
++  await page.route('**/fc-keyboard.js', async route => {
++    const response = await route.fetch();
++    const source = await response.text();
++    expect(source).toContain('export function focusElement(element)');
++    await route.fulfill({ response, body: source.replace('export function focusElement(element)', 'function originalPaletteEntry(element)') + `
++export function focusElement(element) {
++  const result = originalPaletteEntry(element);
++  if (element?.getAttribute?.('data-testid') !== 'fc-palette-search') return result;
++  return new Promise(resolve => { window.__aeReleasePaletteEntry = resolve; });
++}` });
++  });
++  await page.goto('/__frontcomposer/specimens/page-toolbar');
++  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
++  await page.getByTestId('fc-palette-trigger').click();
++  await expect(page.getByTestId('fc-palette-search')).toBeFocused();
++  await page.waitForFunction(() => typeof (window as typeof window & { __aeReleasePaletteEntry?: unknown }).__aeReleasePaletteEntry === 'function');
++  await page.evaluate(() => {
++    const host = document.querySelector('[data-testid="fc-palette-root"]')!.closest('fluent-dialog')!;
++    const callbacks: (() => void)[] = [];
++    const original = window.setTimeout;
++    window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
++      if (delay === 25 && typeof handler === 'function' && new Error().stack?.includes('Microsoft.FluentUI.AspNetCore.Components.lib.module.js')) {
++        callbacks.push(() => handler(...args)); return 0;
++      }
++      return original(handler, delay, ...args);
++    }) as typeof window.setTimeout;
++    (window as typeof window & { __aePaletteReturn?: unknown }).__aePaletteReturn = { host, callbacks, restore: () => { window.setTimeout = original; } };
++  });
++  await page.keyboard.press('Escape');
++  await expect(page.getByTestId('fc-palette-root')).toHaveCount(0);
++  await expect(page.getByTestId('fc-palette-trigger')).toBeFocused();
++  await page.keyboard.press('Tab');
++  const next = page.getByTestId('fc-settings-button');
++  await expect(next).toBeFocused();
++  const proof = await page.evaluate(() => {
++    const w = window as typeof window & {
++      __aeReleasePaletteEntry: () => void;
++      __aePaletteReturn: { host: Element & { previousActiveElement?: Element | null }; callbacks: (() => void)[]; restore: () => void };
++    };
++    w.__aeReleasePaletteEntry();
++    w.__aePaletteReturn.restore();
++    const proof = { queued: w.__aePaletteReturn.callbacks.length, cleared: w.__aePaletteReturn.host.previousActiveElement === null };
++    for (const callback of w.__aePaletteReturn.callbacks) callback();
++    return proof;
++  });
++  await info.attach('palette-delayed-return', { body: JSON.stringify(proof), contentType: 'application/json' });
++  expect(proof.queued).toBeGreaterThan(0);
++  await expect(next).toBeFocused();
++  expect(proof.cleared).toBe(true);
++});
++
+ test('R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab', async ({ page }) => {
+   await page.goto('/counter');
+   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+@@ -1134,9 +1215,6 @@ test('R15 owned Settings return cancels the actual Fluent delayed return after a
+   await page.keyboard.press('Tab');
+   await page.keyboard.press('Tab');
+   await page.evaluate(async () => {
+-    const path = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+-    const focus = await import(path) as { containDialogFocus: (testId: string) => boolean };
+-    if (!focus.containDialogFocus('fc-settings-dialog')) throw new Error('palette containment did not attach');
+     const host = document.querySelector<HTMLElement>('[data-testid="fc-settings-dialog"]')!.closest('fluent-dialog')!;
+     const w = window as typeof window & { __aeVendorReturn?: { host: Element & { previousActiveElement?: Element | null }; callbacks: (() => void)[]; restore: () => void } };
+     const callbacks: (() => void)[] = [];
+@@ -1193,6 +1271,8 @@ test('reused owned dialog dismissal resets only its current return and preserves
+       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+       document.querySelector<HTMLElement>('[data-testid="fc-settings-button"]')!.focus();
+       if (!reservation.watchFocus || !reservation.moved || !intent.watchFocus || !intent.moved) throw new Error('later external input was discarded');
++      host.shadowRoot?.querySelector('dialog')?.dispatchEvent(new Event('close'));
++      if (!reservation.watchFocus || !reservation.moved || !intent.watchFocus || !intent.moved) throw new Error('duplicate native close discarded later external input');
+     }
+     delete w.__fcModalReservation;
+     delete w.__fcOverlayOpenIntent;

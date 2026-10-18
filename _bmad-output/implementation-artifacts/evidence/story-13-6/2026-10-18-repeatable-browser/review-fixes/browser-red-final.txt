@@ -1,0 +1,314 @@
+
+Running 9 tests using 3 workers
+
+(node:88241) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:88240) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:88242) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 [chromium] › specs/responsive-accessibility.spec.ts:91:1 › review native-plane circular corner proof rejects supported bevel paint (328ms)
+  ✘  1 [chromium] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom (333ms)
+  ✘  2 [chromium] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom (329ms)
+(node:88751) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:88750) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:88749) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  -  6 [firefox] › specs/responsive-accessibility.spec.ts:91:1 › review native-plane circular corner proof rejects supported bevel paint
+  ✘  4 [firefox] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom (1.2s)
+(node:89627) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:89651) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  5 [firefox] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom (1.2s)
+(node:90098) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  7 [webkit] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom (548ms)
+  ✘  8 [webkit] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom (534ms)
+  ✘  9 [webkit] › specs/responsive-accessibility.spec.ts:91:1 › review native-plane circular corner proof rejects supported bevel paint (511ms)
+
+
+  1) [chromium] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom 
+
+    Error: expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: [{"background": [255, 255, 255, 1], "foreground": [0, 0, 0, 1], "minimum": 3, "node": "button", "owner": 0, "paint": "element outline", "ratio": 21}]
+
+      86 |   await target.evaluate(button => { button.style.left = '3px'; });
+      87 |   await page.locator(`#${zoomOwner}`).evaluate(owner => { (owner as HTMLElement).style.zoom = '2'; });
+    > 88 |   await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/native-plane.*zoom.*pixel evidence/i);
+         |                                                                 ^
+      89 | });
+      90 |
+      91 | test('review native-plane circular corner proof rejects supported bevel paint', async ({ page }, info) => {
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:88:65
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom 
+
+    Error: expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: [{"background": [255, 255, 255, 1], "foreground": [0, 0, 0, 1], "minimum": 3, "node": "button", "owner": 0, "paint": "element outline", "ratio": 21}]
+
+      86 |   await target.evaluate(button => { button.style.left = '3px'; });
+      87 |   await page.locator(`#${zoomOwner}`).evaluate(owner => { (owner as HTMLElement).style.zoom = '2'; });
+    > 88 |   await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/native-plane.*zoom.*pixel evidence/i);
+         |                                                                 ^
+      89 | });
+      90 |
+      91 | test('review native-plane circular corner proof rejects supported bevel paint', async ({ page }, info) => {
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:88:65
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › specs/responsive-accessibility.spec.ts:91:1 › review native-plane circular corner proof rejects supported bevel paint 
+
+    Error: expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: [{"background": [255, 255, 255, 1], "foreground": [0, 0, 0, 1], "minimum": 3, "node": "button", "owner": 0, "paint": "element outline", "ratio": 21}]
+
+       96 |   await page.locator('#plane').evaluate(plane => { (plane as HTMLElement).style.setProperty('corner-shape', 'bevel'); });
+       97 |   expect(await page.locator('#plane').evaluate(plane => getComputedStyle(plane).getPropertyValue('corner-shape'))).toMatch(/^(?:bevel|superellipse\(0\))$/u);
+    >  98 |   await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/Overlapping sibling background|Competing border\/shadow/);
+          |                                                                 ^
+       99 | });
+      100 |
+      101 | // Synthetic failures protect the assertions themselves. These are geometry fixtures, never AT proof.
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:98:65
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-7f4f0-jects-supported-bevel-paint-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-7f4f0-jects-supported-bevel-paint-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-7f4f0-jects-supported-bevel-paint-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-7f4f0-jects-supported-bevel-paint-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-7f4f0-jects-supported-bevel-paint-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [firefox] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom 
+
+    Error: expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: [{"background": [255, 255, 255, 1], "foreground": [0, 0, 0, 1], "minimum": 3, "node": "button", "owner": 0, "paint": "element outline", "ratio": 21}]
+
+      86 |   await target.evaluate(button => { button.style.left = '3px'; });
+      87 |   await page.locator(`#${zoomOwner}`).evaluate(owner => { (owner as HTMLElement).style.zoom = '2'; });
+    > 88 |   await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/native-plane.*zoom.*pixel evidence/i);
+         |                                                                 ^
+      89 | });
+      90 |
+      91 | test('review native-plane circular corner proof rejects supported bevel paint', async ({ page }, info) => {
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:88:65
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [firefox] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom 
+
+    Error: expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: [{"background": [255, 255, 255, 1], "foreground": [0, 0, 0, 1], "minimum": 3, "node": "button", "owner": 0, "paint": "element outline", "ratio": 21}]
+
+      86 |   await target.evaluate(button => { button.style.left = '3px'; });
+      87 |   await page.locator(`#${zoomOwner}`).evaluate(owner => { (owner as HTMLElement).style.zoom = '2'; });
+    > 88 |   await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/native-plane.*zoom.*pixel evidence/i);
+         |                                                                 ^
+      89 | });
+      90 |
+      91 | test('review native-plane circular corner proof rejects supported bevel paint', async ({ page }, info) => {
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:88:65
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [webkit] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom 
+
+    Error: expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: [{"background": [255, 255, 255, 1], "foreground": [0, 0, 0, 1], "minimum": 3, "node": "button", "owner": 0, "paint": "element outline", "ratio": 21}]
+
+      86 |   await target.evaluate(button => { button.style.left = '3px'; });
+      87 |   await page.locator(`#${zoomOwner}`).evaluate(owner => { (owner as HTMLElement).style.zoom = '2'; });
+    > 88 |   await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/native-plane.*zoom.*pixel evidence/i);
+         |                                                                 ^
+      89 | });
+      90 |
+      91 | test('review native-plane circular corner proof rejects supported bevel paint', async ({ page }, info) => {
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:88:65
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-1d5fb-roof-rejects-plane-CSS-zoom-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [webkit] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom 
+
+    Error: expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: [{"background": [255, 255, 255, 1], "foreground": [0, 0, 0, 1], "minimum": 3, "node": "button", "owner": 0, "paint": "element outline", "ratio": 21}]
+
+      86 |   await target.evaluate(button => { button.style.left = '3px'; });
+      87 |   await page.locator(`#${zoomOwner}`).evaluate(owner => { (owner as HTMLElement).style.zoom = '2'; });
+    > 88 |   await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/native-plane.*zoom.*pixel evidence/i);
+         |                                                                 ^
+      89 | });
+      90 |
+      91 | test('review native-plane circular corner proof rejects supported bevel paint', async ({ page }, info) => {
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:88:65
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-30cdf-proof-rejects-host-CSS-zoom-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [webkit] › specs/responsive-accessibility.spec.ts:91:1 › review native-plane circular corner proof rejects supported bevel paint 
+
+    Error: expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: [{"background": [255, 255, 255, 1], "foreground": [0, 0, 0, 1], "minimum": 3, "node": "button", "owner": 0, "paint": "element outline", "ratio": 21}]
+
+       96 |   await page.locator('#plane').evaluate(plane => { (plane as HTMLElement).style.setProperty('corner-shape', 'bevel'); });
+       97 |   expect(await page.locator('#plane').evaluate(plane => getComputedStyle(plane).getPropertyValue('corner-shape'))).toMatch(/^(?:bevel|superellipse\(0\))$/u);
+    >  98 |   await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/Overlapping sibling background|Competing border\/shadow/);
+          |                                                                 ^
+       99 | });
+      100 |
+      101 | // Synthetic failures protect the assertions themselves. These are geometry fixtures, never AT proof.
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:98:65
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-7f4f0-jects-supported-bevel-paint-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-7f4f0-jects-supported-bevel-paint-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-7f4f0-jects-supported-bevel-paint-webkit/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-7f4f0-jects-supported-bevel-paint-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/story-13-6-repeatable-review-native-red-final/results/responsive-accessibility-r-7f4f0-jects-supported-bevel-paint-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8 failed
+    [chromium] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom 
+    [chromium] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom 
+    [chromium] › specs/responsive-accessibility.spec.ts:91:1 › review native-plane circular corner proof rejects supported bevel paint 
+    [firefox] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom 
+    [firefox] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom 
+    [webkit] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects plane CSS zoom 
+    [webkit] › specs/responsive-accessibility.spec.ts:84:44 › review native-plane corner proof rejects host CSS zoom 
+    [webkit] › specs/responsive-accessibility.spec.ts:91:1 › review native-plane circular corner proof rejects supported bevel paint 
+  1 skipped

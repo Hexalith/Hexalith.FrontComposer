@@ -10482,3 +10482,11 @@ Review follow-up for the PNG-integrity resolution adds a separate 33,554,432-byt
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
   summary: Verify whether row-metric resize observations retain detached virtual-window descendants (unverified medium).
   evidence: observeContent registers each materialized descendant without explicit unobserve until disposal; a pinned-engine detached-node/heap and callback trace across repeated windows is needed to establish material retention or delivery cost. No measured leak is claimed.
+
+- source_spec: `spec-13-6-make-browser-accessibility-verification-repeatable.md`
+  summary: Verify delayed Settings entry cannot leave Fluent focus restoration active before containment registration (unverified medium, pre-existing).
+  evidence: Settings entry-before-containment order is unchanged; the normal real journey passes. Settle using the actual Settings component with delayed entry completion, native Escape, operator Tab and vendor return callbacks.
+
+- source_spec: `spec-13-6-make-browser-accessibility-verification-repeatable.md`
+  summary: Verify owned dialog return remains correct when Fluent initializes its native shadow dialog after containment registration (unverified medium).
+  evidence: Fluent schedules native initialization from connectedCallback, while containment may cache a host before native cancel/close listeners attach. Establish observable operator harm with delayed real initialization after the new permanent vendor-slot guard.

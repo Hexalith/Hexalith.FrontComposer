@@ -1,0 +1,18 @@
+{
+  "tests/e2e/helpers/responsive-accessibility.ts": {
+    "retained": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/before/responsive-accessibility.ts",
+    "sha256": "f856dfeb98a65b1ae069e7e0c6f4b28f73b4caa9649e13bbe162cf389f9fcf1c"
+  },
+  "tests/e2e/specs/responsive-accessibility.spec.ts": {
+    "retained": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/before/responsive-accessibility.spec.ts",
+    "sha256": "a8459a3c10b192b654e30f92cc03a2da532ef9bf7bd655fd80da678baa5f4d49"
+  },
+  "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/run-browser-lanes.mjs": {
+    "retained": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/before/run-browser-lanes.mjs",
+    "sha256": "c5a68c548bd7a3c0bb4d9b449cad7919c3c4e92c0d55d3a2074a01d13bb96621"
+  },
+  "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/audit-relocation.mjs": {
+    "retained": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/review-fixes/before/audit-relocation.mjs",
+    "sha256": "b53263a5355c68905c7816e7b1bd8bf64ab2c34c8dfcd93aa68846cd9c8f82ec"
+  }
+}

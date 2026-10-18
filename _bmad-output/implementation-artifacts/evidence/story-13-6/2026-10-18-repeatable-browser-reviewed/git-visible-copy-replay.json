@@ -1,0 +1,107 @@
+{
+  "structuralIntegrity": "passed",
+  "attachmentRelocationAndOwnership": "passed; no additional errors beyond the identical original visual outcomes",
+  "completeStateRowsPerEngine": 116,
+  "supportLogsVerified": 6,
+  "runtimeInputsVerified": 3,
+  "completeLaneIdentitiesVerified": [
+    "chromium",
+    "firefox",
+    "webkit"
+  ],
+  "rawReplayExitCode": 1,
+  "fullArtifactGate": "failed in every engine; original visual-baseline failures preserved unchanged",
+  "overallAccessibilityClassification": "blocked",
+  "replay": {
+    "restored": "/tmp/story-13-6-repeatable-replay-irm7lL",
+    "summary": [
+      {
+        "lane": "chromium",
+        "completeGate": true,
+        "filesVerified": 789,
+        "attachmentPathsVerified": 275,
+        "outcomesUnchanged": true,
+        "stats": {
+          "startTime": "2026-10-18T13:04:20.848Z",
+          "duration": 155229.51299999998,
+          "expected": 252,
+          "skipped": 0,
+          "unexpected": 6,
+          "flaky": 0
+        },
+        "requiredStates": 116,
+        "errors": [
+          "Ambiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-9cabe720f1343c06fc8e\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-ae0839733151fc62c9ce\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-43aabef50a3f03fd543d\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-61bd43aca1e6825c6a5f\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-308f3b76c4bd56eb7690\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-f5448d48510807337e8c\"]"
+        ],
+        "artifactValidationExitCode": 1,
+        "artifactValidationOutput": "Ambiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-9cabe720f1343c06fc8e\"]\nAmbiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-ae0839733151fc62c9ce\"]\nAmbiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-43aabef50a3f03fd543d\"]\nAmbiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-61bd43aca1e6825c6a5f\"]\nAmbiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-308f3b76c4bd56eb7690\"]\nAmbiguous or unsuccessful Playwright outcome: [\"chromium\",\"1d4b08b56195ecf56b6b-f5448d48510807337e8c\"]\n",
+        "junitAttachmentMarkersVerified": 275,
+        "junitOutcomesUnchanged": true,
+        "htmlFilesVerified": 236
+      },
+      {
+        "lane": "firefox",
+        "completeGate": true,
+        "filesVerified": 791,
+        "attachmentPathsVerified": 275,
+        "outcomesUnchanged": true,
+        "stats": {
+          "startTime": "2026-10-18T13:06:57.302Z",
+          "duration": 202603.767,
+          "expected": 250,
+          "skipped": 2,
+          "unexpected": 6,
+          "flaky": 0
+        },
+        "requiredStates": 116,
+        "errors": [
+          "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-4733f3821f9630840cc4\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-16326aa150749ec2b8ed\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-12c004cb1a4802243759\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-2cc8fc483960b6273aa3\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-0671136a2c1d6edeee10\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-2c58b1a5e131b2e07a8e\"]"
+        ],
+        "artifactValidationExitCode": 1,
+        "artifactValidationOutput": "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-4733f3821f9630840cc4\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-16326aa150749ec2b8ed\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-12c004cb1a4802243759\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-2cc8fc483960b6273aa3\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-0671136a2c1d6edeee10\"]\nAmbiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-2c58b1a5e131b2e07a8e\"]\n",
+        "junitAttachmentMarkersVerified": 275,
+        "junitOutcomesUnchanged": true,
+        "htmlFilesVerified": 238
+      },
+      {
+        "lane": "webkit",
+        "completeGate": true,
+        "filesVerified": 499,
+        "attachmentPathsVerified": 159,
+        "outcomesUnchanged": true,
+        "stats": {
+          "startTime": "2026-10-18T13:10:21.166Z",
+          "duration": 147284.484,
+          "expected": 250,
+          "skipped": 2,
+          "unexpected": 6,
+          "flaky": 0
+        },
+        "requiredStates": 116,
+        "errors": [
+          "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-897e5447993ba66b3d7c\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-0340360035b3ea941177\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-3f927a9e71eb9dad1f80\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-0e895918642780866f83\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-85939b7c29788bfba246\"]",
+          "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-196b619fca8d446598e1\"]"
+        ],
+        "artifactValidationExitCode": 1,
+        "artifactValidationOutput": "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-897e5447993ba66b3d7c\"]\nAmbiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-0340360035b3ea941177\"]\nAmbiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-3f927a9e71eb9dad1f80\"]\nAmbiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-0e895918642780866f83\"]\nAmbiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-85939b7c29788bfba246\"]\nAmbiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-196b619fca8d446598e1\"]\n",
+        "junitAttachmentMarkersVerified": 159,
+        "junitOutcomesUnchanged": true,
+        "htmlFilesVerified": 178
+      }
+    ]
+  }
+}

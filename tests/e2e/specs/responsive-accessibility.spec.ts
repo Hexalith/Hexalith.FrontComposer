@@ -42,6 +42,62 @@ test('resumed review transparent sibling glyphs cannot certify the warning they 
   expect((await measureSurfaceContrast(page.locator('#warning'))).every(sample => sample.ratio === 21)).toBe(true);
 });
 
+test('repeatable rounded native planes shield only contained focus paint', async ({ page }) => {
+  await page.setContent('<style>body{background:white}#under{position:fixed;inset:0;background:black;border:3px solid black;box-shadow:0 0 20px black}button{position:absolute;left:3px;top:60px;width:100px;height:32px;background:white;color:black;border:0;outline:none}button:focus{outline:2px solid black}</style><div id="under"></div><div id="host"><button>Action</button></div>');
+  await page.locator('#host').evaluate(host => {
+    host.attachShadow({ mode: 'open' }).innerHTML = '<div id="plane" popover="manual" style="position:fixed;left:40px;top:40px;width:160px;height:160px;margin:0;padding:0;border:0;border-radius:12px;background:white"><slot></slot></div>';
+    (host.shadowRoot!.querySelector('#plane') as HTMLElement).showPopover();
+  });
+  const target = page.getByRole('button');
+  await target.focus();
+  await expectSurfaceContrast(target, 'focus');
+  await page.locator('#plane').evaluate(plane => { (plane as HTMLElement).style.background = 'transparent'; });
+  await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/Overlapping sibling background|Competing border\/shadow/);
+  await page.locator('#plane').evaluate(plane => { (plane as HTMLElement).style.background = 'white'; });
+  await target.evaluate(button => { button.style.left = '-1px'; });
+  await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/Overlapping sibling background|Competing border\/shadow/);
+  await target.evaluate(button => { button.style.left = '3px'; button.style.top = '3px'; });
+  await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/Overlapping sibling background|Competing border\/shadow/);
+  await target.evaluate(button => { button.style.top = '60px'; });
+  await page.evaluate(() => {
+    const cover = document.createElement('div'); cover.id = 'cover'; cover.setAttribute('popover', 'manual');
+    cover.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;margin:0;border:0;padding:0;background:black';
+    document.body.append(cover); cover.showPopover();
+  });
+  await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/Overlapping sibling background|Competing border\/shadow/);
+  await page.locator('#cover').evaluate(cover => { (cover as HTMLElement).hidePopover(); cover.remove(); });
+  await expectSurfaceContrast(target, 'focus');
+});
+
+async function roundedPlaneCornerFixture(page: import('@playwright/test').Page) {
+  await page.setContent('<style>body{background:white}#under{position:fixed;inset:0;background:black}button{position:absolute;left:6px;top:6px;width:20px;height:20px;background:white;color:black;border:0;outline:none}button:focus{outline:2px solid black}</style><div id="under"></div><div id="host"><button>Action</button></div>');
+  await page.locator('#host').evaluate(host => {
+    host.attachShadow({ mode: 'open' }).innerHTML = '<div id="plane" popover="manual" style="position:fixed;left:40px;top:40px;width:160px;height:160px;margin:0;padding:0;border:0;border-radius:12px;background:white"><slot></slot></div>';
+    (host.shadowRoot!.querySelector('#plane') as HTMLElement).showPopover();
+  });
+  const target = page.getByRole('button');
+  await target.focus();
+  await expectSurfaceContrast(target, 'focus');
+  return target;
+}
+
+for (const zoomOwner of ['plane', 'host']) test(`review native-plane corner proof rejects ${zoomOwner} CSS zoom`, async ({ page }) => {
+  const target = await roundedPlaneCornerFixture(page);
+  await target.evaluate(button => { button.style.left = '3px'; });
+  await page.locator(`#${zoomOwner}`).evaluate(owner => { (owner as HTMLElement).style.zoom = '2'; });
+  await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/native-plane.*zoom.*pixel evidence/i);
+});
+
+test('review native-plane circular corner proof rejects supported bevel paint', async ({ page }, info) => {
+  const supported = await page.evaluate(() => CSS.supports('corner-shape', 'bevel'));
+  await info.attach('corner-shape-capability', { body: JSON.stringify({ engine: info.project.name, supported }), contentType: 'application/json' });
+  test.skip(!supported, 'This engine cannot paint corner-shape:bevel; circular positive remains independently covered.');
+  const target = await roundedPlaneCornerFixture(page);
+  await page.locator('#plane').evaluate(plane => { (plane as HTMLElement).style.setProperty('corner-shape', 'bevel'); });
+  expect(await page.locator('#plane').evaluate(plane => getComputedStyle(plane).getPropertyValue('corner-shape'))).toMatch(/^(?:bevel|superellipse\(0\))$/u);
+  await expect(measureSurfaceContrast(target, 'focus')).rejects.toThrow(/Overlapping sibling background|Competing border\/shadow/);
+});
+
 // Synthetic failures protect the assertions themselves. These are geometry fixtures, never AT proof.
 test.describe('AE geometry regression fixtures', () => {
   test('rejects a clipped ring even when the complete target is inside the viewport', async ({ page }) => {
@@ -1112,6 +1168,60 @@ test('reflow rejects unlabelled nested horizontal scrolling and stale or unjusti
   expect((await inventoryTargets(page, [record])).inventory[0].failure).toContain('stale');
 });
 
+test('repeatable palette dismissal preserves Tab through delayed entry and native return callbacks', async ({ page }, info) => {
+  // Delay only the completion reply of the real entry interop. Its focus behavior,
+  // component registration/disposal and the keyboard dismissal all remain genuine.
+  await page.route('**/fc-keyboard.js', async route => {
+    const response = await route.fetch();
+    const source = await response.text();
+    expect(source).toContain('export function focusElement(element)');
+    await route.fulfill({ response, body: source.replace('export function focusElement(element)', 'function originalPaletteEntry(element)') + `
+export function focusElement(element) {
+  const result = originalPaletteEntry(element);
+  if (element?.getAttribute?.('data-testid') !== 'fc-palette-search') return result;
+  return new Promise(resolve => { window.__aeReleasePaletteEntry = resolve; });
+}` });
+  });
+  await page.goto('/__frontcomposer/specimens/page-toolbar');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.getByTestId('fc-palette-trigger').click();
+  await expect(page.getByTestId('fc-palette-search')).toBeFocused();
+  await page.waitForFunction(() => typeof (window as typeof window & { __aeReleasePaletteEntry?: unknown }).__aeReleasePaletteEntry === 'function');
+  await page.evaluate(() => {
+    const host = document.querySelector('[data-testid="fc-palette-root"]')!.closest('fluent-dialog')!;
+    const callbacks: (() => void)[] = [];
+    const original = window.setTimeout;
+    window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
+      if (delay === 25 && typeof handler === 'function' && new Error().stack?.includes('Microsoft.FluentUI.AspNetCore.Components.lib.module.js')) {
+        callbacks.push(() => handler(...args)); return 0;
+      }
+      return original(handler, delay, ...args);
+    }) as typeof window.setTimeout;
+    (window as typeof window & { __aePaletteReturn?: unknown }).__aePaletteReturn = { host, callbacks, restore: () => { window.setTimeout = original; } };
+  });
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('fc-palette-root')).toHaveCount(0);
+  await expect(page.getByTestId('fc-palette-trigger')).toBeFocused();
+  await page.keyboard.press('Tab');
+  const next = page.getByTestId('fc-settings-button');
+  await expect(next).toBeFocused();
+  const proof = await page.evaluate(() => {
+    const w = window as typeof window & {
+      __aeReleasePaletteEntry: () => void;
+      __aePaletteReturn: { host: Element & { previousActiveElement?: Element | null }; callbacks: (() => void)[]; restore: () => void };
+    };
+    w.__aeReleasePaletteEntry();
+    w.__aePaletteReturn.restore();
+    const proof = { queued: w.__aePaletteReturn.callbacks.length, cleared: w.__aePaletteReturn.host.previousActiveElement === null };
+    for (const callback of w.__aePaletteReturn.callbacks) callback();
+    return proof;
+  });
+  await info.attach('palette-delayed-return', { body: JSON.stringify(proof), contentType: 'application/json' });
+  expect(proof.queued).toBeGreaterThan(0);
+  await expect(next).toBeFocused();
+  expect(proof.cleared).toBe(true);
+});
+
 test('R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab', async ({ page }) => {
   await page.goto('/counter');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
@@ -1134,9 +1244,6 @@ test('R15 owned Settings return cancels the actual Fluent delayed return after a
   await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
   await page.evaluate(async () => {
-    const path = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
-    const focus = await import(path) as { containDialogFocus: (testId: string) => boolean };
-    if (!focus.containDialogFocus('fc-settings-dialog')) throw new Error('palette containment did not attach');
     const host = document.querySelector<HTMLElement>('[data-testid="fc-settings-dialog"]')!.closest('fluent-dialog')!;
     const w = window as typeof window & { __aeVendorReturn?: { host: Element & { previousActiveElement?: Element | null }; callbacks: (() => void)[]; restore: () => void } };
     const callbacks: (() => void)[] = [];
@@ -1193,6 +1300,9 @@ test('reused owned dialog dismissal resets only its current return and preserves
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
       document.querySelector<HTMLElement>('[data-testid="fc-settings-button"]')!.focus();
       if (!reservation.watchFocus || !reservation.moved || !intent.watchFocus || !intent.moved) throw new Error('later external input was discarded');
+      host.dispatchEvent(new CustomEvent('beforetoggle', { detail: { newState: 'closed' } }));
+      host.shadowRoot?.querySelector('dialog')?.dispatchEvent(new Event('close'));
+      if (!reservation.watchFocus || !reservation.moved || !intent.watchFocus || !intent.moved) throw new Error('duplicate native close discarded later external input');
     }
     delete w.__fcModalReservation;
     delete w.__fcOverlayOpenIntent;

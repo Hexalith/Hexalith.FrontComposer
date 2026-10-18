@@ -1,0 +1,18 @@
+{
+  "value": "fc-palette-trigger",
+  "callbacks": 1,
+  "diag": [
+    {
+      "phase": "register",
+      "native": true,
+      "id": "f7c199a5"
+    },
+    {
+      "phase": "entry",
+      "value": "fc-palette-trigger",
+      "open": true
+    }
+  ],
+  "after": "fc-palette-trigger",
+  "before": "fc-settings-button"
+}

@@ -1,0 +1,11 @@
+chromium: 790 files, 275 attachment paths
+firefox: 791 files, 275 attachment paths
+webkit: 499 files, 159 attachment paths
+initial-red: 145 files, 42 attachment paths
+causal-red: 46 files, 12 attachment paths
+paint-green: 67 files, 20 attachment paths
+palette-red: 46 files, 12 attachment paths
+causal-green: 198 files, 59 attachment paths
+final-causal-green: 198 files, 59 attachment paths
+owned-slot-green: 172 files, 55 attachment paths
+interrupted-full-chromium: 4358 files, 0 attachment paths
