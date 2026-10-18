@@ -20,8 +20,6 @@ internal sealed class RendererThreadAnnouncementCoordinator(ISurfaceAnnouncement
 
     public string Current(string surface) => inner.Current(surface);
 
-    public bool IsCurrent(string surface, string group, string identity) => inner.IsCurrent(surface, group, identity);
-
     public IDisposable Subscribe(string surface, Action<string> handler) => inner.Subscribe(surface, handler);
 
     public IDisposable SubscribeWithReplay(string surface, Action<string, long> handler) => inner.SubscribeWithReplay(surface, handler);
