@@ -128,8 +128,20 @@ export function validateStateEvidence(files, { unsupportedForcedColorsCapability
         if (!Array.isArray(evidence.systemIcon) || evidence.systemIcon.length !== evidence.icon?.length || evidence.systemIcon.some(sample => !Number.isFinite(sample.ratio) || sample.ratio < 3)) errors.push(`Invalid system icon evidence: ${file}`);
         if (!Array.isArray(evidence.systemBoundaries) || evidence.systemBoundaries.length !== evidence.boundaries?.length || evidence.systemBoundaries.some(group => !validEdges(group))) errors.push(`Invalid system boundary evidence: ${file}`);
         if (!Array.isArray(evidence.systemCues) || evidence.systemCues.length !== evidence.cues?.length || evidence.systemCues.some(group => !validEdges(group))) errors.push(`Invalid system state cue: ${file}`);
-        const snapshot = files.find(path => resolve(path) === resolve(join(dirname(file), evidence.systemSnapshot ?? '')));
-        if (evidence.systemSnapshot !== `system-state-${state}.png` || !snapshot || statSync(snapshot).size === 0) errors.push(`Missing system-state snapshot: ${file}`);
+        const snapshotName = `system-state-${state}.png`;
+        const snapshot = evidence.systemSnapshot === snapshotName
+          ? files.find(path => resolve(path) === resolve(join(dirname(file), snapshotName))) : undefined;
+        const snapshotAttachments = authoritative.get(JSON.stringify([evidence.engine, evidence.testId]))?.attachments
+          .filter(attachment => attachment.name === `system-state-${state}` && attachment.contentType === 'image/png') ?? [];
+        try {
+          if (!snapshot || statSync(snapshot).size === 0) {
+            errors.push(`Missing system-state snapshot: ${file}; expected nonempty ${snapshotName}`);
+          } else {
+            if (snapshotAttachments.length !== 1) throw new Error(`Expected one image/png attachment named system-state-${state}; found ${snapshotAttachments.length}`);
+            if (!snapshotAttachments[0].path) throw new Error(`Attachment system-state-${state} has no file path`);
+            if (!readFileSync(snapshotAttachments[0].path).equals(readFileSync(snapshot))) throw new Error(`Image bytes differ: ${snapshot} and ${snapshotAttachments[0].path}`);
+          }
+        } catch (error) { errors.push(`System-state snapshot does not match authoritative attempt attachment: ${file}; ${error instanceof Error ? error.message : String(error)}`); }
       }
     }
   }

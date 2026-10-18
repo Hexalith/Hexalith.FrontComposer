@@ -10467,3 +10467,8 @@ The prior final-gate BH-09 entry's statement that no tracked threshold exists is
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-restore-generated-field-description-layout.md`
   summary: Reduce duplicate Playwright HTML/results attachment retention without losing failed evidence or weakening the existing per-root size gate.
   evidence: Blind review F07 confirmed the pre-existing reporter pipeline duplicates 77,599,141 bytes across 126 attachments. The retained field-layout browser roots occupy 78,296,904 and 79,731,410 bytes, each over 52,428,800. Their failed proof remains intact; the final focused follow-up is small but cannot replace the broader gate. A bounded storage/reporting design and rerun are required before this size gate can close.
+
+
+## Partial resolution evidence: Story 13.6 system-snapshot authority (2026-10-18)
+
+The prior BH12 entry's authoritative-attempt portion is resolved by `spec-13-6-bind-state-screenshots-to-playwright-attempts.md`. State PNGs now have a unique path-backed final-attempt attachment and matching nonempty bytes; 18 Node tests cover substitution, state/engine/test/retry ownership, empty/unreadable files and WebKit without images. Candidate-bound final replay accepts all 116 rows per engine, using the separately attributed WebKit capability report. See `evidence/story-13-6/2026-10-18-attempt-ownership/verification.json` and the current result. PNG decoding/integrity beyond byte ownership remains open. The older oversized packets and separate duplicate-retention follow-up remain failed/open; current bounded roots fitting 50 MiB do not close them.

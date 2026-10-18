@@ -1,0 +1,135 @@
+diff --git a/.gitattributes b/.gitattributes
+index 2bc63061..f678d8af 100644
+--- a/.gitattributes
++++ b/.gitattributes
+@@ -36,3 +36,5 @@ _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure
+ _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/** -text
+ # Story 13.6 field-layout proof retains exact browser and verification bytes.
+ _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/** -text
++# Story 13.6 screenshot-attempt proof retains exact reports and attachment bytes.
++_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-attempt-ownership/** -text
+diff --git a/tests/e2e/scripts/a11y-state-evidence.mjs b/tests/e2e/scripts/a11y-state-evidence.mjs
+index fd51613d..722398d2 100644
+--- a/tests/e2e/scripts/a11y-state-evidence.mjs
++++ b/tests/e2e/scripts/a11y-state-evidence.mjs
+@@ -129,7 +129,16 @@ export function validateStateEvidence(files, { unsupportedForcedColorsCapability
+         if (!Array.isArray(evidence.systemBoundaries) || evidence.systemBoundaries.length !== evidence.boundaries?.length || evidence.systemBoundaries.some(group => !validEdges(group))) errors.push(`Invalid system boundary evidence: ${file}`);
+         if (!Array.isArray(evidence.systemCues) || evidence.systemCues.length !== evidence.cues?.length || evidence.systemCues.some(group => !validEdges(group))) errors.push(`Invalid system state cue: ${file}`);
+         const snapshot = files.find(path => resolve(path) === resolve(join(dirname(file), evidence.systemSnapshot ?? '')));
+-        if (evidence.systemSnapshot !== `system-state-${state}.png` || !snapshot || statSync(snapshot).size === 0) errors.push(`Missing system-state snapshot: ${file}`);
++        const snapshotAttachments = authoritative.get(JSON.stringify([evidence.engine, evidence.testId]))?.attachments
++          .filter(attachment => attachment.name === `system-state-${state}` && attachment.contentType === 'image/png') ?? [];
++        try {
++          if (evidence.systemSnapshot !== `system-state-${state}.png` || !snapshot || statSync(snapshot).size === 0) {
++            errors.push(`Missing system-state snapshot: ${file}`);
++          } else if (snapshotAttachments.length !== 1 || !snapshotAttachments[0].path
++            || !readFileSync(snapshotAttachments[0].path).equals(readFileSync(snapshot))) {
++            errors.push(`System-state snapshot does not match authoritative attempt attachment: ${file}`);
++          }
++        } catch { errors.push(`System-state snapshot does not match authoritative attempt attachment: ${file}`); }
+       }
+     }
+   }
+diff --git a/tests/e2e/scripts/a11y-state-evidence.test.mjs b/tests/e2e/scripts/a11y-state-evidence.test.mjs
+index 589c9577..aa704f73 100644
+--- a/tests/e2e/scripts/a11y-state-evidence.test.mjs
++++ b/tests/e2e/scripts/a11y-state-evidence.test.mjs
+@@ -8,18 +8,24 @@ import { spawnSync } from 'node:child_process';
+ import specimenManifest from '../specimens/frontcomposer-specimen-manifest.json' with { type: 'json' };
+ import { requiredStates, validateStateEvidence } from './a11y-state-evidence.mjs';
+ 
++// A real 1x1 PNG; image decoding is outside this attempt-ownership check.
++const fixturePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWMAgv8AAQQBAP8H9UQAAAAASUVORK5CYII=', 'base64');
++
+ function matrix(run) {
+   const root = mkdtempSync(join(tmpdir(), 'ae-evidence-test-'));
+   try {
+-    const files = [], snapshots = [];
++    const files = [], snapshots = [], imageAttachments = [];
++    const attached = join(root, 'attachments'); mkdirSync(attached);
+     for (const state of requiredStates) {
+       const sample = { owner: 0, paint: 'Fixture text', ratio: 7, minimum: 4.5 }, edge = { ...sample, minimum: 3 };
+       const file = join(root, `ae-state-${state}.json`), snapshot = join(root, `system-state-${state}.png`);
+       writeFileSync(file, JSON.stringify({ testId: 'fixture-test', attempt: 0, engine: 'chromium', runId: 'fixture-run', state, viewport: { width: state.startsWith('rail-') ? 1600 : 320, height: 900 }, theme: state.endsWith('-dark') ? 'Dark' : 'Light', themePaint: { rgb: state.endsWith('-dark') ? [41,41,41] : [255,255,255] }, text: [sample], systemText: [sample], icon: [edge], systemIcon: [edge], targets: [{ target: '#fixture', width: 24, height: 24, box: { left: 0, top: 0, right: 24, bottom: 24 }, conforming: true, exception: null, failure: null }], boundaries: [[edge]], systemBoundaries: [[edge]], cues: [[edge]], systemCues: [[edge]], systemSnapshot: `system-state-${state}.png`, systemFocus: { mode: 'forced-colors', status: 'measured', target: 'BUTTON#fixture', requireIndicator: true, box: { left: 10, top: 10, right: 34, bottom: 34 }, failures: [] }, forcedColors: true, forcedColorsPaint: true, reducedMotion: true }));
+-      writeFileSync(snapshot, 'Fixture image identity'); files.push(file); snapshots.push(snapshot);
++      const imageAttachment = join(attached, `system-state-${state}.png`);
++      writeFileSync(snapshot, fixturePng); writeFileSync(imageAttachment, fixturePng);
++      files.push(file); snapshots.push(snapshot); imageAttachments.push(imageAttachment);
+     }
+-    const report = { config: { metadata: { a11yEvidenceRunId: 'fixture-run' } }, suites: [{ specs: [{ id: 'fixture-test', tests: ['chromium','firefox','webkit'].map(projectName => ({ projectName, expectedStatus: 'passed', status: 'expected', results: [{ retry: 0, status: 'passed', attachments: files.map((path, i) => ({ path, name: `state-${requiredStates[i]}`, contentType: 'application/json' })) }] })) }] }] };
+-    run({ report, root, files, snapshots, all: files.concat(snapshots), read: i => JSON.parse(readFileSync(files[i], 'utf8')), update: (i, patch) => writeFileSync(files[i], JSON.stringify({ ...JSON.parse(readFileSync(files[i], 'utf8')), ...patch })) });
++    const report = { config: { metadata: { a11yEvidenceRunId: 'fixture-run' } }, suites: [{ specs: [{ id: 'fixture-test', tests: ['chromium','firefox','webkit'].map(projectName => ({ projectName, expectedStatus: 'passed', status: 'expected', results: [{ retry: 0, status: 'passed', attachments: files.flatMap((path, i) => [{ path, name: `state-${requiredStates[i]}`, contentType: 'application/json' }, { path: imageAttachments[i], name: `system-state-${requiredStates[i]}`, contentType: 'image/png' }]) }] })) }] }] };
++    run({ report, root, files, snapshots, imageAttachments, all: files.concat(snapshots), read: i => JSON.parse(readFileSync(files[i], 'utf8')), update: (i, patch) => writeFileSync(files[i], JSON.stringify({ ...JSON.parse(readFileSync(files[i], 'utf8')), ...patch })) });
+   } finally { rmSync(root, { recursive: true, force: true }); }
+ }
+ 
+@@ -124,6 +130,52 @@ test('state payload must match the final successful attempt attachment', () => m
+   assert.match(validateStateEvidence(all, { report }).join('\n'), /authoritative attempt attachment/);
+ }));
+ 
++test('system screenshots require one readable image attachment from their authoritative attempt', () => matrix(({ report, all, imageAttachments, root }) => {
++  const attempt = report.suites[0].specs[0].tests[0].results[0];
++  const name = `system-state-${requiredStates[0]}`;
++  const original = attempt.attachments.find(attachment => attachment.name === name);
++  const attachments = attempt.attachments;
++  for (const replacements of [
++    [],
++    [original, { ...original }],
++    [{ ...original, contentType: 'application/octet-stream' }],
++    [{ ...original, path: undefined }],
++    [{ ...original, path: join(root, 'missing.png') }],
++    [{ ...original, path: root }],
++  ]) {
++    attempt.attachments = attachments.filter(attachment => attachment.name !== name).concat(replacements);
++    assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
++  }
++  attempt.attachments = attachments;
++  writeFileSync(imageAttachments[0], Buffer.concat([fixturePng, Buffer.from('substituted')]));
++  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
++  writeFileSync(imageAttachments[0], fixturePng);
++  assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: 'chromium' }), []);
++}));
++
++test('a changed or unreadable state-local screenshot cannot reuse its original report attachment', () => matrix(({ report, all, snapshots }) => {
++  writeFileSync(snapshots[0], Buffer.concat([fixturePng, Buffer.from('changed')]));
++  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
++  rmSync(snapshots[0]);
++  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
++  mkdirSync(snapshots[0]);
++  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
++}));
++
++test('a failed retry or different test cannot provide a successful attempts missing screenshot', () => matrix(({ report, all, files, update }) => {
++  const owner = report.suites[0].specs[0].tests[0];
++  const name = `system-state-${requiredStates[0]}`;
++  const attachments = owner.results[0].attachments;
++  const image = attachments.find(attachment => attachment.name === name);
++  owner.status = 'flaky';
++  owner.results = [{ retry: 0, status: 'failed', attachments }, { retry: 1, status: 'passed', attachments: attachments.filter(attachment => attachment.name !== name) }];
++  for (let i = 0; i < files.length; i++) update(i, { attempt: 1 });
++  report.suites[0].specs.push({ id: 'foreign-test', tests: [{ projectName: 'chromium', expectedStatus: 'passed', status: 'expected', results: [{ retry: 0, status: 'passed', attachments: [image] }] }] });
++  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
++  owner.results[1].attachments.push(image);
++  assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: 'chromium' }), []);
++}));
++
+ 
+ test('expected unrelated skips supply no state authority and cannot fill a skipped owner', () => matrix(({ report, all }) => {
+   report.suites[0].specs.push({ id: 'existing-platform-skip', tests: [{ projectName: 'chromium', expectedStatus: 'skipped', status: 'skipped', results: [{ retry: 0, status: 'skipped' }] }] });
+diff --git a/tests/e2e/specs/accessibility-state-matrix.spec.ts b/tests/e2e/specs/accessibility-state-matrix.spec.ts
+index 99e0e6f9..d3834b99 100644
+--- a/tests/e2e/specs/accessibility-state-matrix.spec.ts
++++ b/tests/e2e/specs/accessibility-state-matrix.spec.ts
+@@ -150,7 +150,11 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
+     : { mode: 'forced-colors', status: 'none', target: active });
+   if ('failures' in systemFocus) expect(systemFocus.failures, `Forced-color focused geometry: ${state} ${JSON.stringify(systemFocus)}`).toEqual([]);
+   const systemSnapshot = forcedColorsPaint ? `system-state-${state}.png` : null;
+-  if (systemSnapshot) await measureCurrentState(() => screenshotPreservingScroll(root, { path: info.outputPath(systemSnapshot) }));
++  if (systemSnapshot) {
++    const path = info.outputPath(systemSnapshot);
++    await measureCurrentState(() => screenshotPreservingScroll(root, { path }));
++    await info.attach(`system-state-${state}`, { path, contentType: 'image/png' });
++  }
+   await page.emulateMedia({ forcedColors: 'none' });
+   await settlePaint(page);
+   if (refreshTransientState) await refreshTransientState(true);

@@ -8,18 +8,29 @@ import { spawnSync } from 'node:child_process';
 import specimenManifest from '../specimens/frontcomposer-specimen-manifest.json' with { type: 'json' };
 import { requiredStates, validateStateEvidence } from './a11y-state-evidence.mjs';
 
+// A real 1x1 PNG; image decoding is outside this attempt-ownership check.
+const fixturePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWMAgv8AAQQBAP8H9UQAAAAASUVORK5CYII=', 'base64');
+const alternatePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWP4DwQACfsD/c8LaHIAAAAASUVORK5CYII=', 'base64');
+
 function matrix(run) {
   const root = mkdtempSync(join(tmpdir(), 'ae-evidence-test-'));
   try {
     const files = [], snapshots = [];
-    for (const state of requiredStates) {
+    const attached = join(root, 'attachments'); mkdirSync(attached);
+    for (const [index, state] of requiredStates.entries()) {
       const sample = { owner: 0, paint: 'Fixture text', ratio: 7, minimum: 4.5 }, edge = { ...sample, minimum: 3 };
       const file = join(root, `ae-state-${state}.json`), snapshot = join(root, `system-state-${state}.png`);
       writeFileSync(file, JSON.stringify({ testId: 'fixture-test', attempt: 0, engine: 'chromium', runId: 'fixture-run', state, viewport: { width: state.startsWith('rail-') ? 1600 : 320, height: 900 }, theme: state.endsWith('-dark') ? 'Dark' : 'Light', themePaint: { rgb: state.endsWith('-dark') ? [41,41,41] : [255,255,255] }, text: [sample], systemText: [sample], icon: [edge], systemIcon: [edge], targets: [{ target: '#fixture', width: 24, height: 24, box: { left: 0, top: 0, right: 24, bottom: 24 }, conforming: true, exception: null, failure: null }], boundaries: [[edge]], systemBoundaries: [[edge]], cues: [[edge]], systemCues: [[edge]], systemSnapshot: `system-state-${state}.png`, systemFocus: { mode: 'forced-colors', status: 'measured', target: 'BUTTON#fixture', requireIndicator: true, box: { left: 10, top: 10, right: 34, bottom: 34 }, failures: [] }, forcedColors: true, forcedColorsPaint: true, reducedMotion: true }));
-      writeFileSync(snapshot, 'Fixture image identity'); files.push(file); snapshots.push(snapshot);
+      writeFileSync(snapshot, index % 2 ? alternatePng : fixturePng);
+      files.push(file); snapshots.push(snapshot);
     }
-    const report = { config: { metadata: { a11yEvidenceRunId: 'fixture-run' } }, suites: [{ specs: [{ id: 'fixture-test', tests: ['chromium','firefox','webkit'].map(projectName => ({ projectName, expectedStatus: 'passed', status: 'expected', results: [{ retry: 0, status: 'passed', attachments: files.map((path, i) => ({ path, name: `state-${requiredStates[i]}`, contentType: 'application/json' })) }] })) }] }] };
-    run({ report, root, files, snapshots, all: files.concat(snapshots), read: i => JSON.parse(readFileSync(files[i], 'utf8')), update: (i, patch) => writeFileSync(files[i], JSON.stringify({ ...JSON.parse(readFileSync(files[i], 'utf8')), ...patch })) });
+    const engineImages = Object.fromEntries(['chromium', 'firefox', 'webkit'].map(engine => {
+      const dir = join(attached, engine); mkdirSync(dir);
+      return [engine, snapshots.map(snapshot => { const path = join(dir, basename(snapshot)); writeFileSync(path, readFileSync(snapshot)); return path; })];
+    }));
+    const imageAttachments = engineImages.chromium;
+    const report = { config: { metadata: { a11yEvidenceRunId: 'fixture-run' } }, suites: [{ specs: [{ id: 'fixture-test', tests: ['chromium','firefox','webkit'].map(projectName => ({ projectName, expectedStatus: 'passed', status: 'expected', results: [{ retry: 0, status: 'passed', attachments: files.flatMap((path, i) => [{ path, name: `state-${requiredStates[i]}`, contentType: 'application/json' }, { path: engineImages[projectName][i], name: `system-state-${requiredStates[i]}`, contentType: 'image/png' }]) }] })) }] }] };
+    run({ report, root, files, snapshots, imageAttachments, all: files.concat(snapshots), read: i => JSON.parse(readFileSync(files[i], 'utf8')), update: (i, patch) => writeFileSync(files[i], JSON.stringify({ ...JSON.parse(readFileSync(files[i], 'utf8')), ...patch })) });
   } finally { rmSync(root, { recursive: true, force: true }); }
 }
 
@@ -66,7 +77,13 @@ test('never pools partial engine/run matrices or another owners snapshot', () =>
   assert.match(validateStateEvidence(all.filter(file => file !== snapshots[0]).concat(moved), { report }).join('\n'), /Missing system-state snapshot/);
 }));
 
-test('WebKit capability attribution never weakens the mandatory Chromium artifact policy', () => matrix(({ report, root, all, files, update }) => {
+test('WebKit capability attribution exempts absent images without weakening Chromium policy', () => matrix(({ report, root, all, files, snapshots, update }) => {
+  for (const snapshot of snapshots) rmSync(snapshot);
+  for (const owner of report.suites[0].specs[0].tests) {
+    for (const attachment of owner.results[0].attachments.filter(item => item.contentType === 'image/png')) rmSync(attachment.path);
+    owner.results[0].attachments = owner.results[0].attachments.filter(item => item.contentType !== 'image/png');
+  }
+  all = all.filter(path => !path.endsWith('.png'));
   for (let i = 0; i < files.length; i++) update(i, { engine: 'webkit', forcedColorsPaint: false, systemText: [], systemIcon: [], systemBoundaries: [], systemCues: [], systemSnapshot: null, forcedColorsStatus: 'unsupported authored-color replacement; media rules only' });
   assert.match(validateStateEvidence(all, { report }).join('\n'), /Missing actual forced palette paint/);
   const capability = { engine: 'webkit', runId: 'fixture-run', testId: 'fixture-test', attempt: 0, authoredColorReplacement: false, forced: { forcedColors: true } };
@@ -122,6 +139,92 @@ test('state payload must match the final successful attempt attachment', () => m
   attachments[0].path = files[0];
   attachments.push({ ...attachments[0] });
   assert.match(validateStateEvidence(all, { report }).join('\n'), /authoritative attempt attachment/);
+}));
+
+test('system screenshots require one readable image attachment from their authoritative attempt', () => matrix(({ report, all, imageAttachments, root }) => {
+  const attempt = report.suites[0].specs[0].tests[0].results[0];
+  const name = `system-state-${requiredStates[0]}`;
+  const original = attempt.attachments.find(attachment => attachment.name === name);
+  const attachments = attempt.attachments;
+  for (const [label, replacements] of [
+    ['missing', []],
+    ['duplicate', [original, { ...original }]],
+    ['wrong MIME', [{ ...original, contentType: 'application/octet-stream' }]],
+    ['pathless', [{ ...original, path: undefined }]],
+    ['inline body without path', [{ ...original, path: undefined, body: fixturePng.toString('base64') }]],
+    ['missing file', [{ ...original, path: join(root, 'missing.png') }]],
+    ['directory', [{ ...original, path: root }]],
+  ]) {
+    attempt.attachments = attachments.filter(attachment => attachment.name !== name).concat(replacements);
+    assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/, label);
+  }
+  attempt.attachments = attachments;
+  assert.equal(fixturePng.length, alternatePng.length, 'The replacement must defeat a length-only comparison');
+  writeFileSync(imageAttachments[0], alternatePng);
+  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
+  writeFileSync(imageAttachments[0], fixturePng);
+  assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: 'chromium' }), []);
+}));
+
+test('a changed or unreadable state-local screenshot cannot reuse its original report attachment', () => matrix(({ report, all, snapshots }) => {
+  writeFileSync(snapshots[0], alternatePng);
+  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
+  rmSync(snapshots[0]);
+  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
+  mkdirSync(snapshots[0]);
+  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
+}));
+
+test('a failed retry or different test cannot provide a successful attempts missing screenshot', () => matrix(({ report, all, files, update }) => {
+  const owner = report.suites[0].specs[0].tests[0];
+  const name = `system-state-${requiredStates[0]}`;
+  const attachments = owner.results[0].attachments;
+  const image = attachments.find(attachment => attachment.name === name);
+  owner.status = 'flaky';
+  owner.results = [{ retry: 0, status: 'failed', attachments }, { retry: 1, status: 'passed', attachments: attachments.filter(attachment => attachment.name !== name) }];
+  for (let i = 0; i < files.length; i++) update(i, { attempt: 1 });
+  report.suites[0].specs.push({ id: 'foreign-test', tests: [{ projectName: 'chromium', expectedStatus: 'passed', status: 'expected', results: [{ retry: 0, status: 'passed', attachments: [image] }] }] });
+  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
+  owner.results[1].attachments.push(image);
+  assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: 'chromium' }), []);
+}));
+
+test('exchanged state images and another engines attachments cannot certify a screenshot', () => matrix(({ report, all, imageAttachments }) => {
+  const first = readFileSync(imageAttachments[0]), second = readFileSync(imageAttachments[1]);
+  assert.notDeepEqual(first, second);
+  writeFileSync(imageAttachments[0], second); writeFileSync(imageAttachments[1], first);
+  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /Image bytes differ/);
+  writeFileSync(imageAttachments[0], first); writeFileSync(imageAttachments[1], second);
+  const attempt = report.suites[0].specs[0].tests[0].results[0];
+  const attachments = attempt.attachments;
+  attempt.attachments = attachments.filter(attachment => attachment.name !== `system-state-${requiredStates[0]}`);
+  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /Expected one image\/png attachment/);
+  attempt.attachments = attachments;
+  assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: 'chromium' }), []);
+}));
+
+test('retained failed-attempt pixels cannot replace the successful retry image', () => matrix(({ report, all, files, snapshots, imageAttachments, root, update }) => {
+  const owner = report.suites[0].specs[0].tests[0];
+  const name = `system-state-${requiredStates[0]}`;
+  const oldImage = join(root, 'failed-image.png'); writeFileSync(oldImage, fixturePng);
+  const attachments = owner.results[0].attachments;
+  owner.status = 'flaky';
+  owner.results = [{ retry: 0, status: 'failed', attachments: attachments.map(attachment => attachment.name === name ? { ...attachment, path: oldImage } : attachment) }, { retry: 1, status: 'passed', attachments }];
+  for (let i = 0; i < files.length; i++) update(i, { attempt: 1 });
+  writeFileSync(imageAttachments[0], alternatePng);
+  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /Image bytes differ/);
+  writeFileSync(snapshots[0], alternatePng);
+  assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: 'chromium' }), []);
+}));
+
+test('empty or malformed screenshot evidence returns a validation error', () => matrix(({ report, all, snapshots, imageAttachments, update }) => {
+  writeFileSync(snapshots[0], Buffer.alloc(0)); writeFileSync(imageAttachments[0], Buffer.alloc(0));
+  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /Missing system-state snapshot/);
+  writeFileSync(snapshots[0], fixturePng); writeFileSync(imageAttachments[0], fixturePng);
+  for (const systemSnapshot of [42, {}, [], null]) {
+    update(0, { systemSnapshot });
+    assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /Missing system-state snapshot/);
+  }
 }));
 
 

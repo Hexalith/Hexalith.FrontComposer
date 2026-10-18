@@ -1,0 +1,551 @@
+<testsuites id="" name="" tests="76" failures="0" skipped="1" errors="0" time="104.85902">
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-18T09:15:53.125Z" hostname="webkit" tests="75" failures="0" skipped="1" time="411.472" errors="0">
+<testcase name="AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="6.857">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-webkit/attachments/state-zero-validation-light-d8a7445e5b2540e584210d3175e34f33e293beca.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-webkit/attachments/state-zero-accepted-light-a65f6fa22df4ebde3426a47b59aff3be7861096a.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.685">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-webkit/attachments/state-zero-returned-rejection-light-75c72714497e4a0a5344cd40fc3759e09cca5317.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.271">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-webkit/attachments/state-zero-exception-rejection-light-8a148fbbc37288c11442ed842a8e8070781d3a2b.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field forbidden: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.316">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0d9e5-ck-focus-owner-next-attempt-webkit/attachments/state-zero-forbidden-light-61394e6c0c9829ce74d300142e171492bb08c4ae.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.441">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a3ffc-ck-focus-owner-next-attempt-webkit/attachments/state-zero-unavailable-light-16e7e6194a93bd88a50aae02a231f709dbef7db2.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.12">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5ad17-ck-focus-owner-next-attempt-webkit/attachments/state-zero-blank-unavailable-light-72bd4cfbe89af6e9f37e2075120cb6e222969471.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.219">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0ce94-ck-focus-owner-next-attempt-webkit/attachments/state-zero-rate-limited-light-51eaa8561606d4a26f75a5037bbf222e14dc5ea0.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.077">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-19bfb-ck-focus-owner-next-attempt-webkit/attachments/state-zero-blank-rate-limited-light-7c9ced34ba957b6c30f9bff9a816e2acacc2c312.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field transport: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.37">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-d4248-ck-focus-owner-next-attempt-webkit/attachments/state-zero-transport-light-4810feb8a7a2953ac551871e238ed8840979b1ca.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.407">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-998f7-ck-focus-owner-next-attempt-webkit/attachments/state-zero-admission-light-7b7a6bf0e3ea531f209ca0b95bd29d16870a14be.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field policy: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.312">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-34827-ck-focus-owner-next-attempt-webkit/attachments/state-zero-policy-light-1e02ee838b8de17fb7e6daf1bfdcf1897f37f08d.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field wrapped feedback clears the complete trigger focus ring" classname="accessibility-state-matrix.spec.ts" time="2.616">
+</testcase>
+<testcase name="AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results" classname="accessibility-state-matrix.spec.ts" time="4.471">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-fdd2b-uplicates-completed-results-webkit/attachments/state-generated-missing-external-light-b8f14c424038d6b4c39efd6028ff4fa6272e7d48.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation" classname="accessibility-state-matrix.spec.ts" time="4.012">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-70f6d-eutral-non-live-explanation-webkit/attachments/state-generated-missing-lost-focus-light-aae0373e2fcdc6fe0b2ad2d3b75c925fc6b4d4ed.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="24.492">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-idle-light-17e3079b95c64de3e91d876d3511d323694902fc.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-submitting-light-5aae281f19b8bf555d363dbd915c766dc7d43b22.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-acknowledged-light-0b6b36be7e0bea996aa6255e364676aaadff30c8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-syncing-light-4142cc7a29c21e1bed5b8ed6e436b1d114b7e78f.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-confirmed-light-ed2fbf7a6a59e7e08ad066330e8cea04b3ff8c54.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-rejected-light-b38dfc5ec895737e5f1ff06671ad229c9029afe5.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-idempotent-confirmed-light-9aa2ead8bdcf1e004a4334c93d762fe34e66127e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-needs-review-light-e870753c96043386e9ed7cd3d89d03d00043b99a.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-warning-light-56b3e6eee5d9a2a56f3033617cafd359e7bea9c0.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-light-ca6ac7bbaf145234e8954bab699fcec4821e30b2.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-exhausted-light-cb58664168f5b87624c9db4e6b5464014d1d579e.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › narrow lifecycle rejection keeps its native Dismiss target reachable after text spacing" classname="accessibility-state-matrix.spec.ts" time="2.445">
+</testcase>
+<testcase name="AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces" classname="accessibility-state-matrix.spec.ts" time="7.592">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-webkit/attachments/state-projection-two-light-bf21619767ffb0dd52875c706a150c8e456bfa50.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-webkit/attachments/state-projection-loading-light-1872e46b63dcd16374621ac0d22c3389a0851fc2.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-webkit/attachments/state-projection-empty-light-c9a71249ed486415ac2d4d82d49263d25bd5aa8c.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-webkit/attachments/state-projection-error-light-c959187f7e9d2ae63a442f5f45048ce4ff669ab9.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › home: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.145">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-d7ccd-state-and-forced-color-cues-webkit/attachments/state-home-light-ad196a786d39ecf7c87bceb710bec068bb28fd91.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › navigation-tabs: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.93">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-274ba-state-and-forced-color-cues-webkit/attachments/state-navigation-tabs-light-e09a79a3e9fed2d4511a3fde93b9d032314d7fc8.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.663">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-12490-state-and-forced-color-cues-webkit/attachments/state-toolbar-light-168e78b69c7f298d4bea60a727b736f3268defc0.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="5.462">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5a6a5-state-and-forced-color-cues-webkit/attachments/state-generated-forms-light-2c5b8a7da5bc5e49bc2f62228ec0849602a9b276.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="6.176">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-webkit/attachments/state-zero-validation-dark-72a7abd8bbd08e12155b00fcf4ebf83ef21bd3cc.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-webkit/attachments/state-zero-accepted-dark-26747fb7f0f9af24829541dc6e96884c2216eedd.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.827">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-webkit/attachments/state-zero-returned-rejection-dark-5d60bcaa66da0bcbf28ad027fde7dc5f5dc57f47.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.896">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-webkit/attachments/state-zero-exception-rejection-dark-86c69268a701c50d251eca07b9b414091aab8a36.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.909">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-05bf3-ck-focus-owner-next-attempt-webkit/attachments/state-zero-forbidden-dark-81373254bb491d319c8534cc400cdbc70bf653c9.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.034">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5142a-ck-focus-owner-next-attempt-webkit/attachments/state-zero-unavailable-dark-d77b4fee88cdf6c77d59154243679db5b3de1662.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.072">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-af2ed-ck-focus-owner-next-attempt-webkit/attachments/state-zero-blank-unavailable-dark-8f8011dcb6e1c32c757538117294b6aa0af72d86.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.091">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-c152d-ck-focus-owner-next-attempt-webkit/attachments/state-zero-rate-limited-dark-a38ff3acd7417133fb42efeae469caff828bc52f.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.234">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-3cb90-ck-focus-owner-next-attempt-webkit/attachments/state-zero-blank-rate-limited-dark-33369ec1e327b505e5f4ce9f2313c7905ef9d5e9.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field transport: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.637">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-9b713-ck-focus-owner-next-attempt-webkit/attachments/state-zero-transport-dark-b0b69fd7f898e07ebdd34698c6afc5e608037c83.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field admission: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="6.01">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-db80d-ck-focus-owner-next-attempt-webkit/attachments/state-zero-admission-dark-a1dc11abea8eaa7efef3a1fc394ebc78ce80fbfc.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field policy: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="6.299">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a64c2-ck-focus-owner-next-attempt-webkit/attachments/state-zero-policy-dark-44b0dbf6cd754cfcf3dd6473b99b941263660417.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field wrapped feedback clears the complete trigger focus ring" classname="accessibility-state-matrix.spec.ts" time="3.2">
+</testcase>
+<testcase name="AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results" classname="accessibility-state-matrix.spec.ts" time="5.071">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-1ce32-uplicates-completed-results-webkit/attachments/state-generated-missing-external-dark-747a32fc5565e7a48a5adc80ad3de727345ac8d4.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › real generated detail loss focuses its neutral non-live explanation" classname="accessibility-state-matrix.spec.ts" time="4.596">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-538a1-eutral-non-live-explanation-webkit/attachments/state-generated-missing-lost-focus-dark-8145231d5b51203e9962362e3a34ac65d868954c.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="24.274">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-idle-dark-d1a24ccc80cf79e122f393c406c4089689f8f122.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-submitting-dark-11f8627d099f52e75f50fa24932980521baca20e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-acknowledged-dark-757bcd8f2517fd375a71c5de8d4cd5a4e66aedf1.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-syncing-dark-08d629befc10619453ae90be32057c2296972cb0.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-confirmed-dark-a799ec0314873c76f6efe05251096681bc1b2cc1.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-rejected-dark-95de89815d05b9d6a7dfe066ff2027c507bfca9a.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-idempotent-confirmed-dark-47e4c8dfde49e161042ed75b7073e6fd187f5016.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-needs-review-dark-9ce3887335f3475591c3b9a96e2bb26cd8edd8b3.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-warning-dark-6a3cd647c0f30dcf1d09c047e54fc096728706a9.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-dark-72d16fc0447b096827435904a4b8dd80b9271fce.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-exhausted-dark-563ece50e24898524ccce697d3195aedaa610e41.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › narrow lifecycle rejection keeps its native Dismiss target reachable after text spacing" classname="accessibility-state-matrix.spec.ts" time="2.687">
+</testcase>
+<testcase name="AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces" classname="accessibility-state-matrix.spec.ts" time="7.62">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-webkit/attachments/state-projection-two-dark-6dd16f614227a435e816c5b457c507d3d9c934dc.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-webkit/attachments/state-projection-loading-dark-ab4d903859a914c1b547dee28f9c1e7cca505f2b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-webkit/attachments/state-projection-empty-dark-1d1196e5bec2462564bb477ece85f7f28baccfda.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-webkit/attachments/state-projection-error-dark-5614ee87625069696c11121241de903423710305.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.162">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-494dc-state-and-forced-color-cues-webkit/attachments/state-home-dark-79b7b5bad3ecd1ca43e70d5e78c6645124e645a3.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › navigation-tabs: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.99">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ee4d5-state-and-forced-color-cues-webkit/attachments/state-navigation-tabs-dark-c55eb4049af6097a64643afb87dd6907515c5f54.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.664">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ec449-state-and-forced-color-cues-webkit/attachments/state-toolbar-dark-03db6740fc5d9b7da2c9f0d2e02ff2aeaf9012a3.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="5.293">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-baff0-state-and-forced-color-cues-webkit/attachments/state-generated-forms-dark-403ca2ab4900e1ba8f1ee20b4ad592d8c9654195.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="contrast measurement rejects empty, low-contrast, unpainted and unsupported samples" classname="accessibility-state-matrix.spec.ts" time="0.667">
+</testcase>
+<testcase name="contrast clips a shadow background at its scrollport while rejecting 1.7px of visible overlap" classname="accessibility-state-matrix.spec.ts" time="0.751">
+</testcase>
+<testcase name="review clipping preserves visible competing paint: scaled ancestor" classname="accessibility-state-matrix.spec.ts" time="0.471">
+</testcase>
+<testcase name="review clipping preserves visible competing paint: overflow clip margin" classname="accessibility-state-matrix.spec.ts">
+<properties>
+<property name="skip" value="Engine does not implement expanded overflow clip margins">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+<testcase name="review clipping preserves visible competing paint: inline ancestor" classname="accessibility-state-matrix.spec.ts" time="0.461">
+</testcase>
+<testcase name="review clipping preserves visible competing paint: display contents ancestor" classname="accessibility-state-matrix.spec.ts" time="0.49">
+</testcase>
+<testcase name="review clipping preserves visible competing paint: fractional scrollport" classname="accessibility-state-matrix.spec.ts" time="0.451">
+</testcase>
+<testcase name="review clipping preserves visible competing paint: expanded negative inset" classname="accessibility-state-matrix.spec.ts" time="0.47">
+</testcase>
+<testcase name="unrelated controls cannot mask failed focus or boundary contrast" classname="accessibility-state-matrix.spec.ts" time="0.573">
+</testcase>
+<testcase name="forced-color state checks reject a removed cue while text and selected semantics survive" classname="accessibility-state-matrix.spec.ts" time="0.527">
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in light" classname="accessibility-state-matrix.spec.ts" time="13.065">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-webkit/attachments/state-shell-chrome-light-205762831fbf00176bb2f023456b4484e0fa0a81.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-webkit/attachments/state-theme-menu-light-0a8f74db1a38c767107f89753bf5cfeac448b78b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-webkit/attachments/state-rail-labeled-light-6c7b69c1bcad72160792bb0e1405178a77aec598.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-webkit/attachments/state-rail-icons-light-9d2bdcb524724504a40e7bed9f012189191170f0.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="active toolbar, tabs, palette and settings states in light" classname="accessibility-state-matrix.spec.ts" time="10.898">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-filter-popover-light-e0b859a3ca0a2c2e38687447120516892c239122.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-view-menu-light-2471b9dcf920efa629fb24055fa7e605bcc0fc53.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-tabs-active-light-e71dc18477e430546fedd972fac35963f739edc9.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-palette-default-light-3f266bdbee5dce16d6117d876904c658e8606690.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-palette-selected-light-b8932a069ab13443ef147364a996c7441aba059c.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-palette-empty-light-b7b378c056232bd139ae89ff2f7a2186048ae7ef.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-settings-light-a28f07b6bdb00c713d76f70cf2636d55676c6d3a.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="generated validation, policy, destructive and abandonment states in light" classname="accessibility-state-matrix.spec.ts" time="15.268">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-webkit/attachments/state-generated-validation-light-c1b7a55e9d0499296edac885953ec708e11e8c27.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-webkit/attachments/state-policy-denied-light-1beb6695de58aeaf24f4f802efad0da7f410f4ab.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-webkit/attachments/state-destructive-dialog-light-56127c830be988b7fc5f42377449925eb7268e24.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-webkit/attachments/state-abandonment-light-6053a5af745f76151688c2f2fc818ec4eac122bb.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in dark" classname="accessibility-state-matrix.spec.ts" time="13.523">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-webkit/attachments/state-shell-chrome-dark-a01ffae0ab7b937bf46917e3aa113d0780870b47.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-webkit/attachments/state-theme-menu-dark-83deeaf8c1f3450b759213676a90b43b7885e9fd.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-webkit/attachments/state-rail-labeled-dark-1e6d95a0daf92dab051df24928b2c1f4a5f8ec78.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-webkit/attachments/state-rail-icons-dark-a9d2a13179b0ddc5034d951e58284b130aa13389.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="active toolbar, tabs, palette and settings states in dark" classname="accessibility-state-matrix.spec.ts" time="11.457">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-filter-popover-dark-b7f46579bbed0f1cbe93857c7cdb5959daa075a1.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-view-menu-dark-eaff742ff96f1c8a24e7974603a4c1423f20eac1.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-tabs-active-dark-3e33c166b4e52a0682ca884c0a3b5a8093cd4437.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-palette-default-dark-e51221d1c4a854649ee749fd9da0c3351c054781.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-palette-selected-dark-eba269c5286b32c8a21c60ea982f58d4970e5911.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-palette-empty-dark-6299f453794be7a9cc00040d40fb7400bddc555f.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-settings-dark-a363496a385a7fdaf2331988c1adcce083288ffb.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="generated validation, policy, destructive and abandonment states in dark" classname="accessibility-state-matrix.spec.ts" time="15.484">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-webkit/attachments/state-generated-validation-dark-017623d5968e5dd2b9c0eb58e59552f1a5e51a29.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-webkit/attachments/state-policy-denied-dark-c86ceac71465569864eb2b175b727e46226c2371.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-webkit/attachments/state-destructive-dialog-dark-8ea920629ba3e2f2cf8df5692c5faed0cc856dc8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-webkit/attachments/state-abandonment-dark-5d6897f14db53ea0b5f7515e9b50c117366e08bb.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="projection reconnect fallback stale slow cap and filter cues in light" classname="accessibility-state-matrix.spec.ts" time="20.458">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-connection-reconnecting-light-a75826b680ab188fc5e1e8fa458d06f29a619067.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-stale-reconnecting-light-baa48b8d1413e825e6c6cef0d1ba76888c39dda8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-connection-disconnected-light-882e16e18189014f4ca632df51d8aacf0068de5b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-stale-disconnected-light-772130cb97fdbdc6666f41475bdd8ab8eafb6fd6.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-connection-connected-light-9c7dc9f8724bf9267f38643af3d50d5be01cdee5.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-slow-query-light-8f46889b4a1a8dd11d28a3f31643c89255bdbcf8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-result-limit-light-e090ca768ddaa3947cd30868ff24335f28789f82.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-filter-empty-light-f556e49ebcd3af0fe59fe811774b301d7b876cd7.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="projection reconnect fallback stale slow cap and filter cues in dark" classname="accessibility-state-matrix.spec.ts" time="20.787">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-connection-reconnecting-dark-2396791a64e19e58f116d51034290f42ff951415.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-stale-reconnecting-dark-c3a42024e6ad962b1317b3ea1f5de819aac449c3.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-connection-disconnected-dark-bb473db9981ec4ce4aca7ee4ae997757a467ee39.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-stale-disconnected-dark-dcf94e1dd4dd57cd8c3ff173c8b9a760d561ee55.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-connection-connected-dark-c8080e72a9e76f5e5f5e3e9a21964550c742194d.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-slow-query-dark-c9e8fad7ccb603f938ca7a25413851b65476bc5d.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-result-limit-dark-773af2e6e93a2931736a6981caa81eaa886ff6df.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-filter-empty-dark-7a2ad0c79b9c320619f5d0601a05d847547b4351.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="real generated filter-hidden detail stays distinct from missing-item results in light" classname="accessibility-state-matrix.spec.ts" time="3.29">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-1ea05-ssing-item-results-in-light-webkit/attachments/state-filter-hidden-detail-light-368c06fe276ebac5fe912e6490dcef93bce092f2.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="real generated filter-hidden detail stays distinct from missing-item results in dark" classname="accessibility-state-matrix.spec.ts" time="3.695">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-58461-issing-item-results-in-dark-webkit/attachments/state-filter-hidden-detail-dark-5366abc3a59c7dc6882fa76b0c301515c84714e2.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="delayed generated detail recovery cancels after operator focus and navigation in light" classname="accessibility-state-matrix.spec.ts" time="3.045">
+</testcase>
+<testcase name="delayed generated detail recovery cancels after operator focus and navigation in dark" classname="accessibility-state-matrix.spec.ts" time="2.915">
+</testcase>
+<testcase name="header theme and account controls retain focus and pointer geometry in light" classname="accessibility-state-matrix.spec.ts" time="2.059">
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in light" classname="accessibility-state-matrix.spec.ts" time="4.503">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-85ff9-stem-color-meaning-in-light-webkit/attachments/state-fresh-presentation-light-ebe35b324075dc4b00d5207f49dd798dc239d182.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="header theme and account controls retain focus and pointer geometry in dark" classname="accessibility-state-matrix.spec.ts" time="1.897">
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in dark" classname="accessibility-state-matrix.spec.ts" time="4.689">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-webkit/attachments/state-fresh-presentation-dark-26c8ade877c5cd8aad1c96c30273af29e1533e18.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors" classname="accessibility-state-matrix.spec.ts" time="0.583">
+</testcase>
+<testcase name="validation links keep native same-page href activation when focus enhancement is unavailable" classname="accessibility-state-matrix.spec.ts" time="1.977">
+</testcase>
+<testcase name="G09 forced-color focus geometry rejects a mode-specific clipped ring" classname="accessibility-state-matrix.spec.ts" time="0.486">
+</testcase>
+<testcase name="held generated recovery cancels after tenant scope change in light" classname="accessibility-state-matrix.spec.ts" time="2.9">
+</testcase>
+<testcase name="held generated recovery cancels after user scope change in light" classname="accessibility-state-matrix.spec.ts" time="2.929">
+</testcase>
+<testcase name="held generated recovery cancels after tenant scope change in dark" classname="accessibility-state-matrix.spec.ts" time="2.834">
+</testcase>
+<testcase name="held generated recovery cancels after user scope change in dark" classname="accessibility-state-matrix.spec.ts" time="2.894">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T09:15:53.125Z" hostname="webkit" tests="1" failures="0" skipped="0" time="0.396" errors="0">
+<testcase name="forced-color replacement capability is recorded for its engine and run" classname="responsive-accessibility.spec.ts" time="0.396">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-f-4be52-rded-for-its-engine-and-run-webkit/attachments/forced-color-capability-e54798c61199b8be9974ff437b7c19a0e63c653e.json]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

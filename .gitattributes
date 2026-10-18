@@ -36,3 +36,5 @@ _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure
 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/** -text
 # Story 13.6 field-layout proof retains exact browser and verification bytes.
 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/** -text
+# Story 13.6 screenshot-attempt proof retains exact reports and attachment bytes.
+_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-attempt-ownership/** -text

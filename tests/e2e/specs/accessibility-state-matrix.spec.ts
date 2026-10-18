@@ -150,7 +150,11 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
     : { mode: 'forced-colors', status: 'none', target: active });
   if ('failures' in systemFocus) expect(systemFocus.failures, `Forced-color focused geometry: ${state} ${JSON.stringify(systemFocus)}`).toEqual([]);
   const systemSnapshot = forcedColorsPaint ? `system-state-${state}.png` : null;
-  if (systemSnapshot) await measureCurrentState(() => screenshotPreservingScroll(root, { path: info.outputPath(systemSnapshot) }));
+  if (systemSnapshot) {
+    const path = info.outputPath(systemSnapshot);
+    await measureCurrentState(() => screenshotPreservingScroll(root, { path }));
+    await info.attach(`system-state-${state}`, { path, contentType: 'image/png' });
+  }
   await page.emulateMedia({ forcedColors: 'none' });
   await settlePaint(page);
   if (refreshTransientState) await refreshTransientState(true);

@@ -1,0 +1,48 @@
+✔ rejects another run when a run is expected (20.881397ms)
+✔ requires all owned state, cue, contrast and actual mode evidence (221.1798ms)
+✔ target evidence requires real finite dimensions, consistent conformity and evidenced exceptions (125.222293ms)
+✔ never pools partial engine/run matrices or another owners snapshot (70.999899ms)
+✔ WebKit capability attribution never weakens the mandatory Chromium artifact policy (55.620905ms)
+✔ successful retry replaces the failed attempt without fragment pooling (59.671478ms)
+✔ missing or mixed authoritative reports cannot certify a matrix (11.868675ms)
+✔ target geometry mirrors stale, spacing and essential exception applicability (87.987536ms)
+✔ state payload must match the final successful attempt attachment (47.24768ms)
+✔ system screenshots require one readable image attachment from their authoritative attempt (158.067637ms)
+✖ a changed or unreadable state-local screenshot cannot reuse its original report attachment (47.88258ms)
+✔ a failed retry or different test cannot provide a successful attempts missing screenshot (49.983293ms)
+✔ expected unrelated skips supply no state authority and cannot fill a skipped owner (31.992758ms)
+✔ runner, setup and teardown errors invalidate an otherwise passing report (65.421761ms)
+✔ CLI resolves capability from the successful retry while retaining the failed file (58.217042ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 14
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1170.372611
+
+✖ failing tests:
+
+test at tests/e2e/scripts/a11y-state-evidence.test.mjs:156:1
+✖ a changed or unreadable state-local screenshot cannot reuse its original report attachment (47.88258ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Missing system-state snapshot/. Input:
+  
+  'System-state snapshot does not match authoritative attempt attachment: /tmp/ae-evidence-test-tUNGCN/ae-state-zero-validation-light.json'
+  
+      at file:///home/administrator/projects/hexalith/frontcomposer/tests/e2e/scripts/a11y-state-evidence.test.mjs:160:10
+      at matrix (file:///home/administrator/projects/hexalith/frontcomposer/tests/e2e/scripts/a11y-state-evidence.test.mjs:28:5)
+      at TestContext.<anonymous> (file:///home/administrator/projects/hexalith/frontcomposer/tests/e2e/scripts/a11y-state-evidence.test.mjs:156:106)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'System-state snapshot does not match authoritative attempt attachment: /tmp/ae-evidence-test-tUNGCN/ae-state-zero-validation-light.json',
+    expected: /Missing system-state snapshot/,
+    operator: 'match',
+    diff: 'simple'
+  }
