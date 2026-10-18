@@ -1,0 +1,8 @@
+.fc-empty-state-body { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px 24px; text-align: center; }
+.fc-empty-state-body__icon { opacity: 0.5; }
+.fc-empty-state-body__cta { margin-top: 8px; }
+.fc-field-placeholder { border: 2px dashed var(--colorNeutralStroke1, #aaaaaa); padding: 12px; margin: 4px 0px; background-color: var(--colorNeutralBackground3, #fafafa); }
+.fc-field-placeholder-dev { border-color: var(--colorPaletteRedBorder2, #d13438); }
+@media (max-width: 767px) {
+  .fc-empty-state-body { gap: 12px; padding: 32px 16px; }
+}

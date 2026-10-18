@@ -32,3 +32,5 @@ _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/
 
 # Story 13.6 gap-closure hashes bind the original diagnostic and verification bytes.
 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/** -text
+# Story 13.6 final gate packet hashes bind raw report and attachment bytes.
+_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/** -text

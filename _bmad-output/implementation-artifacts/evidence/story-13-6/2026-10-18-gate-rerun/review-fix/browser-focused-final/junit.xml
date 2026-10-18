@@ -1,0 +1,194 @@
+<testsuites id="" name="" tests="15" failures="0" skipped="0" errors="0" time="59.326612000000004">
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-18T07:47:08.833Z" hostname="chromium" tests="2" failures="0" skipped="0" time="67.563" errors="0">
+<testcase name="AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="33.976">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-idle-light-bedc822583e97027feebc24af59e92a4cf8db11e.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-submitting-light-ca1202f2a5bf397ffce93b1e1fc7b6a24ca7817a.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-acknowledged-light-b8d13b28eaf2d47e783c3137a77ef6840ac02296.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-syncing-light-e0920fa54b4234a4c7d8c54dd4ed4d9984ff267d.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-confirmed-light-0167ce8799949b40b4af76c71368540d8445f05d.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-rejected-light-bef167e074d6b14ba48f9cc19219c2751b88a850.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-idempotent-confirmed-light-0759241add3c1c43473b2c944cc6969e620f0110.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-needs-review-light-a4406eb13bd4ba4508c4fc21720b7fd213feb62b.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-warning-light-64fbbabc29f5762b1a8b251eb13498d7b56975f2.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-degraded-light-a528b2611fce3b273b1a08afab277db7b52aee81.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-degraded-exhausted-light-b3ff45a9dc728214cf279f847c65b488939e2761.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="33.587">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-idle-dark-f49be5ea0394a2508fc453f782f6b70e3c8791e7.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-submitting-dark-90116cd4dac9982af3aaf99f8c59864cb11379cc.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-acknowledged-dark-7a7599a2f1815d62ae9aa324a1773a2544add7b2.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-syncing-dark-e0122328368bcf24a72cc38af21a843b53e0aa8a.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-confirmed-dark-33daff08fd5901ae087b3493e141dfc33e4ba144.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-rejected-dark-cb343d951fd1f659e6fe8e1465e895280833da99.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-idempotent-confirmed-dark-0dcd429c0b10f420e1ab24261117416829ffc610.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-needs-review-dark-e9e870958901c510c0a7bfdb9daf7cb27ead49e3.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-warning-dark-3079d8603f4c47a59abdf8fdfbd83f203c4008da.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-degraded-dark-1b7852547518470cfc6fa9c1142a42fd85046cd0.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-degraded-exhausted-dark-3960749d94f9c103b081217af5d9a6f672368092.json]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T07:47:08.833Z" hostname="chromium" tests="3" failures="0" skipped="0" time="5.968" errors="0">
+<testcase name="delayed overlay disposal preserves an operator Tab after native origin return" classname="responsive-accessibility.spec.ts" time="2.297">
+</testcase>
+<testcase name="owned overlay return waits through Escape dismissal and falls back from a hidden origin" classname="responsive-accessibility.spec.ts" time="2.758">
+</testcase>
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="0.913">
+</testcase>
+</testsuite>
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-18T07:47:08.833Z" hostname="firefox" tests="2" failures="0" skipped="0" time="69.937" errors="0">
+<testcase name="AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="34.853">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-idle-light-dfd468a2ac898973ddbecc963216f6a6b1e64b96.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-submitting-light-caa4319d4a21e23c04d0d1b6efda3d741fc33a56.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-acknowledged-light-d93eb3bc9f32cc5aeab042f638adfad3845b6e0e.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-syncing-light-d21fcd7aa25fe3e0b51f4e93358545a36564351e.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-confirmed-light-7bd165d5b0ea707593d6d596a43b890a0585b2fa.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-rejected-light-a343b6860a953f35c610fd21b3147a27e30fa485.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-idempotent-confirmed-light-83e072724660c6a081c144abf4352236233375a3.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-needs-review-light-50da840a4b7bdd26857848ea8e39bde7797119c7.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-warning-light-d10177f680d96c04bc4395d0bdf0a6d8872d00e1.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-light-ef63dc0e3ab1c1c0dddc515d6c0538cc57c42271.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-exhausted-light-79d367cdd0a7f17bc9980d0b39f195397499fce6.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="35.084">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-idle-dark-c9ab7ab57c0b118eb405e9fc1b059f497b1b5cb2.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-submitting-dark-61114830c2b0e668d8d929a71ebfa7566b6588be.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-acknowledged-dark-4e99e582fbb07346746b00b294a8a75d32fdc459.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-syncing-dark-8da45b1136676caabde40334300e960bbb647b2f.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-confirmed-dark-784dc87a1c11ce0f87de6354487cc20b34bcacd6.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-rejected-dark-82f7caf292c8d2dcb2276df04c82bacffe527f56.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-idempotent-confirmed-dark-7697b4ac6a49b50904381e80d3f3f16a4243bf55.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-needs-review-dark-e47dbdcffbf5d1784643306f1180723c166c7bbb.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-warning-dark-9a11bbed7654ac78caa7d45e54c3548d8ab5f6ac.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-dark-c95c935ed5254d68d12d9bd1156077499064f81a.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-exhausted-dark-8429fb5d7f6ecf2c7f0944c1efc7d5e49327ceb0.json]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T07:47:08.833Z" hostname="firefox" tests="3" failures="0" skipped="0" time="5.957" errors="0">
+<testcase name="delayed overlay disposal preserves an operator Tab after native origin return" classname="responsive-accessibility.spec.ts" time="2.205">
+</testcase>
+<testcase name="owned overlay return waits through Escape dismissal and falls back from a hidden origin" classname="responsive-accessibility.spec.ts" time="2.47">
+</testcase>
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="1.282">
+</testcase>
+</testsuite>
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-18T07:47:08.833Z" hostname="webkit" tests="2" failures="0" skipped="0" time="39.851" errors="0">
+<testcase name="AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="19.851">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-idle-light-b0eafe5106c1dd1d1c46703509a25d7f88f32544.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-submitting-light-c69c1b22c201f950977a03d5f971ca2012e550d4.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-acknowledged-light-1a2766c7ed637a63e257546be6d2943d2cd00157.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-syncing-light-a7cccfaa50163e0e9ad244ebb0247725f1fe9f2a.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-confirmed-light-9f41f5b5ae804f9636293a1414d5cdefeca79c4a.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-rejected-light-79d618353c07f9a898eb96baf6a0d94843e0772a.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-idempotent-confirmed-light-5d9fbda33e36119f831a74bb9e7eed8699fd8a92.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-needs-review-light-8429d8e766de04d304c58b5f87e6354814228bab.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-warning-light-79d822d460c5f754b8b7de4509915a5dc3b7e909.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-light-3f02208107c1538629e241c221b67c536ee62b30.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-exhausted-light-3990df679b473ee2413fcbdc9b443031d76bf2be.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="20">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-idle-dark-c6e38a6900fcb9527feafee9f7985750a0a23b8e.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-submitting-dark-cadb1facdb36c589581b8b637da24bb85ca36fa1.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-acknowledged-dark-796f6ac55d562d0bb0d39554db4518ef27a82a67.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-syncing-dark-2770d28a52c56b4484d1c269e2972f71de393741.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-confirmed-dark-a2f7ce8104754850f8eb1eb7a9fe31f905c0393b.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-rejected-dark-0e20ad8f954a941d0d45e243a57de225d98c7463.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-idempotent-confirmed-dark-1a0053040da24fb0f11f44c7bda78a2a27a112cf.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-needs-review-dark-b3a0415b45dfb3da908f63be60e3b442c9db801b.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-warning-dark-e102b415c059b83e201a1bbf85bca9b8887e5d9f.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-dark-e0ba19490dbdfdecd4b910f8fa6f5a308c906d29.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-exhausted-dark-95e837fdbc550fa96e805d4889590a0c5dc56cee.json]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T07:47:08.833Z" hostname="webkit" tests="3" failures="0" skipped="0" time="4.743" errors="0">
+<testcase name="delayed overlay disposal preserves an operator Tab after native origin return" classname="responsive-accessibility.spec.ts" time="1.545">
+</testcase>
+<testcase name="owned overlay return waits through Escape dismissal and falls back from a hidden origin" classname="responsive-accessibility.spec.ts" time="1.879">
+</testcase>
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="1.319">
+</testcase>
+</testsuite>
+</testsuites>

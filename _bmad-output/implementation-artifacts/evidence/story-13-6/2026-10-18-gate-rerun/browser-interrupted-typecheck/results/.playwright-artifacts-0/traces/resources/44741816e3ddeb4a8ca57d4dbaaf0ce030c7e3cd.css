@@ -1,0 +1,10 @@
+.fc-skip-link { position: absolute; left: -9999px; top: 0px; z-index: 9999; padding: 8px 12px; background: var(--colorNeutralBackground1); color: var(--colorNeutralForeground1); text-decoration: none; border: 2px solid var(--colorStrokeFocus2); }
+.fc-skip-link:focus { left: 8px; top: 8px; outline: 2px solid var(--colorStrokeFocus2); outline-offset: 2px; }
+@media (forced-colors: active) {
+  @supports (forced-color-adjust: auto) {
+  .fc-shell-root { --colorNeutralForeground1: CanvasText; --colorNeutralForeground2: CanvasText; --colorNeutralForeground3: CanvasText; --colorNeutralForeground4: CanvasText; }
+  .fc-shell-root fluent-message-bar > svg[slot="icon"], fluent-dialog fluent-message-bar > svg[slot="icon"] { fill: canvastext !important; }
+}
+  .fc-skip-link, .fc-skip-link:focus { background: canvas; border-color: highlight; color: canvastext; outline-color: highlight; }
+  .fc-destructive-confirm { forced-color-adjust: auto; background: buttonface; border-color: buttontext; color: buttontext; }
+}

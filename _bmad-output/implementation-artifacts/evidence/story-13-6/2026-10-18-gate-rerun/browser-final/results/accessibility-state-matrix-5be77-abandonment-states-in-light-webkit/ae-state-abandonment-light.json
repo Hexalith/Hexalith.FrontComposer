@@ -1,0 +1,566 @@
+{
+  "testId": "a542ea7f175527dc3e9c-1326153f792559aa4c59",
+  "attempt": 0,
+  "state": "abandonment-light",
+  "engine": "webkit",
+  "runId": "story-13-6-2026-10-18-final",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "fluent-button[inventory-index=\"0\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 16,
+        "top": 4,
+        "right": 48,
+        "bottom": 36
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"1\"]",
+      "width": 89.5625,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 130,
+        "right": 101.5625,
+        "bottom": 162
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 109.5625,
+        "top": 130,
+        "right": 141.5625,
+        "bottom": 162
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 149.5625,
+        "top": 130,
+        "right": 181.5625,
+        "bottom": 162
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 36,
+      "height": 36,
+      "box": {
+        "left": 189.5625,
+        "top": 128,
+        "right": 225.5625,
+        "bottom": 164
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"5\"]",
+      "width": 65.1137924194336,
+      "height": 19,
+      "box": {
+        "left": 12,
+        "top": 326,
+        "right": 77.1137924194336,
+        "bottom": 345
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": false,
+      "exception": {
+        "selector": "nav[aria-label=\"breadcrumb\"] > a",
+        "kind": "Spacing",
+        "rationale": "The full-page breadcrumb link is isolated from all neighboring targets; its 24px circle is measured against the complete inventory.",
+        "keyboardPath": "Full-page form → Counter breadcrumb (Shift+Tab)",
+        "evidence": "ae-state-abandonment-light.json target inventory"
+      },
+      "failure": null
+    },
+    {
+      "target": "#fc-form-abandonment-stay-17ecd14efbd34b0fa08844006dd440d9",
+      "width": 138.21875,
+      "height": 32,
+      "box": {
+        "left": 25,
+        "top": 581,
+        "right": 163.21875,
+        "bottom": 613
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-form-abandonment-leave\"]",
+      "width": 144.28125,
+      "height": 32,
+      "box": {
+        "left": 25,
+        "top": 621,
+        "right": 169.28125,
+        "bottom": 653
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-10-Name",
+      "width": 192,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 713,
+        "right": 204,
+        "bottom": 745
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-10-Description",
+      "width": 192,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 794,
+        "right": 204,
+        "bottom": 826
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-10-InitialValue",
+      "width": 182,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 832,
+        "right": 194,
+        "bottom": 864
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-10-MaxValue",
+      "width": 182,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 832,
+        "right": 194,
+        "bottom": 864
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-10-Category",
+      "width": 192,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 832,
+        "right": 204,
+        "bottom": 864
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Domain-ConfigureCounterCommand-10-submit",
+      "width": 183.3125,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 832,
+        "right": 195.3125,
+        "bottom": 864
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "h2#fc-form-abandonment-title-17ecd14efbd34b0fa08844006dd440d9",
+      "paint": "You have unsaved input.",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "p#fc-form-abandonment-description-17ecd14efbd34b0fa08844006dd440d9",
+      "paint": "Leaving now discards what you've entered.",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "slot",
+      "paint": "Stay on form",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        21,
+        115,
+        127,
+        1
+      ],
+      "ratio": 5.539960708564337,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "slot",
+      "paint": "Leave anyway",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [
+    [
+      {
+        "measurement": "conservative-bound",
+        "shadowBound": {
+          "kind": "conservative-black-shadow-composite",
+          "lowerLayer": "rgb(0, 0, 0) 0px 0px 0px 2px",
+          "layers": [
+            {
+              "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+              "declaredAlpha": 0.12,
+              "maximumAlpha": 0.12392156862745098
+            },
+            {
+              "layer": "rgba(0, 0, 0, 0.14) 0px 1px 2px 0px",
+              "declaredAlpha": 0.14,
+              "maximumAlpha": 0.14392156862745098
+            }
+          ],
+          "backgroundLayers": [
+            {
+              "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+              "declaredAlpha": 0.12,
+              "maximumAlpha": 0.12392156862745098
+            },
+            {
+              "layer": "rgba(0, 0, 0, 0.14) 0px 1px 2px 0px",
+              "declaredAlpha": 0.14,
+              "maximumAlpha": 0.14392156862745098
+            }
+          ],
+          "foreground": {
+            "minimum": [
+              0,
+              0,
+              0
+            ],
+            "maximum": [
+              0,
+              0,
+              0
+            ]
+          },
+          "background": {
+            "minimum": [
+              191,
+              191,
+              191
+            ],
+            "maximum": [
+              255,
+              255,
+              255
+            ]
+          },
+          "closestForeground": [
+            0,
+            0,
+            0
+          ],
+          "closestBackground": [
+            191,
+            191,
+            191
+          ],
+          "ratioMinimum": 11.419911464086086
+        },
+        "owner": 0,
+        "node": "fluent-button#fc-form-abandonment-stay-17ecd14efbd34b0fa08844006dd440d9",
+        "paint": "element box-shadow (conservative composite bound)",
+        "foreground": [
+          0,
+          0,
+          0
+        ],
+        "background": [
+          191,
+          191,
+          191
+        ],
+        "ratio": 11.419911464086086,
+        "minimum": 3
+      }
+    ]
+  ],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": false,
+  "forcedColorsStatus": "unsupported authored-color replacement; media rules only",
+  "systemText": [],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-BUTTON#fc-form-abandonment-stay-17ecd14efbd34b0fa08844006dd440d9",
+    "requireIndicator": true,
+    "box": {
+      "left": 23,
+      "top": 579,
+      "right": 165.21875,
+      "bottom": 615
+    },
+    "ring": 2,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": [
+      {
+        "kind": "conservative-black-shadow-composite",
+        "lowerLayer": "rgb(0, 0, 0) 0px 0px 0px 2px",
+        "layers": [
+          {
+            "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+            "declaredAlpha": 0.12,
+            "maximumAlpha": 0.12392156862745098
+          },
+          {
+            "layer": "rgba(0, 0, 0, 0.14) 0px 1px 2px 0px",
+            "declaredAlpha": 0.14,
+            "maximumAlpha": 0.14392156862745098
+          }
+        ],
+        "backgroundLayers": [
+          {
+            "layer": "rgba(0, 0, 0, 0.12) 0px 0px 2px 0px",
+            "declaredAlpha": 0.12,
+            "maximumAlpha": 0.12392156862745098
+          },
+          {
+            "layer": "rgba(0, 0, 0, 0.14) 0px 1px 2px 0px",
+            "declaredAlpha": 0.14,
+            "maximumAlpha": 0.14392156862745098
+          }
+        ],
+        "foreground": {
+          "minimum": [
+            0,
+            0,
+            0
+          ],
+          "maximum": [
+            0,
+            0,
+            0
+          ]
+        },
+        "background": {
+          "minimum": [
+            191,
+            191,
+            191
+          ],
+          "maximum": [
+            255,
+            255,
+            255
+          ]
+        },
+        "closestForeground": [
+          0,
+          0,
+          0
+        ],
+        "closestBackground": [
+          191,
+          191,
+          191
+        ],
+        "ratioMinimum": 11.419911464086086
+      }
+    ]
+  },
+  "systemSnapshot": null,
+  "reducedMotion": true
+}

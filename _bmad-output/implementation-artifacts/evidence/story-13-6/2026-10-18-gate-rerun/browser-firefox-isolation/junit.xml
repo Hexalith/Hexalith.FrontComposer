@@ -1,0 +1,216 @@
+<testsuites id="" name="" tests="8" failures="0" skipped="0" errors="1" time="225.581775">
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-18T07:09:22.851Z" hostname="firefox" tests="4" failures="0" skipped="0" time="96.181" errors="1">
+<testcase name="AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="33.523">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-idle-light-70c1d858f0c0f4e5139affa5503253b2fba0a213.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-submitting-light-6a26e711cac93518c9e15ebd9049bf9fccb59b1e.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-acknowledged-light-1ad987d5d6b8eab3d1b307c4abd92b0296d7b5e9.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-syncing-light-f1a3d2efd8180e8abfe202c95a84a01cbd299566.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-confirmed-light-171722c7c4bfb1051638d0caa5434be258705388.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-rejected-light-056dfd845fdfdc002789486ec4aab35f5234c193.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-idempotent-confirmed-light-afc4cb7c5580a88bdf4baf64a4b4b86dbe4deac8.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-needs-review-light-59656ba161a33ea61f2c8015e4779e1e698d7f87.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-warning-light-b5fd3d78ba93f179823f41502b68715ad0c6f78c.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-light-8dd7d34d5168f803570c4f33cce809aa71a9ea15.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-exhausted-light-08f76a83ad1a3847c325c963080105f8f815fc7b.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="29.901">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-idle-dark-8c23a6c26cf21e1e0985d7a7fd0c2047438ccd03.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-submitting-dark-27f1fd803e06cea551c001e01548fa15bb79240b.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-acknowledged-dark-d47625706ee1bde892cc2dd9a355c8ae0de0b67a.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-syncing-dark-b388fc133bc921424a3b7b09473720e0ac057eb1.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-confirmed-dark-4d64c3ef98dc43d33c92d269ee8464ca3dacc7b8.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-rejected-dark-d69266a932e0ebcbaa10a9dde9cf72a466cd5181.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-idempotent-confirmed-dark-5ad6af8546c875cdb1c125b51cf8f655a8f41896.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-needs-review-dark-5b3b43dd02df7a2b0aacecb3908bb270553e3f67.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-warning-dark-b05381815cdf019e9b33be562ce71731fd427bc8.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-dark-b15ccd631f2e3526472a202840466a9d568dee17.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-exhausted-dark-f21b1d72a99f3a1eff1d28eab0177d393f3c99bc.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in light" classname="accessibility-state-matrix.spec.ts" time="24.195">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-shell-chrome-light-84eb990f5641e05ab314c3c29fad06a6f89cc52c.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-theme-menu-light-080e831f9334130aca39344f922b9bacc5932ec2.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-rail-labeled-light-5071be72767ece4bf9c96d20030f195e796df014.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-rail-icons-light-da5ed4e89c603ce0fc3d0fd6bf40e720751d70f9.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in dark" classname="accessibility-state-matrix.spec.ts" time="8.562">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-shell-chrome-dark-5db5b4159e16d27b462d423da39fef46a3301a50.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/video.webm]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/error-context.md]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/trace.zip]]
+]]>
+</system-out>
+<error message="locator.evaluate: Competing border/shadow paint needs pixel evidence: {&quot;element&quot;:&quot;FLUENT-MENU-ITEM#f56e5473.&quot;,&quot;candidate&quot;:&quot;DIV#.fluent-card&quot;,&quot;pseudo&quot;:null,&quot;boxes&quot;:[{&quot;left&quot;:15,&quot;right&quot;:169,&quot;top&quot;:199,&quot;bottom&quot;:201},{&quot;left&quot;:15,&quot;right&quot;:169,&quot;top&quot;:233,&quot;bottom&quot;:235},{&quot;left&quot;:15,&quot;right&quot;:17,&quot;top&quot;:201,&quot;bottom&quot;:233},{&quot;left&quot;:167,&quot;right&quot;:169,&quot;top&quot;:201,&quot;bottom&quot;:233}],&quot;paintBoxes&quot;:[{&quot;left&quot;:32,&quot;right&quot;:288,&quot;top&quot;:235.8000030517578,&quot;bottom&quot;:236.8000030517578},{&quot;left&quot;:287,&quot;right&quot;:288,&quot;top&quot;:235.8000030517578,&quot;bottom&quot;:455.8000030517578},{&quot;left&quot;:32,&quot;right&quot;:288,&quot;top&quot;:454.8000030517578,&quot;bottom&quot;:455.8000030517578},{&quot;left&quot;:32,&quot;right&quot;:33,&quot;top&quot;:235.8000030517578,&quot;bottom&quot;:455.8000030517578},{&quot;left&quot;:29,&quot;right&quot;:291,&quot;top&quot;:232.8000030517578,&quot;bottom&quot;:458.8000030517578},{&quot;left&quot;:29,&quot;right&quot;:291,&quot;top&quot;:233.8000030517578,&quot;bottom&quot;:459.8000030517578}],&quot;candidateBox&quot;:{&quot;x&quot;:32,&quot;y&quot;:235.8000030517578,&quot;width&quot;:256,&quot;height&quot;:220,&quot;top&quot;:235.8000030517578,&quot;right&quot;:288,&quot;bottom&quot;:455.8000030517578,&quot;left&quot;:32},&quot;shadow&quot;:&quot;rgba(0, 0, 0, 0.24) 0px 0px 2px 0px, rgba(0, 0, 0, 0.28) 0px 1px 2px 0px&quot;}" type="Error">
+<![CDATA[  [firefox] › accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in dark 
+
+    Error: locator.evaluate: Competing border/shadow paint needs pixel evidence: {"element":"FLUENT-MENU-ITEM#f56e5473.","candidate":"DIV#.fluent-card","pseudo":null,"boxes":[{"left":15,"right":169,"top":199,"bottom":201},{"left":15,"right":169,"top":233,"bottom":235},{"left":15,"right":17,"top":201,"bottom":233},{"left":167,"right":169,"top":201,"bottom":233}],"paintBoxes":[{"left":32,"right":288,"top":235.8000030517578,"bottom":236.8000030517578},{"left":287,"right":288,"top":235.8000030517578,"bottom":455.8000030517578},{"left":32,"right":288,"top":454.8000030517578,"bottom":455.8000030517578},{"left":32,"right":33,"top":235.8000030517578,"bottom":455.8000030517578},{"left":29,"right":291,"top":232.8000030517578,"bottom":458.8000030517578},{"left":29,"right":291,"top":233.8000030517578,"bottom":459.8000030517578}],"candidateBox":{"x":32,"y":235.8000030517578,"width":256,"height":220,"top":235.8000030517578,"right":288,"bottom":455.8000030517578,"left":32},"shadow":"rgba(0, 0, 0, 0.24) 0px 0px 2px 0px, rgba(0, 0, 0, 0.28) 0px 1px 2px 0px"}
+    unsupported@debugger eval code line 311 > eval:304:39
+    sample@debugger eval code line 311 > eval:313:56
+    visit@debugger eval code line 311 > eval:643:19
+    @debugger eval code line 311 > eval:697:10
+    evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at unsupported@debugger eval code line 311 > eval:304:39
+        at sample@debugger eval code line 311 > eval:313:56
+        at visit@debugger eval code line 311 > eval:643:19
+        at @debugger eval code line 311 > eval:697:10
+        at evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1020:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1481:19)
+        at collectCues (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:82:52)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:85:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:474:5
+
+    attachment #1: state-shell-chrome-dark (application/json) ──────────────────────────────────────
+    ../../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-shell-chrome-dark-5db5b4159e16d27b462d423da39fef46a3301a50.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</error>
+</testcase>
+</testsuite>
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-18T07:09:22.851Z" hostname="firefox" tests="4" failures="0" skipped="0" time="126.838" errors="0">
+<testcase name="AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="34.302">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-idle-light-ef124eb35ccb9b11ef5c00ec7fd7f7878d15d8b4.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-submitting-light-2f3cb71e618069eaa0e067770002ee923e954258.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-acknowledged-light-e7415b78d45c871fad72f8bad90864740c428770.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-syncing-light-407d60dca18643fa05df3c0509d754dd15527ab3.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-confirmed-light-7637885e0149b1d706743b16b6b72ad8b6a2e0a0.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-rejected-light-a567ed0abfbe355c5cdc6394e473441cb6537f5c.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-idempotent-confirmed-light-301e2f2a46b77eecb06bbff23ec34457a23f665a.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-needs-review-light-8eefcbd0809c680388b16e8ae9e3d2544935afc9.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-warning-light-6f3580768c5536b28c8e9f925d3aafe494bf5424.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-degraded-light-1c43c5584d60ae448f319db70a2c56205e587d8f.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-degraded-exhausted-light-e87a43eec4bfa087b3794aecee85c42623dbbac0.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="34.238">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-idle-dark-93f8c8a9b4c1969265f58ec98376f6c0d2f78755.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-submitting-dark-e28c872b5c981636008f75699f8385e9836a7983.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-acknowledged-dark-11a195249d0cfcd61632742fcff6e31b93267b91.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-syncing-dark-eeca050d7c15dbfd4be81a751cb8c50d605abc87.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-confirmed-dark-ff32b2a19f49115e41a8810e492e999fd132587c.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-rejected-dark-94acb61c4e6c8a7403f048a4507a3d43800bb019.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-idempotent-confirmed-dark-897e4b3ac903d0657563356757efeb4afdfb7ba0.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-needs-review-dark-c1c378364a26a9c010acfea3df3b1fbe3b0e87e3.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-warning-dark-8dd47ed0371c29ddac350a05222e0fcfe27083f4.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-degraded-dark-4b38db768e23c691e2be351d16ad754cb10b8047.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-degraded-exhausted-dark-57cd02da3e544016bd7e38aaf1e8d57d46b68e0e.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in light" classname="accessibility-state-matrix.spec.ts" time="31.671">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox-repeat1/attachments/state-shell-chrome-light-bd460c8adfbb06d77c4cd898cb22015308f0b912.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox-repeat1/attachments/state-theme-menu-light-687dedd0a3b6a6e423138bbbee3d107258c54b54.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox-repeat1/attachments/state-rail-labeled-light-bcc8522a387b8e069b3a79a57cf6caff7fbe9cf1.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox-repeat1/attachments/state-rail-icons-light-5f02fe7648599cd160ebc97d9330d4abdbc9cf11.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in dark" classname="accessibility-state-matrix.spec.ts" time="26.627">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-shell-chrome-dark-977ee9b037553655d74ac0fa370005adc80a22a8.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-theme-menu-dark-41d828a9afe90f4f8c1b57437a1552a78a653cbe.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-rail-labeled-dark-66182535f2b3e86962a3a92ca1c55a812c47f80e.json]]
+
+[[ATTACHMENT|results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-rail-icons-dark-ec90d31b29557c450c66afb3276b1671b70f9a82.json]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

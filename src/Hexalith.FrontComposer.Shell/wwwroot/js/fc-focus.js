@@ -717,28 +717,60 @@ export function restoreOverlayOrigin(forceRouteHeading = false, owner = null) {
     window.__fcOverlayOrigin = null;
     window.__fcOverlayOpenIntent = null;
     window.__fcModalReservation = null;
-    const markUserMove = () => { userMovedFocus = true; };
+    const markUserMove = (event) => {
+        // Escape and controls inside the closing modal complete that dismissal;
+        // they are not a replacement destination for the return focus.
+        if (hasOpenModal() && (event.key === 'Escape'
+            || event.target instanceof Element && event.target.closest(modalContainerSelector))) return;
+        userMovedFocus = true;
+    };
     document.addEventListener('pointerdown', markUserMove, true);
     document.addEventListener('keydown', markUserMove, true);
-    runAfterDismiss(() => {
+    let retryTimer = null;
+    let dismissedAt = null;
+    const headingWaitAfterDismissMs = 5000;
+    const stopWatching = () => {
         document.removeEventListener('pointerdown', markUserMove, true);
         document.removeEventListener('keydown', markUserMove, true);
-        if (userMovedFocus) {
+        if (retryTimer !== null) clearTimeout(retryTimer);
+    };
+    const restoreWhenDismissed = () => {
+        retryTimer = null;
+        if (userMovedFocus || window.__fcModalReservation || window.__fcOverlayOpenIntent) {
+            stopWatching();
             return;
         }
-        if (focusPendingAbandonmentStay()) return;
-        const target = !forceRouteHeading && origin instanceof HTMLElement && origin.isConnected && !origin.disabled
-            ? origin
-            : document.querySelector('#fc-main-content h1, main h1');
-        if (!(target instanceof HTMLElement)) {
+        if (focusPendingAbandonmentStay()) {
+            stopWatching();
             return;
         }
-        if (!target.hasAttribute('tabindex') && target.tagName === 'H1') {
-            target.setAttribute('tabindex', '-1');
+        // Disposal can precede the native close by arbitrarily many frames. Keep
+        // the return pending without polling on every paint until it can succeed.
+        if (hasOpenModal()) {
+            dismissedAt = null;
+            retryTimer = setTimeout(restoreWhenDismissed, 50);
+            return;
         }
-        target.scrollIntoView({ block: 'nearest' });
-        target.focus({ preventScroll: true });
-    });
+        dismissedAt ??= performance.now();
+        const heading = document.querySelector('#fc-main-content h1, main h1');
+        if (!forceRouteHeading && origin instanceof HTMLElement && origin.isConnected && !origin.disabled
+            && focusTarget(origin)) {
+            stopWatching();
+            return;
+        }
+        if (heading instanceof HTMLElement && focusTarget(heading)) {
+            stopWatching();
+            return;
+        }
+        // A route heading can mount after dismissal, but routes without one must
+        // release both input listeners and the timer after a bounded wait.
+        if (performance.now() - dismissedAt >= headingWaitAfterDismissMs) {
+            stopWatching();
+            return;
+        }
+        retryTimer = setTimeout(restoreWhenDismissed, 50);
+    };
+    runAfterDismiss(restoreWhenDismissed);
 }
 
 export function focusOverlayEntry(id, respectOpeningIntent = false) {

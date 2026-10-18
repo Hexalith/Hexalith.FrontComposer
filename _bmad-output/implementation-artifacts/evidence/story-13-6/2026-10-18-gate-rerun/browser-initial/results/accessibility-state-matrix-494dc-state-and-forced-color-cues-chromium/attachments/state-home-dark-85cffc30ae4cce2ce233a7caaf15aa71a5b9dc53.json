@@ -1,0 +1,521 @@
+{
+  "testId": "a542ea7f175527dc3e9c-9a0265e16cccb133b21c",
+  "attempt": 0,
+  "state": "home-dark",
+  "engine": "chromium",
+  "runId": "story-13-6-2026-10-18-initial",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Dark",
+  "themePaint": {
+    "background": "#292929",
+    "rgb": [
+      41,
+      41,
+      41
+    ]
+  },
+  "targets": [
+    {
+      "target": "fluent-button[inventory-index=\"0\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 16,
+        "top": 4,
+        "right": 48,
+        "bottom": 36
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"1\"]",
+      "width": 83.859375,
+      "height": 32,
+      "box": {
+        "left": 12,
+        "top": 130,
+        "right": 95.859375,
+        "bottom": 162
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 103.859375,
+        "top": 130,
+        "right": 135.859375,
+        "bottom": 162
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "box": {
+        "left": 143.859375,
+        "top": 130,
+        "right": 175.859375,
+        "bottom": 162
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 36,
+      "height": 36,
+      "box": {
+        "left": 183.859375,
+        "top": 128,
+        "right": 219.859375,
+        "bottom": 164
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"5\"]",
+      "width": 189.890625,
+      "height": 100.53125,
+      "box": {
+        "left": 28,
+        "top": 398,
+        "right": 217.890625,
+        "bottom": 498.53125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"6\"]",
+      "width": 144.28125,
+      "height": 80.546875,
+      "box": {
+        "left": 28,
+        "top": 510.53125,
+        "right": 172.28125,
+        "bottom": 591.078125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"7\"]",
+      "width": 280,
+      "height": 140.5,
+      "box": {
+        "left": 28,
+        "top": 603.078125,
+        "right": 308,
+        "bottom": 743.578125
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "h1",
+      "paint": "Welcome back, FrontComposer specimen user.",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "p",
+      "paint": "You're all set up. Items will appear here as teams send work your way.",
+      "foreground": [
+        173,
+        173,
+        173,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 6.482747494991505,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "h2",
+      "paint": "Counter",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        239,
+        239,
+        239,
+        1
+      ],
+      "ratio": 18.263144269082044,
+      "minimum": 3
+    },
+    {
+      "owner": 2,
+      "node": "span",
+      "paint": "CounterProjection",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        239,
+        239,
+        239,
+        1
+      ],
+      "ratio": 18.263144269082044,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "h2",
+      "paint": "Default",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        239,
+        239,
+        239,
+        1
+      ],
+      "ratio": 18.263144269082044,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "h2",
+      "paint": "Specimens",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        239,
+        239,
+        239,
+        1
+      ],
+      "ratio": 18.263144269082044,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "span",
+      "paint": "SpecimenFormattingProjection",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        239,
+        239,
+        239,
+        1
+      ],
+      "ratio": 18.263144269082044,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "span",
+      "paint": "SpecimenStatusProjection",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        239,
+        239,
+        239,
+        1
+      ],
+      "ratio": 18.263144269082044,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [],
+  "cues": [],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": true,
+  "forcedColorsStatus": "painted system palette",
+  "systemText": [
+    {
+      "owner": 0,
+      "node": "h1",
+      "paint": "Welcome back, FrontComposer specimen user.",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "p",
+      "paint": "You're all set up. Items will appear here as teams send work your way.",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "h2",
+      "paint": "Counter",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 2,
+      "node": "span",
+      "paint": "CounterProjection",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "h2",
+      "paint": "Default",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "h2",
+      "paint": "Specimens",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 4,
+      "node": "span",
+      "paint": "SpecimenFormattingProjection",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "span",
+      "paint": "SpecimenStatusProjection",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-MENU-BUTTON#",
+    "requireIndicator": false,
+    "box": {
+      "left": 12,
+      "top": 130,
+      "right": 95.859375,
+      "bottom": 162
+    },
+    "ring": 0,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": []
+  },
+  "systemSnapshot": "system-state-home-dark.png",
+  "reducedMotion": true
+}

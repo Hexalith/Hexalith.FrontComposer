@@ -1,0 +1,147 @@
+
+Running 3 tests using 3 workers
+
+(node:83569) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:83568) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:83575) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits until a native dialog has dismissed (11.4s)
+  ✘  3 [webkit] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits until a native dialog has dismissed (11.9s)
+  ✘  2 [firefox] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits until a native dialog has dismissed (13.1s)
+
+
+  1) [chromium] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits until a native dialog has dismissed 
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  getByTestId('fc-palette-trigger')
+    Expected: focused
+    Received: inactive
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toBeFocused" getByTestId('fc-palette-trigger') with timeout 10000ms
+      - waiting for getByTestId('fc-palette-trigger')
+        24 × locator resolved to <fluent-button icon-only="" tabindex="0" role="button" appearance="subtle" data-testid="fc-palette-trigger" aria-label="Open command palette" _bl_a442ff45-28dc-4a4e-9062-e079165c910b="">…</fluent-button>
+           - unexpected value "inactive"
+
+
+      268 |     dialog.remove();
+      269 |   });
+    > 270 |   await expect(trigger).toBeFocused();
+          |                         ^
+      271 | });
+      272 |
+      273 | test('owned palette return cancels the actual Fluent delayed return after an operator Tab', async ({ page }) => {
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:270:25
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [firefox] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits until a native dialog has dismissed 
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  getByTestId('fc-palette-trigger')
+    Expected: focused
+    Received: inactive
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toBeFocused" getByTestId('fc-palette-trigger') with timeout 10000ms
+      - waiting for getByTestId('fc-palette-trigger')
+        23 × locator resolved to <fluent-button icon-only="" tabindex="0" role="button" appearance="subtle" data-testid="fc-palette-trigger" aria-label="Open command palette" _bl_2bcc3234-a1f9-4050-a0b3-f59206217a02="">…</fluent-button>
+           - unexpected value "inactive"
+
+
+      268 |     dialog.remove();
+      269 |   });
+    > 270 |   await expect(trigger).toBeFocused();
+          |                         ^
+      271 | });
+      272 |
+      273 | test('owned palette return cancels the actual Fluent delayed return after an operator Tab', async ({ page }) => {
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:270:25
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [webkit] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits until a native dialog has dismissed 
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  getByTestId('fc-palette-trigger')
+    Expected: focused
+    Received: inactive
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toBeFocused" getByTestId('fc-palette-trigger') with timeout 10000ms
+      - waiting for getByTestId('fc-palette-trigger')
+        24 × locator resolved to <fluent-button icon-only="" tabindex="0" role="button" appearance="subtle" data-testid="fc-palette-trigger" aria-label="Open command palette" _bl_cb061fc6-eb4f-4e38-95ad-bd9030e0b7d6="">…</fluent-button>
+           - unexpected value "inactive"
+
+
+      268 |     dialog.remove();
+      269 |   });
+    > 270 |   await expect(trigger).toBeFocused();
+          |                         ^
+      271 | });
+      272 |
+      273 | test('owned palette return cancels the actual Fluent delayed return after an operator Tab', async ({ page }) => {
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:270:25
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-dialog-red/results/responsive-accessibility-o-83cbd-native-dialog-has-dismissed-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [chromium] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits until a native dialog has dismissed 
+    [firefox] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits until a native dialog has dismissed 
+    [webkit] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits until a native dialog has dismissed 

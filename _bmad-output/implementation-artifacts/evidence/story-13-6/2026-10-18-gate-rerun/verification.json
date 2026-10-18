@@ -1,0 +1,534 @@
+{
+  "date": "2026-10-18",
+  "candidateSourceManifest": "source.json",
+  "browser": {
+    "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=story-13-6-2026-10-18-parent-final FC_E2E_OUTPUT_DIR=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-parent-final/results FC_E2E_HTML_REPORT_DIR=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-parent-final/html FC_E2E_JSON_PATH=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-parent-final/playwright.json FC_E2E_JUNIT_PATH=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-parent-final/junit.xml npx playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --workers=4 --retries=0",
+    "workdir": "tests/e2e",
+    "host": "Debug Counter.Web on http://127.0.0.1:5070 in Test environment, using playwright.config.ts Test host options; PLAYWRIGHT_SKIP_WEBSERVER=1",
+    "total": 750,
+    "stats": {
+      "startTime": "2026-10-18T07:54:44.111Z",
+      "duration": 460587.795,
+      "expected": 729,
+      "skipped": 3,
+      "unexpected": 18,
+      "flaky": 0
+    },
+    "failures": [
+      {
+        "project": "chromium",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light compact",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3818px, received 1280px by 3770px. 47854 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3770px. 47854 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3770px. 47854 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "chromium",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light comfortable",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3878px, received 1280px by 3830px. 48036 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3878px, received 1280px by 3830px. 48036 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3878px, received 1280px by 3830px. 48036 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "chromium",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light roomy",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3938px, received 1280px by 3890px. 48175 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3938px, received 1280px by 3890px. 48175 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3938px, received 1280px by 3890px. 48175 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "chromium",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark compact",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3818px, received 1280px by 3770px. 246526 pixels (ratio 0.06 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3770px. 246526 pixels (ratio 0.06 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3770px. 246526 pixels (ratio 0.06 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "chromium",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark comfortable",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3878px, received 1280px by 3830px. 248208 pixels (ratio 0.06 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3878px, received 1280px by 3830px. 248208 pixels (ratio 0.06 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3878px, received 1280px by 3830px. 248208 pixels (ratio 0.06 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "chromium",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark roomy",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3938px, received 1280px by 3890px. 249852 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3938px, received 1280px by 3890px. 249852 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3938px, received 1280px by 3890px. 249852 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "firefox",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light compact",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3778px, received 1280px by 3772px. 187145 pixels (ratio 0.04 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3778px, received 1280px by 3772px. 187145 pixels (ratio 0.04 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3778px, received 1280px by 3772px. 187145 pixels (ratio 0.04 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "firefox",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light comfortable",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3846px, received 1280px by 3832px. 206564 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3846px, received 1280px by 3832px. 206564 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3846px, received 1280px by 3832px. 206564 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "firefox",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light roomy",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3914px, received 1280px by 3892px. 219503 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3914px, received 1280px by 3892px. 219503 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3914px, received 1280px by 3892px. 219503 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "firefox",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark compact",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3778px, received 1280px by 3772px. 426864 pixels (ratio 0.09 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3778px, received 1280px by 3772px. 426864 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3778px, received 1280px by 3772px. 426864 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "firefox",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark comfortable",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3846px, received 1280px by 3832px. 444192 pixels (ratio 0.10 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3846px, received 1280px by 3832px. 444192 pixels (ratio 0.10 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3846px, received 1280px by 3832px. 444192 pixels (ratio 0.10 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "firefox",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark roomy",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3914px, received 1280px by 3892px. 460850 pixels (ratio 0.10 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3914px, received 1280px by 3892px. 460850 pixels (ratio 0.10 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3914px, received 1280px by 3892px. 460850 pixels (ratio 0.10 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "webkit",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light compact",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3818px, received 1280px by 3815px. 180414 pixels (ratio 0.04 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3815px. 180414 pixels (ratio 0.04 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3815px. 180414 pixels (ratio 0.04 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "webkit",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light comfortable",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3886px, received 1280px by 3875px. 199940 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3886px, received 1280px by 3875px. 199940 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3886px, received 1280px by 3875px. 199940 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "webkit",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light roomy",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3954px, received 1280px by 3935px. 215667 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3954px, received 1280px by 3935px. 215667 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3954px, received 1280px by 3935px. 215667 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "webkit",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark compact",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3818px, received 1280px by 3815px. 425276 pixels (ratio 0.09 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3815px. 425276 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3815px. 425276 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "webkit",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark comfortable",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3886px, received 1280px by 3875px. 438079 pixels (ratio 0.09 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3886px, received 1280px by 3875px. 438079 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3886px, received 1280px by 3875px. 438079 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      },
+      {
+        "project": "webkit",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark roomy",
+        "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3954px, received 1280px by 3935px. 450341 pixels (ratio 0.09 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3954px, received 1280px by 3935px. 450341 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3954px, received 1280px by 3935px. 450341 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+      }
+    ],
+    "skips": [
+      {
+        "project": "webkit",
+        "name": "accessibility-state-matrix.spec.ts › review clipping preserves visible competing paint: overflow clip margin"
+      },
+      {
+        "project": "firefox",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion"
+      },
+      {
+        "project": "webkit",
+        "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion"
+      }
+    ],
+    "caseInventory": "browser-parent-final/outcomes.json",
+    "rawReport": "browser-parent-final/playwright.json",
+    "junit": "browser-parent-final/junit.xml",
+    "html": "browser-parent-final/html/index.html",
+    "results": "browser-parent-final/results",
+    "sourceDiffSha256AtRun": "0c1217adfe38e3a488dba91350ff098f6eab0de227714eee99f12b456374af60",
+    "candidateRelation": "current full gate for source.json sourceDiffSha256",
+    "visualDiffInventory": "visual-diff-inventory-parent-final.json",
+    "hostLog": null,
+    "hostLogSha256": null,
+    "hostLaunchCommandForReviewReproduction": "env ASPNETCORE_ENVIRONMENT=Test Hexalith__FrontComposer__Specimens__Enabled=true Hexalith__Shell__FormAbandonmentThresholdSeconds=5 Hexalith__Shell__TimeoutActionThresholdMs=5000 Hexalith__Shell__ProjectionReconnectedNoticeDurationMs=30000 Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs=6500 dotnet run --project samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --no-build --no-launch-profile --urls http://127.0.0.1:5070",
+    "loadedShellDllSha256ForReviewReproduction": "386b1ec30868f4623fb9d5cf5ecae4f6759cd8d94e4a59041d51503391a92445"
+  },
+  ".net": {
+    "buildCommands": [
+      "dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --no-restore",
+      "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Debug --no-restore",
+      "dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Debug --no-restore"
+    ],
+    "buildOutcomes": "all three passed; 0 warnings, 0 errors",
+    "shell": {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -parallel none",
+      "total": 3709,
+      "failed": 7,
+      "skipped": 1,
+      "errors": 0,
+      "failures": [
+        "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot",
+        "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests.Fluent_package_versions_are_v5_only_and_icons_match_components",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean"
+      ],
+      "skips": [
+        "Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore.LiveTwoTenantProductionAdapterTests.ProvisionedTenants_QueryCountAndSubscribe_StayIsolated"
+      ],
+      "rawLog": "shell-tests-parent-final.log"
+    },
+    "sourceTools": {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+      "total": 1313,
+      "failed": 1,
+      "skipped": 0,
+      "errors": 0,
+      "failures": [
+        "Hexalith.FrontComposer.SourceTools.Tests.Integration.PackagedAnalyzerConsumerTests.PackagedAnalyzer_ContractsOnlyPayload_GeneratedShellConsumerCompiles"
+      ],
+      "rawLog": "source-tools-tests-parent-final.log"
+    },
+    "sourceDiffSha256AtRun": "0c1217adfe38e3a488dba91350ff098f6eab0de227714eee99f12b456374af60",
+    "candidateRelation": "current full gates for source.json sourceDiffSha256"
+  },
+  "retainedRawFileHashes": {
+    "build-counter-web-gate.log": {
+      "sha256": "f8ea58ee14ce9621d6232c613c9a2a694938ec0371b87ade7c60b79148249221",
+      "bytes": 1930
+    },
+    "build-shell-tests-gate.log": {
+      "sha256": "261f924f1b3259f30c7f4ed0cc8d6d4681e16c198c327be3022419e2c7b8333e",
+      "bytes": 2744
+    },
+    "build-source-tools-tests-gate.log": {
+      "sha256": "b6b1c876cf633192513a20916badc731240871432ec8f630ff73808dded49868",
+      "bytes": 1996
+    },
+    "shell-tests-gate.log": {
+      "sha256": "a78c2b849b75893784b7ccd03598523cf3214b193b6555fc83122c930d3b0fd6",
+      "bytes": 384469
+    },
+    "source-tools-tests-gate.log": {
+      "sha256": "f543a1740add59d0680fcb8a6c2d643206f94b9b6c5a09f3468d20e602d46571",
+      "bytes": 2506
+    },
+    "browser-final-2/run.log": {
+      "sha256": "85bd3747b6c32581efd8d4d008dcc7271918fb752c8e5b0a8fdb75b970329d75",
+      "bytes": 248091
+    },
+    "browser-final-2/playwright.json": {
+      "sha256": "f9bceec4e472378b6365a3312eebf127944bbec0dd3f92fe79343f4247d2c460",
+      "bytes": 1883957
+    },
+    "browser-final-2/junit.xml": {
+      "sha256": "0c5537bab2c677c494aae8945d3ab1432b1f2f4d354f61b9a0c47d97beb81e0f",
+      "bytes": 336268
+    },
+    "browser-final-2/outcomes.json": {
+      "sha256": "e29ae126395a37bf5e223142c7f0fac6b9c62a2442ed9be92743503e537f0dcb",
+      "bytes": 306337
+    },
+    "browser-initial/playwright.json": {
+      "sha256": "290e6766d2c16a17ce4e3f308fe5acfca5b9bfd5f83d2bf3bc738881599d5fa2",
+      "bytes": 1885567
+    },
+    "browser-final/playwright.json": {
+      "sha256": "99f43ca5ee16ae386010b076f0aaaa658297721f139e1e4ae28f04434bce515e",
+      "bytes": 1892207
+    },
+    "browser-chromium-palette-isolation/playwright.json": {
+      "sha256": "ab8a07413aabd4cbea62e297df397ce39f7748f68575c50a9af3e72e60478adf",
+      "bytes": 79052
+    },
+    "review-fix/browser-focused/playwright.json": "dec41073f817ce40fba9a594e25e6c36840407ce0154380a7e42d2865e5b7d32",
+    "review-fix/browser-focused/junit.xml": "e943199ed2d53b9a1a74dee8dfb33401429f5a66678785f59c2dd9529285e25f",
+    "review-fix/browser-focused.log": "c2f042c4a11cd40e8d45e86131827ec2d9527a6ddb048311685aaa5e7879f1d9",
+    "review-fix/host.log": "c00b4dd42deee018ede436c185111222891b310cb90f310e83b0fbfb54dbca6c",
+    "review-fix/browser-focused-final/playwright.json": "ac9678c7087ac28610723dcb63f27255238d724f5dcbb44a2740af1238c7cdf0",
+    "review-fix/browser-focused-final/junit.xml": "6432eed6fc83f80f7e9e151436d2add6e63d3f042414b095c8ad07d9b6cce78d",
+    "review-fix/browser-focused-final.log": "cdc543892f12c45944ee51aefe0ca0e51716c6c6122fe481df9ee56123fbe181",
+    "review-fix/host-final.log": "dae6ab01c330783102d4bfdd7d1627b8111ec06640dcade1193ed988a1f288bd",
+    "host-final.log": "e245d4e0bb1360060cc0b6bb197003f75cb8af90c618221bf274aa4c2012d889",
+    "review-fix/browser-focus-final/playwright.json": "0cfa480e14029950c5708883af28402180ec0aa032f541e26ea294e6cb10db89",
+    "review-fix/browser-focus-final/junit.xml": "e4543a04ce868431c95438f876680ff5336fe348149d999948e62c98106e93f0",
+    "review-fix/browser-focus-final.log": "ccdcebe1b4a3b0f7e96b384a14b7e5bbd25b07b2e18801a6862a3c69a4ba1a69",
+    "review-fix/host-focus-final.log": "ce564f2b21dc8cda7acb11a51f5983b1ad402130ee094a384fdb375bf33115cd",
+    "review-fix/browser-focus-bound/playwright.json": "fccf1f7dd99e335684f41f8d51ac2621861ffba335863ec1ba07ff1d2893c6eb",
+    "review-fix/browser-focus-bound.log": "f793736bcf92ea7b852a63151fdb8ded6f26402c9f84299378c7ce81213285b6",
+    "review-fix/browser-focus-bound-final/playwright.json": "46d07b47af1355c7d7c3dcf5137a614f23d934525004a478de35136a203f83d6",
+    "review-fix/browser-focus-bound-final.log": "04c2c59f0642bf6eea3bc9ddedc36ebd4f80fca35b2b038a8bc30c0d0d9c0157",
+    "review-fix/host-focus-bound.log": "866a29af831e03c50999b0c963b18ec8c88b596733b660a569b3de3e0b4ffa65",
+    "browser-parent-final/run.log": {
+      "sha256": "d48400157fb6a24f684efe7c44c32d1c3dab35de29e8e6d99d38653b758e036a",
+      "bytes": 240676
+    },
+    "browser-parent-final/playwright.json": {
+      "sha256": "31baf525ca7f1840b458d4d1fe2e3acb9c62ed28d92c034346d3c44993ddbdbe",
+      "bytes": 1888272
+    },
+    "browser-parent-final/junit.xml": {
+      "sha256": "0fb4c1fe3a132cea24f284f44bd91de98e8fb06108720a718c45c6815c28a45e",
+      "bytes": 328750
+    },
+    "browser-parent-final/outcomes.json": {
+      "sha256": "eef6965654fc73247e1ae3d25f43933baf6c2866bf77e475b89aefd9e176f287",
+      "bytes": 242799
+    },
+    "shell-tests-parent-final.log": {
+      "sha256": "2fc996f092348cd96e072a0f442dcbd5ec1d09c3becba8dcbd7d0f04530e694e",
+      "bytes": 384468
+    },
+    "source-tools-tests-parent-final.log": {
+      "sha256": "14dfd66b2591d0ce58818f9f69ba13dc9040042bd42b1cd7076a39247fe67071",
+      "bytes": 2506
+    },
+    "visual-diff-inventory-parent-final.json": {
+      "sha256": "798692ffef1aab619ced15c7415dadc4c9d6dbe2ab3d3239bd6902db7ce92600",
+      "bytes": 22605
+    }
+  },
+  "manualGates": "open; no dated human AT, actual browser zoom, physical device or owner approvals supplied",
+  "reviewPatch": {
+    "currentSourceDiffSha256": "0c1217adfe38e3a488dba91350ff098f6eab0de227714eee99f12b456374af60",
+    "priorFullGateSourceDiffSha256": "7f856326c9b8e1259fce91273ce0f9da528c906ce11450ae55a47305391732bd",
+    "fullBrowserAndDotnetStatus": "completed for current source digest; 18 protected visual failures and 8 .NET failures retained",
+    "debugTestHost": {
+      "launchCommand": "env ASPNETCORE_ENVIRONMENT=Test Hexalith__FrontComposer__Specimens__Enabled=true Hexalith__Shell__FormAbandonmentThresholdSeconds=5 Hexalith__Shell__TimeoutActionThresholdMs=5000 Hexalith__Shell__ProjectionReconnectedNoticeDurationMs=30000 Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs=6500 dotnet run --project samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --no-build --no-launch-profile --urls http://127.0.0.1:5070",
+      "commandWorkdir": "/home/administrator/projects/hexalith/frontcomposer",
+      "environment": "Test",
+      "url": "http://127.0.0.1:5070",
+      "loadedShellDllPath": "samples/Counter/Counter.Web/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll",
+      "loadedShellDllSha256": "386b1ec30868f4623fb9d5cf5ecae4f6759cd8d94e4a59041d51503391a92445",
+      "servedFocusJsPath": "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js",
+      "servedFocusJsSha256": "f3464f07ed59a677cefcdc87a29e2ed8729c539badcfc3fee4ee45b25c6c7c2a",
+      "hostLog": "review-fix/host-focus-final.log",
+      "httpServedFocusJsSha256": "f3464f07ed59a677cefcdc87a29e2ed8729c539badcfc3fee4ee45b25c6c7c2a"
+    },
+    "focusedBrowser": {
+      "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=story-13-6-review-fix-final FC_E2E_OUTPUT_DIR=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focused-final/results FC_E2E_HTML_REPORT_DIR=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focused-final/html FC_E2E_JSON_PATH=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focused-final/playwright.json FC_E2E_JUNIT_PATH=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focused-final/junit.xml npx playwright test specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --grep 'owned overlay return waits through Escape dismissal|delayed overlay disposal preserves an operator Tab|owned palette return cancels|all eleven actual lifecycle wrapper states' --workers=4 --retries=0",
+      "workdir": "tests/e2e",
+      "stats": {
+        "startTime": "2026-10-18T07:47:08.592Z",
+        "duration": 59326.612,
+        "expected": 15,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "total": 15,
+      "json": "review-fix/browser-focused-final/playwright.json",
+      "junit": "review-fix/browser-focused-final/junit.xml",
+      "html": "review-fix/browser-focused-final/html/index.html",
+      "log": "review-fix/browser-focused-final.log",
+      "jsonSha256": "ac9678c7087ac28610723dcb63f27255238d724f5dcbb44a2740af1238c7cdf0",
+      "junitSha256": "6432eed6fc83f80f7e9e151436d2add6e63d3f042414b095c8ad07d9b6cce78d",
+      "logSha256": "cdc543892f12c45944ee51aefe0ca0e51716c6c6122fe481df9ee56123fbe181",
+      "sourceDiffSha256AtRun": "4cf2cb299a7ec5c6c45b2e2e8dcb457990608dea6b2d00d84fbb6d0f637b6bc3",
+      "candidateRelation": "retained earlier focused review proof; current focus follow-up changes src/tests"
+    },
+    "visualDiffInventory": "visual-diff-inventory-parent-final.json",
+    "visualDiffInventorySha256": "798692ffef1aab619ced15c7415dadc4c9d6dbe2ab3d3239bd6902db7ce92600",
+    "earlierFocusedBrowser": "review-fix/browser-focused/playwright.json (15 passed before final record-time state assertion; retained)",
+    "focusFollowup": {
+      "sourceDiffSha256AtRun": "0c1217adfe38e3a488dba91350ff098f6eab0de227714eee99f12b456374af60",
+      "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=story-13-6-focus-final FC_E2E_OUTPUT_DIR=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-final/results FC_E2E_HTML_REPORT_DIR=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-final/html FC_E2E_JSON_PATH=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-final/playwright.json FC_E2E_JUNIT_PATH=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-final/junit.xml npx playwright test specs/responsive-accessibility.spec.ts --grep 'owned overlay return waits through Escape dismissal|owned overlay return releases watchers when no destination appears after dismissal' --workers=4 --retries=0",
+      "workdir": "tests/e2e",
+      "debugTestHost": {
+        "launchCommand": "env ASPNETCORE_ENVIRONMENT=Test Hexalith__FrontComposer__Specimens__Enabled=true Hexalith__Shell__FormAbandonmentThresholdSeconds=5 Hexalith__Shell__TimeoutActionThresholdMs=5000 Hexalith__Shell__ProjectionReconnectedNoticeDurationMs=30000 Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs=6500 dotnet run --project samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --no-build --no-launch-profile --urls http://127.0.0.1:5070",
+        "commandWorkdir": "/home/administrator/projects/hexalith/frontcomposer",
+        "environment": "Test",
+        "url": "http://127.0.0.1:5070",
+        "loadedShellDllPath": "samples/Counter/Counter.Web/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll",
+        "loadedShellDllSha256": "386b1ec30868f4623fb9d5cf5ecae4f6759cd8d94e4a59041d51503391a92445",
+        "servedFocusJsPath": "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js",
+        "servedFocusJsSha256": "f3464f07ed59a677cefcdc87a29e2ed8729c539badcfc3fee4ee45b25c6c7c2a",
+        "hostLog": "review-fix/host-focus-final.log",
+        "httpServedFocusJsSha256": "f3464f07ed59a677cefcdc87a29e2ed8729c539badcfc3fee4ee45b25c6c7c2a"
+      },
+      "stats": {
+        "startTime": "2026-10-18T07:52:10.874Z",
+        "duration": 12004.795,
+        "expected": 6,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "total": 6,
+      "json": "review-fix/browser-focus-final/playwright.json",
+      "junit": "review-fix/browser-focus-final/junit.xml",
+      "html": "review-fix/browser-focus-final/html/index.html",
+      "log": "review-fix/browser-focus-final.log",
+      "hostLog": "review-fix/host-focus-final.log",
+      "jsonSha256": "0cfa480e14029950c5708883af28402180ec0aa032f541e26ea294e6cb10db89",
+      "junitSha256": "e4543a04ce868431c95438f876680ff5336fe348149d999948e62c98106e93f0",
+      "logSha256": "ccdcebe1b4a3b0f7e96b384a14b7e5bbd25b07b2e18801a6862a3c69a4ba1a69",
+      "failedHarnessAttempt": "review-fix/browser-focus-bound/playwright.json (three cleanup cases failed because Set counted one shared callback for two event types; raw proof retained)"
+    },
+    "resultReportSha256": "aa5682ced093b313625f1af6302b32e09e4b521fa5a5cb30b9b3ed904ef9da03",
+    "specSha256": "48691ed59f8816fa78139d3a3a16755d7b0a7b035b25b06e747ce58c8a440bb5"
+  },
+  "candidateSourceManifestSha256": "fd2e4be1d736298dc88ba0de26bf5ed53136b8ed67526c1ba64c3bc6df87d05c",
+  "historicalFullGates": {
+    "browser": {
+      "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=story-13-6-2026-10-18-final-2 FC_E2E_OUTPUT_DIR=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-final-2/results FC_E2E_HTML_REPORT_DIR=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-final-2/html FC_E2E_JSON_PATH=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-final-2/playwright.json FC_E2E_JUNIT_PATH=../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-final-2/junit.xml npx playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --workers=4 --retries=0",
+      "workdir": "tests/e2e",
+      "host": "Debug Counter.Web on http://127.0.0.1:5070 in Test environment, using playwright.config.ts Test host options; PLAYWRIGHT_SKIP_WEBSERVER=1",
+      "total": 747,
+      "stats": {
+        "startTime": "2026-10-18T07:16:00.971Z",
+        "duration": 498677.467,
+        "expected": 725,
+        "skipped": 3,
+        "unexpected": 19,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "project": "chromium",
+          "name": "accessibility-state-matrix.spec.ts › active toolbar, tabs, palette and settings states in dark",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByTestId('fc-settings-button')\nExpected: focused\nReceived: inactive\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByTestId('fc-settings-button') with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('fc-settings-button')\u001b[22m\n\u001b[2m    24 × locator resolved to <fluent-button icon-only=\"\" tabindex=\"0\" role=\"button\" appearance=\"subtle\" title=\"Open settings\" aria-label=\"Open settings\" data-testid=\"fc-settings-button\" _bl_87ea29e5-21c0-4187-916e-5938d946b8a9=\"\">…</fluent-button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n\n  559 |     await expect(page.getByTestId('fc-palette-trigger')).toBeFocused();\n  560 |     await page.keyboard.press('Tab');\n> 561 |     await expect(page.getByTestId('fc-settings-button')).toBeFocused();\n      |                                                          ^\n  562 |     await page.keyboard.press('Enter');\n  563 |     const settings = page.getByTestId('fc-settings-dialog');\n  564 |     await expect(page.locator('#fc-settings-heading')).toBeFocused();\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:561:58"
+        },
+        {
+          "project": "chromium",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light compact",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3818px, received 1280px by 3770px. 47854 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3770px. 47854 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3770px. 47854 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "chromium",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light comfortable",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3878px, received 1280px by 3830px. 48036 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3878px, received 1280px by 3830px. 48036 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3878px, received 1280px by 3830px. 48036 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "chromium",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light roomy",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3938px, received 1280px by 3890px. 48175 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3938px, received 1280px by 3890px. 48175 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3938px, received 1280px by 3890px. 48175 pixels (ratio 0.01 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "chromium",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark compact",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3818px, received 1280px by 3770px. 246526 pixels (ratio 0.06 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3770px. 246526 pixels (ratio 0.06 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3770px. 246526 pixels (ratio 0.06 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "chromium",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark comfortable",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3878px, received 1280px by 3830px. 248208 pixels (ratio 0.06 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3878px, received 1280px by 3830px. 248208 pixels (ratio 0.06 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3878px, received 1280px by 3830px. 248208 pixels (ratio 0.06 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "chromium",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark roomy",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3938px, received 1280px by 3890px. 249852 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3938px, received 1280px by 3890px. 249852 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3938px, received 1280px by 3890px. 249852 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "firefox",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light compact",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3778px, received 1280px by 3772px. 187145 pixels (ratio 0.04 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3778px, received 1280px by 3772px. 187145 pixels (ratio 0.04 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3778px, received 1280px by 3772px. 187145 pixels (ratio 0.04 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "firefox",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light comfortable",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3846px, received 1280px by 3832px. 206564 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3846px, received 1280px by 3832px. 206564 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3846px, received 1280px by 3832px. 206564 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "firefox",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light roomy",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3914px, received 1280px by 3892px. 219503 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3914px, received 1280px by 3892px. 219503 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3914px, received 1280px by 3892px. 219503 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "firefox",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark compact",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3778px, received 1280px by 3772px. 426864 pixels (ratio 0.09 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3778px, received 1280px by 3772px. 426864 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3778px, received 1280px by 3772px. 426864 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "firefox",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark comfortable",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3846px, received 1280px by 3832px. 444192 pixels (ratio 0.10 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3846px, received 1280px by 3832px. 444192 pixels (ratio 0.10 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3846px, received 1280px by 3832px. 444192 pixels (ratio 0.10 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "firefox",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark roomy",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3914px, received 1280px by 3892px. 460850 pixels (ratio 0.10 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3914px, received 1280px by 3892px. 460850 pixels (ratio 0.10 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3914px, received 1280px by 3892px. 460850 pixels (ratio 0.10 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "webkit",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light compact",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3818px, received 1280px by 3815px. 180414 pixels (ratio 0.04 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3815px. 180414 pixels (ratio 0.04 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3815px. 180414 pixels (ratio 0.04 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "webkit",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light comfortable",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3886px, received 1280px by 3875px. 199940 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3886px, received 1280px by 3875px. 199940 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3886px, received 1280px by 3875px. 199940 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "webkit",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline light roomy",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3954px, received 1280px by 3935px. 215667 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-light-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3954px, received 1280px by 3935px. 215667 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3954px, received 1280px by 3935px. 215667 pixels (ratio 0.05 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "webkit",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark compact",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3818px, received 1280px by 3815px. 425276 pixels (ratio 0.09 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-compact.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-compact.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3815px. 425276 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3818px, received 1280px by 3815px. 425276 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "webkit",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark comfortable",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3886px, received 1280px by 3875px. 438079 pixels (ratio 0.09 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-comfortable.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-comfortable.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3886px, received 1280px by 3875px. 438079 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3886px, received 1280px by 3875px. 438079 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        },
+        {
+          "project": "webkit",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › visual baseline dark roomy",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveScreenshot\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\n  Expected an image 1280px by 3954px, received 1280px by 3935px. 450341 pixels (ratio 0.09 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-roomy.png\n\nCall log:\n\u001b[2m  - Expect \"toHaveScreenshot(frontcomposer-type-dark-roomy.png)\" with timeout 10000ms\u001b[22m\n\u001b[2m    - verifying given screenshot expectation\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3954px, received 1280px by 3935px. 450341 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\u001b[2m  - waiting 100ms before taking screenshot\u001b[22m\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m    - disabled all CSS animations\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\u001b[2m  - captured a stable screenshot\u001b[22m\n\u001b[2m  - Expected an image 1280px by 3954px, received 1280px by 3935px. 450341 pixels (ratio 0.09 of all image pixels) are different.\u001b[22m\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+        }
+      ],
+      "skips": [
+        {
+          "project": "webkit",
+          "name": "accessibility-state-matrix.spec.ts › review clipping preserves visible competing paint: overflow clip margin"
+        },
+        {
+          "project": "firefox",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion"
+        },
+        {
+          "project": "webkit",
+          "name": "specimen-accessibility.spec.ts › FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion"
+        }
+      ],
+      "caseInventory": "browser-final-2/outcomes.json",
+      "rawReport": "browser-final-2/playwright.json",
+      "junit": "browser-final-2/junit.xml",
+      "html": "browser-final-2/html/index.html",
+      "results": "browser-final-2/results",
+      "sourceDiffSha256AtRun": "7f856326c9b8e1259fce91273ce0f9da528c906ce11450ae55a47305391732bd",
+      "candidateRelation": "retained prior full gate; current review patch changes src/tests and requires full rerun",
+      "visualDiffInventory": "visual-diff-inventory.json",
+      "hostLog": "host-final.log",
+      "hostLogSha256": "e245d4e0bb1360060cc0b6bb197003f75cb8af90c618221bf274aa4c2012d889",
+      "hostLaunchCommandForReviewReproduction": "env ASPNETCORE_ENVIRONMENT=Test Hexalith__FrontComposer__Specimens__Enabled=true Hexalith__Shell__FormAbandonmentThresholdSeconds=5 Hexalith__Shell__TimeoutActionThresholdMs=5000 Hexalith__Shell__ProjectionReconnectedNoticeDurationMs=30000 Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs=6500 dotnet run --project samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --no-build --no-launch-profile --urls http://127.0.0.1:5070",
+      "loadedShellDllSha256ForReviewReproduction": "386b1ec30868f4623fb9d5cf5ecae4f6759cd8d94e4a59041d51503391a92445"
+    },
+    ".net": {
+      "buildCommands": [
+        "dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --no-restore",
+        "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Debug --no-restore",
+        "dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Debug --no-restore"
+      ],
+      "buildOutcomes": "all three passed; 0 warnings, 0 errors",
+      "shell": {
+        "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -parallel none",
+        "total": 3709,
+        "failed": 7,
+        "skipped": 1,
+        "errors": 0,
+        "failures": [
+          "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot",
+          "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests.Fluent_package_versions_are_v5_only_and_icons_match_components",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean"
+        ],
+        "skips": [
+          "Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore.LiveTwoTenantProductionAdapterTests.ProvisionedTenants_QueryCountAndSubscribe_StayIsolated"
+        ],
+        "rawLog": "shell-tests-gate.log"
+      },
+      "sourceTools": {
+        "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+        "total": 1313,
+        "failed": 1,
+        "skipped": 0,
+        "errors": 0,
+        "failures": [
+          "Hexalith.FrontComposer.SourceTools.Tests.Integration.PackagedAnalyzerConsumerTests.PackagedAnalyzer_ContractsOnlyPayload_GeneratedShellConsumerCompiles"
+        ],
+        "rawLog": "source-tools-tests-gate.log"
+      },
+      "sourceDiffSha256AtRun": "7f856326c9b8e1259fce91273ce0f9da528c906ce11450ae55a47305391732bd",
+      "candidateRelation": "retained prior full gates; current review patch requires owner full rerun"
+    }
+  }
+}

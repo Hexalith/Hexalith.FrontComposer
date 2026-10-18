@@ -1,0 +1,118 @@
+
+Running 6 tests using 4 workers
+
+(node:73844) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73838) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73837) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73836) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 [chromium] › specs/responsive-accessibility.spec.ts:285:1 › owned overlay return releases watchers when no destination appears after dismissal (2.3s)
+(node:74850) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [firefox] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits through Escape dismissal and falls back from a hidden origin (2.6s)
+  ✓  4 [chromium] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits through Escape dismissal and falls back from a hidden origin (2.9s)
+  ✘  2 [firefox] › specs/responsive-accessibility.spec.ts:285:1 › owned overlay return releases watchers when no destination appears after dismissal (2.0s)
+(node:75320) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  5 [webkit] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits through Escape dismissal and falls back from a hidden origin (1.9s)
+  ✘  6 [webkit] › specs/responsive-accessibility.spec.ts:285:1 › owned overlay return releases watchers when no destination appears after dismissal (1.1s)
+
+
+  1) [chromium] › specs/responsive-accessibility.spec.ts:285:1 › owned overlay return releases watchers when no destination appears after dismissal 
+
+    Error: page.evaluate: Error: expected both return watchers, got 1
+        at eval (eval at evaluate (:311:30), <anonymous>:40:35)
+        at async <anonymous>:337:30
+        at eval (eval at evaluate (:311:30), <anonymous>:40:35)
+        at async <anonymous>:337:30
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:289:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [firefox] › specs/responsive-accessibility.spec.ts:285:1 › owned overlay return releases watchers when no destination appears after dismissal 
+
+    Error: page.evaluate: expected both return watchers, got 1
+    @debugger eval code line 311 > eval:40:35
+    async*evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at @debugger eval code line 311 > eval:40:35
+        at async*evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:289:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-firefox/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [webkit] › specs/responsive-accessibility.spec.ts:285:1 › owned overlay return releases watchers when no destination appears after dismissal 
+
+    Error: page.evaluate: Error: expected both return watchers, got 1
+
+      287 |   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+      288 |   await page.getByTestId('fc-palette-trigger').focus();
+    > 289 |   await page.evaluate(async () => {
+          |              ^
+      290 |     const path: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+      291 |     const focus = await import(path) as {
+      292 |       captureOverlayOrigin: (testId: string, preserveExisting: boolean) => boolean;
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:289:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-webkit/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/review-fix/browser-focus-bound/results/responsive-accessibility-o-3658f-ion-appears-after-dismissal-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [chromium] › specs/responsive-accessibility.spec.ts:285:1 › owned overlay return releases watchers when no destination appears after dismissal 
+    [firefox] › specs/responsive-accessibility.spec.ts:285:1 › owned overlay return releases watchers when no destination appears after dismissal 
+    [webkit] › specs/responsive-accessibility.spec.ts:285:1 › owned overlay return releases watchers when no destination appears after dismissal 
+  3 passed (5.6s)

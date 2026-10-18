@@ -1,0 +1,66 @@
+
+Running 8 tests using 1 worker
+
+(node:51417) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [firefox] › specs/accessibility-state-matrix.spec.ts:273:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (33.5s)
+  ✓  2 [firefox] › specs/accessibility-state-matrix.spec.ts:273:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (29.9s)
+  ✓  3 [firefox] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in light (24.2s)
+  ✘  4 [firefox] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in dark (8.6s)
+(node:82832) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  5 [firefox] › specs/accessibility-state-matrix.spec.ts:273:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (34.3s)
+  ✓  6 [firefox] › specs/accessibility-state-matrix.spec.ts:273:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (34.2s)
+  ✓  7 [firefox] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in light (31.7s)
+  ✓  8 [firefox] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in dark (26.6s)
+
+
+  1) [firefox] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in dark 
+
+    Error: locator.evaluate: Competing border/shadow paint needs pixel evidence: {"element":"FLUENT-MENU-ITEM#f56e5473.","candidate":"DIV#.fluent-card","pseudo":null,"boxes":[{"left":15,"right":169,"top":199,"bottom":201},{"left":15,"right":169,"top":233,"bottom":235},{"left":15,"right":17,"top":201,"bottom":233},{"left":167,"right":169,"top":201,"bottom":233}],"paintBoxes":[{"left":32,"right":288,"top":235.8000030517578,"bottom":236.8000030517578},{"left":287,"right":288,"top":235.8000030517578,"bottom":455.8000030517578},{"left":32,"right":288,"top":454.8000030517578,"bottom":455.8000030517578},{"left":32,"right":33,"top":235.8000030517578,"bottom":455.8000030517578},{"left":29,"right":291,"top":232.8000030517578,"bottom":458.8000030517578},{"left":29,"right":291,"top":233.8000030517578,"bottom":459.8000030517578}],"candidateBox":{"x":32,"y":235.8000030517578,"width":256,"height":220,"top":235.8000030517578,"right":288,"bottom":455.8000030517578,"left":32},"shadow":"rgba(0, 0, 0, 0.24) 0px 0px 2px 0px, rgba(0, 0, 0, 0.28) 0px 1px 2px 0px"}
+    unsupported@debugger eval code line 311 > eval:304:39
+    sample@debugger eval code line 311 > eval:313:56
+    visit@debugger eval code line 311 > eval:643:19
+    @debugger eval code line 311 > eval:697:10
+    evaluate@debugger eval code:313:16
+    @debugger eval code:1:44
+    @debugger eval code:1:62
+
+        at unsupported@debugger eval code line 311 > eval:304:39
+        at sample@debugger eval code line 311 > eval:313:56
+        at visit@debugger eval code line 311 > eval:643:19
+        at @debugger eval code line 311 > eval:697:10
+        at evaluate@debugger eval code:313:16
+        at @debugger eval code:1:44
+        at @debugger eval code:1:62
+        at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1020:15)
+        at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1481:19)
+        at collectCues (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:82:52)
+        at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:85:16)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:474:5
+
+    attachment #1: state-shell-chrome-dark (application/json) ──────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-shell-chrome-dark-5db5b4159e16d27b462d423da39fef46a3301a50.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [firefox] › specs/accessibility-state-matrix.spec.ts:462:3 › shell chrome, theme menu and exact desktop navigation rails in dark 
+  7 passed (3.8m)

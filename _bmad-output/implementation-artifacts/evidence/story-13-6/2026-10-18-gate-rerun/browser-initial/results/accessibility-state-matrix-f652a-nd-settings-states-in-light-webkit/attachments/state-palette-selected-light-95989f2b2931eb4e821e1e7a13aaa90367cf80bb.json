@@ -1,0 +1,331 @@
+{
+  "testId": "a542ea7f175527dc3e9c-b2b5603a63450eca2e5f",
+  "attempt": 0,
+  "state": "palette-selected-light",
+  "engine": "webkit",
+  "runId": "story-13-6-2026-10-18-initial",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "#f2b57ae4",
+      "width": 192,
+      "height": 32,
+      "box": {
+        "left": 60,
+        "top": 271,
+        "right": 252,
+        "bottom": 303
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-palette-result-0",
+      "width": 184,
+      "height": 29,
+      "box": {
+        "left": 68,
+        "top": 343,
+        "right": 252,
+        "bottom": 372
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-palette-result-1",
+      "width": 184,
+      "height": 50,
+      "box": {
+        "left": 68,
+        "top": 402,
+        "right": 252,
+        "bottom": 452
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "h4#fc-palette-group-projection",
+      "paint": "Projections",
+      "foreground": [
+        97,
+        97,
+        97,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 6.193286162073998,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "span",
+      "paint": "CounterProjection",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        250,
+        250,
+        250,
+        1
+      ],
+      "ratio": 14.87203261434497,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "h4#fc-palette-group-command",
+      "paint": "Commands",
+      "foreground": [
+        97,
+        97,
+        97,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 6.193286162073998,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "span",
+      "paint": "ConfigureCounterCommand",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "::after border-bottom",
+        "foreground": [
+          21,
+          115,
+          127,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 5.539960708564337,
+        "minimum": 3
+      }
+    ]
+  ],
+  "cues": [
+    [
+      {
+        "owner": 0,
+        "node": "li#fc-palette-result-0",
+        "paint": "element outline",
+        "foreground": [
+          21,
+          115,
+          127,
+          1
+        ],
+        "background": [
+          250,
+          250,
+          250,
+          1
+        ],
+        "ratio": 5.307669381775007,
+        "minimum": 3
+      }
+    ]
+  ],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": false,
+  "forcedColorsStatus": "unsupported authored-color replacement; media rules only",
+  "systemText": [],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-TEXT-INPUT#f2b57ae4",
+    "requireIndicator": true,
+    "box": {
+      "left": 60,
+      "top": 271,
+      "right": 252,
+      "bottom": 303
+    },
+    "ring": 0,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": []
+  },
+  "systemSnapshot": null,
+  "reducedMotion": true
+}

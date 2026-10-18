@@ -23,7 +23,7 @@ async function ready(page: Page, path: string, theme: string) {
 
 type VisibleSurfaceInspection = { phase: string; retainedFocus?: Locator };
 
-async function evidence(page: Page, root: Locator, state: string, info: TestInfo, icons?: Locator, inspection?: VisibleSurfaceInspection) {
+async function evidence(page: Page, root: Locator, state: string, info: TestInfo, icons?: Locator, inspection?: VisibleSurfaceInspection, refreshTransientState?: (rerender: boolean) => Promise<void>) {
   // These explicitly opted-in journeys inspect distant paint without moving operator
   // focus. Each mode measures that focus while visible, before its own root scroll.
   const inspectBeforeRootScroll = async (mode: 'normal' | 'forced-colors') => {
@@ -52,9 +52,15 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
     } finally { await activeElement.dispose(); }
   };
 
+  const measureCurrentState = async <T>(measure: () => Promise<T>): Promise<T> => {
+    if (refreshTransientState) await refreshTransientState(true);
+    const result = await measure();
+    if (refreshTransientState) await refreshTransientState(false);
+    return result;
+  };
   await expect(root).toBeVisible();
-  await expectNoPageOverflow(page);
-  await expectNoTextClipping(page);
+  await measureCurrentState(() => expectNoPageOverflow(page));
+  await measureCurrentState(() => expectNoTextClipping(page));
   await settlePaint(page);
   const theme = state.endsWith('-dark') ? 'Dark' : 'Light';
   await expect(page.getByTitle('Change theme').first().locator('span[aria-hidden="true"]')).toHaveText(theme);
@@ -86,10 +92,10 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
   const exceptions: import('../helpers/responsive-accessibility.js').TargetException[] = state.startsWith('settings-')
     ? ['Compact', 'Comfortable', 'Roomy'].map(value => ({ selector: `fluent-radio[name="fc-density-select"][value="${value}"]`, kind: 'Spacing' as const, rationale: 'Fluent density radio keeps its native visual size with a clear 24px spacing circle.', keyboardPath: 'Settings → Density; Tab and arrows', evidence: `ae-state-${state}.json target inventory` }))
     : state.startsWith('abandonment-') ? [{ selector: 'nav[aria-label="breadcrumb"] > a', kind: 'Spacing', rationale: 'The full-page breadcrumb link is isolated from all neighboring targets; its 24px circle is measured against the complete inventory.', keyboardPath: 'Full-page form → Counter breadcrumb (Shift+Tab)', evidence: `ae-state-${state}.json target inventory` }] : [];
-  const targets = await expectTargetSizes(page, exceptions);
-  const text = await expectSurfaceContrast(root);
-  const paintedIcons = await measureSurfaceContrast(icons ?? root, 'icon');
-  const icon = paintedIcons.length ? await expectSurfaceContrast(icons ?? root, 'icon') : [];
+  const targets = await measureCurrentState(() => expectTargetSizes(page, exceptions));
+  const text = await measureCurrentState(() => expectSurfaceContrast(root));
+  const paintedIcons = await measureCurrentState(() => measureSurfaceContrast(icons ?? root, 'icon'));
+  const icon = paintedIcons.length ? await measureCurrentState(() => expectSurfaceContrast(icons ?? root, 'icon')) : [];
   const collectBoundaries = async () => {
     const boundaries = [];
     for (const control of await root.locator('fluent-text-input:not([disabled]),fluent-number-input:not([disabled]),fluent-dropdown:not([disabled]),fluent-combobox:not([disabled])').all()) {
@@ -107,7 +113,8 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
     }
     return boundaries;
   };
-  const boundaries = await collectBoundaries();
+  const boundaries = await measureCurrentState(collectBoundaries);
+  if (refreshTransientState) expect(icon.length, `Required normal ${state} icon samples`).toBeGreaterThan(0);
   if (state.startsWith('lifecycle-rejected-')) expect(icon.length, 'Required normal rejected-state icon samples').toBeGreaterThan(0);
   if (state.startsWith('policy-denied-')) expect(boundaries.length, 'Required normal policy control-boundary samples').toBeGreaterThan(0);
   await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
@@ -121,19 +128,20 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
     const css = getComputedStyle(probe), changed = css.color !== 'rgb(255, 0, 0)' && css.backgroundColor !== 'rgb(0, 255, 0)';
     probe.remove(); return changed;
   });
-  const systemText = forcedColorsPaint ? await expectSurfaceContrast(root) : [];
-  const systemIcon = forcedColorsPaint && icon.length ? await expectSurfaceContrast(icons ?? root, 'icon') : [];
-  const systemBoundaries = forcedColorsPaint ? await collectBoundaries() : [];
-  const systemCues = forcedColorsPaint ? await collectCues() : [];
+  const systemText = forcedColorsPaint ? await measureCurrentState(() => expectSurfaceContrast(root)) : [];
+  const systemIcon = forcedColorsPaint && icon.length ? await measureCurrentState(() => expectSurfaceContrast(icons ?? root, 'icon')) : [];
+  const systemBoundaries = forcedColorsPaint ? await measureCurrentState(collectBoundaries) : [];
+  const systemCues = forcedColorsPaint ? await measureCurrentState(collectCues) : [];
   if (forcedColorsPaint) {
+    if (refreshTransientState) expect(systemIcon.length, `Required forced-color ${state} icon samples`).toBeGreaterThan(0);
     if (state.startsWith('lifecycle-rejected-')) expect(systemIcon.length, 'Required forced-color rejected-state icon samples').toBeGreaterThan(0);
     if (state.startsWith('policy-denied-')) expect(systemBoundaries.length, 'Required forced-color policy control-boundary samples').toBeGreaterThan(0);
   }
   const forcedColorsStatus = forcedColorsPaint ? 'painted system palette' : 'unsupported authored-color replacement; media rules only';
   if (!forcedColorsPaint) expect(info.project.name, 'Only the probed WebKit engine lacks forced palette emulation').toBe('webkit');
   await expect(root).toBeVisible();
-  await expectNoPageOverflow(page);
-  await expectNoTextClipping(page);
+  await measureCurrentState(() => expectNoPageOverflow(page));
+  await measureCurrentState(() => expectNoTextClipping(page));
   const focused = page.locator(':focus').first();
   const active = await page.evaluate(() => document.activeElement?.tagName ?? 'BODY');
   const operatorFocused = !['BODY','HTML'].includes(active) && await focused.count() > 0;
@@ -142,11 +150,12 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
     : { mode: 'forced-colors', status: 'none', target: active });
   if ('failures' in systemFocus) expect(systemFocus.failures, `Forced-color focused geometry: ${state} ${JSON.stringify(systemFocus)}`).toEqual([]);
   const systemSnapshot = forcedColorsPaint ? `system-state-${state}.png` : null;
-  if (systemSnapshot) await screenshotPreservingScroll(root, { path: info.outputPath(systemSnapshot) });
+  if (systemSnapshot) await measureCurrentState(() => screenshotPreservingScroll(root, { path: info.outputPath(systemSnapshot) }));
   await page.emulateMedia({ forcedColors: 'none' });
   await settlePaint(page);
+  if (refreshTransientState) await refreshTransientState(true);
   const path = info.outputPath(`ae-state-${state}.json`);
-  await writeFile(path, JSON.stringify({ testId: info.testId, attempt: info.retry, state, engine: info.project.name, runId: process.env.FC_A11Y_EVIDENCE_RUN_ID, viewport: page.viewportSize(), theme, themePaint, targets, ...(inspection ? { normalFocus, rootPaintPhase: 'after-root-scroll-with-retained-active-element', fixtureOptions: info.config.metadata.testHostOptions } : {}), text, icon, boundaries, cues, decorativeIconExemptions: ['.fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text', '.fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name'], forcedColors, forcedColorsPaint, forcedColorsStatus, systemText, systemIcon, systemBoundaries, systemCues, systemFocus, systemSnapshot, reducedMotion }, null, 2));
+  await writeFile(path, JSON.stringify({ testId: info.testId, attempt: info.retry, state, engine: info.project.name, runId: process.env.FC_A11Y_EVIDENCE_RUN_ID, viewport: page.viewportSize(), theme, themePaint, ...(refreshTransientState ? { transientStateVerifiedAtEachMeasurement: true } : {}), targets, ...(inspection ? { normalFocus, rootPaintPhase: 'after-root-scroll-with-retained-active-element', fixtureOptions: info.config.metadata.testHostOptions } : {}), text, icon, boundaries, cues, decorativeIconExemptions: ['.fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text', '.fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name'], forcedColors, forcedColorsPaint, forcedColorsStatus, systemText, systemIcon, systemBoundaries, systemCues, systemFocus, systemSnapshot, reducedMotion }, null, 2));
   await info.attach(`state-${state}`, { path, contentType: 'application/json' });
 }
 
@@ -271,13 +280,20 @@ for (const theme of ['light', 'dark']) {
     });
 
     test('all eleven actual lifecycle wrapper states retain immediate text and system-color cues', async ({ page }, info) => {
+      test.setTimeout(120_000);
       await ready(page, `${scenarioPath}&theme=${theme}`, theme);
       const root = page.getByTestId('fc-ae-scenarios');
       const wrapper = page.getByTestId('fc-lifecycle-ae-state');
       for (const state of LIFECYCLE_STATES) {
         await root.getByTestId(`fc-ae-lifecycle-${state.replaceAll('-', '')}`).click();
         await expect(wrapper).toHaveAttribute('data-lifecycle-state', state);
-        await evidence(page, wrapper, `lifecycle-${state}-${theme}`, info, undefined, state === 'rejected' ? { phase: 'operator-focus-before-rejected-lifecycle-scroll' } : undefined);
+        const transient = state === 'confirmed' || state === 'idempotent-confirmed';
+        const refresh = transient ? async (rerender: boolean) => {
+          if (rerender) await root.getByTestId(`fc-ae-lifecycle-${state.replaceAll('-', '')}`).click();
+          await expect(wrapper).toHaveAttribute('data-lifecycle-state', state);
+          await expect(wrapper.getByTestId(state === 'confirmed' ? 'fc-confirmed' : 'fc-idempotent')).toBeVisible();
+        } : undefined;
+        await evidence(page, wrapper, `lifecycle-${state}-${theme}`, info, undefined, state === 'rejected' ? { phase: 'operator-focus-before-rejected-lifecycle-scroll' } : undefined, refresh);
         await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
         await expect(wrapper).toContainText('Observable lifecycle specimen');
         const adjustment = await wrapper.evaluate(element => getComputedStyle(element).getPropertyValue('forced-color-adjust'));
@@ -460,6 +476,7 @@ test('forced-color state checks reject a removed cue while text and selected sem
 
 for (const theme of ['light', 'dark']) {
   test(`shell chrome, theme menu and exact desktop navigation rails in ${theme}`, async ({ page }, info) => {
+    test.setTimeout(120_000);
     await ready(page, '/counter', theme);
     const shell = page.locator('.fc-shell-root');
     await evidence(page, shell, `shell-chrome-${theme}`, info);

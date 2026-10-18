@@ -1,0 +1,41 @@
+
+Running 12 tests using 4 workers
+
+(node:54767) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54764) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54765) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54781) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   4 [chromium] › specs/accessibility-state-matrix.spec.ts:471:3 › shell chrome, theme menu and exact desktop navigation rails in light (27.9s)
+(node:64234) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › specs/accessibility-state-matrix.spec.ts:471:3 › shell chrome, theme menu and exact desktop navigation rails in dark (28.8s)
+(node:64474) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › specs/accessibility-state-matrix.spec.ts:276:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (31.1s)
+  ✓   3 [chromium] › specs/accessibility-state-matrix.spec.ts:276:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (31.2s)
+(node:65626) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:65705) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   7 [firefox] › specs/accessibility-state-matrix.spec.ts:471:3 › shell chrome, theme menu and exact desktop navigation rails in light (30.0s)
+(node:75737) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   5 [firefox] › specs/accessibility-state-matrix.spec.ts:276:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (35.0s)
+  ✓   6 [firefox] › specs/accessibility-state-matrix.spec.ts:276:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (35.0s)
+(node:76228) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:76542) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   8 [firefox] › specs/accessibility-state-matrix.spec.ts:471:3 › shell chrome, theme menu and exact desktop navigation rails in dark (33.6s)
+(node:77124) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  11 [webkit] › specs/accessibility-state-matrix.spec.ts:471:3 › shell chrome, theme menu and exact desktop navigation rails in light (12.5s)
+  ✓  12 [webkit] › specs/accessibility-state-matrix.spec.ts:471:3 › shell chrome, theme menu and exact desktop navigation rails in dark (12.4s)
+  ✓   9 [webkit] › specs/accessibility-state-matrix.spec.ts:276:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (20.1s)
+  ✓  10 [webkit] › specs/accessibility-state-matrix.spec.ts:276:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (19.9s)
+
+  12 passed (1.4m)

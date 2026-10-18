@@ -10443,3 +10443,17 @@ These appended dispositions supersede only the named automated gaps; all histori
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
   summary: Verify reduced-motion behavior during a live reconciliation-marker transition.
   evidence: Review BH08 found a vacuous CSS-cue inventory; the current three-engine fixture now proves the three class rules under reduced motion but does not trigger the live reconciliation marker.
+
+## Deferred from: Story 13.6 final gate rerun review (2026-10-18)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-rerun-browser-dotnet-gates.md`
+  summary: Check whether a real second restore call can replace a pending native-dialog focus origin.
+  evidence: Review BH-02 identified a possible focus reservation collision, but no production double-disposal sequence was established. Settle with a reproducible caller sequence before changing the focus owner.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-rerun-browser-dotnet-gates.md`
+  summary: Check whether a supported browser can throw from deferred focus and retain focus-return listeners.
+  evidence: Review BH-04 identified an exception cleanup path, but no reachable supported-browser focus exception was shown. Settle with a concrete browser reproduction.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-rerun-browser-dotnet-gates.md`
+  summary: Define and enforce a Story 13.6 evidence-packet size threshold if an owner requires one.
+  evidence: Review BH-09 found no threshold in tracked guidance or validator scripts. The final packet occupies 1,199,053,461 bytes by `du -sb`; size-gate disposition remains open pending a documented limit.

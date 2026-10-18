@@ -241,6 +241,101 @@ test('delayed overlay disposal preserves an operator Tab after native origin ret
   await expect(page.locator('#fc-settings-heading')).toBeFocused();
 });
 
+test('owned overlay return waits through Escape dismissal and falls back from a hidden origin', async ({ page }) => {
+  await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const trigger = page.getByTestId('fc-palette-trigger');
+  const heading = page.locator('#fc-main-content h1, main h1').first();
+  const dialog = page.getByTestId('fc-focus-return-dialog');
+  for (const hideOrigin of [false, true]) {
+    await trigger.focus();
+    await page.evaluate(async (hide) => {
+      const path: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+      const focus = await import(path) as {
+        captureOverlayOrigin: (testId: string, preserveExisting: boolean) => boolean;
+        restoreOverlayOrigin: () => void;
+      };
+      if (!focus.captureOverlayOrigin('fc-palette-trigger', true)) throw new Error('could not capture overlay origin');
+      const origin = document.querySelector<HTMLElement>('[data-testid="fc-palette-trigger"]')!;
+      if (hide) origin.hidden = true;
+      document.body.tabIndex = -1;
+      document.body.focus();
+      const modal = document.createElement('dialog');
+      modal.dataset.testid = 'fc-focus-return-dialog';
+      modal.innerHTML = '<button>Action</button>';
+      document.body.append(modal);
+      modal.showModal();
+      modal.querySelector('button')!.focus();
+      focus.restoreOverlayOrigin();
+      // The previous twelve-frame cutoff would abandon the pending return here.
+      for (let frame = 0; frame < 20; frame++) {
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      }
+      if (!modal.open || document.activeElement === origin) throw new Error('modal return ran before dismissal');
+    }, hideOrigin);
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toHaveAttribute('open', '');
+    if (hideOrigin) await expect(heading).toBeFocused();
+    else await expect(trigger).toBeFocused();
+    await dialog.evaluate(element => element.remove());
+    if (hideOrigin) await trigger.evaluate(element => { (element as HTMLElement).hidden = false; });
+  }
+});
+
+test('owned overlay return releases watchers when no destination appears after dismissal', async ({ page }) => {
+  await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.getByTestId('fc-palette-trigger').focus();
+  await page.evaluate(async () => {
+    const path: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+    const focus = await import(path) as {
+      captureOverlayOrigin: (testId: string, preserveExisting: boolean) => boolean;
+      restoreOverlayOrigin: () => void;
+    };
+    if (!focus.captureOverlayOrigin('fc-palette-trigger', true)) throw new Error('could not capture overlay origin');
+    document.querySelector<HTMLElement>('[data-testid="fc-palette-trigger"]')!.hidden = true;
+    document.querySelectorAll('#fc-main-content h1, main h1').forEach(heading => heading.remove());
+    const modal = document.createElement('dialog');
+    modal.dataset.testid = 'fc-focus-return-dialog';
+    modal.innerHTML = '<button>Action</button>';
+    document.body.append(modal);
+    modal.showModal();
+    modal.querySelector('button')!.focus();
+    const add = document.addEventListener.bind(document);
+    const remove = document.removeEventListener.bind(document);
+    const watched = new Map<string, EventListenerOrEventListenerObject>();
+    let recording = true;
+    Object.defineProperty(document, 'addEventListener', { configurable: true, value: (type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
+      if (recording && (type === 'pointerdown' || type === 'keydown')) watched.set(type, listener);
+      add(type, listener, options);
+    } });
+    Object.defineProperty(document, 'removeEventListener', { configurable: true, value: (type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions) => {
+      if (watched.get(type) === listener) watched.delete(type);
+      remove(type, listener, options);
+    } });
+    focus.restoreOverlayOrigin();
+    recording = false;
+    (window as typeof window & { __fcFocusWatch?: { active: () => number; restore: () => void } }).__fcFocusWatch = {
+      active: () => watched.size,
+      restore: () => {
+        Reflect.deleteProperty(document, 'addEventListener');
+        Reflect.deleteProperty(document, 'removeEventListener');
+      },
+    };
+    if (watched.size !== 2) throw new Error(`expected both return watchers, got ${watched.size}`);
+  });
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('fc-focus-return-dialog')).not.toHaveAttribute('open', '');
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __fcFocusWatch?: { active: () => number } }).__fcFocusWatch?.active()), { timeout: 6_500 }).toBe(0);
+  await page.evaluate(() => {
+    const heading = document.createElement('h1');
+    heading.textContent = 'Late route heading';
+    document.querySelector('#fc-main-content, main')?.append(heading);
+    (window as typeof window & { __fcFocusWatch?: { restore: () => void } }).__fcFocusWatch?.restore();
+  });
+  await expect(page.getByRole('heading', { name: 'Late route heading' })).not.toBeFocused();
+});
+
 test('owned palette return cancels the actual Fluent delayed return after an operator Tab', async ({ page }) => {
   await page.goto('/counter');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();

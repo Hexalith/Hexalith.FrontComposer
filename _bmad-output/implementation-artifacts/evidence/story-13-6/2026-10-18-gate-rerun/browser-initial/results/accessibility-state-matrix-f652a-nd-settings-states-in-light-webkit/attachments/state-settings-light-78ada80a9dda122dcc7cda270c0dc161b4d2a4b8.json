@@ -1,0 +1,428 @@
+{
+  "testId": "a542ea7f175527dc3e9c-b2b5603a63450eca2e5f",
+  "attempt": 0,
+  "state": "settings-light",
+  "engine": "webkit",
+  "runId": "story-13-6-2026-10-18-initial",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "#control",
+      "width": 142,
+      "height": 44,
+      "box": {
+        "left": 104,
+        "top": 122.5,
+        "right": 246,
+        "bottom": 166.5
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#f62d7977",
+      "width": 16,
+      "height": 16,
+      "box": {
+        "left": 84,
+        "top": 257.75,
+        "right": 100,
+        "bottom": 273.75
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": false,
+      "exception": {
+        "selector": "fluent-radio[name=\"fc-density-select\"][value=\"Compact\"]",
+        "kind": "Spacing",
+        "rationale": "Fluent density radio keeps its native visual size with a clear 24px spacing circle.",
+        "keyboardPath": "Settings → Density; Tab and arrows",
+        "evidence": "ae-state-settings-light.json target inventory"
+      },
+      "failure": null
+    },
+    {
+      "target": "#f6524261",
+      "width": 16,
+      "height": 16,
+      "box": {
+        "left": 142.78125,
+        "top": 273.5,
+        "right": 158.78125,
+        "bottom": 289.5
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": false,
+      "exception": {
+        "selector": "fluent-radio[name=\"fc-density-select\"][value=\"Comfortable\"]",
+        "kind": "Spacing",
+        "rationale": "Fluent density radio keeps its native visual size with a clear 24px spacing circle.",
+        "keyboardPath": "Settings → Density; Tab and arrows",
+        "evidence": "ae-state-settings-light.json target inventory"
+      },
+      "failure": null
+    },
+    {
+      "target": "#f603a74d",
+      "width": 16,
+      "height": 16,
+      "box": {
+        "left": 201.5625,
+        "top": 247.25,
+        "right": 217.5625,
+        "bottom": 263.25
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": false,
+      "exception": {
+        "selector": "fluent-radio[name=\"fc-density-select\"][value=\"Roomy\"]",
+        "kind": "Spacing",
+        "rationale": "Fluent density radio keeps its native visual size with a clear 24px spacing circle.",
+        "keyboardPath": "Settings → Density; Tab and arrows",
+        "evidence": "ae-state-settings-light.json target inventory"
+      },
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 53.71875,
+      "height": 44,
+      "box": {
+        "left": 104,
+        "top": 403.5,
+        "right": 157.71875,
+        "bottom": 447.5
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#control",
+      "width": 62.703125,
+      "height": 44,
+      "box": {
+        "left": 104,
+        "top": 447.5,
+        "right": 166.703125,
+        "bottom": 491.5
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-reset\"]",
+      "width": 166.953125,
+      "height": 32,
+      "box": {
+        "left": 48,
+        "top": 575.5,
+        "right": 214.953125,
+        "bottom": 607.5
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-done\"]",
+      "width": 224,
+      "height": 32,
+      "box": {
+        "left": 48,
+        "top": 531.5,
+        "right": 272,
+        "bottom": 563.5
+      },
+      "traits": {
+        "runningText": false,
+        "nativeUnmodified": false,
+        "essentialIdentified": false
+      },
+      "equivalent": null,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "span",
+      "paint": "Display density",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "label#f62d7977--label",
+      "paint": "Compact",
+      "foreground": [
+        97,
+        97,
+        97,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 6.193286162073998,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "label#f6524261--label",
+      "paint": "Comfortable",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "label#f603a74d--label",
+      "paint": "Roomy",
+      "foreground": [
+        97,
+        97,
+        97,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 6.193286162073998,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "span",
+      "paint": "Theme",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 5,
+      "node": "span",
+      "paint": "Preview",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [
+    {
+      "owner": 0,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    },
+    {
+      "owner": 2,
+      "node": "path",
+      "paint": "icon fill",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 3
+    }
+  ],
+  "boundaries": [],
+  "cues": [
+    [
+      {
+        "owner": 0,
+        "node": "fluent-radio#f6524261",
+        "paint": "element outline",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": false,
+  "forcedColorsStatus": "unsupported authored-color replacement; media rules only",
+  "systemText": [],
+  "systemIcon": [],
+  "systemBoundaries": [],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "FLUENT-RADIO#f6524261",
+    "requireIndicator": true,
+    "box": {
+      "left": 138.78125,
+      "top": 269.5,
+      "right": 162.78125,
+      "bottom": 293.5
+    },
+    "ring": 4,
+    "failures": [],
+    "occluder": null,
+    "shadowBounds": []
+  },
+  "systemSnapshot": null,
+  "reducedMotion": true
+}

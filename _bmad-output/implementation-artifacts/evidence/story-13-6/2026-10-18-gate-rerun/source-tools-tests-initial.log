@@ -1,0 +1,33 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.SourceTools.Tests
+  Discovered:  Hexalith.FrontComposer.SourceTools.Tests
+  Starting:    Hexalith.FrontComposer.SourceTools.Tests
+    Hexalith.FrontComposer.SourceTools.Tests.Integration.PackagedAnalyzerConsumerTests.PackagedAnalyzer_ContractsOnlyPayload_GeneratedShellConsumerCompiles [FAIL]
+      Shouldly.ShouldAssertException : actualVersion
+          should be
+      "5.0.0"
+          but was
+      "5.0.1"
+          difference
+      Difference     |                      |   
+                     |                     \|/  
+      Index          | 0    1    2    3    4    
+      Expected Value | 5    .    0    .    0    
+      Actual Value   | 5    .    0    .    1    
+      Expected Code  | 53   46   48   46   48   
+      Actual Code    | 53   46   48   46   49   
+      Stack Trace:
+        tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs(299,0): at Hexalith.FrontComposer.SourceTools.Tests.Integration.PackagedAnalyzerConsumerTests.AssertCentralPackageVersion(String root, String packageId, String expectedVersion)
+        tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs(19,0): at Hexalith.FrontComposer.SourceTools.Tests.Integration.PackagedAnalyzerConsumerTests.PackagedAnalyzer_ContractsOnlyPayload_GeneratedShellConsumerCompiles()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+DriftBenchmark cache-hit median=0.354ms p95=0.678ms
+DriftBenchmark cache-miss median=43.870ms p95=494.774ms
+  Finished:    Hexalith.FrontComposer.SourceTools.Tests (ID = '5aff563a7fa597d2df6a72b680fda16a7b9a42e29863adccb47f8a3aea6b854a')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.SourceTools.Tests  Total: 1313, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 21.803s

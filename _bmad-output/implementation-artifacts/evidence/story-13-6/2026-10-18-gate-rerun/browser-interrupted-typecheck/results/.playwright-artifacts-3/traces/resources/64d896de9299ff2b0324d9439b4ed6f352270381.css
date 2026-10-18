@@ -1,0 +1,258 @@
+/* _content/Counter.Specimens/FrontComposerDataFormattingSpecimen.razor.rz.scp.css */
+.fc-specimen--data[b-kvmg2rk15y] {
+    color: #141414;
+    background: #f8f8f4;
+    min-height: 100vh;
+    padding: 1rem;
+}
+
+.fc-specimen--data .fc-specimen__header[b-kvmg2rk15y],
+.fc-specimen--data section[b-kvmg2rk15y] { margin-block-end: 1rem; }
+.fc-specimen--data .fc-specimen__eyebrow[b-kvmg2rk15y] { font-size: .875rem; }
+
+.fc-specimen--data .fc-specimen__table[b-kvmg2rk15y] {
+    border-collapse: collapse;
+    inline-size: 100%;
+}
+
+.fc-specimen--data .fc-specimen__table caption[b-kvmg2rk15y] {
+    text-align: start;
+    margin-block-end: .5rem;
+}
+
+.fc-specimen--data .fc-specimen__table th[b-kvmg2rk15y],
+.fc-specimen--data .fc-specimen__table td[b-kvmg2rk15y] {
+    border: 1px solid currentColor;
+    padding: .625rem;
+    text-align: start;
+}
+
+.fc-specimen--data :focus-visible[b-kvmg2rk15y] {
+    outline: 4px solid #005a9e;
+    outline-offset: 3px;
+}
+
+@media (forced-colors: active) {
+    .fc-specimen--data :focus-visible[b-kvmg2rk15y] { outline-color: Highlight; }
+}
+/* _content/Counter.Specimens/FrontComposerTypeSpecimen.razor.rz.scp.css */
+.fc-specimen[b-u7w7p9v5u1] {
+    --fc-specimen-control-background: #ffffff;
+    --fc-specimen-control-border: #707070;
+    --fc-specimen-control-foreground: #141414;
+    --fc-specimen-foreground: #242424;
+    --fc-specimen-warning-background: #fff4ce;
+    --fc-specimen-warning-border: #fde300;
+    --fc-specimen-warning-foreground: #3b2f00;
+
+    color: #141414;
+    background: #f8f8f4;
+    min-height: 100vh;
+    padding: 1rem;
+}
+
+.fc-specimen--dark[b-u7w7p9v5u1] {
+    --fc-specimen-control-background: #ffffff;
+    --fc-specimen-control-border: #d1d1d1;
+    --fc-specimen-control-foreground: #141414;
+    --fc-specimen-foreground: #f7f7f2;
+    --fc-specimen-warning-background: #fff4ce;
+    --fc-specimen-warning-border: #f2c94c;
+    --fc-specimen-warning-foreground: #3b2f00;
+    /* Fluent's dark-palette red foreground: 6.4:1 on the dark specimen background. */
+    --fc-specimen-error-foreground: #e37d80;
+
+    color: #f7f7f2;
+    background: #15171a;
+}
+
+.fc-specimen--compact[b-u7w7p9v5u1] { --fc-specimen-gap: .5rem; --fc-specimen-control: 2rem; }
+.fc-specimen--comfortable[b-u7w7p9v5u1] { --fc-specimen-gap: .75rem; --fc-specimen-control: 2.5rem; }
+.fc-specimen--roomy[b-u7w7p9v5u1] { --fc-specimen-gap: 1rem; --fc-specimen-control: 3rem; }
+
+.fc-specimen__header[b-u7w7p9v5u1],
+.fc-specimen section[b-u7w7p9v5u1],
+.fc-specimen nav[b-u7w7p9v5u1] {
+    margin-block-end: 1rem;
+}
+
+.fc-specimen__eyebrow[b-u7w7p9v5u1],
+.fc-specimen__caption[b-u7w7p9v5u1] { font-size: .875rem; }
+.fc-specimen__display[b-u7w7p9v5u1] { font-size: 2rem; font-weight: 700; }
+.fc-specimen__title[b-u7w7p9v5u1] { font-size: 1.5rem; font-weight: 650; }
+.fc-specimen__subtitle[b-u7w7p9v5u1] { font-size: 1.125rem; }
+.fc-specimen__body[b-u7w7p9v5u1] { font-size: 1rem; }
+.fc-specimen__code[b-u7w7p9v5u1] { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+.fc-specimen__controls[b-u7w7p9v5u1],
+.fc-specimen__type-ramp[b-u7w7p9v5u1],
+.fc-specimen__tokens[b-u7w7p9v5u1],
+.fc-specimen__density-grid[b-u7w7p9v5u1],
+.fc-specimen__lifecycle[b-u7w7p9v5u1] {
+    display: grid;
+    gap: var(--fc-specimen-gap, .75rem);
+}
+
+.fc-specimen__controls[b-u7w7p9v5u1] { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
+.fc-specimen__type-ramp[b-u7w7p9v5u1],
+.fc-specimen__tokens[b-u7w7p9v5u1],
+.fc-specimen__density-grid[b-u7w7p9v5u1] { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+
+.fc-specimen__tile[b-u7w7p9v5u1],
+.fc-specimen__token-group[b-u7w7p9v5u1],
+.fc-specimen__density-card[b-u7w7p9v5u1],
+.fc-specimen__lifecycle > li[b-u7w7p9v5u1],
+.fc-specimen details[b-u7w7p9v5u1] {
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    padding: .75rem;
+}
+
+.fc-specimen__control[b-u7w7p9v5u1],
+.fc-specimen button[b-u7w7p9v5u1],
+.fc-specimen input[b-u7w7p9v5u1],
+.fc-specimen__skip[b-u7w7p9v5u1] { min-height: var(--fc-specimen-control, 2.5rem); }
+
+.fc-specimen__control[b-u7w7p9v5u1] {
+    align-items: center;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    color: inherit;
+    display: inline-flex;
+    justify-content: center;
+    padding-inline: .75rem;
+    text-decoration: none;
+}
+
+.fc-specimen__control[aria-current="true"][b-u7w7p9v5u1] {
+    outline: 3px solid #0078d4;
+    outline-offset: 2px;
+}
+
+.fc-specimen__token[b-u7w7p9v5u1] {
+    align-items: center;
+    display: grid;
+    gap: .5rem;
+    grid-template-columns: 1.5rem 1fr auto;
+    margin-block: .5rem;
+}
+
+.fc-specimen__swatch[b-u7w7p9v5u1] {
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+.fc-specimen__swatch--neutral[b-u7w7p9v5u1] { background: #8a8886; }
+.fc-specimen__swatch--info[b-u7w7p9v5u1] { background: #0078d4; }
+.fc-specimen__swatch--success[b-u7w7p9v5u1] { background: #107c10; }
+.fc-specimen__swatch--warning[b-u7w7p9v5u1] { background: #c19c00; }
+.fc-specimen__swatch--danger[b-u7w7p9v5u1] { background: #d13438; }
+.fc-specimen__swatch--accent[b-u7w7p9v5u1] { background: #8764b8; }
+
+.fc-specimen__table[b-u7w7p9v5u1] {
+    border-collapse: collapse;
+    inline-size: 100%;
+}
+
+.fc-specimen__table caption[b-u7w7p9v5u1] {
+    text-align: start;
+    margin-block-end: .5rem;
+}
+
+.fc-specimen__table th[b-u7w7p9v5u1],
+.fc-specimen__table td[b-u7w7p9v5u1] {
+    border: 1px solid currentColor;
+    padding: .625rem;
+    text-align: start;
+}
+
+.fc-specimen__form[b-u7w7p9v5u1] {
+    display: grid;
+    gap: .75rem;
+    max-inline-size: 36rem;
+}
+
+/* Story 13.3 â€” generated command fields are Fluent editors: the visible label is the Fluent field
+   label, the declared description renders in the Fluent field message slot, and only the editor
+   itself carries the control surface, so the label stays on the page. Validation errors keep
+   Fluent's error styling on the light specimen; the dark specimen lightens their text below. */
+.fc-specimen[b-u7w7p9v5u1]  .fluent-card,
+.fc-specimen[b-u7w7p9v5u1]  .fc-command-form,
+.fc-specimen[b-u7w7p9v5u1]  .fc-command-field,
+.fc-specimen[b-u7w7p9v5u1]  .fc-command-field label,
+.fc-specimen[b-u7w7p9v5u1]  .fc-command-field-group legend,
+.fc-specimen[b-u7w7p9v5u1]  .fc-command-field-description {
+    color: var(--fc-specimen-foreground);
+}
+
+.fc-specimen[b-u7w7p9v5u1]  .fc-command-field fluent-text-input,
+.fc-specimen input[b-u7w7p9v5u1] {
+    background: var(--fc-specimen-control-background);
+    border: 1px solid var(--fc-specimen-control-border);
+    color: var(--fc-specimen-control-foreground);
+}
+
+/* Fluent's validation message sets its red inline for a light surface (about 3.1:1 on the dark
+   specimen background), so only the dark specimen overrides its text color to stay at least 4.5:1. */
+.fc-specimen--dark[b-u7w7p9v5u1]  .fluent-validation-message {
+    color: var(--fc-specimen-error-foreground) !important;
+}
+
+/* The fail-closed denial card and form-level warnings keep the readable warning scheme. */
+.fc-specimen[b-u7w7p9v5u1]  [data-fc-authorization-denied],
+.fc-specimen[b-u7w7p9v5u1]  :is([data-testid="fc-destructive-command-specimen"], [data-testid="fc-policy-command-specimen"]) fluent-message-bar {
+    background: var(--fc-specimen-warning-background);
+    border: 1px solid var(--fc-specimen-warning-border);
+    color: var(--fc-specimen-warning-foreground);
+}
+
+.fc-specimen[b-u7w7p9v5u1]  [data-fc-authorization-denied] {
+    padding: .75rem;
+}
+
+.fc-specimen__form label[b-u7w7p9v5u1] { display: grid; gap: .25rem; }
+.fc-specimen__lifecycle[b-u7w7p9v5u1] { list-style-position: inside; margin-inline-start: 0; padding-inline-start: 0; }
+.fc-specimen :focus-visible[b-u7w7p9v5u1] { outline: 4px solid #005a9e; outline-offset: 3px; }
+
+/* This specimen's local theme can differ from the shell's Fluent theme. Adapt only
+   the shared grid contour's color to its local surface; geometry belongs to the grid. */
+.fc-specimen[b-u7w7p9v5u1]  .fc-datagrid-host:focus-visible { outline-color: var(--fc-specimen-foreground); }
+
+@media (max-width: 40rem) {
+    /* Leave room for the specimen's 7px external ring between navigation actions. */
+    .fc-specimen nav li + li[b-u7w7p9v5u1],
+    .fc-specimen nav li > ul[b-u7w7p9v5u1] { margin-block-start: .5rem; }
+
+}
+
+@media (forced-colors: active) {
+    @supports (forced-color-adjust: auto) {
+        .fc-specimen[b-u7w7p9v5u1]  .fc-datagrid-host:focus-visible { outline-color: CanvasText; }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fc-specimen *[b-u7w7p9v5u1],
+    .fc-specimen *[b-u7w7p9v5u1]::before,
+    .fc-specimen *[b-u7w7p9v5u1]::after {
+        animation-duration: .001ms;
+        transition-duration: .001ms;
+    }
+}
+
+@media (forced-colors: active) {
+    .fc-specimen__swatch[b-u7w7p9v5u1] {
+        background: CanvasText;
+        forced-color-adjust: none;
+    }
+
+    .fc-specimen__control[aria-current="true"][b-u7w7p9v5u1],
+    .fc-specimen :focus-visible[b-u7w7p9v5u1] {
+        outline-color: Highlight;
+    }
+}
+
+/* Specimen actions obey the same pointer-target floor as production surfaces. */
+.fc-specimen a[b-u7w7p9v5u1], .fc-specimen summary[b-u7w7p9v5u1] { display: inline-block; min-block-size: 24px; }

@@ -473,3 +473,5 @@ nr.db-shm
 .bmad-loop/cache/
 .bmad-loop/policy.toml
 _bmad/render/
+# Story 13.6 final gate packet includes hash-bound raw logs and received snapshots.
+!/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/**

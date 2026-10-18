@@ -1,0 +1,4 @@
+Candidate: build: sync local changes via /pushall
+Validator: ./node_modules/.bin/commitlint --edit /tmp/frontcomposer-pushall-commit-message.txt
+Result: exit 0; no rule violations
+Validated: 2026-10-18

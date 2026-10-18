@@ -1,0 +1,44 @@
+
+Running 15 tests using 4 workers
+
+(node:12843) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12835) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12836) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12837) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 [chromium] › specs/responsive-accessibility.spec.ts:210:1 › delayed overlay disposal preserves an operator Tab after native origin return (2.3s)
+  ✓   4 [chromium] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits through Escape dismissal and falls back from a hidden origin (2.8s)
+(node:13772) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   5 [chromium] › specs/responsive-accessibility.spec.ts:285:1 › owned palette return cancels the actual Fluent delayed return after an operator Tab (913ms)
+(node:13992) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › specs/accessibility-state-matrix.spec.ts:282:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (33.6s)
+(node:23226) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › specs/accessibility-state-matrix.spec.ts:282:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (34.0s)
+(node:23412) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   8 [firefox] › specs/responsive-accessibility.spec.ts:210:1 › delayed overlay disposal preserves an operator Tab after native origin return (2.2s)
+  ✓   9 [firefox] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits through Escape dismissal and falls back from a hidden origin (2.5s)
+(node:24805) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  10 [firefox] › specs/responsive-accessibility.spec.ts:285:1 › owned palette return cancels the actual Fluent delayed return after an operator Tab (1.3s)
+  ✓   6 [firefox] › specs/accessibility-state-matrix.spec.ts:282:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (34.9s)
+(node:25134) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   7 [firefox] › specs/accessibility-state-matrix.spec.ts:282:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (35.1s)
+(node:25882) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26214) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  13 [webkit] › specs/responsive-accessibility.spec.ts:210:1 › delayed overlay disposal preserves an operator Tab after native origin return (1.5s)
+  ✓  14 [webkit] › specs/responsive-accessibility.spec.ts:244:1 › owned overlay return waits through Escape dismissal and falls back from a hidden origin (1.9s)
+  ✓  15 [webkit] › specs/responsive-accessibility.spec.ts:285:1 › owned palette return cancels the actual Fluent delayed return after an operator Tab (1.3s)
+  ✓  11 [webkit] › specs/accessibility-state-matrix.spec.ts:282:5 › AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (19.9s)
+  ✓  12 [webkit] › specs/accessibility-state-matrix.spec.ts:282:5 › AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues (20.0s)
+
+  15 passed (59.3s)

@@ -1,0 +1,32 @@
+<testsuites id="" name="" tests="12" failures="0" skipped="0" errors="0" time="12.527033">
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T06:55:35.240Z" hostname="chromium" tests="4" failures="0" skipped="0" time="10.491" errors="0">
+<testcase name="delayed overlay disposal preserves an operator Tab after native origin return" classname="responsive-accessibility.spec.ts" time="2.552">
+</testcase>
+<testcase name="owned overlay return waits until a native dialog has dismissed" classname="responsive-accessibility.spec.ts" time="2.123">
+</testcase>
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="2.609">
+</testcase>
+<testcase name="R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="3.207">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T06:55:35.240Z" hostname="firefox" tests="4" failures="0" skipped="0" time="10.956" errors="0">
+<testcase name="delayed overlay disposal preserves an operator Tab after native origin return" classname="responsive-accessibility.spec.ts" time="2.409">
+</testcase>
+<testcase name="owned overlay return waits until a native dialog has dismissed" classname="responsive-accessibility.spec.ts" time="2.378">
+</testcase>
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="2.844">
+</testcase>
+<testcase name="R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="3.325">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T06:55:35.240Z" hostname="webkit" tests="4" failures="0" skipped="0" time="7.995" errors="0">
+<testcase name="delayed overlay disposal preserves an operator Tab after native origin return" classname="responsive-accessibility.spec.ts" time="1.658">
+</testcase>
+<testcase name="owned overlay return waits until a native dialog has dismissed" classname="responsive-accessibility.spec.ts" time="1.503">
+</testcase>
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="1.666">
+</testcase>
+<testcase name="R15 owned Settings return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="3.168">
+</testcase>
+</testsuite>
+</testsuites>

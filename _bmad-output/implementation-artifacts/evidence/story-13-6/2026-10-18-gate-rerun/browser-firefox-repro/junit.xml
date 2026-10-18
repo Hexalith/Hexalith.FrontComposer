@@ -1,0 +1,22 @@
+<testsuites id="" name="" tests="5" failures="0" skipped="0" errors="0" time="15.854276">
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T06:51:49.046Z" hostname="firefox" tests="1" failures="0" skipped="0" time="1.736" errors="0">
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="1.736">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T06:51:49.046Z" hostname="firefox" tests="1" failures="0" skipped="0" time="2.198" errors="0">
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="2.198">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T06:51:49.046Z" hostname="firefox" tests="1" failures="0" skipped="0" time="2.059" errors="0">
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="2.059">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T06:51:49.046Z" hostname="firefox" tests="1" failures="0" skipped="0" time="2.035" errors="0">
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="2.035">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T06:51:49.046Z" hostname="firefox" tests="1" failures="0" skipped="0" time="2.175" errors="0">
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="2.175">
+</testcase>
+</testsuite>
+</testsuites>

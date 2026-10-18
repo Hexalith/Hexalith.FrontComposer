@@ -1,0 +1,779 @@
+{
+  "config": {
+    "argv": [
+      "/home/administrator/.nvm/versions/node/v26.4.0/bin/node",
+      "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/node_modules/.bin/playwright",
+      "test",
+      "specs/accessibility-state-matrix.spec.ts",
+      "--project=firefox",
+      "--grep",
+      "all eleven actual lifecycle|shell chrome, theme menu",
+      "--workers=1",
+      "--repeat-each=2",
+      "--retries=0"
+    ],
+    "configFile": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/playwright.config.ts",
+    "rootDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "a11yEvidenceRunId": "story-13-6-2026-10-18-firefox-isolation",
+      "testHostOptions": {
+        "ProjectionReconnectedNoticeDurationMs": 30000
+      },
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-2026-10-18-firefox-isolation",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results",
+        "repeatEach": 2,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-2026-10-18-firefox-isolation",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "story-13-6-2026-10-18-firefox-isolation",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "outputFolder": "../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/html",
+          "open": "never"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/junit.xml"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "../../_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/playwright.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "none",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "accessibility-state-matrix.spec.ts",
+      "file": "accessibility-state-matrix.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "shell chrome, theme menu and exact desktop navigation rails in light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 24195,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T07:10:27.023Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-shell-chrome-light",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-shell-chrome-light-84eb990f5641e05ab314c3c29fad06a6f89cc52c.json"
+                    },
+                    {
+                      "name": "state-theme-menu-light",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-theme-menu-light-080e831f9334130aca39344f922b9bacc5932ec2.json"
+                    },
+                    {
+                      "name": "state-rail-labeled-light",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-rail-labeled-light-5071be72767ece4bf9c96d20030f195e796df014.json"
+                    },
+                    {
+                      "name": "state-rail-icons-light",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-rail-icons-light-da5ed4e89c603ce0fc3d0fd6bf40e720751d70f9.json"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-f3c25f85b7cf93b8775e",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 462,
+          "column": 3
+        },
+        {
+          "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 8562,
+                  "error": {
+                    "message": "Error: locator.evaluate: Competing border/shadow paint needs pixel evidence: {\"element\":\"FLUENT-MENU-ITEM#f56e5473.\",\"candidate\":\"DIV#.fluent-card\",\"pseudo\":null,\"boxes\":[{\"left\":15,\"right\":169,\"top\":199,\"bottom\":201},{\"left\":15,\"right\":169,\"top\":233,\"bottom\":235},{\"left\":15,\"right\":17,\"top\":201,\"bottom\":233},{\"left\":167,\"right\":169,\"top\":201,\"bottom\":233}],\"paintBoxes\":[{\"left\":32,\"right\":288,\"top\":235.8000030517578,\"bottom\":236.8000030517578},{\"left\":287,\"right\":288,\"top\":235.8000030517578,\"bottom\":455.8000030517578},{\"left\":32,\"right\":288,\"top\":454.8000030517578,\"bottom\":455.8000030517578},{\"left\":32,\"right\":33,\"top\":235.8000030517578,\"bottom\":455.8000030517578},{\"left\":29,\"right\":291,\"top\":232.8000030517578,\"bottom\":458.8000030517578},{\"left\":29,\"right\":291,\"top\":233.8000030517578,\"bottom\":459.8000030517578}],\"candidateBox\":{\"x\":32,\"y\":235.8000030517578,\"width\":256,\"height\":220,\"top\":235.8000030517578,\"right\":288,\"bottom\":455.8000030517578,\"left\":32},\"shadow\":\"rgba(0, 0, 0, 0.24) 0px 0px 2px 0px, rgba(0, 0, 0, 0.28) 0px 1px 2px 0px\"}\nunsupported@debugger eval code line 311 > eval:304:39\nsample@debugger eval code line 311 > eval:313:56\nvisit@debugger eval code line 311 > eval:643:19\n@debugger eval code line 311 > eval:697:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n",
+                    "stack": "Error: locator.evaluate: Competing border/shadow paint needs pixel evidence: {\"element\":\"FLUENT-MENU-ITEM#f56e5473.\",\"candidate\":\"DIV#.fluent-card\",\"pseudo\":null,\"boxes\":[{\"left\":15,\"right\":169,\"top\":199,\"bottom\":201},{\"left\":15,\"right\":169,\"top\":233,\"bottom\":235},{\"left\":15,\"right\":17,\"top\":201,\"bottom\":233},{\"left\":167,\"right\":169,\"top\":201,\"bottom\":233}],\"paintBoxes\":[{\"left\":32,\"right\":288,\"top\":235.8000030517578,\"bottom\":236.8000030517578},{\"left\":287,\"right\":288,\"top\":235.8000030517578,\"bottom\":455.8000030517578},{\"left\":32,\"right\":288,\"top\":454.8000030517578,\"bottom\":455.8000030517578},{\"left\":32,\"right\":33,\"top\":235.8000030517578,\"bottom\":455.8000030517578},{\"left\":29,\"right\":291,\"top\":232.8000030517578,\"bottom\":458.8000030517578},{\"left\":29,\"right\":291,\"top\":233.8000030517578,\"bottom\":459.8000030517578}],\"candidateBox\":{\"x\":32,\"y\":235.8000030517578,\"width\":256,\"height\":220,\"top\":235.8000030517578,\"right\":288,\"bottom\":455.8000030517578,\"left\":32},\"shadow\":\"rgba(0, 0, 0, 0.24) 0px 0px 2px 0px, rgba(0, 0, 0, 0.28) 0px 1px 2px 0px\"}\nunsupported@debugger eval code line 311 > eval:304:39\nsample@debugger eval code line 311 > eval:313:56\nvisit@debugger eval code line 311 > eval:643:19\n@debugger eval code line 311 > eval:697:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n    at unsupported@debugger eval code line 311 > eval:304:39\n    at sample@debugger eval code line 311 > eval:313:56\n    at visit@debugger eval code line 311 > eval:643:19\n    at @debugger eval code line 311 > eval:697:10\n    at evaluate@debugger eval code:313:16\n    at @debugger eval code:1:44\n    at @debugger eval code:1:62\n    at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1020:15)\n    at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1481:19)\n    at collectCues (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:82:52)\n    at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:85:16)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:474:5",
+                    "location": {
+                      "file": "unsupported@debugger eval code line 311 > eval",
+                      "column": 39,
+                      "line": 304
+                    }
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "unsupported@debugger eval code line 311 > eval",
+                        "column": 39,
+                        "line": 304
+                      },
+                      "message": "Error: locator.evaluate: Competing border/shadow paint needs pixel evidence: {\"element\":\"FLUENT-MENU-ITEM#f56e5473.\",\"candidate\":\"DIV#.fluent-card\",\"pseudo\":null,\"boxes\":[{\"left\":15,\"right\":169,\"top\":199,\"bottom\":201},{\"left\":15,\"right\":169,\"top\":233,\"bottom\":235},{\"left\":15,\"right\":17,\"top\":201,\"bottom\":233},{\"left\":167,\"right\":169,\"top\":201,\"bottom\":233}],\"paintBoxes\":[{\"left\":32,\"right\":288,\"top\":235.8000030517578,\"bottom\":236.8000030517578},{\"left\":287,\"right\":288,\"top\":235.8000030517578,\"bottom\":455.8000030517578},{\"left\":32,\"right\":288,\"top\":454.8000030517578,\"bottom\":455.8000030517578},{\"left\":32,\"right\":33,\"top\":235.8000030517578,\"bottom\":455.8000030517578},{\"left\":29,\"right\":291,\"top\":232.8000030517578,\"bottom\":458.8000030517578},{\"left\":29,\"right\":291,\"top\":233.8000030517578,\"bottom\":459.8000030517578}],\"candidateBox\":{\"x\":32,\"y\":235.8000030517578,\"width\":256,\"height\":220,\"top\":235.8000030517578,\"right\":288,\"bottom\":455.8000030517578,\"left\":32},\"shadow\":\"rgba(0, 0, 0, 0.24) 0px 0px 2px 0px, rgba(0, 0, 0, 0.28) 0px 1px 2px 0px\"}\nunsupported@debugger eval code line 311 > eval:304:39\nsample@debugger eval code line 311 > eval:313:56\nvisit@debugger eval code line 311 > eval:643:19\n@debugger eval code line 311 > eval:697:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n    at unsupported@debugger eval code line 311 > eval:304:39\n    at sample@debugger eval code line 311 > eval:313:56\n    at visit@debugger eval code line 311 > eval:643:19\n    at @debugger eval code line 311 > eval:697:10\n    at evaluate@debugger eval code:313:16\n    at @debugger eval code:1:44\n    at @debugger eval code:1:62\n    at measureSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1020:15)\n    at expectSurfaceContrast (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:1481:19)\n    at collectCues (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:82:52)\n    at evidence (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:85:16)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/accessibility-state-matrix.spec.ts:474:5"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T07:10:51.226Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-shell-chrome-dark",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-shell-chrome-dark-5db5b4159e16d27b462d423da39fef46a3301a50.json"
+                    },
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/video.webm"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "unsupported@debugger eval code line 311 > eval",
+                    "column": 39,
+                    "line": 304
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-d2b739cdf1c73609ddf2",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 462,
+          "column": 3
+        },
+        {
+          "title": "shell chrome, theme menu and exact desktop navigation rails in light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 31671,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T07:12:09.613Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-shell-chrome-light",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox-repeat1/attachments/state-shell-chrome-light-bd460c8adfbb06d77c4cd898cb22015308f0b912.json"
+                    },
+                    {
+                      "name": "state-theme-menu-light",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox-repeat1/attachments/state-theme-menu-light-687dedd0a3b6a6e423138bbbee3d107258c54b54.json"
+                    },
+                    {
+                      "name": "state-rail-labeled-light",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox-repeat1/attachments/state-rail-labeled-light-bcc8522a387b8e069b3a79a57cf6caff7fbe9cf1.json"
+                    },
+                    {
+                      "name": "state-rail-icons-light",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox-repeat1/attachments/state-rail-icons-light-5f02fe7648599cd160ebc97d9330d4abdbc9cf11.json"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-fac6dbf5b9e592b491ec",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 462,
+          "column": 3
+        },
+        {
+          "title": "shell chrome, theme menu and exact desktop navigation rails in dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 26627,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T07:12:41.293Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "state-shell-chrome-dark",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-shell-chrome-dark-977ee9b037553655d74ac0fa370005adc80a22a8.json"
+                    },
+                    {
+                      "name": "state-theme-menu-dark",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-theme-menu-dark-41d828a9afe90f4f8c1b57437a1552a78a653cbe.json"
+                    },
+                    {
+                      "name": "state-rail-labeled-dark",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-rail-labeled-dark-66182535f2b3e86962a3a92ca1c55a812c47f80e.json"
+                    },
+                    {
+                      "name": "state-rail-icons-dark",
+                      "contentType": "application/json",
+                      "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox-repeat1/attachments/state-rail-icons-dark-ec90d31b29557c450c66afb3276b1671b70f9a82.json"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a542ea7f175527dc3e9c-8e7774cca80e39a684ac",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 462,
+          "column": 3
+        }
+      ],
+      "suites": [
+        {
+          "title": "AE complete state matrix light",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 154,
+          "column": 8,
+          "specs": [
+            {
+              "title": "all eleven actual lifecycle wrapper states retain immediate text and system-color cues",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 33523,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-18T07:09:23.154Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "state-lifecycle-idle-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-idle-light-70c1d858f0c0f4e5139affa5503253b2fba0a213.json"
+                        },
+                        {
+                          "name": "state-lifecycle-submitting-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-submitting-light-6a26e711cac93518c9e15ebd9049bf9fccb59b1e.json"
+                        },
+                        {
+                          "name": "state-lifecycle-acknowledged-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-acknowledged-light-1ad987d5d6b8eab3d1b307c4abd92b0296d7b5e9.json"
+                        },
+                        {
+                          "name": "state-lifecycle-syncing-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-syncing-light-f1a3d2efd8180e8abfe202c95a84a01cbd299566.json"
+                        },
+                        {
+                          "name": "state-lifecycle-confirmed-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-confirmed-light-171722c7c4bfb1051638d0caa5434be258705388.json"
+                        },
+                        {
+                          "name": "state-lifecycle-rejected-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-rejected-light-056dfd845fdfdc002789486ec4aab35f5234c193.json"
+                        },
+                        {
+                          "name": "state-lifecycle-idempotent-confirmed-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-idempotent-confirmed-light-afc4cb7c5580a88bdf4baf64a4b4b86dbe4deac8.json"
+                        },
+                        {
+                          "name": "state-lifecycle-needs-review-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-needs-review-light-59656ba161a33ea61f2c8015e4779e1e698d7f87.json"
+                        },
+                        {
+                          "name": "state-lifecycle-warning-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-warning-light-b5fd3d78ba93f179823f41502b68715ad0c6f78c.json"
+                        },
+                        {
+                          "name": "state-lifecycle-degraded-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-light-8dd7d34d5168f803570c4f33cce809aa71a9ea15.json"
+                        },
+                        {
+                          "name": "state-lifecycle-degraded-exhausted-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-exhausted-light-08f76a83ad1a3847c325c963080105f8f815fc7b.json"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a542ea7f175527dc3e9c-b125e3ed014a066eb3f6",
+              "file": "accessibility-state-matrix.spec.ts",
+              "line": 273,
+              "column": 5
+            },
+            {
+              "title": "all eleven actual lifecycle wrapper states retain immediate text and system-color cues",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 34302,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-18T07:11:00.640Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "state-lifecycle-idle-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-idle-light-ef124eb35ccb9b11ef5c00ec7fd7f7878d15d8b4.json"
+                        },
+                        {
+                          "name": "state-lifecycle-submitting-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-submitting-light-2f3cb71e618069eaa0e067770002ee923e954258.json"
+                        },
+                        {
+                          "name": "state-lifecycle-acknowledged-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-acknowledged-light-e7415b78d45c871fad72f8bad90864740c428770.json"
+                        },
+                        {
+                          "name": "state-lifecycle-syncing-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-syncing-light-407d60dca18643fa05df3c0509d754dd15527ab3.json"
+                        },
+                        {
+                          "name": "state-lifecycle-confirmed-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-confirmed-light-7637885e0149b1d706743b16b6b72ad8b6a2e0a0.json"
+                        },
+                        {
+                          "name": "state-lifecycle-rejected-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-rejected-light-a567ed0abfbe355c5cdc6394e473441cb6537f5c.json"
+                        },
+                        {
+                          "name": "state-lifecycle-idempotent-confirmed-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-idempotent-confirmed-light-301e2f2a46b77eecb06bbff23ec34457a23f665a.json"
+                        },
+                        {
+                          "name": "state-lifecycle-needs-review-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-needs-review-light-8eefcbd0809c680388b16e8ae9e3d2544935afc9.json"
+                        },
+                        {
+                          "name": "state-lifecycle-warning-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-warning-light-6f3580768c5536b28c8e9f925d3aafe494bf5424.json"
+                        },
+                        {
+                          "name": "state-lifecycle-degraded-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-degraded-light-1c43c5584d60ae448f319db70a2c56205e587d8f.json"
+                        },
+                        {
+                          "name": "state-lifecycle-degraded-exhausted-light",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-degraded-exhausted-light-e87a43eec4bfa087b3794aecee85c42623dbbac0.json"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a542ea7f175527dc3e9c-7a322e0c1522763cdf32",
+              "file": "accessibility-state-matrix.spec.ts",
+              "line": 273,
+              "column": 5
+            }
+          ]
+        },
+        {
+          "title": "AE complete state matrix dark",
+          "file": "accessibility-state-matrix.spec.ts",
+          "line": 154,
+          "column": 8,
+          "specs": [
+            {
+              "title": "all eleven actual lifecycle wrapper states retain immediate text and system-color cues",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 29901,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-18T07:09:57.116Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "state-lifecycle-idle-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-idle-dark-8c23a6c26cf21e1e0985d7a7fd0c2047438ccd03.json"
+                        },
+                        {
+                          "name": "state-lifecycle-submitting-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-submitting-dark-27f1fd803e06cea551c001e01548fa15bb79240b.json"
+                        },
+                        {
+                          "name": "state-lifecycle-acknowledged-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-acknowledged-dark-d47625706ee1bde892cc2dd9a355c8ae0de0b67a.json"
+                        },
+                        {
+                          "name": "state-lifecycle-syncing-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-syncing-dark-b388fc133bc921424a3b7b09473720e0ac057eb1.json"
+                        },
+                        {
+                          "name": "state-lifecycle-confirmed-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-confirmed-dark-4d64c3ef98dc43d33c92d269ee8464ca3dacc7b8.json"
+                        },
+                        {
+                          "name": "state-lifecycle-rejected-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-rejected-dark-d69266a932e0ebcbaa10a9dde9cf72a466cd5181.json"
+                        },
+                        {
+                          "name": "state-lifecycle-idempotent-confirmed-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-idempotent-confirmed-dark-5ad6af8546c875cdb1c125b51cf8f655a8f41896.json"
+                        },
+                        {
+                          "name": "state-lifecycle-needs-review-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-needs-review-dark-5b3b43dd02df7a2b0aacecb3908bb270553e3f67.json"
+                        },
+                        {
+                          "name": "state-lifecycle-warning-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-warning-dark-b05381815cdf019e9b33be562ce71731fd427bc8.json"
+                        },
+                        {
+                          "name": "state-lifecycle-degraded-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-dark-b15ccd631f2e3526472a202840466a9d568dee17.json"
+                        },
+                        {
+                          "name": "state-lifecycle-degraded-exhausted-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-exhausted-dark-f21b1d72a99f3a1eff1d28eab0177d393f3c99bc.json"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a542ea7f175527dc3e9c-a88a79142a12016cd2b4",
+              "file": "accessibility-state-matrix.spec.ts",
+              "line": 273,
+              "column": 5
+            },
+            {
+              "title": "all eleven actual lifecycle wrapper states retain immediate text and system-color cues",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 34238,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-18T07:11:35.368Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "state-lifecycle-idle-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-idle-dark-93f8c8a9b4c1969265f58ec98376f6c0d2f78755.json"
+                        },
+                        {
+                          "name": "state-lifecycle-submitting-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-submitting-dark-e28c872b5c981636008f75699f8385e9836a7983.json"
+                        },
+                        {
+                          "name": "state-lifecycle-acknowledged-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-acknowledged-dark-11a195249d0cfcd61632742fcff6e31b93267b91.json"
+                        },
+                        {
+                          "name": "state-lifecycle-syncing-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-syncing-dark-eeca050d7c15dbfd4be81a751cb8c50d605abc87.json"
+                        },
+                        {
+                          "name": "state-lifecycle-confirmed-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-confirmed-dark-ff32b2a19f49115e41a8810e492e999fd132587c.json"
+                        },
+                        {
+                          "name": "state-lifecycle-rejected-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-rejected-dark-94acb61c4e6c8a7403f048a4507a3d43800bb019.json"
+                        },
+                        {
+                          "name": "state-lifecycle-idempotent-confirmed-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-idempotent-confirmed-dark-897e4b3ac903d0657563356757efeb4afdfb7ba0.json"
+                        },
+                        {
+                          "name": "state-lifecycle-needs-review-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-needs-review-dark-c1c378364a26a9c010acfea3df3b1fbe3b0e87e3.json"
+                        },
+                        {
+                          "name": "state-lifecycle-warning-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-warning-dark-8dd47ed0371c29ddac350a05222e0fcfe27083f4.json"
+                        },
+                        {
+                          "name": "state-lifecycle-degraded-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-degraded-dark-4b38db768e23c691e2be351d16ad754cb10b8047.json"
+                        },
+                        {
+                          "name": "state-lifecycle-degraded-exhausted-dark",
+                          "contentType": "application/json",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/browser-firefox-isolation/results/accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox-repeat1/attachments/state-lifecycle-degraded-exhausted-dark-57cd02da3e544016bd7e38aaf1e8d57d46b68e0e.json"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a542ea7f175527dc3e9c-148cdcb6b3e181472bf4",
+              "file": "accessibility-state-matrix.spec.ts",
+              "line": 273,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-18T07:09:22.770Z",
+    "duration": 225581.775,
+    "expected": 7,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}
