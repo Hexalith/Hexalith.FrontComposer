@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, renameSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, renameSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -187,13 +187,19 @@ test('system screenshots require one readable image attachment from their author
   assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: 'chromium' }), []);
 }));
 
-test('a changed or unreadable state-local screenshot cannot reuse its original report attachment', () => matrix(({ report, all, snapshots }) => {
+test('a changed or unreadable state-local screenshot cannot reuse its original report attachment', () => matrix(({ report, all, snapshots, imageAttachments }) => {
+  assert.deepEqual(readFileSync(snapshots[0]), readFileSync(imageAttachments[0]));
   writeFileSync(snapshots[0], alternatePng);
+  assert.notDeepEqual(readFileSync(snapshots[0]), readFileSync(imageAttachments[0]));
   assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
   rmSync(snapshots[0]);
+  assert.throws(() => statSync(snapshots[0]), { code: 'ENOENT' });
   assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
   mkdirSync(snapshots[0]);
-  assert.match(validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n'), /System-state snapshot does not match authoritative attempt attachment/);
+  assert.equal(statSync(snapshots[0]).isDirectory(), true);
+  const errors = validateStateEvidence(all, { report, expectedEngine: 'chromium' }).join('\n');
+  assert.match(errors, /System-state snapshot does not match authoritative attempt attachment/);
+  assert.match(errors, /Snapshot path is not a regular file/);
 }));
 
 test('a failed retry or different test cannot provide a successful attempts missing screenshot', () => matrix(({ report, all, files, update }) => {

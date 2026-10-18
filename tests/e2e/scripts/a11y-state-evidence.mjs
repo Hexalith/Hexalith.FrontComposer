@@ -136,7 +136,10 @@ export function validateStateEvidence(files, { unsupportedForcedColorsCapability
         const snapshotAttachments = authoritative.get(JSON.stringify([evidence.engine, evidence.testId]))?.attachments
           .filter(attachment => attachment.name === `system-state-${state}` && attachment.contentType === 'image/png') ?? [];
         try {
-          if (!snapshot || statSync(snapshot).size === 0) {
+          // Directory sizes differ across platforms; reject non-files before checking image length.
+          const snapshotStat = snapshot ? statSync(snapshot) : undefined;
+          if (snapshotStat && !snapshotStat.isFile()) throw new Error(`Snapshot path is not a regular file: ${snapshot}`);
+          if (!snapshotStat || snapshotStat.size === 0) {
             errors.push(`Missing system-state snapshot: ${file}; expected nonempty ${snapshotName}`);
           } else {
             if (snapshotAttachments.length !== 1) throw new Error(`Expected one image/png attachment named system-state-${state}; found ${snapshotAttachments.length}`);
