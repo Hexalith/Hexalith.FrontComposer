@@ -110,6 +110,32 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
         if (disposeOnClear) _ = service.DidNotReceive().DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task EarlierHiddenOutcomeIsClearedOnlyByAnAdmittedAttempt(bool admissionDenied)
+    {
+        ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
+        _ = service.DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new CommandResult("accepted", CommandResultStatus.Accepted)));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        List<string?> hiddenOutcomes = [];
+        IRenderedComponent<ZeroFieldInlineCommandForm> cut = Render<ZeroFieldInlineCommandForm>(p => p
+            .Add(c => c.OnHiddenOutcome, (string? message) => {
+                hiddenOutcomes.Add(message);
+                return Task.CompletedTask;
+            }));
+        if (admissionDenied) UserContext.TenantId = null;
+        await cut.InvokeAsync(() => (Task)typeof(ZeroFieldInlineCommandForm)
+            .GetMethod("SubmitAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .Invoke(cut.Instance, [false])!);
+
+        // A blocked attempt must leave the parent's earlier hidden outcome alone; only admission clears it.
+        hiddenOutcomes.Count(message => message is null).ShouldBe(admissionDenied ? 0 : 1);
+        _ = service.Received(admissionDenied ? 0 : 1).DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task ScopeUnavailableIsVisibleWithoutDispatchOrHiddenFocusAndEachAttemptSpeaksOnce()
     {

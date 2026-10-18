@@ -99,6 +99,14 @@ All three independent layers returned before classification. Verification-gap re
 
 P1 combines BH01/EC01 only. P2–P7 remain separate roots. All patches are private, direct guards/corrections to demonstrated input or retention defects; no intent change or public API is required. Preserve passing actual palette/Settings/native-close tests and every prior raw packet/outcome. Deferred hypotheses do not establish new confirmed product failures.
 
+### Post-`1f8c7b2b` review addendum (2026-10-18)
+
+Review of `1f8c7b2b..HEAD` (source only) found changes beyond this spec's intent; they are accepted as intentionally bundled and recorded here rather than split out of main.
+
+- **Documented Unrelated Changes — SDK floor 10.0.401 → 10.0.402:** `global.json`, CI workflows, IDE-parity matrix/doc/script and two governance tests. Governance now rejects 10.0.401; runners and dev machines must have 10.0.402 installed.
+- **Documented Unrelated Changes — `CommandFormEmitter`:** `PresentHiddenOutcomeAsync(null)` now runs after state-guard and admission instead of before them, so a parent callback cannot precede the synchronous guards. Only the two `CommandFormEmitterTests` `verified.txt` snapshots changed as a result. Pinned behaviorally by `EarlierHiddenOutcomeIsClearedOnlyByAnAdmittedAttempt`.
+- **Deferred (unverified medium):** `containDialogFocus` reads the shadow `<dialog>` once at registration (BH04); settle by checking in Chromium that it is non-null at registration for `fc-palette-root` and Settings.
+
 ## Verification
 
 - `npm --prefix tests/e2e run typecheck`; `node --test tests/e2e/scripts/a11y-state-evidence.test.mjs`.
