@@ -116,6 +116,24 @@ Code review 2026-10-16, pass 1 of 2 (`src/`, `samples/`, `.github/`, `docs/` of 
 - `AnalyzerPolicy_IdentifierInventory_MatchesSeal`: refuted, run green locally against the current tree.
 - Reflection/`closeAfterJoin!`/`VerifyInvoke` diagnostics, hard-coded evidence literals (`heardSpeech: not observed` is explicit), icon-sampler shape/alpha corners, multi-dialog selection, `settlePaint` no-throw, route-rewrite pattern guard, `expectTextContrast` colour parsing, behaviour-change notes, trait addition, style nits: speculative or no demonstrated harm.
 
+#### Pass 3 (`src/` + `samples/Counter`, re-review 2026-10-18)
+
+- [x] [Review][Patch] (applied: clear moved after the admission check; 2 snapshots updated, CommandFormEmitterTests 68/68) Hidden zero-field `SubmitAsync` awaits `PresentHiddenOutcomeAsync(null)` (an `InvokeAsync` into the parent) before the synchronous idle/terminal state guard, so two rapid activations can both clear feedback and both read an idle lifecycle; run the state guard first, then clear the outcome [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:~1314]
+- [x] [Review][Defer] Zero-field inline branch emits the button/form/bar inside the new `FluentStack` `ChildContent` lambda using the outer `seq++`, so sequence numbers may differ per child re-render — deferred: maybe-false (same pattern as existing popover/card lambdas); settle with a bUnit/Playwright re-render that asserts the trigger button keeps focus and identity across a hidden-outcome update [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs:981-1034]
+- [x] [Review][Defer] `HandleRowMetricsAsync` silently drops a height when `defaultHeight` mismatches the current density, yet `fc-datagrid.js` marks it `acknowledged` on promise resolution, so JS will not resend until the height changes — deferred: maybe-false (transient during density switch); settle by switching density with a wrapping-row grid and asserting `data-fc-grid-item-size` converges [src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:~2507, src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-datagrid.js:~1746]
+- [x] [Review][Defer] Hidden-form rejection paths call `PresentHiddenOutcomeAsync(..., announce:false)` into an `aria-live="off"` bar — deferred: maybe-false; confirm the lifecycle wrapper speaks exactly once for a rejected zero-field command (no silence, no double speech) [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:~2230,2257]
+- [x] [Review][Defer] `FcExpandedRowHiddenBanner` Dispose can leave `_missingFocusModule` set while an in-flight `OnAfterRender` uses it (possible `ObjectDisposedException`) and a stale `focusReplacementHeading` with the same `_recoveryKey` can delete a newer episode's captured focus — deferred: maybe-false; settle with a bUnit case that disposes mid-import and a Playwright case with two consecutive missing episodes
+
+##### Rejected (pass 3)
+
+- Already dispositioned in pass 1 (Task.Run dispose, `observeRowMetrics` global observer, tracker eviction at 32, `_pageCompletion`, forced-colors tokens, status-icon `span` selector, global tablist/datagrid CSS, retry-after resx): duplicates.
+- 480px lifecycle-bar breakpoint: spec note cites Fluent's multiline message-bar breakpoint; not an invented layout tier.
+- Always-focusable grid region (`tabindex="0"`): intended for scrollable-region accessibility; low.
+- Retry text "0/1 seconds": pre-existing wording, only moved to resx; low and non-trivial fix.
+- Radio-group Tab boundary in `containDialogFocus`: radios are never last in the only radio-bearing dialog (settings has trailing action buttons); latent.
+- Specimen/Test-only seams (`Action<bool>` resolution, fake-auth replacement, `Select` throwing, cascading RenderContext, scenario toggle query), `PresentHiddenOutcomeAsync` claim race, and palette 11px→12px token change: Test-host or specimen fixtures, or negligible.
+- Missing tests in this diff: refuted, tests are in the `tests/` group (pass 2) and Verification Gap found no gaps.
+
 ## Implementation Notes
 
 ### Completion follow-up, 2026-10-16

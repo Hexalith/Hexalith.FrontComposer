@@ -10495,3 +10495,10 @@ Review follow-up for the PNG-integrity resolution adds a separate 33,554,432-byt
 
 - Palette `OnAfterRenderAsync` `_disposed` guards (`FcCommandPalette.razor.cs:113,119`) have no test: add a bUnit case that holds keyboard/focus interop pending, disposes, releases, and asserts `focusElement` is not invoked. Narrow harm; ordering covered by the e2e palette-dismissal test.
 - Native-dialog listener registration race in `containDialogFocus` is already tracked above (Fluent native initialization after containment); no new entry.
+
+## Deferred from: code review of spec-13-6-verify-responsive-and-assistive-accessibility.md (2026-10-18, pass 3 `src/` + `samples/Counter`)
+
+- Zero-field inline `FluentStack` `ChildContent` lambda uses outer `seq++` (maybe-false, unverified medium): settle by asserting the trigger button keeps focus/identity across a hidden-outcome re-render.
+- `HandleRowMetricsAsync` drops density-mismatched heights while JS marks them acknowledged (maybe-false, unverified medium): settle by switching density on a wrapping-row grid and asserting `data-fc-grid-item-size` converges.
+- Hidden-form rejection uses `announce:false` into an `aria-live="off"` bar (maybe-false, unverified medium): confirm exactly one speaker.
+- `FcExpandedRowHiddenBanner` dispose-during-render and stale same-key `focusReplacementHeading` (maybe-false, unverified medium): bUnit dispose-mid-import and two consecutive missing episodes.

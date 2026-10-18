@@ -501,8 +501,6 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     {
         // Story 2-2 code-review P35 — guard against invocation via RegisterExternalSubmit after form disposal.
         if (_disposed) return;
-        await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);
-        if (_disposed) return;
         // State-guard against rapid double-click: only allow submit from terminal or idle state.
         // (See code-review 2026-04-15, patch P19.)
         var currentState = LifecycleState.Value.State;
@@ -531,6 +529,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             await PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId).ConfigureAwait(false);
             return;
         }
+        // Clear the earlier hidden outcome only once admitted: the awaited parent callback must not precede the synchronous state/admission guards.
+        await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);
+        if (_disposed) return;
 
         // This attempt was admitted: withdraw any earlier blocked outcome, and drop form-level text
         // from an earlier attempt so it can never feed this attempt's client-validation summary.

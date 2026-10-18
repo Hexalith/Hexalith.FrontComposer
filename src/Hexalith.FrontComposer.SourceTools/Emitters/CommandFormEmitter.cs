@@ -1311,8 +1311,6 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        // Story 2-2 code-review P35 — guard against invocation via RegisterExternalSubmit after form disposal.");
         _ = sb.AppendLine("        if (_disposed) return;");
-        _ = sb.AppendLine("        await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);");
-        _ = sb.AppendLine("        if (_disposed) return;");
         _ = sb.AppendLine("        // State-guard against rapid double-click: only allow submit from terminal or idle state.");
         _ = sb.AppendLine("        // (See code-review 2026-04-15, patch P19.)");
         _ = sb.AppendLine("        var currentState = LifecycleState.Value.State;");
@@ -1341,6 +1339,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            await PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId).ConfigureAwait(false);");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        // Clear the earlier hidden outcome only once admitted: the awaited parent callback must not precede the synchronous state/admission guards.");
+        _ = sb.AppendLine("        await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);");
+        _ = sb.AppendLine("        if (_disposed) return;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        // This attempt was admitted: withdraw any earlier blocked outcome, and drop form-level text");
         _ = sb.AppendLine("        // from an earlier attempt so it can never feed this attempt's client-validation summary.");
