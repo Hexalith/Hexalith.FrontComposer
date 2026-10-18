@@ -698,10 +698,10 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
-        json["currentRelease"]!.GetValue<string>().ShouldBe("v4.6");
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v4.7");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
-        suppressions.ShouldBeEmpty("the published 4.5.0 baseline absorbs all reviewed v4 MCP removals.");
+        suppressions.ShouldBeEmpty("the published 4.6.0 baseline absorbs all reviewed v4 MCP removals.");
 
         HashSet<string> apiCompatDiagnosticIds = ["CP0001", "CP0002", "CP0008"];
         Regex targetReleaseRegex = TargetReleaseRegex();
@@ -960,7 +960,7 @@ public sealed partial class DiagnosticRegistryTests {
             @"<FrontComposerPackageValidationBaselineVersion Condition=""'\$\(FrontComposerPackageValidationBaselineVersion\)' == ''"">(?<version>[^<]+)</FrontComposerPackageValidationBaselineVersion>");
         sharedBaseline.Success.ShouldBeTrue("Directory.Build.targets must default the package-validation baseline.");
         string packageValidationBaseline = sharedBaseline.Groups["version"].Value;
-        packageValidationBaseline.ShouldBe("4.5.0");
+        packageValidationBaseline.ShouldBe("4.6.0");
         directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
         directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\">$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");

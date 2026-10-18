@@ -1737,7 +1737,12 @@ public sealed class AnalyzerPolicyGovernanceTests
             }
         }
 
-        string[] sourceFiles = trackedFiles.Where(static path => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)).ToArray();
+        // Archived evidence preserves prior source snapshots; it is not compiled live source.
+        // Keep active tooling (including eng/*.cs) and every other tracked source in the census.
+        string[] sourceFiles = trackedFiles
+            .Where(static path => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+                && !Normalize(path).StartsWith("_bmad-output/implementation-artifacts/evidence/", StringComparison.Ordinal))
+            .ToArray();
         controls.Add(CanonicalSourceSummary(root, sourceFiles, "pragma"));
         controls.Add(CanonicalSourceSummary(root, sourceFiles, "suppression-attribute"));
         controls.Add(CanonicalSourceSummary(root, sourceFiles, "emitter-pragma"));

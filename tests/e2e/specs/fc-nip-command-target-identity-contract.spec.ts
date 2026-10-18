@@ -151,7 +151,13 @@ test.describe('FC-NIP explicit command-target identity contract', () => {
     expect(convergenceIndex).toBeGreaterThan(reservationSnapshotIndex);
     expect(pollingSnapshotIndex).toBeGreaterThan(convergenceIndex);
     expect(transportIndex).toBeGreaterThan(pollingSnapshotIndex);
-    expect(pollingCoordinator).toContain('hasPendingTransport ? Math.Max(0, budget - 1) : budget');
+    assertContainsAll(pollingCoordinator, [
+      'int convergenceBudget = hasPendingTransport',
+      '? budget == 1',
+      '(Interlocked.Increment(ref _singleSlotTurn) & 1) == 0 ? 1 : 0',
+      ': budget - 1',
+      'budget -= attempts',
+    ]);
 
     assertContainsAll(razorEmitter, [
       'PendingCommandRowIdentityFor(row)',

@@ -181,7 +181,7 @@ public static class ServiceCollectionExtensions {
         ArgumentNullException.ThrowIfNull(services);
         _ = services.AddLogging();
         ServiceDescriptor? pageEffectsRegistration = services.LastOrDefault(
-            static descriptor => descriptor.ServiceType == typeof(LoadPageEffects));
+            static descriptor => descriptor.ServiceType == typeof(LoadPageEffects) && !descriptor.IsKeyedService);
 
         // Story 1.1 AC2 — bootstrap fail-fast guard. Append the foundational ordering marker and
         // register the validation gate. Both registrations are idempotent (TryAddEnumerable —
@@ -372,16 +372,23 @@ public static class ServiceCollectionExtensions {
         // Default fail-fast loader keeps wiring compilable while surfacing missing adopter paging
         // integration as an explicit LoadPageFailedAction once the server-side lane is needed.
         services.TryAddScoped<LoadedPageReducers>();
-        // Fluxor registers scanned effects directly. Preserve adopter registrations while selecting
-        // the context-aware overload even when localization services are absent.
-        services.Replace(pageEffectsRegistration ?? ServiceDescriptor.Scoped(sp => new LoadPageEffects(
-            sp.GetRequiredService<IState<LoadedPageState>>(),
-            sp.GetRequiredService<IProjectionPageLoader>(),
-            sp.GetRequiredService<ILogger<LoadPageEffects>>(),
-            sp.GetRequiredService<IOptionsMonitor<FcShellOptions>>(),
-            sp.GetRequiredService<TimeProvider>(),
-            sp.GetService<IStringLocalizer<Resources.FcShellResources>>(),
-            sp.GetRequiredService<IUserContextAccessor>())));
+        // Select the context-aware constructor for framework types while preserving custom
+        // factories, instances, lifetimes and keyed services across repeated Fluxor scans.
+        if (pageEffectsRegistration is null || pageEffectsRegistration.ImplementationType == typeof(LoadPageEffects)) {
+            pageEffectsRegistration = ServiceDescriptor.Describe(typeof(LoadPageEffects), sp => new LoadPageEffects(
+                sp.GetRequiredService<IState<LoadedPageState>>(),
+                sp.GetRequiredService<IProjectionPageLoader>(),
+                sp.GetRequiredService<ILogger<LoadPageEffects>>(),
+                sp.GetRequiredService<IOptionsMonitor<FcShellOptions>>(),
+                sp.GetRequiredService<TimeProvider>(),
+                sp.GetService<IStringLocalizer<Resources.FcShellResources>>(),
+                sp.GetRequiredService<IUserContextAccessor>()), pageEffectsRegistration?.Lifetime ?? ServiceLifetime.Scoped);
+        }
+        foreach (ServiceDescriptor descriptor in services.Where(static descriptor =>
+            descriptor.ServiceType == typeof(LoadPageEffects) && !descriptor.IsKeyedService).ToArray()) {
+            services.Remove(descriptor);
+        }
+        services.Add(pageEffectsRegistration);
         services.TryAddScoped<ScrollPersistenceEffect>();
         services.TryAddScoped<ColumnVisibilityPersistenceEffect>();
         services.TryAddScoped<IProjectionPageLoader, NullProjectionPageLoader>();
