@@ -2062,3 +2062,59 @@ test('fixed pseudo paint inside a transformed containing block needs pixel evide
   await page.setContent('<style>#text{position:absolute;left:50px;top:50px;width:100px;height:30px;color:black;background:white;margin:0}#host{position:absolute;left:100px;top:50px;width:10px;height:10px;transform:translateX(0)}#host::after{content:"";position:fixed;left:-50px;top:0;width:100px;height:30px;background:black;z-index:10}</style><p id="text">Essential warning</p><div id="host"></div>');
   await expect(measureSurfaceContrast(page.locator('#text'))).rejects.toThrow(/Fixed pseudo transformed containing block needs pixel evidence/);
 });
+
+test('overflowing table text preserves only the native reachable pointer strip', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.setContent('<style>table{table-layout:fixed;width:248px;border-spacing:0;font:16px/44px monospace}td{padding:0;height:44px;white-space:nowrap;overflow:visible}#owner{position:fixed;left:8px;top:80px;width:100px;height:44px}#help{display:block;width:100px;height:44px}</style><table id="fixture"><tr><td>A</td><td>B</td><td id="date">01/15/2026</td><td id="metadata" tabindex="0" onclick="this.dataset.clicked = \'true\'">X</td></tr></table><div id="owner" tabindex="0"><a id="help" href="#docs">Help</a></div>');
+  const cell = page.locator('#metadata');
+  const sizeDateText = async (width: number) => page.locator('#date').evaluate((date, targetWidth) => {
+    const range = document.createRange();
+    range.selectNodeContents(date);
+    // Calibrate the fixture to its installed font on each runner.
+    const fontSize = parseFloat(getComputedStyle(date).fontSize);
+    (date as HTMLElement).style.fontSize = `${fontSize * targetWidth / range.getBoundingClientRect().width}px`;
+  }, width);
+  for (const forcedColors of ['none', 'active'] as const) {
+    await page.emulateMedia({ forcedColors });
+    for (const offscreen of [false, true]) {
+      await page.locator('#fixture').evaluate((table, belowViewport) => {
+        (table as HTMLElement).style.marginTop = belowViewport ? '1200px' : '0';
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }, offscreen);
+      await sizeDateText(96);
+      const clearWidth = await cell.evaluate(element => {
+        const range = document.createRange();
+        range.selectNodeContents(document.querySelector('#date')!);
+        return element.getBoundingClientRect().right - range.getBoundingClientRect().right;
+      });
+      expect(clearWidth).toBeGreaterThanOrEqual(24);
+      expect(clearWidth).toBeLessThan(32);
+      const inventory = await expectTargetSizes(page);
+      const target = inventory.find(item => item.target === '#metadata');
+      expect(target?.width).toBeCloseTo(clearWidth, 1);
+      expect(target?.height).toBe(44);
+      expect(inventory.find(item => item.target === '#owner')).toMatchObject({ width: 100, height: 44, conforming: true });
+      expect(inventory.find(item => item.target === '#help')).toMatchObject({ width: 100, height: 44, conforming: true });
+      expect(await page.evaluate(() => scrollY)).toBe(0);
+
+      await sizeDateText(108);
+      const narrowClearWidth = await cell.evaluate(element => {
+        const range = document.createRange();
+        range.selectNodeContents(document.querySelector('#date')!);
+        return element.getBoundingClientRect().right - range.getBoundingClientRect().right;
+      });
+      expect(narrowClearWidth).toBeGreaterThan(0);
+      expect(narrowClearWidth).toBeLessThan(24);
+      const undersized = (await inventoryTargets(page)).inventory.find(item => item.target === '#metadata');
+      expect(undersized?.width).toBeGreaterThan(0);
+      expect(undersized?.height).toBeGreaterThan(0);
+      expect(Math.min(undersized!.width, undersized!.height)).toBeLessThan(24);
+      expect(undersized).toMatchObject({ conforming: false, failure: 'Clipping leaves the target without the required reachable area' });
+    }
+  }
+  await sizeDateText(96);
+  await cell.click({ position: { x: 60, y: 22 } });
+  await expect(cell).toHaveAttribute('data-clicked', 'true');
+  await page.getByRole('link', { name: 'Help', exact: true }).click();
+  await expect(page).toHaveURL(/#docs$/);
+});

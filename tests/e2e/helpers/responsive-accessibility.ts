@@ -108,17 +108,34 @@ export async function inventoryTargets(page: Page, exceptions: TargetException[]
       while (element?.shadowRoot) { const inner = element.shadowRoot.elementFromPoint(x, y); if (!inner || inner === element) break; element = inner; }
       return element;
     };
-    const paintBounds = all.map(element => ({ element, box: element.getBoundingClientRect() }));
+    const paintBounds = all.flatMap(element => {
+      const elementBox = element.getBoundingClientRect();
+      const bounds = [{ element, box: elementBox, elementBox, measure: () => element.getBoundingClientRect() }];
+      // Native table hit testing includes text that overflows into the next cell.
+      // Split at its painted fragments so a covered midpoint cannot erase a usable strip.
+      for (const node of element.childNodes) {
+        if (node.nodeType !== Node.TEXT_NODE || !node.textContent?.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        for (const [index, fragment] of [...range.getClientRects()].entries()) {
+          if (fragment.width <= 0 || fragment.height <= 0
+            || fragment.left >= elementBox.left && fragment.right <= elementBox.right
+              && fragment.top >= elementBox.top && fragment.bottom <= elementBox.bottom) continue;
+          bounds.push({ element, box: fragment, elementBox, measure: () => range.getClientRects()[index] ?? range.getBoundingClientRect() });
+        }
+      }
+      return bounds;
+    });
     const pointerArea = (element: Element, box: PaintBox, fresh = false): PaintBox => {
       const xs = new Set([box.left, box.right]), ys = new Set([box.top, box.bottom]);
       for (const candidate of paintBounds) {
         if (containsComposed(element, candidate.element) || containsComposed(candidate.element, element)) continue;
-        const css = getComputedStyle(candidate.element), rect = fresh ? candidate.element.getBoundingClientRect() : candidate.box;
+        const css = getComputedStyle(candidate.element), rect = fresh ? candidate.measure() : candidate.box;
         if (css.pointerEvents === 'none' || css.visibility === 'hidden' || css.display === 'none' || rect.left >= box.right || rect.right <= box.left || rect.top >= box.bottom || rect.bottom <= box.top) continue;
-        const clip = audit.clip(css, rect);
+        const clip = audit.clip(css, fresh ? candidate.element.getBoundingClientRect() : candidate.elementBox);
         if (clip.kind === 'unsupported') throw new Error('Clipped pointer occlusion needs pixel evidence');
         if (clip.kind === 'hidden') continue;
-        const painted = clip.box ?? rect;
+        const painted = clip.box ? { left: Math.max(rect.left, clip.box.left), top: Math.max(rect.top, clip.box.top), right: Math.min(rect.right, clip.box.right), bottom: Math.min(rect.bottom, clip.box.bottom) } : rect;
         if (painted.left >= box.right || painted.right <= box.left || painted.top >= box.bottom || painted.bottom <= box.top) continue;
         xs.add(Math.max(box.left, painted.left)); xs.add(Math.min(box.right, painted.right));
         ys.add(Math.max(box.top, painted.top)); ys.add(Math.min(box.bottom, painted.bottom));
