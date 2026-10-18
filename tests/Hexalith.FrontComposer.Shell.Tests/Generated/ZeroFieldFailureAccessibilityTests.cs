@@ -137,6 +137,29 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
     }
 
     [Fact]
+    public async Task EarlierHiddenOutcomeIsNotClearedByAnInFlightStateGuardedAttempt()
+    {
+        ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        List<string?> hiddenOutcomes = [];
+        IRenderedComponent<ZeroFieldInlineCommandForm> cut = Render<ZeroFieldInlineCommandForm>(p => p
+            .Add(c => c.OnHiddenOutcome, (string? message) => {
+                hiddenOutcomes.Add(message);
+                return Task.CompletedTask;
+            }));
+        Services.GetRequiredService<Fluxor.IDispatcher>().Dispatch(
+            new ZeroFieldInlineCommandActions.SubmittedAction("01ERZ3NDEKTSV4RRFFQ69G5FAV", new ZeroFieldInlineCommand()));
+        await cut.InvokeAsync(() => (Task)typeof(ZeroFieldInlineCommandForm)
+            .GetMethod("SubmitAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .Invoke(cut.Instance, [false])!);
+
+        // A rapid second activation while a command is in flight must leave the earlier outcome alone.
+        hiddenOutcomes.Count(message => message is null).ShouldBe(0);
+        _ = service.DidNotReceive().DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ScopeUnavailableIsVisibleWithoutDispatchOrHiddenFocusAndEachAttemptSpeaksOnce()
     {
         ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();

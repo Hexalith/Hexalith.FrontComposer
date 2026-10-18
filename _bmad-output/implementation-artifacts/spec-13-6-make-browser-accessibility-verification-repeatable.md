@@ -107,6 +107,26 @@ Review of `1f8c7b2b..HEAD` (source only) found changes beyond this spec's intent
 - **Documented Unrelated Changes — `CommandFormEmitter`:** `PresentHiddenOutcomeAsync(null)` now runs after state-guard and admission instead of before them, so a parent callback cannot precede the synchronous guards. Only the two `CommandFormEmitterTests` `verified.txt` snapshots changed as a result. Pinned behaviorally by `EarlierHiddenOutcomeIsClearedOnlyByAnAdmittedAttempt`.
 - **Deferred (unverified medium):** `containDialogFocus` reads the shadow `<dialog>` once at registration (BH04); settle by checking in Chromium that it is non-null at registration for `fc-palette-root` and Settings.
 
+### Review Findings
+
+Code review 2026-10-18 of `1f8c7b2b..HEAD` (18 code/test/workflow files). Four layers returned; no `decision-needed`.
+
+- [x] [Review][Patch] Add a bUnit case proving the hidden-outcome clear is skipped on the lifecycle-state guard (non-terminal state, e.g. `Submitting`): `PresentHiddenOutcomeAsync(null)` count 0 and nothing dispatched [tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs:114]
+  Applied: `EarlierHiddenOutcomeIsNotClearedByAnInFlightStateGuardedAttempt` (passes; class 16/16, inventory seal green).
+- [x] [Review][Defer] Native-dialog `cancel`/`close` listeners attach only if the shadow `<dialog>` exists at registration [src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js:304] — deferred: maybe-false, unverified medium; settle by asserting the shadow dialog exists at `containDialogFocus` time on each engine, or resolving it at event time. Faked-close test is null-safe and passes vacuously.
+
+#### Rejected
+
+- Double dispatch while the `PresentHiddenOutcomeAsync(null)` await is pending (EC): false — `TryAcquire` runs synchronously before the await and holds the admission slot (released in `finally`), so a second activation is denied `PendingCommandAlreadyExists`.
+- Stale `currentState` after the await (EC): false — admission, not the snapshot, is the lock.
+- IDE-parity matrix JSON/markdown still say 10.0.401 (BH, EC): false — `docs/ide-parity-matrix.{json,md}` already carry 10.0.402.
+- `dismissed` flag never reset (BH): false — each opening replaces the `dialogReturns` entry with a fresh object.
+- `previousActiveElement` override permanent / `defineProperty` may throw (BH, EC, AA): low — intentional and commented for the two owned shell dialogs; property is configurable; guarding adds complexity.
+- `cancel` handler runs when `preventDefault`-ed (EC): low — no handler in the shell cancels it; fix adds branches.
+- SDK 10.0.402 bump and `CommandFormEmitter` reorder are out of the frozen scope (AA, BH): rejected — already recorded under Documented Unrelated Changes; the fix would edit the spec.
+- Evidence tooling/result file absent from diff (AA): rejected — diff was narrowed to source/tests by design; not a defect.
+- Bevel `corner-shape` skip, % radii NaN, no zoom guard outside top layer, `.gitattributes` evidence entries, palette focus ordering/`JSDisconnectedException` (BH, AA, VG, EC): low/false — fail closed or already caught (`FocusSearchAsync` catches `JSDisconnectedException`); skip is captured as capability evidence.
+
 ## Verification
 
 - `npm --prefix tests/e2e run typecheck`; `node --test tests/e2e/scripts/a11y-state-evidence.test.mjs`.

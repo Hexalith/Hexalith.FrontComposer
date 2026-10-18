@@ -10502,3 +10502,7 @@ Review follow-up for the PNG-integrity resolution adds a separate 33,554,432-byt
 - `HandleRowMetricsAsync` drops density-mismatched heights while JS marks them acknowledged (maybe-false, unverified medium): settle by switching density on a wrapping-row grid and asserting `data-fc-grid-item-size` converges.
 - Hidden-form rejection uses `announce:false` into an `aria-live="off"` bar (maybe-false, unverified medium): confirm exactly one speaker.
 - `FcExpandedRowHiddenBanner` dispose-during-render and stale same-key `focusReplacementHeading` (maybe-false, unverified medium): bUnit dispose-mid-import and two consecutive missing episodes.
+
+## Deferred from: code review of spec-13-6-make-browser-accessibility-verification-repeatable (2026-10-18)
+
+- `fc-focus.js` `containDialogFocus` attaches native `cancel`/`close` listeners only if the shadow `<dialog>` exists at registration (maybe-false, unverified medium): settle by asserting the dialog exists at registration on each engine, or resolve it at event time; the faked-close test is null-safe and passes vacuously.
