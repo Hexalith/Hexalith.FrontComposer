@@ -11,6 +11,7 @@ import io
 import json
 import os
 import shutil
+import socket
 import stat
 import subprocess
 import sys
@@ -3103,6 +3104,199 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         )
         self.assertEqual(status, 0)
         self.assertLess(time.monotonic() - started, 0.8)
+
+    def test_http_body_uses_request_budget_inside_a_longer_health_deadline(self) -> None:
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802
+                self.send_response(200)
+                self.send_header("Content-Length", "2")
+                self.end_headers()
+                self.wfile.write(b"{")
+                self.wfile.flush()
+                time.sleep(0.4)
+                try:
+                    self.wfile.write(b"}")
+                except OSError:
+                    pass
+
+            def log_message(self, format: str, *args: Any) -> None:
+                del format, args
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        started = time.monotonic()
+        status, _, _ = smoke.SmokeRuntime().json_request(
+            f"http://127.0.0.1:{server.server_port}/health",
+            timeout=0.08,
+            deadline=started + 2,
+        )
+        self.assertEqual(status, 0, "the stalled candidate must release its request budget")
+        self.assertLess(time.monotonic() - started, 0.3)
+
+    def test_slow_http_headers_cannot_extend_request_or_phase_deadlines(self) -> None:
+        for timeout, phase_budget in ((0.08, 2), (2, 0.08)):
+            with self.subTest(timeout=timeout, phase_budget=phase_budget):
+                listener = socket.socket()
+                listener.bind(("127.0.0.1", 0))
+                listener.listen()
+                port = listener.getsockname()[1]
+                self.addCleanup(listener.close)
+
+                def slow_headers() -> None:
+                    connection, _ = listener.accept()
+                    with connection:
+                        connection.recv(4096)
+                        for byte in b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}":
+                            try:
+                                connection.sendall(bytes([byte]))
+                            except OSError:
+                                break
+                            time.sleep(0.025)
+
+                threading.Thread(target=slow_headers, daemon=True).start()
+                started = time.monotonic()
+                status, _, _ = smoke.SmokeRuntime().json_request(
+                    f"http://127.0.0.1:{port}/health", timeout=timeout,
+                    deadline=started + phase_budget,
+                )
+                self.assertEqual(status, 0)
+                self.assertLess(time.monotonic() - started, 0.3)
+
+    def test_failure_log_capture_cannot_prevent_cleanup_or_change_failed_verdict(self) -> None:
+        runtime = FakeRuntime()
+        runtime.collect_failure_logs = True
+        original_command = runtime.command
+        original_request = runtime.json_request
+
+        def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+            if arguments[:2] == ["aspire", "logs"]:
+                runtime.commands.append(arguments)
+                raise RuntimeError("password=never-persist-this")
+            return original_command(arguments, timeout)
+
+        def json_request(url: str, **kwargs: Any) -> tuple[int, dict[str, Any], dict[str, str]]:
+            if url.endswith("/health"):
+                return 503, {"results": {
+                    smoke.WRITER_PROTOCOL_HEALTH_CHECK: {"status": "Unhealthy"},
+                }}, {}
+            if url.endswith(smoke.WRITER_PROTOCOL_ACTIVATION_PATH):
+                return 200, {}, {}  # An invalid bearer was accepted: capture must fail.
+            return original_request(url, **kwargs)
+
+        runtime.command = command  # type: ignore[method-assign]
+        runtime.json_request = json_request  # type: ignore[method-assign]
+        console = io.StringIO()
+        with contextlib.redirect_stderr(console):
+            result = smoke.capture(self.output, runtime, timeout=600)
+        self.assertEqual(result, 1)
+        self.assertTrue(any(command[:2] == ["aspire", "logs"] for command in runtime.commands))
+        self.assertEqual(runtime.commands[-3][:2], ["aspire", "stop"])
+        self.assertEqual(runtime.commands[-2][:2], ["aspire", "describe"])
+        self.assertEqual(runtime.commands[-1][:2], ["aspire", "ps"])
+        receipt = json.loads(self.output.read_text())
+        self.assertEqual(receipt["finalVerdict"], "failed")
+        self.assertIn("authorization.writer-protocol-cutover.not-enforced", receipt["reasonCodes"])
+        self.assertEqual(receipt["cleanup"]["result"], "clean")
+        self.assertIn("logs unavailable: RuntimeError", console.getvalue())
+        self.assertNotIn("never-persist-this", console.getvalue())
+
+    def test_transport_diagnostics_exclude_credentials_queries_and_exception_messages(self) -> None:
+        opener = mock.Mock()
+        opener.open.side_effect = smoke.error.URLError("password=never-persist-this")
+        console = io.StringIO()
+        with (
+            mock.patch.object(smoke.request, "build_opener", return_value=opener),
+            contextlib.redirect_stderr(console),
+        ):
+            result = smoke.SmokeRuntime().json_request(
+                "http://127.0.0.1:18080/health?private=never-persist-this",
+                token="never-persist-this",
+                timeout=1,
+            )
+        self.assertEqual(result, (0, {}, {}))
+        diagnostic = console.getvalue()
+        self.assertIn('"phase":"connect-or-headers"', diagnostic)
+        self.assertIn('"exceptionType":"URLError"', diagnostic)
+        self.assertIn('"endpoint":"http://127.0.0.1:18080/health"', diagnostic)
+        self.assertNotIn("never-persist-this", diagnostic)
+        self.assertNotIn("private", diagnostic)
+        self.assertNotIn("password", diagnostic)
+
+    def test_transport_diagnostics_preserve_controlled_failure_for_malformed_destination(self) -> None:
+        console = io.StringIO()
+        with contextlib.redirect_stderr(console):
+            result = smoke.SmokeRuntime().json_request(
+                "http://[broken/health", token="never-persist-this", timeout=0.1,
+            )
+        self.assertEqual(result, (0, {}, {}))
+        self.assertIn('"endpoint":"unverified-destination"', console.getvalue())
+        self.assertNotIn("never-persist-this", console.getvalue())
+
+    def test_failure_diagnostics_keep_actual_failed_receipts_and_reject_secret_or_link_inputs(self) -> None:
+        root = Path(self.temporary.name) / "diagnostic-repository"
+        evidence = root / "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation"
+        evidence.mkdir(parents=True)
+        failed = b'{"finalVerdict":"failed","reasonCodes":["health.readiness.failed"]}\n'
+        (evidence / "apphost-smoke.json").write_bytes(failed)
+        (evidence / "provider-verification.json").write_text('{"password":"never-persist-this"}')
+        (evidence / "run-evidence.json").symlink_to(evidence / "apphost-smoke.json")
+        manifest = root / "runtime-inputs.json"
+        manifest.write_bytes(b'{"capturedRevision":"exact-input"}\n')
+        destination = root / "diagnostics"
+        destination.mkdir()
+        # A repeat export cannot retain a previously exported file that now fails scanning.
+        (destination / "provider-verification.json").write_text("stale")
+        with mock.patch.object(smoke, "ROOT", root):
+            smoke._export_failure_diagnostics(destination, manifest)
+        self.assertEqual((destination / "apphost-smoke.json").read_bytes(), failed)
+        self.assertEqual((destination / "runtime-inputs.json").read_bytes(), manifest.read_bytes())
+        self.assertFalse((destination / "provider-verification.json").exists())
+        self.assertFalse((destination / "run-evidence.json").exists())
+        status = json.loads((destination / "diagnostic-status.json").read_text())
+        self.assertFalse(status["validatedContractAuthority"])
+        self.assertEqual(status["purpose"], "diagnostics-only")
+        self.assertEqual({item["file"] for item in status["rejectedFiles"]}, {
+            "provider-verification.json", "run-evidence.json",
+        })
+        self.assertNotIn("never-persist-this", json.dumps(status))
+
+    def test_diagnostic_log_sanitization_keeps_failure_without_secrets_or_user_paths(self) -> None:
+        log = smoke._sanitized_diagnostic_text(
+            "Resource exited with code 1\n"
+            'AppHost HTTP transport failure={"endpoint":"http://127.0.0.1:18080/health","phase":"connect-or-headers","exceptionType":"TimeoutError"}\n'
+            'AppHost readiness probe={"endpoint":"http://127.0.0.1:18080","checks":{"dapr-app-channel-token":"Unhealthy"}}\n'
+            "password=never-persist-this\n"
+            'content: "Authorization: Bearer confidential"\n'
+            "api-key: never-persist-this\n"
+            "/home/runner/private-repository/Program.cs:42\n"
+            "Now listening on: http://127.0.0.1:18080"
+        )
+        self.assertIn("REDACTED DIAGNOSTIC BLOCK", log)
+        self.assertIn('"phase":"connect-or-headers"', log)
+        self.assertIn('"dapr-app-channel-token":"Unhealthy"', log)
+        self.assertNotIn("never-persist-this", log)
+        self.assertNotIn("confidential", log)
+        self.assertNotIn("/home/runner/", log)
+
+    def test_log_redaction_rejects_credential_continuations_and_config_name_value_pairs(self) -> None:
+        for raw in (
+            "accessToken:\nnever-persist-this",
+            '{"name":"ClientSecret","value":"never-persist-this"}',
+            '{"logs":[{"content":"client secret follows"},{"content":"never-persist-this"}]}',
+        ):
+            with self.subTest(raw=raw):
+                safe = smoke._sanitized_diagnostic_text(raw)
+                self.assertNotIn("never-persist-this", safe)
+                self.assertIn("REDACTED DIAGNOSTIC BLOCK", safe)
+        with mock.patch.object(smoke, "MAX_OUTPUT_CHARS", 20):
+            safe = smoke._sanitized_diagnostic_text("accessToken:\n" + "x" * 30 + "never-persist-this")
+            self.assertNotIn("never-persist-this", safe)
+            self.assertIn("REDACTED DIAGNOSTIC BLOCK", safe)
+        safe = smoke._sanitized_diagnostic_text("Resource exited with code 1\n/home/runner/project/Program.cs:42")
+        self.assertIn("Resource exited with code 1", safe)
+        self.assertNotIn("/home/runner/", safe)
 
     def test_cli_failure_report_prints_reason_codes(self) -> None:
         self.output.write_text(

@@ -7,6 +7,7 @@ import argparse
 import base64
 import hashlib
 import ipaddress
+import io
 import json
 import os
 import queue
@@ -22,7 +23,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from http.client import HTTPException, IncompleteRead
+from http.client import HTTPConnection, HTTPSConnection, HTTPResponse, HTTPException, IncompleteRead
 from typing import Any
 from urllib import error, parse, request
 
@@ -104,6 +105,59 @@ class _RejectRedirectHandler(request.HTTPRedirectHandler):
     def redirect_request(self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str) -> None:
         del req, fp, code, msg, headers, newurl
         return None
+
+
+class _DeadlineResponseReader(io.RawIOBase):
+    """Enforce one absolute deadline on every status/header/body socket read."""
+
+    def __init__(self, original: Any, sock: socket.socket, deadline: float) -> None:
+        self._original = original
+        self._sock = sock
+        self._deadline = deadline
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: Any) -> int | None:
+        remaining = _remaining_timeout(self._deadline, 10)
+        if remaining is None:
+            raise TimeoutError("http-response-deadline-exceeded")
+        self._sock.settimeout(remaining)
+        count = self._original.raw.readinto(buffer)
+        if time.monotonic() >= self._deadline:
+            raise TimeoutError("http-response-deadline-exceeded")
+        return count
+
+    def close(self) -> None:
+        try:
+            self._original.close()
+        finally:
+            super().close()
+
+
+def _deadline_http_handlers(deadline: float, context: ssl.SSLContext) -> tuple[Any, Any]:
+    class BoundedResponse(HTTPResponse):
+        def __init__(self, sock: socket.socket, *arguments: Any, **keywords: Any) -> None:
+            super().__init__(sock, *arguments, **keywords)
+            self.fp = io.BufferedReader(_DeadlineResponseReader(self.fp, sock, deadline))
+
+    def connection(factory: Any, host: str, **keywords: Any) -> Any:
+        result = factory(host, **keywords)
+        result.response_class = BoundedResponse
+        return result
+
+    class BoundedHTTPHandler(request.HTTPHandler):
+        def http_open(self, req: Any) -> Any:
+            return self.do_open(lambda host, **kw: connection(HTTPConnection, host, **kw), req)
+
+    class BoundedHTTPSHandler(request.HTTPSHandler):
+        def https_open(self, req: Any) -> Any:
+            return self.do_open(
+                lambda host, **kw: connection(HTTPSConnection, host, **kw), req,
+                context=self._context,
+            )
+
+    return BoundedHTTPHandler(), BoundedHTTPSHandler(context=context)
 
 
 def _set_response_timeout(response: Any, timeout: float) -> None:
@@ -193,14 +247,35 @@ class SmokeRuntime:
         timeout: float = 10,
         deadline: float | None = None,
     ) -> tuple[int, dict[str, Any], dict[str, str]]:
-        absolute_deadline = deadline if deadline is not None else time.monotonic() + timeout
+        # A phase deadline bounds the whole retry loop; each candidate must also honor
+        # its own request budget, including DNS, connection, headers, and body reads.
+        absolute_deadline = time.monotonic() + timeout
+        if deadline is not None:
+            absolute_deadline = min(absolute_deadline, deadline)
         logical_url = url
+
+        def failed(exception: BaseException, phase: str) -> tuple[int, dict[str, Any], dict[str, str]]:
+            cause = exception.reason if isinstance(exception, error.URLError) else exception
+            try:
+                parsed = parse.urlsplit(logical_url)
+                endpoint = parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+            except ValueError:
+                endpoint = "unverified-destination"
+            diagnostic = {
+                "endpoint": endpoint if _is_loopback_url(endpoint) else "unverified-destination",
+                "phase": phase,
+                "exceptionType": type(exception).__name__,
+                "causeType": type(cause).__name__,
+                "errno": getattr(cause, "errno", None),
+            }
+            print("AppHost HTTP transport failure=" + json.dumps(diagnostic, separators=(",", ":")), file=sys.stderr)
+            return 0, {}, {}
         try:
             url = _credential_safe_url(
                 url, token=token, form=form, deadline=absolute_deadline
             )
-        except ValueError:
-            return 0, {}, {}
+        except ValueError as exception:
+            return failed(exception, "destination")
         data: bytes | None = None
         headers = {"Accept": "application/json"}
         if url != logical_url:
@@ -223,11 +298,13 @@ class SmokeRuntime:
             return 0, {}, {}
         opener = request.build_opener(
             request.ProxyHandler({}),
-            request.HTTPSHandler(context=context),
+            *_deadline_http_handlers(absolute_deadline, context),
             _RejectRedirectHandler(),
         )
+        phase = "connect-or-headers"
         try:
             with opener.open(outbound, timeout=connect_timeout) as response:
+                phase = "response-body"
                 raw = _bounded_http_body(response, absolute_deadline)
                 try:
                     document = json.loads(raw.decode("utf-8")) if raw else {}
@@ -243,12 +320,12 @@ class SmokeRuntime:
                     except (UnicodeDecodeError, json.JSONDecodeError):
                         document = {}
                     return exception.code, document if isinstance(document, dict) else {}, dict(exception.headers.items())
-                except (TimeoutError, OSError, ValueError, IncompleteRead, HTTPException):
-                    return 0, {}, {}
+                except (TimeoutError, OSError, ValueError, IncompleteRead, HTTPException) as body_exception:
+                    return failed(body_exception, "error-response-body")
             finally:
                 exception.close()
-        except (error.URLError, TimeoutError, ssl.SSLError, OSError, IncompleteRead, HTTPException):
-            return 0, {}, {}
+        except (error.URLError, TimeoutError, ssl.SSLError, OSError, IncompleteRead, HTTPException) as exception:
+            return failed(exception, phase)
 
     def signalr_negotiate_status(
         self,
@@ -2479,6 +2556,19 @@ def _capture(
                 health_status, health_document, _ = runtime.json_request(
                     f"{base}/health", timeout=request_timeout, deadline=health_deadline
                 )
+                checks = health_document.get("results", {})
+                check_statuses = {
+                    name: check.get("status")
+                    for name, check in checks.items()
+                    if isinstance(name, str) and re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,95}", name)
+                    and isinstance(check, dict)
+                    and check.get("status") in ("Healthy", "Degraded", "Unhealthy")
+                } if isinstance(checks, dict) else {}
+                print("AppHost readiness probe=" + json.dumps({
+                    "endpoint": base,
+                    "statusCode": health_status,
+                    "checks": check_statuses,
+                }, separators=(",", ":")), file=sys.stderr)
                 if health_status in (200, 204):
                     eventstore_base = base
                     break
@@ -2827,6 +2917,21 @@ def _capture(
         reason_codes.append(f"apphost.capture.{type(exception).__name__.lower()}")
         return 1
     finally:
+        # Diagnose the still-running resource before stopping it. Keep the existing
+        # cleanup reserve and never let diagnostics change the capture verdict.
+        if reason_codes and host_started and getattr(runtime, "collect_failure_logs", False):
+            diagnostic_timeout = _remaining_timeout(overall_deadline - 75, 10)
+            if diagnostic_timeout is not None:
+                try:
+                    logs = runtime.command([
+                        "aspire", "logs", "eventstore", "--apphost", APPHOST_RELATIVE,
+                        "--format", "Json", "--tail", "100", "--non-interactive", "--nologo",
+                    ], diagnostic_timeout)
+                    print("AppHost EventStore failure logs=" + _sanitized_diagnostic_text(
+                        logs.stdout + "\n" + logs.stderr
+                    ), file=sys.stderr)
+                except Exception as diagnostic_exception:
+                    print("AppHost EventStore failure logs unavailable: " + type(diagnostic_exception).__name__, file=sys.stderr)
         stop_timeout = _remaining_timeout(overall_deadline, 60)
         stop = (
             runtime.command(
@@ -3091,6 +3196,118 @@ def _report_failure(output: Path) -> None:
         print(f"cleanup={json.dumps(cleanup, separators=(',', ':'))}", file=sys.stderr)
 
 
+def _safe_probe_diagnostic(line: str) -> str | None:
+    """Project only known probe fields; raw resource output has no trusted schema."""
+    prefixes = ("AppHost HTTP transport failure=", "AppHost readiness probe=")
+    prefix = next((item for item in prefixes if line.startswith(item)), None)
+    if prefix is None:
+        return None
+    try:
+        value = json.loads(line[len(prefix):])
+        endpoint = parse.urlsplit(value["endpoint"])
+        if not _is_loopback_url(value["endpoint"]):
+            return None
+        # Preserve the peer and the health route, never arbitrary path/query content.
+        safe_endpoint = parse.urlunsplit((endpoint.scheme, endpoint.netloc,
+            "/health" if endpoint.path == "/health" else "", "", ""))
+        if prefix == prefixes[0]:
+            phases = {"destination", "connect-or-headers", "response-body", "error-response-body"}
+            if value.get("phase") not in phases:
+                return None
+            types = {"TimeoutError", "URLError", "SSLError", "OSError", "ConnectionRefusedError",
+                "ConnectionResetError", "IncompleteRead", "HTTPException", "ValueError", "RemoteDisconnected"}
+            safe = {"endpoint": safe_endpoint, "phase": value["phase"],
+                "exceptionType": value.get("exceptionType") if value.get("exceptionType") in types else "Other",
+                "causeType": value.get("causeType") if value.get("causeType") in types else "Other",
+                "errno": value.get("errno") if type(value.get("errno")) is int else None}
+        else:
+            checks = value.get("checks", {})
+            names = {"self", "dapr-sidecar", "dapr-actor-placement", "dapr-statestore", "dapr-pubsub",
+                "dapr-configstore", "dapr-app-channel-token", "projection-delivery-writer-protocol",
+                "projection-delivery-unresolved-conflict"}
+            safe = {"endpoint": safe_endpoint,
+                "statusCode": value.get("statusCode") if type(value.get("statusCode")) is int else None,
+                "checks": {name: status for name, status in checks.items()
+                    if name in names and status in {"Healthy", "Degraded", "Unhealthy"}}}
+        return prefix + json.dumps(safe, separators=(",", ":"))
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return None
+
+
+def _sanitized_diagnostic_text(value: str) -> str:
+    """Fail closed for an entire credential-shaped block, including continuations."""
+    truncated = len(value) > MAX_OUTPUT_CHARS
+    value = value[-MAX_OUTPUT_CHARS:]
+    lines = value.splitlines()
+    probes = [_safe_probe_diagnostic(line) for line in lines]
+    untrusted = "\n".join(line for line, probe in zip(lines, probes) if probe is None)
+    sensitive = re.compile(
+        r"authorization|cookie|password|secret|token|headers|connectionstring|api[_ -]?key"
+        r"|login\?t=\S+|[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+",
+        re.IGNORECASE,
+    )
+    invalid_probe = any(
+        line.startswith(("AppHost HTTP transport failure=", "AppHost readiness probe=")) and probe is None
+        for line, probe in zip(lines, probes)
+    )
+    if truncated or invalid_probe or sensitive.search(untrusted) or any(pattern.search(untrusted) for pattern in runtime_evidence.SECRET_PATTERNS):
+        retained = [probe for probe in probes if probe is not None]
+        digest = hashlib.sha256(untrusted.encode("utf-8")).hexdigest()
+        return "\n".join([*retained, "[REDACTED DIAGNOSTIC BLOCK sha256=" + digest + "]"])
+    normalized = value.replace(str(ROOT), "$REPOSITORY")
+    for pattern in runtime_evidence.LOCAL_PATH_PATTERNS:
+        normalized = pattern.sub("$LOCAL/", normalized)
+    # Re-project even when there was no sensitive block, so unknown fields are never retained.
+    return "\n".join(probe if probe is not None else line
+        for line, probe in zip(normalized.splitlines(), probes))
+
+
+def _export_failure_diagnostics(destination: Path, runtime_manifest: Path) -> None:
+    """Retain actual failed receipts separately from validated contract authority."""
+    if destination.is_symlink():
+        raise ValueError("diagnostics destination must not be a symlink")
+    destination.mkdir(parents=True, exist_ok=True)
+    evidence_root = ROOT / "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation"
+    candidates = [(name, evidence_root / name) for name in (
+        "provider-verification.json", "run-evidence.json", "provider-package-ledger.json",
+        "apphost-smoke.json", "apphost-package-ledger.json",
+    )]
+    candidates.append(("runtime-inputs.json", runtime_manifest))
+    exported: list[str] = []
+    rejected: list[dict[str, Any]] = []
+    for name, source in candidates:
+        (destination / name).unlink(missing_ok=True)
+        if not source.exists() and not source.is_symlink():
+            continue
+        errors: list[str] = []
+        payload = runtime_evidence._bounded_read(
+            source, errors, name, max_bytes=runtime_evidence._evidence_file_limit(name)
+        )
+        if payload is not None:
+            runtime_evidence._scan_redaction_bytes(source, payload, errors)
+        if errors or payload is None:
+            rejected.append({"file": name, "issues": errors})
+            continue
+        (destination / name).write_bytes(payload)
+        exported.append(name)
+    console = Path(os.environ.get("RUNNER_TEMP", tempfile.gettempdir())) / "frontcomposer-apphost-smoke.log"
+    if console.is_file() and not console.is_symlink():
+        with console.open("rb") as stream:
+            stream.seek(max(0, console.stat().st_size - MAX_OUTPUT_CHARS))
+            text = stream.read(MAX_OUTPUT_CHARS).decode("utf-8", errors="replace")
+        if console.stat().st_size > MAX_OUTPUT_CHARS:
+            # A preceding credential heading may have been truncated away.
+            text = "[REDACTED SECRET-SHAPED OR TRUNCATED PREFIX]\n" + text
+        (destination / "apphost-smoke.redacted.log").write_text(
+            _sanitized_diagnostic_text(text) + "\n", encoding="utf-8"
+        )
+    _atomic_write(destination / "diagnostic-status.json", {
+        "purpose": "diagnostics-only", "validatedContractAuthority": False,
+        "exportedFiles": exported, "rejectedFiles": rejected,
+        "receiptSemanticsValidated": False,
+    })
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -3100,13 +3317,22 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--timeout-seconds", type=int, default=300)
     parser.add_argument("--runtime-input-manifest", required=True, type=Path)
-    parser.add_argument("--package-root", required=True, type=Path)
+    parser.add_argument("--package-root", type=Path)
+    parser.add_argument("--export-diagnostics", type=Path)
     args = parser.parse_args(argv)
+    if args.export_diagnostics is not None:
+        _export_failure_diagnostics(args.export_diagnostics, args.runtime_input_manifest)
+        return 0
+    if args.package_root is None:
+        parser.error("--package-root is required for an AppHost capture")
     if not 30 <= args.timeout_seconds <= 600:
         parser.error("--timeout-seconds must be between 30 and 600")
     output = args.output.absolute()
+    runtime = SmokeRuntime()
+    runtime.collect_failure_logs = True
     code = capture(
         output,
+        runtime=runtime,
         timeout=args.timeout_seconds,
         runtime_input_manifest_path=args.runtime_input_manifest.absolute(),
         package_root=args.package_root.absolute(),

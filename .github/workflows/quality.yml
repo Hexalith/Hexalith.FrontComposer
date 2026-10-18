@@ -351,7 +351,8 @@ jobs:
           python3 eng/pact_provider_apphost_smoke.py \
             --timeout-seconds 600 \
             --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
-            --package-root "$apphost_packages"
+            --package-root "$apphost_packages" \
+            2>&1 | tee "$RUNNER_TEMP/frontcomposer-apphost-smoke.log"
 
       - name: 'Gate 2c: Validate current live capture'
         shell: bash
@@ -434,6 +435,18 @@ jobs:
             -AppHostPackageRoot "" `
             -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
 
+      - name: 'Gate 2c: Preserve runtime diagnostics'
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Actual receipts and inputs remain useful after an early runtime failure.
+          # Redaction-scan each bounded file before exporting it as diagnostics only;
+          # approved contract authority still requires every blocking validator below.
+          python3 eng/pact_provider_apphost_smoke.py \
+            --export-diagnostics artifacts/contracts/apphost-runtime-diagnostics \
+            --runtime-input-manifest "$RUNNER_TEMP/frontcomposer-runtime-inputs.json"
+
       - name: 'Gate 2c: Clean package authority roots'
         if: always()
         shell: bash
@@ -470,8 +483,8 @@ jobs:
             cat artifacts/contracts/job-summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # Validator diagnostics only. This never carries the evidence tree, so it is safe to
-      # publish on failure - and it is exactly when a rejected tree has to be triaged.
+      # Diagnostic-only copies are bounded and redaction-scanned before export. They
+      # preserve failed runtime receipts without representing validated contract authority.
       - name: Upload contract diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
