@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 import { expect, test } from '../fixtures/index.js';
 import { fieldEditorByLabel, fillFieldByLabel, waitForGeneratedFormReady } from '../helpers/fluent-fields.js';
 import { getSpecimenRoute } from '../helpers/specimen-manifest.js';
+import { applyTextSpacing, expectNoPageOverflow, expectNoTextClipping, removeTextSpacing } from '../helpers/responsive-accessibility.js';
 
 const COMMAND_ID = 'purge-specimen-record';
 const FORM_LABEL = 'Purge Specimen Record command form';
@@ -118,6 +119,7 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     await expect(groupedFields).toHaveCount(2);
     await expect(groupedFields.nth(0)).toHaveAttribute('name', 'RecordId');
     await expect(groupedFields.nth(1)).toHaveAttribute('name', 'Reason');
+    await expectFieldDescriptionsBelowEditors(form);
 
     // Retention stays unchosen, so the required nullable enum select is invalid beside Record Id.
     await fillDestructiveFields(form, '', 'QA story 4.1 validation blocks dialog');
@@ -159,6 +161,22 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     const retentionField = form.locator('fluent-field', { has: page.locator('label[slot="label"]:text-is("Retention")') });
     await expect(retentionField.locator('.fluent-validation-message')).toHaveCount(1);
     await expect(retentionField.getByText('The Retention field is required.', { exact: true })).toHaveCount(1);
+    await expectFieldDescriptionsBelowEditors(form);
+    const viewport = page.viewportSize();
+    try {
+      await page.setViewportSize({ width: 320, height: 900 });
+      await expectFieldDescriptionsBelowEditors(form);
+      await expectNoTextClipping(page);
+      await expectNoPageOverflow(page);
+      await applyTextSpacing(page);
+      await expectFieldDescriptionsBelowEditors(form);
+      await expectNoTextClipping(page);
+      await expectNoPageOverflow(page);
+    }
+    finally {
+      await removeTextSpacing(page);
+      if (viewport) await page.setViewportSize(viewport);
+    }
     const recordLink = summary.getByRole('link', { name: 'The Record Id field is required.', exact: true });
     await expect(recordLink).toHaveCount(1);
     await expect(recordLink).toHaveAttribute('href', /#.+-RecordId$/u);
@@ -576,6 +594,26 @@ const axField = async (
   finally {
     await session.detach();
   }
+};
+
+const expectFieldDescriptionsBelowEditors = async (form: Locator): Promise<void> => {
+  const descriptions = form.locator('.fc-command-field > fluent-text.fc-command-field-description');
+  await expect(descriptions).toHaveCount(3);
+  for (const description of await descriptions.all()) await expect(description).toBeVisible();
+  await expect.poll(() => descriptions.evaluateAll(nodes => nodes.flatMap(description => {
+    const field = description.parentElement;
+    const editor = field?.querySelector(':scope > fluent-field');
+    if (!field || !editor) return ['Missing generated field/editor for description.'];
+    const bounds = description.getBoundingClientRect();
+    const editorBounds = editor.getBoundingClientRect();
+    const fieldBounds = field.getBoundingClientRect();
+    const failures: string[] = [];
+    if (bounds.top < editorBounds.bottom - 1) failures.push(`${description.textContent}: beside editor`);
+    if (bounds.left < fieldBounds.left - 1 || bounds.right > fieldBounds.right + 1) {
+      failures.push(`${description.textContent}: outside field width`);
+    }
+    return failures;
+  })), { message: 'Persistent field descriptions stay below their editors, including validation errors, without overflowing.' }).toEqual([]);
 };
 
 const gotoTypeSpecimen = async (page: Page): Promise<void> => {

@@ -124,6 +124,8 @@ StyleCopReport.xml
 *.log
 # Preserve the hash-bound Story 13.6 gap-closure raw verification logs.
 !/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/raw/*.log
+# Preserve the current Story 13.6 field-layout verification logs and their links.
+!/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/**/*.log
 *.tlog
 *.vspscc
 *.vssscc

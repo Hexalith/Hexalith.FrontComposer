@@ -1,0 +1,14 @@
+<testsuites id="" name="" tests="3" failures="0" skipped="0" errors="0" time="13.016039">
+<testsuite name="destructive-command-confirmation.spec.ts" timestamp="2026-10-18T08:45:54.524Z" hostname="chromium" tests="1" failures="0" skipped="0" time="10.772" errors="0">
+<testcase name="Story 4.1: destructive command confirmation › validation failure and rapid clicks cannot bypass the destructive gate" classname="destructive-command-confirmation.spec.ts" time="10.772">
+</testcase>
+</testsuite>
+<testsuite name="destructive-command-confirmation.spec.ts" timestamp="2026-10-18T08:45:54.524Z" hostname="firefox" tests="1" failures="0" skipped="0" time="11.853" errors="0">
+<testcase name="Story 4.1: destructive command confirmation › validation failure and rapid clicks cannot bypass the destructive gate" classname="destructive-command-confirmation.spec.ts" time="11.853">
+</testcase>
+</testsuite>
+<testsuite name="destructive-command-confirmation.spec.ts" timestamp="2026-10-18T08:45:54.524Z" hostname="webkit" tests="1" failures="0" skipped="0" time="12.223" errors="0">
+<testcase name="Story 4.1: destructive command confirmation › validation failure and rapid clicks cannot bypass the destructive gate" classname="destructive-command-confirmation.spec.ts" time="12.223">
+</testcase>
+</testsuite>
+</testsuites>

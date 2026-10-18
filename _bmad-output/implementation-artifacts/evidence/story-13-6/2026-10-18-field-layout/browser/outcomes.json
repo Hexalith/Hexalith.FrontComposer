@@ -1,0 +1,596 @@
+[
+  {
+    "engine": "chromium",
+    "title": "cancel and Escape keep the destructive command idle and reusable",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "confirmation is required before dispatch and reaches terminal feedback once confirmed",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "validation failure and rapid clicks cannot bypass the destructive gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "a real settings modal prevents opening a nested destructive dialog",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "body and document origins fall back to the route heading after an overlay closes",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "one modal reservation survives long preparation and refuses competing shell overlays",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "validation focus fallbacks use the next invalid target and survive a missing summary",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "removed destructive invoker restores focus to the route heading",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "cancel and Escape keep the destructive command idle and reusable",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "confirmation is required before dispatch and reaches terminal feedback once confirmed",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "validation failure and rapid clicks cannot bypass the destructive gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "a real settings modal prevents opening a nested destructive dialog",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "body and document origins fall back to the route heading after an overlay closes",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "one modal reservation survives long preparation and refuses competing shell overlays",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "validation focus fallbacks use the next invalid target and survive a missing summary",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "removed destructive invoker restores focus to the route heading",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "cancel and Escape keep the destructive command idle and reusable",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "confirmation is required before dispatch and reaches terminal feedback once confirmed",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "validation failure and rapid clicks cannot bypass the destructive gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "a real settings modal prevents opening a nested destructive dialog",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "body and document origins fall back to the route heading after an overlay closes",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "one modal reservation survives long preparation and refuses competing shell overlays",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "validation focus fallbacks use the next invalid target and survive a missing summary",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "removed destructive invoker restores focus to the route heading",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "manifest names owned nonblank specimen routes and exactly six visual combinations",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "type specimen is nonblank and passes blocking axe gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "data-formatting specimen is nonblank and passes blocking axe gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "page-toolbar specimen is nonblank and passes blocking axe gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "dark generated command specimens keep readable foreground contrast",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "data-formatting specimen renders deterministic text and accessible names",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "focus-visible indicator remains visible over lifecycle visuals",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "forced-colors and reduced-motion states are active and perceivable",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "viewport reflow keeps critical controls reachable at 1280 CSS pixels (not browser zoom)",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "viewport reflow keeps critical controls reachable at 640 CSS pixels (not browser zoom)",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "viewport reflow keeps critical controls reachable at 320 CSS pixels (not browser zoom)",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "visual baseline light compact",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  3378 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-compact.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-light-compact.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 3378 pixels (ratio 0.01 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - 3378 pixels (ratio 0.01 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "chromium",
+    "title": "visual baseline light comfortable",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  3378 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-comfortable.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-light-comfortable.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 3378 pixels (ratio 0.01 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - 3378 pixels (ratio 0.01 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "chromium",
+    "title": "visual baseline light roomy",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  3378 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-roomy.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-light-roomy.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 3378 pixels (ratio 0.01 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - 3378 pixels (ratio 0.01 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "chromium",
+    "title": "visual baseline dark compact",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  6524 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-compact.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-dark-compact.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 6524 pixels (ratio 0.01 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - 6524 pixels (ratio 0.01 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "chromium",
+    "title": "visual baseline dark comfortable",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  6524 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-comfortable.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-dark-comfortable.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 6524 pixels (ratio 0.01 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - 6524 pixels (ratio 0.01 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "chromium",
+    "title": "visual baseline dark roomy",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  6524 pixels (ratio 0.01 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-roomy.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-dark-roomy.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - 6524 pixels (ratio 0.01 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - 6524 pixels (ratio 0.01 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "chromium",
+    "title": "production-style route exposure fails closed when specimen host configuration is absent",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "manifest names owned nonblank specimen routes and exactly six visual combinations",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "type specimen is nonblank and passes blocking axe gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "data-formatting specimen is nonblank and passes blocking axe gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "page-toolbar specimen is nonblank and passes blocking axe gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "dark generated command specimens keep readable foreground contrast",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "data-formatting specimen renders deterministic text and accessible names",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "focus-visible indicator remains visible over lifecycle visuals",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion",
+    "status": "skipped",
+    "finalStatus": "skipped"
+  },
+  {
+    "engine": "firefox",
+    "title": "forced-colors and reduced-motion states are active and perceivable",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "viewport reflow keeps critical controls reachable at 1280 CSS pixels (not browser zoom)",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "viewport reflow keeps critical controls reachable at 640 CSS pixels (not browser zoom)",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "viewport reflow keeps critical controls reachable at 320 CSS pixels (not browser zoom)",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "visual baseline light compact",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3778px, received 1280px by 3820px. 188932 pixels (ratio 0.04 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-compact.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-light-compact.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3778px, received 1280px by 3820px. 188932 pixels (ratio 0.04 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3778px, received 1280px by 3820px. 188932 pixels (ratio 0.04 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "firefox",
+    "title": "visual baseline light comfortable",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3846px, received 1280px by 3880px. 206267 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-comfortable.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-light-comfortable.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3846px, received 1280px by 3880px. 206267 pixels (ratio 0.05 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3846px, received 1280px by 3880px. 206267 pixels (ratio 0.05 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "firefox",
+    "title": "visual baseline light roomy",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3914px, received 1280px by 3940px. 217369 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-roomy.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-light-roomy.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3914px, received 1280px by 3940px. 217369 pixels (ratio 0.05 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3914px, received 1280px by 3940px. 217369 pixels (ratio 0.05 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "firefox",
+    "title": "visual baseline dark compact",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3778px, received 1280px by 3820px. 516829 pixels (ratio 0.11 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-compact.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-dark-compact.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3778px, received 1280px by 3820px. 516829 pixels (ratio 0.11 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3778px, received 1280px by 3820px. 516829 pixels (ratio 0.11 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "firefox",
+    "title": "visual baseline dark comfortable",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3846px, received 1280px by 3880px. 455930 pixels (ratio 0.10 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-comfortable.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-dark-comfortable.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3846px, received 1280px by 3880px. 455930 pixels (ratio 0.10 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3846px, received 1280px by 3880px. 455930 pixels (ratio 0.10 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "firefox",
+    "title": "visual baseline dark roomy",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3914px, received 1280px by 3940px. 405448 pixels (ratio 0.09 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-roomy.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-dark-roomy.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3914px, received 1280px by 3940px. 405448 pixels (ratio 0.09 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3914px, received 1280px by 3940px. 405448 pixels (ratio 0.09 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "firefox",
+    "title": "production-style route exposure fails closed when specimen host configuration is absent",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "manifest names owned nonblank specimen routes and exactly six visual combinations",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "type specimen is nonblank and passes blocking axe gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "data-formatting specimen is nonblank and passes blocking axe gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "page-toolbar specimen is nonblank and passes blocking axe gate",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "dark generated command specimens keep readable foreground contrast",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "data-formatting specimen renders deterministic text and accessible names",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "focus-visible indicator remains visible over lifecycle visuals",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion",
+    "status": "skipped",
+    "finalStatus": "skipped"
+  },
+  {
+    "engine": "webkit",
+    "title": "forced-colors and reduced-motion states are active and perceivable",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "viewport reflow keeps critical controls reachable at 1280 CSS pixels (not browser zoom)",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "viewport reflow keeps critical controls reachable at 640 CSS pixels (not browser zoom)",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "viewport reflow keeps critical controls reachable at 320 CSS pixels (not browser zoom)",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "visual baseline light compact",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3818px, received 1280px by 3863px. 182734 pixels (ratio 0.04 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-compact.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-light-compact.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3818px, received 1280px by 3863px. 182734 pixels (ratio 0.04 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3818px, received 1280px by 3863px. 182734 pixels (ratio 0.04 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "title": "visual baseline light comfortable",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3886px, received 1280px by 3923px. 199646 pixels (ratio 0.04 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-comfortable.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-light-comfortable.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3886px, received 1280px by 3923px. 199646 pixels (ratio 0.04 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3886px, received 1280px by 3923px. 199646 pixels (ratio 0.04 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "title": "visual baseline light roomy",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3954px, received 1280px by 3983px. 213628 pixels (ratio 0.05 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-light-roomy.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-light-roomy.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3954px, received 1280px by 3983px. 213628 pixels (ratio 0.05 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3954px, received 1280px by 3983px. 213628 pixels (ratio 0.05 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "title": "visual baseline dark compact",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3818px, received 1280px by 3863px. 521280 pixels (ratio 0.11 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-compact.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-dark-compact.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3818px, received 1280px by 3863px. 521280 pixels (ratio 0.11 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3818px, received 1280px by 3863px. 521280 pixels (ratio 0.11 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "title": "visual baseline dark comfortable",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3886px, received 1280px by 3923px. 458401 pixels (ratio 0.10 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-comfortable.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-dark-comfortable.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3886px, received 1280px by 3923px. 458401 pixels (ratio 0.10 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3886px, received 1280px by 3923px. 458401 pixels (ratio 0.10 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "title": "visual baseline dark roomy",
+    "status": "unexpected",
+    "finalStatus": "failed",
+    "errors": [
+      "Error: expect(page).toHaveScreenshot(expected) failed\n\n  Expected an image 1280px by 3954px, received 1280px by 3983px. 402394 pixels (ratio 0.08 of all image pixels) are different.\n\n  Snapshot: frontcomposer-type-dark-roomy.png\n\nCall log:\n  - Expect \"toHaveScreenshot(frontcomposer-type-dark-roomy.png)\" with timeout 10000ms\n    - verifying given screenshot expectation\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - Expected an image 1280px by 3954px, received 1280px by 3983px. 402394 pixels (ratio 0.08 of all image pixels) are different.\n  - waiting 100ms before taking screenshot\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n  - fonts loaded\n  - captured a stable screenshot\n  - Expected an image 1280px by 3954px, received 1280px by 3983px. 402394 pixels (ratio 0.08 of all image pixels) are different.\n\n\n  485 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n  486 |       await prepareSpecimenVisualBaseline(page);\n> 487 |       await expect(page).toHaveScreenshot(combination.artifact, {\n      |                          ^\n  488 |         fullPage: true,\n  489 |         animations: 'disabled',\n  490 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:487:26"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "title": "production-style route exposure fails closed when specimen host configuration is absent",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "chromium",
+    "title": "status icons expose contextual labels and reveal tooltips on focus, hover, and touch",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "firefox",
+    "title": "status icons expose contextual labels and reveal tooltips on focus, hover, and touch",
+    "status": "expected",
+    "finalStatus": "passed"
+  },
+  {
+    "engine": "webkit",
+    "title": "status icons expose contextual labels and reveal tooltips on focus, hover, and touch",
+    "status": "expected",
+    "finalStatus": "passed"
+  }
+]

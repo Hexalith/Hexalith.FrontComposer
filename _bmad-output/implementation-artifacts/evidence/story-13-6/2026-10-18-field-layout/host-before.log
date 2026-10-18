@@ -1,0 +1,328 @@
+info: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[62]
+      User profile is available. Using '/home/administrator/.aspnet/DataProtection-Keys' as key repository; keys will not be encrypted at rest.
+info: Hexalith.FrontComposer.Shell.Extensions.AddFrontComposerDevModeExtensions.DevModeNonDevelopmentLogger[6007]
+      HFC2010: FrontComposer dev-mode AddFrontComposerDevMode invoked outside Development; overlay services were not registered. Environment=Test
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://127.0.0.1:5096
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Test
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Web
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/__frontcomposer/specimens/type - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint '/__frontcomposer/specimens/type (/__frontcomposer/specimens/type)'
+info: Counter.Specimens.Domain.PurgeSpecimenRecordCommandRenderer[5921]
+      Rendering Counter.Specimens.Domain.PurgeSpecimenRecordCommand in CompactInline (density=CompactInline)
+info: Counter.Specimens.Domain.PolicyAllowedSpecimenCommandRenderer[5921]
+      Rendering Counter.Specimens.Domain.PolicyAllowedSpecimenCommand in CompactInline (density=CompactInline)
+info: Counter.Specimens.Domain.PolicyDeniedSpecimenCommandRenderer[5921]
+      Rendering Counter.Specimens.Domain.PolicyDeniedSpecimenCommand in CompactInline (density=CompactInline)
+info: Microsoft.AspNetCore.Authorization.DefaultAuthorizationService[2]
+      Authorization failed. These requirements were not met:
+      Handler assertion should evaluate to true.
+warn: Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationEvaluator[5672]
+      Command authorization blocked. Reason=Denied CommandTypeDigest=sha256:e2fe43e3373736e6 PolicyDigest=sha256:84803657c784a21e CorrelationDigest=sha256:8cce83d0d021393d.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint '/__frontcomposer/specimens/type (/__frontcomposer/specimens/type)'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/__frontcomposer/specimens/type - 200 - text/html;+charset=utf-8 929.8006ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.bundle.scp.css - - -
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.bundle.scp.css - - -
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-shell.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-density.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/Counter.Web.styles.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-projection.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/css/fc-density.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/h1pgnyzaxx-{0}-0uphblc8tl-0uphblc8tl.gz'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/css/fc-projection.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/g389r3lsnz-{0}-v3c9rcwylr-v3c9rcwylr.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-density.css - 200 941 text/css 7.0882ms
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: 'Counter.Web.styles.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Web/obj/Debug/net10.0/compressed/21v2i5f3ok-{0}-32iqr205wo-32iqr205wo.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/Counter.Web.styles.css - 200 705 text/css 5.0730ms
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/css/fc-shell.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/wskc1690qg-{0}-0pmleog2b0-0pmleog2b0.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-shell.css - 200 2075 text/css 10.8746ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-projection.css - 200 8417 text/css 5.3064ms
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.bundle.scp.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/75ztngx08c-{0}-0suha8oq1v-0suha8oq1v.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.bundle.scp.css - 200 32647 text/css 15.0572ms
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.bundle.scp.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Web/obj/Debug/net10.0/compressed/ctztv6q6p6-{0}-nmuxk97ec3-nmuxk97ec3.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.bundle.scp.css - 200 20262 text/css 22.8721ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-empty-state.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/css/fc-empty-state.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/wtwzct9ph7-{0}-6nnmem8xdr-6nnmem8xdr.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-empty-state.css - 200 882 text/css 3.9673ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Counter.Specimens/Counter.Specimens.210wful3y7.bundle.scp.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Counter.Specimens/Counter.Specimens.210wful3y7.bundle.scp.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Specimens/obj/Debug/net10.0/compressed/olxea3ygvy-{0}-210wful3y7-210wful3y7.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Counter.Specimens/Counter.Specimens.210wful3y7.bundle.scp.css - 200 9208 text/css 0.4458ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.0suha8oq1v.bundle.scp.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.0suha8oq1v.bundle.scp.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/75ztngx08c-{0}-0suha8oq1v-0suha8oq1v.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.0suha8oq1v.bundle.scp.css - 200 32647 text/css 0.4083ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.lib.module.js - - -
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_framework/blazor.web.js - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_framework/blazor.web.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Web/obj/Debug/net10.0/compressed/7b5isebaj6-{0}-9hsif5t8mt-9hsif5t8mt.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_framework/blazor.web.js - 200 55645 text/javascript 1.3000ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.lib.module.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Web/obj/Debug/net10.0/compressed/kwrall9b0s-{0}-a8lvdrl21x-a8lvdrl21x.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.lib.module.js - 200 111037 text/javascript 19.3720ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Microsoft.FluentUI.AspNetCore.Components/css/default-fuib.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Microsoft.FluentUI.AspNetCore.Components/css/default-fuib.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Web/obj/Debug/net10.0/compressed/oc0evn85jv-{0}-bs0xxz2w5w-bs0xxz2w5w.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Microsoft.FluentUI.AspNetCore.Components/css/default-fuib.css - 200 4089 text/css 2.8167ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://127.0.0.1:5096/_blazor/negotiate?negotiateVersion=1 - - 0
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://127.0.0.1:5096/_blazor/negotiate?negotiateVersion=1 - 200 316 application/json 3.4999ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_blazor?id=S2UqcQ-q0VNAX9ksMTDNDg - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Counter.Specimens.Domain.PurgeSpecimenRecordCommandRenderer[5921]
+      Rendering Counter.Specimens.Domain.PurgeSpecimenRecordCommand in CompactInline (density=CompactInline)
+info: Counter.Specimens.Domain.PolicyAllowedSpecimenCommandRenderer[5921]
+      Rendering Counter.Specimens.Domain.PolicyAllowedSpecimenCommand in CompactInline (density=CompactInline)
+info: Counter.Specimens.Domain.PolicyDeniedSpecimenCommandRenderer[5921]
+      Rendering Counter.Specimens.Domain.PolicyDeniedSpecimenCommand in CompactInline (density=CompactInline)
+info: Microsoft.AspNetCore.Authorization.DefaultAuthorizationService[2]
+      Authorization failed. These requirements were not met:
+      Handler assertion should evaluate to true.
+warn: Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationEvaluator[5672]
+      Command authorization blocked. Reason=Denied CommandTypeDigest=sha256:e2fe43e3373736e6 PolicyDigest=sha256:84803657c784a21e CorrelationDigest=sha256:8234e79a5f202097.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-shell.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-density.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/css/fc-density.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/h1pgnyzaxx-{0}-0uphblc8tl-0uphblc8tl.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-density.css - 200 941 text/css 0.7213ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-projection.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/css/fc-projection.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/g389r3lsnz-{0}-v3c9rcwylr-v3c9rcwylr.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-projection.css - 200 8417 text/css 0.2223ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-empty-state.css - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/css/fc-shell.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/wskc1690qg-{0}-0pmleog2b0-0pmleog2b0.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/css/fc-empty-state.css'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/wtwzct9ph7-{0}-6nnmem8xdr-6nnmem8xdr.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-empty-state.css - 200 882 text/css 0.1260ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/css/fc-shell.css - 200 2075 text/css 1.8543ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-layout-breakpoints.js - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/js/fc-layout-breakpoints.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/nbs4tf3hc4-{0}-rvdk8o7wf5-rvdk8o7wf5.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-layout-breakpoints.js - 200 2706 text/javascript 1.8102ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-density.js - - -
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-prefers-color-scheme.js - - -
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-connectivity.js - - -
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js - - -
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Microsoft.FluentUI.AspNetCore.Components/Components/Tooltip/FluentTooltip.razor.js - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Microsoft.FluentUI.AspNetCore.Components/Components/Tooltip/FluentTooltip.razor.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Web/obj/Debug/net10.0/compressed/is0nail857-{0}-ele2bac4qe-ele2bac4qe.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Microsoft.FluentUI.AspNetCore.Components/Components/Tooltip/FluentTooltip.razor.js - 200 699 text/javascript 0.8584ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js - - -
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-datagrid.js - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/js/fc-prefers-color-scheme.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/uticdkux9q-{0}-uzzya55nt3-uzzya55nt3.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-prefers-color-scheme.js - 200 1720 text/javascript 40.6676ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/js/fc-focus.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/2088ljo122-{0}-xfdw5igwxc-xfdw5igwxc.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js - 200 51932 text/javascript 38.8821ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/js/fc-density.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/dzz181s8ki-{0}-ekr889l77g-ekr889l77g.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-density.js - 200 681 text/javascript 43.6893ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/js/fc-connectivity.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/a8e7ow69m7-{0}-b1s71arjn6-b1s71arjn6.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-connectivity.js - 200 10747 text/javascript 40.0775ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/0u0lfyls4g-{0}-luqmebmo78-luqmebmo78.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js - 200 2930 text/javascript 39.3694ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/js/fc-datagrid.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/e49e3g2f4h-{0}-gmpuzhkojj-gmpuzhkojj.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-datagrid.js - 200 13661 text/javascript 39.9857ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-beforeunload.js - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/js/fc-beforeunload.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/2vwnp9q2bk-{0}-tzwzqizyzy-tzwzqizyzy.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-beforeunload.js - 200 1773 text/javascript 2.3991ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.StaticAssets.StaticAssetsInvoker[2]
+      Sending file. Request path: '_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js'. Physical path: '/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/obj/Debug/net10.0/compressed/6elhn8zols-{0}-rktt0yu7wc-rktt0yu7wc.gz'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js - 200 17159 text/javascript 0.9788ms
+info: Hexalith.FrontComposer.Shell.State.Theme.ThemeEffects[6071]
+      HFC2106: Theme hydration found no stored value — feature defaults apply.
+info: Hexalith.FrontComposer.Shell.State.Navigation.NavigationEffects[6062]
+      HFC2107: Navigation hydration found no stored value — feature defaults apply. Reason=Empty.
+info: Hexalith.FrontComposer.Shell.State.Density.DensityEffects[6056]
+      HFC2106: Density hydration found no stored value — bootstrap defaults apply until the viewport watcher emits. Reason=Empty.
+info: Hexalith.FrontComposer.Shell.State.CommandPalette.CommandPaletteEffects[6025]
+      HFC2111: Palette hydration found no stored value. Reason=Empty.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:5096/_blazor?id=S2UqcQ-q0VNAX9ksMTDNDg - 101 - - 10200.3304ms
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...

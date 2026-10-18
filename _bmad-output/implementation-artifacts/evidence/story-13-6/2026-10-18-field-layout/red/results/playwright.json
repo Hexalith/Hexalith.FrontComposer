@@ -1,0 +1,240 @@
+{
+  "config": {
+    "argv": [
+      "/home/administrator/.nvm/versions/node/v26.4.0/bin/node",
+      "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/node_modules/.bin/playwright",
+      "test",
+      "specs/destructive-command-confirmation.spec.ts",
+      "--grep",
+      "validation failure and rapid clicks",
+      "--project=chromium",
+      "--workers=1",
+      "--retries=0"
+    ],
+    "configFile": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/playwright.config.ts",
+    "rootDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "a11yEvidenceRunId": "fe24dfce-ddf5-459f-a64a-fad52d05754e",
+      "testHostOptions": {
+        "ProjectionReconnectedNoticeDurationMs": 30000
+      },
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "fe24dfce-ddf5-459f-a64a-fad52d05754e",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "fe24dfce-ddf5-459f-a64a-fad52d05754e",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "a11yEvidenceRunId": "fe24dfce-ddf5-459f-a64a-fad52d05754e",
+          "testHostOptions": {
+            "ProjectionReconnectedNoticeDurationMs": 30000
+          },
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "outputFolder": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/html",
+          "open": "never"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results/junit.xml"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results/playwright.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "none",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "destructive-command-confirmation.spec.ts",
+      "file": "destructive-command-confirmation.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Story 4.1: destructive command confirmation",
+          "file": "destructive-command-confirmation.spec.ts",
+          "line": 11,
+          "column": 6,
+          "specs": [
+            {
+              "title": "validation failure and rapid clicks cannot bypass the destructive gate",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 12297,
+                      "error": {
+                        "message": "Error: Persistent field descriptions stay below their editors, including validation errors, without overflowing.\n\nPersistent field descriptions stay below their editors, including validation errors, without overflowing.\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 1\u001b[39m\n\u001b[31m+ Received  + 5\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   \"Record to purge.: beside editor\",\u001b[39m\n\u001b[31m+   \"Why this purge is required.: beside editor\",\u001b[39m\n\u001b[31m+   \"How long the purged record stays recoverable.: beside editor\",\u001b[39m\n\u001b[31m+ ]\u001b[39m\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate",
+                        "stack": "Error: Persistent field descriptions stay below their editors, including validation errors, without overflowing.\n\nPersistent field descriptions stay below their editors, including validation errors, without overflowing.\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 1\u001b[39m\n\u001b[31m+ Received  + 5\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   \"Record to purge.: beside editor\",\u001b[39m\n\u001b[31m+   \"Why this purge is required.: beside editor\",\u001b[39m\n\u001b[31m+   \"How long the purged record stays recoverable.: beside editor\",\u001b[39m\n\u001b[31m+ ]\u001b[39m\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n    at expectFieldDescriptionsBelowEditors (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/destructive-command-confirmation.spec.ts:607:130)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/destructive-command-confirmation.spec.ts:121:5",
+                        "location": {
+                          "file": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/destructive-command-confirmation.spec.ts",
+                          "column": 130,
+                          "line": 607
+                        },
+                        "snippet": "  605 |     }\n  606 |     return failures;\n> 607 |   })), { message: 'Persistent field descriptions stay below their editors, including validation errors, without overflowing.' }).toEqual([]);\n      |                                                                                                                                  ^\n  608 | };\n  609 |\n  610 | const gotoTypeSpecimen = async (page: Page): Promise<void> => {"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/destructive-command-confirmation.spec.ts",
+                            "column": 130,
+                            "line": 607
+                          },
+                          "message": "Error: Persistent field descriptions stay below their editors, including validation errors, without overflowing.\n\nPersistent field descriptions stay below their editors, including validation errors, without overflowing.\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 1\u001b[39m\n\u001b[31m+ Received  + 5\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   \"Record to purge.: beside editor\",\u001b[39m\n\u001b[31m+   \"Why this purge is required.: beside editor\",\u001b[39m\n\u001b[31m+   \"How long the purged record stays recoverable.: beside editor\",\u001b[39m\n\u001b[31m+ ]\u001b[39m\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n\n  605 |     }\n  606 |     return failures;\n> 607 |   })), { message: 'Persistent field descriptions stay below their editors, including validation errors, without overflowing.' }).toEqual([]);\n      |                                                                                                                                  ^\n  608 | };\n  609 |\n  610 | const gotoTypeSpecimen = async (page: Page): Promise<void> => {\n    at expectFieldDescriptionsBelowEditors (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/destructive-command-confirmation.spec.ts:607:130)\n    at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/destructive-command-confirmation.spec.ts:121:5"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-18T08:34:04.294Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/destructive-command-confirmation.spec.ts",
+                        "column": 130,
+                        "line": 607
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "fa244b8eb789b5ce1da9-8318326d9bf2b5c5eaa3",
+              "file": "destructive-command-confirmation.spec.ts",
+              "line": 108,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-18T08:34:03.184Z",
+    "duration": 13974.342,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

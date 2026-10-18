@@ -1,0 +1,26 @@
+<testsuites id="" name="" tests="9" failures="0" skipped="0" errors="0" time="95.710327">
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T08:38:30.636Z" hostname="chromium" tests="3" failures="0" skipped="0" time="85.01" errors="0">
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="39.221">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="38.74">
+</testcase>
+<testcase name="real Fluent search and generated editors retain their focus contour with text spacing" classname="responsive-accessibility.spec.ts" time="7.049">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T08:38:30.636Z" hostname="firefox" tests="3" failures="0" skipped="0" time="112.384" errors="0">
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="56.759">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="45.073">
+</testcase>
+<testcase name="real Fluent search and generated editors retain their focus contour with text spacing" classname="responsive-accessibility.spec.ts" time="10.552">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-18T08:38:30.636Z" hostname="webkit" tests="3" failures="0" skipped="0" time="62.925" errors="0">
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="31.926">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="26.92">
+</testcase>
+<testcase name="real Fluent search and generated editors retain their focus contour with text spacing" classname="responsive-accessibility.spec.ts" time="4.079">
+</testcase>
+</testsuite>
+</testsuites>

@@ -1,0 +1,22 @@
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj (in 185 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Domain/Counter.Domain.csproj (in 190 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj (in 186 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj (in 203 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Specimens/Counter.Specimens.csproj (in 190 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Schema/Hexalith.FrontComposer.Schema.csproj (in 186 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj (in 188 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj (in 185 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj (in 185 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/samples/IdeParityCounter/IdeParityCounter.csproj (in 191 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj (in 203 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Specimens.Domain/Counter.Specimens.Domain.csproj (in 190 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj (in 187 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.Contracts.UI.Tests/Hexalith.FrontComposer.Contracts.UI.Tests.csproj (in 9 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj (in 5 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/samples/Counter/Counter.Web/Counter.Web.csproj (in 15 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj (in 19 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj (in 42 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj (in 390 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj (in 56 ms).
+  Restored /home/administrator/projects/hexalith/frontcomposer/tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj (in 53 ms).

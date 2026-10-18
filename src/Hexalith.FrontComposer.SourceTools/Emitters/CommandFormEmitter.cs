@@ -2472,6 +2472,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + EscapeString(propertyName) + "-description\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"class\", \"fc-command-field-description\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Size\", TextSize.Size200);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Block\", true);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__description => __description.AddContent(0, \"" + EscapeString(description!) + "\")));");
         _ = sb.AppendLine("            __b.CloseComponent();");
     }

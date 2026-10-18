@@ -10457,3 +10457,13 @@ These appended dispositions supersede only the named automated gaps; all histori
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-rerun-browser-dotnet-gates.md`
   summary: Define and enforce a Story 13.6 evidence-packet size threshold if an owner requires one.
   evidence: Review BH-09 found no threshold in tracked guidance or validator scripts. The final packet occupies 1,199,053,461 bytes by `du -sb`; size-gate disposition remains open pending a documented limit.
+
+
+## Resolution evidence: Story 13.6 artifact-size reporting (2026-10-18)
+
+The prior final-gate BH-09 entry's statement that no tracked threshold exists is superseded. `tests/e2e/scripts/validate-a11y-artifacts.mjs` already enforces 50 MiB (52,428,800 summed file bytes) per configured output root. That is distinct from a cap on the aggregate historical evidence packet. The retained final results root contains 103,254,316 file bytes and its HTML root 87,959,744, both over the existing limit; the read-only replay also rejects the retained packet. The field-layout result documents these measurements and preserves the limit and failed proof. This reporting correction does not close either packet's artifact-size gate or introduce an aggregate-history cap. See `evidence/story-13-6/2026-10-18-field-layout/prior-artifact-validation.log` and `13-6-accessibility-result.md`.
+
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-restore-generated-field-description-layout.md`
+  summary: Reduce duplicate Playwright HTML/results attachment retention without losing failed evidence or weakening the existing per-root size gate.
+  evidence: Blind review F07 confirmed the pre-existing reporter pipeline duplicates 77,599,141 bytes across 126 attachments. The retained field-layout browser roots occupy 78,296,904 and 79,731,410 bytes, each over 52,428,800. Their failed proof remains intact; the final focused follow-up is small but cannot replace the broader gate. A bounded storage/reporting design and rerun are required before this size gate can close.

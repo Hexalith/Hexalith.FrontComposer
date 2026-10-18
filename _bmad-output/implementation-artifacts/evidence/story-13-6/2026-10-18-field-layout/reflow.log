@@ -1,0 +1,32 @@
+
+Running 9 tests using 3 workers
+
+(node:1476) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1477) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1473) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  3 [chromium] › specs/responsive-accessibility.spec.ts:946:1 › real Fluent search and generated editors retain their focus contour with text spacing (7.0s)
+(node:5579) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium] › specs/responsive-accessibility.spec.ts:467:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides (38.7s)
+  ✓  1 [chromium] › specs/responsive-accessibility.spec.ts:467:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow (39.2s)
+(node:18663) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18680) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  6 [firefox] › specs/responsive-accessibility.spec.ts:946:1 › real Fluent search and generated editors retain their focus contour with text spacing (10.6s)
+(node:26602) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [firefox] › specs/responsive-accessibility.spec.ts:467:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow (56.8s)
+(node:33053) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  5 [firefox] › specs/responsive-accessibility.spec.ts:467:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides (45.1s)
+(node:42482) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  7 [webkit] › specs/responsive-accessibility.spec.ts:467:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow (31.9s)
+  ✓  9 [webkit] › specs/responsive-accessibility.spec.ts:946:1 › real Fluent search and generated editors retain their focus contour with text spacing (4.1s)
+  ✓  8 [webkit] › specs/responsive-accessibility.spec.ts:467:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides (26.9s)
+
+  9 passed (1.6m)

@@ -1,0 +1,655 @@
+{
+  "resolution": "For each absolute attachment.path in raw Playwright JSON, resolve this mapping entry against the relocated packet directory when base=packet, or the repository root when base=repository. Verify sha256, then replace attachment.path only in a derived report copy. Raw reports remain unchanged.",
+  "paths": {
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/test-failed-1.png": {
+      "base": "packet",
+      "path": "red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/test-failed-1.png",
+      "sha256": "8a791d98ff7b07710d02d5a0bf843a205cc7a3fb7f895cf68caac071f81f980d"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/video.webm": {
+      "base": "packet",
+      "path": "red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/video.webm",
+      "sha256": "b4e02e570a7e6942c022ef6096a4c804d8c6ceb9d1dca6561ad1dbbf9488e1e4"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/error-context.md": {
+      "base": "packet",
+      "path": "red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/error-context.md",
+      "sha256": "d4be846fbf6231644eebbcc761806c989cec800cb9c0c54e63f213c8577c09c0"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/trace.zip": {
+      "base": "packet",
+      "path": "red/results/destructive-command-confir-3619e-bypass-the-destructive-gate-chromium/trace.zip",
+      "sha256": "ec436be9681c95312ca246f1a71ff6a1dbde44479a526c80212fc629a6b09439"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-chromium-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-chromium-linux.png",
+      "sha256": "36782f3bd33b3423e7f902f6c9b51f47dee19375de040d81a45971faff4a42d4"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/frontcomposer-type-light-compact-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/frontcomposer-type-light-compact-actual.png",
+      "sha256": "7224a48902be831775226b1949e9e6c91aa4c61a93467b441d062c2a71471df6"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/frontcomposer-type-light-compact-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/frontcomposer-type-light-compact-diff.png",
+      "sha256": "d07c6445fad7106352df48cb667338f9ef7a953c448b0c2ee8d14fc0ac44de9e"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/test-failed-1.png",
+      "sha256": "3f2f10802a4c46f082e41f60fc8ff0a0cef51898983d6d1bef51b692a1d01e55"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/video.webm",
+      "sha256": "48a056adbdd159a9405c54e73b0e0fc9d4ee3f9a1efa103b5da9dac0e431ab2e"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/error-context.md",
+      "sha256": "6e0bebb3e636036945614058673f7072a47da0d6fa305f6a4d4154f7ce78c818"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/trace.zip",
+      "sha256": "0bdb19946aa316eba786b389982bab1f50ea64a11276769501eae9f6a43ff954"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-chromium-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-chromium-linux.png",
+      "sha256": "c5ccc4239f021d7d3de8bf516ca0f33d83fb8cb8ca3260ade37b2eabe876d97b"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/frontcomposer-type-light-comfortable-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/frontcomposer-type-light-comfortable-actual.png",
+      "sha256": "80670237acce5d6af9365bc5ec99abda3426fc968bf32966a4b9d3c01a6b2248"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/frontcomposer-type-light-comfortable-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/frontcomposer-type-light-comfortable-diff.png",
+      "sha256": "a059e1f210675586739fc47c623927637c9b6481ac6541d802a9117f7030f078"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/test-failed-1.png",
+      "sha256": "c1a8f54bb298b7fdb8d99736bcf1844825614cbccd712bae1f4f7d3ff0692c31"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/video.webm",
+      "sha256": "24e640653eb819b912ca9fb69b4e684dba0dacfb021d26b58b50e5ae9dd26721"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/error-context.md",
+      "sha256": "bf6a077bf46d29007d1c19feb2d8a1c81faa0b6879e2a17a5ec67ad195b6dc95"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-chromium/trace.zip",
+      "sha256": "4f9a4cedb2e02bc6344a99be4a8a63e3670be738f0912655a5fb29e573337dd9"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-chromium-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-chromium-linux.png",
+      "sha256": "ea632436dad10daa54cf5d90745fefa911132d477d19bee3c5eb6c298fb0a693"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/frontcomposer-type-light-roomy-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/frontcomposer-type-light-roomy-actual.png",
+      "sha256": "ed33ae88c408348eb96d72c78306fb7ce62d0ed49c46ffe6726c020ebcf8896d"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/frontcomposer-type-light-roomy-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/frontcomposer-type-light-roomy-diff.png",
+      "sha256": "3e81026b79c6bf0c78a6927c9e7fb364721b028b62baab707b4dbe89cc94b13d"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/test-failed-1.png",
+      "sha256": "f7feda51797134ee242ee4eb9647749152ab35d21443ffad85ce6d172373f49d"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/video.webm",
+      "sha256": "adae4ab2bf77b1e07d59a1ff6b0a3b399fb5ea694f6e0bac5fc16c127df4e314"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/error-context.md",
+      "sha256": "15fe54fbfc9c23a0025e79dc93515bf59a01b4b14255e9b3825062057d767cff"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-chromium/trace.zip",
+      "sha256": "c51bc616b91171dcccee8cab2c82de2df4a4dc63aa9a2addf8aca165bbf52660"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-chromium-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-chromium-linux.png",
+      "sha256": "4152852ef68b45db60be3d318dfad8fdf7153f12c948c6c6db4fd3110347b3ec"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/frontcomposer-type-dark-compact-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/frontcomposer-type-dark-compact-actual.png",
+      "sha256": "2f36f5077fd8015acbaf79fda252985afedb6a0837173db1fdf8dab71cdb4c43"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/frontcomposer-type-dark-compact-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/frontcomposer-type-dark-compact-diff.png",
+      "sha256": "b649f6c9555c161cb2ae1e25b1c9466c6a8091f08187927bdfd3d5bcd37e95a9"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/test-failed-1.png",
+      "sha256": "3a6eb9795ec98c102750f458e8333a36b4c03787159db82aa5f7674ba6458226"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/video.webm",
+      "sha256": "c7916c9cd8f943ab85d1339300e3fab2261151c4323a0ff332cbf4218d43f631"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/error-context.md",
+      "sha256": "450d9bf60e4f9a442a8d7e62036200e48f9e5f9296ecbbc0dcdfd9c84bfaaf96"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-chromium/trace.zip",
+      "sha256": "11694300c3593421adf52c6cca26a51a1bef16ccc59fd525d52fedc59e96dd3b"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-chromium-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-chromium-linux.png",
+      "sha256": "5e34d851acc153780abc1323b82e7d64d32c95cbcecad68ef342ba1669b3c207"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/frontcomposer-type-dark-comfortable-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/frontcomposer-type-dark-comfortable-actual.png",
+      "sha256": "074eafce4c70f90b7a15646be50dbc281253418bb17f7633e05578e28e7310f6"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/frontcomposer-type-dark-comfortable-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/frontcomposer-type-dark-comfortable-diff.png",
+      "sha256": "761c5c3eafb0eb9843333b7e7c316ee8091f9076e04d48aedae5035260ca4b74"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/test-failed-1.png",
+      "sha256": "2dfc67991015a4d5a2c1c958c0c3deafeab260914c56ff45aa59ab977feb5774"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/video.webm",
+      "sha256": "14ff80cdfb1776ccf8246220ed0b73f17f58add5aa29a298194dbea5d6eadd35"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/error-context.md",
+      "sha256": "0dd1e5ef0f550b4f9d9a64efc924dfe78e5f46872036f7b8503fea6444c270c1"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-chromium/trace.zip",
+      "sha256": "a2dd7fcef68fe9b69f4f9ed732e9138d6edf6c761d7fbd0c7f45a62e83c70854"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-chromium-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-chromium-linux.png",
+      "sha256": "27728ede65f0e03850f12f2ab1b0c0b90d04ba098af640137a0930ea31780f44"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/frontcomposer-type-dark-roomy-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/frontcomposer-type-dark-roomy-actual.png",
+      "sha256": "1b1b205b59fdb26d05471d4f19c71a14f883c40666ce21378bbe15472e1abb3c"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/frontcomposer-type-dark-roomy-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/frontcomposer-type-dark-roomy-diff.png",
+      "sha256": "09f54f4c47c43e0bca350a06489830dfaf072d73c2fa9a983b58aa569e9d9f15"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/test-failed-1.png",
+      "sha256": "62113c475c81ee2efd8c269adc9cdcd468c81acefc5fbeee7933b42af5a5c6c9"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/video.webm",
+      "sha256": "564a1832c96531b3fd1f8d4b21ed92b651169c9a2138f755fbae8f6ee02c302c"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/error-context.md",
+      "sha256": "aa5e7d33b7e235ab7dd3183a0e443fb1d70c89101a7a60b35803c11ebf6e71ce"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-chromium/trace.zip",
+      "sha256": "e9e152e68cda87b1f7fef6ae09b9027c0637ba84676a542eff730dbaa8ad567d"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-firefox-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-firefox-linux.png",
+      "sha256": "43c02191d40c0e79069712dc23ab5a3fcf5b7c043bec8d288ffd046583008c72"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/frontcomposer-type-light-compact-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/frontcomposer-type-light-compact-actual.png",
+      "sha256": "04a10f471655812370f832f7e973c818284ad7ca9c4c08753048bde85d9cdb8a"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/frontcomposer-type-light-compact-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/frontcomposer-type-light-compact-diff.png",
+      "sha256": "4c93fcc9931ba7df8e11d3d3a89a1e266d090fc592c16a387269dc942ee922c1"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/test-failed-1.png",
+      "sha256": "83356bc386d00e258c8cd3209eba7973ebe4875fd1f5ccc6746acf26f43b8bd4"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/video.webm",
+      "sha256": "e0591fb87268f9932288eba105ca0768801e94304b0cb51556bbb276f2bb23a8"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/error-context.md",
+      "sha256": "6bf9979d968d48be297f8e708fe3e9b8d2db6222a17ba2e105fda7866e542284"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-firefox/trace.zip",
+      "sha256": "56c7040e8c7faf78c8e2c13a1fcf9d2c526283468c79a88a5c4231e96066f80c"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-firefox-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-firefox-linux.png",
+      "sha256": "e12a548edfd20bf9d609a4dde32e8ded4a13bf949e2619db28e89f86466bd0d8"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/frontcomposer-type-light-comfortable-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/frontcomposer-type-light-comfortable-actual.png",
+      "sha256": "7daebe5abd926fe81f316a195a4c1a7e39b47912d04f60b83e838254d8923960"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/frontcomposer-type-light-comfortable-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/frontcomposer-type-light-comfortable-diff.png",
+      "sha256": "e679a6e4769a43257023206170c4a03a9a201900ca32e4404aaa6dd16712d0e1"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/test-failed-1.png",
+      "sha256": "c11b3e8a633a2c7dfe0f7901978d360ebac23c6a59c464f7ecf4cb7957300cb1"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/video.webm",
+      "sha256": "27fc4f4442f82a52eaf402002c7e7f92987a51d0ec2f9df1c2bcee8eec51d16b"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/error-context.md",
+      "sha256": "dd5be959d7f947db92d4aa61b7c36798d181c9c1fb67b729d8c1c5694e23874d"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-firefox/trace.zip",
+      "sha256": "70b7f1277a34cc01db8471f442efefa385991a1fb14f2dc90f54824859b3536e"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-firefox-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-firefox-linux.png",
+      "sha256": "7aab51a089e66388329399ae9d19f3f7d0be69299fc97c1bb56b0816efd54b23"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/frontcomposer-type-light-roomy-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/frontcomposer-type-light-roomy-actual.png",
+      "sha256": "2be7e1617b7749c6529a26efdf1acd9294392738d29d157c415f3090ecf40ba1"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/frontcomposer-type-light-roomy-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/frontcomposer-type-light-roomy-diff.png",
+      "sha256": "7848f5a51f75f6dc4f173c96dd7bb291db2b0b12a529a29d43e58ceeaa0cce30"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/test-failed-1.png",
+      "sha256": "ed79d6270c2bedbd3725a5f353adc4d84005fca8913e62dd14ca0c45fc49a1ba"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/video.webm",
+      "sha256": "041660263abea96b833a3c7dcee7c5e339c2c117d0bffd381f09e3da6672961b"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/error-context.md",
+      "sha256": "26b8fd73cb3b0aa0f68eaf37d2f1ec32118fbf6b91a4ace2eea37b7d2730ee8a"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-firefox/trace.zip",
+      "sha256": "42c41c572f99722de82732867bc7a63d563152e7072ab86fdf4e0d4ea887dbc3"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-firefox-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-firefox-linux.png",
+      "sha256": "81cf57a0e4927497d9610757b4dc247b02d558b680a5a77198c19adc7640ac92"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/frontcomposer-type-dark-compact-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/frontcomposer-type-dark-compact-actual.png",
+      "sha256": "d5d412dc85b64e992adad21762c888cb2aa912bcafa653444ed8a52202884cff"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/frontcomposer-type-dark-compact-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/frontcomposer-type-dark-compact-diff.png",
+      "sha256": "eeb6996feea3ee0345fb6fbb47f86d82e631234c7586afd2e7ea90770b90052c"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/test-failed-1.png",
+      "sha256": "4cd29affcb5c6b3fe6cca955e917f476211e9b7ce25e877cd298dd691f4268bf"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/video.webm",
+      "sha256": "2f83c35fbe546840fb9dc6bc9f4d0177fc113244ab88cf56bab16d630c3f5ce1"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/error-context.md",
+      "sha256": "bd4e8ab6ab40e26b4b19c43c526d65853711fb85635e2865cc2c692700df1b93"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-firefox/trace.zip",
+      "sha256": "ad794ebc24bfa0408290cf3ce4bfcda474a713b8adafd159f82c25a21a9356f7"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-firefox-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-firefox-linux.png",
+      "sha256": "46b033d271a15d18e8015f678be34e6bfd64cc1b50a4f88cbddf9b1f35368b7d"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/frontcomposer-type-dark-comfortable-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/frontcomposer-type-dark-comfortable-actual.png",
+      "sha256": "caf1b9da19f7ba5a2ae787013b2ad1dd0b693ad7563a930a3c80a3a76498d73c"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/frontcomposer-type-dark-comfortable-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/frontcomposer-type-dark-comfortable-diff.png",
+      "sha256": "26f93dada0cf99167fda803454f648b29aab770c7baba6a8d8aacf3e4ecaa1ac"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/test-failed-1.png",
+      "sha256": "40207ea72d91fc9e0befb1632e10f7abcf31699236d27b814076c412edb8683d"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/video.webm",
+      "sha256": "710b81b2f030ddc80fad2c7ef8d961f6b4001e212fa59c8cb8b22a36b78addee"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/error-context.md",
+      "sha256": "c18de42abaf64cebb1bf938921f5d2de2ba5de9eb250bd2ce41c0de3df509c7e"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-firefox/trace.zip",
+      "sha256": "cc8061960992980d4f5323e66021528b7f1afa1f3b930b8fcc3784bf1522538c"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-firefox-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-firefox-linux.png",
+      "sha256": "426a564d0d46cc0d9ba2ed75499890d0077cb64e6303c5cd2981d46b4dbc0076"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/frontcomposer-type-dark-roomy-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/frontcomposer-type-dark-roomy-actual.png",
+      "sha256": "520679dfc9be30d7ab47f282b943bca0b9f2c0bc8f0f477ac77a72e482e5b709"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/frontcomposer-type-dark-roomy-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/frontcomposer-type-dark-roomy-diff.png",
+      "sha256": "e90828ce74653a7e4ce02800deaec54fa007e1d8374ad68e66834f6ac1fa0cb8"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/test-failed-1.png",
+      "sha256": "8625c016676d648877ea20db7e1f9d48d3cdb73e4f7e04045e216a154b59f63e"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/video.webm",
+      "sha256": "9f717d0593c3b7d84199f4a49389c3dc0cc84f052fded87799bf4e12b38bb7e0"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/error-context.md",
+      "sha256": "53d53c498c81dd2c4d90975a9534679e19054af33e47068a414f51fce245f52c"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-firefox/trace.zip",
+      "sha256": "8adfc06107f2c1ab7f97b43da18ef07e6c8a770e4c83ef9290261ebeb0bff25a"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-webkit-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-webkit-linux.png",
+      "sha256": "23930aa317142ff85f5340062c513f39baae2d08967fe1ad5187c47c21008e75"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/frontcomposer-type-light-compact-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/frontcomposer-type-light-compact-actual.png",
+      "sha256": "26dbd9d5e82bdf837e56b4741318c444f7bf8c37c310597014235d1b480e6123"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/frontcomposer-type-light-compact-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/frontcomposer-type-light-compact-diff.png",
+      "sha256": "60a437806df7a3556bd88f38757cd57d3fcc245da5caebcfa8c5c749fa280b5c"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/test-failed-1.png",
+      "sha256": "e4c6beff70ff88ea465b5cfbd430b5e1ea471493eecb63d59851305d0cb2559f"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/video.webm",
+      "sha256": "e61616bf52dd05b70e99aefccb8b0a24349cac4c7be1d56b438f45b4c6704c99"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/error-context.md",
+      "sha256": "01fc8c1612d803283e76942e967f3ef8de0e84f674541089242ad1ae012cdd49"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-webkit/trace.zip",
+      "sha256": "c1043bd0c3a521e3915a5440586f0ffec8d96080ee4be18f6ec4e5b17942a840"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-webkit-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-webkit-linux.png",
+      "sha256": "ff35f494d0b8d214e0fb04f27156d1e1c1c8722d932b746040c484d8228c89f2"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/frontcomposer-type-light-comfortable-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/frontcomposer-type-light-comfortable-actual.png",
+      "sha256": "555ff40557edfa7ff808401f3ead01c24fc0f22ba7cd53cb481fe6d00c6bacf9"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/frontcomposer-type-light-comfortable-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/frontcomposer-type-light-comfortable-diff.png",
+      "sha256": "24e61b6475c8fc67dea7bf598aa711893a0861c162a0c1bba26e005d6c24cb32"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/test-failed-1.png",
+      "sha256": "47f807a303cb78a04675845b1d6c62e96091f821731c24a8d44c50453cfb167f"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/video.webm",
+      "sha256": "732ca0556752058073716bb8352f80915bfce1ac72a0f58f18d0ecc7288cb64e"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/error-context.md",
+      "sha256": "b56368262d625c6644be239b489624c03fad2dd103a5db7e8465ebf21abec9ba"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-bad1f--baseline-light-comfortable-webkit/trace.zip",
+      "sha256": "53eadaae8213abde756e4e9e8803ea2415d05a3200e7f4760429738577ed8d8a"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-webkit-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-webkit-linux.png",
+      "sha256": "1d39fb0cf432a43742fa1b78acf614fe09081fcdca1b5cd695d19c287b1917e8"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/frontcomposer-type-light-roomy-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/frontcomposer-type-light-roomy-actual.png",
+      "sha256": "1d61da521c680c7cb2fc888c28ac3a80ef3f6f0f123addf5a633ca3ccaa05a3b"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/frontcomposer-type-light-roomy-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/frontcomposer-type-light-roomy-diff.png",
+      "sha256": "fec3dc501fca5320a9e4ff3aa8cfd70bb777fa917093bde5b0dfb676a16c7a0f"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/test-failed-1.png",
+      "sha256": "cf1f18c9f1da3d40e3933a61c31e0e6e0a0743bffb55fbb834d3a52cf757792d"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/video.webm",
+      "sha256": "b23677cd31f62cb442f6fe36ab830118e77790acdd798d79838207079adc5222"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/error-context.md",
+      "sha256": "03c7643ebd9b92b765a2453a14306ead0e52914ce6a53965e17e79c5d7b0bf04"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-79faf-visual-baseline-light-roomy-webkit/trace.zip",
+      "sha256": "a4c314ed4d13823b080e892dfa2e8697cefb7eabbcdeb0c452b15b16ae6f57f0"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-webkit-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-webkit-linux.png",
+      "sha256": "0a26fdfb2f7b540b9367f9ea40b8128a271e7694b218e002c503e25dc9cb53c3"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/frontcomposer-type-dark-compact-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/frontcomposer-type-dark-compact-actual.png",
+      "sha256": "b6f119cd8e0dea36617a5a31f9c1acdc0fdcf5a0046ea4a10dadf4ee4a965073"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/frontcomposer-type-dark-compact-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/frontcomposer-type-dark-compact-diff.png",
+      "sha256": "1e2360721510b02e49363d4735d8c57bf37b1c2f579695d333b1402dcd8c147e"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/test-failed-1.png",
+      "sha256": "d8d08f53e4f5d7ba2aacb521e7ba5b90d25edcc80c061ce02a93e19bb1a86d1a"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/video.webm",
+      "sha256": "767cb875323feadfc289556001c49c064b8dcd901f80ca58b63fd4213b38b6b1"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/error-context.md",
+      "sha256": "73fecaebef515f28b3a803b4f6dd96cc562eace78f278190d6eabc680ecdf2e1"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-2be2e-isual-baseline-dark-compact-webkit/trace.zip",
+      "sha256": "b30d78508d3f3a239e87606ed75dd1ef4ed4d248404443c76c31aa5ee84a9104"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-webkit-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-webkit-linux.png",
+      "sha256": "b9ee6b84800fd4c9b72146145c8fa4801e9f52a210f6b2884e66b85457157452"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/frontcomposer-type-dark-comfortable-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/frontcomposer-type-dark-comfortable-actual.png",
+      "sha256": "b3e239db3ed0a0a1ff1a6194b5e3e96198b6385a17f8abf62004cd3ff4a479c1"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/frontcomposer-type-dark-comfortable-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/frontcomposer-type-dark-comfortable-diff.png",
+      "sha256": "2502b380ed3b526226d90f27c42dcdd646af4ab5e5408ca0a3196b2ab467e8b3"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/test-failed-1.png",
+      "sha256": "53bcd3bd97c0ee3641f1b3268ff0c9a46361c26ef050f669c7558f6e29c35688"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/video.webm",
+      "sha256": "558e9845231468d2883565ef833fe091d07ac84072632b968470b34b69f12b9f"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/error-context.md",
+      "sha256": "1504b30dd8d675a50772e902ddb11d55faef52f1a157168c5f0e5ae449a97859"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4df55-l-baseline-dark-comfortable-webkit/trace.zip",
+      "sha256": "feeac53fb01ab77e5d46c27f8a12cc99e35e7ffd068a726be4ff6d03c0a7d410"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-webkit-linux.png": {
+      "base": "repository",
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-webkit-linux.png",
+      "sha256": "bc8a4007ce5531f312bd0ed2c140825d12ba5f02417c3a3deda600d522fa98eb"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/frontcomposer-type-dark-roomy-actual.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/frontcomposer-type-dark-roomy-actual.png",
+      "sha256": "7a7858399899d7897c2cced5f8ecc146d2236fefbd103403986336695cea4665"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/frontcomposer-type-dark-roomy-diff.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/frontcomposer-type-dark-roomy-diff.png",
+      "sha256": "f3e64f43760d32728c5b94156a4720b0c23c14e8112dfb44a7b0cf9280d64e2d"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/test-failed-1.png": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/test-failed-1.png",
+      "sha256": "8840917d421b6181c22910613b5b998dc9c7f8e3a32f95f7fc6186e83ffb0b68"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/video.webm": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/video.webm",
+      "sha256": "b226edcfc8f4a51637e9d577b743181daba86686a05b8a8f704878da442e7a0a"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/error-context.md": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/error-context.md",
+      "sha256": "3066a24c6e83481feb1d47ae6646b49b63cecda9a9feae67a628651f110b85a8"
+    },
+    "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/trace.zip": {
+      "base": "packet",
+      "path": "browser/results/specimen-accessibility-Fro-4cdc6--visual-baseline-dark-roomy-webkit/trace.zip",
+      "sha256": "86bf6e47565148be891c070c62dcb169c94c7b2925f7d9ff15f5de9131d58e88"
+    }
+  }
+}

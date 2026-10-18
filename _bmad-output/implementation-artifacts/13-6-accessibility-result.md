@@ -1,6 +1,35 @@
 # Story 13.6 accessibility result and human checklist
 
-## Current candidate and automated gates — 2026-10-18
+## Current scoped field-layout correction — 2026-10-18
+
+**Story 13.6 remains in review.** Tested base root is `6ab8d2daac6d2ee8ef2f0ce8686cb446d0b6dd0b`, with final source/test binary diff `sha256:d193180d49fc3d5a827fecdcdd7cb7a79b3626f5c93348acb9768e26e22d2064`. The [final source manifest](evidence/story-13-6/2026-10-18-field-layout/source-followup.json) records both changed source/test files, all eight root-submodule identities, rebuilt Debug assemblies and the unchanged 24 PNGs and two generated-grid text approvals. Review added browser assertions only; production source and assemblies match the [initial correction manifest](evidence/story-13-6/2026-10-18-field-layout/source.json), whose source/test diff is `sha256:3fa66e524c59feaddb285b4f80616881d77d5e3e2017392fa5df99f95e9ec5e0`. Five submodule pointers advanced before this work, so the older full gates below remain historical for their recorded candidate. This correction changes no dependency declaration, policy, submodule pointer or approved baseline.
+
+Generated descriptions now use FluentText's existing `Block` parameter. They remain persistent siblings with the same IDs and accessible description links when Fluent displays its single validation error. The existing destructive-command journey now checks all three descriptions below their editors at desktop width and at 320 CSS pixels with validation present. The [before-fix run](evidence/story-13-6/2026-10-18-field-layout/red.log) failed on all three inline descriptions; the corrected journey passes on Chromium, Firefox and WebKit. Viewport checks do not establish actual browser zoom or heard speech.
+
+| Current scoped lane | Result | Retained proof |
+| --- | --- | --- |
+| Debug Counter.Web, SourceTools.Tests and Shell.Tests builds | Passed; each 0 warnings / 0 errors | [Host build](evidence/story-13-6/2026-10-18-field-layout/build-after.log), [SourceTools build](evidence/story-13-6/2026-10-18-field-layout/build-source-tools.log), [Shell build](evidence/story-13-6/2026-10-18-field-layout/build-shell.log) |
+| CommandFormEmitterTests | 68 passed / 0 failed | [Generator log](evidence/story-13-6/2026-10-18-field-layout/generator-tests.log) |
+| Full destructive-command and specimen specs; three engines; 4 workers; no retries | 90 total: 70 passed / 18 visual failed / 2 skipped / 0 flaky; no nonvisual failures | [Console](evidence/story-13-6/2026-10-18-field-layout/browser.log), [90 outcomes](evidence/story-13-6/2026-10-18-field-layout/browser/outcomes.json), [raw JSON](evidence/story-13-6/2026-10-18-field-layout/browser/results/playwright.json), [JUnit](evidence/story-13-6/2026-10-18-field-layout/browser/results/junit.xml), [HTML](evidence/story-13-6/2026-10-18-field-layout/browser/html/index.html) |
+| Type specimen 320px reflow, with/without all spacing overrides, plus real Fluent editor focus contours; three engines | 9 passed / 0 failed | [Reflow log](evidence/story-13-6/2026-10-18-field-layout/reflow.log) |
+| Full SourceTools assembly | 1,313 total: 1,312 passed / 1 failed / 0 skipped | [Log](evidence/story-13-6/2026-10-18-field-layout/source-tools-tests.log); unchanged Fluent 5.0.0 approval versus declared 5.0.1 fails before packaged-consumer compilation |
+| Counter generated rendering plus catalog/Fluent governance | 30 total: 26 passed / 4 failed | [Log](evidence/story-13-6/2026-10-18-field-layout/shell-affected-tests.log); the two grid-role text approvals and two catalog/Fluent policy decisions remain unresolved |
+| Three previously failing analyzer governance checks after consistent declared-catalog restore | 3 passed / 0 failed; existing canonical/forced Recommended Release builds and negative controls unchanged | [Analyzer log](evidence/story-13-6/2026-10-18-field-layout/analyzer-governance-tests.log), [Release restore](evidence/story-13-6/2026-10-18-field-layout/restore-release.log) |
+| Final reviewed destructive validation journey, three engines | 3 passed / 0 failed; desktop validation plus 320px validation with/without all spacing overrides, rendered text clipping and page overflow | [Follow-up log](evidence/story-13-6/2026-10-18-field-layout/review-followup.log), [JSON](evidence/story-13-6/2026-10-18-field-layout/review-followup/results/playwright.json) |
+
+`dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -p:NuGetAudit=false` refreshed stale assets without changing tracked declarations. All three existing `AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate`, `AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean` and `AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean` methods then passed under their unchanged zero-warning/error assertions. This resolves those three retained assembly-conflict failures; it does not establish a complete Shell assembly pass. TypeScript typecheck and `git diff --check` also passed. Exact commands, failed/skip inventories and raw-report hashes are in the [current verification manifest](evidence/story-13-6/2026-10-18-field-layout/verification.json).
+
+Chromium's approved and actual page heights now match in every theme/density combination. Remaining Chromium comparisons differ by 3,378 pixels in each light case and 6,524 in each dark case, versus roughly 48,000 and 247,000–250,000 previously; description paint/position and header differences remain. Firefox/WebKit still have broader baseline differences. The [current 18-row visual inventory](evidence/story-13-6/2026-10-18-field-layout/visual-diff-inventory.json) records every engine/theme/density's dimensions, changed pixels and actual/expected/diff paths and hashes. All 18 comparisons remain failed; no screenshot tolerance or baseline changed. The two browser skips are the pre-existing Firefox/WebKit scoped visual-hook cases. This scoped run does not replace the complete three-spec accessibility gate or a full Shell assembly run. The 90-case browser and nine-case reflow reports retain the initial test revision; the three-case review follow-up uses the final regression revision with unchanged production code.
+
+The new browser output also exceeds the existing 50 MiB per-root limit: `browser/results` contains 78,296,904 file bytes and `browser/html` 79,731,410. Its size gate fails, independently of the preserved older packet's failure documented below. The complete state-evidence validator is not claimed to pass for these two specs, which omit the required state-matrix lane. Required manual AT/heard speech, actual 400% zoom, physical devices, Windows, WebKit actual forced-palette paint and owner approvals remain open.
+
+The final focused follow-up is bounded at 10,112 file bytes for its results root and 543,243 for HTML; it does not replace the failed broader packet. Avoiding duplicate attachment retention in the broader HTML/results workflow is deferred, with both failures and the limit preserved. All linked logs are covered by a scoped Git ignore exception. For another checkout, the [attachment relocation map](evidence/story-13-6/2026-10-18-field-layout/attachment-path-map.json) resolves raw report paths against the relocated packet or repository root and includes each file hash; apply it only to a derived report, preserving the raw JSON. The [review triage](evidence/story-13-6/2026-10-18-field-layout/review-triage.md) records every finding and disposition.
+
+Aspire baseline command `aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive` failed before resource readiness with MSB4018/file-in-use output for Shell build artifacts. `aspire describe` and `aspire stop` reported no running AppHost. The browser lanes above ran against the separately owned Debug Test host at `http://127.0.0.1:5096` using the launch command in the source manifest; they establish no live EventStore proof.
+
+## Prior full candidate and automated gates — 2026-10-18
+
+The following full-gate outcomes belong to the earlier candidate; current scoped results are above.
 
 **Readiness remains open; Story 13.6 and its sprint entry stay in review.** The review-patched candidate is root `acfc74c7e90acf7f55d0a9af7137859c77a4a09f` plus the unstaged `src`/`tests`/`samples` binary diff `sha256:0c1217adfe38e3a488dba91350ff098f6eab0de227714eee99f12b456374af60`. The full browser, Shell and SourceTools gates below ran this exact source digest. Earlier full attempts remain failed historical proof for their own digests. The [source manifest](evidence/story-13-6/2026-10-18-gate-rerun/source.json) records all three changed source/test file hashes, eight exact root-submodule pointers, rebuilt Debug DLL hashes, and hashes of all 24 approved PNGs and two approved `.verified.txt` snapshots. The [verification manifest](evidence/story-13-6/2026-10-18-gate-rerun/verification.json) records commands, every failed and skipped name, raw-report hashes and artifact paths. No approved baseline, dependency declaration or submodule pointer changed in the tested candidate. A later `/pushall` may advance root submodule pointers; the automated outcomes remain bound to the hashes in this manifest and do not certify those newer pointers.
 
@@ -138,25 +167,37 @@ All gate rows above share task/story `13.6` and release branch `main`; human obs
 
 ## Remaining acceptance gates
 
-All 18 manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, tablet/phone, heard speech and human reviewer observations were not performed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and separate live EventStore fresh-row acceptance remain unresolved. Current full Shell, SourceTools and browser gates failed as detailed above; protected baseline and catalog/policy dispositions remain open. The raw evidence packet measures 1,199,053,461 bytes (`du -sb`), but no tracked size threshold was found, so its size gate remains open. Windows execution and WebKit actual forced-palette coverage remain open. Every failed or interrupted attempt retains its own evidence and disposition.
+All 18 manual boxes above stay open. NVDA/JAWS/VoiceOver, actual browser zoom, tablet/phone, heard speech and human reviewer observations were not performed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and separate live EventStore fresh-row acceptance remain unresolved. The retained full Shell, SourceTools and browser gates failed as detailed above; protected baseline and catalog/policy dispositions remain open. The prior raw evidence packet measures 1,199,053,461 bytes (`du -sb`). Contrary to the earlier report, `tests/e2e/scripts/validate-a11y-artifacts.mjs` enforces **50 MiB (52,428,800 file bytes) per configured output root**, rather than a cap on the aggregate historical packet. The retained final browser `results` root contains 103,254,316 file bytes and its `html` root 87,959,744: both fail that existing limit. The [read-only validator replay](evidence/story-13-6/2026-10-18-field-layout/prior-artifact-validation.log) also rejects the retained packet as unexpectedly large. Failed proof is preserved and the limit is unchanged. Windows execution and WebKit actual forced-palette coverage remain open. Every failed or interrupted attempt retains its own evidence and disposition.
 
 ```yaml
 story: 13.6
 story_status: in-review
 sprint_status: review
 final_classification: open
-current_candidate_root: acfc74c7e90acf7f55d0a9af7137859c77a4a09f
-current_source_diff_sha256: 0c1217adfe38e3a488dba91350ff098f6eab0de227714eee99f12b456374af60
-current_browser: failed; 750 total / 729 passed / 18 visual failed / 3 skipped / 0 flaky
-current_browser_visual_comparisons: failed; 18, classified in visual-diff-inventory-parent-final.json; approved PNGs unchanged
-current_browser_nonvisual: 0 failed; prior intermittent Chromium palette-to-settings Tab passed
-current_shell: failed; 3709 total / 7 failed / 1 skipped / 0 errors
-current_source_tools: failed; 1313 total / 1 failed / 0 skipped / 0 errors
-current_debug_builds: passed; Counter.Web, Shell.Tests, SourceTools.Tests; 0 warnings/errors
+current_tested_base_root: 6ab8d2daac6d2ee8ef2f0ce8686cb446d0b6dd0b
+current_source_diff_sha256: d193180d49fc3d5a827fecdcdd7cb7a79b3626f5c93348acb9768e26e22d2064
+current_production_fix_browser: failed; 90 total / 70 passed / 18 visual failed / 2 skipped / 0 flaky; initial regression revision
+current_final_regression: passed; 3 engines; final reviewed regression revision
+current_reflow: passed; 9 across 3 engines; initial regression revision
+current_generator: passed; 68
+current_analyzer_governance: passed; 3 after consistent declared-catalog restore
+current_source_tools: failed; 1313 total / 1312 passed / 1 Fluent approval failure
+current_shell_scope: failed; 30 total / 26 passed / 4 snapshot-or-catalog failures; full assembly not rerun
+current_artifact_size_gate: failed; 52428800-byte limit per root; browser results=78296904 / html=79731410
+current_focused_followup_sizes: results=10112 / html=543243 file bytes; both within root limit
+current_visual_inventory: evidence/story-13-6/2026-10-18-field-layout/visual-diff-inventory.json
+prior_full_candidate_root: acfc74c7e90acf7f55d0a9af7137859c77a4a09f
+prior_full_source_diff_sha256: 0c1217adfe38e3a488dba91350ff098f6eab0de227714eee99f12b456374af60
+prior_full_browser: failed; 750 total / 729 passed / 18 visual failed / 3 skipped / 0 flaky
+prior_full_browser_visual_comparisons: failed; 18, classified in visual-diff-inventory-parent-final.json; approved PNGs unchanged
+prior_full_browser_nonvisual: 0 failed; prior intermittent Chromium palette-to-settings Tab passed
+prior_full_shell: failed; 3709 total / 7 failed / 1 skipped / 0 errors
+prior_full_source_tools: failed; 1313 total / 1 failed / 0 skipped / 0 errors
+prior_full_debug_builds: passed; Counter.Web, Shell.Tests, SourceTools.Tests; 0 warnings/errors
 approved_browser_images_changed: 0
 approved_dotnet_snapshots_changed: 0
 root_submodules_changed: 0
-raw_artifact_size_gate: measured 1199053461 bytes; no documented threshold; open
+raw_artifact_size_gate: failed; existing 52428800-byte limit per root; retained results=103254316 and html=87959744 file bytes
 windows_execution: not performed
 manual_at: not performed
 actual_400_percent_zoom: not performed
