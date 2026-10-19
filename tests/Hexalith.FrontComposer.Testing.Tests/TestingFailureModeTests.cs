@@ -517,10 +517,24 @@ public sealed class TestingFailureModeTests {
             Rationale = UxTargetSizeRationale.SeparatedFromNeighbors, Neighbors = [new(100, 100, 18, 18)] };
         UxAccessibilityAssertions.AssertTargetSize(spaced);
         Should.Throw<InvalidOperationException>(() => UxAccessibilityAssertions.AssertTargetSize(spaced with { Neighbors = [new(30, 100, 18, 18)] }));
+        foreach ((AccessibilityTargetEvidence incomplete, string check) in new[] {
+            (target with { Rationale = UxTargetSizeRationale.InlineText }, "EquivalentException"),
+            (target with { Exception = UxTargetSizeExceptionKind.Inline, Rationale = UxTargetSizeRationale.UserAgentOwned }, "InlineException"),
+            (spaced with { Neighbors = [] }, "SpacingException"),
+            // Clears the 12 px circle, but the undersized neighbour's centre is 22 px away.
+            (spaced with { Neighbors = [new(42, 100, 18, 18)] }, "SpacingException"),
+            (new AccessibilityTargetEvidence(3, new(20, 100, 24, 24), [UxKeyboardKey.Tab], UxTargetSizeExceptionKind.Inline, UxTargetSizeRationale.InlineText), "UnneededException"),
+            (target with { KeyboardPath = [] }, "KeyboardPath"),
+            (target with { EquivalentControlNumber = 1 }, "EquivalentException"),
+            (target with { TargetNumber = 0 }, "TargetNumber") })
+        {
+            Should.Throw<InvalidOperationException>(() => UxAccessibilityAssertions.AssertTargetSize(incomplete)).Message.ShouldContain(check);
+        }
         TestAccessibilityEvidenceRecorder recorder = new(host.Options);
         foreach (AccessibilityEvidenceRow row in Enum.GetValues<AccessibilityEvidenceRow>())
         {
-            AccessibilityEvidence record = recorder.Record(row, new(1, 2, UxTheme.Light), new()
+            UxTheme theme = row == AccessibilityEvidenceRow.AE07 ? UxTheme.ForcedColors : UxTheme.Light;
+            AccessibilityEvidence record = recorder.Record(row, new(1, 2, theme), new()
             {
                 Passed = true, ViewportWidth = 320, ZoomPercent = 400, HorizontalOverflow = 0,
                 ContentLoss = false, Clipping = false, Overlap = false, ControlTruncation = false,
@@ -529,16 +543,17 @@ public sealed class TestingFailureModeTests {
                 FocusChangesImmediate = true, ExpirySilent = true, KeyboardPassed = true, AxePassed = true, NoHoverOnlyAction = true,
                 ViewportAndScrollports = [new(0, 0, 320, 640)], Occluders = [new(0, 0, 320, 64)],
                 LineHeight = 1.5, ParagraphSpacing = 2, LetterSpacing = .12, WordSpacing = .16,
-                ContrastRatio = 4.5, ForcedColors = true, ReducedMotion = true, FindingCount = 0,
+                ContrastRatio = 4.5, ForcedColors = row == AccessibilityEvidenceRow.AE07, ReducedMotion = true, FindingCount = 0,
                 CriticalFindingCount = 0, Wcag22Aa = true, AnnouncementCount = 1,
                 FocusTarget = new(20, 100, 18, 18), FocusIndicator = new(18, 98, 22, 22), Targets = [target],
             });
             record.Row.ShouldBe(row);
             record.CapturedAtUtc.ShouldBe(clock.GetUtcNow());
-            record.Context.ShouldBe(new(1, 2, UxTheme.Light));
+            record.Context.ShouldBe(new(1, 2, theme));
             using JsonDocument measured = JsonDocument.Parse(record.RedactedMeasurements);
             JsonElement data = measured.RootElement;
-            foreach (string flag in new[] { "Passed", "OperationsAvailable", "ReadingOrderLogical", "SelectedTabVisible", "ForcedColors", "ReducedMotion",
+            data.GetProperty("ForcedColors").GetBoolean().ShouldBe(row == AccessibilityEvidenceRow.AE07);
+            foreach (string flag in new[] { "Passed", "OperationsAvailable", "ReadingOrderLogical", "SelectedTabVisible", "ReducedMotion",
                 "Wcag22Aa", "ForcedColorCuesPreserved", "NonEssentialAnimationsSuppressed", "StateCuesPreserved", "FocusChangesImmediate",
                 "ExpirySilent", "KeyboardPassed", "AxePassed", "NoHoverOnlyAction" }) { data.GetProperty(flag).GetBoolean().ShouldBeTrue(); }
             foreach (string flag in new[] { "ContentLoss", "Clipping", "Overlap", "ControlTruncation" }) { data.GetProperty(flag).GetBoolean().ShouldBeFalse(); }
@@ -586,9 +601,10 @@ public sealed class TestingFailureModeTests {
         {
             Jwt = "jwt.payload.signature", Token = "token-value", TenantPayload = new { Account = "private" },
             StackTrace = "at Backend.Run()", BackendMetadata = "backend-private", Email = "person@example.test",
-            Phone = "0102030405", FullName = "Private Person",
+            Phone = "0102030405", FullName = "Private Person", ShippingAddress = "1 Hidden Street", PersonName = "Pat Example",
         }, host.Options);
-        foreach (string secret in new[] { "jwt.payload.signature", "token-value", "private", "Backend.Run", "backend-private", "person@example.test", "0102030405", "Private Person" })
+        foreach (string secret in new[] { "jwt.payload.signature", "token-value", "private", "Backend.Run", "backend-private", "person@example.test", "0102030405", "Private Person",
+            "1 Hidden Street", "Pat Example" })
         {
             redacted.ShouldNotContain(secret);
         }
@@ -610,6 +626,8 @@ public sealed class TestingFailureModeTests {
             heading.GetAttribute("aria-atomic"), heading.GetAttribute("tabindex"));
         UxAnnouncementAssertions.AssertChannel(denial, semantic, denial.Copy);
         Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(denial, semantic with { AriaLive = "polite" }, denial.Copy));
+        Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(denial, semantic with { Name = "Command form" }, "Command form"))
+            .Message.ShouldContain("HeadingCopy");
         UxStateAssertions.AssertState("SS-38", new("AuthorizationDenied", true, semantic, Facts: new() { Visible = true, SuccessClaim = false, FailureVisible = true }));
         Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState("SS-38", new("AuthorizationDenied", true, semantic, Dispatched: true, Facts: new() { Visible = true, SuccessClaim = false, FailureVisible = true })));
 
@@ -648,6 +666,10 @@ public sealed class TestingFailureModeTests {
         Should.Throw<InvalidOperationException>(() => UxFocusAssertions.AssertUnobscured(new(20, 100, 120, 24), new(18, 98, 124, 28),
             [new(0, 100, 320, 400)], []));
         Should.Throw<InvalidOperationException>(() => UxFocusAssertions.AssertUnobscured(new(double.NaN, 0, 10, 10), new(0, 0, 10, 10), [new(0, 0, 320, 640)], []));
+        // A hidden occluder measures as a zero-size rectangle and paints nothing; negative sizes remain invalid geometry.
+        UxFocusAssertions.AssertUnobscured(new(20, 100, 120, 24), new(18, 98, 124, 28), [new(0, 0, 320, 640)], [new(30, 105, 0, 0), new(30, 105, 40, 0)]);
+        Should.Throw<InvalidOperationException>(() => UxFocusAssertions.AssertUnobscured(new(20, 100, 120, 24), new(18, 98, 124, 28),
+            [new(0, 0, 320, 640)], [new(30, 105, -4, 10)]));
     }
 
     [Theory]
@@ -868,6 +890,17 @@ public sealed class TestingFailureModeTests {
         Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertDistinctChannels([confirmed, rejected]));
         Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertDistinctChannels([confirmed,
             UxAnnouncementCatalog.Expected("AM-13", "operation", "IdempotentConfirmed")]));
+        foreach ((string first, string second) in new[] { ("AM-24", "AM-13"), ("AM-15", "AM-14"), ("AM-16", "AM-13"), ("AM-19", "AM-14") })
+        {
+            UxAnnouncement concluded = UxAnnouncementCatalog.Expected(first, "operation", first, first == "AM-19" ? [2] : null);
+            UxAnnouncementAssertions.AssertDistinctChannels([concluded]);
+            Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertDistinctChannels([concluded,
+                UxAnnouncementCatalog.Expected(second, "operation", second)])).Message.ShouldContain("second terminal outcome");
+        }
+        InvalidOperationException named = Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertSequence(
+            [syncing with { OperationId = "other-operation" }, rejected], syncing, rejected));
+        named.Message.ShouldContain("differing OperationId");
+        named.Message.ShouldNotContain("other-operation");
     }
 
     [Theory]
@@ -906,7 +939,13 @@ public sealed class TestingFailureModeTests {
         UxAnnouncementAssertions.AssertChannel(empty, status with { Name = "" }, "");
         Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(empty, status, empty.Copy, speechOwnerCount: 2));
         Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(empty, status, empty.Copy, inheritedResultCountSpeechCount: 1));
-        Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(empty, status with { AriaAtomic = null }, empty.Copy));
+        // role=status is implicitly polite and atomic; only an explicit override removes either property.
+        UxAnnouncementAssertions.AssertChannel(empty, status with { AriaLive = null, AriaAtomic = null }, empty.Copy);
+        Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(empty, status with { AriaAtomic = "false" }, empty.Copy))
+            .Message.ShouldContain("AriaAtomic");
+        Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(empty, status with { AriaLive = "off" }, empty.Copy))
+            .Message.ShouldContain("AriaLive");
+        Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(empty, status with { Role = "group", AriaLive = null }, empty.Copy));
         Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(empty with { Channel = UxAnnouncementChannel.PoliteStatus }, status, empty.Copy));
         Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(empty, status with { Name = "different" }, empty.Copy));
     }
@@ -984,6 +1023,10 @@ public sealed class TestingFailureModeTests {
         UxAnnouncement idempotent = UxAnnouncementCatalog.Expected("AM-13", "operation", "IdempotentConfirmed");
         confirmed.Copy.ShouldBe(idempotent.Copy);
         confirmed.StateIdentity.ShouldNotBe(idempotent.StateIdentity);
+        foreach ((string row, string? variant) in new (string, string?)[] { ("AM-01", "offline"), ("AM-30", "single"), ("AM-18", "offline"), ("AM-26", null), ("AM-26", "Am01Loading") })
+        {
+            Should.Throw<ArgumentException>(() => UxAnnouncementCatalog.Expected(row, "operation", "state", ["Orders"], variant: variant));
+        }
     }
 
     [Fact]
@@ -1006,6 +1049,9 @@ public sealed class TestingFailureModeTests {
         // This must complete while the callback is active; otherwise callback/owner lock inversion is possible.
         await Task.Run(() =>
         {
+            // A second advancement while a callback is active is rejected without moving time.
+            Should.Throw<InvalidOperationException>(() => clock.Advance(TimeSpan.FromMilliseconds(1)));
+            clock.GetTimestamp().ShouldBe(TimeSpan.FromMilliseconds(1).Ticks);
             timer.Change(TimeSpan.FromMilliseconds(1), Timeout.InfiniteTimeSpan).ShouldBeTrue();
             timer.Dispose();
             timer.Change(TimeSpan.Zero, Timeout.InfiniteTimeSpan).ShouldBeFalse();
@@ -1020,6 +1066,13 @@ public sealed class TestingFailureModeTests {
         using ITimer second = clock.CreateTimer(_ => order.Add(2), null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
         clock.Advance(TimeSpan.Zero);
         order.ShouldBe([1, 2]);
+        // Nested advancement from a callback is rejected, so the outer advance cannot move time backwards.
+        InvalidOperationException? nested = null;
+        using ITimer reentrant = clock.CreateTimer(_ => nested = Should.Throw<InvalidOperationException>(() => clock.Advance(TimeSpan.FromMilliseconds(5))),
+            null, TimeSpan.FromMilliseconds(1), Timeout.InfiniteTimeSpan);
+        clock.Advance(TimeSpan.FromMilliseconds(2));
+        nested.ShouldNotBeNull();
+        clock.GetTimestamp().ShouldBe(TimeSpan.FromMilliseconds(3).Ticks);
     }
 
     [Fact]
@@ -1065,6 +1118,11 @@ public sealed class TestingFailureModeTests {
         Should.Throw<InvalidOperationException>(() => Check(invalid, expectedGroups: [groups[0] with { FieldKeys = ["name", "code"] }]));
         Should.Throw<InvalidOperationException>(() => Check(invalid, links: ["code-input", "name-input"]));
         Should.Throw<InvalidOperationException>(() => Check(invalid, links: []));
+        // A corrected (valid) field must not keep a stale error target; diagnostics name the position, not the field.
+        InvalidOperationException stale = Should.Throw<InvalidOperationException>(() => UxValidationAssertions.AssertLinkedSummary(summary, "Validation failed",
+            [valid with { ErrorId = "code-error", DescribedBy = "code-error" }, invalid], ["name-input"], declared, groups, prior));
+        stale.Message.ShouldContain("Field[1].ErrorLink");
+        stale.Message.ShouldNotContain("code");
     }
 
     [Fact]
@@ -1106,6 +1164,46 @@ public sealed class TestingFailureModeTests {
         Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE06, new(1, 1, (UxTheme)99), new() { ContrastRatio = 4.5 }));
         Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE06, new(1, 1, UxTheme.ForcedColors), new() { ContrastRatio = 4.5 }));
         Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE09, new(1, 1, UxTheme.Light), new() { Passed = true, Wcag22Aa = true, FindingCount = 1, CriticalFindingCount = 1, AnnouncementCount = 0, KeyboardPassed = true, AxePassed = false, NoHoverOnlyAction = true }));
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE06, new(1, 0, UxTheme.Light), new() { ContrastRatio = 4.5 }));
+        // Each failed outcome alone contradicts Passed; the same packet stays recordable as a failure.
+        foreach ((AccessibilityEvidenceRow row, string fact, object failedValue) in new (AccessibilityEvidenceRow, string, object)[] {
+            (AccessibilityEvidenceRow.AE01, "ContentLoss", true), (AccessibilityEvidenceRow.AE01, "Clipping", true),
+            (AccessibilityEvidenceRow.AE01, "OperationsAvailable", false), (AccessibilityEvidenceRow.AE01, "ReadingOrderLogical", false),
+            (AccessibilityEvidenceRow.AE01, "SelectedTabVisible", false), (AccessibilityEvidenceRow.AE02, "HorizontalOverflow", 1d),
+            (AccessibilityEvidenceRow.AE03, "Overlap", true), (AccessibilityEvidenceRow.AE03, "ControlTruncation", true),
+            (AccessibilityEvidenceRow.AE07, "ForcedColorCuesPreserved", false),
+            (AccessibilityEvidenceRow.AE08, "NonEssentialAnimationsSuppressed", false), (AccessibilityEvidenceRow.AE08, "StateCuesPreserved", false),
+            (AccessibilityEvidenceRow.AE08, "FocusChangesImmediate", false), (AccessibilityEvidenceRow.AE08, "ExpirySilent", false),
+            (AccessibilityEvidenceRow.AE09, "KeyboardPassed", false), (AccessibilityEvidenceRow.AE09, "AxePassed", false),
+            (AccessibilityEvidenceRow.AE09, "NoHoverOnlyAction", false), (AccessibilityEvidenceRow.AE09, "Wcag22Aa", false),
+            (AccessibilityEvidenceRow.AE09, "CriticalFindingCount", 1),
+            (AccessibilityEvidenceRow.AE04, "Targets", new AccessibilityTargetEvidence[] { new(1, new(0, 0, 12, 12), [UxKeyboardKey.Tab]) }),
+            (AccessibilityEvidenceRow.AE05, "Occluders", new UxRect[] { new(0, 90, 320, 64) }) })
+        {
+            AccessibilityMeasurements measured = CompleteAccessibilityMeasurements(row);
+            _ = recorder.Record(row, ContextFor(row), measured);
+            typeof(AccessibilityMeasurements).GetProperty(fact)!.SetValue(measured, failedValue);
+            Should.Throw<ArgumentException>(() => recorder.Record(row, ContextFor(row), measured)).Message.ShouldContain("cannot be Passed");
+            typeof(AccessibilityMeasurements).GetProperty("Passed")!.SetValue(measured, false);
+            _ = recorder.Record(row, ContextFor(row), measured);
+        }
+        // Measurements taken under another row's canonical setup, or a theme that contradicts forced colors, are not that row's evidence.
+        foreach ((AccessibilityEvidenceRow row, string setup, object? value) in new (AccessibilityEvidenceRow, string, object?)[] {
+            (AccessibilityEvidenceRow.AE01, "ViewportWidth", 1280d), (AccessibilityEvidenceRow.AE02, "ZoomPercent", 200d),
+            (AccessibilityEvidenceRow.AE03, "LineHeight", 1.2), (AccessibilityEvidenceRow.AE03, "WordSpacing", .1),
+            (AccessibilityEvidenceRow.AE07, "ForcedColors", false), (AccessibilityEvidenceRow.AE08, "ReducedMotion", false),
+            (AccessibilityEvidenceRow.AE06, "ForcedColors", true) })
+        {
+            AccessibilityMeasurements wrong = CompleteAccessibilityMeasurements(row);
+            typeof(AccessibilityMeasurements).GetProperty(setup)!.SetValue(wrong, value);
+            Should.Throw<ArgumentException>(() => recorder.Record(row, ContextFor(row), wrong)).Message.ShouldContain("another row's setup");
+        }
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE07, new(1, 1, UxTheme.Light),
+            CompleteAccessibilityMeasurements(AccessibilityEvidenceRow.AE07)));
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE07, new(1, 1, UxTheme.Light),
+            CompleteAccessibilityMeasurements()));
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE04, new(1, 1, UxTheme.Light),
+            new() { Targets = [new(0, new(0, 0, 24, 24), [UxKeyboardKey.Tab])] })).Message.ShouldContain("positive target");
     }
 
     [Theory]
@@ -1120,12 +1218,19 @@ public sealed class TestingFailureModeTests {
         Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState(row, snapshot with { Facts = snapshot.Facts! with { SuccessClaim = !snapshot.Facts!.SuccessClaim } }));
         if (snapshot.Lifecycle is not null)
         { Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState(row, snapshot with { Lifecycle = CommandLifecycleState.Idle })); }
+        if (row is "SS-25" or "SS-36" or "SS-37" or "SS-38")
+        {
+            Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState(row, snapshot with { Lifecycle = CommandLifecycleState.Submitting }))
+                .Message.ShouldContain("DidNotRun");
+        }
         foreach (PropertyInfo property in typeof(UxSurfaceFacts).GetProperties().Where(p => p.Name != "SuccessClaim"))
         {
             if (property.GetValue(snapshot.Facts) is not bool value) { continue; }
             UxSurfaceFacts drift = snapshot.Facts! with { };
             property.SetValue(drift, !value);
-            Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState(row, snapshot with { Facts = drift }));
+            InvalidOperationException failure = Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState(row, snapshot with { Facts = drift }));
+            // SS-06 policy-hidden facts select a different measured contract instead of naming one fact.
+            if (row != "SS-06") { failure.Message.ShouldContain("Facts." + property.Name); }
         }
         if (row is "SS-31" or "SS-32" or "SS-33")
         { Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState(row, snapshot with { Semantics = snapshot.Semantics with { Role = "button" } })); }
@@ -1186,9 +1291,9 @@ public sealed class TestingFailureModeTests {
         yield return ["SS-16", new UxSurfaceSnapshot("Submitting", false, new("group", "Measured surface", false), CommandLifecycleState.Submitting, Facts: new() { Visible = true, SuccessClaim = false, StateCueVisible = true })];
         yield return ["SS-17", new UxSurfaceSnapshot("Acknowledged", false, new("group", "Measured surface", false), CommandLifecycleState.Acknowledged, Facts: new() { Visible = true, SuccessClaim = false, StateCueVisible = true })];
         yield return ["SS-18", new UxSurfaceSnapshot("Syncing", false, new("group", "Measured surface", false), CommandLifecycleState.Syncing, Facts: new() { Visible = true, SuccessClaim = false, StateCueVisible = true })];
-        yield return ["SS-19", new UxSurfaceSnapshot("Confirmed", true, new("group", "Measured surface", false), CommandLifecycleState.Confirmed, Facts: new() { Visible = true, SuccessClaim = true, StateCueVisible = true })];
+        yield return ["SS-19", new UxSurfaceSnapshot("Confirmed", true, new("group", "Measured surface", false), CommandLifecycleState.Confirmed, Facts: new() { Visible = true, SuccessClaim = true, StateCueVisible = true, FailureVisible = false })];
         yield return ["SS-20", new UxSurfaceSnapshot("Rejected", true, new("group", "Measured surface", false), CommandLifecycleState.Rejected, Facts: new() { Visible = true, SuccessClaim = false, FailureVisible = true })];
-        yield return ["SS-21", new UxSurfaceSnapshot("IdempotentConfirmed", true, new("group", "Measured surface", false), CommandLifecycleState.IdempotentConfirmed, Facts: new() { Visible = true, SuccessClaim = true, StateCueVisible = true })];
+        yield return ["SS-21", new UxSurfaceSnapshot("IdempotentConfirmed", true, new("group", "Measured surface", false), CommandLifecycleState.IdempotentConfirmed, Facts: new() { Visible = true, SuccessClaim = true, StateCueVisible = true, FailureVisible = false })];
         yield return ["SS-22", new UxSurfaceSnapshot("NeedsReview", true, new("group", "Measured surface", false), CommandLifecycleState.NeedsReview, Facts: new() { Visible = true, SuccessClaim = false, FailureVisible = true })];
         yield return ["SS-23", new UxSurfaceSnapshot("Warning", true, new("group", "Measured surface", false), CommandLifecycleState.Warning, Facts: new() { Visible = true, SuccessClaim = false, StateCueVisible = true })];
         yield return ["SS-24", new UxSurfaceSnapshot("Degraded", false, new("group", "Measured surface", false), CommandLifecycleState.Degraded, Facts: new() { Visible = true, SuccessClaim = false, StateCueVisible = true, PollingActive = true, FailureVisible = true })];
@@ -1345,15 +1450,15 @@ public sealed class TestingFailureModeTests {
         ];
         foreach ((AccessibilityEvidenceRow row, string[] required) in cases)
         {
-            _ = recorder.Record(row, new(1, 1, UxTheme.Light), CompleteAccessibilityMeasurements());
+            _ = recorder.Record(row, ContextFor(row), CompleteAccessibilityMeasurements(row));
             foreach (string name in required)
             {
-                AccessibilityMeasurements incomplete = CompleteAccessibilityMeasurements();
+                AccessibilityMeasurements incomplete = CompleteAccessibilityMeasurements(row);
                 PropertyInfo property = typeof(AccessibilityMeasurements).GetProperty(name)!;
                 object? missing = name == "Targets" ? Array.Empty<AccessibilityTargetEvidence>()
                     : name == "ViewportAndScrollports" ? Array.Empty<UxRect>() : null;
                 property.SetValue(incomplete, missing);
-                Should.Throw<ArgumentException>(() => recorder.Record(row, new(1, 1, UxTheme.Light), incomplete));
+                Should.Throw<ArgumentException>(() => recorder.Record(row, ContextFor(row), incomplete));
             }
         }
         foreach (PropertyInfo property in typeof(AccessibilityMeasurements).GetProperties().Where(p => p.PropertyType == typeof(double?)))
@@ -1389,7 +1494,7 @@ public sealed class TestingFailureModeTests {
             (AccessibilityEvidenceRow.AE09, new AccessibilityMeasurements { Passed = false, Wcag22Aa = true, FindingCount = 0, CriticalFindingCount = 0,
                 AnnouncementCount = 0, KeyboardPassed = false, AxePassed = false, NoHoverOnlyAction = false }) })
         {
-            AccessibilityEvidence evidence = compact.Record(row, new(1, 1, UxTheme.Light), measurements);
+            AccessibilityEvidence evidence = compact.Record(row, ContextFor(row), measurements);
             using JsonDocument packet = JsonDocument.Parse(evidence.RedactedMeasurements);
             packet.RootElement.GetProperty("Passed").GetBoolean().ShouldBeFalse();
             if (row == AccessibilityEvidenceRow.AE06) { packet.RootElement.GetProperty("ContrastRatio").GetDouble().ShouldBe(0); }
@@ -1405,13 +1510,16 @@ public sealed class TestingFailureModeTests {
         RedactedEvidenceFormatter.FormatAccessibility(CompleteAccessibilityMeasurements(), new()).ShouldEndWith("...<truncated>");
     }
 
-    private static AccessibilityMeasurements CompleteAccessibilityMeasurements() => new()
+    private static AccessibilityEvidenceContext ContextFor(AccessibilityEvidenceRow row)
+        => new(1, 1, row == AccessibilityEvidenceRow.AE07 ? UxTheme.ForcedColors : UxTheme.Light);
+
+    private static AccessibilityMeasurements CompleteAccessibilityMeasurements(AccessibilityEvidenceRow? row = null) => new()
     {
         Passed = true, ViewportWidth = 320, ZoomPercent = 400, HorizontalOverflow = 0,
         ContentLoss = false, Clipping = false, Overlap = false, ControlTruncation = false,
         OperationsAvailable = true, ReadingOrderLogical = true, SelectedTabVisible = true,
         LineHeight = 1.5, ParagraphSpacing = 2, LetterSpacing = .12, WordSpacing = .16, ContrastRatio = 4.5,
-        ForcedColors = true, ForcedColorCuesPreserved = true, ReducedMotion = true,
+        ForcedColors = row == AccessibilityEvidenceRow.AE07, ForcedColorCuesPreserved = true, ReducedMotion = true,
         NonEssentialAnimationsSuppressed = true, StateCuesPreserved = true, FocusChangesImmediate = true, ExpirySilent = true,
         FindingCount = 0, CriticalFindingCount = 0, Wcag22Aa = true, AnnouncementCount = 1,
         KeyboardPassed = true, AxePassed = true, NoHoverOnlyAction = true,

@@ -48,9 +48,7 @@ public static class UxFocusAssertions
         ArgumentNullException.ThrowIfNull(focusIndicator);
         ArgumentNullException.ThrowIfNull(viewportAndScrollports);
         ArgumentNullException.ThrowIfNull(occluders);
-        if (viewportAndScrollports.Count == 0 || !Valid(target) || !Valid(focusIndicator)
-            || viewportAndScrollports.Any(r => !Valid(r) || !Contains(r, target) || !Contains(r, focusIndicator))
-            || occluders.Any(r => !Valid(r) || Intersects(r, target) || Intersects(r, focusIndicator)))
+        if (!IsUnobscured(target, focusIndicator, viewportAndScrollports, occluders))
         {
             string evidence = RedactedEvidenceFormatter.FormatAccessibility(new()
             {
@@ -61,14 +59,23 @@ public static class UxFocusAssertions
         }
     }
 
+    /// <summary>Whether measured geometry is valid, fully contained, and free of app-owned occluders; zero-size occluders paint nothing.</summary>
+    internal static bool IsUnobscured(UxRect target, UxRect focusIndicator,
+        IReadOnlyList<UxRect> viewportAndScrollports, IReadOnlyList<UxRect> occluders)
+        => viewportAndScrollports.Count > 0 && Valid(target) && Valid(focusIndicator)
+            && viewportAndScrollports.All(r => Valid(r) && Contains(r, target) && Contains(r, focusIndicator))
+            && occluders.All(r => Finite(r) && r.Width >= 0 && r.Height >= 0
+                && (r.Width == 0 || r.Height == 0 || !Intersects(r, target) && !Intersects(r, focusIndicator)));
+
     private static bool HasUsableOrigin(UxFocusTarget? origin, UxFocusTarget captured)
         => origin is not null && ReferenceEquals(origin.Handle, captured.Handle) && Usable(origin);
     private static UxFocusTarget ResolveTarget(UxFocusTarget? origin, UxFocusTarget captured, UxFocusTarget fallback)
         => origin is not null && HasUsableOrigin(origin, captured) ? origin : fallback;
     private static bool Usable(UxFocusTarget? target) => target is not null && target.Handle is not null && target.Connected && target.Enabled && target.Visible;
-    private static bool Valid(UxRect r) => double.IsFinite(r.X) && double.IsFinite(r.Y)
-        && double.IsFinite(r.Width) && double.IsFinite(r.Height) && r.Width > 0 && r.Height > 0
+    private static bool Finite(UxRect? r) => r is not null && double.IsFinite(r.X) && double.IsFinite(r.Y)
+        && double.IsFinite(r.Width) && double.IsFinite(r.Height)
         && double.IsFinite(r.X + r.Width) && double.IsFinite(r.Y + r.Height);
+    private static bool Valid(UxRect? r) => Finite(r) && r!.Width > 0 && r.Height > 0;
     private static bool Contains(UxRect outer, UxRect inner) => inner.X >= outer.X && inner.Y >= outer.Y
         && inner.X + inner.Width <= outer.X + outer.Width && inner.Y + inner.Height <= outer.Y + outer.Height;
     private static bool Intersects(UxRect a, UxRect b) => a.X < b.X + b.Width && a.X + a.Width > b.X

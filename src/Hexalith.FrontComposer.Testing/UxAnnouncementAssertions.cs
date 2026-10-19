@@ -15,8 +15,12 @@ public static class UxAnnouncementAssertions
             UxAnnouncement? observed = i < actual.Count ? actual[i] : null;
             if (wanted != observed)
             {
-                // Never include copy, names, result IDs, or backend data from the observed value.
-                throw new InvalidOperationException($"Announcement mismatch at {i}: expected {SafeLabel(wanted)}; observed {SafeLabel(observed)}. Counts {expected.Length}/{actual.Count}.");
+                // Never include copy, names, result IDs, or backend data from the observed value; name only the differing fields.
+                string differing = wanted is null || observed is null ? "Presence" : string.Join(", ", new (string Name, bool Same)[] {
+                    (nameof(UxAnnouncement.RowId), wanted.RowId == observed.RowId), (nameof(UxAnnouncement.Channel), wanted.Channel == observed.Channel),
+                    (nameof(UxAnnouncement.Copy), wanted.Copy == observed.Copy), (nameof(UxAnnouncement.OperationId), wanted.OperationId == observed.OperationId),
+                    (nameof(UxAnnouncement.StateIdentity), wanted.StateIdentity == observed.StateIdentity) }.Where(f => !f.Same).Select(f => f.Name));
+                throw new InvalidOperationException($"Announcement mismatch at {i}: expected {SafeLabel(wanted)}; observed {SafeLabel(observed)}; differing {differing}. Counts {expected.Length}/{actual.Count}.");
             }
         }
         AssertDistinctChannels(actual);
@@ -32,9 +36,13 @@ public static class UxAnnouncementAssertions
         {
             ValidateRowChannel(item);
             bool terminal = item.RowId is "AM-13" or "AM-14" or "AM-15" or "AM-16" or "AM-19" or "AM-24";
-            if (!seen.Add((item.OperationId, item.StateIdentity)) || terminal && !terminalOperations.Add(item.OperationId))
+            if (!seen.Add((item.OperationId, item.StateIdentity)))
             {
-                throw new InvalidOperationException($"Duplicate speech event or wrong channel: {SafeLabel(item)}.");
+                throw new InvalidOperationException($"Duplicate speech event or wrong channel: {SafeLabel(item)} repeats one operation/state event.");
+            }
+            if (terminal && !terminalOperations.Add(item.OperationId))
+            {
+                throw new InvalidOperationException($"Duplicate speech event or wrong channel: {SafeLabel(item)} is a second terminal outcome for one operation.");
             }
         }
     }
@@ -53,16 +61,26 @@ public static class UxAnnouncementAssertions
             UxAnnouncementChannel.FocusedHeading => "heading",
             _ => "status",
         };
-        bool semantics = node.Role == role && node.Name == accessibleName
-            && (!focused || !string.IsNullOrWhiteSpace(accessibleName))
-            && (expected.Channel != UxAnnouncementChannel.FocusedHeading || accessibleName == expected.Copy);
-        bool channel = focused
-            ? node.IsFocused && node.AriaLive is null && node.AriaAtomic is null && node.TabIndex == "-1"
-            : node.AriaLive == "polite" && !node.IsFocused
-                && (expected.Channel != UxAnnouncementChannel.PoliteComboboxStatus || node.AriaAtomic == "true");
-        if (!semantics || !channel || speechOwnerCount != 1 || inheritedResultCountSpeechCount != 0)
+        // role=status is implicitly polite and atomic; an explicit attribute still overrides it.
+        string? live = node.AriaLive ?? (node.Role == "status" ? "polite" : null);
+        string? atomic = node.AriaAtomic ?? (node.Role == "status" ? "true" : null);
+        List<string> failed = [];
+        void Check(bool passed, string check)
         {
-            throw new InvalidOperationException($"Role/name or speech channel mismatch for {SafeLabel(expected)}.");
+            if (!passed) { failed.Add(check); }
+        }
+        Check(node.Role == role, "Role");
+        Check(node.Name == accessibleName && (!focused || !string.IsNullOrWhiteSpace(accessibleName)), "Name");
+        Check(expected.Channel != UxAnnouncementChannel.FocusedHeading || accessibleName == expected.Copy, "HeadingCopy");
+        Check(node.IsFocused == focused, "Focus");
+        Check(focused ? node.AriaLive is null && node.AriaAtomic is null : live == "polite", "AriaLive");
+        Check(expected.Channel != UxAnnouncementChannel.PoliteComboboxStatus || atomic == "true", "AriaAtomic");
+        Check(!focused || node.TabIndex == "-1", "TabIndex");
+        Check(speechOwnerCount == 1, "SpeechOwnerCount");
+        Check(inheritedResultCountSpeechCount == 0, "InheritedResultCountSpeech");
+        if (failed.Count > 0)
+        {
+            throw new InvalidOperationException($"Role/name or speech channel mismatch for {SafeLabel(expected)}: {string.Join(", ", failed)}.");
         }
     }
 

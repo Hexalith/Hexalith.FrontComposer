@@ -29,62 +29,93 @@ public static class UxStateAssertions
         }
         string state = States[number - 1];
         bool lifecycle = number is >= 16 and <= 24 or 26;
-        bool lifecycleMatches = !lifecycle || Enum.TryParse(state, out CommandLifecycleState expected) && actual.Lifecycle == expected;
         UxSurfaceFacts? facts = actual.Facts;
+        UxAccessibilitySnapshot semantics = actual.Semantics;
         bool hiddenByPolicy = number == 6 && facts is { Visible: false, PolicyHidden: true, SuccessClaim: false };
-        bool measured = hiddenByPolicy || facts is { Visible: true } && facts.SuccessClaim == (number is 19 or 21)
-            && MatchesFacts(number, facts);
         bool focusOnly = number is 5 or 6 or 28 or 37 or 38 && !hiddenByPolicy;
-        bool focusSemantics = !focusOnly || actual.Semantics.IsFocused
-            && actual.Semantics.Role == (number == 37 ? "group" : "heading")
-            && actual.Semantics.TabIndex == "-1" && actual.Semantics.AriaLive is null && actual.Semantics.AriaAtomic is null;
         bool silent = number is 31 or 33 or 36 or 39 or 40 or 43 or 44 or 45 or 46 or 47;
-        bool silentSemantics = !silent || actual.Semantics.AriaLive is null && !IsLiveRole(actual.Semantics.Role);
-        bool tabSemantics = number is not (31 or 32 or 33) || actual.Semantics.Role == "tab";
-        bool restoredSemantics = number is not (46 or 47) || actual.Semantics.IsFocused
-            && (number != 47 || actual.Semantics.Role == "heading" && actual.Semantics.TabIndex == "-1");
-        bool readySemantics = number != 36 || !actual.Dispatched && !actual.Queued
-            && actual.Lifecycle is null or CommandLifecycleState.Idle;
-        bool modalSemantics = number is not (40 or 43 or 44) || actual.Semantics.Role == "dialog";
-        bool hiddenSemantics = !hiddenByPolicy || !actual.Semantics.IsFocused && actual.Semantics.AriaLive is null && !IsLiveRole(actual.Semantics.Role);
-        if (!measured || !focusSemantics || !silentSemantics || !tabSemantics || !restoredSemantics || !readySemantics || !modalSemantics || !hiddenSemantics || actual.State != state || actual.Terminal == NonTerminalRows.Contains(number)
-            || !hiddenByPolicy && (string.IsNullOrWhiteSpace(actual.Semantics.Role) || string.IsNullOrWhiteSpace(actual.Semantics.Name))
-            || !lifecycleMatches || number is 25 or 37 or 38 && (actual.Dispatched || actual.Queued))
+        // Diagnostics name failed checks and required facts, never observed names or identities.
+        List<string> failed = hiddenByPolicy ? [] : FactFailures(number, facts);
+        void Check(bool passed, string check)
         {
-            throw new InvalidOperationException($"{rowId} surface state, terminality, semantic role/name, or lifecycle truth drifted.");
+            if (!passed) { failed.Add(check); }
+        }
+        Check(actual.State == state, "State");
+        Check(actual.Terminal != NonTerminalRows.Contains(number), "Terminal");
+        Check(!lifecycle || Enum.TryParse(state, out CommandLifecycleState expected) && actual.Lifecycle == expected, "Lifecycle");
+        Check(hiddenByPolicy || !string.IsNullOrWhiteSpace(semantics.Role) && !string.IsNullOrWhiteSpace(semantics.Name), "Semantics.RoleName");
+        Check(!focusOnly || semantics.IsFocused && semantics.Role == (number == 37 ? "group" : "heading")
+            && semantics.TabIndex == "-1" && semantics.AriaLive is null && semantics.AriaAtomic is null, "Semantics.FocusOnly");
+        Check(!silent || semantics.AriaLive is null && !IsLiveRole(semantics.Role), "Semantics.Silent");
+        Check(number is not (31 or 32 or 33) || semantics.Role == "tab", "Semantics.TabRole");
+        Check(number is not (46 or 47) || semantics.IsFocused
+            && (number != 47 || semantics.Role == "heading" && semantics.TabIndex == "-1"), "Semantics.RestoredFocus");
+        Check(number is not (40 or 43 or 44) || semantics.Role == "dialog", "Semantics.DialogRole");
+        Check(!hiddenByPolicy || !semantics.IsFocused && semantics.AriaLive is null && !IsLiveRole(semantics.Role), "Semantics.PolicyHidden");
+        // Blocked, ready, validation-blocked and denied attempts never dispatch, queue, or enter the command lifecycle.
+        Check(number is not (25 or 36 or 37 or 38) || !actual.Dispatched && !actual.Queued
+            && actual.Lifecycle is null or CommandLifecycleState.Idle, "DidNotRun");
+        if (failed.Count > 0)
+        {
+            throw new InvalidOperationException($"{rowId} surface state, terminality, semantic role/name, or lifecycle truth drifted: {string.Join(", ", failed)}.");
         }
     }
 
     private static bool IsLiveRole(string role) => role is "alert" or "status" or "log";
 
-    private static bool MatchesFacts(int row, UxSurfaceFacts f) => row switch
+    private static List<string> FactFailures(int row, UxSurfaceFacts? f)
     {
-        1 or 3 or 8 => f.Empty == true && f.FailureVisible == false,
-        2 or 7 or 27 or 30 => f.LoadingVisible == true,
-        4 or 9 => f.DataVisible == true && f.Empty == false && f.FailureVisible == false,
-        5 or 6 or 20 or 22 or 28 or 38 => f.FailureVisible == true,
-        10 or 11 or 12 or 13 or 14 or 16 or 17 or 18 or 19 or 21 or 23 => f.StateCueVisible == true,
-        15 => f.Empty == true && f.FiltersVisible == true && f.FailureVisible == false,
-        24 => f.StateCueVisible == true && f.PollingActive == true && f.FailureVisible == true,
-        25 => f.FailureVisible == true && f.OriginalOperationVisible == true,
-        26 => f.FailureVisible == true && f.PollingActive == false,
-        29 or 42 => f.FailureVisible == true && f.CurrentRoutePreserved == true,
-        31 => f.Selected == true && f.Disabled == false && f.PanelVisible == true && f.PanelOwnedByTab == true,
-        32 => f.Selected == true && f.Disabled == false && f.PanelVisible == true && f.PanelOwnedByTab == true && f.InvalidTargetSelected == false,
-        33 => f.Disabled == true,
-        34 => f.FailureVisible == true && f.Empty == false,
-        35 => f.FailureVisible == true && f.StateCueVisible == true,
-        36 => f.Editable == true,
-        37 => f.FailureVisible == true && f.Editable == true,
-        39 or 45 => f.InFlow == true && f.Modal == false && f.Editable == true,
-        40 or 43 or 44 => f.Modal == true,
-        41 => f.Empty == true && f.Editable == true,
-        46 => f.FocusRestored == true && f.CurrentRoutePreserved == true,
-        47 => f.FocusRestored == true && f.CurrentRoutePreserved == true && f.Disabled == false,
-        48 => f.UpdatedCueVisible == true,
-        49 => f.DetailHidden == true && f.FiltersVisible == true,
-        _ => false,
-    };
+        if (f is null) { return ["Facts"]; }
+        (string Name, bool? Actual, bool Expected)[] required = [
+            (nameof(UxSurfaceFacts.Visible), f.Visible, true), (nameof(UxSurfaceFacts.SuccessClaim), f.SuccessClaim, row is 19 or 21),
+            .. RequiredFacts(row, f)];
+        return [.. required.Where(fact => fact.Actual != fact.Expected).Select(fact => "Facts." + fact.Name)];
+    }
+
+    private static (string Name, bool? Actual, bool Expected)[] RequiredFacts(int row, UxSurfaceFacts f)
+    {
+        (string, bool?, bool) Empty(bool expected) => (nameof(f.Empty), f.Empty, expected);
+        (string, bool?, bool) Failure(bool expected) => (nameof(f.FailureVisible), f.FailureVisible, expected);
+        (string, bool?, bool) Cue(bool expected) => (nameof(f.StateCueVisible), f.StateCueVisible, expected);
+        (string, bool?, bool) Filters(bool expected) => (nameof(f.FiltersVisible), f.FiltersVisible, expected);
+        (string, bool?, bool) Polling(bool expected) => (nameof(f.PollingActive), f.PollingActive, expected);
+        (string, bool?, bool) Route(bool expected) => (nameof(f.CurrentRoutePreserved), f.CurrentRoutePreserved, expected);
+        (string, bool?, bool) Selected(bool expected) => (nameof(f.Selected), f.Selected, expected);
+        (string, bool?, bool) Disabled(bool expected) => (nameof(f.Disabled), f.Disabled, expected);
+        (string, bool?, bool) Editable(bool expected) => (nameof(f.Editable), f.Editable, expected);
+        (string, bool?, bool) Modal(bool expected) => (nameof(f.Modal), f.Modal, expected);
+        (string, bool?, bool) Restored(bool expected) => (nameof(f.FocusRestored), f.FocusRestored, expected);
+        return row switch
+        {
+            1 or 3 or 8 => [Empty(true), Failure(false)],
+            2 or 7 or 27 or 30 => [(nameof(f.LoadingVisible), f.LoadingVisible, true)],
+            4 or 9 => [(nameof(f.DataVisible), f.DataVisible, true), Empty(false), Failure(false)],
+            5 or 6 or 20 or 22 or 28 or 38 => [Failure(true)],
+            10 or 11 or 12 or 13 or 14 or 16 or 17 or 18 or 23 => [Cue(true)],
+            19 or 21 => [Cue(true), Failure(false)],
+            15 => [Empty(true), Filters(true), Failure(false)],
+            24 => [Cue(true), Polling(true), Failure(true)],
+            25 => [Failure(true), (nameof(f.OriginalOperationVisible), f.OriginalOperationVisible, true)],
+            26 => [Failure(true), Polling(false)],
+            29 or 42 => [Failure(true), Route(true)],
+            31 => [Selected(true), Disabled(false), (nameof(f.PanelVisible), f.PanelVisible, true), (nameof(f.PanelOwnedByTab), f.PanelOwnedByTab, true)],
+            32 => [Selected(true), Disabled(false), (nameof(f.PanelVisible), f.PanelVisible, true), (nameof(f.PanelOwnedByTab), f.PanelOwnedByTab, true),
+                (nameof(f.InvalidTargetSelected), f.InvalidTargetSelected, false)],
+            33 => [Disabled(true)],
+            34 => [Failure(true), Empty(false)],
+            35 => [Failure(true), Cue(true)],
+            36 => [Editable(true)],
+            37 => [Failure(true), Editable(true)],
+            39 or 45 => [(nameof(f.InFlow), f.InFlow, true), Modal(false), Editable(true)],
+            40 or 43 or 44 => [Modal(true)],
+            41 => [Empty(true), Editable(true)],
+            46 => [Restored(true), Route(true)],
+            47 => [Restored(true), Route(true), Disabled(false)],
+            48 => [(nameof(f.UpdatedCueVisible), f.UpdatedCueVisible, true)],
+            49 => [(nameof(f.DetailHidden), f.DetailHidden, true), Filters(true)],
+            _ => [("Row", null, true)],
+        };
+    }
 
     /// <summary>Asserts AM-20 feedback, one speech path, no dispatch/queue, and retained attempted-control focus.</summary>
     public static void AssertBlockedSubmit(UxSurfaceSnapshot state, UxFocusTarget attemptedControl,

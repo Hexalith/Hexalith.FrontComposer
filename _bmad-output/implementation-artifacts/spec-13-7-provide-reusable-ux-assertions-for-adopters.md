@@ -146,6 +146,77 @@ The complete docs gate exposed an existing stale content hash for the unchanged,
 
 Survivors are grouped as summary entries (B1/E1), error transitions (B2), target ID collision (B3/E2), effective live semantics (B4/E6), Ready truth (B5), modal role (B6), exact row IDs (B7/E4/E5), compact default evidence (B8), suppressed context (B9), async disposal (B10), measured consumer fixtures (B11), finite evidence (E3), AE omission regressions (V1), and asymmetric size regressions (V2). All route to a patch using the existing public surface; no intent or spec loopback is needed. R2-B12 is rejected on the documented external-inventory contract.
 
+### Review round 3
+
+Scope: the Story 13.7 File List paths from `b9e1490cfe1c51406d3c8d4dc213971d06911a24` to `8713e14b04af43423e80368b4b48ff932db6394e`, excluding the story/tracking artifacts. This includes the post-review `ee9762e6` Testing edits. The 15 interleaved CI/release/e2e/Shell commits in that range have their own specs and are not reviewed here. The Testing API shipped in `v4.7.0`, so changing a public signature is now a breaking change. No row below is a carried repeat of a round 1 or 2 row.
+
+| Finding | Verdict | Route | Verified evidence |
+| --- | --- | --- | --- |
+| R3-B1 | low | reject | `ISurfaceAnnouncementCoordinator.Subscribe` publishes text only; identity was deliberately kept off the published interface (`cdc18282`). Observer-assigned identities still let copy, order, count and channel drift fail. A new identity recorder is a new public API, not a direct correction. |
+| R3-B2 | low | patch (P3) | `SafeLabel` and the generic `AssertState`/`AssertLinkedSummary`/`AssertChannel`/`AssertTargetSize` messages do not name the failed check, so an adopter must read source to find which of up to 30 conditions failed. The fix names the failed checks; values and identifiers stay excluded. |
+| R3-B3 | low | reject | The `speechOwnerCount`/`inheritedResultCountSpeechCount` defaults are documented, caller-supplied opt-in measurements for the Shell-owned palette (AM-28). Making them required changes a published `v4.7.0` signature. |
+| R3-B4 | low | reject | `AssertBlockedSubmit` derives the expected AM-20 identity from the observed event, but that identity is observer-assigned because speech carries text only. Checking it against an expected operation needs a new parameter on a published method. |
+| R3-B5 | low | reject | Copy resolves through `CurrentUICulture`, which is the bUnit renderer culture; callers can set it. A culture parameter would change published signatures. |
+| R3-B6 | low | reject | `AssertBoundary` documents its operation-start precondition. Misuse fails loudly for an on-time implementation, and an explicit start timestamp is a new parameter. |
+| R3-B7 | medium | patch (P15) | The nested/concurrent `Advance` guard is real and untested (see V7). The throw and zero-due re-arm sub-claims are verified and rejected under E1/E2. |
+| R3-B8 | medium | patch (P1, P2) | `ValidateMeasurements` rejects `Passed` only for five outcomes. Overlap, truncation, page overflow, operations/order/tab, forced-colour, motion, expiry, hover, WCAG 2.2 tags, and failing AE-04/AE-05 geometry are all accepted as passing (P1). Row setup is unchecked (P2). The impossible-count sub-claim is rejected with E5. |
+| R3-B9 | medium | patch (P2) | `UxTheme.ForcedColors` and `AccessibilityMeasurements.ForcedColors` can disagree. AE-07 is accepted under `UxTheme.Light`, and the all-row fixture records that contradiction as valid. |
+| R3-B10 | low | patch (P9) | The `AccessibilityEvidence.RedactedMeasurements` XML doc says property names are removed; the JSON keeps the fixed schema names. Truncation itself is the documented explicit bound (see E7). |
+| R3-B11 | low | reject | A public recorder constructor taking host options is documented and works. Making it internal or host-wired would break the `v4.7.0` API, and the example returns the record it creates. |
+| R3-B12 | low | patch (P9) | The README redaction list omits the nine fragments this story added. Substring over-redaction (E9) and neutral-key/value leakage (E20) are rejected separately. |
+| R3-B13 | low | reject | Substring label-in-name accepts `Name` inside `Username`. That mismatch is unlikely in declared labels, and word-boundary matching adds parsing beyond a direct correction. |
+| R3-B14 | low | patch (P9) | The consumer reads ARIA from the Fluent host. Fluent v5 host ARIA does not reach the shadow control, and the README does not tell adopters to measure the focusable control's computed accessibility tree. |
+| R3-B15 | low | reject | The listed consumers fix semantics but exercise the helpers against real lifecycle/policy state. The helpers do not over-constrain those rows, and Shell semantics are owned by the Shell and e2e suites. |
+| R3-B16 | low | patch (P3) | The required SS facts per row are discoverable only from source, which shares B2's root cause. The identical-facts sub-claim is false: SS rows are surface-scoped, and Loading/Empty/Data truth is the same on each surface. |
+| R3-B17 | low | defer (D1, D2) | Both issues predate this story. `PackageBoundaryTests` pins catalog versions that break on every Builds bump (D1). The 13.1 scope stamp on directly dispatched projection actions is undocumented for adopters (D2). The fingerprint re-seal is documented above (see E21). |
+| R3-B18 | low | reject | The API-file header comment predates the story, the spec requires the Shipped baseline, and semantic-release generates the CHANGELOG. |
+| R3-B19 | false | reject | Inline, user-agent and essential are categorical WCAG 2.5.8 classifications. AE-04 requires exactly the recorded exception, rationale and keyboard path, so no measurable fact is omitted. |
+| R3-B20 | low | reject | Missing format arguments throw `FormatException` loudly, and extra arguments cannot change the resolved copy. |
+| R3-E1 | low | reject | An exception from a timer callback propagates out of `Advance` (a real timer would crash the process). The intermediate tick matters only if a test swallows the failure. |
+| R3-E2 | low | reject | A zero-due self re-arm spins in real time as well, and no Shell timer re-arms at zero. An iteration cap is a new guard. |
+| R3-E3 | medium | patch (P1) | Same root cause as B8: `Passed` is accepted alongside failed measured outcomes. |
+| R3-E4 | medium | patch (P2) | AE-01/02/03/07/08 accept packets measured under another setup (for example, AE-07 with `ForcedColors = false`). |
+| R3-E5 | low | reject | Negative counts and impossible ratios require a broken caller measurement. Range guards add complexity for a scenario unlikely in practice. |
+| R3-E6 | medium | patch (P1) | Passed AE-04 targets that fail `AssertTargetSize`, Passed AE-05 geometry that fails `AssertUnobscured`, and non-positive target/equivalent ordinals are accepted. |
+| R3-E7 | false | reject | Truncation is explicitly marked and documented: the README and how-to say to raise `MaxDiagnosticPayloadCharacters` for a full packet, and R2-B8 preserved that bound. |
+| R3-E8 | low | reject | Configured identifiers default to `test-tenant`/`test-user`. Numeric or empty overrides are unlikely, and a failure yields an explicit marker. |
+| R3-E9 | low | reject | Substring redaction can over-redact keys such as `PersonCount`. Over-redaction is the safe direction, and segment matching is more than a direct correction. |
+| R3-E10 | low | patch (P7) | `AssertChannel` requires explicit `aria-live="polite"` (and atomic for AM-28), but `role="status"` is implicitly polite and atomic. Valid markup therefore fails, unlike the R2-B4 state semantics. |
+| R3-E11 | low | reject | Same claim as B20. |
+| R3-E12 | low | reject | `UxFocusTarget.Handle` is documented as a stable direct-element identity, and reference semantics are a KEEP decision. A boxed struct fails loudly, and a comparer would be a new parameter. |
+| R3-E13 | low | patch (P8) | A hidden app-owned occluder measured as a zero-size rectangle fails as invalid geometry even though it cannot obscure anything. |
+| R3-E14 | medium | patch (P4) | SS-25/37/38 reject dispatch/queue but accept a non-idle `Lifecycle`, so a did-not-run attempt that entered the lifecycle passes. |
+| R3-E15 | medium | patch (P5) | SS-19/21 success rows accept `FailureVisible = true`, so a confirmed surface that still shows stale failure text passes. |
+| R3-E16 | low | reject | Same claim as B4. |
+| R3-E17 | false | reject | Repeated links are legitimate: `FcValidationSummary` emits one entry per message (R2-B1). `ErrorCount >= links` and the link-order check bound them. |
+| R3-E18 | low | patch (P6) | A valid field may keep a non-empty `ErrorId` (a stale error target), although the contract says it is empty without an error. |
+| R3-E19 | low | reject | `AccessibleName` and `DescribedBy` are non-nullable contract members. Passing null fails loudly. |
+| R3-E20 | low | reject | Dispatch redaction is a pre-existing key-name design, and adopter test payloads are synthetic. Value scanning is a heuristic beyond a direct fix; the new AE evidence is text-free. |
+| R3-E21 | false | reject | The fingerprint and package-pin corrections are documented above in "Final validation fixture reconciliation" and Implementation Notes. |
+| R3-V1 | medium | patch (P10) | Pre-verified: mismatched rationale, empty `Neighbors`, the neighbour-centre distance, a sized target with an exception, an empty keyboard path, and a self-referencing equivalent are all unpinned. |
+| R3-V2 | medium | patch (P11) | Pre-verified: removing the FocusedHeading copy clause leaves every test green. |
+| R3-V3 | medium | patch (P12) | Pre-verified: deleting the unsupported-variant guard leaves every test green. |
+| R3-V4 | medium | patch (P1) | Pre-verified: individual contradiction conditions and `StateNumber = 0` are unpinned. |
+| R3-V5 | medium | patch (P13) | Pre-verified: removing the `address` or `person` fragment leaves every test green. |
+| R3-V6 | medium | patch (P14) | Pre-verified: terminal-once is pinned only for AM-13/14. |
+| R3-V7 | medium | patch (P15) | Pre-verified: the nested/concurrent `Advance` guard is untested. |
+| R3-V8 | medium | patch (P1) | Same root cause as B8/E3: the contradiction rule covers only five outcomes. |
+
+Survivor groups:
+
+- P1 (B8/E3/E6/V4/V8): reject a Passed packet with any failed measured outcome or failing AE-04/AE-05 geometry, and reject non-positive target ordinals.
+- P2 (B8/B9/E4): enforce canonical row setup and theme/forced-colour agreement.
+- P3 (B2/B16): name the failed checks and SS facts in diagnostics.
+- P4 (E14): no lifecycle entry for did-not-run rows.
+- P5 (E15): success rows show no failure.
+- P6 (E18): no stale error target on a valid field.
+- P7 (E10): implicit `status` live/atomic semantics.
+- P8 (E13): ignore zero-size occluders.
+- P9 (B10/B12/B14): adopter documentation accuracy.
+- P10–P15 (V1/V2/V3/V5/V6/V7+B7): regression tests.
+
+Every patch keeps the published signatures and adds no public API; tests are added inside existing methods, so the identifier seal is unchanged. D1 and D2 go to the deferred-work ledger. Nothing routes to `intent_gap` or `bad_spec`, so no loopback is needed.
+
 ## Verification
 
 - `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` — passed, 0 warnings / 0 errors; final log `/tmp/fc137-solution-release.log`. This includes the required Testing Release build.
@@ -205,6 +276,50 @@ The direct Debug matrix command was `DiffEngine_Disabled=true dotnet tests/Hexal
 The corrected inventory and task references eliminated all missing-file and checked-task failures. Only the two historical attribution errors remain at candidate `ee9762e6c74914ccd33ec1d2caf322bdc21a10b4`. No tests were added, deleted, skipped or relaxed. This documentation-only reconciliation changes no contract behavior; the existing README, how-to and public API baseline remain applicable. The prior docs gate is historical evidence and was not rerun for these implementation-record edits.
 
 The FrontComposer repository maintainer owns the historical-attribution repair. The tracked handoff in `deferred-work.md` requires an explicitly authorized, policy-compliant repair, followed by the original strict command over the preserved baseline and the final transition commit. This reconciliation does not select or authorize a published-history rewrite. Both original and follow-up strict validators must be rerun after this reconciliation commit; the final handoff records the resulting canonical candidate and outcomes.
+
+### Review round 3 verification — 2026-10-19
+
+This section records the patched working tree on top of candidate `8713e14b04af43423e80368b4b48ff932db6394e`. Logs are under `/tmp/claude-1000/-home-administrator-projects-hexalith-frontcomposer/c9ddc917-4a27-4b25-991d-ebfb9f9f2a2b/scratchpad/r3/`.
+
+- `DiffEngine_Disabled=true dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 -nodeReuse:false --disable-build-servers -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` passed with 0 warnings and 0 errors (`solution-release.log`). The Testing test project Release build also passed with 0 warnings and 0 errors (`testing-release-build-final.log`).
+- `DiffEngine_Disabled=true NuGetAudit=false MinVerVersionOverride=1.0.0 dotnet test --project tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj -c Release --no-build --report-xunit-trx` passed 185/185, 0 skipped (`testing-suite-final.log`, `results-final/`). The count is unchanged because every round-3 regression case was added inside an existing test method.
+- `dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method '*AnalyzerPolicy_IdentifierInventory_MatchesSeal'` passed 1/1 (`identifier.log`). `analyzer-policy-exception-ledger-v1.json` is unchanged, and the GOV-1 drift seal is untouched.
+- Seeded mutations: each one reverts a single round-3 behavior, rebuilds, and runs `-class '*TestingFailureModeTests'`. All 16 were caught:
+  - test gaps: V1 empty neighbours, V2 heading copy, V3 variant guard, V5 address fragment, V6 AM-24 terminal, V7 advance guard;
+  - P1 page overflow and AE-05 geometry;
+  - P2 AE-07 forced colours and theme agreement;
+  - P3 fact names, P4 did-not-run lifecycle, P5 success/no-failure, P6 stale error target, P7 implicit live, P8 zero-size occluder.
+
+  The first V3 mutant was rejected by analyzer CA1062, so V3 was re-run with an analyzer-clean mutation and caught. Every source file was restored byte-for-byte, and HEAD stayed at `8713e14b` (`mutants/`, `mutants-v3/`, `mutate.py`).
+- `NuGetAudit=false MinVerVersionOverride=1.0.0 pwsh -NoProfile -File eng/validate-docs.ps1` passed, including the compiled how-to snippets (`docs.log`, `artifacts/docs/validation-manifest.json`).
+- `git diff --check` passed. No public signature, dependency, Shell runtime file, submodule pointer, or approval/evidence seal changed.
+- The strict completion gate is still governed by the historical-attribution handoff above. Round 3 neither resolves nor bypasses it, so the story stays in review until the maintainer-owned repair and the rerun strict validator pass. Under reconciliation checklist item 10, the Build workflow's done transition is not applied: spec status stays `in-review`, and the sprint row already reads `review`.
+
+### Documentation Drift Sweep
+
+- Source change: the round-3 review fixes change adopter-facing helper behavior.
+  - The AE recorder rejects wrong-row setup or theme, Passed packets with a failed outcome or failing AE-04/AE-05 geometry, and non-positive target ordinals.
+  - `AssertChannel` accepts implicit `role="status"` live/atomic semantics.
+  - SS-19/21 require no visible failure, and SS-25/37/38 require no lifecycle entry.
+  - A valid field must have no error target.
+  - Zero-size occluders are ignored.
+  - Failure messages name the failed checks.
+- Search terms: `TestAccessibilityEvidenceRecorder`, `AccessibilityMeasurements`, `UxAnnouncementAssertions`, `UxStateAssertions`, `UxValidationAssertions`, `UxFocusAssertions`, `UxAccessibilityAssertions`, `AssertUnobscured`, `AssertTargetSize`, `AssertLinkedSummary`.
+- Scope searched: `docs/reference/**`, `docs/how-to/**`, `docs/tutorials/**`, `docs/skills/**`, `_bmad-output/project-docs/**` and `_bmad-output/contracts/**`.
+- Contract docs checked:
+  - `_bmad-output/contracts/**`: no match, so no contract family governs these helpers.
+  - `src/Hexalith.FrontComposer.Testing/README.md`: package README with current contract claims.
+  - `src/Hexalith.FrontComposer.Testing/PublicAPI.Shipped.txt`.
+- Documents updated:
+  - `src/Hexalith.FrontComposer.Testing/README.md`: redaction list, Fluent shadow-control measurement, recorder rejections, named diagnostics.
+  - `docs/how-to/test-generated-components.md`: recorder rejections; front matter `ownerStory` set to `13-7-i-ux-f-provide-reusable-ux-assertions-for-adopters` and `reviewed` to `2026-10-19`.
+  - `AccessibilityEvidence` XML doc.
+- No-update decisions:
+  - `PublicAPI.Shipped.txt`: no signature changed.
+  - The how-to's pre-existing dispatch-redaction sentence predates this story.
+  - No other public page references these helpers.
+- Validation: `eng/validate-docs.ps1` passed both with full DocFX/snippets and with `-SkipDocFx -SkipSnippetBuild` after the front-matter update (`docs.log`, `docs-quick.log`).
+- Residual risk: adopter guidance for scope-stamping directly dispatched projection actions is deferred (R3-B17/D2).
 
 ## File List
 

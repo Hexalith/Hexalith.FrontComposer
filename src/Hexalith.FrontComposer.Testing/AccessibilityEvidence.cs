@@ -6,5 +6,5 @@ namespace Hexalith.FrontComposer.Testing;
 /// <param name="Row">Canonical evidence dimension.</param>
 /// <param name="CapturedAtUtc">Configured-clock capture instant.</param>
 /// <param name="Context">Safe ordinal surface/state and typed theme provenance.</param>
-/// <param name="RedactedMeasurements">Bounded measurements with arbitrary text and property names removed.</param>
+/// <param name="RedactedMeasurements">Bounded fixed-schema JSON of numbers, booleans, enums and geometry, without arbitrary text; explicitly truncated beyond the configured payload limit.</param>
 public sealed record AccessibilityEvidence(AccessibilityEvidenceRow Row, DateTimeOffset CapturedAtUtc, AccessibilityEvidenceContext Context, string RedactedMeasurements);

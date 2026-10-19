@@ -3,9 +3,9 @@ title: "Test generated components"
 description: "Use Hexalith.FrontComposer.Testing to render generated views and customization overrides without a running app host."
 genre: how-to
 audience: adopter
-ownerStory: 10-1-adopter-test-host-and-component-testing-utilities
+ownerStory: 13-7-i-ux-f-provide-reusable-ux-assertions-for-adopters
 status: published
-reviewed: 2026-06-05
+reviewed: 2026-10-19
 uid: frontcomposer.how-to.test-generated-components
 slug: how-to/test-generated-components/
 ---
@@ -140,7 +140,7 @@ For client or mapped rejection summaries, pass a measured `UxValidationSummarySn
 
 Capture an overlay/guard invoker with `UxFocusAssertions.CaptureOrigin` before activation, retaining the same direct element object for reference comparison. After close, pass the current origin's connected/enabled/visible status to `AssertRestored`; a removed origin uses `null`. FM-04/05 require a current route `h1` fallback; FM-11 permits a named form heading. `AssertUnobscured` accepts measured CSS rectangles for the full target and painted focus indicator, every active viewport/scrollport, and app-owned sticky/overlay/message rectangles.
 
-Record AE-01..09 with `new TestAccessibilityEvidenceRecorder(host.Options)`. Pass `AccessibilityEvidenceContext(surfaceNumber, stateNumber, theme)` to each `Record` call; these positive ordinals reference your surface/journey inventory without storing routes or identifiers. `UxTheme.Light` and `UxTheme.Dark` distinguish contrast packets captured at the same instant. `AccessibilityMeasurements` retains row-specific setup plus observed content loss, clipping, overlap, control truncation, forced-color cue preservation, animation suppression, immediate focus, silent expiry, keyboard and axe outcomes, WCAG 2.2 AA findings and measured geometry. The recorder rejects an incomplete row and retains failed findings without changing them. Target exceptions use `AccessibilityTargetEvidence` with ordinal target/equivalent references, typed rationale and keyboard keys. `UxAccessibilityAssertions.AssertTargetSize` verifies minimum dimensions or an evidenced exception. The recorder has no free-text or raw AX-snapshot field, uses the shared redactor, and respects record/payload bounds; increase the diagnostic payload limit for a full packet.
+Record AE-01..09 with `new TestAccessibilityEvidenceRecorder(host.Options)`. Pass `AccessibilityEvidenceContext(surfaceNumber, stateNumber, theme)` to each `Record` call; these positive ordinals reference your surface/journey inventory without storing routes or identifiers. `UxTheme.Light` and `UxTheme.Dark` distinguish contrast packets captured at the same instant. `AccessibilityMeasurements` retains row-specific setup plus observed content loss, clipping, overlap, control truncation, forced-color cue preservation, animation suppression, immediate focus, silent expiry, keyboard and axe outcomes, WCAG 2.2 AA findings and measured geometry. The recorder rejects an incomplete row, a row measured under another row's setup or theme, and a `Passed` packet whose measured outcomes or AE-04/AE-05 geometry failed; it retains failed findings without changing them. Target exceptions use `AccessibilityTargetEvidence` with ordinal target/equivalent references, typed rationale and keyboard keys. `UxAccessibilityAssertions.AssertTargetSize` verifies minimum dimensions or an evidenced exception. The recorder has no free-text or raw AX-snapshot field, uses the shared redactor, and respects record/payload bounds; increase the diagnostic payload limit for a full packet.
 
 
 ```csharp compile

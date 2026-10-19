@@ -9,8 +9,19 @@ public static class UxAccessibilityAssertions
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(target.Bounds);
         ArgumentNullException.ThrowIfNull(target.KeyboardPath);
+        List<string> failed = Failures(target);
+        if (failed.Count > 0)
+        {
+            throw new InvalidOperationException("AE-04 target size or exception measurement, rationale, equivalent control, or keyboard path is incomplete: "
+                + string.Join(", ", failed) + ".");
+        }
+    }
+
+    /// <summary>Names the failed AE-04 checks without measured values.</summary>
+    internal static List<string> Failures(AccessibilityTargetEvidence target)
+    {
         bool sized = Valid(target.Bounds) && Sized(target.Bounds);
-        bool keyboard = target.KeyboardPath.Count > 0 && target.KeyboardPath.All(Enum.IsDefined);
+        bool keyboard = target.KeyboardPath is { Count: > 0 } path && path.All(Enum.IsDefined);
         bool exception = target.Exception switch
         {
             UxTargetSizeExceptionKind.Inline => target.Rationale == UxTargetSizeRationale.InlineText,
@@ -23,11 +34,13 @@ public static class UxAccessibilityAssertions
                 && target.Neighbors is { Count: > 0 } && HasSpacing(target.Bounds, target.Neighbors),
             _ => false,
         };
-        if (!Valid(target.Bounds) || target.TargetNumber < 1 || !keyboard
-            || (sized ? target.Exception is not null || target.Rationale is not null : !exception))
-        {
-            throw new InvalidOperationException("AE-04 target size or exception measurement, rationale, equivalent control, or keyboard path is incomplete.");
-        }
+        List<string> failed = [];
+        if (!Valid(target.Bounds)) { failed.Add("Bounds"); }
+        if (target.TargetNumber < 1) { failed.Add("TargetNumber"); }
+        if (!keyboard) { failed.Add("KeyboardPath"); }
+        if (sized && (target.Exception is not null || target.Rationale is not null)) { failed.Add("UnneededException"); }
+        if (!sized && !exception) { failed.Add(target.Exception is { } kind && Enum.IsDefined(kind) ? kind + "Exception" : "Exception"); }
+        return failed;
     }
 
     private static bool HasSpacing(UxRect bounds, IReadOnlyList<UxRect> neighbors)
@@ -40,6 +53,6 @@ public static class UxAccessibilityAssertions
         => Math.Pow(x - Math.Clamp(x, rect.X, rect.X + rect.Width), 2)
             + Math.Pow(y - Math.Clamp(y, rect.Y, rect.Y + rect.Height), 2) >= 12 * 12;
     private static bool Sized(UxRect r) => r.Width >= 24 && r.Height >= 24;
-    private static bool Valid(UxRect r) => double.IsFinite(r.X) && double.IsFinite(r.Y)
+    private static bool Valid(UxRect? r) => r is not null && double.IsFinite(r.X) && double.IsFinite(r.Y)
         && double.IsFinite(r.Width) && double.IsFinite(r.Height) && r.Width > 0 && r.Height > 0;
 }
