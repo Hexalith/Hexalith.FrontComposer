@@ -10506,3 +10506,8 @@ Review follow-up for the PNG-integrity resolution adds a separate 33,554,432-byt
 ## Deferred from: code review of spec-13-6-make-browser-accessibility-verification-repeatable (2026-10-18)
 
 - `fc-focus.js` `containDialogFocus` attaches native `cancel`/`close` listeners only if the shadow `<dialog>` exists at registration (maybe-false, unverified medium): settle by asserting the dialog exists at registration on each engine, or resolve it at event time; the faked-close test is null-safe and passes vacuously.
+
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-reconcile-completion-evidence-and-tracking.md`
+  summary: Resolve the historical Story 13.7 commit attribution blockers before completion; owner is the FrontComposer repository maintainer.
+  evidence: The strict original-story validator rejects delivery commit 7f57da411c3abf8e1d459d0611c49632c07393a7 as unmapped and commit ee9762e6c74914ccd33ec1d2caf322bdc21a10b4 as interleaved with 11 unrelated CI/release paths. The maintainer must choose and authorize a repository-policy-compliant attribution/history repair; this documentation follow-up does not authorize rewriting published history or changing validator policy. Retry the original-story strict validator over its preserved b9e1490cfe1c51406d3c8d4dc213971d06911a24 baseline through HEAD after the repair and its transition commit; only exit 0, reconciled inventory and passing verification permit completion. Until then the original spec and sprint stay in review.

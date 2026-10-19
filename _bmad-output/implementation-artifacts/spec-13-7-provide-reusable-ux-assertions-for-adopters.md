@@ -2,7 +2,7 @@
 title: '13.7 [I · UX-F] Provide Reusable UX Assertions for Adopters'
 type: 'feature'
 created: '2026-10-18'
-status: 'done'
+status: 'in-review'
 baseline_commit: 'b9e1490cfe1c51406d3c8d4dc213971d06911a24'
 route: 'dispatch'
 review_loop_iteration: 1
@@ -59,14 +59,14 @@ context:
 ## Tasks & Acceptance
 
 **Execution (review round 2):**
-- [x] `Testing/TestTimeProvider.cs`, `TestTimeProviderTimer.cs` — retain deterministic due-order/Change/disposal/UTC behavior, invoke callbacks outside the clock lock, capture creation ExecutionContext; cover concurrent change/dispose and ambient context.
-- [x] `Testing/UxAnnouncementAssertions.cs` — retain exact canonical sequence/coalescing/channel checks; reject conflicting lifecycle terminal outcomes (including Confirmed/IdempotentConfirmed) for one operation; retain all unfiltered observations. Permit legitimate unnamed polite status semantics while asserting canonical message content separately.
-- [x] `Testing/UxAnnouncementCatalog.cs`, `TestingFailureModeTests.cs` — independently pin each AM row and supported variant to the intended localized resource/copy; seeded wrong-resource mapping must fail.
-- [x] `Testing/UxSurfaceSnapshot.cs`, `UxStateAssertions.cs` — add caller-measured state-specific facts for SS rows (including disabled/selected tab and panel ownership, failure/no-success truth, non-live/focus semantics where required); add independent table-driven SS-01..49 acceptance/terminality/lifecycle and mismatch checks. Reject absent blocked-submit handles.
-- [x] `Testing/UxFieldSnapshot.cs`, `UxValidationAssertions.cs`, supporting single-type files — supply measured summary text/count, declared group membership/name/description/order, measured group relationships, and prior stable control/error identities. Check canonical AM-18/19 copy separately from accessible label, invalid-only links in complete declared order, stable rerender targets, preserved useful input, visible label within a richer accessible name, and every ASCII whitespace IDREF separator.
-- [x] `Testing/AccessibilityMeasurements.cs`, `AccessibilityEvidence.cs`, recorder/formatter — preserve the bounded typed schema and add safe ordinal surface/state references plus typed theme. Retain observed loss/clipping/overlap/truncation, forced-color cue preservation, animation suppression, silent expiry and keyboard/axe outcomes as applicable; no arbitrary text or sensitive identifiers.
-- [x] `Testing.Tests/TestingFailureModeTests.cs` — preserve realistic rejection/denial/offline/admission/exhaustion consumers and all frozen matrix cases; add authoritative safe mapped-rejection consumption retaining Rejected identity with no duplicate AM-14 speech. Parse and verify all supplied AE values, including failed findings and measured geometry. Use existing/new tests with meaningful seeded drift.
-- [x] `Testing/PublicAPI.Shipped.txt`, allowed ledger count/hash, README/how-to — intentionally update the public measurement API, test-identifier seal and adopter examples. Preserve unrelated seals/dependencies/Shell runtime.
+- [x] `src/Hexalith.FrontComposer.Testing/TestTimeProvider.cs`, `src/Hexalith.FrontComposer.Testing/TestTimeProviderTimer.cs` — retain deterministic due-order/Change/disposal/UTC behavior, invoke callbacks outside the clock lock, capture creation ExecutionContext; cover concurrent change/dispose and ambient context.
+- [x] `src/Hexalith.FrontComposer.Testing/UxAnnouncementAssertions.cs` — retain exact canonical sequence/coalescing/channel checks; reject conflicting lifecycle terminal outcomes (including Confirmed/IdempotentConfirmed) for one operation; retain all unfiltered observations. Permit legitimate unnamed polite status semantics while asserting canonical message content separately.
+- [x] `src/Hexalith.FrontComposer.Testing/UxAnnouncementCatalog.cs`, `tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs` — independently pin each AM row and supported variant to the intended localized resource/copy; seeded wrong-resource mapping must fail.
+- [x] `src/Hexalith.FrontComposer.Testing/UxSurfaceSnapshot.cs`, `src/Hexalith.FrontComposer.Testing/UxStateAssertions.cs` — add caller-measured state-specific facts for SS rows (including disabled/selected tab and panel ownership, failure/no-success truth, non-live/focus semantics where required); add independent table-driven SS-01..49 acceptance/terminality/lifecycle and mismatch checks. Reject absent blocked-submit handles.
+- [x] `src/Hexalith.FrontComposer.Testing/UxFieldSnapshot.cs`, `src/Hexalith.FrontComposer.Testing/UxValidationAssertions.cs`, supporting single-type files — supply measured summary text/count, declared group membership/name/description/order, measured group relationships, and prior stable control/error identities. Check canonical AM-18/19 copy separately from accessible label, invalid-only links in complete declared order, stable rerender targets, preserved useful input, visible label within a richer accessible name, and every ASCII whitespace IDREF separator.
+- [x] `src/Hexalith.FrontComposer.Testing/AccessibilityMeasurements.cs`, `src/Hexalith.FrontComposer.Testing/AccessibilityEvidence.cs`, recorder/formatter — preserve the bounded typed schema and add safe ordinal surface/state references plus typed theme. Retain observed loss/clipping/overlap/truncation, forced-color cue preservation, animation suppression, silent expiry and keyboard/axe outcomes as applicable; no arbitrary text or sensitive identifiers.
+- [x] `tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs` — preserve realistic rejection/denial/offline/admission/exhaustion consumers and all frozen matrix cases; add authoritative safe mapped-rejection consumption retaining Rejected identity with no duplicate AM-14 speech. Parse and verify all supplied AE values, including failed findings and measured geometry. Use existing/new tests with meaningful seeded drift.
+- [x] `src/Hexalith.FrontComposer.Testing/PublicAPI.Shipped.txt`, allowed ledger count/hash, README/how-to — intentionally update the public measurement API, test-identifier seal and adopter examples. Preserve unrelated seals/dependencies/Shell runtime.
 
 **Acceptance Criteria:**
 - Given the epics.md Story 13.7 criteria, when the Testing suite runs, then every helper passes against realistic failure states and fails on seeded drift.
@@ -180,3 +180,79 @@ All verified findings from both review rounds are resolved. The second-round fix
 - The original frozen block, forbidden GOV-1 seal, Shell runtime/constants, dependencies and submodule state were checked against the baseline and preserved. The IDE document retains `revalidation-pending`; OI-16, G-4, FLUENT-APP-1 and Product approval remain independently owned.
 - `node node_modules/@commitlint/cli/cli.js --edit /tmp/fc137-final/commit-message.txt --verbose` — passed with the lockfile-pinned and installed 21.2.2 CLI, 0 problems / 0 warnings; successful validation evidence `/tmp/fc137-final/commitlint.log`.
 - `git diff --check` — passed. Local commit is the Build workflow's completion step; remote publication is not part of this run.
+
+
+### Completion reconciliation — 2026-10-19
+
+The implementation remains delivered. The prior done status is corrected to in-review to agree with the sprint row and the required mechanical completion gate. Historical passing evidence above remains historical; it does not override current artifact validation. The original frozen intent and baseline are preserved.
+
+The initial strict command `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md --candidate HEAD` exited 1 before completion. The missing File List and eight abbreviated task-path failures are corrected in this follow-up. The inventory below records the actual Story 13.7 implementation, tests, adopter documentation, governance fixture and completion records from the original delivery, separately from generated validation output retained under `/tmp/fc137-build-20261019`.
+
+Historical attribution remains a blocker: the original delivery commit `7f57da411c3abf8e1d459d0611c49632c07393a7` has no matching story ID in its subject, while `ee9762e6c74914ccd33ec1d2caf322bdc21a10b4` names Story 13.7 and also changes unrelated CI/release files. Those unrelated paths are deliberately excluded from the inventory. The published history is not rewritten, no ownership exception is invented and no validator policy is weakened. This follow-up cannot close the story while that strict gate fails. OI-16, G-4, FLUENT-APP-1 and Product approval remain separately owned.
+
+
+### Current-candidate verification — 2026-10-19
+
+| Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
+| --- | --- | --- | --- | --- | --- |
+| Testing Debug build | `DiffEngine_Disabled=true dotnet build tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj -c Debug -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` | Passed: 0 warnings, 0 errors | N/A | N/A | Not applicable |
+| Testing Release build for package consumers | `DiffEngine_Disabled=true dotnet build tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj -c Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` | Passed: 0 warnings, 0 errors | N/A | N/A | Not applicable |
+| Testing complete project | `DiffEngine_Disabled=true NuGetAudit=false MinVerVersionOverride=1.0.0 dotnet test --project tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj -c Release --no-build --results-directory /tmp/fc137-build-20261019/results --report-xunit-trx` | Passed: 185/185, 0 skipped; delta from prior 185-case evidence: 0 | N/A | Debug matrix also passed 139/139 | Not applicable |
+| Story artifact completion gate | `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md --candidate HEAD` | Failed: exit 1, unmapped original delivery and interleaved latest commit | During commit attribution; no test execution involved | Passing tests do not replace this gate | Not applicable |
+
+The direct Debug matrix command was `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Testing.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Testing.Tests.dll -class '*TestingFailureModeTests' -result-xml /tmp/fc137-build-20261019/matrix-debug.xml`. It is additional local evidence; the complete native MTP project lane above also passed. Build logs, test output/TRX and strict validator reports are under `/tmp/fc137-build-20261019/`.
+
+The corrected inventory and task references eliminated all missing-file and checked-task failures. Only the two historical attribution errors remain at candidate `ee9762e6c74914ccd33ec1d2caf322bdc21a10b4`. No tests were added, deleted, skipped or relaxed. This documentation-only reconciliation changes no contract behavior; the existing README, how-to and public API baseline remain applicable. The prior docs gate is historical evidence and was not rerun for these implementation-record edits.
+
+The FrontComposer repository maintainer owns the historical-attribution repair. The tracked handoff in `deferred-work.md` requires an explicitly authorized, policy-compliant repair, followed by the original strict command over the preserved baseline and the final transition commit. This reconciliation does not select or authorize a published-history rewrite. Both original and follow-up strict validators must be rerun after this reconciliation commit; the final handoff records the resulting canonical candidate and outcomes.
+
+## File List
+
+The paths below are the Story 13.7 delivery and its completion records. Test files include the rendered validation consumer; adopter documentation and intentional API/governance fixtures are listed explicitly. This run changes the two Story 13.7 spec files and appends one maintainer-owned blocker to the deferred-work ledger. No generated evidence or submodule pointer is claimed as story output.
+
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`
+- `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+- `_bmad-output/implementation-artifacts/spec-13-7-reconcile-completion-evidence-and-tracking.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/how-to/test-generated-components.md`
+- `docs/validation/producer-fingerprints.json`
+- `src/Hexalith.FrontComposer.Testing/AccessibilityEvidence.cs`
+- `src/Hexalith.FrontComposer.Testing/AccessibilityEvidenceContext.cs`
+- `src/Hexalith.FrontComposer.Testing/AccessibilityEvidenceRow.cs`
+- `src/Hexalith.FrontComposer.Testing/AccessibilityMeasurements.cs`
+- `src/Hexalith.FrontComposer.Testing/AccessibilityTargetEvidence.cs`
+- `src/Hexalith.FrontComposer.Testing/Evidence.cs`
+- `src/Hexalith.FrontComposer.Testing/PublicAPI.Shipped.txt`
+- `src/Hexalith.FrontComposer.Testing/README.md`
+- `src/Hexalith.FrontComposer.Testing/TestAccessibilityEvidenceRecorder.cs`
+- `src/Hexalith.FrontComposer.Testing/TestTimeProvider.cs`
+- `src/Hexalith.FrontComposer.Testing/TestTimeProviderTimer.cs`
+- `src/Hexalith.FrontComposer.Testing/UxAccessibilityAssertions.cs`
+- `src/Hexalith.FrontComposer.Testing/UxAccessibilitySnapshot.cs`
+- `src/Hexalith.FrontComposer.Testing/UxAnnouncement.cs`
+- `src/Hexalith.FrontComposer.Testing/UxAnnouncementAssertions.cs`
+- `src/Hexalith.FrontComposer.Testing/UxAnnouncementCatalog.cs`
+- `src/Hexalith.FrontComposer.Testing/UxAnnouncementChannel.cs`
+- `src/Hexalith.FrontComposer.Testing/UxFieldDeclaration.cs`
+- `src/Hexalith.FrontComposer.Testing/UxFieldGroupDeclaration.cs`
+- `src/Hexalith.FrontComposer.Testing/UxFieldIdentity.cs`
+- `src/Hexalith.FrontComposer.Testing/UxFieldSnapshot.cs`
+- `src/Hexalith.FrontComposer.Testing/UxFocusAssertions.cs`
+- `src/Hexalith.FrontComposer.Testing/UxFocusTarget.cs`
+- `src/Hexalith.FrontComposer.Testing/UxKeyboardKey.cs`
+- `src/Hexalith.FrontComposer.Testing/UxRect.cs`
+- `src/Hexalith.FrontComposer.Testing/UxStateAssertions.cs`
+- `src/Hexalith.FrontComposer.Testing/UxSurfaceFacts.cs`
+- `src/Hexalith.FrontComposer.Testing/UxSurfaceSnapshot.cs`
+- `src/Hexalith.FrontComposer.Testing/UxTargetSizeExceptionKind.cs`
+- `src/Hexalith.FrontComposer.Testing/UxTargetSizeRationale.cs`
+- `src/Hexalith.FrontComposer.Testing/UxTheme.cs`
+- `src/Hexalith.FrontComposer.Testing/UxTiming.cs`
+- `src/Hexalith.FrontComposer.Testing/UxTimingAssertions.cs`
+- `src/Hexalith.FrontComposer.Testing/UxValidationAssertions.cs`
+- `src/Hexalith.FrontComposer.Testing/UxValidationSummarySnapshot.cs`
+- `tests/Hexalith.FrontComposer.Testing.Tests/FrontComposerTestHostTests.cs`
+- `tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs`
+- `tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs`
+- `tests/Hexalith.FrontComposer.Testing.Tests/ValidationConsumer.razor`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
