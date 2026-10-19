@@ -1812,7 +1812,7 @@ public sealed class CiGovernanceTests {
         // Bind the published baseline to the packer's own --plan output rather than to a Python
         // source substring: the literal alone went green on a constant compared with itself.
         string publishedBaseline = PublishedPackageValidationBaseline(root);
-        publishedBaseline.ShouldBe("4.6.0");
+        publishedBaseline.ShouldBe("4.7.0");
         File.Exists(Path.Combine(root, "eng/pack_release_packages.py")).ShouldBeFalse(
             "the retired build-plus-pack lifecycle entrypoint must not coexist with the live packer.");
         qualityWorkflow.ShouldContain("python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py");

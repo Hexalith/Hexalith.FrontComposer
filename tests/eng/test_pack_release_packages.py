@@ -37,7 +37,7 @@ VERSION = "4.3.0-review.compat"
 # The fixture ledger plans v4.3, so its checked-in baseline must sit on the preceding v4.2
 # line. The real repository plans a different line; its baseline is asserted separately.
 FIXTURE_BASELINE = "4.2.0"
-PRODUCTION_VERSION = "4.7.0-review.compat"
+PRODUCTION_VERSION = "4.7.1-review.compat"
 
 
 class PackReleasePackagesTests(unittest.TestCase):
@@ -112,7 +112,7 @@ class PackReleasePackagesTests(unittest.TestCase):
         # The production plan test runs against a synthetic fixture, so this is the only guard
         # that the REAL script exits 0 with --release-policy against the REAL tree. A tree that
         # cannot pack any version -- the pass-1 regression -- fails here.
-        result = self.run_plan("4.7.0", release_policy=True)
+        result = self.run_plan("4.7.1", release_policy=True)
 
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)
@@ -295,8 +295,8 @@ class PackReleasePackagesTests(unittest.TestCase):
 
     def test_policy_accepts_a_hotfix_candidate_against_the_checked_in_tree(self) -> None:
         # Regression guard: the strict preceding-line rule made every candidate unpackable, so
-        # the next planned line -- `4.7.0` against published `4.6.0` -- must validate here.
-        self.assertEqual("v4.7", validate_release_policy(ROOT, "4.7.0"))
+        # the patch candidate -- `4.7.1` against published `4.7.0` -- must validate here.
+        self.assertEqual("v4.7", validate_release_policy(ROOT, "4.7.1"))
 
     def test_major_bump_accepts_any_minor_of_the_previous_major(self) -> None:
         # Documented limitation of `is_preceding_release_line`: the previous major's last minor

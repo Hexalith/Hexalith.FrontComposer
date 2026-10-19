@@ -65,6 +65,9 @@ public sealed class TestAccessibilityEvidenceRecorder
                 && m.AnnouncementCount.HasValue && m.KeyboardPassed.HasValue && m.AxePassed.HasValue && m.NoHoverOnlyAction.HasValue,
             _ => false,
         };
+        bool contradicted = m.Passed && (m.ContentLoss == true || m.Clipping == true || m.AxePassed == false
+            || m.KeyboardPassed == false || m.CriticalFindingCount > 0);
+        if (contradicted) { throw new ArgumentException("AE evidence cannot be Passed when its measured outcomes failed.", nameof(m)); }
         if (!complete) { throw new ArgumentException("AE evidence is missing required measured setup, geometry, or outcomes.", nameof(m)); }
     }
 

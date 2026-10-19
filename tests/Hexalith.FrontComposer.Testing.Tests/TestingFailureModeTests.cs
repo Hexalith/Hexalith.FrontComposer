@@ -466,8 +466,8 @@ public sealed class TestingFailureModeTests {
             UxAnnouncementAssertions.AssertImmediateCancellation(clock, () => spoken, rejected, syncing);
         });
         IElement status = cut.Find("[role='status']");
-        UxAnnouncementAssertions.AssertChannel(rejected, new(status.GetAttribute("role")!, rejected.Copy, false,
-            status.GetAttribute("aria-live"), status.GetAttribute("aria-atomic")), rejected.Copy);
+        UxAnnouncementAssertions.AssertChannel(rejected, new(status.GetAttribute("role")!, status.TextContent.Trim(), false,
+            status.GetAttribute("aria-live"), status.GetAttribute("aria-atomic")), status.TextContent.Trim());
         UxSurfaceSnapshot state = new("Rejected", true, new("group", "Command recovery", false), lifecycle.GetState(operation), Facts: new() { Visible = true, SuccessClaim = false, FailureVisible = true });
         UxStateAssertions.AssertState("SS-20", state);
         Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState("SS-19", state));
@@ -630,6 +630,12 @@ public sealed class TestingFailureModeTests {
                         new(new object(), "document", "body", "body"), fallback, row));
                 }
                 UxFocusAssertions.AssertRestored(origin, null, fallback, fallback, row);
+                UxFocusTarget button = new(new object(), "button", "Other", "button");
+                Should.Throw<InvalidOperationException>(() => UxFocusAssertions.AssertRestored(origin, null, button, button, row));
+                if (row != "FM-11")
+                {
+                    Should.Throw<InvalidOperationException>(() => UxFocusAssertions.AssertRestored(origin, null, form, form, row));
+                }
                 Should.Throw<InvalidOperationException>(() => UxFocusAssertions.AssertRestored(origin, origin,
                     origin with { Handle = new object() }, fallback, row));
             }
@@ -1098,6 +1104,8 @@ public sealed class TestingFailureModeTests {
         { Should.Throw<ArgumentException>(() => recorder.Record(row, new(1, 1, UxTheme.Light), new())); }
         Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE06, new(0, 1, UxTheme.Light), new() { ContrastRatio = 4.5 }));
         Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE06, new(1, 1, (UxTheme)99), new() { ContrastRatio = 4.5 }));
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE06, new(1, 1, UxTheme.ForcedColors), new() { ContrastRatio = 4.5 }));
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE09, new(1, 1, UxTheme.Light), new() { Passed = true, Wcag22Aa = true, FindingCount = 1, CriticalFindingCount = 1, AnnouncementCount = 0, KeyboardPassed = true, AxePassed = false, NoHoverOnlyAction = true }));
     }
 
     [Theory]

@@ -2,8 +2,9 @@
 title: 'fix CI restore and publish the FrontComposer release'
 type: 'bugfix'
 created: '2026-10-18'
-status: 'draft'
+status: 'in-progress'
 route: 'dispatch'
+baseline_commit: 'c4f5c12e32182739ce1478a6cdefe602c4daeb18'
 review_loop_iteration: 0
 context: []
 ---
@@ -48,11 +49,11 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `references/Hexalith.Commons/src/libraries/Hexalith.Commons.Aspire/Hexalith.Commons.Aspire.csproj` -- add a direct `MessagePack` reference overridden to `2.5.303` -- Aspire.Hosting's minimum is vulnerable and this project does not transitively pin
-- [ ] Commons repository -- commit, validate with that repo's commitlint, and push to its `main` -- FrontComposer CI checks out the recorded submodule commit
-- [ ] FrontComposer gitlink `references/Hexalith.Commons` -- point at that commit, commit, validate with FrontComposer commitlint, and push `main` -- Release dispatches only from current main
-- [ ] GitHub Actions `ci.yml` -- wait until the push run for that exact SHA succeeds -- Release rejects a red or missing CI handoff
-- [ ] Release workflow -- `workflow_dispatch` on that SHA, approve the pending `production` deployments, and query NuGet.org for the eight package ids at the released version -- this is the publication check
+- [x] `references/Hexalith.Commons/src/libraries/Hexalith.Commons.Aspire/Hexalith.Commons.Aspire.csproj` -- add a direct `MessagePack` reference overridden to `2.5.303` -- Aspire.Hosting's minimum is vulnerable and this project does not transitively pin
+- [x] Commons repository -- commit, validate with that repo's commitlint, and push to its `main` -- FrontComposer CI checks out the recorded submodule commit
+- [x] FrontComposer gitlink `references/Hexalith.Commons` -- point at that commit, commit, validate with FrontComposer commitlint, and push `main` -- Release dispatches only from current main
+- [x] GitHub Actions `ci.yml` -- wait until the push run for that exact SHA succeeds -- Release rejects a red or missing CI handoff
+- [x] Release workflow -- `workflow_dispatch` on that SHA, approve the pending `production` deployments, and query NuGet.org for the eight package ids at the released version -- this is the publication check
 
 **Acceptance Criteria:**
 - Given Aspire.Hosting 13.6.1, when `Hexalith.Commons.Aspire` restores, then MessagePack resolves to 2.5.303 and NU1902 is absent.
@@ -60,6 +61,10 @@ context: []
 - Given that green CI run, when Release is dispatched and the production environment is approved, then the eight FrontComposer packages for the Semantic Release version are present on NuGet.org.
 
 ## Implementation Notes
+
+- 2026-10-18: Main had already moved to `c4f5c12e32182739ce1478a6cdefe602c4daeb18`. Commons `5c23c818` already references central MessagePack 3.1.12, which is past the GHSA-qhrr-8q5h-9q3h fix (3.1.9). Restore no longer reports NU1902. The live `ci.yml` failure is ApiCompat CP0002 against Shell 4.5.0, so the MessagePack 2.5.303 retarget was not applied.
+- Restored the published six-argument constructors on `ProjectionFallbackRefreshScheduler` and `LoadPageEffects`, and registered `LoadPageEffects` with an explicit factory so optional localization does not drop user-context validation.
+- `dotnet pack` of the eight release projects with `FrontComposerPackageValidationBaselineVersion=4.5.0` exited 0. `ShellConstructorCompatibilityTests` passed 3/3.
 
 ## Spec Change Log
 

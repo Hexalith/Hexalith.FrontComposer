@@ -221,7 +221,7 @@ class SmokeRuntime:
             )
             output_limit = (
                 MAX_MSBUILD_OUTPUT_CHARS
-                if arguments[:2] == ["dotnet", "msbuild"]
+                if arguments[:2] in (["dotnet", "msbuild"], ["aspire", "logs"])
                 else MAX_OUTPUT_CHARS
             )
             return CommandResult(
@@ -2503,6 +2503,8 @@ def _capture(
             reason_codes.append("apphost.endpoints.incomplete")
             return 1
         evidence["startup"]["result"] = "passed"
+        if getattr(runtime, "collect_failure_logs", False):
+            _capture_runtime_diagnostics(runtime, records, capture_deadline, "startup")
 
         token = None
         token_status = 0
@@ -2920,18 +2922,7 @@ def _capture(
         # Diagnose the still-running resource before stopping it. Keep the existing
         # cleanup reserve and never let diagnostics change the capture verdict.
         if reason_codes and host_started and getattr(runtime, "collect_failure_logs", False):
-            diagnostic_timeout = _remaining_timeout(overall_deadline - 75, 10)
-            if diagnostic_timeout is not None:
-                try:
-                    logs = runtime.command([
-                        "aspire", "logs", "eventstore", "--apphost", APPHOST_RELATIVE,
-                        "--format", "Json", "--tail", "100", "--non-interactive", "--nologo",
-                    ], diagnostic_timeout)
-                    print("AppHost EventStore failure logs=" + _sanitized_diagnostic_text(
-                        logs.stdout + "\n" + logs.stderr
-                    ), file=sys.stderr)
-                except Exception as diagnostic_exception:
-                    print("AppHost EventStore failure logs unavailable: " + type(diagnostic_exception).__name__, file=sys.stderr)
+            _capture_runtime_diagnostics(runtime, [], overall_deadline - 75, "failure")
         stop_timeout = _remaining_timeout(overall_deadline, 60)
         stop = (
             runtime.command(
@@ -3196,6 +3187,197 @@ def _report_failure(output: Path) -> None:
         print(f"cleanup={json.dumps(cleanup, separators=(',', ':'))}", file=sys.stderr)
 
 
+def _diagnostic_endpoint(value: Any) -> str | None:
+    """Project only anonymous loopback listener addresses, never arbitrary URLs."""
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = parse.urlsplit(value)
+        if parsed.query or parsed.fragment or parsed.path not in ("", "/") or parsed.username or parsed.password:
+            return None
+        if parsed.hostname in {"0.0.0.0", "::", "*", "+"}:
+            if parsed.port is None:
+                return None
+            value = f"{parsed.scheme}://127.0.0.1:{parsed.port}"
+        if not _is_loopback_url(value):
+            return None
+        return value.rstrip("/")
+    except ValueError:
+        return None
+
+
+def _resource_diagnostic_state(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    states = {"Running", "Starting", "Stopping", "Stopped", "Exited", "Finished", "FailedToStart",
+        "Waiting", "WaitingForDependencies", "NotStarted", "Unknown"}
+    health = {"Healthy", "Unhealthy", "Degraded", "Unknown", "NotApplicable"}
+    for record in records:
+        name = _logical_name(record)
+        if name not in REQUIRED_RESOURCES:
+            continue
+        properties = record.get("properties", {})
+        properties = properties if isinstance(properties, dict) else {}
+        environment = record.get("environment", {})
+        environment = environment if isinstance(environment, dict) else {}
+        advertised: list[str] = []
+        for item in record.get("urls", []):
+            if isinstance(item, dict) and item.get("name") != "management":
+                endpoint = _diagnostic_endpoint(item.get("url"))
+                if endpoint and endpoint not in advertised:
+                    advertised.append(endpoint)
+        target: list[str] = []
+        urls = environment.get("ASPNETCORE_URLS", "")
+        if isinstance(urls, str):
+            for url in urls.split(";"):
+                endpoint = _diagnostic_endpoint(url)
+                if endpoint and endpoint not in target:
+                    target.append(endpoint)
+        pid = properties.get("executable.pid")
+        exit_code = properties.get("executable.exitCode")
+        result.append({
+            "resource": name,
+            "state": record.get("state") if record.get("state") in states else "Other",
+            "healthStatus": record.get("healthStatus") if record.get("healthStatus") in health else "Other",
+            "processId": pid if type(pid) is int and pid > 0 else None,
+            "exitCode": exit_code if type(exit_code) is int else None,
+            "advertisedEndpoints": advertised[:8], "processEndpoints": target[:8],
+        })
+    return result
+
+
+def _safe_resource_log_events(value: str) -> dict[str, Any]:
+    """Redact independent JSON console events; group plain-console continuations."""
+    document = _json_from_output(value)
+    rows = document.get("logs") if isinstance(document, dict) else None
+    if not isinstance(rows, list):
+        return {"available": False, "outputSha256": hashlib.sha256(value.encode()).hexdigest()}
+    events: list[dict[str, Any]] = []
+    pending: list[str] = []
+    ansi = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+    levels = {"Trace", "Debug", "Information", "Warning", "Error", "Critical", "None"}
+
+    def add(event: dict[str, Any], text: str) -> None:
+        metadata: dict[str, Any] = {"kind": "console-event"}
+        category = event.get("Category")
+        if isinstance(category, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.:+`-]{0,191}", category):
+            if not re.search(r"[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", category):
+                metadata["category"] = category
+        if event.get("LogLevel") in levels:
+            metadata["level"] = event["LogLevel"]
+        if type(event.get("EventId")) is int:
+            metadata["eventId"] = event["EventId"]
+        message = event.get("Message")
+        # State/Scopes are never exported, but can reveal a credential marker whose
+        # corresponding value has been interpolated into an otherwise unmarked Message.
+        context = {key: child for key, child in event.items() if key not in {"Category", "LogLevel", "EventId"}}
+        safe = _sanitized_diagnostic_text(json.dumps(context, ensure_ascii=True))
+        redacted = not isinstance(message, str) or len(text) > 16_384 or len(message) > 2000 or "[REDACTED DIAGNOSTIC BLOCK" in safe
+        metadata["redacted"] = redacted
+        if redacted:
+            metadata["eventSha256"] = hashlib.sha256(text.encode()).hexdigest()
+        else:
+            metadata["message"] = _sanitized_diagnostic_text(message)
+            exception = event.get("Exception")
+            if isinstance(exception, str) and len(exception) <= 2000:
+                metadata["exception"] = _sanitized_diagnostic_text(exception)
+        events.append(metadata)
+
+    def flush() -> None:
+        if not pending:
+            return
+        text = "\n".join(pending)
+        header = re.match(r"^(trce|dbug|info|warn|fail|crit): ([A-Za-z_][A-Za-z0-9_.:+`-]*)\[(\d+)\]", pending[0])
+        if header:
+            add({"Category": header[2], "EventId": int(header[3]),
+                "Message": text[header.end():].strip()}, text)
+        else:
+            # A tail can begin inside a credential continuation or a process argv line.
+            events.append({"kind": "unstructured-output", "redacted": True,
+                "eventSha256": hashlib.sha256(text.encode()).hexdigest()})
+        pending.clear()
+
+    for row in rows:
+        content = row.get("content") if isinstance(row, dict) else None
+        if not isinstance(content, str):
+            continue
+        content = ansi.sub("", content)
+        event = _json_from_output(content)
+        if isinstance(event, dict):
+            flush()
+            add(event, content)
+        else:
+            if re.match(r"^(?:trce|dbug|info|warn|fail|crit): |^\[sys\]", content):
+                flush()
+            pending.append(content)
+    flush()
+    # Retain the startup head as well as the latest failures when the tail is busy.
+    selected = events if len(events) <= 120 else [*events[:40], *events[-80:]]
+    return {"available": True, "eventCount": len(events), "retainedEventCount": len(selected), "events": selected}
+
+
+def _capture_runtime_diagnostics(
+    runtime: SmokeRuntime, records: list[dict[str, Any]], deadline: float, phase: str
+) -> None:
+    """Optional, bounded diagnostics never supply governed observations or activation."""
+    deadline = min(deadline, time.monotonic() + (5 if phase == "startup" else 15))
+    snapshot: dict[str, Any] = {"phase": phase, "capturedAt": datetime.now(timezone.utc).isoformat()}
+    try:
+        if not records:
+            remaining = _remaining_timeout(deadline, 4)
+            if remaining is not None:
+                described = runtime.command(["aspire", "describe", "--apphost", APPHOST_RELATIVE,
+                    "--format", "Json", "--non-interactive", "--nologo"], remaining)
+                records = _resource_records(_json_from_output(described.stdout)) if described.returncode == 0 else []
+                snapshot["describeReturnCode"] = described.returncode
+        snapshot["resources"] = _resource_diagnostic_state(records)
+        remaining = _remaining_timeout(deadline, 4)
+        if remaining is not None:
+            logs = runtime.command(["aspire", "logs", "eventstore", "--apphost", APPHOST_RELATIVE,
+                "--format", "Json", "--tail", "1000", "--non-interactive", "--nologo"], remaining)
+            snapshot["logsReturnCode"] = logs.returncode
+            snapshot["eventstoreLogs"] = _safe_resource_log_events(logs.stdout)
+        if phase == "failure":
+            store = next((row for row in snapshot["resources"] if row["resource"] == "eventstore"), {})
+            probes: list[dict[str, Any]] = []
+            for role, key in (("public-proxy", "advertisedEndpoints"), ("process-target", "processEndpoints")):
+                peers = store.get(key, [])
+                base = next((url for url in peers if url.startswith("http://")), peers[0] if peers else None)
+                if base is None:
+                    continue
+                for path in ("/alive", "/health"):
+                    remaining = _remaining_timeout(deadline, 1)
+                    if remaining is None:
+                        break
+                    status, health, _ = runtime.json_request(base + path, timeout=remaining, deadline=deadline)
+                    checks = health.get("results", {})
+                    probes.append({"role": role, "endpoint": base, "path": path, "statusCode": status,
+                        "checks": {key: child.get("status") for key, child in checks.items()
+                            if key in {"self", "dapr-sidecar", "dapr-actor-placement", "dapr-statestore", "dapr-pubsub",
+                                "dapr-configstore", "dapr-app-channel-token", WRITER_PROTOCOL_HEALTH_CHECK,
+                                "projection-delivery-unresolved-conflict"}
+                            and isinstance(child, dict) and child.get("status") in {"Healthy", "Degraded", "Unhealthy"}}
+                            if isinstance(checks, dict) else {}})
+            snapshot["anonymousDiagnosticProbes"] = probes
+    except Exception as exception:
+        snapshot["diagnosticExceptionType"] = type(exception).__name__
+    finally:
+        snapshots = getattr(runtime, "diagnostic_snapshots", [])
+        snapshots.append(snapshot)
+        runtime.diagnostic_snapshots = snapshots
+        output = getattr(runtime, "diagnostics_output", None)
+        if isinstance(output, Path):
+            try:
+                _atomic_write(output, {"schema": "hexalith.frontcomposer.apphost-runtime-diagnostics.v1",
+                    "purpose": "diagnostics-only", "validatedContractAuthority": False, "snapshots": snapshots})
+            except OSError as exception:
+                print("AppHost runtime diagnostic write failed: " + type(exception).__name__, file=sys.stderr)
+        print("AppHost runtime diagnostic summary=" + json.dumps({
+            "phase": phase, "resourceCount": len(snapshot.get("resources", [])),
+            "diagnosticExceptionType": snapshot.get("diagnosticExceptionType"),
+            "logsReturnCode": snapshot.get("logsReturnCode"),
+        }, separators=(",", ":")), file=sys.stderr)
+
+
 def _safe_probe_diagnostic(line: str) -> str | None:
     """Project only known probe fields; raw resource output has no trusted schema."""
     prefixes = ("AppHost HTTP transport failure=", "AppHost readiness probe=")
@@ -3319,6 +3501,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--runtime-input-manifest", required=True, type=Path)
     parser.add_argument("--package-root", type=Path)
     parser.add_argument("--export-diagnostics", type=Path)
+    parser.add_argument("--runtime-diagnostics-output", type=Path)
     args = parser.parse_args(argv)
     if args.export_diagnostics is not None:
         _export_failure_diagnostics(args.export_diagnostics, args.runtime_input_manifest)
@@ -3330,6 +3513,7 @@ def main(argv: list[str] | None = None) -> int:
     output = args.output.absolute()
     runtime = SmokeRuntime()
     runtime.collect_failure_logs = True
+    runtime.diagnostics_output = args.runtime_diagnostics_output
     code = capture(
         output,
         runtime=runtime,

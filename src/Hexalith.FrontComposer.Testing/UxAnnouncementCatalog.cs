@@ -16,6 +16,10 @@ public static class UxAnnouncementCatalog
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
         ArgumentException.ThrowIfNullOrWhiteSpace(stateIdentity);
+        if (variant is not null && !(rowId is "AM-18" or "AM-19" && variant == "single" || rowId == "AM-30" && variant == "offline" || rowId == "AM-26"))
+        {
+            throw new ArgumentException("Variant is not supported for this announcement row.", nameof(variant));
+        }
         string resource = rowId switch
         {
             "AM-01" => "Am01Loading", "AM-02" => "Am02Empty", "AM-03" => "Am03Loaded",

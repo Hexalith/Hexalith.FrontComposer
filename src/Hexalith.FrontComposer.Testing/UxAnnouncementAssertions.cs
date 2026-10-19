@@ -54,7 +54,8 @@ public static class UxAnnouncementAssertions
             _ => "status",
         };
         bool semantics = node.Role == role && node.Name == accessibleName
-            && (!focused || !string.IsNullOrWhiteSpace(accessibleName));
+            && (!focused || !string.IsNullOrWhiteSpace(accessibleName))
+            && (expected.Channel != UxAnnouncementChannel.FocusedHeading || accessibleName == expected.Copy);
         bool channel = focused
             ? node.IsFocused && node.AriaLive is null && node.AriaAtomic is null && node.TabIndex == "-1"
             : node.AriaLive == "polite" && !node.IsFocused

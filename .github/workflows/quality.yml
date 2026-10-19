@@ -352,6 +352,7 @@ jobs:
             --timeout-seconds 600 \
             --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
             --package-root "$apphost_packages" \
+            --runtime-diagnostics-output artifacts/contracts/apphost-runtime-diagnostics/runtime-state.json \
             2>&1 | tee "$RUNNER_TEMP/frontcomposer-apphost-smoke.log"
 
       - name: 'Gate 2c: Validate current live capture'

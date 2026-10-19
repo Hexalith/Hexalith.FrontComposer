@@ -20,7 +20,7 @@ public static class UxAccessibilityAssertions
                 && target.EquivalentControlNumber is > 0 && target.EquivalentControlNumber != target.TargetNumber
                 && target.EquivalentControlBounds is { } equivalent && Valid(equivalent) && Sized(equivalent),
             UxTargetSizeExceptionKind.Spacing => target.Rationale == UxTargetSizeRationale.SeparatedFromNeighbors
-                && target.Neighbors is not null && HasSpacing(target.Bounds, target.Neighbors),
+                && target.Neighbors is { Count: > 0 } && HasSpacing(target.Bounds, target.Neighbors),
             _ => false,
         };
         if (!Valid(target.Bounds) || target.TargetNumber < 1 || !keyboard
