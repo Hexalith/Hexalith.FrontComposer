@@ -10566,3 +10566,9 @@ Review follow-up for the PNG-integrity resolution adds a separate 33,554,432-byt
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
   summary: Redact credential-shaped log categories at the runtime diagnostic artifact boundary (pre-existing, high).
   evidence: R7-E3: _safe_resource_log_events exports a regex-valid Category and removes it from the context sent to _sanitized_diagnostic_text. A synthetic ClientSecret category survives as metadata and reaches the always-uploaded runtime diagnostics. Owner: FrontComposer CI/security maintainer; close with category/context/Message artifact-boundary redaction regressions. Only synthetic data was used; no artifact was uploaded.
+
+## Deferred from: code review of spec-13-8-accept-the-completed-fresh-row-live-proof.md (2026-10-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md`
+  summary: Give the three Story 9.8 AppHost-fallback residuals (complete dependency rebuild, structured invocation results, serialized-log redaction policy) a ledger identity and owner, and reconcile them with the later source-graph build mode (pre-existing, low).
+  evidence: R2-B3: the items exist only in `spec-9-8-prove-composed-and-live-epic-9-acceptance.md` frontmatter and PRD §12.1 "Accepted residuals" with no DW ID or owner; `c6068f59` (2026-10-01) added `isolated-no-build-after-source-graph-build`, which rebuilds the full AppHost graph for current tooling. Story 13.8's frozen Never-list forbids closing them, so reconciliation belongs to a separate planning/residual pass.
