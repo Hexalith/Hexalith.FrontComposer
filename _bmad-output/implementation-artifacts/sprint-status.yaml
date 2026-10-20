@@ -205,7 +205,7 @@ development_status:
   13-5-i-ux-d-preserve-fresh-row-meaning-across-visual-and-data-cha: done
   13-6-i-ux-e-verify-responsive-and-assistive-accessibility: done
   13-7-i-ux-f-provide-reusable-ux-assertions-for-adopters: done
-  13-8-a-e9-app-1-accept-the-completed-fresh-row-live-prrevokwg: in-progress
+  13-8-a-e9-app-1-accept-the-completed-fresh-row-live-prrevokwg: done
   13-9-a-fluent-app-1-decide-the-exact-fluent-ui-v5-posture: backlog
   epic-13-retrospective: optional
 
@@ -726,8 +726,9 @@ action_items:
     owner: "Product Owner"
     status: done
     closed: "2026-10-20"
-    approver: "Administrator (requesting Product Owner)"
+    approver: "Administrator (requesting Product Owner; git author Jérôme Piquot)"
     decision: "accept"
+    decision_timing: "The 2026-10-20 Product decision was recorded before Story 13.8 acceptance; story delivery status is maintained separately in development_status."
     implementation_story: "13.8"
     ref: "_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt"
     kind: "approval"

@@ -10572,3 +10572,12 @@ Review follow-up for the PNG-integrity resolution adds a separate 33,554,432-byt
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md`
   summary: Give the three Story 9.8 AppHost-fallback residuals (complete dependency rebuild, structured invocation results, serialized-log redaction policy) a ledger identity and owner, and reconcile them with the later source-graph build mode (pre-existing, low).
   evidence: R2-B3: the items exist only in `spec-9-8-prove-composed-and-live-epic-9-acceptance.md` frontmatter and PRD §12.1 "Accepted residuals" with no DW ID or owner; `c6068f59` (2026-10-01) added `isolated-no-build-after-source-graph-build`, which rebuilds the full AppHost graph for current tooling. Story 13.8's frozen Never-list forbids closing them, so reconciliation belongs to a separate planning/residual pass.
+
+### DW-1984: Investigate the four lifecycle subscriber faults in the accepted Story 9.8 proof
+
+status: open
+origin: Story 13.8 code review round 2, R2-A1; accepted Product limitation, 2026-10-20
+source_spec: `_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md`
+owner: FrontComposer Shell maintainer
+reason: The unchanged accepted candidate `7a5737630611b4d54b0180a3fa4c9c4ccd23a28c` archive retains four Error-level EventId 5740 `LifecycleSubscriberFaulted` entries in `counter-web-logs.redacted.json`, one per create/update dispatch, each with NewState=Confirmed and FailureCategory=InvalidOperationException. Browser materialization success does not identify the faulting subscriber or establish fault-free lifecycle delivery. Product accepted the historical proof with this limitation disclosed on 2026-10-20; G-5/E9-APP-1 closure stands.
+closure: Identify the failing subscriber and cause from the preserved candidate/evidence or a separately authorized focused reproduction; record its effect on lifecycle delivery and fresh-row correctness, and link a bounded correction with relevant verification or an explicit named-owner no-change disposition. Preserve the historical record/archive; do not close DW-679 or any of the three Story 9.8 fallback residuals through this investigation.
