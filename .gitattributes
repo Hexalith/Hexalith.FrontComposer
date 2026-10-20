@@ -48,3 +48,6 @@ _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-
 
 # Reviewed Story 13.6 final browser proof retains exact evidence bytes.
 _bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/** -text
+
+# Story 13.8 replays the exact historical verifier blob beside its proof archive.
+_bmad-output/implementation-artifacts/evidence/story-13-8/validate-epic9-artifacts.mjs -text

@@ -4,7 +4,7 @@ status: final
 product_approval: pending-reapproval (D-9 amendment required after the 2026-09-22 reconciliation)
 v1_readiness_milestone_reached: false
 created: 2026-07-05
-updated: 2026-09-27
+updated: 2026-10-20
 ---
 
 # PRD: Hexalith.FrontComposer
@@ -39,10 +39,10 @@ This table is the only authority on what still separates the product from the re
 
 **Approval gates**
 
-| Gate | Pass condition | Approver | Must cite | State on 2026-09-22 |
+| Gate | Pass condition | Approver | Must cite | State (dated updates below) |
 | --- | --- | --- | --- | --- |
 | G-4 Product re-approval | Product records a dated D-9 amendment approving the exact PRD and addendum SHA-256 pair after OI-4, OI-10, OI-16, and OI-19 close and a refreshed synthesized postfix reviewer gate has no unresolved Critical/High finding. Any later digest change requires a fresh gate report. | Product Owner | FLUENT-APP-1; UX-A through UX-F; DOC-A through DOC-C; refreshed digest-bound review packet; final PRD-APP-1 | Open. The 2026-09-09 review is historical after this reconciliation; no implementation evidence or Product approval is inferred. |
-| G-5 Epic 9 acceptance | Product records E9-APP-1 acceptance of the Story 9.8 proof packet as composed/live FC-NIP evidence. Epic 9 delivery and E9-AI-1…E9-AI-6 are closed independently of this approval. | Product Owner | `_bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md` | Open on the Product record; Stories 9.1–9.8, the retrospective, the live proof, and delivery bookkeeping are done. |
+| G-5 Epic 9 acceptance | Product records E9-APP-1 acceptance of the Story 9.8 proof packet as composed/live FC-NIP evidence. Epic 9 delivery and E9-AI-1…E9-AI-6 are closed independently of this approval. | Product Owner | `_bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md` at `4e9b2423c228d0f940884389ecf0bd90f0d4264b`; [Story 13.8 Product decision](../implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt) | Closed 2026-10-20 by Administrator, the requesting Product Owner, accepting historical candidate `7a5737630611b4d54b0180a3fa4c9c4ccd23a28c` with its stated limitations and checksum-bound archive. Stories 9.1–9.8 and the retrospective remain done; G-4 and other approvals remain open. |
 
 ## 1. Vision
 
@@ -50,7 +50,7 @@ Hexalith.FrontComposer is the Hexalith Blazor Front Shell: a .NET framework that
 
 The product bet is that domain teams should describe their operational surface once, in code, then get consistent human and AI access paths without hand-building every admin shell. FrontComposer makes the domain type the source of truth and uses source generation, schema fingerprints, and strict governance tests to keep UI, lifecycle state, MCP descriptors, and tooling aligned.
 
-The v1.0 readiness milestone commits to two outcomes: a **developer framework that is safe to package, consume, test, customize, and evolve** and an **operations shell an operator can trust**. In that shell, fresh rows are marked only from real command outcomes, projection freshness recovers after transport failure, and command state never overstates what the backend confirmed. Epics 9–11 delivered the runtime remediation baseline, but the 2026-09-09 validation reopened release-safety conformance and UX handoff completeness. The remaining work is listed in §0.1: release architecture, implementation, evidence, and ownership under G-1/G-2/G-8; EventStore provenance reconciliation under G-3; and Product approvals under G-4/G-5. G-7 closed on the exact 2026-09-26 MCP candidate.
+The v1.0 readiness milestone commits to two outcomes: a **developer framework that is safe to package, consume, test, customize, and evolve** and an **operations shell an operator can trust**. In that shell, fresh rows are marked only from real command outcomes, projection freshness recovers after transport failure, and command state never overstates what the backend confirmed. Epics 9–11 delivered the runtime remediation baseline, but the 2026-09-09 validation reopened release-safety conformance and UX handoff completeness. The remaining work is listed in §0.1: release architecture, implementation, evidence, and ownership under G-1/G-2/G-8; EventStore provenance reconciliation under G-3; and Product re-approval under G-4. G-5 closed on 2026-10-20 through the [Story 13.8 Product decision](../implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt); G-7 closed on the exact 2026-09-26 MCP candidate.
 
 ## 2. Target Users
 
@@ -151,7 +151,7 @@ Status labels are part of each requirement's downstream contract. Three tables, 
 | SM-1 adoption proof (for FR-1, FR-2, FR-7, FR-8) | G-6 | Tenants, or a dated Product-selected Parties fallback, supplies equivalent candidate-bound bootstrap evidence. |
 | SM-4 audit and FR-19 host-enforcement consequences | G-7 | The audit/enforcement evidence and the independent OI-2 security disposition both exist. |
 | FR-8, FR-10–FR-16, FR-22, FR-23 UX deltas and SM-6 | G-4 through OI-16 | The 2026-09-09 focus, announcement, validation/rejection, state, responsive-accessibility, component/source, testing, and evidence obligations are implemented and pass UX revalidation. The previously delivered runtime baseline remains intact. |
-| D-9, D-4, and UX-contract approvals | G-4, G-5 | Dated approval records exist; OI-4, OI-10, OI-16, OI-19, and the digest-bound postfix reviewer gate are closed before D-9 re-approval. |
+| D-9 and UX-contract approvals | G-4 | OI-4, OI-10, OI-16, OI-19, and the digest-bound postfix reviewer gate close before dated D-9 re-approval. D-4/G-5 Product acceptance is recorded separately in the [Story 13.8 Product decision](../implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt) (2026-10-20). |
 
 **Table B — regression baselines.** Delivered; the Framework maintainer verifies no regression on every release.
 
@@ -586,9 +586,9 @@ The Shell must scope every operator-facing read, subscription, count, and persis
 - CLI inspect/migrate, drift detection, Testing package with failure-state fakes, public API baselines.
 - Aspire-grade visual refresh and Fluent governance policies.
 
-### 8.2 Readiness Program Status (sprint-status truth, 2026-09-22)
+### 8.2 Readiness Program Status (sprint-status truth, 2026-09-22; Epic 9 approval update 2026-10-20)
 
-- **Epic 9:** done. Stories 9.1–9.8, E9-AI-1…E9-AI-6, the retrospective, and the 9.8 live proof are completed delivery history. G-5/E9-APP-1 remains open solely for dated Product acceptance and does not reopen the epic.
+- **Epic 9:** done. Stories 9.1–9.8, E9-AI-1…E9-AI-6, the retrospective, and the 9.8 live proof are completed delivery history. G-5/E9-APP-1 and OI-1 closed on 2026-10-20 through Administrator's explicit acceptance in the [Story 13.8 Product decision](../implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt), citing record revision `4e9b2423c228d0f940884389ecf0bd90f0d4264b` and candidate `7a5737630611b4d54b0180a3fa4c9c4ccd23a28c`. Historical delivery, exclusions, the default-lane restore blocker, and fallback residuals remain unchanged.
 - **Epic 10:** done; tooling-governance and Testing-redaction outcomes remain reusable evidence.
 - **Epic 11:** done for its bounded delivery. Stories 11.0–11.9 and 11.11–11.32 are completed history (there is no 11.10; it was split into 11.11–11.14). Story 11.25 delivered a technical identity capture only; it did not grant migration approval or close G-3. E11R-AI-1 remains open but is re-homed to EVT-ID-1/EVT-APP-1 so later tuple drift does not rewrite Story 11.25. The current Story 11.32 validator red state is new PLAN-INT-2 work, not a retroactive status change.
 - **Release governance:** REL-1…REL-5 remain delivery history; REL-AI-1 is open (G-1). The 2026-09-09 GOV-1 gate failed publication-boundary architecture and implementation conformance. Its graph/catalog core remains implemented, but G-2 proof/acceptance and G-8 architecture-plus-code work are open.
@@ -682,7 +682,7 @@ Each metric names its evidence and its state. "Tests exist" or "workflow green" 
 | D-1 | Canonical PRD path | Product Owner | Amended 2026-09-08: `_bmad-output/planning-artifacts/prd.md` is the only source of record; `prd-addendum-2026-09-08.md` is its addendum; the 2026-07-05 run copy is archived and immutable. | No §0.1 gate. |
 | D-2 | Architecture and UX discovery | Product Owner | Resolved: `architecture.md` and `ux-design.md` are canonical planning sources and the overflow homes for mechanism and visual rules; `project-docs` is provenance. | No §0.1 gate. |
 | D-3 | Generated command route family | Product + Architecture | Resolved 2026-07-05: `/commands/{BoundedContext}/{CommandTypeName}`; contract `_bmad-output/contracts/fc-route-generated-command-route-contract-2026-07-05.md`. | No §0.1 gate; regression evidence only. |
-| D-4 | FC-NIP row identity payload source | Product + Architecture | Decision recorded 2026-08-12 (successor contract); composition delivered by Stories 9.3–9.8 with live proof 2026-08-27. Non-goal: server-allocated keys (DW-679). Residual: 9.8 deferred AppHost-fallback rebuild. | G-5 (approval record). |
+| D-4 | FC-NIP row identity payload source | Product + Architecture | Decision recorded 2026-08-12 (successor contract); composition delivered by Stories 9.3–9.8 with live proof 2026-08-27. Product accepted the historical proof on 2026-10-20 in the [Story 13.8 Product decision](../implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt). Non-goal: server-allocated keys (DW-679). Residual: 9.8 deferred AppHost-fallback rebuild. | G-5 closed 2026-10-20; no remaining D-4 approval gate. |
 | D-5 | Contracts kernel split release posture | Architecture + PM | Resolved and delivered (Stories 11.8, 11.11–11.14). | No §0.1 gate; regression evidence only. |
 | D-6 | FR-24 release model and ownership | Release Owner | Amended 2026-09-09 to current execution truth: unsigned candidates remain repository-signed by NuGet.org and the target evidence manifest is `hexalith.release-evidence.v4`, but `.github/workflows/release.yml` currently selects the legacy reusable job and its `HEXALITH_RELEASE_PUBLISH_ENABLED` gate. Exact-SHA dispatch and protected-environment approval are controls, not proof of candidate/credential isolation. REL-AI-1 remains post-publication audit; the target publication boundary and halt posture are D-16/G-8. | G-1, G-8. |
 | D-7 | Success metric targets and adopter fallback | Product Owner + Release Owner | Amended 2026-09-09: §9 states each metric's evidence and state. If Tenants cannot produce G-6 evidence, Product chooses Parties as substitute adopter or holds the milestone; Parties inherits the identical evidence obligation and a hold leaves G-6 open. The 2026-09-26 Tenants G-6 acceptance did not invoke this fallback, and Story 12.2 / ADOPT-APP-1 was closed as not required on 2026-09-27 (`_bmad-output/implementation-artifacts/spec-12-2-select-a-substitute-adopter.md`). Any future invocation needs a new dated Product decision and a new story. | G-6, now closed on Tenants proof. |
@@ -698,11 +698,11 @@ Each metric names its evidence and its state. "Tests exist" or "workflow green" 
 
 ### 12.1 Question Disposition
 
-**Closed:** D-1, D-2, D-3, D-5, D-10, D-15; FC-NIP composition (D-4 decision and delivery); analyzer activation; author-signing requirement (dropped); rollback of the EventStore identity (rejected in D-12). D-8's artifact shape is retained, but completeness is reopened through OI-16.
+**Closed:** D-1, D-2, D-3, D-5, D-10, D-15; FC-NIP composition (D-4 decision and delivery, plus Product acceptance on 2026-10-20 in the [Story 13.8 Product decision](../implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt)); analyzer activation; author-signing requirement (dropped); rollback of the EventStore identity (rejected in D-12). D-8's artifact shape is retained, but completeness is reopened through OI-16.
 
 **Routed with named owners:** the Hexalith.Builds `BUILD-REL-1` lineage anchor/predecessor was accepted 2026-08-08, while EXT-BUILDS-1 and FrontComposer acceptance remain routed through G-2/G-8. Current EventStore exact-tuple evidence and migration approval are routed through EVT-ID-1/EVT-APP-1 under G-3. Publication privilege and incident posture are routed through D-16/G-8.
 
-**Awaiting confirmation (answer proposed, not decided):** OI-1 (Epic 9 acceptance record), OI-4 (D-13 Fluent RC posture), OI-9 (A3 sample-host container), OI-12 (Product/Release acceptance of D-16 and its halt posture).
+**Awaiting confirmation (answer proposed, not decided):** OI-4 (D-13 Fluent RC posture), OI-9 (A3 sample-host container), OI-12 (Product/Release acceptance of D-16 and its halt posture).
 
 **Accepted residuals:** DW-679 and the 9.8 AppHost-fallback deferred items; MCP timing side channels out of scope. The FR-19 credential signal, static catalog, SDK absent-resource distinction, and host composition limits were accepted for the exact v2 MCP candidate on 2026-09-26 (MCP-APP-1).
 
@@ -715,7 +715,7 @@ No open item is closed merely because it has a target.
 
 | ID | Class and target | Owner | Unblock condition | Gate | State |
 | --- | --- | --- | --- | --- | --- |
-| OI-1 | A — E9-APP-1 | Product Owner | Dated acceptance cites the Story 9.8 proof. Epic 9 delivery bookkeeping is already closed independently. | G-5 | Open |
+| OI-1 | A — E9-APP-1 | Product Owner | Dated acceptance cites the Story 9.8 proof. Epic 9 delivery bookkeeping is already closed independently. | G-5 | Closed 2026-10-20 by Administrator, the requesting Product Owner; [Story 13.8 Product decision](../implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt) accepts record revision `4e9b2423c228d0f940884389ecf0bd90f0d4264b` and candidate `7a5737630611b4d54b0180a3fa4c9c4ccd23a28c` with the preserved exclusions and residuals. |
 | OI-2 | A — MCP-APP-1 | Independent security reviewer | Dated sign-off after MCP-SEC-1/2, covering every remaining FR-19 disclosure/oracle and host-authentication requirement. | G-7 | Closed 2026-09-26 for v2 candidate `942847d17eee54061bb9b7f7bde254b361abf802dbdb70ce21c460136c5aa00b`; signed disposition in the G-7 security-review packet. |
 | OI-3 | I — MCP-SEC-1 and MCP-SEC-2 | Framework + Security QA | Non-Development allow-all use fails closed; endpoint authentication, SDK unregistered-URI behavior, isolation, redaction, leak/oracle checks, and a named SM-4 audit class pass. | G-7 | Closed 2026-09-26 for the v2 candidate: named audit 6/6, MCP suite 429/429, Governance lane 15/15. |
 | OI-4 | A — FLUENT-APP-1 | Product Owner + Architect | D-13 accepts an exact catalog identity or records a dated alternative with revalidation triggers. | G-4 | Open |
