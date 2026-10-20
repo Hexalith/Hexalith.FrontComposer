@@ -74,6 +74,28 @@ context:
 
 ### Review Findings
 
+Review round 8 (2026-10-20) of the round-6 fix commit `7879ff29` (`a2196fd6..HEAD` over the File List code and documentation paths); per-finding verdicts are under Review Triage Log → Review round 8.
+
+- [x] [Review][Patch] Treat `role="alertdialog"` like `alert` on silent SS rows (null or explicit `aria-live="off"` both fail `Semantics.Silent`), pin it inside the existing alert/status/log loops, and say "roles other than alert/alertdialog" in the README and how-to [src/Hexalith.FrontComposer.Testing/UxStateAssertions.cs:49]
+- [x] [Review][Patch] Name the focus-only rows SS-05/06/28/37/38 in the README and how-to, so the SS-46/47 restored-focus rows visibly follow the silent rule (explicit `aria-live="off"` accepted) instead of the focus-only absent-attribute rule [src/Hexalith.FrontComposer.Testing/README.md:28]
+- [x] [Review][Patch] Name the helpers in the diagnostic-scope sentence (`AssertChannel`, `AssertLinkedSummary`, `AssertState`, `AssertTargetSize`), add the recorder's ordinal failures to the fact-naming list, and state that sequence diagnostics also print the mismatch index and differing member names [src/Hexalith.FrontComposer.Testing/README.md:33]
+- [x] [Review][Patch] State which Spacing neighbors fail: those intersecting the target's 24 px spacing circle, and undersized neighbors whose circles meet it, evaluated per recorded target [docs/how-to/test-generated-components.md:143]
+
+Rejected (round 8):
+
+- R8-B1 (low): carried R3-B13; case-insensitive containment now makes `Name` inside `Username` reachable, but an embedded label stays unlikely and token-boundary matching would add new punctuation false failures.
+- R8-B2 (low): a decorated visible label with an undecorated name fails loudly; punctuation normalization is a new rule.
+- R8-B5 (false): the unreachable `default` arm is the intended fail-closed guard for a future row; nothing is accepted silently.
+- R8-B6 (false): the recorder's Passed AE-04 path calls the same `Failures` that the null-`Neighbors` regression pins; null fails every Spacing case.
+- R8-B8 (low): the XML summaries stay accurate; the packaged README/how-to carry the detailed rules, and release-note wording is outside this story.
+- R8-B9 (false): nothing ran for SS-36 Ready; the documented set and facts match `UxStateAssertions.cs:57`.
+- R8-B10 (low): the three row lists agree today; a document-reading sync test is new tooling.
+- R8-E2 (low): carried R4-E10; callers measure the computed (normalized) role.
+- R8-E3 (low): carried R3-E19; `AccessibleName` is non-nullable and null fails loudly.
+- R8-E4 (low): same as R8-B1.
+- R8-E6 (low): carried R3-E5 (impossible contrast ratios).
+- R8-V1 (low): same as R8-B1.
+
 Review round 6 (2026-10-20) of the round-4/5 fix commit `a2196fd6`; per-finding verdicts are under Review Triage Log → Review round 6.
 
 - [x] [Review][Patch] Keep `role="alert"` speaking on silent SS rows: accept explicit `aria-live="off"` only for non-alert roles, and pin alert with `off` as a `Semantics.Silent` failure [src/Hexalith.FrontComposer.Testing/UxStateAssertions.cs:49]
@@ -490,6 +512,41 @@ All three workflow review layers completed against `/tmp/fc137-round6-workflow-d
 
 Every finding has its own disposition. Repeated findings retain their prior verdict/routes without duplicate ledger entries. Five new pre-existing diagnostic follow-ups are appended to deferred-work.md: stderr retention, parseable bounded logs, stale console cleanup, resource-projection verification and category redaction. They do not originate in the Testing-package helper changes; no intent/spec loopback or implementation patch is required. Parent probes use only synthetic data and are retained at `/tmp/fc137-round6/review-probes.json`; no diagnostics were uploaded.
 
+### Review round 8
+
+Scope: the round-6 fix commit `7879ff29` (`a2196fd6..HEAD`; `d52526a4` and `c63f8eb9` touch only records and submodule pointers) over the Story 13.7 File List code and documentation paths, excluding story/tracking artifacts (8 files, +47/−15). Round 7 saw these patches only inside the cumulative baseline diff. Layers: Blind Hunter (B), Edge Case Hunter (E), Verification Gap (V), Acceptance Auditor (A); none failed. The Verification Gap layer filed no gap. Rows marked carried repeat an earlier disposition.
+
+| Finding | Verdict | Route | Verified evidence |
+| --- | --- | --- | --- |
+| R8-B1 | low | reject | Carried R3-B13. `Contains(..., OrdinalIgnoreCase)` (`UxValidationAssertions.cs:58`) now accepts visible `Name` inside `Username` or `Rename`, which `Ordinal` rejected, so R3-B13's example is reachable. A declared label embedded in another word of the computed name stays unlikely; token-boundary matching would newly reject punctuation-adjacent names such as `Name:` or `Name*`, so it is not a direct correction. |
+| R8-B2 | low | reject | A decorated visible label (`Name *`, `Name:`) with an undecorated computed name fails `Field[n].Label` loudly. A label-element asterisk is part of both the visible text and the computed name, so it still matches. Punctuation normalization is a new comparison rule. |
+| R8-B3 | low | patch (P2) | SS-47 is in the silent set (`UxStateAssertions.cs:36`), not `focusOnly` (l.35), so its focused route heading accepts explicit `aria-live="off"` and ignores `aria-atomic`. That matches UX-SS-1 ("Intentionally silent; heading focus is context"), and neither attribute makes a non-live heading speak. The docs, however, say "focus-only summaries/headings still require absent live/atomic attributes" without naming the focus-only rows, so SS-47 reads as contradicted. |
+| R8-B4 | medium | patch (P1) | `Semantics.Silent` excludes only the exact `alert` token and `IsLiveRole` omits `alertdialog`. SS-36/39/45/46 (no fixed role) therefore pass with `role="alertdialog"` whether `aria-live` is null or `off`; no test or document mentions `alertdialog`. Core-AAM maps `alertdialog` to the same system alert event as `alert`, so the R6-B2 rationale applies; an in-flow abandonment warning (SS-39/45) is a plausible place for it. The alert-with-`off` pin on SS-36 alone is sufficient for the single shared predicate. |
+| R8-B5 | false | reject | The unreachable `default` arm is the intended fail-closed guard (R6 P9). A future `AccessibilityEvidenceRow` member without a `case` throws instead of recording unvalidated evidence, so the claimed silent acceptance does not occur. |
+| R8-B6 | false | reject | The recorder's Passed AE-04 path calls the same `UxAccessibilityAssertions.Failures` that the null-`Neighbors` regression pins (`TestingFailureModeTests.cs:524`), and the Passed-contradiction cases pin the recorder→`Failures` wiring. Both statements are scoped to Spacing, and a sized target with a Spacing exception fails `UnneededException`, so null fails every Spacing case. Stray neighbor data on other exceptions is carried R6-B7. |
+| R8-B7 | low | patch (P3) | The rescoped sentence still omits the recorder's fact-naming ordinal failure (`Targets.TargetNumber`, `Targets.EquivalentControlNumber`) and the sequence mismatch index and differing member names (`UxAnnouncementAssertions.cs:23`). The `Field[n]`/`Targets[n]` positions are check names, not measured values, and the undefined-row `ArgumentOutOfRangeException` is argument validation. |
+| R8-B8 | low | reject | The `AssertState` and `AssertLinkedSummary` XML summaries stay accurate at their level of detail; the packaged README and how-to carry the silent-row and label rules and were updated. The v4.7.0-shipped helpers tighten under the pushed `fix(13.7)` commit; release-note wording is outside this story's files. |
+| R8-B9 | false | reject | Nothing ran for SS-36 Ready, and the documented set SS-25/36/37/38 with its no-dispatch/queue/lifecycle facts matches `UxStateAssertions.cs:57` exactly; R6 P5 added SS-36 deliberately. The adopter measures the same facts either way. |
+| R8-B10 | low | reject | The README, how-to and code row sets agree today (confirmed by V and A). A document-reading sync test is new tooling with new test identifiers, not a direct correction. |
+| R8-E1 | medium | patch (P1) | Same root cause as R8-B4. |
+| R8-E2 | low | reject | Carried R4-E10: callers measure the computed accessibility-tree role, which is already normalized; token normalization is new parsing. |
+| R8-E3 | low | reject | Carried R3-E19: `AccessibleName` is a non-nullable contract member; null fails loudly. |
+| R8-E4 | low | reject | Same as R8-B1. |
+| R8-E5 | low | patch (P4) | `HasSpacing` implements the per-target WCAG 2.5.8 circle test: a 12 px radius against each neighbor rectangle, plus centre distance for undersized neighbors. A neighbor that overlaps the target outside the circle therefore passes, for example target `(0,0,10,100)` with neighbor `(0,90,10,10)`. The how-to's unqualified "Intersecting measured neighbors also fail" reads as target overlap. |
+| R8-E6 | low | reject | Carried R3-E5: impossible contrast ratios require a broken caller measurement. |
+| R8-V1 | low | reject | Same as R8-B1 (an Other finding; no verification gap was filed). |
+| R8-A1 | low | patch (P3) | Same root cause as R8-B7: "surface-state failures name failed checks" also covers `AssertBlockedSubmit`, whose VR-05 focus and AM-20 count failures (`UxStateAssertions.cs:135,138`) name no check. |
+| R8-A2 | low | patch (P2) | Same root cause as R8-B3. |
+
+Survivor groups:
+
+- P1 (B4, E1): reject `alert` and `alertdialog` on silent rows; add `alertdialog` to the existing alert/status/log test loops; update the "non-alert roles" wording in both documents.
+- P2 (B3, A2): name the focus-only rows SS-05/06/28/37/38 in both documents.
+- P3 (B7, A1): name the four check-naming helpers, add recorder ordinal failures, and mention the sequence mismatch index and differing member names.
+- P4 (E5): qualify the how-to Spacing sentence with the spacing-circle geometry.
+
+P1 changes a private predicate and adds cases inside existing test methods, so the public API baseline and identifier seal are unchanged. Nothing is deferred and nothing routes to `intent_gap` or `bad_spec`.
+
 ## Verification
 
 - `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` — passed, 0 warnings / 0 errors; final log `/tmp/fc137-solution-release.log`. This includes the required Testing Release build.
@@ -661,6 +718,21 @@ Frozen matrix audit: sequence match/drift, channel misuse and 249/250 coalescing
 Before editing, the exact-target Aspire start hit Shell `MSB4018` file locking. Exact-target stop and a serialized Debug AppHost build recovered it; `aspire start --no-build --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive` succeeded. Describe showed counter-web Running/Healthy, security Running/Unhealthy and dependent resources Waiting; exact-target stop succeeded. Logs are `aspire-*.log` under the same temporary directory.
 
 Documentation drift sweep checked the package README, how-to, XML documentation and `PublicAPI.Shipped.txt`, and searched reference/how-to/tutorials/skills/project-docs/contracts for the affected helpers. Only the updated how-to contains additional public guidance; no other contract-family page needs changes. No public signature changed, so the API baseline is unchanged. Test method identifiers, the identifier ledger/GOV-1 seal, Shell runtime/constants, dependencies and submodule pointers are unchanged in this run. The normalized frozen block still matches the preserved original baseline (SHA-256 `06c3c63a25568aa1cea3a7de2bbe213bbd4dd8c9f9ec995f84f039c29de52097`). Required approvals remain separately owned. All three independent review layers completed (Review round 7 above). The unchanged strict artifact command at candidate `d52526a4bd1272760543e6a65840dc2b0ed93cee` exited 1 with only the two preserved historical attribution failures; logs are `/tmp/fc137-round6/story-artifacts.log` and `story-artifacts-exit.txt`. Under reconciliation checklist item 10, spec status remains `in-review` and sprint status `review`; passing implementation checks do not close that gate. A final post-commit rerun must retain the full canonical candidate and actual result in the handoff. The lockfile-pinned/installed commitlint 21.2.2 CLI passed the exact local commit message with 0 problems and 0 warnings (`node node_modules/@commitlint/cli/cli.js --edit /tmp/fc137-round6/commit-message.txt --verbose`); evidence is `commitlint.log` in the same temporary directory. `git diff --check` passed. The local commit records reviewed patches without a done transition.
+
+### Review round 8 patch verification — 2026-10-20
+
+All four round-8 patches are applied. Silent SS rows now reject `alertdialog` as well as `alert`, with null or explicit `aria-live="off"`; the existing SS-36 role loop pins both. Both adopter documents name the focus-only rows SS-05/06/28/37/38 and the SS-46/47 restored-focus rows, name the four helpers whose failures list checks, add recorder ordinal failures and the sequence mismatch index/member names, and state the per-target spacing-circle geometry. No public signature, test method identifier, identifier/GOV-1 seal, Shell runtime/constant, dependency or submodule pointer changed.
+
+| Lane | Command | Result |
+| --- | --- | --- |
+| Focused Debug build | `DiffEngine_Disabled=true dotnet build tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj -c Debug --no-restore -m:1 -nodeReuse:false --disable-build-servers -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` | Passed: 0 warnings, 0 errors |
+| Direct failure matrix | `dotnet tests/Hexalith.FrontComposer.Testing.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Testing.Tests.dll -class '*TestingFailureModeTests'` | Passed: 139/139, 0 skipped |
+| One-defect mutant | Restored `semantics.Role != "alert"`, rebuilt, ran `-method '*UxStates_HiddenDeniedEntriesAndSelectedDisabledTab_AllowCanonicalAlternatives'` | Failed as intended (1/1); source restored byte-for-byte (sha256 verified) and rebuilt |
+| Full Testing assembly (Debug, direct) | `dotnet tests/Hexalith.FrontComposer.Testing.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Testing.Tests.dll` | Passed: 185/185, 0 skipped; count unchanged |
+| Documentation | `DiffEngine_Disabled=true NuGetAudit=false MinVerVersionOverride=1.0.0 pwsh -NoProfile -File eng/validate-docs.ps1 -SkipSnippetBuild` | Passed; no code block changed, so snippets were not rebuilt |
+| Strict story artifacts | `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md --candidate HEAD` | Failed: exit 1, only the two historical attribution errors (unmapped `7f57da411c3abf8e1d459d0611c49632c07393a7`, interleaved `ee9762e6c74914ccd33ec1d2caf322bdc21a10b4`) |
+
+Under reconciliation checklist item 10, spec status stays `in-review` and the sprint row stays `review`; passing implementation checks do not close that gate. Logs are local diagnostic records under the session scratchpad (`fc137-r8-*`). The changes are uncommitted.
 
 ## File List
 

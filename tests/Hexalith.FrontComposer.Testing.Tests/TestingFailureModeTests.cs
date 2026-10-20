@@ -1378,10 +1378,10 @@ public sealed class TestingFailureModeTests {
                     snapshot with { Semantics = snapshot.Semantics with { AriaLive = live } })).Message.ShouldContain("Semantics.Silent");
             }
         }
-        foreach (string role in new[] { "alert", "status", "log" })
+        foreach (string role in new[] { "alert", "alertdialog", "status", "log" })
         {
             UxSurfaceSnapshot off = ready with { Semantics = ready.Semantics with { Role = role, AriaLive = "off" } };
-            if (role == "alert")
+            if (role is "alert" or "alertdialog")
             {
                 Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState("SS-36", off)).Message.ShouldContain("Semantics.Silent");
             }
