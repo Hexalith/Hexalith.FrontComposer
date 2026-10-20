@@ -10543,3 +10543,23 @@ Review follow-up for the PNG-integrity resolution adds a separate 33,554,432-byt
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
   summary: Reconcile the stale pre-existing AppHost diagnostic exception-output test with the structured JSON summary.
   evidence: R5-V2: python3 -m unittest discover -s tests/eng -p test_pact_provider_apphost_smoke.py -k failure_log_capture fails 1/1 at line 3202, expecting logs unavailable: RuntimeError instead of diagnosticExceptionType JSON; exact output is /tmp/fc137-round4/review-existing-diagnostic-test.log. Owner: FrontComposer CI maintainer; close after this focused test and its contract-artifact lane pass without weakening cleanup or redaction assertions.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+  summary: Retain bounded sanitized stderr from failing Aspire describe/log commands in runtime diagnostics (pre-existing, medium).
+  evidence: R7-B7: _capture_runtime_diagnostics records stdout and return codes only; the parent synthetic runtime returns explanatory stderr which never appears in the written packet. Owner: FrontComposer AppHost/CI maintainer; close with a failing-command diagnostic artifact assertion that retains useful detail while excluding credential canaries.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+  summary: Keep oversized Aspire JSON log collection parseable before bounding retained diagnostic events (pre-existing, medium).
+  evidence: R7-B8: SmokeRuntime.command truncates aspire logs output to its tail before _safe_resource_log_events parses JSON. A 5,017,010-byte synthetic logs envelope exceeds the 4,194,304-character bound and yields available=false, losing all events. Owner: FrontComposer AppHost/CI maintainer; close with an oversized-output regression and a bounded parseable collection strategy.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+  summary: Remove stale exported AppHost console diagnostics when the current run has no console source (pre-existing, low).
+  evidence: R7-B9: _export_failure_diagnostics removes receipt destinations before probing sources, but leaves apphost-smoke.redacted.log untouched when its source is absent. A parent synthetic probe retains prior-run bytes. Owner: FrontComposer AppHost/CI maintainer; close after repeated-export cases prove current-run ownership of every exported diagnostic.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+  summary: Verify runtime diagnostic resource projection and malformed/oversized collector behavior (pre-existing, medium).
+  evidence: R7-B10: tests search finds no assertions on _resource_diagnostic_state listener projection, process metadata, resource/state filtering or malformed records; existing capture tests assert receipt/cleanup behavior instead. Owner: FrontComposer AppHost/CI maintainer; add actual Aspire-shape and anonymous endpoint-filtering assertions. Successful structured credential-context capture is already independently covered by the R5-V1 deferred entry.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+  summary: Redact credential-shaped log categories at the runtime diagnostic artifact boundary (pre-existing, high).
+  evidence: R7-E3: _safe_resource_log_events exports a regex-valid Category and removes it from the context sent to _sanitized_diagnostic_text. A synthetic ClientSecret category survives as metadata and reaches the always-uploaded runtime diagnostics. Owner: FrontComposer CI/security maintainer; close with category/context/Message artifact-boundary redaction regressions. Only synthetic data was used; no artifact was uploaded.

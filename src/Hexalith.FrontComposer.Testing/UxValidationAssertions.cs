@@ -55,7 +55,7 @@ public static class UxValidationAssertions
             Check(prior is null || string.IsNullOrWhiteSpace(field.ErrorId) || string.IsNullOrWhiteSpace(prior.ErrorId)
                 || field.ErrorId == prior.ErrorId, at + "ErrorId");
             Check(field.VisibleLabel == declaration.VisibleLabel
-                && !string.IsNullOrWhiteSpace(field.VisibleLabel) && NormalizeWhitespace(field.AccessibleName).Contains(NormalizeWhitespace(field.VisibleLabel), StringComparison.Ordinal), at + "Label");
+                && !string.IsNullOrWhiteSpace(field.VisibleLabel) && NormalizeWhitespace(field.AccessibleName).Contains(NormalizeWhitespace(field.VisibleLabel), StringComparison.OrdinalIgnoreCase), at + "Label");
             Check(group is not null && !string.IsNullOrWhiteSpace(group.GroupId) && field.GroupId == group.GroupId
                 && group.FieldKeys.Contains(field.FieldKey, StringComparer.Ordinal)
                 && !string.IsNullOrWhiteSpace(group.VisibleLabel) && field.GroupVisibleLabel == group.VisibleLabel

@@ -37,7 +37,7 @@ public sealed class AccessibilityMeasurements
     public bool? NoHoverOnlyAction { get; init; }
     /// <summary>Effective CSS layout viewport width after browser zoom; AE-01/02 require a positive width of at most 320 CSS pixels.</summary>
     public double? ViewportWidth { get; init; }
-    /// <summary>Browser zoom percentage.</summary>
+    /// <summary>Browser zoom percentage; AE-02 requires at least 400%.</summary>
     public double? ZoomPercent { get; init; }
     /// <summary>Page overflow in CSS pixels.</summary>
     public double? HorizontalOverflow { get; init; }
@@ -49,7 +49,7 @@ public sealed class AccessibilityMeasurements
     public double? LetterSpacing { get; init; }
     /// <summary>Applied word-spacing multiplier.</summary>
     public double? WordSpacing { get; init; }
-    /// <summary>Measured contrast ratio.</summary>
+    /// <summary>Measured contrast ratio; Passed AE-06 evidence requires at least 3:1. Callers still assess the applicable 4.5:1 text requirement.</summary>
     public double? ContrastRatio { get; init; }
     /// <summary>Whether forced colors were active.</summary>
     public bool? ForcedColors { get; init; }

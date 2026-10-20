@@ -679,6 +679,8 @@ public sealed class TestingFailureModeTests {
         UxFocusAssertions.AssertUnobscured(new(20, 100, 120, 24), new(18, 98, 124, 28), [new(0, 0, 320, 640)], [new(30, 105, 0, 10)]);
         Should.Throw<InvalidOperationException>(() => UxFocusAssertions.AssertUnobscured(new(20, 100, 120, 24), new(18, 98, 124, 28),
             [new(0, 0, 320, 640)], [new(250, 300, -4, 10)]));
+        Should.Throw<InvalidOperationException>(() => UxFocusAssertions.AssertUnobscured(new(20, 100, 120, 24), new(18, 98, 124, 28),
+            [new(0, 0, 320, 640)], [new(250, 300, 10, -4)]));
     }
 
     [Theory]
@@ -1110,7 +1112,7 @@ public sealed class TestingFailureModeTests {
         foreach (string visibleLabel in new[] { "First\nName", "First\t  Name" })
         {
             UxFieldDeclaration[] named = [declared[0], new("name", visibleLabel, "identity")];
-            foreach (string accessibleName in new[] { "First Name (required)", " First\n\tName  (required) " })
+            foreach (string accessibleName in new[] { "First Name (required)", " First\n\tName  (required) ", "first name (required)" })
             {
                 UxValidationAssertions.AssertLinkedSummary(summary, "Validation failed", [valid, invalid with
                     { VisibleLabel = visibleLabel, AccessibleName = accessibleName }], ["name-input"], named, groups, prior);
@@ -1127,6 +1129,10 @@ public sealed class TestingFailureModeTests {
             // Whitespace normalization does not relax the declared visible-label identity.
             Should.Throw<InvalidOperationException>(() => UxValidationAssertions.AssertLinkedSummary(summary, "Validation failed",
                 [valid, invalid with { VisibleLabel = "First Name", AccessibleName = "First Name" }], ["name-input"], named, groups, prior))
+                .Message.ShouldContain("Field[2].Label");
+            // Case-insensitive accessible-name matching does not relax declared-label identity.
+            Should.Throw<InvalidOperationException>(() => UxValidationAssertions.AssertLinkedSummary(summary, "Validation failed",
+                [valid, invalid with { VisibleLabel = visibleLabel.ToLowerInvariant(), AccessibleName = "first name" }], ["name-input"], named, groups, prior))
                 .Message.ShouldContain("Field[2].Label");
         }
         foreach (string collision in new[] { "name-input", "code-input" })
@@ -1156,6 +1162,21 @@ public sealed class TestingFailureModeTests {
             [valid with { ErrorId = "code-error", DescribedBy = "code-error" }, invalid], ["name-input"], declared, groups, prior));
         stale.Message.ShouldContain("Field[1].ErrorLink");
         stale.Message.ShouldNotContain("code");
+        // Structural failures must name their aggregate check without unsafe per-field lookups.
+        void CheckStructure(string check, UxFieldSnapshot[]? measuredFields = null, UxFieldDeclaration[]? expectedFields = null,
+            UxFieldGroupDeclaration[]? expectedGroups = null, UxFieldIdentity[]? priorTargets = null)
+        {
+            InvalidOperationException failure = Should.Throw<InvalidOperationException>(() => UxValidationAssertions.AssertLinkedSummary(
+                summary, "Validation failed", measuredFields ?? [valid, invalid], ["name-input"], expectedFields ?? declared,
+                expectedGroups ?? groups, priorTargets ?? prior));
+            failure.Message.ShouldContain(check);
+            failure.Message.ShouldNotContain("Field[");
+            foreach (string value in new[] { "name-input", "code-input", "name-error" }) { failure.Message.ShouldNotContain(value); }
+        }
+        CheckStructure("DeclaredFields", expectedFields: [declared[0]], expectedGroups: [groups[0] with { FieldKeys = ["code"] }]);
+        CheckStructure("DeclaredGroups", expectedGroups: [groups[0], groups[0]]);
+        CheckStructure("FieldIdentity", measuredFields: [valid with { ControlId = invalid.ControlId }, invalid]);
+        CheckStructure("PriorTargets", priorTargets: [prior[0], prior[0]]);
         // Non-structural aggregate failures must not hide either field's independent failures.
         foreach (string aggregate in new[] { "Summary", "Links", "ErrorTargets" })
         {
@@ -1357,9 +1378,17 @@ public sealed class TestingFailureModeTests {
                     snapshot with { Semantics = snapshot.Semantics with { AriaLive = live } })).Message.ShouldContain("Semantics.Silent");
             }
         }
-        foreach (string role in new[] { "status", "log" })
+        foreach (string role in new[] { "alert", "status", "log" })
         {
-            UxStateAssertions.AssertState("SS-36", ready with { Semantics = ready.Semantics with { Role = role, AriaLive = "off" } });
+            UxSurfaceSnapshot off = ready with { Semantics = ready.Semantics with { Role = role, AriaLive = "off" } };
+            if (role == "alert")
+            {
+                Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState("SS-36", off)).Message.ShouldContain("Semantics.Silent");
+            }
+            else
+            {
+                UxStateAssertions.AssertState("SS-36", off);
+            }
             foreach (string? live in new string?[] { null, "polite", "assertive" })
             {
                 Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState("SS-36",

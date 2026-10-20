@@ -46,7 +46,8 @@ public static class UxStateAssertions
         Check(hiddenByPolicy || !string.IsNullOrWhiteSpace(semantics.Role) && !string.IsNullOrWhiteSpace(semantics.Name), "Semantics.RoleName");
         Check(!focusOnly || semantics.IsFocused && semantics.Role == (number == 37 ? "group" : "heading")
             && semantics.TabIndex == "-1" && semantics.AriaLive is null && semantics.AriaAtomic is null, "Semantics.FocusOnly");
-        Check(!silent || semantics.AriaLive == "off" || semantics.AriaLive is null && !IsLiveRole(semantics.Role), "Semantics.Silent");
+        Check(!silent || semantics.Role != "alert" && (semantics.AriaLive == "off"
+            || semantics.AriaLive is null && !IsLiveRole(semantics.Role)), "Semantics.Silent");
         Check(number is not (31 or 32 or 33) || semantics.Role == "tab", "Semantics.TabRole");
         Check(number is not (46 or 47) || semantics.IsFocused
             && (number != 47 || semantics.Role == "heading" && semantics.TabIndex == "-1"), "Semantics.RestoredFocus");

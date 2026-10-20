@@ -120,6 +120,8 @@ public sealed class TestAccessibilityEvidenceRecorder
                 Check(m.AxePassed.HasValue, nameof(m.AxePassed));
                 Check(m.NoHoverOnlyAction.HasValue, nameof(m.NoHoverOnlyAction));
                 break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(row));
         }
         if (failed.Count > 0)
         {

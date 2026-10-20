@@ -6,7 +6,7 @@ namespace Hexalith.FrontComposer.Testing;
 /// <param name="KeyboardPath">Keys used to reach and activate this target from the surface entry.</param>
 /// <param name="Exception">Exactly one supported exception for an undersized target, or null.</param>
 /// <param name="Rationale">Structured reason for the exception, or null.</param>
-/// <param name="Neighbors">All neighboring target bounds for a spacing exception.</param>
+/// <param name="Neighbors">All measured neighboring target bounds for a spacing exception; an empty collection is measured empty and null is unmeasured.</param>
 /// <param name="EquivalentControlNumber">Ordinal of a separate control with the same function.</param>
 /// <param name="EquivalentControlBounds">Measured conforming equivalent control bounds.</param>
 public sealed record AccessibilityTargetEvidence(int TargetNumber, UxRect Bounds, IReadOnlyList<UxKeyboardKey> KeyboardPath,

@@ -2,7 +2,7 @@
 title: '13.7 [I · UX-F] Provide Reusable UX Assertions for Adopters'
 type: 'feature'
 created: '2026-10-18'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: 'b9e1490cfe1c51406d3c8d4dc213971d06911a24'
 route: 'dispatch'
 review_loop_iteration: 1
@@ -76,16 +76,16 @@ context:
 
 Review round 6 (2026-10-20) of the round-4/5 fix commit `a2196fd6`; per-finding verdicts are under Review Triage Log → Review round 6.
 
-- [ ] [Review][Patch] Keep `role="alert"` speaking on silent SS rows: accept explicit `aria-live="off"` only for non-alert roles, and pin alert with `off` as a `Semantics.Silent` failure [src/Hexalith.FrontComposer.Testing/UxStateAssertions.cs:49]
-- [ ] [Review][Patch] Pin structural linked-summary failures (`DeclaredFields`, `DeclaredGroups`, `FieldIdentity`, `PriorTargets`) as named diagnostics with no `Field[` entries [tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs:1160]
-- [ ] [Review][Patch] Scope the diagnostic-naming sentence: recorder non-finite and context failures name no fact, and sequence diagnostics print catalog row/channel labels and counts [src/Hexalith.FrontComposer.Testing/README.md:33]
-- [ ] [Review][Patch] Match the visible label within the accessible name case-insensitively (WCAG 2.5.3 is normatively case-insensitive); keep declared visible-label identity exact [src/Hexalith.FrontComposer.Testing/UxValidationAssertions.cs:58]
-- [ ] [Review][Patch] Document SS-36 and the no-dispatch/no-queue requirement in the did-not-run guidance [docs/how-to/test-generated-components.md:137]
-- [ ] [Review][Patch] Name the ordinary silent SS rows (SS-31/33/36/39/40/43/44/45/46/47) that accept explicit `aria-live="off"` [src/Hexalith.FrontComposer.Testing/README.md:28]
-- [ ] [Review][Patch] Update the XML docs for `ZoomPercent` (AE-02 ≥400%), `ContrastRatio` (Passed AE-06 3:1 floor) and `Neighbors` (`[]` measured empty, `null` unmeasured) [src/Hexalith.FrontComposer.Testing/AccessibilityTargetEvidence.cs:9]
-- [ ] [Review][Patch] Pin a non-intersecting negative-height occluder as a failure [tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs:681]
-- [ ] [Review][Patch] Restore the fail-closed default arm in the recorder's row switch [src/Hexalith.FrontComposer.Testing/TestAccessibilityEvidenceRecorder.cs:123]
-- [ ] [Review][Patch] Correct the how-to: `Neighbors = null` fails `AssertTargetSize` and Passed AE-04 packets, not every recorded packet [docs/how-to/test-generated-components.md:143]
+- [x] [Review][Patch] Keep `role="alert"` speaking on silent SS rows: accept explicit `aria-live="off"` only for non-alert roles, and pin alert with `off` as a `Semantics.Silent` failure [src/Hexalith.FrontComposer.Testing/UxStateAssertions.cs:49]
+- [x] [Review][Patch] Pin structural linked-summary failures (`DeclaredFields`, `DeclaredGroups`, `FieldIdentity`, `PriorTargets`) as named diagnostics with no `Field[` entries [tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs:1160]
+- [x] [Review][Patch] Scope the diagnostic-naming sentence: recorder non-finite and context failures name no fact, and sequence diagnostics print catalog row/channel labels and counts [src/Hexalith.FrontComposer.Testing/README.md:33]
+- [x] [Review][Patch] Match the visible label within the accessible name case-insensitively (WCAG 2.5.3 is normatively case-insensitive); keep declared visible-label identity exact [src/Hexalith.FrontComposer.Testing/UxValidationAssertions.cs:58]
+- [x] [Review][Patch] Document SS-36 and the no-dispatch/no-queue requirement in the did-not-run guidance [docs/how-to/test-generated-components.md:137]
+- [x] [Review][Patch] Name the ordinary silent SS rows (SS-31/33/36/39/40/43/44/45/46/47) that accept explicit `aria-live="off"` [src/Hexalith.FrontComposer.Testing/README.md:28]
+- [x] [Review][Patch] Update the XML docs for `ZoomPercent` (AE-02 ≥400%), `ContrastRatio` (Passed AE-06 3:1 floor) and `Neighbors` (`[]` measured empty, `null` unmeasured) [src/Hexalith.FrontComposer.Testing/AccessibilityTargetEvidence.cs:9]
+- [x] [Review][Patch] Pin a non-intersecting negative-height occluder as a failure [tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs:681]
+- [x] [Review][Patch] Restore the fail-closed default arm in the recorder's row switch [src/Hexalith.FrontComposer.Testing/TestAccessibilityEvidenceRecorder.cs:123]
+- [x] [Review][Patch] Correct the how-to: `Neighbors = null` fails `AssertTargetSize` and Passed AE-04 packets, not every recorded packet [docs/how-to/test-generated-components.md:143]
 
 Rejected (round 6):
 
@@ -466,6 +466,30 @@ Survivor groups:
 
 Every patch keeps published signatures and adds no public API; tests go inside existing methods, so the identifier seal is unchanged. Nothing defers and nothing routes to `intent_gap` or `bad_spec`.
 
+### Review round 7 — resumed Build, 2026-10-20
+
+All three workflow review layers completed against `/tmp/fc137-round6-workflow-diff-69h5ijxh/candidate.diff`, the full preserved-baseline-to-worktree diff. Blind Hunter's finding-floor arithmetic is metadata, not a finding. This cumulative diff includes interleaved CI/release/Shell work already present at starting candidate `d52526a4bd1272760543e6a65840dc2b0ed93cee`. The round-6 helper patches need no additional code changes.
+
+| Finding | Verdict | Route | Verified evidence / disposition |
+| --- | --- | --- | --- |
+| R7-B1 | medium | defer (carried) | Carried R5-B1: quality.yml overrides the 4.7.0 shared baseline with 4.6.0; existing release/CI follow-up owns alignment. |
+| R7-B2 | medium | defer (carried) | Carried R5-B1/E1: Contracts.UI and SourceTools exact baseline assertions still expect 4.6.0. |
+| R7-B3 | medium | defer (carried) | Carried R5-V2: the AppHost Python test expects the old exception text instead of diagnosticExceptionType JSON. The reviewer reran the module: 92 tests, this one failure. |
+| R7-B4 | high | defer (carried) | Carried R5-B3: generic token/unlabelled-JWT receipt export bypasses the narrow scanner; the existing CI/security entry retains ownership. |
+| R7-B5 | medium | defer (carried) | Carried R5-E2: anonymous localhost DNS remains outside the request deadline. |
+| R7-B6 | medium | defer (carried) | Carried R5-E4: named userContextAccessor source calls lose the formerly optional timeProvider/localizer arguments. |
+| R7-B7 | medium | defer | `_capture_runtime_diagnostics` reads return codes/stdout but discards describe/log stderr. A synthetic failing-command probe confirms its explanatory stderr is absent from the written packet. This diagnostics code predates this run; record a separate AppHost follow-up. |
+| R7-B8 | medium | defer | SmokeRuntime.command tails aspire-logs JSON before parsing; `_json_from_output` only accepts complete JSON. A 5,017,010-byte synthetic envelope truncated at the 4,194,304-character limit yields available=false and loses every event. This pre-existing diagnostics seam needs its own bounded-collection fix. |
+| R7-B9 | low | defer | `_export_failure_diagnostics` removes old receipt destinations but never removes the old console destination when the new source is absent. A synthetic two-run state retains prior-run console bytes. Pre-existing diagnostics behavior; defer the direct cleanup correction. |
+| R7-B10 | medium | defer (part carried) | The `_safe_resource_log_events` portion carries R5-V1. Searches confirm no assertions on `_resource_diagnostic_state` listener projection, process metadata or resource/state filtering either; current capture coverage asserts cleanup/receipt behavior. Record that separate resource-projection verification gap with malformed/oversized diagnostics coverage. |
+| R7-E1 | medium | defer (carried) | Carried R5-B1: the CI baseline override is the same 4.6.0/4.7.0 mismatch. |
+| R7-E2 | medium | defer (carried) | Carried R5-B1/E1: the same Contracts.UI/SourceTools exact baseline assertions fail. |
+| R7-E3 | high | defer | `_safe_resource_log_events.add` exports a regex-valid category before sanitizing context, and excludes Category from that context. A synthetic ClientSecret category survives in event metadata. This existing AppHost diagnostic upload boundary needs separate CI/security redaction coverage. |
+| R7-E4 | medium | defer (carried) | Carried R5-E2: anonymous localhost hostname resolution escapes the deadline. |
+| R7-V1 | medium | defer (carried) | Carried R5-V1, pre-verified: successful structured-log capture is unasserted; the existing credential-context artifact-boundary follow-up covers this exact gap. |
+
+Every finding has its own disposition. Repeated findings retain their prior verdict/routes without duplicate ledger entries. Five new pre-existing diagnostic follow-ups are appended to deferred-work.md: stderr retention, parseable bounded logs, stale console cleanup, resource-projection verification and category redaction. They do not originate in the Testing-package helper changes; no intent/spec loopback or implementation patch is required. Parent probes use only synthetic data and are retained at `/tmp/fc137-round6/review-probes.json`; no diagnostics were uploaded.
+
 ## Verification
 
 - `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` — passed, 0 warnings / 0 errors; final log `/tmp/fc137-solution-release.log`. This includes the required Testing Release build.
@@ -618,6 +642,25 @@ Frozen-matrix audit: the sequence match/drift and 249/250 coalescing rows are co
 All three review layers completed. Their seventeen findings are individually triaged: four patch dispositions (three helper corrections and tracking), six rejections, and seven deferred findings grouped into six independent pre-existing infrastructure follow-ups. The high-severity diagnostic-export follow-up was reproduced using synthetic data only; no diagnostic artifact was published. Required adopter contract pages checked and updated are the package README and `docs/how-to/test-generated-components.md`; the prior exhaustive reference/contract-family search remains applicable. PublicAPI.Shipped.txt requires no update because no public signature changed. The final full documentation gate passed after those edits.
 
 The strict gate remains failed for unmapped original delivery `7f57da411c3abf8e1d459d0611c49632c07393a7` and interleaved `ee9762e6c74914ccd33ec1d2caf322bdc21a10b4`. Its original baseline remains `b9e1490cfe1c51406d3c8d4dc213971d06911a24`. Under story-review-reconciliation-checklist.md item 10, the workflow's done transition is not applied: this spec stays in-review and its sprint row stays review. The local fix commit records reviewed changes without claiming story closure. Rerun the unchanged strict command after the local commit and report the canonical candidate/outcome in the handoff; no historical rewrite, validator change or ownership exception is authorized.
+
+### Resumed Build verification — round 6 patches, 2026-10-20
+
+All ten round-6 patch tasks are implemented. Silent SS rows reject `role="alert"` even with explicit `aria-live="off"`; normalized label-in-name containment ignores case while declared visible-label identity remains exact; the AE recorder row switch fails closed. Existing test methods now pin each structural guard's named diagnostic without per-field diagnostics and a non-intersecting negative-height occluder. README/how-to/XML guidance covers those semantics, the exact silent/did-not-run row sets, recorder diagnostic scope, zoom/contrast setup and measured-empty versus unmeasured neighbors.
+
+| Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
+| --- | --- | --- | --- | --- | --- |
+| Focused Debug build | `DiffEngine_Disabled=true dotnet build tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj -c Debug --no-restore -m:1 -nodeReuse:false --disable-build-servers -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` | Passed: 0 warnings, 0 errors | N/A | N/A | Local only |
+| Direct Debug failure matrix | `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Testing.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Testing.Tests.dll -class '*TestingFailureModeTests' -result-xml /tmp/fc137-round6/matrix-debug-final.xml` | Passed: 139/139, 0 skipped; delta 0 | N/A | Additional local evidence; native project also passed | Local only |
+| Native Testing project | `DiffEngine_Disabled=true NuGetAudit=false MinVerVersionOverride=1.0.0 dotnet test --project tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj -c Release --no-build --results-directory /tmp/fc137-round6/results --report-xunit-trx` | Passed: 185/185, 0 skipped; delta 0, including API/package/offline-consumer checks | N/A | N/A | Local only; CI not run |
+| Full documentation | `DiffEngine_Disabled=true NuGetAudit=false MinVerVersionOverride=1.0.0 pwsh -NoProfile -File eng/validate-docs.ps1` | Passed: all eight snippets and full DocFX, no blocking failures | N/A | N/A | Local only; CI not run |
+
+Logs and XML/TRX are under `/tmp/fc137-round6/`; these are local diagnostic records. The full documentation gate also built the Release solution. Seven one-defect mutations each compiled and failed the intended regression: alert/off, case-sensitive label containment, each of the four structural guard labels, and negative-height geometry. Every mutated source was restored byte-for-byte before the final clean build/matrix and complete native suite; `mutants/summary.json` records their failures. The initial regression run exposed an ambiguous case-insensitive `ShouldNotContain("identity")` check that also matched fixed `FieldIdentity`; that assertion was corrected while retaining opaque-ID checks.
+
+Frozen matrix audit: sequence match/drift, channel misuse and 249/250 coalescing pass in `UxAnnouncements_CoalescedFailureAndStaleResult_EnforceExactSequenceAndRedactedDrift`; immediate cancellation also passes for AM-19/23 in `UxAnnouncements_DecisiveFailure_CancelsPendingIntermediate`. Palette channel ownership passes, origin fallback/body rejection passes in `UxAssertions_AuthorizationDenial_UsesFocusOnlyHeadingAndOriginFallback`, and exact N-1/N budgets pass in `UxTiming_FailureBudgets_RejectEarlyAndLateEmitsAndDriveRecurringTimers`. Each named covering case has a Pass result in the final Debug XML and runs in the complete native suite.
+
+Before editing, the exact-target Aspire start hit Shell `MSB4018` file locking. Exact-target stop and a serialized Debug AppHost build recovered it; `aspire start --no-build --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive` succeeded. Describe showed counter-web Running/Healthy, security Running/Unhealthy and dependent resources Waiting; exact-target stop succeeded. Logs are `aspire-*.log` under the same temporary directory.
+
+Documentation drift sweep checked the package README, how-to, XML documentation and `PublicAPI.Shipped.txt`, and searched reference/how-to/tutorials/skills/project-docs/contracts for the affected helpers. Only the updated how-to contains additional public guidance; no other contract-family page needs changes. No public signature changed, so the API baseline is unchanged. Test method identifiers, the identifier ledger/GOV-1 seal, Shell runtime/constants, dependencies and submodule pointers are unchanged in this run. The normalized frozen block still matches the preserved original baseline (SHA-256 `06c3c63a25568aa1cea3a7de2bbe213bbd4dd8c9f9ec995f84f039c29de52097`). Required approvals remain separately owned. All three independent review layers completed (Review round 7 above). The unchanged strict artifact command at candidate `d52526a4bd1272760543e6a65840dc2b0ed93cee` exited 1 with only the two preserved historical attribution failures; logs are `/tmp/fc137-round6/story-artifacts.log` and `story-artifacts-exit.txt`. Under reconciliation checklist item 10, spec status remains `in-review` and sprint status `review`; passing implementation checks do not close that gate. A final post-commit rerun must retain the full canonical candidate and actual result in the handoff. The lockfile-pinned/installed commitlint 21.2.2 CLI passed the exact local commit message with 0 problems and 0 warnings (`node node_modules/@commitlint/cli/cli.js --edit /tmp/fc137-round6/commit-message.txt --verbose`); evidence is `commitlint.log` in the same temporary directory. `git diff --check` passed. The local commit records reviewed patches without a done transition.
 
 ## File List
 
