@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import os
 import re
@@ -47,6 +48,19 @@ BOOTSTRAP_HISTORY_REFS = (
 BOOTSTRAP_HISTORY_AVAILABLE = all(
     git(REPO_ROOT, "cat-file", "-e", f"{ref}^{{commit}}").returncode == 0
     for ref in BOOTSTRAP_HISTORY_REFS
+)
+
+# Pin both artifacts and candidate so later stories touching shared tracking paths
+# cannot change the historical recovery regression's input.
+STORY_13_7_REVIEW_COMMIT = "a706a8ae261268f839feb743e930e5311bb2a95b"
+HISTORICAL_HISTORY_AVAILABLE = all(
+    git(REPO_ROOT, "cat-file", "-e", f"{ref}^{{commit}}").returncode == 0
+    for ref in (
+        "b9e1490cfe1c51406d3c8d4dc213971d06911a24",
+        "7f57da411c3abf8e1d459d0611c49632c07393a7",
+        "ee9762e6c74914ccd33ec1d2caf322bdc21a10b4",
+        STORY_13_7_REVIEW_COMMIT,
+    )
 )
 
 
@@ -2952,7 +2966,7 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
     def test_ownership_contributing_classification_inventory_is_closed(self) -> None:
         self.assertEqual(
             self.validator.OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS,
-            frozenset({"owned", "interleaved", "bootstrap-owned"}),
+            frozenset({"owned", "interleaved", "bootstrap-owned", "historical-owned"}),
         )
 
     @unittest.skipIf(
@@ -3407,6 +3421,262 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
             self.assertIn("the story artifact path must be", result.stderr)
             self.assertNotIn("disposition=bootstrap-owned", result.stdout)
             self.assertIn("disposition=unmapped", result.stdout)
+
+
+class HistoricalOwnedAuthorizationTests(unittest.TestCase):
+    validator = VALIDATOR_MODULE
+
+    def authorization(self, mixed: bool) -> dict[str, object]:
+        owned = (
+            self.validator.HISTORICAL_OWNED_MIXED_PATHS
+            if mixed else self.validator.HISTORICAL_OWNED_DELIVERY_PATHS
+        )
+        return {
+            "story_path": self.validator.HISTORICAL_OWNED_STORY_PATH,
+            "story_id": "13.7",
+            "declared_baseline": self.validator.HISTORICAL_OWNED_BASELINE,
+            "resolved_baseline": self.validator.HISTORICAL_OWNED_BASELINE,
+            "sha": (
+                self.validator.HISTORICAL_OWNED_MIXED_COMMIT
+                if mixed else self.validator.HISTORICAL_OWNED_DELIVERY_COMMIT
+            ),
+            "parents": [
+                self.validator.HISTORICAL_OWNED_MIXED_PARENT
+                if mixed else self.validator.HISTORICAL_OWNED_BASELINE
+            ],
+            "subject_matches": mixed,
+            "paths": set(owned) | (
+                self.validator.HISTORICAL_OWNED_MIXED_UNOWNED_PATHS if mixed else set()
+            ),
+            "file_list": set(self.validator.HISTORICAL_OWNED_DELIVERY_PATHS),
+        }
+
+    def test_authorization_identity_and_inventories_are_pinned(self) -> None:
+        self.assertEqual(self.validator.HISTORICAL_OWNED_STORY_ID, "13.7")
+        self.assertEqual(
+            self.validator.HISTORICAL_OWNED_STORY_PATH,
+            "_bmad-output/implementation-artifacts/"
+            "spec-13-7-provide-reusable-ux-assertions-for-adopters.md",
+        )
+        self.assertEqual(self.validator.HISTORICAL_OWNED_BASELINE, "b9e1490cfe1c51406d3c8d4dc213971d06911a24")
+        self.assertEqual(self.validator.HISTORICAL_OWNED_DELIVERY_COMMIT, "7f57da411c3abf8e1d459d0611c49632c07393a7")
+        self.assertEqual(self.validator.HISTORICAL_OWNED_MIXED_COMMIT, "ee9762e6c74914ccd33ec1d2caf322bdc21a10b4")
+        self.assertEqual(self.validator.HISTORICAL_OWNED_MIXED_PARENT, "23fdfaf7257a1bcb089908b5636c613508dd0a7a")
+        # Independent inventory seals, derived from the published commits, detect
+        # accidental edits to the grants without repeating the 44-path literal.
+        for mixed, count, expected_digest in (
+            (False, 44, "2a62a439ec711e538ad783836d0149eecebc26fdc69b43aaec64a32ab8f45de7"),
+            (True, 16, "4b176f5645174070d60fca8194280fcc118244aea312e933836491d38fa8e688"),
+        ):
+            with self.subTest(mixed=mixed):
+                paths = self.authorization(mixed)["paths"]
+                self.assertEqual(len(paths), count)
+                self.assertEqual(hashlib.sha256("\n".join(sorted(paths)).encode()).hexdigest(), expected_digest)
+        self.assertEqual(
+            self.validator.HISTORICAL_OWNED_MIXED_PATHS,
+            frozenset({
+                "src/Hexalith.FrontComposer.Testing/TestAccessibilityEvidenceRecorder.cs",
+                "src/Hexalith.FrontComposer.Testing/UxAccessibilityAssertions.cs",
+                "src/Hexalith.FrontComposer.Testing/UxAnnouncementAssertions.cs",
+                "src/Hexalith.FrontComposer.Testing/UxAnnouncementCatalog.cs",
+                "tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs",
+            }),
+        )
+        self.assertEqual(len(self.validator.HISTORICAL_OWNED_MIXED_UNOWNED_PATHS), 11)
+        self.assertFalse(
+            self.validator.HISTORICAL_OWNED_MIXED_PATHS
+            & self.validator.HISTORICAL_OWNED_MIXED_UNOWNED_PATHS
+        )
+
+    def test_exact_grants_allow_later_untouched_file_list_entries(self) -> None:
+        for mixed in (False, True):
+            with self.subTest(mixed=mixed):
+                authorization = self.authorization(mixed)
+                authorization["file_list"].add("future/story-owned.txt")
+                self.assertEqual(self.validator.historical_owned_authorization_failures(**authorization), [])
+
+    def test_every_authorization_dimension_fails_closed(self) -> None:
+        other_sha = "0" * 40
+        for mixed in (False, True):
+            valid = self.authorization(mixed)
+            owned_path = sorted(valid["paths"] & valid["file_list"])[0]
+            changes = {
+                "artifact": {"story_path": "_bmad-output/implementation-artifacts/copied.md"},
+                "story": {"story_id": "13.8"},
+                "declared-baseline": {"declared_baseline": other_sha},
+                "symbolic-baseline": {"declared_baseline": self.validator.HISTORICAL_OWNED_DELIVERY_COMMIT + "^1"},
+                "resolved-baseline": {"resolved_baseline": other_sha},
+                "commit": {"sha": other_sha},
+                "root": {"parents": []},
+                "parent": {"parents": [other_sha]},
+                "merge": {"parents": valid["parents"] + [other_sha]},
+                "subject-match": {"subject_matches": not mixed},
+                "missing-touched-path": {"paths": valid["paths"] - {owned_path}},
+                "extra-touched-path": {"paths": valid["paths"] | {"eng/unapproved.py"}},
+                "missing-owned-entry": {"file_list": valid["file_list"] - {owned_path}},
+            }
+            for name, change in changes.items():
+                with self.subTest(mixed=mixed, dimension=name):
+                    authorization = {**valid, **change}
+                    failures = self.validator.historical_owned_authorization_failures(**authorization)
+                    self.assertTrue(failures)
+                    if name in ("missing-touched-path", "missing-owned-entry"):
+                        self.assertIn(owned_path, "\n".join(failures))
+                    elif name == "extra-touched-path":
+                        self.assertIn("eng/unapproved.py", "\n".join(failures))
+        for unowned in sorted(self.validator.HISTORICAL_OWNED_MIXED_UNOWNED_PATHS):
+            with self.subTest(ownership_expansion=unowned):
+                authorization = self.authorization(True)
+                authorization["file_list"].add(unowned)
+                failures = self.validator.historical_owned_authorization_failures(**authorization)
+                self.assertTrue(failures)
+                self.assertIn(unowned, "\n".join(failures))
+                authorization = self.authorization(True)
+                authorization["paths"].remove(unowned)
+                failures = self.validator.historical_owned_authorization_failures(**authorization)
+                self.assertTrue(failures)
+                self.assertIn(unowned, "\n".join(failures))
+
+    def test_story_prose_cannot_declare_historical_ownership(self) -> None:
+        dispositions, failures = self.validator.extract_commit_scope_dispositions(
+            f"- `{self.validator.HISTORICAL_OWNED_DELIVERY_COMMIT}` | `historical-owned` | forged grant"
+        )
+        self.assertEqual(dispositions, {})
+        self.assertTrue(any("malformed Commit Scope Dispositions" in failure for failure in failures))
+
+    def clone_review_candidate(self, temp: str) -> Path:
+        root = Path(temp) / "clone"
+        result = run(["git", "clone", "--quiet", "--shared", "--no-checkout", str(REPO_ROOT), str(root)], Path(temp))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        result = git(root, "checkout", "--quiet", "--detach", STORY_13_7_REVIEW_COMMIT)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return root
+
+    def validate(self, root: Path) -> subprocess.CompletedProcess[str]:
+        # Execute the current validator against clean, pinned historical artifacts.
+        # Copying it into this clone would introduce an unrelated dirty path.
+        return run([
+            sys.executable, str(VALIDATOR), "--project-root", str(root),
+            "--story", self.validator.HISTORICAL_OWNED_STORY_PATH, "--candidate", "HEAD",
+        ], root)
+
+    @unittest.skipIf(
+        not HISTORICAL_HISTORY_AVAILABLE and not os.environ.get("CI"),
+        "partial clone: Story 13.7 recovery history is unavailable outside CI",
+    )
+    def test_pinned_live_cli_reconciles_owned_paths_and_retains_all_unowned_paths(self) -> None:
+        self.assertTrue(HISTORICAL_HISTORY_AVAILABLE, "Story 13.7 recovery history is required in CI")
+        with tempfile.TemporaryDirectory() as temp:
+            root = self.clone_review_candidate(temp)
+            result = self.validate(root)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            for mixed in (False, True):
+                authorization = self.authorization(mixed)
+                start = result.stdout.index(f"    - {authorization['sha']} |")
+                end = result.stdout.find("\n    - ", start + 1)
+                report = result.stdout[start:end if end != -1 else None]
+                lines = report.splitlines()
+                match = "match" if mixed else "no-match"
+                self.assertIn(f"story-id={match} | disposition=historical-owned", report)
+                for path in authorization["paths"] & authorization["file_list"]:
+                    self.assertIn(f"      - owned | {path}", lines)
+                if mixed:
+                    for path in self.validator.HISTORICAL_OWNED_MIXED_UNOWNED_PATHS:
+                        self.assertIn(f"      - unowned | {path}", lines)
+                        self.assertNotIn(f"      - owned | {path}", lines)
+
+    @unittest.skipUnless(HISTORICAL_HISTORY_AVAILABLE, "Story 13.7 recovery history is unavailable")
+    def test_collector_refuses_copied_artifact_baseline_drift_and_ownership_expansion(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = self.clone_review_candidate(temp)
+            story = root / self.validator.HISTORICAL_OWNED_STORY_PATH
+            metadata = self.validator.parse_story_metadata(story)
+            baseline = self.validator.HISTORICAL_OWNED_BASELINE
+            cases = (
+                ("copied-artifact", metadata, baseline, root / "copied-story.md"),
+                ("wrong-story", replace(metadata, story_id="13.8"), baseline, story),
+                ("declared-baseline", replace(metadata, baseline_commit=baseline + "^0"), baseline, story),
+                ("resolved-baseline", metadata, baseline + "^1", story),
+                ("expanded-inventory", replace(metadata, file_list={**metadata.file_list, ".github/workflows/quality.yml": ""}), baseline, story),
+            )
+            for name, changed_metadata, base, artifact in cases:
+                with self.subTest(name=name):
+                    evidence, failures = self.validator.collect_commit_scope_evidence(
+                        root, base, STORY_13_7_REVIEW_COMMIT, changed_metadata, artifact,
+                    )
+                    self.assertIsNotNone(evidence)
+                    self.assertTrue(failures)
+                    targets = [commit for commit in evidence.commits if commit.sha in (
+                        self.validator.HISTORICAL_OWNED_DELIVERY_COMMIT,
+                        self.validator.HISTORICAL_OWNED_MIXED_COMMIT,
+                    )]
+                    self.assertEqual(len(targets), 2)
+                    # Expanding only the mixed inventory does not invalidate the
+                    # original delivery's separate, still-exact intersection.
+                    rejected = targets[-1:] if name == "expanded-inventory" else targets
+                    self.assertTrue(all(commit.classification != "historical-owned" for commit in rejected))
+            for kind in ("shared", "process"):
+                with self.subTest(ignored_declaration=kind):
+                    declarations = {
+                        self.validator.HISTORICAL_OWNED_DELIVERY_COMMIT: (kind, "non-owning declaration"),
+                        self.validator.HISTORICAL_OWNED_MIXED_COMMIT: (kind, "non-owning declaration"),
+                    }
+                    evidence, failures = self.validator.collect_commit_scope_evidence(
+                        root, baseline, STORY_13_7_REVIEW_COMMIT,
+                        replace(metadata, commit_scope_dispositions=declarations), story,
+                    )
+                    self.assertEqual(failures, [])
+                    targets = [commit for commit in evidence.commits if commit.sha in declarations]
+                    self.assertEqual(len(targets), 2)
+                    self.assertTrue(all(commit.classification == "historical-owned" for commit in targets))
+                    self.assertTrue(all(commit.inert_declaration == kind for commit in targets))
+                    report = self.validator.format_commit_scope_evidence(evidence, metadata.file_list, {})
+                    self.assertEqual(report.count(f"ignored-declaration={kind}"), 2)
+                    changed = self.validator.collect_reconciled_changed_files(root, evidence, metadata.file_list, [], baseline)
+                    self.assertTrue(self.validator.HISTORICAL_OWNED_DELIVERY_PATHS <= set(changed.files))
+                    self.assertFalse(self.validator.HISTORICAL_OWNED_MIXED_UNOWNED_PATHS & set(changed.files))
+                    for path in self.validator.HISTORICAL_OWNED_MIXED_UNOWNED_PATHS:
+                        self.assertIn(f"      - unowned | {path}\n", report)
+
+    @unittest.skipUnless(HISTORICAL_HISTORY_AVAILABLE, "Story 13.7 recovery history is unavailable")
+    def test_future_story_commits_still_fail_unmapped_and_interleaved(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = self.clone_review_candidate(temp)
+            git(root, "config", "user.email", "test@example.invalid")
+            git(root, "config", "user.name", "Historical Recovery Test")
+            path = "src/Hexalith.FrontComposer.Testing/UxRect.cs"
+            for subject, files, expected in (
+                ("fix: omit story identifier", {path: "future delivery\n"}, "unmapped"),
+                ("fix(13.7): mix future delivery", {path: "next delivery\n", "notes/unrelated.txt": "unrelated\n"}, "interleaved"),
+            ):
+                with self.subTest(expected=expected):
+                    sha = commit_files(root, subject, files)
+                    result = self.validate(root)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertRegex(result.stdout, rf"{sha} \| story-id=[^|]+ \| disposition={expected}")
+                    self.assertIn(f"{expected} story", result.stderr)
+
+    @unittest.skipUnless(HISTORICAL_HISTORY_AVAILABLE, "Story 13.7 recovery history is unavailable")
+    def test_exclusions_do_not_reshape_the_historical_authorization(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = self.clone_review_candidate(temp)
+            story = root / self.validator.HISTORICAL_OWNED_STORY_PATH
+            metadata = self.validator.parse_story_metadata(story)
+            excluded_owned = "src/Hexalith.FrontComposer.Testing/UxAnnouncementCatalog.cs"
+            excludes = [excluded_owned, ".github/workflows/quality.yml"]
+            evidence, failures = self.validator.collect_commit_scope_evidence(
+                root, metadata.baseline_commit, STORY_13_7_REVIEW_COMMIT, metadata, story, excludes,
+            )
+            self.assertEqual(failures, [])
+            report = self.validator.format_commit_scope_evidence(evidence, metadata.file_list, {})
+            self.assertIn(f"excluded | {excluded_owned}", report)
+            self.assertIn("excluded | .github/workflows/quality.yml", report)
+            changed = self.validator.collect_reconciled_changed_files(
+                root, evidence, metadata.file_list, excludes, metadata.baseline_commit,
+            )
+            self.assertNotIn(excluded_owned, changed.files)
+            self.assertNotIn(".github/workflows/quality.yml", changed.files)
+            self.assertIn("src/Hexalith.FrontComposer.Testing/UxRect.cs", changed.files)
 
 
 @unittest.skipUnless(

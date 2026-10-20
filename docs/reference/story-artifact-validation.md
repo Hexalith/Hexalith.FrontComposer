@@ -5,7 +5,7 @@ genre: reference
 audience: framework-contributor
 ownerStory: 9-7-add-story-id-and-commit-scope-evidence
 status: published
-reviewed: 2026-08-25
+reviewed: 2026-10-20
 uid: frontcomposer.reference.story-artifact-validation
 slug: reference/story-artifact-validation/
 ---
@@ -133,7 +133,12 @@ The strict report keeps commit classification separate from path ownership:
 | `shared` | An exact declared non-matching commit belongs to shared work. It may classify an otherwise `unmapped` commit; matching commits remain `owned` or `interleaved`. | No |
 | `process` | An exact declared non-matching commit belongs to workflow-only work. It has the same non-owning boundary as `shared`. | No |
 | `bootstrap-owned` | A repository-code-authorized historical recovery. Story prose cannot create this authority. | Yes, authorized listed paths only |
+| `historical-owned` | The separately maintainer-authorized Story 13.7 recovery for two exact commits. It is assigned by code, never by a story declaration. | Yes, immutable authorized listed paths only |
 | `unrelated` | Subject does not match and no touched path is listed. | No |
+
+The dedicated `historical-owned` authorization is checked before ordinary commit
+classification. It is the sole exception for the two historical commits described
+below; other matching commits with unlisted paths still fail as `interleaved`.
 
 Each reported path is labelled independently:
 
@@ -225,3 +230,35 @@ reconciliation evidence in either half.
 Merge commits are listed separately. The current gate does not derive merge-resolution
 paths from merge commits; that limitation remains tracked as deferred work and must not
 be mistaken for whole-merge ownership.
+
+## Story 13.7 historical recovery
+
+The maintainer approved a dedicated code-only recovery for the canonical artifact
+`_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`.
+Its declared and resolved baseline must both remain
+`b9e1490cfe1c51406d3c8d4dc213971d06911a24`, with Story ID `13.7`.
+
+- `7f57da411c3abf8e1d459d0611c49632c07393a7` is the original delivery, whose subject
+  lacks the Story ID. Its sole parent is the baseline. All 44 touched paths must
+  remain listed and are authorized as owned.
+- `ee9762e6c74914ccd33ec1d2caf322bdc21a10b4` has a matching subject and sole parent
+  `23fdfaf7257a1bcb089908b5636c613508dd0a7a`. Only its five Testing paths are owned:
+  `TestAccessibilityEvidenceRecorder.cs`, `UxAccessibilityAssertions.cs`,
+  `UxAnnouncementAssertions.cs`, and `UxAnnouncementCatalog.cs` under
+  `src/Hexalith.FrontComposer.Testing/`, plus
+  `tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs`.
+  Its other 11 paths remain visible and unowned.
+
+The `HISTORICAL_OWNED_*` constants in `eng/validate-story-artifacts.py` pin the full
+path sets. Authorization checks each commit's exact identity, parent, subject-match
+state, complete unfiltered touched-path inventory, and immutable File List
+intersection. Missing owned entries or listing any historically unowned path refuses
+the grant. Later File List entries that neither commit touched do not expand it.
+Exclusions still bound reconciliation and never grant ownership.
+An ordinary `shared` or `process` declaration cannot downgrade either authorized
+commit; the report marks that declaration as ignored and retains historical ownership.
+
+This adds no declaration grammar, CLI flag, or external registry. A
+`historical-owned` story declaration is malformed. The Story 9.7 `bootstrap-owned`
+authorization and all ordinary `shared`, `process`, and interleaving rules are
+unchanged. Published history and the baseline are preserved.

@@ -25,13 +25,19 @@ is documented in `docs/reference/story-artifact-validation.md`.
    - `- path/to/file - short reason`
    - CLI fallback: `--unrelated <path> --reason <text>`
 5. Keep unrelated dirty files visible in validator output; do not add them to the story File List as story-owned changes.
-   Path-level unrelated declarations do not excuse commits. A commit exception must be
+   Path-level unrelated declarations do not excuse commits. A declared commit exception must be
    declared under `## Commit Scope Dispositions` as an in-range full 40-character SHA,
    `shared` or `process`, and a non-empty reason.
    - The sole `bootstrap-owned` exception is the human-authorized canonical Story 9.7
      recovery bound in validator code to one exact baseline, commit, parent topology,
      and immutable listed-path intersection. Never copy or broaden it, and never use it
      for routine attribution in place of a correct story-ID commit subject.
+   - The separately maintainer-authorized Story 13.7 `historical-owned` recovery is
+     code-only. It binds the canonical artifact and preserved baseline to two exact
+     commits, parents, subject-match states, full touched-path sets, and immutable
+     owned intersections. Its 11 unrelated mixed-commit paths stay visible and
+     unowned. Story prose cannot create or broaden this grant; other interleaved
+     commits still fail. See the reference for the exact authorization.
    - Stage and commit only reconciled story-owned File List paths. Never use a blanket
      add or absorb a documented-unrelated path into the story commit.
 6. Record test-count deltas and any pre-existing failing lanes.

@@ -290,7 +290,7 @@ CREATION_ACTION = re.compile(
 )
 PATH_COORDINATE = re.compile(r":\d+(?:[-,:]\d+)*$")
 OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS = frozenset(
-    {"owned", "interleaved", "bootstrap-owned"}
+    {"owned", "interleaved", "bootstrap-owned", "historical-owned"}
 )
 # Declared non-owning classifications. A listed path touched only by one of these is
 # accounted for — the story explained the commit — so it must not also be reported as a
@@ -324,6 +324,90 @@ BOOTSTRAP_OWNED_PATHS = frozenset(
 )
 BOOTSTRAP_OWNED_GUARD_PATHS = frozenset(
     {BOOTSTRAP_OWNED_VALIDATOR_PATH, BOOTSTRAP_OWNED_VALIDATOR_TEST_PATH}
+)
+
+# Maintainer-authorized Story 13.7 recovery. This is deliberately separate from the
+# Story 9.7 bootstrap and is not a story-prose disposition or a general registry.
+HISTORICAL_OWNED_STORY_ID = "13.7"
+HISTORICAL_OWNED_STORY_PATH = (
+    "_bmad-output/implementation-artifacts/"
+    "spec-13-7-provide-reusable-ux-assertions-for-adopters.md"
+)
+HISTORICAL_OWNED_BASELINE = "b9e1490cfe1c51406d3c8d4dc213971d06911a24"
+HISTORICAL_OWNED_DELIVERY_COMMIT = "7f57da411c3abf8e1d459d0611c49632c07393a7"
+HISTORICAL_OWNED_MIXED_COMMIT = "ee9762e6c74914ccd33ec1d2caf322bdc21a10b4"
+HISTORICAL_OWNED_MIXED_PARENT = "23fdfaf7257a1bcb089908b5636c613508dd0a7a"
+HISTORICAL_OWNED_DELIVERY_PATHS = frozenset(
+    {
+        "_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json",
+        HISTORICAL_OWNED_STORY_PATH,
+        "_bmad-output/implementation-artifacts/sprint-status.yaml",
+        "docs/how-to/test-generated-components.md",
+        "docs/validation/producer-fingerprints.json",
+        "src/Hexalith.FrontComposer.Testing/AccessibilityEvidence.cs",
+        "src/Hexalith.FrontComposer.Testing/AccessibilityEvidenceContext.cs",
+        "src/Hexalith.FrontComposer.Testing/AccessibilityEvidenceRow.cs",
+        "src/Hexalith.FrontComposer.Testing/AccessibilityMeasurements.cs",
+        "src/Hexalith.FrontComposer.Testing/AccessibilityTargetEvidence.cs",
+        "src/Hexalith.FrontComposer.Testing/Evidence.cs",
+        "src/Hexalith.FrontComposer.Testing/PublicAPI.Shipped.txt",
+        "src/Hexalith.FrontComposer.Testing/README.md",
+        "src/Hexalith.FrontComposer.Testing/TestAccessibilityEvidenceRecorder.cs",
+        "src/Hexalith.FrontComposer.Testing/TestTimeProvider.cs",
+        "src/Hexalith.FrontComposer.Testing/TestTimeProviderTimer.cs",
+        "src/Hexalith.FrontComposer.Testing/UxAccessibilityAssertions.cs",
+        "src/Hexalith.FrontComposer.Testing/UxAccessibilitySnapshot.cs",
+        "src/Hexalith.FrontComposer.Testing/UxAnnouncement.cs",
+        "src/Hexalith.FrontComposer.Testing/UxAnnouncementAssertions.cs",
+        "src/Hexalith.FrontComposer.Testing/UxAnnouncementCatalog.cs",
+        "src/Hexalith.FrontComposer.Testing/UxAnnouncementChannel.cs",
+        "src/Hexalith.FrontComposer.Testing/UxFieldDeclaration.cs",
+        "src/Hexalith.FrontComposer.Testing/UxFieldGroupDeclaration.cs",
+        "src/Hexalith.FrontComposer.Testing/UxFieldIdentity.cs",
+        "src/Hexalith.FrontComposer.Testing/UxFieldSnapshot.cs",
+        "src/Hexalith.FrontComposer.Testing/UxFocusAssertions.cs",
+        "src/Hexalith.FrontComposer.Testing/UxFocusTarget.cs",
+        "src/Hexalith.FrontComposer.Testing/UxKeyboardKey.cs",
+        "src/Hexalith.FrontComposer.Testing/UxRect.cs",
+        "src/Hexalith.FrontComposer.Testing/UxStateAssertions.cs",
+        "src/Hexalith.FrontComposer.Testing/UxSurfaceFacts.cs",
+        "src/Hexalith.FrontComposer.Testing/UxSurfaceSnapshot.cs",
+        "src/Hexalith.FrontComposer.Testing/UxTargetSizeExceptionKind.cs",
+        "src/Hexalith.FrontComposer.Testing/UxTargetSizeRationale.cs",
+        "src/Hexalith.FrontComposer.Testing/UxTheme.cs",
+        "src/Hexalith.FrontComposer.Testing/UxTiming.cs",
+        "src/Hexalith.FrontComposer.Testing/UxTimingAssertions.cs",
+        "src/Hexalith.FrontComposer.Testing/UxValidationAssertions.cs",
+        "src/Hexalith.FrontComposer.Testing/UxValidationSummarySnapshot.cs",
+        "tests/Hexalith.FrontComposer.Testing.Tests/FrontComposerTestHostTests.cs",
+        "tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs",
+        "tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs",
+        "tests/Hexalith.FrontComposer.Testing.Tests/ValidationConsumer.razor",
+    }
+)
+HISTORICAL_OWNED_MIXED_PATHS = frozenset(
+    {
+        "src/Hexalith.FrontComposer.Testing/TestAccessibilityEvidenceRecorder.cs",
+        "src/Hexalith.FrontComposer.Testing/UxAccessibilityAssertions.cs",
+        "src/Hexalith.FrontComposer.Testing/UxAnnouncementAssertions.cs",
+        "src/Hexalith.FrontComposer.Testing/UxAnnouncementCatalog.cs",
+        "tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs",
+    }
+)
+HISTORICAL_OWNED_MIXED_UNOWNED_PATHS = frozenset(
+    {
+        ".github/workflows/quality.yml",
+        "Directory.Build.targets",
+        "_bmad-output/implementation-artifacts/spec-actions-39123696668-fix-cicd-release.md",
+        "_bmad-output/implementation-artifacts/spec-ci-release-publication-2026-10-18.md",
+        "docs/diagnostics/README.md",
+        "eng/pact_provider_apphost_smoke.py",
+        "eng/release_compatibility.py",
+        "scripts/pack-release-packages.py",
+        "src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs",
+        "tests/eng/test_pack_release_packages.py",
+    }
 )
 
 
@@ -360,7 +444,7 @@ class CommitEvidence:
     # Touched paths an exclusion pattern covers. They stay in `paths` -- the report
     # never hides a path -- but they carry no ownership and no interleaving.
     excluded_paths: tuple[str, ...] = ()
-    # A declared non-owning kind that this commit's matching subject overrode. Recorded
+    # A declared non-owning kind that this commit's ownership overrode. Recorded
     # so an ignored declaration is visible rather than silently inert.
     inert_declaration: str = ""
 
@@ -2580,6 +2664,58 @@ def bootstrap_owned_authorization_failures(
     return failures
 
 
+def historical_owned_authorization_failures(
+    *,
+    story_path: str,
+    story_id: str,
+    declared_baseline: str,
+    resolved_baseline: str,
+    sha: str,
+    parents: list[str],
+    subject_matches: bool,
+    paths: set[str],
+    file_list: set[str],
+) -> list[str]:
+    """Authorize only the two maintainer-approved historical Story 13.7 commits."""
+    if sha == HISTORICAL_OWNED_DELIVERY_COMMIT:
+        parent = HISTORICAL_OWNED_BASELINE
+        expected_match = False
+        owned = HISTORICAL_OWNED_DELIVERY_PATHS
+        touched = owned
+    elif sha == HISTORICAL_OWNED_MIXED_COMMIT:
+        parent = HISTORICAL_OWNED_MIXED_PARENT
+        expected_match = True
+        owned = HISTORICAL_OWNED_MIXED_PATHS
+        touched = owned | HISTORICAL_OWNED_MIXED_UNOWNED_PATHS
+    else:
+        return ["the commit is not one of the two authorized historical commits"]
+
+    failures: list[str] = []
+    for label, actual, expected in (
+        ("story artifact path", story_path, HISTORICAL_OWNED_STORY_PATH),
+        ("story ID", story_id, HISTORICAL_OWNED_STORY_ID),
+        ("declared baseline_commit", declared_baseline, HISTORICAL_OWNED_BASELINE),
+        ("resolved baseline", resolved_baseline, HISTORICAL_OWNED_BASELINE),
+        ("sole parent", parents, [parent]),
+        ("subject story-ID match", subject_matches, expected_match),
+    ):
+        if actual != expected:
+            failures.append(f"{label} must equal {expected!r}, got {actual!r}")
+    # Compare unfiltered paths: exclusions must not reshape either authorization set.
+    if paths != touched:
+        failures.append(
+            "the complete touched-path inventory must equal the immutable authorized set: "
+            f"missing {sorted(touched - paths)!r}; unexpected {sorted(paths - touched)!r}"
+        )
+    if paths & file_list != owned:
+        intersection = paths & file_list
+        failures.append(
+            "the commit/File List intersection must equal the immutable authorized owned-path set: "
+            f"missing {sorted(owned - intersection)!r}; unexpected {sorted(intersection - owned)!r}"
+        )
+    return failures
+
+
 def collect_commit_scope_evidence(
     root: Path,
     base_ref: str,
@@ -2681,7 +2817,13 @@ def collect_commit_scope_evidence(
     )
     for sha, parents, subject in commit_rows:
         disposition = metadata.commit_scope_dispositions.get(sha)
+        historical_target = story_path == HISTORICAL_OWNED_STORY_PATH and sha in (
+            HISTORICAL_OWNED_DELIVERY_COMMIT,
+            HISTORICAL_OWNED_MIXED_COMMIT,
+        )
         if len(parents) > 1:
+            if historical_target:
+                failures.append(f"invalid historical-owned authorization for {sha}: merges are not authorized")
             if disposition and disposition[0] == "bootstrap-owned":
                 authorization_failures = bootstrap_owned_authorization_failures(
                     story_path=story_path,
@@ -2771,7 +2913,31 @@ def collect_commit_scope_evidence(
                 )
                 disposition = None
 
-        if matches and unowned_paths:
+        historical_authorized = False
+        if historical_target:
+            authorization_failures = historical_owned_authorization_failures(
+                story_path=story_path,
+                story_id=metadata.story_id,
+                declared_baseline=metadata.baseline_commit,
+                resolved_baseline=baseline,
+                sha=sha,
+                parents=parents,
+                subject_matches=matches,
+                paths=set(paths),
+                file_list=listed,
+            )
+            failures.extend(
+                f"invalid historical-owned authorization for {sha}: {failure}"
+                for failure in authorization_failures
+            )
+            historical_authorized = not authorization_failures
+
+        if historical_authorized:
+            classification = "historical-owned"
+            reason = "maintainer-authorized recovery; ownership is limited to the immutable listed-path intersection"
+            if disposition and disposition[0] in NON_OWNING_DECLARED_CLASSIFICATIONS:
+                inert_declaration = disposition[0]
+        elif matches and unowned_paths:
             classification = "interleaved"
             reason = ""
             failures.append(
