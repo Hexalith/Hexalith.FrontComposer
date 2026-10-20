@@ -2,7 +2,7 @@
 title: '13.7 [I · UX-F] Provide Reusable UX Assertions for Adopters'
 type: 'feature'
 created: '2026-10-18'
-status: 'in-review'
+status: 'in-progress'
 baseline_commit: 'b9e1490cfe1c51406d3c8d4dc213971d06911a24'
 route: 'dispatch'
 review_loop_iteration: 1
@@ -73,6 +73,48 @@ context:
 - Given evidence output, when inspected, then it contains no token, JWT, tenant payload, stack trace or PII.
 
 ### Review Findings
+
+Review round 6 (2026-10-20) of the round-4/5 fix commit `a2196fd6`; per-finding verdicts are under Review Triage Log → Review round 6.
+
+- [ ] [Review][Patch] Keep `role="alert"` speaking on silent SS rows: accept explicit `aria-live="off"` only for non-alert roles, and pin alert with `off` as a `Semantics.Silent` failure [src/Hexalith.FrontComposer.Testing/UxStateAssertions.cs:49]
+- [ ] [Review][Patch] Pin structural linked-summary failures (`DeclaredFields`, `DeclaredGroups`, `FieldIdentity`, `PriorTargets`) as named diagnostics with no `Field[` entries [tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs:1160]
+- [ ] [Review][Patch] Scope the diagnostic-naming sentence: recorder non-finite and context failures name no fact, and sequence diagnostics print catalog row/channel labels and counts [src/Hexalith.FrontComposer.Testing/README.md:33]
+- [ ] [Review][Patch] Match the visible label within the accessible name case-insensitively (WCAG 2.5.3 is normatively case-insensitive); keep declared visible-label identity exact [src/Hexalith.FrontComposer.Testing/UxValidationAssertions.cs:58]
+- [ ] [Review][Patch] Document SS-36 and the no-dispatch/no-queue requirement in the did-not-run guidance [docs/how-to/test-generated-components.md:137]
+- [ ] [Review][Patch] Name the ordinary silent SS rows (SS-31/33/36/39/40/43/44/45/46/47) that accept explicit `aria-live="off"` [src/Hexalith.FrontComposer.Testing/README.md:28]
+- [ ] [Review][Patch] Update the XML docs for `ZoomPercent` (AE-02 ≥400%), `ContrastRatio` (Passed AE-06 3:1 floor) and `Neighbors` (`[]` measured empty, `null` unmeasured) [src/Hexalith.FrontComposer.Testing/AccessibilityTargetEvidence.cs:9]
+- [ ] [Review][Patch] Pin a non-intersecting negative-height occluder as a failure [tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs:681]
+- [ ] [Review][Patch] Restore the fail-closed default arm in the recorder's row switch [src/Hexalith.FrontComposer.Testing/TestAccessibilityEvidenceRecorder.cs:123]
+- [ ] [Review][Patch] Correct the how-to: `Neighbors = null` fails `AssertTargetSize` and Passed AE-04 packets, not every recorded packet [docs/how-to/test-generated-components.md:143]
+
+Rejected (round 6):
+
+- R6-B3 (low): carried R2-B12/R5-B11; the 3:1 floor is the common AE-06 minimum and the caller still assesses 4.5:1 text.
+- R6-B4 (low): carried R3-E5; impossible contrast ratios require a broken caller measurement.
+- R6-B5 (false): carried R4-B5; an unrecorded `ForcedColors` or extra active condition does not make a packet another row's evidence.
+- R6-B6 (low): carried R4-B8; `Bounds` and `Targets` entries are non-nullable contract members and null fails loudly.
+- R6-B7 (low): cross-checking a Spacing target's measured `[]` against other recorded targets is a new guard; the inventory is caller-measured (R5-B4, R4-B9).
+- R6-B10 (low): the diagnostic names the fact; adding missing/out-of-range qualifiers is more than a direct correction.
+- R6-B11 (low): `AssertUnobscured` already prints redacted geometry for the same inputs; sub-reasons in the recorder are new branches.
+- R6-B12 (low): `AssertChannel` failing first is unchanged ordering; folding it into the aggregate is a refactor.
+- R6-B13 (low): carried R3-B13 (substring label-in-name).
+- R6-B14 (low): carried R3-E9/R3-E20 (key-name redaction design); both wordings are accurate.
+- R6-B16 (low): carried R4-B9 (duplicate or cross-referenced ordinals need a broken inventory).
+- R6-B17 (low): carried R4-E8/R3-E5.
+- R6-B19 (false): both documents tell callers to include overflowing descendants even when the wrapper has zero size.
+- R6-B20 (false): `UxStates_HiddenDeniedEntriesAndSelectedDisabledTab_AllowCanonicalAlternatives` covers the policy-hidden SS-06 form; a contradictory `FailureVisible` on it is a broken caller measurement (R3-E5).
+- R6-E1 (low): same as R6-B4.
+- R6-E2 (low): same as R6-B17.
+- R6-E3 (low): carried R3-E5 (negative overflow).
+- R6-E4 (false): same as R6-B5.
+- R6-E5 (low): same as R6-B6.
+- R6-E6 (low): same as R6-B7.
+- R6-E7 (low): same as R6-B16.
+- R6-E8 (low): messages list only fixed schema names; a message length cap is a new rule.
+- R6-E10 (low): carried R4-E10 (ARIA token normalization).
+- R6-E11 (low): carried R4-E10.
+- R6-E12 (low): carried R3-E19 (`AccessibleName`/`DescribedBy` are non-nullable).
+- R6-E13 (low): same as R6-B13.
 
 Review round 4 (2026-10-20) of the round-3 fix commit `fc429d0b`; per-finding verdicts are under Review Triage Log → Review round 4.
 
@@ -361,6 +403,68 @@ All three configured layers completed against the canonical baseline-to-worktree
 | R5-V2 | medium | defer | Confirmed with python3 -m unittest discover -s tests/eng -p test_pact_provider_apphost_smoke.py -k failure_log_capture: one test fails at line 3202 because it expects logs unavailable: RuntimeError while capture emits diagnosticExceptionType JSON. This stale expectation is in the pre-existing CI diagnostic lane; /tmp/fc137-round4/review-existing-diagnostic-test.log retains the failure. |
 
 Survivors: measured empty spacing inventory (B4), normalized label comparison (B6), and explicit ordinary silent semantics (B7) are private patches with existing-method regression coverage and concise adopter guidance. Tracking reconciliation (B2) is a workflow artifact patch. The six independent infrastructure follow-ups are appended to deferred-work.md; no public API, Shell runtime, dependency, validator or approval seal is changed by this run. No intent or spec loopback is needed.
+
+### Review round 6
+
+Scope: the round-4/5 fix commit `a2196fd6` (`f992edb8..a2196fd6`) over the Story 13.7 File List code and documentation paths, excluding story/tracking artifacts (9 files, +276/−66). Round 5 reviewed the round-4 patches in the cumulative worktree; this round also covers the round-5 helper corrections (B4, B6, B7). Layers: Blind Hunter (B), Edge Case Hunter (E), Verification Gap (V), Acceptance Auditor (A); none failed. Rows marked carried repeat an earlier disposition.
+
+| Finding | Verdict | Route | Verified evidence |
+| --- | --- | --- | --- |
+| R6-B1 | low | patch (P5) | The how-to and README say "SS-25/37/38 require no lifecycle entry", but `UxStateAssertions.cs:56` applies `DidNotRun` to SS-25/36/37/38 and also requires `!Dispatched && !Queued`. |
+| R6-B2 | medium | patch (P1) | `UxStateAssertions.cs:49` accepts `AriaLive == "off"` before any role check, so `role="alert"` with `aria-live="off"` passes `Semantics.Silent` on SS-36/39/45/46. UX-AM-1 treats `role="alert"` as its own speech path, and the docs limit the override to implicit status/log speech. |
+| R6-B3 | low | reject | Carried R2-B12/R5-B11: the 3:1 floor is the minimum shared by every AE-06 category; the caller's state inventory carries the category and the docs keep the 4.5:1 text assessment with the caller. |
+| R6-B4 | low | reject | Carried R3-E5: impossible contrast ratios require a broken caller measurement. |
+| R6-B5 | false | reject | Carried R4-B5: an unrecorded `ForcedColors` under a ForcedColors theme, or an extra active condition such as 400% zoom in an AE-01 packet, does not make the packet another row's evidence; both forced-colour disagreement directions are rejected. |
+| R6-B6 | low | reject | Carried R4-B8: `Bounds` and `Targets` entries are non-nullable contract members; null fails loudly. `Neighbors = []` makes no new null reachable. |
+| R6-B7 | low | reject | A Spacing target's `Neighbors` is the caller's measured inventory (R5-B4). Checking it against other recorded targets is a new cross-target guard, like R4-B9's uniqueness. |
+| R6-B8 | low | patch (P7) | This delta updated the `ViewportWidth`/`Occluders` XML docs but not `ZoomPercent` (AE-02 ≥400%), `ContrastRatio` (new Passed AE-06 3:1 floor) or the `Neighbors` parameter, whose `[]`/`null` meaning changed in R5-B4. |
+| R6-B9 | low | patch (P3) | README l.33 and the how-to say "AE measurement validation failures name failed checks or required facts", but the non-finite guard ("AE measurements must contain only finite numbers.") and the context guard name neither the fact nor the ordinal/theme. |
+| R6-B10 | low | reject | The diagnostic names the fact; the caller holds its value. Missing/out-of-range qualifiers are more than a direct correction. |
+| R6-B11 | low | reject | `AssertUnobscured` prints redacted geometry for the same inputs; containment/occlusion sub-reasons in the recorder add branches. |
+| R6-B12 | low | reject | `AssertChannel` running before the aggregate is unchanged ordering; folding its failures into the field aggregate is a refactor, and the caller sees the channel failure first. |
+| R6-B13 | low | reject | Carried R3-B13: substring label-in-name. |
+| R6-B14 | low | reject | Carried R3-E9/R3-E20: key-name redaction is the design; over-redaction is the safe direction. Both documents state that values are not scanned. |
+| R6-B15 | low | patch (P6) | The README and how-to say "ordinary silent SS states accept explicit `aria-live="off"`" without naming the coded set SS-31/33/36/39/40/43/44/45/46/47 (`UxStateAssertions.cs:36`). |
+| R6-B16 | low | reject | Carried R4-B9: duplicate or cross-referenced ordinals need a broken caller inventory. |
+| R6-B17 | low | reject | Carried R4-E8/R3-E5. |
+| R6-B18 | low | patch (P8) | R4 P4 asked for a non-intersecting negative-size occluder, but only negative width is pinned (`TestingFailureModeTests.cs:681`). Removing `r.Height >= 0` from `UxFocusAssertions.IsUnobscured` leaves the suite green. |
+| R6-B19 | false | reject | Both documents tell callers to include painted overflowing descendants even when the wrapper has zero size. |
+| R6-B20 | false | reject | `UxStates_HiddenDeniedEntriesAndSelectedDisabledTab_AllowCanonicalAlternatives` covers the policy-hidden SS-06 form. A contradictory `FailureVisible` on a hidden surface is a broken caller measurement (R3-E5). |
+| R6-E1 | low | reject | Same as R6-B4. |
+| R6-E2 | low | reject | Same as R6-B17. |
+| R6-E3 | low | reject | Carried R3-E5: negative `HorizontalOverflow`. |
+| R6-E4 | false | reject | Same as R6-B5. |
+| R6-E5 | low | reject | Same as R6-B6. |
+| R6-E6 | low | reject | Same as R6-B7. |
+| R6-E7 | low | reject | Same as R6-B16. |
+| R6-E8 | low | reject | Messages list only fixed schema names and 1-based ordinals; a length cap is a new rule. |
+| R6-E9 | medium | patch (P1) | Same root cause as R6-B2. |
+| R6-E10 | low | reject | Carried R4-E10: ARIA token normalization. |
+| R6-E11 | low | reject | Carried R4-E10. |
+| R6-E12 | low | reject | Carried R3-E19: `AccessibleName` and `DescribedBy` are non-nullable; null already failed loudly when the loop ran without aggregate failures. |
+| R6-E13 | low | reject | Same as R6-B13. |
+| R6-E14 | low | patch (P4) | WCAG 2.2 Understanding 2.5.3 says the criterion is normatively case-insensitive. `UxValidationAssertions.cs:58` compares with `StringComparison.Ordinal`, so visible `Name` with accessible name `name (required)` fails `Field[n].Label`. The declared-label identity check stays exact. |
+| R6-E15 | low | patch (P9) | The rewrite removed the old `_ => false` arm; a row without a `case` now records with no required facts. `Enum.IsDefined` blocks casts, so the risk is a future enum member, and restoring the arm is a direct correction. |
+| R6-E16 | low | patch (P3) | Same documentation sentence as R6-B9: `AssertSequence` prints observed catalog row/channel labels and counts (no copy or opaque identifiers), which "without printing observed values" overstates. |
+| R6-V1 | medium | patch (P2) | Pre-verified regression gap: the `fieldStructureValid` string-label guard has no structural-failure regression. Dropping `"DeclaredFields"` or `"PriorTargets"` from it turns the named diagnostic into an `IndexOutOfRangeException` or LINQ `InvalidOperationException` with the suite green. |
+| R6-A1 | medium | patch (P1) | Same root cause as R6-B2; a probe against the built assembly passes SS-36 with `Role="alert", AriaLive="off"`. |
+| R6-A2 | low | patch (P3) | Same as R6-B9; a probe recording AE-06 with `ContrastRatio = NaN` returned the unnamed non-finite message. |
+| R6-A3 | low | patch (P10) | The how-to recorder paragraph says `Neighbors = null` "is unmeasured and rejected", but the recorder validates targets only for Passed AE-04 packets; a probe recorded a `Passed = false` packet with null Spacing neighbours. The code matches R4-E2; the documentation overstates it. |
+
+Survivor groups:
+
+- P1 (B2, E9, A1): accept explicit `off` on silent rows only when `Role != "alert"`; pin alert with `off` inside the existing status/log loop.
+- P2 (V1): add DeclaredFields, DeclaredGroups, FieldIdentity and PriorTargets structural cases to the existing relationship-drift method, asserting the named check and no `Field[`.
+- P3 (B9, E16, A2): scope the README and how-to diagnostic sentence to the recorder's missing/setup/contradiction failures, and state that sequence diagnostics print catalog row/channel labels and counts.
+- P4 (E14): use `OrdinalIgnoreCase` for the normalized containment only, with a case-variant regression.
+- P5 (B1): add SS-36 and no dispatch/queue to the did-not-run documentation.
+- P6 (B15): list the ordinary silent rows in the README and how-to.
+- P7 (B8): XML docs for `ZoomPercent`, `ContrastRatio` and `Neighbors`.
+- P8 (B18): pin a non-intersecting negative-height occluder.
+- P9 (E15): restore a fail-closed `default` arm in the recorder row switch.
+- P10 (A3): correct the how-to `Neighbors = null` sentence.
+
+Every patch keeps published signatures and adds no public API; tests go inside existing methods, so the identifier seal is unchanged. Nothing defers and nothing routes to `intent_gap` or `bad_spec`.
 
 ## Verification
 
