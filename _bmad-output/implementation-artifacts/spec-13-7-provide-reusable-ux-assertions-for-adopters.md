@@ -2,7 +2,7 @@
 title: '13.7 [I · UX-F] Provide Reusable UX Assertions for Adopters'
 type: 'feature'
 created: '2026-10-18'
-status: 'in-review'
+status: 'in-progress'
 baseline_commit: 'b9e1490cfe1c51406d3c8d4dc213971d06911a24'
 route: 'dispatch'
 review_loop_iteration: 1
@@ -71,6 +71,48 @@ context:
 **Acceptance Criteria:**
 - Given the epics.md Story 13.7 criteria, when the Testing suite runs, then every helper passes against realistic failure states and fails on seeded drift.
 - Given evidence output, when inspected, then it contains no token, JWT, tenant payload, stack trace or PII.
+
+### Review Findings
+
+Review round 4 (2026-10-20) of the round-3 fix commit `fc429d0b`; per-finding verdicts are under Review Triage Log → Review round 4.
+
+- [ ] [Review][Patch] AE-02 requires an effective CSS viewport of at most 320 px at ≥400% zoom; document `ViewportWidth` as the effective layout width after zoom (D1 resolved 2026-10-20: effective width, option 1) [src/Hexalith.FrontComposer.Testing/TestAccessibilityEvidenceRecorder.cs:61]
+- [ ] [Review][Patch] Reject a Passed AE-06 packet below the 3:1 floor shared by every AE-06 category [src/Hexalith.FrontComposer.Testing/TestAccessibilityEvidenceRecorder.cs:75]
+- [ ] [Review][Patch] Seed AE-03 paragraph/letter-spacing, reverse forced-colour/theme and non-positive equivalent-ordinal recorder regressions [tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs:1199]
+- [ ] [Review][Patch] Pin a non-intersecting negative-size occluder (fails) and a zero-width occluder over the target (passes) [tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs:669]
+- [ ] [Review][Patch] Pin zero-size target bounds in `AssertTargetSize` ("Bounds") and as Passed AE-04 evidence [tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs:526]
+- [ ] [Review][Patch] Pin a single null required SS fact naming `Facts.X` [tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs:1226]
+- [ ] [Review][Patch] Require a positive AE-01 viewport width [src/Hexalith.FrontComposer.Testing/TestAccessibilityEvidenceRecorder.cs:60]
+- [ ] [Review][Patch] Name the missing, wrong-setup and contradicted facts in recorder diagnostics without values [src/Hexalith.FrontComposer.Testing/TestAccessibilityEvidenceRecorder.cs:74]
+- [ ] [Review][Patch] Run per-field validation checks whenever structural preconditions hold and report every failing field [src/Hexalith.FrontComposer.Testing/UxValidationAssertions.cs:44]
+- [ ] [Review][Patch] Correct misleading diagnostic labels: focused `aria-atomic` reported as `AriaLive`, terminal-branch "or wrong channel" prefix, `UnneededException` under "incomplete" [src/Hexalith.FrontComposer.Testing/UxAnnouncementAssertions.cs:76]
+- [ ] [Review][Patch] Scope the README diagnostic-naming sentence to the helpers that name checks; note `AssertUnobscured` prints redacted geometry [src/Hexalith.FrontComposer.Testing/README.md:33]
+- [ ] [Review][Patch] Sync README rows and the how-to with the round-3 behavior changes and P9 guidance [src/Hexalith.FrontComposer.Testing/README.md:26]
+- [ ] [Review][Patch] Remove the unneeded SS-06 diagnostic exemption from the canonical-rows theory [tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs:1233]
+
+Rejected:
+
+- R4-B3 (low): spacing inputs are documented applied multipliers; integer font sizes reproduce exactly, and a float tolerance is a new rule.
+- R4-B5 (false): each row enforces its own setup; extra active conditions do not make a packet another row's evidence, and both forced-colour disagreement directions are rejected.
+- R4-B6 (false): a packet is one row's serialized evidence; Passed with a retained failed outcome is the self-contradiction P1 rejects.
+- R4-B8 (low): `Bounds`/`KeyboardPath` are non-nullable contract members (R3-E19); null fails loudly.
+- R4-B9 (low): duplicate target ordinals require a broken caller inventory; uniqueness is a new guard.
+- R4-B11 (low): a dangling describedby IDREF is ignored by name computation; a retained error element is measured as `ErrorId` and fails P6.
+- R4-B16 (false): the XML doc states explicit truncation; serialization failure of the sealed schema is not shown reachable.
+- R4-B18 (false): `UxAnnouncement` has exactly the five compared members.
+- R4-B19c (false): every polite channel requires `role="status"`, so implicit-live scope cannot change an outcome.
+- R4-B20 (false): `ownerStory` has no lineage rule; history retains the 10-1 lineage.
+- R4-E1 (low): same as R4-B8.
+- R4-E2 (low): null or non-positive geometry in a failed packet is a broken caller measurement (R3-E5).
+- R4-E6 (low): same as R4-B3.
+- R4-E7 (false): same as R4-B6.
+- R4-E8 (low): carried R3-E5 (negative counts, Critical > Finding).
+- R4-E9 (low): same as R4-B9.
+- R4-E10 (low): empty/uppercase explicit `aria-live` on a status node is unlikely markup; token normalization is new parsing.
+- R4-E12 (maybe-false, low if true): needs the blocked attempt's `Lifecycle` filled from the original command; the realistic gate consumer measures none.
+- R4-E13 (low): same as R4-B11.
+- R4-E15 (low): same as R4-B11; P6's stale `ErrorId` is implemented and pinned.
+- R4-V6 (low): same as R4-B8.
 
 ## Implementation Notes
 
@@ -216,6 +258,83 @@ Survivor groups:
 - P10–P15 (V1/V2/V3/V5/V6/V7+B7): regression tests.
 
 Every patch keeps the published signatures and adds no public API; tests are added inside existing methods, so the identifier seal is unchanged. D1 and D2 go to the deferred-work ledger. Nothing routes to `intent_gap` or `bad_spec`, so no loopback is needed.
+
+### Review round 4
+
+Scope: the round-3 fix commit `fc429d0b` (`8713e14b..fc429d0b`) over the Story 13.7 File List paths, excluding story/tracking artifacts (10 files, +328/−130). Rounds 1–3 cover the earlier delivery. Layers: Blind Hunter (B), Edge Case Hunter (E), Verification Gap (V), Acceptance Auditor (A); none failed. Rows marked carried repeat a round-3 disposition.
+
+| Finding | Verdict | Route | Verified evidence |
+| --- | --- | --- | --- |
+| R4-B1 | medium | patch (P1) | The P1 contradiction rule never reads `ContrastRatio`, so `Record(AE06, Light, { Passed = true, ContrastRatio = 1.2 })` is retained although every UX-AE-1 AE-06 category requires at least 3:1. R2-B12 rejected a category API; a 3:1 floor needs no category. The ratio-range sub-claim is carried R3-E5. |
+| R4-B2 | low | patch (P6) | `AE01 => m.ViewportWidth <= 320` accepts 0 or a negative width as the canonical 320 CSS-pixel setup. The negative overflow/count and Critical > Finding sub-claims are carried R3-E5. |
+| R4-B3 | low | reject | Spacing values are documented applied multipliers; integer font sizes 10–40 px reproduce exactly. Only a derived ratio at an unusual size (26.4/17.6) falls 2e-16 short, and a tolerance is a new rule. |
+| R4-B4 | medium | decision (D1) | `AE02 => m.ViewportWidth.HasValue && m.ZoomPercent >= 400` accepts 400% on any viewport, contrary to UX-AE-1 "400% at a 1280 CSS-pixel reference viewport". The bound depends on whether `ViewportWidth` is the effective CSS width (fixture and in-repo e2e: 320) or the 1280 reference. |
+| R4-B5 | false | reject | Each row enforces its own canonical setup; reduced motion in an AE-01 packet or an unrecorded `ForcedColors` under a ForcedColors theme does not make it another row's evidence. Forced colours alone is tied to theme provenance, and both disagreement directions are rejected. |
+| R4-B6 | false | reject | A packet is one row's evidence and is serialized whole; a Passed packet retaining `KeyboardPassed = false` is the self-contradiction P1 specified to reject. |
+| R4-B7 | low | patch (P7) | `ValidateMeasurements` throws one merged missing/setup message and one generic contradiction message, so an adopter must read source to learn which AE fact failed (the R3-B2/B16 root cause, outside P3's helpers). |
+| R4-B8 | low | reject | `AccessibilityTargetEvidence.Bounds` and `KeyboardPath` are non-nullable contract members (R3-E19 precedent); null fails loudly with `NullReferenceException`. |
+| R4-B9 | low | reject | Duplicate `TargetNumber`s require a broken caller inventory; a uniqueness guard is a new rule. |
+| R4-B10 | low | patch (P8) | `for (int i = 0; failed.Count == 0 && ...)` skips every per-field check after any aggregate failure (Summary, Links, ErrorTargets) and stops at the first failing field. Only DeclaredFields, DeclaredGroups, FieldIdentity and PriorTargets protect the index and `SingleOrDefault` lookups. |
+| R4-B11 | low | reject | A valid field whose `DescribedBy` keeps a removed error IDREF is a dangling reference ignored by name computation; a retained error element is measured as `ErrorId` and fails P6. The `ErrorId` XML doc already says empty for a valid field. |
+| R4-B12 | low | patch (P10) | README line 33 says failure messages name failed checks without printing observed values; `AssertUnobscured` appends formatted measured geometry, and `AssertRestored`, `AssertBlockedSubmit`, `AssertInputPreserved`, timing and recorder messages name no check. |
+| R4-B13 | low | patch (P11) | `IsUnobscured` ignores zero-size occluders (P8), but neither the README AE-05 row nor the how-to says an occluder is measured as its painted bounds including overflowing descendants; a zero-size wrapper with a painting child then passes. Reverting to fail-closed would contradict P8. |
+| R4-B14 | low | patch (P11) | Tightened checks (SS-19/21 explicit `FailureVisible = false`, SS-25/37/38 no lifecycle entry, valid field empty `ErrorId`) and loosened ones (implicit `role="status"`, zero-size occluders) are absent from the README rows. The commit-type sub-claim is rejected: published history is not rewritten. |
+| R4-B15 | low | patch (P11) | The 13.7-owned how-to line 105 still lists only token/secret/password redaction and lacks P9's key-name-only caveat and Fluent v5 shadow-control measurement guidance. |
+| R4-B16 | false | reject | The XML doc states explicit truncation beyond the payload limit; omitted absent facts keep fixed schema names, and serialization failure of the sealed schema is not shown reachable. |
+| R4-B17 | low | patch (P9) | The terminal branch of `AssertDistinctChannels` keeps the "or wrong channel" prefix for a second terminal outcome, and `AssertTargetSize` reports `UnneededException` under "…is incomplete". |
+| R4-B18 | false | reject | `UxAnnouncement` has exactly the five compared members; no current state yields an empty differing list. |
+| R4-B19a | low | patch (P12) | The theory's only SS-06 case is the visible denied state with `PolicyHidden` unset, so every flipped fact names `Facts.X`; the `row != "SS-06"` exemption only weakens the pin. |
+| R4-B19b | medium | patch (P5) | The theory flips present booleans and nulls the whole `Facts`, but never nulls one required fact. Accepting a null (unmeasured) fact in `FactFailures` leaves the suite green — the R1 known-bad "missing state semantics certified". |
+| R4-B19c | false | reject | Every polite channel requires `role="status"`, so implicit-live scope cannot change an `AssertChannel` outcome. |
+| R4-B20 | false | reject | `ownerStory` is required front matter with no lineage rule (`eng/validate-docs.ps1:486`); the drift sweep reassigned it deliberately and history retains the 10-1 lineage. |
+| R4-E1 | low | reject | Same claim as R4-B8. |
+| R4-E2 | low | reject | Null or non-positive geometry in a `Passed = false` packet is a broken caller measurement (R3-E5 precedent). |
+| R4-E3 | medium | patch (P1) | Same root cause as R4-B1. |
+| R4-E4 | low | patch (P6) | Same root cause as R4-B2. |
+| R4-E5 | medium | decision (D1) | Same claim as R4-B4. |
+| R4-E6 | low | reject | Same claim as R4-B3. |
+| R4-E7 | false | reject | Same claim as R4-B6. |
+| R4-E8 | low | reject | Carried R3-E5: negative counts and `CriticalFindingCount > FindingCount` require a broken caller measurement. |
+| R4-E9 | low | reject | Same claim as R4-B9. |
+| R4-E10 | low | reject | Empty or uppercase explicit `aria-live` on a status node is unlikely markup; ARIA token normalization is new parsing. |
+| R4-E11 | low | patch (P11) | Same root cause as R4-B13. |
+| R4-E12 | maybe-false | reject | Requires an adopter to fill the blocked attempt's `Lifecycle` from the original command; `Dispatched`/`Queued` describe "this attempted command", and the realistic admission-gate consumer measures no pending entry for the denied attempt. Low if true. |
+| R4-E13 | low | reject | Same claim as R4-B11. |
+| R4-E14 | medium | patch (P1) | Same root cause as R4-B1. |
+| R4-E15 | low | reject | Same claim as R4-B11; P6's stale `ErrorId` is implemented and pinned. |
+| R4-E16 | low | patch (P10) | Same root cause as R4-B12. |
+| R4-E17 | medium | decision (D1) / patch (P6) | The AE-02 half joins R4-B4; the AE-01 half joins R4-B2. |
+| R4-V1 | medium | patch (P2) | Pre-verified: the setup loop varies only `LineHeight`/`WordSpacing` for AE-03; weakening `ParagraphSpacing >= 2` or `LetterSpacing >= .12` to `HasValue` stays green. |
+| R4-V2 | medium | patch (P2) | Pre-verified: only "forced colours measured under Light" is rejected in tests; a `UxTheme.ForcedColors` context with `ForcedColors = false` on a non-AE-07 row is never exercised. |
+| R4-V3 | medium | patch (P2) | Pre-verified: no recorder case supplies a non-positive `EquivalentControlNumber`; dropping that clause stays green. |
+| R4-V4 | medium | patch (P3) | Pre-verified broken verification: the "negative sizes remain invalid" occluder `(30,105,-4,10)` intersects the target, so deleting `Width >= 0 && Height >= 0` stays green; the zero-width disjunct is never isolated. |
+| R4-V5 | medium | patch (P4) | Pre-verified: no test uses zero/negative target bounds; deleting the `"Bounds"` failure accepts a 0×0 Inline target in `AssertTargetSize` and as Passed AE-04 evidence. |
+| R4-V6 | low | reject | Same claim as R4-B8. |
+| R4-V7 | low | patch (P6) | Same root cause as R4-B2. |
+| R4-V8 | low | patch (P10) | Same root cause as R4-B12. |
+| R4-A1 | medium | decision (D1) | Same claim as R4-B4; the fixture's AE-02 `ViewportWidth = 320` fits only the effective-width reading. |
+| R4-A2 | medium | patch (P2) | Independently confirms R4-V1/V2/V3. |
+| R4-A3 | low | patch (P8, P9) | Confirms R4-B10; separately, a focused summary/heading carrying `aria-atomic` fails under the `AriaLive` label because the focused branch folds both attributes into one check. |
+| R4-A4 | low | patch (P10) | Same root cause as R4-B12. |
+| R4-A5 | low | patch (P11) | The round-3 Documentation Drift Sweep lists implicit status, success/no-failure, did-not-run lifecycle, valid-field target and zero-size occluder changes, but the README/how-to document only recorder rejections and named diagnostics, and its no-update decisions do not explain the rest. |
+
+Survivor groups:
+
+- D1 (B4/E5/E17/A1): AE-02 viewport bound; needs the `ViewportWidth` reading. Resolved 2026-10-20 by the user: `ViewportWidth` is the effective CSS layout width after zoom, matching its "CSS pixels" doc, the fixture, AE-01 and the in-repo e2e approximation (1280 ÷ 4). AE-02 therefore requires `ViewportWidth is > 0 and <= 320` with `ZoomPercent >= 400`; a reference-width reading would give one property two meanings and still accept a wide window measured by `innerWidth`. Routes to a patch.
+- P1 (B1/E3/E14): reject a Passed AE-06 packet below 3:1.
+- P2 (V1/V2/V3/A2): seeded regressions for AE-03 paragraph/letter spacing, reverse forced-colour/theme disagreement and a non-positive equivalent ordinal.
+- P3 (V4): non-intersecting negative-size occluder fails; zero-width positive-height occluder over the target passes.
+- P4 (V5): zero-size Inline target fails `AssertTargetSize` and Passed AE-04.
+- P5 (B19b): a single null required fact names `Facts.X`.
+- P6 (B2/E4/E17/V7): AE-01 requires a positive viewport width.
+- P7 (B7): recorder diagnostics name the missing, wrong-setup and contradicted facts without values.
+- P8 (B10/A3): per-field validation checks run whenever structural preconditions hold and report every failing field.
+- P9 (B17/A3): diagnostic labels and prefixes match the failing check.
+- P10 (B12/E16/V8/A4): README diagnostic sentence scoped to the helpers that name checks.
+- P11 (B13/B14/B15/E11/A5): README rows and how-to synced with the round-3 behavior changes and P9 guidance.
+- P12 (B19a): remove the SS-06 exemption.
+
+Every patch keeps the published signatures and adds no public API; tests go inside existing methods, so the identifier seal is unchanged. Nothing defers.
 
 ## Verification
 
