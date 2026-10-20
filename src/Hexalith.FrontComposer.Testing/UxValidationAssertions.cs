@@ -41,7 +41,9 @@ public static class UxValidationAssertions
         Check(priorIdentities.Count == fields.Count
             && priorIdentities.Select(f => f.FieldKey).Distinct(StringComparer.Ordinal).Count() == fields.Count, "PriorTargets");
         Check(invalidControls.SequenceEqual(distinctLinks, StringComparer.Ordinal) && linkOrder.SequenceEqual(linkOrder.Order()), "Links");
-        for (int i = 0; failed.Count == 0 && i < fields.Count; i++)
+        // Only structural failures prevent safe indexing or unique group/prior lookups.
+        bool fieldStructureValid = !failed.Any(check => check is "DeclaredFields" or "DeclaredGroups" or "FieldIdentity" or "PriorTargets");
+        for (int i = 0; fieldStructureValid && i < fields.Count; i++)
         {
             UxFieldSnapshot field = fields[i];
             UxFieldDeclaration declaration = declaredFields[i];
@@ -53,7 +55,7 @@ public static class UxValidationAssertions
             Check(prior is null || string.IsNullOrWhiteSpace(field.ErrorId) || string.IsNullOrWhiteSpace(prior.ErrorId)
                 || field.ErrorId == prior.ErrorId, at + "ErrorId");
             Check(field.VisibleLabel == declaration.VisibleLabel
-                && !string.IsNullOrWhiteSpace(field.VisibleLabel) && field.AccessibleName.Contains(field.VisibleLabel, StringComparison.Ordinal), at + "Label");
+                && !string.IsNullOrWhiteSpace(field.VisibleLabel) && NormalizeWhitespace(field.AccessibleName).Contains(NormalizeWhitespace(field.VisibleLabel), StringComparison.Ordinal), at + "Label");
             Check(group is not null && !string.IsNullOrWhiteSpace(group.GroupId) && field.GroupId == group.GroupId
                 && group.FieldKeys.Contains(field.FieldKey, StringComparer.Ordinal)
                 && !string.IsNullOrWhiteSpace(group.VisibleLabel) && field.GroupVisibleLabel == group.VisibleLabel
@@ -70,6 +72,9 @@ public static class UxValidationAssertions
             throw new InvalidOperationException($"VR-01/02 canonical summary, invalid-only links, declared group/order, labels, or prior stable targets drifted: {string.Join(", ", failed)}.");
         }
     }
+
+    private static string NormalizeWhitespace(string value)
+        => string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>Asserts exact useful input preservation; values and field identifiers never appear in failures.</summary>
     public static void AssertInputPreserved(IReadOnlyDictionary<string, string?> before, IReadOnlyDictionary<string, string?> after)

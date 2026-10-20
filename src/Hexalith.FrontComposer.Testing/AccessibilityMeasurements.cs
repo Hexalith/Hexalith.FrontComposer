@@ -35,7 +35,7 @@ public sealed class AccessibilityMeasurements
     public bool? AxePassed { get; init; }
     /// <summary>Whether every action remained available without hover.</summary>
     public bool? NoHoverOnlyAction { get; init; }
-    /// <summary>Viewport width in CSS pixels.</summary>
+    /// <summary>Effective CSS layout viewport width after browser zoom; AE-01/02 require a positive width of at most 320 CSS pixels.</summary>
     public double? ViewportWidth { get; init; }
     /// <summary>Browser zoom percentage.</summary>
     public double? ZoomPercent { get; init; }
@@ -69,7 +69,7 @@ public sealed class AccessibilityMeasurements
     public UxRect? FocusIndicator { get; init; }
     /// <summary>Active viewport and ancestor scrollport bounds for focus evidence.</summary>
     public IReadOnlyList<UxRect> ViewportAndScrollports { get; init; } = [];
-    /// <summary>Measured app-owned sticky, overlay, and message occluders.</summary>
+    /// <summary>Painted bounds of app-owned sticky, overlay, and message occluders, including overflowing descendants. Zero-size bounds represent no painted content.</summary>
     public IReadOnlyList<UxRect> Occluders { get; init; } = [];
     /// <summary>Target-size inventory, including supported exceptions and keyboard paths.</summary>
     public IReadOnlyList<AccessibilityTargetEvidence> Targets { get; init; } = [];

@@ -12,7 +12,7 @@ public static class UxAccessibilityAssertions
         List<string> failed = Failures(target);
         if (failed.Count > 0)
         {
-            throw new InvalidOperationException("AE-04 target size or exception measurement, rationale, equivalent control, or keyboard path is incomplete: "
+            throw new InvalidOperationException("AE-04 target size, exception, rationale, equivalent control, or keyboard path checks failed: "
                 + string.Join(", ", failed) + ".");
         }
     }
@@ -31,7 +31,7 @@ public static class UxAccessibilityAssertions
                 && target.EquivalentControlNumber is > 0 && target.EquivalentControlNumber != target.TargetNumber
                 && target.EquivalentControlBounds is { } equivalent && Valid(equivalent) && Sized(equivalent),
             UxTargetSizeExceptionKind.Spacing => target.Rationale == UxTargetSizeRationale.SeparatedFromNeighbors
-                && target.Neighbors is { Count: > 0 } && HasSpacing(target.Bounds, target.Neighbors),
+                && target.Neighbors is not null && HasSpacing(target.Bounds, target.Neighbors),
             _ => false,
         };
         List<string> failed = [];

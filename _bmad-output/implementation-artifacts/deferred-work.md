@@ -10519,3 +10519,27 @@ Review follow-up for the PNG-integrity resolution adds a separate 33,554,432-byt
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
   summary: Document for Testing-package adopters that directly dispatched projection-loaded actions must carry ScopeTenantId and ScopeUserId from host.UserContext (pre-existing since the 13.1 scope gate, medium).
   evidence: Review round 3 finding R3-B17. FrontComposerTestHostTests had to stamp ScopeTenantId/ScopeUserId on CounterProjectionLoadedAction before the projection view rendered its seed. Neither src/Hexalith.FrontComposer.Testing/README.md nor docs/how-to/test-generated-components.md mentions this, so an adopter who seeds Fluxor state directly gets a scope-filtered view with no explanation. Add the requirement and a host.UserContext example to the adopter docs.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+  summary: Align the pre-existing 4.7.0 package-validation baseline across quality.yml and Contracts.UI/SourceTools governance tests.
+  evidence: R5-B1/E1: Directory.Build.targets and Contracts.UI now select 4.7.0; quality.yml line 628 and exact assertions at Contracts.UI.Tests/PackageBoundaryTests.cs:67 and SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:963 retain 4.6.0. These bytes predate this run. Owner: FrontComposer release/CI maintainer; close after focused governance tests and package-validation lane pass against the published baseline.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+  summary: Close the existing generic-token and unlabelled-JWT export gap in failed AppHost diagnostic receipts before publishing those artifacts.
+  evidence: R5-B3, verified high: _export_failure_diagnostics reuses a scanner that misses a generic token JSON key and unlabelled JWT. A temporary synthetic apphost-smoke.json was exported with zero rejected files; quality.yml uploads diagnostics with always(). Owner: FrontComposer CI/security maintainer; close after real export-path redaction regressions and upload-boundary validation pass. No real credential was used or uploaded during this review.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+  summary: Bound DNS resolution for anonymous localhost AppHost requests by the same request/phase deadline.
+  evidence: R5-E2: json_request only numerically resolves credential-bearing URLs before urllib. The reviewer delayed DNS by 0.20 s and observed a 0.207 s anonymous request with timeout=0.02. Owner: FrontComposer AppHost/CI maintainer; close after a delayed anonymous-DNS regression proves the deadline and cleanup reserve are retained.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+  summary: Preserve LoadPageEffects named-argument source compatibility while retaining the restored binary constructor.
+  evidence: R5-E4: supplying userContextAccessor while omitting the previously optional timeProvider/localizer now yields CS7036 because the seven-parameter overload requires them. This was introduced by an intervening Shell compatibility commit before this run. Owner: FrontComposer Shell maintainer; close after the old source call compiles and both constructor/DI compatibility tests pass.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+  summary: Verify structured runtime-log credential context at the written diagnostic artifact boundary.
+  evidence: R5-V1 pre-verified regression gap: the log capture test throws before successful structured processing and sanitizer tests bypass _safe_resource_log_events. Scanning Message alone would retain a State.ClientSecret value interpolated into an unmarked Message. Owner: FrontComposer CI/security maintainer; close after structured/multiline log export tests preserve safe events and suppress credential canaries.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md`
+  summary: Reconcile the stale pre-existing AppHost diagnostic exception-output test with the structured JSON summary.
+  evidence: R5-V2: python3 -m unittest discover -s tests/eng -p test_pact_provider_apphost_smoke.py -k failure_log_capture fails 1/1 at line 3202, expecting logs unavailable: RuntimeError instead of diagnosticExceptionType JSON; exact output is /tmp/fc137-round4/review-existing-diagnostic-test.log. Owner: FrontComposer CI maintainer; close after this focused test and its contract-artifact lane pass without weakening cleanup or redaction assertions.

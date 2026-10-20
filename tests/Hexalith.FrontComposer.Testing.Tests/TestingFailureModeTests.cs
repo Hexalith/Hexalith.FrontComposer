@@ -516,19 +516,23 @@ public sealed class TestingFailureModeTests {
         AccessibilityTargetEvidence spaced = target with { Exception = UxTargetSizeExceptionKind.Spacing,
             Rationale = UxTargetSizeRationale.SeparatedFromNeighbors, Neighbors = [new(100, 100, 18, 18)] };
         UxAccessibilityAssertions.AssertTargetSize(spaced);
+        UxAccessibilityAssertions.AssertTargetSize(spaced with { Neighbors = [] });
         Should.Throw<InvalidOperationException>(() => UxAccessibilityAssertions.AssertTargetSize(spaced with { Neighbors = [new(30, 100, 18, 18)] }));
         foreach ((AccessibilityTargetEvidence incomplete, string check) in new[] {
             (target with { Rationale = UxTargetSizeRationale.InlineText }, "EquivalentException"),
             (target with { Exception = UxTargetSizeExceptionKind.Inline, Rationale = UxTargetSizeRationale.UserAgentOwned }, "InlineException"),
-            (spaced with { Neighbors = [] }, "SpacingException"),
+            (spaced with { Neighbors = null }, "SpacingException"),
             // Clears the 12 px circle, but the undersized neighbour's centre is 22 px away.
             (spaced with { Neighbors = [new(42, 100, 18, 18)] }, "SpacingException"),
             (new AccessibilityTargetEvidence(3, new(20, 100, 24, 24), [UxKeyboardKey.Tab], UxTargetSizeExceptionKind.Inline, UxTargetSizeRationale.InlineText), "UnneededException"),
             (target with { KeyboardPath = [] }, "KeyboardPath"),
             (target with { EquivalentControlNumber = 1 }, "EquivalentException"),
-            (target with { TargetNumber = 0 }, "TargetNumber") })
+            (target with { TargetNumber = 0 }, "TargetNumber"),
+            (target with { Bounds = new(20, 100, 0, 0), Exception = UxTargetSizeExceptionKind.Inline, Rationale = UxTargetSizeRationale.InlineText }, "Bounds") })
         {
-            Should.Throw<InvalidOperationException>(() => UxAccessibilityAssertions.AssertTargetSize(incomplete)).Message.ShouldContain(check);
+            InvalidOperationException failure = Should.Throw<InvalidOperationException>(() => UxAccessibilityAssertions.AssertTargetSize(incomplete));
+            failure.Message.ShouldContain(check);
+            failure.Message.ShouldNotContain("incomplete");
         }
         TestAccessibilityEvidenceRecorder recorder = new(host.Options);
         foreach (AccessibilityEvidenceRow row in Enum.GetValues<AccessibilityEvidenceRow>())
@@ -626,6 +630,9 @@ public sealed class TestingFailureModeTests {
             heading.GetAttribute("aria-atomic"), heading.GetAttribute("tabindex"));
         UxAnnouncementAssertions.AssertChannel(denial, semantic, denial.Copy);
         Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(denial, semantic with { AriaLive = "polite" }, denial.Copy));
+        InvalidOperationException atomic = Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(denial, semantic with { AriaAtomic = "true" }, denial.Copy));
+        atomic.Message.ShouldContain("AriaAtomic");
+        atomic.Message.ShouldNotContain("AriaLive");
         Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertChannel(denial, semantic with { Name = "Command form" }, "Command form"))
             .Message.ShouldContain("HeadingCopy");
         UxStateAssertions.AssertState("SS-38", new("AuthorizationDenied", true, semantic, Facts: new() { Visible = true, SuccessClaim = false, FailureVisible = true }));
@@ -668,8 +675,10 @@ public sealed class TestingFailureModeTests {
         Should.Throw<InvalidOperationException>(() => UxFocusAssertions.AssertUnobscured(new(double.NaN, 0, 10, 10), new(0, 0, 10, 10), [new(0, 0, 320, 640)], []));
         // A hidden occluder measures as a zero-size rectangle and paints nothing; negative sizes remain invalid geometry.
         UxFocusAssertions.AssertUnobscured(new(20, 100, 120, 24), new(18, 98, 124, 28), [new(0, 0, 320, 640)], [new(30, 105, 0, 0), new(30, 105, 40, 0)]);
+        // Isolate zero width with positive height directly over the target.
+        UxFocusAssertions.AssertUnobscured(new(20, 100, 120, 24), new(18, 98, 124, 28), [new(0, 0, 320, 640)], [new(30, 105, 0, 10)]);
         Should.Throw<InvalidOperationException>(() => UxFocusAssertions.AssertUnobscured(new(20, 100, 120, 24), new(18, 98, 124, 28),
-            [new(0, 0, 320, 640)], [new(30, 105, -4, 10)]));
+            [new(0, 0, 320, 640)], [new(250, 300, -4, 10)]));
     }
 
     [Theory]
@@ -894,8 +903,10 @@ public sealed class TestingFailureModeTests {
         {
             UxAnnouncement concluded = UxAnnouncementCatalog.Expected(first, "operation", first, first == "AM-19" ? [2] : null);
             UxAnnouncementAssertions.AssertDistinctChannels([concluded]);
-            Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertDistinctChannels([concluded,
-                UxAnnouncementCatalog.Expected(second, "operation", second)])).Message.ShouldContain("second terminal outcome");
+            InvalidOperationException terminal = Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertDistinctChannels([concluded,
+                UxAnnouncementCatalog.Expected(second, "operation", second)]));
+            terminal.Message.ShouldContain("second terminal outcome");
+            terminal.Message.ShouldNotContain("wrong channel");
         }
         InvalidOperationException named = Should.Throw<InvalidOperationException>(() => UxAnnouncementAssertions.AssertSequence(
             [syncing with { OperationId = "other-operation" }, rejected], syncing, rejected));
@@ -1096,6 +1107,28 @@ public sealed class TestingFailureModeTests {
             Check(invalid with { DescribedBy = "help" + separator + "name-error" });
         }
         Check(invalid);
+        foreach (string visibleLabel in new[] { "First\nName", "First\t  Name" })
+        {
+            UxFieldDeclaration[] named = [declared[0], new("name", visibleLabel, "identity")];
+            foreach (string accessibleName in new[] { "First Name (required)", " First\n\tName  (required) " })
+            {
+                UxValidationAssertions.AssertLinkedSummary(summary, "Validation failed", [valid, invalid with
+                    { VisibleLabel = visibleLabel, AccessibleName = accessibleName }], ["name-input"], named, groups, prior);
+            }
+            foreach (string missingWords in new[] { "First (required)", "Name (required)", "First Last" })
+            {
+                InvalidOperationException label = Should.Throw<InvalidOperationException>(() => UxValidationAssertions.AssertLinkedSummary(summary,
+                    "Validation failed", [valid, invalid with { VisibleLabel = visibleLabel, AccessibleName = missingWords }],
+                    ["name-input"], named, groups, prior));
+                label.Message.ShouldContain("Field[2].Label");
+                label.Message.ShouldNotContain("First");
+                label.Message.ShouldNotContain("Name");
+            }
+            // Whitespace normalization does not relax the declared visible-label identity.
+            Should.Throw<InvalidOperationException>(() => UxValidationAssertions.AssertLinkedSummary(summary, "Validation failed",
+                [valid, invalid with { VisibleLabel = "First Name", AccessibleName = "First Name" }], ["name-input"], named, groups, prior))
+                .Message.ShouldContain("Field[2].Label");
+        }
         foreach (string collision in new[] { "name-input", "code-input" })
         {
             UxFieldSnapshot collided = invalid with { ErrorId = collision, DescribedBy = collision };
@@ -1123,6 +1156,17 @@ public sealed class TestingFailureModeTests {
             [valid with { ErrorId = "code-error", DescribedBy = "code-error" }, invalid], ["name-input"], declared, groups, prior));
         stale.Message.ShouldContain("Field[1].ErrorLink");
         stale.Message.ShouldNotContain("code");
+        // Non-structural aggregate failures must not hide either field's independent failures.
+        foreach (string aggregate in new[] { "Summary", "Links", "ErrorTargets" })
+        {
+            UxFieldSnapshot first = valid with { VisibleLabel = "private-label" };
+            if (aggregate == "ErrorTargets") { first = first with { Invalid = true, ErrorId = invalid.ErrorId }; }
+            InvalidOperationException all = Should.Throw<InvalidOperationException>(() => UxValidationAssertions.AssertLinkedSummary(
+                aggregate == "Summary" ? summary with { Text = "private-summary" } : summary, "Validation failed",
+                [first, invalid with { DescribedBy = "private-error" }], aggregate == "Links" ? [] : ["name-input"], declared, groups, prior));
+            foreach (string check in new[] { aggregate, "Field[1].Label", "Field[2].ErrorLink" }) { all.Message.ShouldContain(check); }
+            foreach (string value in new[] { "private-label", "private-summary", "private-error", "name-input" }) { all.Message.ShouldNotContain(value); }
+        }
     }
 
     [Fact]
@@ -1134,6 +1178,18 @@ public sealed class TestingFailureModeTests {
         AccessibilityEvidence dark = recorder.Record(AccessibilityEvidenceRow.AE06, new(2, 3, UxTheme.Dark), new() { Passed = false, ContrastRatio = 2.1 });
         light.CapturedAtUtc.ShouldBe(dark.CapturedAtUtc);
         light.Context.ShouldNotBe(dark.Context);
+        foreach (UxTheme theme in new[] { UxTheme.Light, UxTheme.Dark })
+        {
+            _ = recorder.Record(AccessibilityEvidenceRow.AE06, new(2, 3, theme), new() { Passed = true, ContrastRatio = 3 });
+            foreach (double ratio in new[] { 1.2, 2.999 })
+            {
+                ArgumentException contrast = Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE06,
+                    new(2, 3, theme), new() { Passed = true, ContrastRatio = ratio }));
+                contrast.Message.ShouldContain("ContrastRatio");
+                contrast.Message.ShouldNotContain(ratio.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                _ = recorder.Record(AccessibilityEvidenceRow.AE06, new(2, 3, theme), new() { Passed = false, ContrastRatio = ratio });
+            }
+        }
         JsonSerializer.Deserialize<AccessibilityEvidence>(JsonSerializer.Serialize(dark)).ShouldBe(dark);
         using (JsonDocument data = JsonDocument.Parse(dark.RedactedMeasurements))
         {
@@ -1178,25 +1234,49 @@ public sealed class TestingFailureModeTests {
             (AccessibilityEvidenceRow.AE09, "NoHoverOnlyAction", false), (AccessibilityEvidenceRow.AE09, "Wcag22Aa", false),
             (AccessibilityEvidenceRow.AE09, "CriticalFindingCount", 1),
             (AccessibilityEvidenceRow.AE04, "Targets", new AccessibilityTargetEvidence[] { new(1, new(0, 0, 12, 12), [UxKeyboardKey.Tab]) }),
+            (AccessibilityEvidenceRow.AE04, "Targets", new AccessibilityTargetEvidence[] { new(1, new(0, 0, 0, 0), [UxKeyboardKey.Tab],
+                UxTargetSizeExceptionKind.Inline, UxTargetSizeRationale.InlineText) }),
             (AccessibilityEvidenceRow.AE05, "Occluders", new UxRect[] { new(0, 90, 320, 64) }) })
         {
             AccessibilityMeasurements measured = CompleteAccessibilityMeasurements(row);
             _ = recorder.Record(row, ContextFor(row), measured);
             typeof(AccessibilityMeasurements).GetProperty(fact)!.SetValue(measured, failedValue);
-            Should.Throw<ArgumentException>(() => recorder.Record(row, ContextFor(row), measured)).Message.ShouldContain("cannot be Passed");
+            ArgumentException contradiction = Should.Throw<ArgumentException>(() => recorder.Record(row, ContextFor(row), measured));
+            contradiction.Message.ShouldContain("cannot be Passed");
+            contradiction.Message.ShouldContain(fact);
+            if (fact == "Targets" && measured.Targets[0].Bounds.Width == 0) { contradiction.Message.ShouldContain("Bounds"); }
             typeof(AccessibilityMeasurements).GetProperty("Passed")!.SetValue(measured, false);
             _ = recorder.Record(row, ContextFor(row), measured);
         }
         // Measurements taken under another row's canonical setup, or a theme that contradicts forced colors, are not that row's evidence.
         foreach ((AccessibilityEvidenceRow row, string setup, object? value) in new (AccessibilityEvidenceRow, string, object?)[] {
-            (AccessibilityEvidenceRow.AE01, "ViewportWidth", 1280d), (AccessibilityEvidenceRow.AE02, "ZoomPercent", 200d),
+            (AccessibilityEvidenceRow.AE01, "ViewportWidth", 1280d), (AccessibilityEvidenceRow.AE01, "ViewportWidth", 0d),
+            (AccessibilityEvidenceRow.AE01, "ViewportWidth", -1d), (AccessibilityEvidenceRow.AE01, "ViewportWidth", 320.01),
+            (AccessibilityEvidenceRow.AE02, "ViewportWidth", 1280d), (AccessibilityEvidenceRow.AE02, "ViewportWidth", 0d),
+            (AccessibilityEvidenceRow.AE02, "ViewportWidth", -1d), (AccessibilityEvidenceRow.AE02, "ViewportWidth", 320.01),
+            (AccessibilityEvidenceRow.AE02, "ZoomPercent", 399.99), (AccessibilityEvidenceRow.AE02, "ZoomPercent", 200d),
             (AccessibilityEvidenceRow.AE03, "LineHeight", 1.2), (AccessibilityEvidenceRow.AE03, "WordSpacing", .1),
+            (AccessibilityEvidenceRow.AE03, "ParagraphSpacing", 1.99), (AccessibilityEvidenceRow.AE03, "LetterSpacing", .119),
             (AccessibilityEvidenceRow.AE07, "ForcedColors", false), (AccessibilityEvidenceRow.AE08, "ReducedMotion", false),
             (AccessibilityEvidenceRow.AE06, "ForcedColors", true) })
         {
             AccessibilityMeasurements wrong = CompleteAccessibilityMeasurements(row);
             typeof(AccessibilityMeasurements).GetProperty(setup)!.SetValue(wrong, value);
-            Should.Throw<ArgumentException>(() => recorder.Record(row, ContextFor(row), wrong)).Message.ShouldContain("another row's setup");
+            ArgumentException setupFailure = Should.Throw<ArgumentException>(() => recorder.Record(row, ContextFor(row), wrong));
+            setupFailure.Message.ShouldContain("another row's setup");
+            setupFailure.Message.ShouldContain(setup);
+        }
+        // A non-forced-colours measurement also contradicts a ForcedColors context on another row.
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE01, new(1, 1, UxTheme.ForcedColors),
+            CompleteAccessibilityMeasurements(AccessibilityEvidenceRow.AE01))).Message.ShouldContain("ForcedColors");
+        foreach (AccessibilityEvidenceRow row in new[] { AccessibilityEvidenceRow.AE01, AccessibilityEvidenceRow.AE02 })
+        {
+            foreach (double width in new[] { 319d, 320d })
+            {
+                AccessibilityMeasurements boundary = CompleteAccessibilityMeasurements(row);
+                typeof(AccessibilityMeasurements).GetProperty("ViewportWidth")!.SetValue(boundary, width);
+                _ = recorder.Record(row, ContextFor(row), boundary);
+            }
         }
         Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE07, new(1, 1, UxTheme.Light),
             CompleteAccessibilityMeasurements(AccessibilityEvidenceRow.AE07)));
@@ -1204,6 +1284,13 @@ public sealed class TestingFailureModeTests {
             CompleteAccessibilityMeasurements()));
         Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE04, new(1, 1, UxTheme.Light),
             new() { Targets = [new(0, new(0, 0, 24, 24), [UxKeyboardKey.Tab])] })).Message.ShouldContain("positive target");
+        foreach (int ordinal in new[] { 0, -1 })
+        {
+            Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE04, new(1, 1, UxTheme.Light),
+                new() { Targets = [new(1, new(0, 0, 12, 12), [UxKeyboardKey.Tab], UxTargetSizeExceptionKind.Equivalent,
+                    UxTargetSizeRationale.SameFunctionConformingControl, EquivalentControlNumber: ordinal, EquivalentControlBounds: new(40, 0, 24, 24))] }))
+                .Message.ShouldContain("EquivalentControlNumber");
+        }
     }
 
     [Theory]
@@ -1223,14 +1310,17 @@ public sealed class TestingFailureModeTests {
             Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState(row, snapshot with { Lifecycle = CommandLifecycleState.Submitting }))
                 .Message.ShouldContain("DidNotRun");
         }
-        foreach (PropertyInfo property in typeof(UxSurfaceFacts).GetProperties().Where(p => p.Name != "SuccessClaim"))
+        foreach (PropertyInfo property in typeof(UxSurfaceFacts).GetProperties())
         {
             if (property.GetValue(snapshot.Facts) is not bool value) { continue; }
             UxSurfaceFacts drift = snapshot.Facts! with { };
             property.SetValue(drift, !value);
             InvalidOperationException failure = Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState(row, snapshot with { Facts = drift }));
-            // SS-06 policy-hidden facts select a different measured contract instead of naming one fact.
-            if (row != "SS-06") { failure.Message.ShouldContain("Facts." + property.Name); }
+            failure.Message.ShouldContain("Facts." + property.Name);
+            // A null fact is unmeasured, and must fail independently of every measured neighbour.
+            property.SetValue(drift, null);
+            Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState(row, snapshot with { Facts = drift }))
+                .Message.ShouldContain("Facts." + property.Name);
         }
         if (row is "SS-31" or "SS-32" or "SS-33")
         { Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState(row, snapshot with { Semantics = snapshot.Semantics with { Role = "button" } })); }
@@ -1256,6 +1346,37 @@ public sealed class TestingFailureModeTests {
         }
         UxSurfaceSnapshot ready = (UxSurfaceSnapshot)CanonicalSurfaceCases().Single(c => c[0] is "SS-36")[1];
         UxStateAssertions.AssertState("SS-36", ready with { Lifecycle = CommandLifecycleState.Idle });
+        foreach (object[] item in CanonicalSurfaceCases().Where(c => c[0] is "SS-31" or "SS-33" or "SS-36" or "SS-39" or "SS-40" or "SS-43" or "SS-44" or "SS-45" or "SS-46" or "SS-47"))
+        {
+            string row = (string)item[0];
+            UxSurfaceSnapshot snapshot = (UxSurfaceSnapshot)item[1];
+            UxStateAssertions.AssertState(row, snapshot with { Semantics = snapshot.Semantics with { AriaLive = "off" } });
+            foreach (string live in new[] { "polite", "assertive" })
+            {
+                Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState(row,
+                    snapshot with { Semantics = snapshot.Semantics with { AriaLive = live } })).Message.ShouldContain("Semantics.Silent");
+            }
+        }
+        foreach (string role in new[] { "status", "log" })
+        {
+            UxStateAssertions.AssertState("SS-36", ready with { Semantics = ready.Semantics with { Role = role, AriaLive = "off" } });
+            foreach (string? live in new string?[] { null, "polite", "assertive" })
+            {
+                Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState("SS-36",
+                    ready with { Semantics = ready.Semantics with { Role = role, AriaLive = live } })).Message.ShouldContain("Semantics.Silent");
+            }
+        }
+        foreach (object[] item in CanonicalSurfaceCases().Where(c => c[0] is "SS-05" or "SS-06" or "SS-28" or "SS-37" or "SS-38"))
+        {
+            UxSurfaceSnapshot snapshot = (UxSurfaceSnapshot)item[1];
+            foreach (string live in new[] { "off", "polite", "assertive" })
+            {
+                Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState((string)item[0],
+                    snapshot with { Semantics = snapshot.Semantics with { AriaLive = live } })).Message.ShouldContain("Semantics.FocusOnly");
+            }
+            Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState((string)item[0],
+                snapshot with { Semantics = snapshot.Semantics with { AriaAtomic = "true" } })).Message.ShouldContain("Semantics.FocusOnly");
+        }
         foreach (UxSurfaceSnapshot contradiction in new[] { ready with { Lifecycle = CommandLifecycleState.Submitting }, ready with { Dispatched = true }, ready with { Queued = true } })
         { Should.Throw<InvalidOperationException>(() => UxStateAssertions.AssertState("SS-36", contradiction)); }
         foreach (object[] item in CanonicalSurfaceCases().Where(c => c[0] is "SS-40" or "SS-43" or "SS-44"))
@@ -1458,7 +1579,7 @@ public sealed class TestingFailureModeTests {
                 object? missing = name == "Targets" ? Array.Empty<AccessibilityTargetEvidence>()
                     : name == "ViewportAndScrollports" ? Array.Empty<UxRect>() : null;
                 property.SetValue(incomplete, missing);
-                Should.Throw<ArgumentException>(() => recorder.Record(row, ContextFor(row), incomplete));
+                Should.Throw<ArgumentException>(() => recorder.Record(row, ContextFor(row), incomplete)).Message.ShouldContain(name);
             }
         }
         foreach (PropertyInfo property in typeof(AccessibilityMeasurements).GetProperties().Where(p => p.PropertyType == typeof(double?)))

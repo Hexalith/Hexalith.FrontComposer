@@ -42,7 +42,7 @@ public static class UxAnnouncementAssertions
             }
             if (terminal && !terminalOperations.Add(item.OperationId))
             {
-                throw new InvalidOperationException($"Duplicate speech event or wrong channel: {SafeLabel(item)} is a second terminal outcome for one operation.");
+                throw new InvalidOperationException($"Conflicting terminal speech: {SafeLabel(item)} is a second terminal outcome for one operation.");
             }
         }
     }
@@ -73,8 +73,8 @@ public static class UxAnnouncementAssertions
         Check(node.Name == accessibleName && (!focused || !string.IsNullOrWhiteSpace(accessibleName)), "Name");
         Check(expected.Channel != UxAnnouncementChannel.FocusedHeading || accessibleName == expected.Copy, "HeadingCopy");
         Check(node.IsFocused == focused, "Focus");
-        Check(focused ? node.AriaLive is null && node.AriaAtomic is null : live == "polite", "AriaLive");
-        Check(expected.Channel != UxAnnouncementChannel.PoliteComboboxStatus || atomic == "true", "AriaAtomic");
+        Check(focused ? node.AriaLive is null : live == "polite", "AriaLive");
+        Check(focused ? node.AriaAtomic is null : expected.Channel != UxAnnouncementChannel.PoliteComboboxStatus || atomic == "true", "AriaAtomic");
         Check(!focused || node.TabIndex == "-1", "TabIndex");
         Check(speechOwnerCount == 1, "SpeechOwnerCount");
         Check(inheritedResultCountSpeechCount == 0, "InheritedResultCountSpeech");

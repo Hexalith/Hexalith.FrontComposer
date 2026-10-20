@@ -47,39 +47,121 @@ public sealed class TestAccessibilityEvidenceRecorder
             && m.Targets.All(t => Finite(t.Bounds) && Finite(t.EquivalentControlBounds)
                 && (t.Neighbors is null || t.Neighbors.All(Finite)));
         if (!finite) { throw new ArgumentException("AE measurements must contain only finite numbers.", nameof(m)); }
-        if (!m.Targets.All(t => t.TargetNumber > 0 && t.EquivalentControlNumber is null or > 0))
+        List<string> ordinalFailures = [];
+        if (m.Targets.Any(t => t.TargetNumber < 1)) { ordinalFailures.Add("Targets.TargetNumber"); }
+        if (m.Targets.Any(t => t.EquivalentControlNumber is <= 0)) { ordinalFailures.Add("Targets.EquivalentControlNumber"); }
+        if (ordinalFailures.Count > 0)
         {
-            throw new ArgumentException("AE target evidence requires positive target and equivalent-control ordinals.", nameof(m));
+            throw new ArgumentException("AE target evidence requires positive target and equivalent-control ordinals: "
+                + string.Join(", ", ordinalFailures) + ".", nameof(m));
         }
-        // Setup values are the canonical AE conditions; forced colors must agree with the recorded theme.
-        bool forcedColorsAgree = m.ForcedColors is not { } forced || forced == (theme == UxTheme.ForcedColors);
-        bool reflow = m.ContentLoss.HasValue && m.Clipping.HasValue && m.OperationsAvailable.HasValue
-            && m.ReadingOrderLogical.HasValue && m.SelectedTabVisible.HasValue && m.HorizontalOverflow.HasValue;
-        bool complete = forcedColorsAgree && row switch
+        // Setup and missing-fact diagnostics expose only fixed schema names, never caller values.
+        List<string> failed = [];
+        void Check(bool passed, string fact)
         {
-            AccessibilityEvidenceRow.AE01 => m.ViewportWidth <= 320 && reflow,
-            AccessibilityEvidenceRow.AE02 => m.ViewportWidth.HasValue && m.ZoomPercent >= 400 && reflow,
-            AccessibilityEvidenceRow.AE03 => m.LineHeight >= 1.5 && m.ParagraphSpacing >= 2 && m.LetterSpacing >= .12
-                && m.WordSpacing >= .16 && m.ContentLoss.HasValue && m.Clipping.HasValue && m.Overlap.HasValue && m.ControlTruncation.HasValue,
-            AccessibilityEvidenceRow.AE04 => m.Targets.Count > 0,
-            AccessibilityEvidenceRow.AE05 => m.FocusTarget is not null && m.FocusIndicator is not null && m.ViewportAndScrollports.Count > 0,
-            AccessibilityEvidenceRow.AE06 => m.ContrastRatio.HasValue,
-            AccessibilityEvidenceRow.AE07 => m.ForcedColors == true && m.ForcedColorCuesPreserved.HasValue,
-            AccessibilityEvidenceRow.AE08 => m.ReducedMotion == true && m.NonEssentialAnimationsSuppressed.HasValue
-                && m.StateCuesPreserved.HasValue && m.FocusChangesImmediate.HasValue && m.ExpirySilent.HasValue,
-            AccessibilityEvidenceRow.AE09 => m.Wcag22Aa.HasValue && m.FindingCount.HasValue && m.CriticalFindingCount.HasValue
-                && m.AnnouncementCount.HasValue && m.KeyboardPassed.HasValue && m.AxePassed.HasValue && m.NoHoverOnlyAction.HasValue,
-            _ => false,
-        };
-        if (!complete) { throw new ArgumentException("AE evidence is missing required measured setup, geometry, or outcomes, or was measured under another row's setup or theme.", nameof(m)); }
-        bool contradicted = m.Passed && (m.ContentLoss == true || m.Clipping == true || m.Overlap == true || m.ControlTruncation == true
-            || m.HorizontalOverflow > 0 || m.OperationsAvailable == false || m.ReadingOrderLogical == false || m.SelectedTabVisible == false
-            || m.ForcedColorCuesPreserved == false || m.NonEssentialAnimationsSuppressed == false || m.StateCuesPreserved == false
-            || m.FocusChangesImmediate == false || m.ExpirySilent == false || m.KeyboardPassed == false || m.AxePassed == false
-            || m.NoHoverOnlyAction == false || m.Wcag22Aa == false || m.CriticalFindingCount > 0
-            || row == AccessibilityEvidenceRow.AE04 && m.Targets.Any(t => UxAccessibilityAssertions.Failures(t).Count > 0)
-            || row == AccessibilityEvidenceRow.AE05 && !UxFocusAssertions.IsUnobscured(m.FocusTarget!, m.FocusIndicator!, m.ViewportAndScrollports, m.Occluders));
-        if (contradicted) { throw new ArgumentException("AE evidence cannot be Passed when its measured outcomes failed.", nameof(m)); }
+            if (!passed) { failed.Add(fact); }
+        }
+        void CheckReflow()
+        {
+            Check(m.ContentLoss.HasValue, nameof(m.ContentLoss));
+            Check(m.Clipping.HasValue, nameof(m.Clipping));
+            Check(m.OperationsAvailable.HasValue, nameof(m.OperationsAvailable));
+            Check(m.ReadingOrderLogical.HasValue, nameof(m.ReadingOrderLogical));
+            Check(m.SelectedTabVisible.HasValue, nameof(m.SelectedTabVisible));
+            Check(m.HorizontalOverflow.HasValue, nameof(m.HorizontalOverflow));
+        }
+        Check(m.ForcedColors is not { } forced || forced == (theme == UxTheme.ForcedColors), nameof(m.ForcedColors));
+        switch (row)
+        {
+            case AccessibilityEvidenceRow.AE01:
+            case AccessibilityEvidenceRow.AE02:
+                Check(m.ViewportWidth is > 0 and <= 320, nameof(m.ViewportWidth));
+                if (row == AccessibilityEvidenceRow.AE02) { Check(m.ZoomPercent >= 400, nameof(m.ZoomPercent)); }
+                CheckReflow();
+                break;
+            case AccessibilityEvidenceRow.AE03:
+                Check(m.LineHeight >= 1.5, nameof(m.LineHeight));
+                Check(m.ParagraphSpacing >= 2, nameof(m.ParagraphSpacing));
+                Check(m.LetterSpacing >= .12, nameof(m.LetterSpacing));
+                Check(m.WordSpacing >= .16, nameof(m.WordSpacing));
+                Check(m.ContentLoss.HasValue, nameof(m.ContentLoss));
+                Check(m.Clipping.HasValue, nameof(m.Clipping));
+                Check(m.Overlap.HasValue, nameof(m.Overlap));
+                Check(m.ControlTruncation.HasValue, nameof(m.ControlTruncation));
+                break;
+            case AccessibilityEvidenceRow.AE04:
+                Check(m.Targets.Count > 0, nameof(m.Targets));
+                break;
+            case AccessibilityEvidenceRow.AE05:
+                Check(m.FocusTarget is not null, nameof(m.FocusTarget));
+                Check(m.FocusIndicator is not null, nameof(m.FocusIndicator));
+                Check(m.ViewportAndScrollports.Count > 0, nameof(m.ViewportAndScrollports));
+                break;
+            case AccessibilityEvidenceRow.AE06:
+                Check(m.ContrastRatio.HasValue, nameof(m.ContrastRatio));
+                break;
+            case AccessibilityEvidenceRow.AE07:
+                Check(m.ForcedColors == true, nameof(m.ForcedColors));
+                Check(m.ForcedColorCuesPreserved.HasValue, nameof(m.ForcedColorCuesPreserved));
+                break;
+            case AccessibilityEvidenceRow.AE08:
+                Check(m.ReducedMotion == true, nameof(m.ReducedMotion));
+                Check(m.NonEssentialAnimationsSuppressed.HasValue, nameof(m.NonEssentialAnimationsSuppressed));
+                Check(m.StateCuesPreserved.HasValue, nameof(m.StateCuesPreserved));
+                Check(m.FocusChangesImmediate.HasValue, nameof(m.FocusChangesImmediate));
+                Check(m.ExpirySilent.HasValue, nameof(m.ExpirySilent));
+                break;
+            case AccessibilityEvidenceRow.AE09:
+                Check(m.Wcag22Aa.HasValue, nameof(m.Wcag22Aa));
+                Check(m.FindingCount.HasValue, nameof(m.FindingCount));
+                Check(m.CriticalFindingCount.HasValue, nameof(m.CriticalFindingCount));
+                Check(m.AnnouncementCount.HasValue, nameof(m.AnnouncementCount));
+                Check(m.KeyboardPassed.HasValue, nameof(m.KeyboardPassed));
+                Check(m.AxePassed.HasValue, nameof(m.AxePassed));
+                Check(m.NoHoverOnlyAction.HasValue, nameof(m.NoHoverOnlyAction));
+                break;
+        }
+        if (failed.Count > 0)
+        {
+            throw new ArgumentException("AE evidence is missing required measured facts or was measured under another row's setup or theme: "
+                + string.Join(", ", failed.Distinct(StringComparer.Ordinal)) + ".", nameof(m));
+        }
+        if (!m.Passed) { return; }
+        Check(m.ContentLoss != true, nameof(m.ContentLoss));
+        Check(m.Clipping != true, nameof(m.Clipping));
+        Check(m.Overlap != true, nameof(m.Overlap));
+        Check(m.ControlTruncation != true, nameof(m.ControlTruncation));
+        Check(!(m.HorizontalOverflow > 0), nameof(m.HorizontalOverflow));
+        Check(m.OperationsAvailable != false, nameof(m.OperationsAvailable));
+        Check(m.ReadingOrderLogical != false, nameof(m.ReadingOrderLogical));
+        Check(m.SelectedTabVisible != false, nameof(m.SelectedTabVisible));
+        Check(m.ForcedColorCuesPreserved != false, nameof(m.ForcedColorCuesPreserved));
+        Check(m.NonEssentialAnimationsSuppressed != false, nameof(m.NonEssentialAnimationsSuppressed));
+        Check(m.StateCuesPreserved != false, nameof(m.StateCuesPreserved));
+        Check(m.FocusChangesImmediate != false, nameof(m.FocusChangesImmediate));
+        Check(m.ExpirySilent != false, nameof(m.ExpirySilent));
+        Check(m.KeyboardPassed != false, nameof(m.KeyboardPassed));
+        Check(m.AxePassed != false, nameof(m.AxePassed));
+        Check(m.NoHoverOnlyAction != false, nameof(m.NoHoverOnlyAction));
+        Check(m.Wcag22Aa != false, nameof(m.Wcag22Aa));
+        Check(!(m.CriticalFindingCount > 0), nameof(m.CriticalFindingCount));
+        if (row == AccessibilityEvidenceRow.AE06) { Check(m.ContrastRatio >= 3, nameof(m.ContrastRatio)); }
+        if (row == AccessibilityEvidenceRow.AE04)
+        {
+            for (int i = 0; i < m.Targets.Count; i++)
+            {
+                failed.AddRange(UxAccessibilityAssertions.Failures(m.Targets[i]).Select(fact => $"Targets[{i + 1}].{fact}"));
+            }
+        }
+        if (row == AccessibilityEvidenceRow.AE05)
+        {
+            Check(UxFocusAssertions.IsUnobscured(m.FocusTarget!, m.FocusIndicator!, m.ViewportAndScrollports, m.Occluders),
+                "FocusGeometry(FocusTarget, FocusIndicator, ViewportAndScrollports, Occluders)");
+        }
+        if (failed.Count > 0)
+        {
+            throw new ArgumentException("AE evidence cannot be Passed when its measured outcomes failed: " + string.Join(", ", failed) + ".", nameof(m));
+        }
     }
 
     private static bool Finite(UxRect? rect) => rect is null || double.IsFinite(rect.X) && double.IsFinite(rect.Y)
