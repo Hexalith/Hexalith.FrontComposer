@@ -2,7 +2,7 @@
 title: '13.7 [I · UX-F] Provide Reusable UX Assertions for Adopters'
 type: 'feature'
 created: '2026-10-18'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'b9e1490cfe1c51406d3c8d4dc213971d06911a24'
 route: 'dispatch'
 review_loop_iteration: 1
@@ -547,6 +547,20 @@ Survivor groups:
 
 P1 changes a private predicate and adds cases inside existing test methods, so the public API baseline and identifier seal are unchanged. Nothing is deferred and nothing routes to `intent_gap` or `bad_spec`.
 
+### Historical artifact authorization review — 2026-10-20
+
+Scope: the dedicated validator repair approved by the maintainer (option A), separate from the completed UX review rounds. Blind Hunter, Edge Case Hunter, and Verification Gap all completed. Edge Case Hunter returned no findings. The rows below disposition every other finding; no new work is deferred.
+
+| Finding | Verdict | Route | Evidence / disposition |
+| --- | --- | --- | --- |
+| H-B1 | low | patch | The initial pinned-report test sliced away the final row newline but required it in the assertion. Compare complete report lines; the pinned live CLI regression passes. |
+| H-B2 | medium | patch | Ordinary shared/process declarations could silently downgrade historical delivery if the new precedence branch regressed. Added both declarations for both authorized commits, asserting ignored declarations, ownership reconciliation, and all 11 unowned paths. Grouped with H-V1. |
+| H-B3 | low | reject | Additional later-file CLI coverage was suggested without a demonstrated failure. The helper permits untouched future entries, ordinary owned-commit reconciliation remains covered, and this completion reruns the real strict gate through its transition commit. No additional fixture is needed for this bounded repair. |
+| H-B4 | false | reject | The second future-commit test asserts its specific new SHA has interleaved classification and an interleaved failure is present on stderr. The earlier unmapped failure cannot satisfy those assertions or hide loss of that failure. |
+| H-B5 | low | patch | Inventory failures now name missing and unexpected paths; regression assertions require the differing path in both touched-inventory and ownership errors. |
+| H-B6 | false | reject | The unreconciled artifact was a deliberate intermediate state: the task prohibits changing status before strict exit 0. The approved authorization and passing evidence are appended below after that check, preserving earlier records as history. |
+| H-V1 | medium | patch | Same precedence regression gap as H-B2. The added shared/process cases retain all authorized owned paths; an in-memory mutation of the precedence condition is caught for both declarations without changing source files. |
+
 ## Verification
 
 - `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` — passed, 0 warnings / 0 errors; final log `/tmp/fc137-solution-release.log`. This includes the required Testing Release build.
@@ -733,6 +747,28 @@ All four round-8 patches are applied. Silent SS rows now reject `alertdialog` as
 | Strict story artifacts | `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md --candidate HEAD` | Failed: exit 1, only the two historical attribution errors (unmapped `7f57da411c3abf8e1d459d0611c49632c07393a7`, interleaved `ee9762e6c74914ccd33ec1d2caf322bdc21a10b4`) |
 
 Under reconciliation checklist item 10, spec status stays `in-review` and the sprint row stays `review`; passing implementation checks do not close that gate. Logs are local diagnostic records under the session scratchpad (`fc137-r8-*`). The changes are uncommitted.
+
+### Strict story-artifact gate recovery — 2026-10-20
+
+The maintainer selected option A: a dedicated code-only historical authorization, implemented in validator repair commit `6ea6c8b793669c0f577a5a22dab8ba0446f3ff6c`. The Story 9.7 bootstrap authorization is unchanged. No published history, baseline, frozen intent, or existing File List entry was rewritten; the inventory remains exactly 46 paths.
+
+The unchanged strict command passed at that commit while this spec still had `status: 'in-review'` and the sprint row still had `review`. Its inventory audit reconciled all 46 paths across 24 non-merge commits, with no merge commits, unmapped commits, interleaved commits, or dirty workspace paths. Original delivery `7f57da411c3abf8e1d459d0611c49632c07393a7` contributes its fixed 44 owned paths. Mixed commit `ee9762e6c74914ccd33ec1d2caf322bdc21a10b4` contributes only its fixed five Testing paths; all 11 unrelated CI/release/build/diagnostics paths remain visible and unowned. Authorization pins the canonical artifact, Story ID, declared/resolved baseline, exact commits and parents, subject-match states, complete touched-path sets, and immutable owned intersections. A story declaration cannot create or broaden it.
+
+| Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
+| --- | --- | --- | --- | --- | --- |
+| Strict story artifacts | `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md --candidate HEAD` | Passed: exit 0 at `6ea6c8b793669c0f577a5a22dab8ba0446f3ff6c`, with the preserved `b9e1490cfe1c51406d3c8d4dc213971d06911a24` baseline and 46/46 inventory paths reconciled | N/A | None; exact command passed | Local only; CI not run |
+| Validator test module | `python3 -m unittest eng.tests.test_validate_story_artifacts` | Passed: 212 tests run, 2 skipped; delta +8 tests and 0 additional skips from the 204-test baseline | N/A | None; the two existing skips require the uninstalled story-automator skill | Local only; CI not run |
+| Whitespace | `git diff --check` | Passed: exit 0 for the validator repair and completion updates | N/A | N/A | Local only |
+| Repair commit message | `node node_modules/@commitlint/cli/cli.js --edit /tmp/fc137-artifact-gate-exnhykiy/repair-commit-message.txt --verbose` | Passed: pinned/installed commitlint 21.2.2, 0 problems / 0 warnings | N/A | N/A | Local only |
+| Transition commit message | `node node_modules/@commitlint/cli/cli.js --edit /tmp/fc137-artifact-gate-exnhykiy/transition-commit-message.txt --verbose` | Passed: pinned/installed commitlint 21.2.2, 0 problems / 0 warnings | N/A | N/A | Local only |
+
+All three independent repair review layers completed, with every finding dispositioned above and no new deferrals. Regressions reject copied artifacts, baseline/topology/subject changes, any expansion into the 11 unowned paths, and future unmapped/interleaved commits. They also preserve historical ownership under ordinary shared/process declarations and preserve exclusion boundaries. An in-memory mutation that lets those declarations override historical ownership failed both declaration cases as expected; no source mutation was written to disk.
+
+Documentation drift sweep: updated `docs/reference/story-artifact-validation.md` and the reconciliation checklist for the new report classification and exact code authority. The Testing helpers, adopter README/how-to, public API baseline, identifier/GOV-1 seals, Shell runtime/constants, dependencies, and submodule pointers are unchanged by this repair, so their completed round-8 verification remains applicable and was not rerun. OI-16, G-4, FLUENT-APP-1 and Product approval remain separately owned. Stories 13.8 and 13.9 remain backlog owner decisions.
+
+Raw local diagnostic logs and the machine-readable inventory audit are under `/tmp/fc137-artifact-gate-exnhykiy/`: `strict-after-repair.stdout.log`, `strict-after-repair.stderr.log`, `inventory-after-repair.json`, `validator-tests-final.log`, `precedence-mutation.log`, and both commitlint logs. These temporary files supplement the tracked command/result summary; they are not claimed as portable evidence artifacts. The precommit strict failure in that packet names only the four then-uncommitted process-repair files, which were subsequently committed separately with a subject that does not match this Story ID.
+
+Only after the exact strict pass and reconciled inventory, this transition sets the spec and sprint row to done and resolves the maintainer-owned deferred handoff. The same unchanged strict command must pass again through the final transition commit; its post-commit report and canonical candidate are retained in the same local packet and final handoff.
 
 ## File List
 
