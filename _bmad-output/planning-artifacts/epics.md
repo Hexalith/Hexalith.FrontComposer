@@ -11,7 +11,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/ux-designs/ux-frontcomposer-2026-09-09/DESIGN.md
   - _bmad-output/planning-artifacts/ux-designs/ux-frontcomposer-2026-09-09/EXPERIENCE.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md
-updated: 2026-09-27
+updated: 2026-10-20
 numberingNote: >-
   Epics 1-11 are completed delivery history restored from epics.md at commit
   aeff9f83 with the approved 2026-09-22 section 9.4 annotations. The 2026-09-22
@@ -1783,6 +1783,8 @@ question; warning/info extensions) emitted by the generator (`[ProjectionBadge]`
 **Delivery status:** done. Stories 9.1–9.8, E9-AI-1 through E9-AI-6, and the retrospective are
 completed delivery history. The live Story 9.8 proof passed 2026-08-27. G-5/E9-APP-1 remains an
 open Product approval task and does not reopen this epic.
+
+**Dated Product disposition (2026-10-20):** the [Story 13.8 decision receipt](../implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt) records acceptance by Administrator (git-author identity Jérôme Piquot) of historical candidate `7a5737630611b4d54b0180a3fa4c9c4ccd23a28c` and the Story 9.8 record at `4e9b2423c228d0f940884389ecf0bd90f0d4264b`. G-5/E9-APP-1/OI-1 are now closed. The preceding open-approval sentence is retained as historical delivery context; completed Epic 9 history and all excluded coverage, DW-679, the three fallback residuals and unrelated approvals remain unchanged. The accepted lifecycle-log limitation is tracked in DW-1984.
 
 > **Source of record:** `sprint-change-proposal-2026-07-01.md` (Correct Course, 2026-07-01). This epic
 > resolves the accepted-deferred Story 2.6 AC1(b) gap by giving the row-level new-item producer a current
@@ -3700,6 +3702,8 @@ So that downstream modules can verify generated failure and recovery UX without 
 **And** each closes only through its own evidence record and owner decision (ux-design.md:356-359).
 
 ### Story 13.8: [A · E9-APP-1] Accept the Completed Fresh-Row Live Proof
+
+**Disposition (2026-10-20):** Product acceptance is recorded in the [Story 13.8 decision receipt](../implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt), closing E9-APP-1/G-5/OI-1 for the exact historical record/candidate with disclosed limitations. The Product decision was recorded before Story 13.8 acceptance; story delivery status is tracked separately in the implementation spec and sprint development status. Epic 9 remains done.
 
 As the Product Owner,
 I want to accept or reject the completed Story 9.8 live proof explicitly,
