@@ -893,6 +893,37 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         });
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task CounterProjectionView_OverrideFault_PreservesLowerLevelContent(bool templateThrows, bool incompatible)
+    {
+        UseFakeTime(s_fixedNow);
+        Services.AddSingleton(new ProjectionTemplateAssemblySource([
+            new ProjectionTemplateDescriptor(typeof(CounterProjection), null,
+                templateThrows ? typeof(ThrowingCounterTemplate) : typeof(SelectedCounterTemplate),
+                incompatible ? 999 : ProjectionTemplateContractVersion.Current)]));
+        Services.AddViewOverride<CounterProjection, ThrowingCounterReplacement>();
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new CounterProjectionLoadedAction("fallback-read-001",
+            [new CounterProjection { Id = "synthetic-row-001", Count = 7319, LastUpdated = s_lastUpdated }])
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.Markup.ShouldContain("data-fc-datagrid");
+            cut.Markup.ShouldContain(templateThrows || incompatible ? "fluent-data-grid" : "fc-selected-template");
+            if (!templateThrows && !incompatible)
+            {
+                cut.Find(".fc-selected-template").TextContent.ShouldContain(7319.ToString("N0", CultureInfo.CurrentCulture));
+            }
+            cut.Markup.ShouldNotContain("SensitiveTokenSentinel");
+            cut.Markup.ShouldNotContain("data-fc-diagnostic");
+        });
+    }
+
     [Fact]
     public async Task CounterProjectionView_Level4Replacement_WinsWhenLevel2TemplateAlsoRegistered() {
         UseFakeTime(s_fixedNow);

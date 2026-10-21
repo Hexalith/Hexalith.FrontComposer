@@ -19,5 +19,26 @@
     href: reference/diagnostics/index.md
   - name: Components
     href: reference/components/index.md
+    items:
+    - name: Page Patterns
+      href: reference/components/page-patterns.md
+    - name: Projection Status
+      href: reference/components/projection-status.md
+    - name: Command Lifecycle
+      href: reference/components/command-lifecycle.md
+    - name: Customization
+      href: reference/components/customization.md
+    - name: Page Toolbar
+      href: reference/components/page-toolbar.md
+    - name: Page Tabs
+      href: reference/components/page-tabs.md
+    - name: DataGrid Surface
+      href: reference/components/datagrid.md
+    - name: FrontComposerShell
+      href: reference/components/front-composer-shell.md
+    - name: Navigation
+      href: reference/components/navigation.md
+    - name: Settings
+      href: reference/components/settings.md
 - name: Concepts
   href: concepts/index.md

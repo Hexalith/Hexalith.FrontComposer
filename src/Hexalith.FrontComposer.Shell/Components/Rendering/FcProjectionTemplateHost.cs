@@ -65,14 +65,24 @@ public sealed class FcProjectionTemplateHost<TProjection> : ComponentBase {
                     Descriptor.TemplateType,
                     Context.Role,
                     exception);
-                CustomizationDiagnosticPublisher.Publish(Services?.GetService<IDiagnosticSink>(), diagnostic);
+                if (CustomizationDiagnosticPublisher.IsEnabled(Services))
+                {
+                    CustomizationDiagnosticPublisher.Publish(Services?.GetService<IDiagnosticSink>(), diagnostic);
+                }
                 _publishedFault = true;
             }
 
-            builder.OpenComponent<FcCustomizationDiagnosticPanel>(0);
-            builder.AddAttribute(1, "Diagnostic", diagnostic);
-            builder.AddAttribute(2, "CanRetry", true);
-            builder.AddAttribute(3, "OnRetry", EventCallback.Factory.Create(this, Recover));
+            if (CustomizationDiagnosticPublisher.IsEnabled(Services))
+            {
+                builder.OpenComponent<FcCustomizationDiagnosticPanel>(0);
+                builder.AddAttribute(1, "Diagnostic", diagnostic);
+                builder.AddAttribute(2, "CanRetry", true);
+                builder.AddAttribute(3, "OnRetry", EventCallback.Factory.Create(this, Recover));
+                builder.CloseComponent();
+            }
+
+            builder.OpenComponent<FcCustomizationFallbackBoundary>(4);
+            builder.AddAttribute(5, "ChildContent", Context.DefaultBody);
             builder.CloseComponent();
         };
 

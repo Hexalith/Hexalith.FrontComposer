@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 8-5-icon-label-navigation-rail-and-projection-flyout
 status: published
-reviewed: 2026-06-25
+reviewed: 2026-10-21
 uid: frontcomposer.reference.components.navigation
 slug: reference/components/navigation/
 ---
@@ -65,6 +65,12 @@ injected state. Its content is a function of:
 
 Because there are no parameters, there is no surface to lock or version — the rail's contract is the
 registry and state it reads.
+
+Complete component parameter reference follows. Internal Fluent children are implementation details.
+
+### `FrontComposerNavigation`
+
+No public component parameters. Framework services supply its state.
 
 ## Layout (FC-LYT)
 

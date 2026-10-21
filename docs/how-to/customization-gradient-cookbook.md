@@ -230,3 +230,9 @@ public static class OrderActivityViewOverrides
 ```
 
 Use Level 4 only when the generated projection body is the wrong shape. The shell still owns lifecycle, loading and empty states, authorization boundaries, telemetry, diagnostics, density, and disposal hooks.
+
+## Resolution and safe fault recovery
+
+Compatible Level 4 → Level 2 → generated body is the resolution order. A failed full replacement tries the existing Level 2 registry directly, then generated output if that template also faults. A failed template uses generated `DefaultBody`; a failed field slot uses its generated field fallback. `DefaultBody` always means generated output. Call the context delegates instead of remounting the generated component, which would recursively select the same override.
+
+Major mismatch follows the configured `LogAndSkip` or `FailClosedOnMajorMismatch` startup policy; minor drift remains selectable with rebuild guidance. Render faults do not change that policy. Diagnostics and retry panels require DEBUG plus an explicitly Development environment; missing environment fails closed. Safe generated content and sanitized once-per-episode logging remain available without panels. See [Customization](../reference/components/customization.md).

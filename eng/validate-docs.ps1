@@ -178,6 +178,167 @@ function Assert-MigrationCompleteness([string]$Path, [System.Collections.Generic
     }
 }
 
+function Get-ComponentSection([string]$Text, [string]$Heading) {
+    $start = $Text.IndexOf($Heading, [System.StringComparison]::Ordinal)
+    if ($start -lt 0) { return '' }
+    $remaining = $Text.Substring($start + $Heading.Length)
+    $level = ([regex]::Match($Heading, '^#+')).Length
+    $end = [regex]::Match($remaining, "(?m)^#{1,$level} ")
+    if ($end.Success) { return $remaining.Substring(0, $end.Index) }
+    return $remaining
+}
+
+function Get-ComponentNames([array]$Sources) {
+    $componentTypes = @{}
+    foreach ($name in @('ComponentBase', 'IComponent', 'FluxorComponent', 'LayoutComponentBase', 'ErrorBoundaryBase', 'ErrorBoundary')) { $componentTypes[$name] = $true }
+    $components = @{}
+    $declarations = @{}
+    foreach ($source in $Sources) {
+        if ($source.Name.EndsWith('.razor')) {
+            $name = $source.Name.Split('.')[0]
+            $components[$name] = $true
+            $componentTypes[$name] = $true
+            continue
+        }
+        $text = Get-Content -LiteralPath $source.FullName -Raw
+        foreach ($declaration in [regex]::Matches($text, '(?m)^\s*(?:(?:public|internal|private|protected|abstract|sealed|partial|static|new)\s+)*(?<kind>class|interface)\s+(?<name>\w+)(?:<[^>{}]+>)?\s*(?:\([^{};]*\))?\s*(?::\s*(?<bases>[^{;]+))?[{;]')) {
+            $bases = [regex]::Replace($declaration.Groups['bases'].Value, '(?s)\bwhere\b.*', '')
+            while ($bases -match '<[^<>]*>') { $bases = [regex]::Replace($bases, '<[^<>]*>', '') }
+            $name = $declaration.Groups['name'].Value
+            $inheritedTypes = @($bases.Split(',') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { $_.Trim().Split('.')[-1] })
+            if ($declarations.ContainsKey($name)) { $inheritedTypes = @($declarations[$name].Bases) + $inheritedTypes }
+            $declarations[$name] = @{
+                IsClass = $declaration.Groups['kind'].Value -eq 'class'
+                Bases = $inheritedTypes
+            }
+        }
+    }
+    do {
+        $changed = $false
+        foreach ($name in @($declarations.Keys)) {
+            $declaration = $declarations[$name]
+            if (-not $componentTypes.ContainsKey($name) -and @($declaration.Bases | Where-Object { $componentTypes.ContainsKey($_) }).Count -gt 0) {
+                $componentTypes[$name] = $true
+                $changed = $true
+            }
+            if ($declaration.IsClass -and $componentTypes.ContainsKey($name)) { $components[$name] = $true }
+        }
+    } while ($changed)
+    return @($components.Keys | Sort-Object)
+}
+
+function Assert-ComponentDocumentation([System.Collections.Generic.List[string]]$Failures) {
+    $inventoryPath = '_bmad-output/project-docs/component-inventory.md'
+    $statusPath = '_bmad-output/contracts/fc-doc-component-documentation-2026-06-03.md'
+    $inventory = (Get-Content -LiteralPath (Join-Path $RepoRoot $inventoryPath) -Raw) -split '## H. Current component documentation classifications' | Select-Object -Last 1
+    $status = Get-Content -LiteralPath (Join-Path $RepoRoot $statusPath) -Raw
+    $index = Get-Content -LiteralPath (Join-Path $DocsRoot 'reference/components/index.md') -Raw
+    $toc = Get-Content -LiteralPath (Join-Path $DocsRoot 'toc.yml') -Raw
+    $rows = @{}
+    foreach ($row in [regex]::Matches($inventory, '(?m)^\| `(?<name>\w+)` \| (?<classification>[^|]+) \| `(?<page>docs/reference/components/[^`]+)` \|')) {
+        $rows[$row.Groups['name'].Value] = @{ Classification = $row.Groups['classification'].Value.Trim(); Page = $row.Groups['page'].Value }
+    }
+    $componentRoot = Join-Path $RepoRoot 'src/Hexalith.FrontComposer.Shell/Components'
+    $sources = @(Get-ChildItem -LiteralPath $componentRoot -Recurse -File | Where-Object { $_.Name.EndsWith('.cs') -or $_.Name.EndsWith('.razor') } | Sort-Object FullName)
+    $names = @(Get-ComponentNames $sources)
+    $contractSources = @($sources) + @(Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'src/Hexalith.FrontComposer.Contracts') -Filter '*.cs' -Recurse -File | Where-Object { $_.FullName -notmatch '[/\\](bin|obj)[/\\]' }) +
+        @(Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'src/Hexalith.FrontComposer.Contracts.UI/Rendering') -Filter '*Context.cs' -File) +
+        @(Get-Item -LiteralPath (Join-Path $RepoRoot 'src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionStatus.cs'))
+    $contracts = @{}
+    foreach ($source in $contractSources) {
+        $text = Get-Content -LiteralPath $source.FullName -Raw
+        foreach ($contract in [regex]::Matches($text, 'public (?:sealed )?class (?<name>\w+Context)(?:<|\s)|public enum (?<name>\w+State|ProjectionConnectionStatus)\b')) { $contracts[$contract.Groups['name'].Value] = $text }
+    }
+    $requiredContracts = @{}
+    foreach ($name in $names) {
+        if (-not $rows.ContainsKey($name) -or $rows[$name].Classification -notin @('adopter', 'infrastructure')) {
+            Add-Failure $Failures "${inventoryPath}: unclassified component $name."
+            continue
+        }
+        $row = $rows[$name]
+        $path = Join-Path $RepoRoot $row.Page
+        if (-not (Test-Path -LiteralPath $path)) {
+            Add-Failure $Failures "$($row.Page): missing classified component page."
+            continue
+        }
+        $page = Get-Content -LiteralPath $path -Raw
+        if (-not $requiredContracts.ContainsKey($row.Page)) { $requiredContracts[$row.Page] = @{} }
+        $sourceText = (@($sources | Where-Object { $_.Name.Split('.')[0] -eq $name } | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n")
+        foreach ($contract in $contracts.Keys) {
+            if ([regex]::IsMatch($sourceText, '\b' + [regex]::Escape($contract) + '\b')) { $requiredContracts[$row.Page][$contract] = $true }
+        }
+        $parameters = Get-ComponentSection $page '## Parameters / slots'
+        $typed = Get-ComponentSection $parameters ('### `' + $name + '`')
+        if ($row.Classification -eq 'infrastructure' -and [string]::IsNullOrEmpty($typed)) { continue }
+        if (-not [string]::IsNullOrEmpty($typed)) { $parameters = $typed }
+        $actual = @{}
+        foreach ($source in @($sources | Where-Object { $_.Name.Split('.')[0] -eq $name })) {
+            $text = Get-Content -LiteralPath $source.FullName -Raw
+            foreach ($parameter in [regex]::Matches($text, '\[Parameter[^\]]*\](?:\s*\[[^\]]*\])*\s*public\s+(?<type>[^\r\n{]+?)\s+(?<name>\w+)\s*\{')) {
+                $parameterName = $parameter.Groups['name'].Value
+                $parameterType = $parameter.Groups['type'].Value.Trim()
+                $actual[$parameterName] = $true
+                $docRows = @($parameters -split "\r?\n" | Where-Object { $_.StartsWith('|') -and ($_ -split '\|')[1].Contains('`' + $parameterName + '`') })
+                if ($docRows.Count -eq 0 -or -not (($docRows[0] -split '\|')[2].Contains('`' + $parameterType + '`'))) {
+                    Add-Failure $Failures "$($row.Page): $name.$parameterName missing or stale parameter/type."
+                }
+            }
+        }
+        foreach ($parameter in [regex]::Matches($parameters, '(?m)^\| (?<names>[^|]+) \| `[^`]+` \|')) {
+            foreach ($identifier in [regex]::Matches($parameter.Groups['names'].Value, '`(\w+)`')) {
+                if (-not $actual.ContainsKey($identifier.Groups[1].Value)) {
+                    Add-Failure $Failures "$($row.Page): $name has stale parameter $($identifier.Groups[1].Value)."
+                }
+            }
+        }
+    }
+    foreach ($stale in @($rows.Keys | Where-Object { $names -notcontains $_ } | Sort-Object)) {
+        Add-Failure $Failures "${inventoryPath}: stale component classification $stale."
+    }
+    foreach ($file in Get-ChildItem -LiteralPath (Join-Path $DocsRoot 'reference/components') -Filter '*.md' -File | Where-Object { $_.Name -ne 'index.md' } | Sort-Object Name) {
+        $rel = ConvertTo-RepoPath $file.FullName
+        $page = Get-Content -LiteralPath $file.FullName -Raw
+        if (-not $index.Contains('(' + $file.Name + ')')) { Add-Failure $Failures "docs/reference/components/index.md: missing page $($file.Name)." }
+        if (-not $toc.Contains('href: reference/components/' + $file.Name)) { Add-Failure $Failures "docs/toc.yml: missing page $($file.Name)." }
+        if (-not $status.Contains('`' + $rel + '` | authored')) { Add-Failure $Failures "${statusPath}: missing current authored status for $($file.Name)." }
+        foreach ($section in @('Overview', 'Usage', 'Parameters / slots', 'Layout (FC-LYT)', 'Accessibility (FC-A11Y)', 'Localization (FC-L10N)', 'Related')) {
+            if (-not $page.Contains('## ' + $section)) { Add-Failure $Failures "${rel}: missing FC-DOC section $section." }
+        }
+        if ($requiredContracts.ContainsKey($rel)) {
+            foreach ($required in @($requiredContracts[$rel].Keys | Sort-Object)) {
+                if (-not [regex]::IsMatch($page, '(?m)^### `' + [regex]::Escape($required) + '`\r?$')) { Add-Failure $Failures "${rel}: missing source-referenced contract section $required." }
+            }
+        }
+        foreach ($heading in [regex]::Matches($page, '(?m)^### `(?<name>\w+Context)`')) {
+            $name = $heading.Groups['name'].Value
+            if (-not $contracts.ContainsKey($name)) { Add-Failure $Failures "${rel}: unresolved context $name."; continue }
+            $source = $contracts[$name]
+            $documented = Get-ComponentSection $page ('### `' + $name + '`')
+            $expected = @{}
+            foreach ($property in [regex]::Matches($source, 'public (?<type>[^\r\n]+?) (?<name>\w+) (?:\{ get; \}|=>[^\r\n]+;)')) {
+                $propertyName = $property.Groups['name'].Value
+                $expected[$propertyName] = $true
+                $docRows = @($documented -split "\r?\n" | Where-Object { $_.StartsWith('| `' + $propertyName + '` |') })
+                if ($docRows.Count -eq 0 -or -not (($docRows[0] -split '\|')[2].Contains('`' + $property.Groups['type'].Value + '`'))) {
+                    Add-Failure $Failures "${rel}: $name.$propertyName missing or stale context property/type."
+                }
+            }
+            foreach ($property in [regex]::Matches($documented, '(?m)^\| `(\w+)` \|')) {
+                if (-not $expected.ContainsKey($property.Groups[1].Value)) { Add-Failure $Failures "${rel}: $name has stale context property $($property.Groups[1].Value)." }
+            }
+        }
+        foreach ($heading in [regex]::Matches($page, '(?m)^### `(?<name>\w+State|ProjectionConnectionStatus)`')) {
+            $name = $heading.Groups['name'].Value
+            if ($rows.ContainsKey($name)) { continue }
+            if (-not $contracts.ContainsKey($name)) { Add-Failure $Failures "${rel}: unresolved state vocabulary $name."; continue }
+            $stateSource = $contracts[$name]
+            $expected = @([regex]::Matches($stateSource, '(?m)^    (\w+)(?:\s*=\s*\d+)?,?\s*$') | ForEach-Object { $_.Groups[1].Value } | Sort-Object)
+            $actualStates = @([regex]::Matches((Get-ComponentSection $page ('### `' + $name + '`')), '(?m)^\| `(\w+)` \|') | ForEach-Object { $_.Groups[1].Value } | Sort-Object)
+            if (($expected -join ',') -cne ($actualStates -join ',')) { Add-Failure $Failures "${rel}: $name state vocabulary differs from source." }
+        }
+    }
+}
+
 function Get-ApiItemsMissingSummaries {
     $missing = New-Object System.Collections.Generic.List[string]
     $apiRoot = Join-Path $DocsRoot 'reference/api'
@@ -576,6 +737,8 @@ else {
         }
     }
 }
+
+Assert-ComponentDocumentation $failures
 
 $registryPath = Join-Path $DocsRoot 'diagnostics/diagnostic-registry.json'
 if (-not (Test-Path -LiteralPath $registryPath)) {

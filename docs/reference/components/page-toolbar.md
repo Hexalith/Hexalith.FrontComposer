@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 8-6-reusable-fcpagetoolbar
 status: published
-reviewed: 2026-06-25
+reviewed: 2026-10-21
 uid: frontcomposer.reference.components.pagetoolbar
 slug: reference/components/page-toolbar/
 ---
@@ -78,6 +78,8 @@ Render the toolbar through the aggregate-list toolbar slot:
 | `AriaLabel` | `string` | Accessible name for the row with `role="toolbar"`. |
 | `Class` | `string?` | Optional root CSS class for page-specific layout hooks. |
 | `SearchValue` / `SearchValueChanged` | `string?` / `EventCallback<string?>` | Caller-owned search state. |
+| `SearchInputId` | `string` | Stable input id; use unique ids when composing multiple toolbars. |
+| `SearchDisabled` | `bool` | Disables search and excludes it from the `/` page-search shortcut. |
 | `SearchPlaceholder` | `string?` | Search input placeholder text. |
 | `SearchAriaLabel` | `string` | Search input accessible name. |
 | `FilterLabel` | `string` | Filter trigger label and filter panel title. |
@@ -100,7 +102,7 @@ inside its owning `FcPageTab`. Do not pair toolbar tabs with external sibling pa
 The toolbar renders a vertical `FluentStack` containing a horizontal `FluentStack` row with
 `role="toolbar"`. The search input flexes first, filter and view controls follow, and the `Actions`
 slot aligns to the far edge when space is available. The row wraps at narrow widths so controls do
-not overlap. Optional tabs render below the row as `FluentTabs` with the subtle Fluent appearance.
+not overlap. Optional tabs render below the row. Fluent stacks, tabs, popovers and menu containers are internal composition, not additional FrontComposer slots or parameters.
 
 Toolbar tabs are header chrome only. Grids, states, filters, pagers, and command flows belong in the
 page body, never in `FcPageHeader.Actions`. Use `FcPageTabs` after the page header when those regions
@@ -108,6 +110,8 @@ switch together.
 
 The component does not change `FcPageHeader` landmarks. In aggregate-list pages it composes through
 the existing `Toolbar` slot, which is forwarded to `FcPageHeader.Actions`.
+
+The `/` shortcut targets an enabled visible page search outside editable controls; disabled or hidden/inactive-panel searches are ineligible. Callers own search filtering, debounce, persistence and local toolbar tab state.
 
 ## Accessibility (FC-A11Y)
 

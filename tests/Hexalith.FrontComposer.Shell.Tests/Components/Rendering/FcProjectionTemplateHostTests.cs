@@ -6,10 +6,14 @@ using Hexalith.FrontComposer.Shell.Components.Rendering;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
+
+using NSubstitute;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using Shouldly;
@@ -28,6 +32,9 @@ public sealed class FcProjectionTemplateHostTests : BunitContext {
         // P1 / P2 — diagnostic panel injects IStringLocalizer<FcShellResources> and uses
         // Fluent UI primitives. Register localization + Fluent UI services so the panel
         // can render in the test bUnit context.
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns("Development");
+        Services.AddSingleton(environment);
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddFluentUIComponents();
         _ = Services.AddLocalization();
@@ -59,8 +66,8 @@ public sealed class FcProjectionTemplateHostTests : BunitContext {
             .Add(p => p.Descriptor, descriptor)
             .Add(p => p.Context, context));
 
-        cut.Markup.ShouldContain("role=\"alert\"");
-        cut.Markup.ShouldContain(FcDiagnosticIds.HFC2115_CustomizationOverrideRenderFault);
+        AssertDiagnosticVisibility(cut.Markup, "role=\"alert\"");
+        AssertDiagnosticVisibility(cut.Markup, FcDiagnosticIds.HFC2115_CustomizationOverrideRenderFault);
 
         (LogLevel Level, string Message, Exception? Exception) entry = _logger.Entries.ShouldHaveSingleItem();
         entry.Level.ShouldBe(LogLevel.Warning);
@@ -68,6 +75,7 @@ public sealed class FcProjectionTemplateHostTests : BunitContext {
         entry.Message.ShouldNotContain("PayloadValueMustNotLog");
         entry.Message.ShouldNotContain("raw template exception");
 
+#if DEBUG
         DevDiagnosticEvent evt = sink.RecentEvents.ShouldHaveSingleItem();
         evt.Code.ShouldBe(FcDiagnosticIds.HFC2115_CustomizationOverrideRenderFault);
         evt.Message.ShouldContain("What:");
@@ -77,6 +85,9 @@ public sealed class FcProjectionTemplateHostTests : BunitContext {
         evt.Message.ShouldContain("DocsLink:");
         evt.Message.ShouldNotContain("PayloadValueMustNotLog");
         evt.Message.ShouldNotContain("raw template exception");
+#else
+        sink.RecentEvents.ShouldBeEmpty();
+#endif
     }
 
     [Fact]
@@ -90,7 +101,7 @@ public sealed class FcProjectionTemplateHostTests : BunitContext {
             .Add(p => p.Descriptor, descriptor)
             .Add(p => p.Context, NewContext("v1")));
 
-        sink.RecentEvents.Count.ShouldBe(1);
+        sink.RecentEvents.Count.ShouldBe(ExpectedDiagnosticCount);
 
         for (int i = 2; i <= 5; i++) {
             int iteration = i;
@@ -99,7 +110,7 @@ public sealed class FcProjectionTemplateHostTests : BunitContext {
                 .Add(p => p.Context, NewContext($"v{iteration}")));
         }
 
-        sink.RecentEvents.Count.ShouldBe(1);
+        sink.RecentEvents.Count.ShouldBe(ExpectedDiagnosticCount);
     }
 
     [Fact]
@@ -114,14 +125,98 @@ public sealed class FcProjectionTemplateHostTests : BunitContext {
             .Add(p => p.FaultyDescriptor, NewDescriptor(typeof(ThrowingTemplate))));
 
         cut.Markup.ShouldContain("template-greeting=\"HealthyValue\"");
-        cut.Markup.ShouldContain("role=\"alert\"");
-        cut.Markup.ShouldContain(FcDiagnosticIds.HFC2115_CustomizationOverrideRenderFault);
+        AssertDiagnosticVisibility(cut.Markup, "role=\"alert\"");
+        AssertDiagnosticVisibility(cut.Markup, FcDiagnosticIds.HFC2115_CustomizationOverrideRenderFault);
+    }
+
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    [InlineData(null)]
+    public void Render_Fault_PreservesGeneratedBodyAndFailsClosedForDiagnostics(string? environmentName)
+    {
+        Services.RemoveAll<IHostEnvironment>();
+        if (environmentName is not null)
+        {
+            IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+            environment.EnvironmentName.Returns(environmentName);
+            Services.AddSingleton(environment);
+        }
+        IRenderedComponent<FcProjectionTemplateHost<TemplateProjection>> cut = Render<FcProjectionTemplateHost<TemplateProjection>>(parameters => parameters
+            .Add(p => p.Descriptor, NewDescriptor(typeof(ThrowingTemplate)))
+            .Add(p => p.Context, NewContext("SensitivePayloadSentinel")));
+        cut.Markup.ShouldContain("Generated fallback");
+        bool visible = false;
+#if DEBUG
+        visible = environmentName == "Development";
+#endif
+        cut.FindAll("[data-fc-diagnostic]").Count.ShouldBe(visible ? 1 : 0);
+        cut.Markup.ShouldNotContain("SensitivePayloadSentinel");
+        cut.Markup.ShouldNotContain("SensitiveTenantSentinel");
+        cut.Markup.ShouldNotContain("SensitiveUserSentinel");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Render_ThrowingGeneratedFallback_IsContainedWithoutRecursiveRecovery(bool childThrows)
+    {
+        IErrorBoundaryLogger boundaryLogger = Substitute.For<IErrorBoundaryLogger>();
+        Services.AddSingleton(boundaryLogger);
+        InMemoryDiagnosticSink sink = new(capacity: 8);
+        Services.AddSingleton<IDiagnosticSink>(sink);
+        int attempts = 0;
+        RenderFragment fallback = builder =>
+        {
+            attempts++;
+            if (!childThrows)
+            {
+                throw new InvalidOperationException("SensitiveFallbackPayload token stack trace");
+            }
+            builder.OpenComponent<ThrowingGeneratedFallback>(0);
+            builder.CloseComponent();
+        };
+        ProjectionTemplateContext<TemplateProjection> context = NewContext("SensitiveRow", fallback);
+        ProjectionTemplateDescriptor descriptor = NewDescriptor(typeof(ThrowingTemplate));
+        IRenderedComponent<FcProjectionTemplateHost<TemplateProjection>> cut = Render<FcProjectionTemplateHost<TemplateProjection>>(parameters => parameters
+            .Add(p => p.Descriptor, descriptor).Add(p => p.Context, context));
+        cut.Render(parameters => parameters.Add(p => p.Descriptor, descriptor).Add(p => p.Context, context));
+        attempts.ShouldBe(1);
+        cut.Markup.ShouldContain("Data could not be loaded.");
+        cut.Markup.ShouldNotContain("SensitiveFallbackPayload");
+        cut.Markup.ShouldNotContain("SensitiveRow");
+        _logger.Entries.ShouldHaveSingleItem().Message.ShouldNotContain("SensitiveFallbackPayload");
+        await boundaryLogger.Received(1).LogErrorAsync(Arg.Any<Exception>()).ConfigureAwait(true);
+        sink.RecentEvents.Count.ShouldBe(ExpectedDiagnosticCount);
+        sink.RecentEvents.ShouldAllBe(entry => !entry.Message.Contains("SensitiveFallbackPayload", StringComparison.Ordinal));
+    }
+
+    private static int ExpectedDiagnosticCount
+    {
+        get
+        {
+#if DEBUG
+            return 1;
+#else
+            return 0;
+#endif
+        }
+    }
+
+    private static void AssertDiagnosticVisibility(string markup, string diagnostic)
+    {
+#if DEBUG
+        markup.ShouldContain(diagnostic);
+#else
+        markup.ShouldNotContain(diagnostic);
+#endif
     }
 
     private static ProjectionTemplateDescriptor NewDescriptor(Type templateType)
         => new(typeof(TemplateProjection), null, templateType, ProjectionTemplateContractVersion.Current);
 
-    private static ProjectionTemplateContext<TemplateProjection> NewContext(string greeting)
+    private static ProjectionTemplateContext<TemplateProjection> NewContext(string greeting, RenderFragment? defaultBody = null)
         => new(
             projectionType: typeof(TemplateProjection),
             boundedContext: "Tests",
@@ -130,7 +225,7 @@ public sealed class FcProjectionTemplateHostTests : BunitContext {
             items: [new TemplateProjection(1, greeting)],
             columns: [new ProjectionTemplateColumnDescriptor(greeting, greeting, null, null)],
             sections: [new ProjectionTemplateSectionDescriptor("Body", "Body", "Body")],
-            defaultBody: static _ => { },
+            defaultBody: defaultBody ?? (static builder => builder.AddContent(0, "Generated fallback")),
             sectionRenderer: static _ => static _ => { },
             rowRenderer: static _ => static _ => { },
             fieldRenderer: static (_, _) => static _ => { });

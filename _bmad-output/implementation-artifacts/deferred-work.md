@@ -10632,3 +10632,7 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-1-restore-current-artifact-integrity-validation.md`
   summary: Extend pre-existing repository artifact-to-queue reconciliation beyond the maintained Epic 11 corpus.
   evidence: Story 15.1 review BH-06 reproduced a done Story 15.1 artifact beside a review sprint row returning no global failures; parse_repository_story_artifacts filters non-Epic11 identities in unchanged code. Define the supported maintained corpus before extending parsing, uniqueness, lifecycle, and action associations.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
+  summary: Verify and redact the pre-existing stock ErrorBoundary logging path for customization faults.
+  evidence: Baseline 099299cb5da4ec1ffa3b19cc0387f06d5bbb7634 already mounts stock ErrorBoundary in all three customization hosts; the framework default OnErrorAsync logs the original exception independently of sanitized host warnings. Existing tests capture host loggers only. Add IErrorBoundaryLogger coverage and a separately scoped logging correction; Story 15.2 panels remain payload-free.

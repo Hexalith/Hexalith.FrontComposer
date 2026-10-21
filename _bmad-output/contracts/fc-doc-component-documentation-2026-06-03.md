@@ -186,3 +186,20 @@ required.
 - [Source: docs/diagnostics/HFC1050.md … HFC1055.md] (published a11y diagnostic pages — linked from the Accessibility section, not modified)
 - [Source: _bmad-output/implementation-artifacts/1-4-establish-fc-l10n-shell-string-ownership.md] (previous confirm-and-document story; contract shape, escalate-with-owner under YOLO, Dev Agent Record / Change Log house style, 13-failure baseline)
 - [Source: _bmad-output/project-context.md#Development Workflow Rules + #Code Quality & Style Rules] ("docs/ is a PUBLISHED DocFX site, CI-gated (Gate 2d)"; Conventional Commits — docs→no release, never feat for docs; .slnx; centralized versions)
+
+## Current coverage reconciliation (Story 15.2, 2026-10-21)
+
+The accepted confirmation and historical rows above remain history. Current classifications live in component-inventory.md §H; framework helpers remain infrastructure. Every authored page is indexed and published under Reference > Components. Current grouped coverage:
+
+| Component area | Anchor component(s) | Doc page | Status | Owner |
+|---|---|---|---|---|
+| page-patterns | `FcPageLayout`, `FcPageHeader`, `FcAggregateListPage`, `FcAggregateDetailPage`, `FcHomeDirectory`, `FcHomeCard`, `FcHomeRouteView`, `FcModuleLandingPage` | `docs/reference/components/page-patterns.md` | authored — current public parameter and state parity | FrontComposer |
+| projection-status | `FcProjectionLoadingSkeleton`, `FcProjectionEmptyPlaceholder`, `FcProjectionFailure`, `FcProjectionStaleNotice`, `FcSurfaceStatus`, `FcScopeBlocked`, `FcProjectionSubtitle`, `FcFieldPlaceholder`, `FcStatusIcon`, `FcStatusBadge`, `FcDesaturatedBadge`, `FcProjectionConnectionStatus` | `docs/reference/components/projection-status.md` | authored — current public parameter and state parity | FrontComposer |
+| command-lifecycle | `FcLifecycleWrapper`, `FcPendingCommandSummary`, `FcAuthorizedCommandRegion`, `FcFormAbandonmentGuard`, `FcDestructiveConfirmationDialog`, `FcCommandBlockedOutcome`, `FcValidationSummary` | `docs/reference/components/command-lifecycle.md` | authored — current public parameter and state parity | FrontComposer |
+| customization | `FcProjectionViewOverrideHost`, `FcProjectionTemplateHost`, `FcFieldSlotHost`, `FcCustomizationDiagnosticPanel` | `docs/reference/components/customization.md` | authored — current public parameter and state parity | FrontComposer |
+| page-toolbar | `FcPageToolbar` | `docs/reference/components/page-toolbar.md` | authored — current public parameter and state parity | FrontComposer |
+| page-tabs | `FcPageTabs`, `FcPageTab` | `docs/reference/components/page-tabs.md` | authored — current public parameter and state parity | FrontComposer |
+| datagrid | `FcColumnFilterCell`, `FcColumnPrioritizer`, `FcExpandInRowDetail`, `FcExpandedRowHiddenBanner`, `FcFilterEmptyState`, `FcFilterResetButton`, `FcFilterSummary`, `FcMaxItemsCapNotice`, `FcNewItemIndicator`, `FcProjectionGlobalSearch`, `FcSlowQueryNotice`, `FcStatusFilterChips` | `docs/reference/components/datagrid.md` | authored — current public parameter and state parity | FrontComposer |
+| front-composer-shell | `FrontComposerShell` | `docs/reference/components/front-composer-shell.md` | authored — current public parameter and state parity | FrontComposer |
+| navigation | `FrontComposerNavigation` | `docs/reference/components/navigation.md` | authored — current public parameter and state parity | FrontComposer |
+| settings | `FcSettingsDialog`, `FcThemeToggle`, `FcDensityPreviewPanel` | `docs/reference/components/settings.md` | authored — current public parameter and state parity | FrontComposer |

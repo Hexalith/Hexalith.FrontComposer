@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: frontcomposer-tab-contract
 status: published
-reviewed: 2026-08-28
+reviewed: 2026-10-21
 uid: frontcomposer.reference.components.pagetabs
 slug: reference/components/page-tabs/
 ---
@@ -65,6 +65,8 @@ the owned content in `id="summary-panel" role="tabpanel"`.
 | Parameter | Type | Purpose |
 |---|---|---|
 | `ActiveTabId` / `ActiveTabIdChanged` | `string?` / `EventCallback<string?>` | Caller-owned active-tab state and selection callback. |
+| `ModuleRoute` | `string?` | Route prefix enabling route-backed selection. |
+| `DefaultTabId` | `string?` | Required enabled default tab for route-backed selection. |
 | `AriaLabel` | `string` | Accessible name for the page tab list. |
 | `TestId` | `string` | Stable selector on the Fluent tabs root. Defaults to `fc-page-tabs`. |
 | `Appearance` | `TabsAppearance?` | Fluent appearance. Defaults to `Subtle`. |
@@ -97,6 +99,10 @@ After first activation, the panel content stays mounted when another tab is sele
 component state and in-flight work. For caller-owned selection, supply the initial enabled tab's
 stable `ActiveTabId` and update that value from `ActiveTabIdChanged`.
 
+With `ModuleRoute="/orders"` and `DefaultTabId="summary"`, `/orders` selects Summary and `/orders/activity` selects the enabled Activity tab. Route ids must be safe single segments and the default must exist and be enabled; invalid configuration throws. An unknown or disabled route tab redirects to the enabled default and announces localized fallback status after the destination settles. Local selection uses `ActiveTabId`/callback (or the component's local state); routed selection follows the URL. Query state supplied by an adopter callback is retained.
+
+Tab navigation prepares tab focus and avoids a competing route-heading focus move. Browser checks must verify retained panels, disabled skipping, and one focus owner. Hidden retained panels keep component state and work; they must not acquire visible-panel announcement ownership. Fluent's child composition and focus interop are implementation details, not adopter extension APIs.
+
 ## Accessibility (FC-A11Y)
 
 Fluent UI v5 owns the `tablist`, `tab`, and `tabpanel` roles, roving focus, ArrowLeft/ArrowRight,
@@ -117,8 +123,7 @@ Because tabs expose caller-owned panel content, custom surfaces placed inside ta
 
 ## Localization (FC-L10N)
 
-The components do not inject a localizer. Adopters pass localized `AriaLabel`, `Header`, and
-`Tooltip` values from their resource owner. Keep each label a complete localized string.
+`FcPageTabs` uses shell localization for the unavailable-tab fallback status. Adopters supply localized `AriaLabel`, `Header`, and `Tooltip` values from their resource owner. Keep each label a complete localized string.
 
 ## Related
 
