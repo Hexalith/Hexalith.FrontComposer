@@ -1291,7 +1291,7 @@ public sealed class CiGovernanceTests {
         XDocument appHost = XDocument.Load(
             Path.Combine(root, "src", "Hexalith.FrontComposer.AppHost", "Hexalith.FrontComposer.AppHost.csproj"));
         appHost.Root.ShouldNotBeNull().Attribute("Sdk").ShouldNotBeNull().Value
-            .ShouldBe($"Aspire.AppHost.Sdk/{expectedAspire}");
+            .ShouldBe($"Aspire.AppHost.Sdk/{expectedAspireHosting}");
         appHost.Descendants("AspireUseCliBundle").Single().Value.ShouldBe("true");
 
         string nestedCatalogPath = Path.Combine(
