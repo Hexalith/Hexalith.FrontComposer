@@ -10620,3 +10620,15 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md`
   summary: Record retention or explicit disposition of the hosted browser evidence before its artifacts expire.
   evidence: Pre-existing `.github/workflows/quality.yml:955,1048` retains accessibility/browser artifacts for 14 days; run 39554582583's 2026-10-21 artifacts can expire on 2026-11-04. Quality/Test should identify the run attempt and artifact identities and either retain the necessary evidence through an approved existing evidence path or explicitly record its expiry and the need for fresh proof. The run URL preserves job metadata, not permanent screenshots, reports or traces. This negative decision and OI-4/FLUENT-APP-1 remain unchanged; no evidence is copied or promoted by this entry.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-1-restore-current-artifact-integrity-validation.md`
+  summary: Resolve pre-existing checked-task basename evidence attribution that depends on unrelated dirty paths.
+  evidence: Story 15.1 review BH-01 reproduced identical behavior in HEAD and the candidate: an empty-list story claiming add `owned.txt` loses its checked-task evidence error when notes/unrelated/owned.txt is dirtied. The missing-File-List diagnostic remains stable; check_checked_tasks intentionally accepts basename shorthand from all discovered paths.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-1-restore-current-artifact-integrity-validation.md`
+  summary: Escape artifact paths in pre-existing checked-task diagnostics.
+  evidence: Story 15.1 review BH-02 reproduced a raw U+2028 artifact-path separator from check_checked_tasks in both HEAD and the candidate, while the repaired File List diagnostic escapes it. Cover both lacks-evidence and deferred-nonexistent-path branches.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-1-restore-current-artifact-integrity-validation.md`
+  summary: Extend pre-existing repository artifact-to-queue reconciliation beyond the maintained Epic 11 corpus.
+  evidence: Story 15.1 review BH-06 reproduced a done Story 15.1 artifact beside a review sprint row returning no global failures; parse_repository_story_artifacts filters non-Epic11 identities in unchanged code. Define the supported maintained corpus before extending parsing, uniqueness, lifecycle, and action associations.

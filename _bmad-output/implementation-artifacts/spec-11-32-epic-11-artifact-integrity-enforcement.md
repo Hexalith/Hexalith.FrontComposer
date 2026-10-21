@@ -170,3 +170,37 @@ Review-loop contract:
 
 **Actual (2026-09-22):** all four commands passed; the Python suite ran 204 tests
 with two skips, and the pinned governance method ran one test with no failures.
+
+## File List
+
+- `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+- `_bmad-output/implementation-artifacts/11-6-testing-harness-failure-modes.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/spec-11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface.md`
+- `_bmad-output/implementation-artifacts/spec-11-12-relocate-runtime-and-testing-owned-types-out-of-contracts.md`
+- `_bmad-output/implementation-artifacts/spec-11-15-storage-scope-and-snapshot-publisher-consolidation.md`
+- `_bmad-output/implementation-artifacts/spec-11-2-projection-realtime-resilience.md`
+- `_bmad-output/implementation-artifacts/spec-11-22-recommended-analyzer-test-and-sample-burn-down.md`
+- `_bmad-output/implementation-artifacts/spec-11-23-recommended-analyzer-repository-activation.md`
+- `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
+- `_bmad-output/implementation-artifacts/spec-11-3-mcp-cross-request-lifecycle-and-operability.md`
+- `_bmad-output/implementation-artifacts/spec-11-32-epic-11-artifact-integrity-enforcement.md`
+- `_bmad-output/implementation-artifacts/spec-11-4-security-validation-hardening.md`
+- `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md`
+- `_bmad-output/implementation-artifacts/spec-11-7-command-projection-route-contract-implementation.md`
+- `_bmad-output/implementation-artifacts/spec-11-9-shell-layering-declaration-and-route-label-relocation.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/planning-artifacts/epics.md`
+- `docs/reference/story-artifact-validation.md`
+- `eng/tests/test_validate_story_artifacts.py`
+- `eng/validate-story-artifacts.py`
+
+## Maintenance repair (2026-10-21)
+
+Story 15.1 restored this 21-path delivery inventory from Git baseline `00d4da4788692ee405a081884e78482a9556b0c3` through delivery `9aad029f837b8ecbd9f58e6f89ffdd76bf403bcf`. This dated maintenance repair preserves the accepted 2026-09-22 verification, frozen intent, baseline, completed Story status, and historical acceptance.
+
+The bounded command in `docs/reference/story-artifact-validation.md` supplies each Git-derived delivery path through the existing `--changed-file` option. The live regression asserts exact File List equality before running that CLI; accepted-extra prose cannot expand the historical inventory. Global integrity runs separately. The original baseline-to-current-workspace legacy command includes later deliveries and is not a bounded replay of Story 11.32.
+
+Maintenance proof (2026-10-21): `python3 -m unittest eng.tests.test_validate_story_artifacts` passed 218 tests with two existing skips; `python3 eng/validate-story-artifacts.py`, the exact bounded explicit-path invocation in the reference above, and `pwsh ./eng/validate-docs.ps1` all passed. The existing CI command, historical completion states, and open residual approvals remain unchanged.
+
+Final Story 15.1 review verification (2026-10-21): the same blocking suite ran 221 tests with two existing skips and no failures; full documentation validation and the bounded historical inventory command passed after review patches.

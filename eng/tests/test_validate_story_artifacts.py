@@ -264,7 +264,8 @@ class StoryArtifactValidatorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             baseline = init_repo(root)
-            write(root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md", story_text(baseline=baseline))
+            story_path = "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
+            write(root / story_path, story_text(baseline=baseline, file_list=f"- `{story_path}`"))
             write(root / "src/owned.txt", "owned\n")
 
             result = run(
@@ -284,6 +285,63 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertIn("baseline_commit", result.stderr)
             self.assertIn("src/owned.txt", result.stderr)
             self.assertIn("missing from story File List", result.stderr)
+
+    def test_absent_and_empty_file_lists_ignore_checkout_roots_and_dirty_paths(self) -> None:
+        story_path = "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
+        expected = (
+            "story File List not found or empty; changed files missing from story "
+            f"File List in {story_path}\n"
+        )
+        for absent in (True, False):
+            for dirty_paths in ((), ("notes/unrelated.txt", "src/unsafe\x1b[2J.txt")):
+                with self.subTest(absent=absent, dirty_paths=dirty_paths), tempfile.TemporaryDirectory() as temp:
+                    root = Path(temp)
+                    baseline = init_repo(root)
+                    content = story_text(baseline=baseline)
+                    if absent:
+                        content = content.replace("### File List", "### Notes")
+                    write(root / story_path, content)
+                    for path in dirty_paths:
+                        write(root / path, "unrelated dirty state\n")
+
+                    result = run(
+                        [sys.executable, str(VALIDATOR), "--project-root", str(root),
+                         "--story", story_path, "--skip-sentinel"],
+                        root,
+                    )
+
+                    self.assertEqual(result.returncode, 1)
+                    self.assertEqual(result.stderr, expected)
+                    self.assertNotIn(str(root), result.stdout + result.stderr)
+
+    def test_incomplete_file_list_explicit_scope_is_stable_and_escaped(self) -> None:
+        story_path = "stories/1-1-unsafe\u2028name.md"
+        missing = ("src/z.txt", "src/unsafe\x1b[2J.txt")
+        diagnostics = []
+        for dirty in (False, True):
+            with self.subTest(dirty=dirty), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                baseline = init_repo(root)
+                write(root / story_path, story_text(baseline=baseline, file_list="- `src/listed.txt`"))
+                if dirty:
+                    write(root / "notes/unrelated.txt", "dirty\n")
+                command = [
+                    sys.executable, str(VALIDATOR), "--project-root", str(root),
+                    "--story", story_path, "--skip-sentinel", "--changed-file", "src/listed.txt",
+                ]
+                for path in missing:
+                    command.extend(("--changed-file", path))
+
+                result = run(command, root)
+
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(json.dumps(story_path, ensure_ascii=True), result.stderr)
+                self.assertIn('"src/unsafe\\u001b[2J.txt"', result.stderr)
+                self.assertLess(result.stderr.index("src/unsafe"), result.stderr.index("src/z.txt"))
+                for raw in (str(root), "notes/unrelated.txt", "\x1b", "\u2028"):
+                    self.assertNotIn(raw, result.stderr)
+                diagnostics.append(result.stderr)
+        self.assertEqual(diagnostics[0], diagnostics[1])
 
     def test_legacy_unusable_baselines_fall_back_to_bare_diff_for_unstaged_changes(self) -> None:
         story_path = "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
@@ -1483,7 +1541,8 @@ class StoryArtifactValidatorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             baseline = init_repo(root)
-            write(root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md", story_text(baseline=baseline))
+            story_path = "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
+            write(root / story_path, story_text(baseline=baseline, file_list=f"- `{story_path}`"))
 
             result = run(
                 [
@@ -1495,6 +1554,8 @@ class StoryArtifactValidatorTests(unittest.TestCase):
                     "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
                     "--changed-file",
                     "references/Hexalith.EventStore",
+                    "--changed-file",
+                    story_path,
                     "--skip-sentinel",
                 ],
                 root,
@@ -1942,21 +2003,35 @@ class CommitScopeEvidenceTests(unittest.TestCase):
     def test_file_list_failure_paths_are_escaped(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            story = root / "story.md"
+            story_path = "stories/unsafe\u2028name.md"
+            story = root / story_path
             write(story, "# Fixture\n")
             unsafe_path = "notes/unsafe\x1b[2J.txt"
+            unsafe_listed = "src/listed\u2029name.txt"
 
             failures = VALIDATOR_MODULE.check_file_list(
                 root,
                 story,
                 VALIDATOR_MODULE.ChangedFiles([unsafe_path], "fixture", ""),
-                {},
+                {unsafe_listed: ""},
                 {},
             )
 
             rendered = "\n".join(failures)
             self.assertNotIn("\x1b", rendered)
+            self.assertNotIn("\u2028", rendered)
+            self.assertNotIn("\u2029", rendered)
+            self.assertIn(json.dumps(story_path, ensure_ascii=True), rendered)
             self.assertIn('"notes/unsafe\\u001b[2J.txt"', rendered)
+            self.assertIn(json.dumps(unsafe_listed, ensure_ascii=True), rendered)
+
+            absent = VALIDATOR_MODULE.check_file_list(
+                root, story, VALIDATOR_MODULE.ChangedFiles([unsafe_path], "fixture", ""), {}, {},
+            )
+            self.assertEqual(len(absent), 1)
+            self.assertIn(json.dumps(story_path, ensure_ascii=True), absent[0])
+            self.assertNotIn("notes/unsafe", absent[0])
+            self.assertNotIn("\u2028", absent[0])
 
     def test_c1_bidi_and_zero_width_controls_are_ascii_escaped(self) -> None:
         for value, escaped in (
@@ -4826,7 +4901,7 @@ class RepositoryIntegrityTests(unittest.TestCase):
         baseline = init_repo(root)
         impl = root / "_bmad-output/implementation-artifacts"
         planning = root / "_bmad-output/planning-artifacts"
-        rows: list[str] = []
+        rows: list[str] = ["  epic-11: in-progress", "  epic-11-retrospective: optional"]
         children: list[str] = []
         paths: dict[str, Path] = {}
         for story_id, filename in VALIDATOR_MODULE.EPIC_11_CHILD_ARTIFACTS.items():
@@ -4899,6 +4974,217 @@ class RepositoryIntegrityTests(unittest.TestCase):
             self.make_fixture(root)
             self.assertEqual(VALIDATOR_MODULE.validate_repository_integrity(root), [])
         self.assertEqual(VALIDATOR_MODULE.validate_repository_integrity(REPO_ROOT), [])
+
+    def test_declared_epic_lifecycle_conflicts_fail_global_cli(self) -> None:
+        cases = (
+            *(("done", status, "99-1-story") for status in ("backlog", "ready-for-dev", "blocked", "in-progress", "review")),
+            *(("backlog", status, "99-1-story") for status in ("ready-for-dev", "blocked", "in-progress", "review", "done")),
+            ("done", "in-progress", "99-1A"),
+            ("done", "review", "99.2B"),
+        )
+        for epic_status, child_status, child_key in cases:
+            with self.subTest(epic=epic_status, child=child_status, key=child_key), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                fixture = self.make_fixture(root)
+                sprint = fixture["impl"] / "sprint-status.yaml"
+                sprint.write_text(
+                    sprint.read_text(encoding="utf-8").replace(
+                        "development_status:\n",
+                        f"development_status:\n  epic-99: {epic_status}\n"
+                        f"  {child_key}: {child_status}\n",
+                    ),
+                    encoding="utf-8",
+                )
+
+                result = run([sys.executable, str(VALIDATOR), "--project-root", str(root)], root)
+
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(
+                    result.stderr,
+                    f"repository integrity: sprint epic-99={epic_status!r} disagrees "
+                    f"with child {child_key}={child_status!r}; expected every numeric "
+                    f"child to be {epic_status}\n",
+                )
+
+    def test_unsupported_epic_specific_statuses_fail_global_cli(self) -> None:
+        for status in ("review", "blocked", "ready-for-dev", "optional"):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                fixture = self.make_fixture(root)
+                sprint = fixture["impl"] / "sprint-status.yaml"
+                sprint.write_text(
+                    sprint.read_text(encoding="utf-8").replace(
+                        "development_status:\n",
+                        f"development_status:\n  epic-99: {status}\n  99-1-story: done\n",
+                    ),
+                    encoding="utf-8",
+                )
+
+                result = run([sys.executable, str(VALIDATOR), "--project-root", str(root)], root)
+
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(
+                    result.stderr,
+                    "repository integrity: sprint epic-99 has unsupported epic lifecycle "
+                    f"status {status!r}; expected backlog, in-progress, or done\n",
+                )
+
+    def test_done_epic_fails_after_all_numeric_children_are_deleted(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            fixture = self.make_fixture(root)
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            text = sprint.read_text(encoding="utf-8").replace(
+                "development_status:\n",
+                "development_status:\n  epic-99: done\n  99-1-story: done\n"
+                "  99.2A: done\n  epic-99-retrospective: done\n",
+            )
+            sprint.write_text(text, encoding="utf-8")
+            command = [sys.executable, str(VALIDATOR), "--project-root", str(root)]
+            result = run(command, root)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            sprint.write_text(
+                text.replace("  99-1-story: done\n", "").replace("  99.2A: done\n", ""),
+                encoding="utf-8",
+            )
+            result = run(command, root)
+
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(
+                result.stderr,
+                "repository integrity: sprint epic-99='done' has no numeric child rows\n",
+            )
+
+    def test_epic_numeric_components_are_zero_normalized_without_integer_limits(self) -> None:
+        oversized = "9" * 4301
+        for epic_number, child_number in (
+            (oversized, "0" + oversized),
+            ("00099", "99"),
+            ("99", "00099"),
+            ("000", "0"),
+        ):
+            with self.subTest(digits=len(epic_number), leading_zero=epic_number.startswith("0")), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                fixture = self.make_fixture(root)
+                sprint = fixture["impl"] / "sprint-status.yaml"
+                sprint.write_text(
+                    sprint.read_text(encoding="utf-8").replace(
+                        "development_status:\n",
+                        f"development_status:\n  epic-{epic_number}: done\n"
+                        f"  {child_number}-1A: in-progress\n",
+                    ),
+                    encoding="utf-8",
+                )
+
+                result = run([sys.executable, str(VALIDATOR), "--project-root", str(root)], root)
+
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(
+                    result.stderr,
+                    f"repository integrity: sprint epic-{epic_number}='done' disagrees "
+                    f"with child {child_number}-1A='in-progress'; expected every numeric "
+                    "child to be done\n",
+                )
+
+    def test_epic_lifecycle_ignores_retrospectives_actions_and_allows_pending_closure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            fixture = self.make_fixture(root)
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(
+                sprint.read_text(encoding="utf-8").replace(
+                    "development_status:\n",
+                    "development_status:\n"
+                    "  epic-98: backlog\n  98-1-story: backlog\n  epic-98-retrospective: done\n"
+                    "  epic-99: done\n  99-1-story: done\n  099.2b: done\n"
+                    "  epic-99-retrospective: optional\n  E99R-AI-1: in-progress\n"
+                    "  epic-100: in-progress\n  100-1-story: done\n  100-2-story: backlog\n",
+                ),
+                encoding="utf-8",
+            )
+
+            result = run([sys.executable, str(VALIDATOR), "--project-root", str(root)], root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_epic_story_action_drift_is_stable_across_roots_and_dirty_state(self) -> None:
+        diagnostics = []
+        rows = [
+            "  epic-99: backlog", "  99-1-story: done", "  epic-98: done",
+            "  98-2B: review", "  099.2b: in-progress", "  98-1A: backlog",
+        ]
+        for dirty in (False, True):
+            with self.subTest(dirty=dirty), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                fixture = self.make_fixture(root)
+                sprint = fixture["impl"] / "sprint-status.yaml"
+                sprint.write_text(
+                    sprint.read_text(encoding="utf-8").replace(
+                        "  epic-11: in-progress", "  epic-11: done"
+                    ).replace(
+                        "development_status:\n",
+                        "development_status:\n" + "\n".join(reversed(rows) if dirty else rows) + "\n",
+                    ),
+                    encoding="utf-8",
+                )
+                story = fixture["paths"]["11.28"]
+                story.write_text(
+                    story.read_text(encoding="utf-8").replace("status: 'done'", "status: 'review'"),
+                    encoding="utf-8",
+                )
+                if dirty:
+                    write(root / "notes/unrelated.txt", "dirty\n")
+
+                result = run([sys.executable, str(VALIDATOR), "--project-root", str(root)], root)
+
+                self.assertEqual(result.returncode, 1)
+                lifecycle = [
+                    line for line in result.stderr.splitlines()
+                    if line.startswith("repository integrity: sprint epic-")
+                ]
+                self.assertEqual(lifecycle, [
+                    "repository integrity: sprint epic-11='done' disagrees with child "
+                    "11-32-story='in-progress'; expected every numeric child to be done",
+                    "repository integrity: sprint epic-98='done' disagrees with child "
+                    "98-1A='backlog'; expected every numeric child to be done",
+                    "repository integrity: sprint epic-98='done' disagrees with child "
+                    "98-2B='review'; expected every numeric child to be done",
+                    "repository integrity: sprint epic-99='backlog' disagrees with child "
+                    "099.2b='in-progress'; expected every numeric child to be backlog",
+                    "repository integrity: sprint epic-99='backlog' disagrees with child "
+                    "99-1-story='done'; expected every numeric child to be backlog",
+                ])
+                for contradiction in (
+                    "Story 11.28 status mismatch: artifact 'review', sprint 11-28-story='done'",
+                    "E11R-AI-4 is done while its active Story 11.28 artifact is review; expected open",
+                ):
+                    self.assertIn(contradiction, result.stderr)
+                self.assertNotIn(str(root), result.stderr)
+                self.assertNotIn("notes/unrelated.txt", result.stderr)
+                diagnostics.append(result.stderr)
+        self.assertEqual(diagnostics[0], diagnostics[1])
+
+    def test_live_story_11_32_file_list_equals_immutable_delivery_and_cli_passes(self) -> None:
+        baseline = "00d4da4788692ee405a081884e78482a9556b0c3"
+        delivery = "9aad029f837b8ecbd9f58e6f89ffdd76bf403bcf"
+        story_path = "_bmad-output/implementation-artifacts/spec-11-32-epic-11-artifact-integrity-enforcement.md"
+        diff = git(REPO_ROOT, "diff", "--name-only", "-z", baseline, delivery)
+        self.assertEqual(diff.returncode, 0, diff.stdout + diff.stderr)
+        paths = sorted(path for path in diff.stdout.split("\0") if path)
+        self.assertEqual(len(paths), 21)
+        metadata = VALIDATOR_MODULE.parse_story_metadata(REPO_ROOT / story_path)
+        self.assertEqual(metadata.metadata_failures, [])
+        self.assertEqual(metadata.baseline_commit, baseline)
+        self.assertEqual(sorted(metadata.file_list), paths)
+
+        command = [sys.executable, str(VALIDATOR), "--story", story_path]
+        for path in paths:
+            command.extend(("--changed-file", path))
+        result = run(command, REPO_ROOT)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Story artifact validation passed.", result.stdout)
 
     def test_repository_integrity_conflict_makes_global_cli_exit_nonzero(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
