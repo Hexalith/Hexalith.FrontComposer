@@ -18,7 +18,7 @@
          is already true. Do not forward UseHexalithProjectReferences: it CS1704s UniqueIds inside
          EventStore.Contracts. CustomAfterMicrosoftCommonTargets drops published FrontComposer
          assets that Tenants.Client still injects into nested AdminPortal/ConsumerPortal. -->
-    <_HexalithReferenceProperties>HexalithFrontComposerRoot=$(HexalithFrontComposerRoot);HexalithEventStoreRoot=$(HexalithEventStoreRoot);HexalithTenantsRoot=$(HexalithTenantsRoot);HexalithPartiesRoot=$(HexalithPartiesRoot);HexalithMemoriesRoot=$(HexalithMemoriesRoot);HexalithCommonsRoot=$(HexalithCommonsRoot);HexalithFrontComposerFromSource=true;CustomAfterMicrosoftCommonTargets=$(_FrontComposerDropPublishedTargets)</_HexalithReferenceProperties>
+    <_HexalithReferenceProperties>HexalithFrontComposerRoot=$(HexalithFrontComposerRoot);HexalithEventStoreRoot=$(HexalithEventStoreRoot);HexalithTenantsRoot=$(HexalithTenantsRoot);HexalithPartiesRoot=$(HexalithPartiesRoot);HexalithMemoriesRoot=$(HexalithMemoriesRoot);HexalithCommonsRoot=$(HexalithCommonsRoot);HexalithFrontComposerFromSource=true;HexalithEventStoreFromSource=true;HexalithTenantsFromSource=true;HexalithPartiesFromSource=true;HexalithMemoriesFromSource=true;HexalithCommonsFromSource=true;CustomAfterMicrosoftCommonTargets=$(_FrontComposerDropPublishedTargets)</_HexalithReferenceProperties>
     <FrontComposerUiUsePublishedModulePackages Condition="'$(FrontComposerUiUsePublishedModulePackages)' == ''">false</FrontComposerUiUsePublishedModulePackages>
   </PropertyGroup>
 
