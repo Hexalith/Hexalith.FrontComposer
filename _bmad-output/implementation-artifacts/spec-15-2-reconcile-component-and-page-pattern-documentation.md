@@ -2,7 +2,7 @@
 title: 'Story 15.2: Reconcile Component and Page-Pattern Documentation'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 story_id: '15.2'
 story_key: '15-2-i-doc-a-reconcile-component-and-page-pattern-documentation'
@@ -116,6 +116,59 @@ Code review of committed `dfa06286` against `a3fbe9af` (2026-10-21): Blind Hunte
 - EC: The C# test reads Contracts `obj/` — false: none of the 124 `obj` `.cs` files matches a context or state declaration.
 - EC: Duplicate inventory rows: the last one wins — low: requires an authoring error; the guard adds complexity.
 - EC: Retry deleted outside Development — carried: same premise as triage BH-01, and spec-mandated Development-only panels.
+
+### Review Findings — round 4 (2026-10-21)
+
+Round 4 is a follow-up code review of the fix delta `dfa06286..f8ae3b58` over File List paths: 20 files, +265/−75, 763 diff lines. The spec and `deferred-work.md` were excluded as narrative. Four layers ran: Blind Hunter (B), Edge Case Hunter (E), Verification Gap (V) and Acceptance Auditor (A). They raised 40 findings, and triage checked each one against source. Result: 0 decision-needed, 10 patch, 2 defer, 19 rejected.
+
+- [ ] [Review][Patch] (R4-V1+B5+B6+E1+E2, medium) The Debug CI lane's class list is not tied to the sources, so it can quietly lose coverage. `--require-tests` only checks that the total across all classes is above zero, and the pin only checks the workflow text. If a listed class is renamed or deleted, or a new `#if DEBUG` test class is added, its Debug-only assertions stop running while the lane, the Release lanes and the pin all stay green. The Verification Gap layer reproduced this: one real class plus one missing class gave exit 0 and `ok: true`. Fix: extend `QualityWorkflow_RunsDebugGatedShellTestsInDebug` (extend, don't add a method, so no reseal is needed). Collect the classes in `tests/Hexalith.FrontComposer.Shell.Tests` that contain a line-start `#if DEBUG` or `#if !DEBUG` directive, and assert that set equals the workflow's `--filter-class` set. That catches renames, deletions and new classes. [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:436] [.github/workflows/quality.yml:1169]
+- [ ] [Review][Patch] (R4-A3+B12, medium) The rewritten `FcDestructiveConfirmationDialog` rows overstate localization.
+  - `Title` and `Body` are described as "Localized", but the `[Destructive(ConfirmationTitle/ConfirmationBody)]` values are passed through as literal strings (`CommandRendererEmitter.cs:595,601`).
+  - Only the default title template and the default body come from `ShellLocalizer`.
+  - The direct-call `"Confirm"` fallback is a fixed English literal (`FcDestructiveConfirmationDialog.razor:29`).
+
+  Fix: describe which values are localized and which are literal, and say that adopters own localization of configured attribute text. [docs/reference/components/command-lifecycle.md:80]
+- [ ] [Review][Patch] (R4-E3+E12+A7, low) The Debug lane pin is weaker than its own comment ("cannot silently become … advisory") and than the pattern other pins use. It does not assert `ShouldNotContain("--ignore-exit-code")` or `ShouldNotContain("|| true")` on the run step (compare `CiGovernanceTests.cs:230,290`), and it does not assert `--expected-trx-files 1` on the evidence step (compare `:303`). [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:450]
+- [ ] [Review][Patch] (R4-B7, low) `debug-gated-tests` writes `./TestResults/debug-gated` but never uploads it. Every other test lane in `quality.yml` has an `if: always()` `actions/upload-artifact` step for its results, so a failed Debug run leaves only console output. [.github/workflows/quality.yml:1182]
+- [ ] [Review][Patch] (R4-A1+A2+B10, low) The route reclassification was only partly carried through.
+  - The current-coverage status map still lists only `FrontComposerShell` for front-composer-shell, without the three route components now classed as adopter.
+  - The settings row still leads with `FcSettingsDialog`, which is now infrastructure.
+  - `FcRouteFailureHeading` is still mapped to `page-patterns.md`. That page never names it, and it is rendered only by `FcRouteFocus`, which is now documented on `front-composer-shell.md`.
+
+  [_bmad-output/contracts/fc-doc-component-documentation-2026-06-03.md:203] [_bmad-output/project-docs/component-inventory.md:212]
+- [ ] [Review][Patch] (R4-B9, low) The diagnostic-gate prerequisites were only partly carried through.
+  - `customization.md` does not say that the shell-level contract-mismatch panel also needs `AddFrontComposerDevMode(...)` with a Development environment, because that call is what registers the mismatch provider.
+  - `front-composer-shell.md:78` still says "DEBUG + `IsDevelopment()`" for the dev-mode toggle without saying the DEBUG build must be the Shell assembly's own.
+
+  [docs/reference/components/customization.md:153] [docs/reference/components/front-composer-shell.md:78]
+- [ ] [Review][Patch] (R4-A5+B15+E10, low) "Allowed range 5–600" leaves out a second rule. `FcShellOptionsThresholdValidator.cs:35` also requires `FormAbandonmentThresholdSeconds * 1000 > StillSyncingThresholdMs`, so a value inside the documented range fails startup once `StillSyncingThresholdMs` is at least that many milliseconds. [docs/reference/components/command-lifecycle.md:106]
+- [ ] [Review][Patch] (R4-A4+B14, low) The `FcExpandInRowDetail.ViewKey` row now reads as if the key identifies the view, but the parameter is declared (`FcExpandInRowDetail.razor.cs:40`) and never read. Say that the component does not use it. [docs/reference/components/datagrid.md:169]
+- [ ] [Review][Patch] (R4-B11, low) "Current route URI" for `RouteKey` is too loose. `FcRouteFocus` compares the key with `NavigationManager.Uri` using an ordinal comparison (`FcRouteFocus.razor.cs:85,96,112`), so a relative or normalised key never confirms success and never reports failure. Name `NavigationManager.Uri`. [docs/reference/components/front-composer-shell.md:90]
+- [ ] [Review][Patch] (R4-B17, low) The new overview sentence says adopters "can mount" both the Home and Module landing components. `FcModuleLandingPage` and `FcHomeRouteView` are routable pages (`@page "/{Module}"…`, `/home`) supplied through `AdditionalAssemblies`, and hosts must not redeclare those routes (`front-composer-shell.md:180-183`). Separate the components that are routed from the ones that can be mounted. [docs/reference/components/page-patterns.md:17]
+- [x] [Review][Defer] (R4-B13) XML doc comments in Shell source still carry planning IDs that DocFX publishes in the API reference: D12, D13, AC8 D19, D22, H4, UX-DR7, UX-DR30, Story 4-3/4.4/9-5. The Markdown tables were rewritten in round 2. [src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor.cs:57] — deferred: pre-existing source XML documentation, outside this delta. It needs a separate pass over the source docs.
+- [x] [Review][Defer] (R4-B9 migration part) `docs/how-to/migration-guides.md:31` recommends `services.AddFrontComposerDevMode()` without saying it has no effect with the Release NuGet package. [docs/how-to/migration-guides.md:31] — deferred: pre-existing migration guidance outside the File List, owned by Story 15.3 (migration and classification guidance).
+
+#### Rejected (round 4)
+
+- R4-B1/R4-V2: The PowerShell validator's new rejections have fixtures only in the C# copy. Carried, low: same premise as RESUME-VG-02. `CurrentInventoryAndPublishedContractsMatchSource` runs the C# copy on the real docs in CI, so a regression in only the PowerShell copy causes no real escape, and a process harness adds orchestration.
+- R4-B2/R4-E4: `Body` is detected only through `@inherits` in a `.razor` file. Carried: RESUME-BH-05. `FcRouteBodyLayout.razor:2` uses `@inherits`, and a base class declared in code-behind would fail loudly rather than pass silently.
+- R4-B3/R4-E8/R4-E13: The enum regex misses trailing-comment, same-line-attribute, shared-line and 8-space members. Low: no current Contracts enum uses those forms, house style puts attributes and doc comments on their own lines, and the fix touches both validators plus fixtures.
+- R4-E7: Context properties with `required`/`static` modifiers, accessor bodies or multi-line forms. Low, carrying the prior EC disposition: no current context type uses them.
+- R4-B4: Context-property types are matched by substring, and stale-context checks only single-name rows. Low: a grouped context row already fails loudly as "missing", and a cell listing several types is a contrived authoring error. The unused `types` capture is false: it still constrains the row shape and changes no behaviour.
+- R4-E5: The C# `Split('|')[2]` throws on a single-pipe row. Carried: the prior "short rows … loud failures on malformed input" disposition.
+- R4-E6: Other tables in a Parameters section are flagged as stale parameters. Low: it is a loud false positive on hypothetical input, and the current docs pass both validators.
+- R4-B8: The Production shell test cannot catch a regression in the panel gate. False: the direct-panel theory in `FcProjectionViewOverrideHostTests.cs:275-299` renders `FcCustomizationDiagnosticPanel` with a missing, Production or Development `IHostEnvironment` and asserts the Debug visibility. It runs in the Debug lane.
+- R4-E9: `AddFrontComposerDevMode(env)` with no `IHostEnvironment` in DI disables panels without a warning. Low, carried: round 2 settled this DI dependency by documenting it. A runtime registration or warning adds behaviour, and only a Shell assembly built from source in Debug is affected.
+- R4-B14 (defaults): `ColumnCount` and `MaxVisibleColumns` defaults are omitted. False: the row tells direct callers to supply the count, and the generated value of 10 equals the component default.
+- R4-B16: The `/` shortcut gives multi-toolbar pages no workable option. False as a documentation defect: the docs now state the exactly-one-eligible-search rule and tell callers to keep ids unique. Excluding a search from `/` without disabling it would be a feature request.
+- R4-B18: There is no supported settings entry point after replacing `HeaderEnd`. Low: this is pre-existing guidance, `FcSettingsButton` is a public component documented in `settings.md`, and the adopter/infrastructure classification is internal. Changing it is a classification decision, not a direct correction.
+- R4-A6: `FcThemeToggle` stays adopter although only the framework mounts it. Low: the classification is internal and both settings components keep typed sections that the validators check. Reclassifying would leave the settings area with no adopter anchor, which is more than a direct correction.
+- R4-E11: An empty `DestructiveLabel` renders a blank button. Low: this is pre-existing runtime behaviour, generated forms always pass the display label, and the fix adds a branch to the component.
+- R4-B12 (rest): A null `Title` leaves the `h2` empty, and the English `"Confirm"` literal is used for direct callers. Low: the docs already tell direct callers to supply a title, and localizing the fallback needs new en/fr resources (consistent with the round-2 `Am30QueryFailed` rejection).
+- R4-B11 (rest): The single-`h1` rule is false: it is documented at `front-composer-shell.md:137-140`. Keeping `FocusHeading="false"` mounted is false: it is stated at `:186-188`. `FcRouteUnavailable` navigating back is low: that happens only for shell-owned activations and is internal behaviour.
+- R4-B6 (part): The DEBUG-only `Ctrl+Shift+D` registration in `FrontComposerShortcutRegistrar.cs` has no test. Low: it is a pre-existing gap in source code unrelated to this story's diagnostic gates.
+- R4-B10 (part): Inventory §H records no reason for the classification changes. False: no §H row records a reason; the table has no rationale column.
+- R4-A7 (part): The `debug-gated-tests` lane has not run in CI yet. Low: this is not a code defect. `quality.yml` triggers on pull requests to `main`, and the lane passed locally with 97 tests.
 
 ## Implementation Notes
 

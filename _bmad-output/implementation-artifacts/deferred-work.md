@@ -10642,3 +10642,12 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
   summary: Include the Level 4 fault-fallback template host in the stock ErrorBoundary logging correction.
   evidence: Code review of dfa06286 found FcProjectionViewOverrideHost.RenderLowerLevel mounts FcProjectionTemplateHost inside Level 4 ErrorContent; a throwing fallback template's original exception reaches IErrorBoundaryLogger through that host's stock boundary (FcProjectionViewOverrideHostTests asserts Received(templateThrows ? 2 : 1) without inspecting content). Same pre-existing mechanism as the Story 15.2 BH-02 deferral; the host-boundary correction must cover this nested path and assert the fallback exception text is absent.
+
+## Deferred from: code review round 4 of spec-15-2-reconcile-component-and-page-pattern-documentation.md (2026-10-21)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
+  summary: Remove planning IDs from Shell component XML documentation published in the DocFX API reference.
+  evidence: Round-4 review (R4-B13) found the round-2 rewrite cleaned only the Markdown parameter tables; source XML docs still publish D12, D13, AC8 D19, D22, H4, UX-DR7, UX-DR30 and Story 4-3/4.4/9-5 references (e.g. FcProjectionEmptyPlaceholder.razor.cs:57, FcFormAbandonmentGuard.razor.cs:68, FcColumnPrioritizer.razor.cs:62, FcProjectionLoadingSkeleton.razor.cs:26, FcStatusBadge.razor.cs:32, FcExpandedRowHiddenBanner.razor.cs:49, FcExpandInRowDetail.razor.cs:37/58, FcDestructiveConfirmationDialog.razor.cs). Pre-existing source documentation outside the Story 15.2 delta.
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
+  summary: State in the migration guide that AddFrontComposerDevMode() has no effect with the Release NuGet Shell package.
+  evidence: Round-4 review (R4-B9) found docs/how-to/migration-guides.md:31 recommends services.AddFrontComposerDevMode() without the Shell-assembly DEBUG and DI IHostEnvironment prerequisites now stated in customization.md; the #if DEBUG registration body is compiled out of the published package. Migration guidance belongs to Story 15.3.
