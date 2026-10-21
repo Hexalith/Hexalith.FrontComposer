@@ -10581,3 +10581,42 @@ source_spec: `_bmad-output/implementation-artifacts/spec-13-8-accept-the-complet
 owner: FrontComposer Shell maintainer
 reason: The unchanged accepted candidate `7a5737630611b4d54b0180a3fa4c9c4ccd23a28c` archive retains four Error-level EventId 5740 `LifecycleSubscriberFaulted` entries in `counter-web-logs.redacted.json`, one per create/update dispatch, each with NewState=Confirmed and FailureCategory=InvalidOperationException. Browser materialization success does not identify the faulting subscriber or establish fault-free lifecycle delivery. Product accepted the historical proof with this limitation disclosed on 2026-10-20; G-5/E9-APP-1 closure stands.
 closure: Identify the failing subscriber and cause from the preserved candidate/evidence or a separately authorized focused reproduction; record its effect on lifecycle delivery and fresh-row correctness, and link a bounded correction with relevant verification or an explicit named-owner no-change disposition. Preserve the historical record/archive; do not close DW-679 or any of the three Story 9.8 fallback residuals through this investigation.
+
+## Deferred from: Story 13.9 Fluent UI V5 decision (2026-10-21)
+
+### DW-1985: Obtain green hosted Fluent 5.0.1 evidence and a new owner decision
+
+status: open
+origin: Story 13.9 Product Owner + Architect decision, 2026-10-21, residual (a)
+source_spec: `_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#product-decision-receipt`
+owner: Quality/Test role for current Gate 2b coordination and hosted evidence; then Product Owner + Architect for re-decision
+reason: Components + Icons `5.0.1` GA is not approved because no single exact identity has green UX-A..UX-F evidence. Hosted [Quality run 39554582583](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/39554582583) at `530994af` / Builds `5d03f1db9c38db34ecac7fe6048937478ffb82cc` selects `5.0.1`: accessibility-visual, Chromium and Firefox pass, but WebKit reports 417 passed / 12 failed / 22 skipped in accessibility-state-matrix.spec.ts (241, 265, 647, 664, 689 across light/dark cases). The failed [build-and-test job 119071255355](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/39554582583/job/119071255355) reports four Gate 2b failures: `PackableProjects_UsePackageValidationBaselinePolicy`, `ToolchainPins_MatchApprovedDotnetAndAspireVersions`, `PackageInventory_IsExplicitLockstepAndReviewable`, and `QualityWorkflow_Gate4ValidatesEveryPackableLibrary`; Gate 3a bUnit is skipped. [DW-1800](#dw-1800-quality-gate-2b-on-current-main-fails-centralpackageversions-catalog-inheritance-and-releaseworkflow-builds-gitlink-sha-checks) (archived/done) and [DW-1965](#dw-1965-gate-2b-is-red-on-a-pre-existing-eventstore-runtime-identity-assertion-unrelated-to-story-1127) (open) are historical references only, not coverage of this run’s four blockers; their entries and statuses remain unchanged.
+closure: Quality/Test fixes or records an explicit disposition of all 12 WebKit failures and cites one green hosted Quality run URL on a `main` commit whose root Builds gitlink selects the exact target identity, covering Chromium, Firefox, WebKit, accessibility-visual and Gate 3a bUnit. Quality/Test coordinates disposition and resolution of the four current Gate 2b blockers through their owning work before Gate 3a reruns; this entry does not duplicate their implementation fixes. Product Owner + Architect then record a dated re-decision citing that run and the exact package/catalog identity. Human AT/zoom/device evidence remains separately owned by OI-16 and must name the same identity. No earlier evidence is rewritten or projected forward, and no G-4/PRD-APP-1 closure is implied.
+
+### DW-1986: Disposition the unresolvable Fluent info color alias
+
+status: open
+origin: Story 13.9 Product Owner + Architect decision, 2026-10-21, residual (b)
+source_spec: `_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#product-decision-receipt`
+owner: FrontComposer Shell maintainer
+reason: Under Components `5.0.1`, `--colorStatusInfoForeground1` does not resolve; only success/warning/danger status foreground roles exist. `FrontComposerShell.razor.css:15` aliases `--fc-color-info` to this absent name. No runtime consumer uses the alias, but `SlotMappingRegressionTests.cs:18,39` pins it. Story 13.9 records the unsupported name without changing runtime code, tests or dependencies.
+closure: Record a bounded, owner-approved disposition of the unused alias and its pinned expectations; implement any selected correction through separately authorized work, verify every retained name against the selected package, and run the relevant slot-mapping and Fluent conformance checks. Do not invent an info token, new palette or hard-coded replacement role; preserve this historical decision/evidence.
+
+### DW-1987: Reconcile Story 13.6 and UX alias tracker drift
+
+status: open
+origin: Story 13.9 Product Owner + Architect decision, 2026-10-21, residual (c)
+source_spec: `_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#product-decision-receipt`
+owner: Sprint tracking owner
+reason: The Story 13.6 primary spec remains `in-review` while its development_status row says `done`; the UX-A..UX-F alias rows still say `proposed`. Story 13.9 must preserve those existing rows and the 13.2–13.8 evidence/statuses, so neither implementation completion nor accessibility/Fluent approval can be inferred from the drift.
+closure: Reconcile each tracker against its owning story's actual reviewed evidence and completion policy in separately authorized tracking work, recording the dated rationale and any remaining verification or approval gap. Preserve immutable evidence and distinguish story delivery, OI-16 human accessibility approval, FLUENT-APP-1 and G-4; a row correction alone closes none of those approval gates.
+
+## Deferred from: Story 13.9 review (2026-10-21)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md`
+  summary: Identify target-identity evidence for the mounted production-router tests when preparing Fluent re-decision.
+  evidence: Pre-existing `Hexalith.FrontComposer.slnx:63-65` excludes UI.Tests from Release, while Quality Gate 3a executes the Release solution. Story 13.2 documents this Debug/source-only host boundary. Quality/Test must disclose which mounted-router proof ran or was separately dispositioned when presenting DW-1985 evidence; a green Quality result alone does not assert execution of this excluded project. The frozen 13.9 owner requirement and historical proof remain unchanged.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md`
+  summary: Record retention or explicit disposition of the hosted browser evidence before its artifacts expire.
+  evidence: Pre-existing `.github/workflows/quality.yml:955,1048` retains accessibility/browser artifacts for 14 days; run 39554582583's 2026-10-21 artifacts can expire on 2026-11-04. Quality/Test should identify the run attempt and artifact identities and either retain the necessary evidence through an approved existing evidence path or explicitly record its expiry and the need for fresh proof. The run URL preserves job metadata, not permanent screenshots, reports or traces. This negative decision and OI-4/FLUENT-APP-1 remain unchanged; no evidence is copied or promoted by this entry.

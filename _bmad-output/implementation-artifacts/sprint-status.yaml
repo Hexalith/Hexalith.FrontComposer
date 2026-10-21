@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-10-20
+# last_updated: 2026-10-21
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -206,7 +206,7 @@ development_status:
   13-6-i-ux-e-verify-responsive-and-assistive-accessibility: done
   13-7-i-ux-f-provide-reusable-ux-assertions-for-adopters: done
   13-8-a-e9-app-1-accept-the-completed-fresh-row-live-prrevokwg: done
-  13-9-a-fluent-app-1-decide-the-exact-fluent-ui-v5-posture: backlog
+  13-9-a-fluent-app-1-decide-the-exact-fluent-ui-v5-posture: done
   epic-13-retrospective: optional
 
   epic-14: done
@@ -743,6 +743,31 @@ action_items:
       - "_bmad-output/implementation-artifacts/evidence/story-13-8/validate-epic9-artifacts.mjs"
     closure_rule: "Only a dated Product record closes this task; implementation status
       is not approval."
+  - id: "FLUENT-APP-1"
+    epic: 13
+    action: "Obtain green hosted Quality evidence for the exact Fluent target identity,
+      then record the Product Owner and Architect re-decision"
+    owner: "Quality/Test role for evidence; Product Owner + Architect for re-decision"
+    status: open
+    decision_date: "2026-10-21"
+    approver: "Administrator (requesting Product Owner and Architect; git author Jérôme Piquot)"
+    decision: "not-approved"
+    decision_timing: "The dated negative decision fulfils Story 13.9 after review; approval stays open."
+    implementation_story: "13.9"
+    ref: "_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#product-decision-receipt"
+    kind: "approval"
+    gate: "G-4 through OI-4 and D-13"
+    package_identity:
+      - "Microsoft.FluentUI.AspNetCore.Components@5.0.1"
+      - "Microsoft.FluentUI.AspNetCore.Components.Icons@5.0.1"
+    evidence_required:
+      - "One green hosted Quality run URL on a main commit whose root Builds gitlink selects the exact identity; Chromium, Firefox, WebKit, accessibility-visual and Gate 3a bUnit."
+      - "Human AT/zoom/device evidence remains under OI-16 and must name the same identity."
+    evidence:
+      - "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/39554582583 (red; candidate 530994af, Builds 5d03f1db, Fluent 5.0.1)"
+      - "_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#evidence-identity-by-set"
+    residuals: ["DW-1985", "DW-1986", "DW-1987"]
+    closure_rule: "Only a dated Product Owner + Architect acceptance citing exact-identity evidence closes FLUENT-APP-1/OI-4; story delivery is not approval. G-4 retains its other prerequisites."
   - id: "E11R-AI-1"
     epic: 11
     action: "Capture one passing provider-plus-AppHost record for the exact FrontComposer/EventStore/package/Builds
@@ -975,7 +1000,7 @@ approved_change_backlog:
         - {id: "DOC-A", kind: "implementation", status: "proposed"}
         - {id: "DOC-B", kind: "implementation", status: "proposed"}
         - {id: "DOC-C", kind: "implementation", status: "proposed"}
-        - {id: "FLUENT-APP-1", kind: "approval", status: "open"}
+        - {id: "FLUENT-APP-1", kind: "approval", status: "open", ref: "_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#product-decision-receipt"}
         - {id: "PRD-APP-1", kind: "approval", status: "open"}
     - name: "Governed Split Publication"
       items:
