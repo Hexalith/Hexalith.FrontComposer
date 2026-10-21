@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-10-20
+# last_updated: 2026-10-21
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -221,6 +221,9 @@ development_status:
   15-3-i-doc-b-align-migration-and-classification-guidance: backlog
   15-4-i-doc-c-correct-the-fluent-ui-v5-contingency-identity: backlog
   15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: backlog
+  # Approved 2026-10-21: external proof first, retirement after consumer migration.
+  15-6-external-browser-artifacts-and-bounded-accessibility-receipts: backlog
+  15-7-retire-bulky-browser-evidence: backlog
   epic-15-retrospective: optional
 
   epic-16: backlog

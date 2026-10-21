@@ -5,13 +5,14 @@ stepsCompleted:
   - step-03-create-stories
   - step-04-final-validation
 inputDocuments:
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-21.md
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/ux-design.md
   - _bmad-output/planning-artifacts/ux-designs/ux-frontcomposer-2026-09-09/DESIGN.md
   - _bmad-output/planning-artifacts/ux-designs/ux-frontcomposer-2026-09-09/EXPERIENCE.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md
-updated: 2026-10-20
+updated: 2026-10-21
 numberingNote: >-
   Epics 1-11 are completed delivery history restored from epics.md at commit
   aeff9f83 with the approved 2026-09-22 section 9.4 annotations. The 2026-09-22
@@ -370,6 +371,8 @@ Framework maintainers can customize, inspect, migrate, document, test, and upgra
 **FRs covered:** FR5, FR6, FR20, FR21, FR22, FR23, FR25, FR27, FR28, FR29, FR29.5, FR29.6
 
 **Implementation notes:** Complete PLAN-INT-2, DOC-A/DOC-B/DOC-C parity, REL-BASE-1, and Testing/documentation gaps without reopening completed Epic 9–11 decisions. PLAN-INT-1 remains closed. Delivered baselines remain regression traceability rather than reimplementation.
+
+**Approved storage follow-up (2026-10-21):** Stories 15.6 and 15.7 externalize generated browser proof, retain bounded receipts, and retire selected tracked output after consumer migration. Prevention precedes removal; source-owned baselines, accepted history and separate approval gates are preserved.
 
 ### Epic 16: Maintainers Verify and Approve Exact Runtime Compatibility
 
@@ -3636,6 +3639,8 @@ So that accessibility does not depend on a preferred viewport or input mode.
 **Then** OI-16, G-4, FLUENT-APP-1, and Product approval stay open and are not closed or inferred by this story
 **And** each closes only through its own evidence record and owner decision (ux-design.md:356-359).
 
+**Storage amendment (approved 2026-10-21):** Backlog Story 15.6 implements this story’s one-candidate-bound-result/reference rule at the output boundary; 15.7 migrates consumers before exact-path retirement of bulky runs. This amendment changes storage and result links only. Story 13.6’s completion record, AE-01–AE-09, manual assistive-technology/device evidence, and independent owner decisions retain their original meanings. See the [approved amendment](sprint-change-proposal-2026-10-21.md).
+
 ### Story 13.7: [I · UX-F] Provide Reusable UX Assertions for Adopters
 
 As an adopter test engineer,
@@ -3990,6 +3995,49 @@ So that breaking-change detection reflects the public package history consumers 
 **When** this story is verified
 **Then** those focused results are reused
 **And** no duplicate compatibility scanner, package reconstruction, or evidence bundle is introduced.
+
+### Story 15.6: External Browser Artifacts And Bounded Accessibility Receipts
+
+As a framework maintainer,
+I want browser proof stored once outside Git with a bounded candidate-bound receipt,
+So that accessibility verification stays reviewable across retries without retaining every report copy in the checkout.
+
+**Requirements coverage:** PRD §7 evidence-storage constraint; supporting NFR-6 privacy, NFR-7 evidence determinism and NFR-11 accessibility testing. Preserve UX-AE-1 and the original AE-01–AE-09 acceptance semantics. No new UI behavior.
+
+**Dependencies and ownership:** Approved [2026-10-21 storage amendment](sprint-change-proposal-2026-10-21.md); coordinated Hexalith.AI.Tools `/pushall` rollout under that amendment; existing Story 13.6 and 13.7 output/validators. Coordinate File Lists and planning integrity with Story 15.1 without reopening completed implementation decisions. FrontComposer owns browser output, references, ignore patterns, and validator adaptation; the distributable skill belongs to Hexalith.AI.Tools.
+
+**Acceptance Criteria:**
+
+1. Configure existing output variables (`FC_E2E_OUTPUT_DIR`, `FC_E2E_HTML_REPORT_DIR`, `FC_E2E_JSON_PATH`, `FC_E2E_JUNIT_PATH`) from one external run root. Keep source-owned `specimen-accessibility.spec.ts-snapshots` fixtures tracked. Reuse existing test runners and validators.
+2. Validate the actual HTML/JUnit/JSON/state/screenshot evidence from the materialized artifact. Preserve browser/run/test/retry binding, PNG checks, and final-successful-attempt selection. An earlier failed retry, different engine, or altered screenshot never establishes the accepted attempt.
+3. Commit one bounded summary/receipt per attempt and one selected-result reference. Record failed/interrupted dispositions without copying their full reports. Publish retained full output with explicit retention before claiming durable evidence.
+4. Remove any automation that splits run archives to meet a Git per-file limit. Check sizes before Git staging and apply matching generated-evidence ignore patterns after re-inclusions. The existing report-root check may remain as a producer diagnostic; it does not substitute for aggregate admission.
+5. AE-01–AE-09, required manual assistive-technology/device evidence, opt-in UX review disposition, and separately owned approval gates keep their exact acceptance semantics.
+
+**Budgets and durability:** Committed attempt metadata totals at most 10 MiB; any command excerpt is at most 2,048 UTF-8 bytes. Automatic admission warns and omits blobs over 10 MiB, generated artifact types regardless of size, and generated-evidence selections over 50 MiB per commit, selecting complete summary/receipt groups. Diagnostics default to 30-day retention; enduring accepted proof requires durable immutable retrieval, and active failures/holds retain required bytes until disposition. Redaction precedes all storage. A split archive or renamed/paged packet cannot evade these limits.
+
+**Current reconciliation (2026-10-21):** Backlog. Administrator approved the complete course-correction proposal with “approve” in the conversation. This work does not reopen Stories 13.6/13.7 or grant Product, FLUENT-APP-1, OI-16 or G-4 approval. Story 15.7 removes selected tracked output only after migration and verification.
+
+### Story 15.7: Retire Bulky Browser Evidence
+
+As a framework maintainer,
+I want selected bulky browser output removed from the current source tree after its consumers are migrated,
+So that updated checkouts shrink while accepted accessibility proof and attempt dispositions remain verifiable.
+
+**Requirements coverage:** PRD §7 evidence lifecycle; supporting NFR-6, NFR-7 and NFR-11. Preserve source-owned visual baseline snapshots, the release ledger, and all separately owned approval gates.
+
+**Dependencies and ownership:** Story 15.6 and the approved [2026-10-21 storage amendment](sprint-change-proposal-2026-10-21.md). FrontComposer owns the exact `evidence/story-13-6` retirement manifest, dated preservation amendments, external retrieval checks and validator/result-link migration. EventStore alone owns its P1R/OQ8 packets; the general migration conditions below do not authorize cross-repository deletion.
+
+**Acceptance Criteria:**
+
+1. Create a bounded retirement manifest listing the exact paths, sizes, original hashes and commit identities, consuming readers, retained small fixtures, external artifact identities, and reason. Group repeated paths by shared artifact identity while preserving logical attempt identities and original outcomes. Keep a compact one-to-one path mapping for removed paths; externalize an oversized detailed inventory behind its own verified reference.
+2. Amend preservation/frozen storage obligations through the dated owner process. Preserve original receipts and subjects; append a migration record. Do not regenerate or repin historical evidence to make it appear unchanged.
+3. Upload or identify durable acceptance-relevant bytes and verify retrieval from a clean environment. Historical Git objects may be the explicitly selected source for legacy checks only when availability and verification are demonstrated; a shallow/default checkout cannot silently assume those objects exist.
+4. Move content needed for ordinary unit tests into bounded offline fixtures with the same positive and hostile cases. Exact-historical-byte tests use explicit verified materialization. OQ8 directories remain outside the initial removal set unless this work proves their migration safe.
+5. Remove the enumerated tracked output using `git rm` in its owning repository after dependent checks pass. Preserve any needed local diagnostic copy outside the checkout first. Do not run a blanket evidence deletion, history rewrite, object-store cleanup, or nested submodule update.
+6. Re-run the affected tests and evidence validators on the post-removal candidate in a clean checkout using the approved external retrieval path. Report pre/post tracked bytes, remaining oversized files, removed duplicate checkout bytes, and unresolved consumers. Update owner-approved root-declared submodule pointers in a later owning-repository change; never sweep other workspaces recursively.
+
+**Current reconciliation (2026-10-21):** Backlog. Approval establishes this work package, not completed cleanup or renewed accessibility acceptance. Source-owned baseline snapshots remain tracked; archive parts, raw reports and run screenshots are removal candidates only through the exact-path manifest and passing consumer checks. Git history remains intact.
 
 ## Epic 16: Maintainers Verify and Approve Exact Runtime Compatibility
 

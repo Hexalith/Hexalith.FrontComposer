@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-09-22
+updated: 2026-10-21
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -303,6 +303,8 @@ AD-19 assets. If publication started but no complete immutable product Release e
 authorized candidate-free incident-recovery stage preserves authenticated and quarantined evidence in
 an immutable reserved-namespace prerelease. Run artifacts are short-retention replay material, never
 durable authorization.
+
+**Qualification evidence storage (approved 2026-10-21).** Persisted proof may be stored outside the source checkout. A versioned manifest binds immutable artifact identity, exact retained bytes, source/producer identity, attempt disposition, and retention. A consumer that needs literal output must materialize and verify it before evaluation; a hash or excerpt alone cannot satisfy a content-dependent witness. Unit regressions use bounded fixtures; historical exact-byte verification uses an explicit materialization lane. Storage relocation preserves original subjects and approvals. New manifests describe the migration and never rewrite sealed receipts or confer release/readiness authority. Backlog Stories 15.6 and 15.7 implement the [approved storage amendment](sprint-change-proposal-2026-10-21.md). Diagnostics default to 30-day retention; enduring accepted proof requires durable retrieval and active holds retain required bytes. Producer → external artifact → hash/size-verified materializer → existing verifier is the evidence flow. Run artifacts do not become publisher authorization, and this change renews no historical approval or evidence binding.
 
 Ownership boundaries:
 
