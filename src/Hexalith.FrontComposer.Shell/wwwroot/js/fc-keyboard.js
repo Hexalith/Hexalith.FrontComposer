@@ -197,12 +197,30 @@ export function registerShellKeyFilter(element) {
         return;
     }
 
+    // Keep the route heading's announcement, but restore forward access to bypass links
+    // on the next Tab. This also supports adopters using Blazor's FocusOnNavigate.
+    const isRouteHeading = (target) => target instanceof HTMLElement
+        && target.matches('h1[tabindex="-1"]')
+        && target.closest('#fc-main-content')?.closest('.fc-shell-root') === element
+        && !target.closest(modalContainerSelector)
+        && !isEditableElement(target);
+    let announcedHeading = isRouteHeading(document.activeElement) ? document.activeElement : null;
+    let pointerHeading = null;
+    const recordPointer = (event) => {
+        announcedHeading = null;
+        pointerHeading = event.target instanceof Element ? event.target.closest('h1') : null;
+    };
+    element.addEventListener('pointerdown', recordPointer, true);
+    element.__fcShellSkipPointer = recordPointer;
+
     // Native Tab scrolling in WebKit can align the control border with an inner
     // scrollport and clip its outer focus ring. Run after that native scroll so
     // the authored scroll-margin/scroll-padding can protect the complete target.
     // Keep this within the mounted shell and never move focus or follow a stale target.
     const showFocusedTarget = (event) => {
         const target = event.target;
+        announcedHeading = target !== pointerHeading && isRouteHeading(target) ? target : null;
+        pointerHeading = null;
         cancelAnimationFrame(element.__fcShellFocusFrame);
         element.__fcShellFocusFrame = requestAnimationFrame(() => {
             if (element.isConnected && target instanceof HTMLElement && target.isConnected
@@ -219,6 +237,19 @@ export function registerShellKeyFilter(element) {
         const active = document.activeElement;
         const hasModifier =
             event.ctrlKey || event.metaKey || (event.shiftKey && (key.length !== 1 || /\p{L}/u.test(key))) || event.altKey;
+
+        const heading = announcedHeading;
+        if (key === 'tab' && !hasModifier && !event.defaultPrevented && !event.isComposing
+            && active === heading && isRouteHeading(active) && !window.__fcModalReservation) {
+            const skip = element.querySelector(':scope > a.fc-skip-link[href]');
+            if (skip instanceof HTMLElement && skip.tabIndex >= 0 && !skip.closest('[inert]')) {
+                skip.focus();
+                if (document.activeElement === skip) {
+                    event.preventDefault();
+                    return;
+                }
+            }
+        }
 
         if (key === "/" && (event.isComposing || event.keyCode === 229 || (!hasModifier && isEditableInComposedPath(event)))) {
             event.stopPropagation();
@@ -298,8 +329,10 @@ export function unregisterShellKeyFilter(element) {
 
     element.removeEventListener("keydown", element.__fcShellKeyFilter);
     element.removeEventListener('focusin', element.__fcShellFocusVisibility);
+    element.removeEventListener('pointerdown', element.__fcShellSkipPointer, true);
     cancelAnimationFrame(element.__fcShellFocusFrame);
     element.__fcShellFocusVisibility = null;
+    element.__fcShellSkipPointer = null;
     element.__fcShellKeyFilter = null;
 }
 
