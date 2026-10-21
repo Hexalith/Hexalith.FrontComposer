@@ -1742,8 +1742,10 @@ arrows, Esc, focus-return) with `role="menu"`. *(UX-DR6)*
 
 **Historical composite delivery record:** Story 8.5 is done. The rail, badges, flyout, keyboard/focus
 behavior, and accessibility pins were delivered as one composite story. Fluent UI version authority is
-the repository’s central package declaration (currently `5.0.0-rc.4-26180.1`), not this historical
+the repository’s central package declaration (the historical label here was `5.0.0-rc.4-26180.1`), not this historical
 story; upgrades must re-run flyout anchoring/keyboard and `data-testid`/`role`/`aria-*` splatting tests.
+
+**Posture update 2026-10-21:** the root-selected catalog now selects Components + Icons `5.0.1` GA. The GA trigger fired on 2026-09-30 and is consumed; the [Story 13.9 decision receipt](../implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#product-decision-receipt) records **not approved** with revalidation and owner re-decision required. The historical Story 8.5 delivery record above is unchanged.
 
 ### Story 8.6: Reusable `FcPageToolbar`
 
@@ -3732,6 +3734,8 @@ So that Epic 9 delivery history remains distinct from Product acceptance.
 **And** completed Epic 9 implementation and immutable evidence history are not rewritten.
 
 ### Story 13.9: [A · FLUENT-APP-1] Decide the Exact Fluent UI V5 Posture
+
+**Disposition 2026-10-21:** Administrator, acting as Product Owner and Architect, recorded **not approved** for Components + Icons `5.0.1` GA in the [Story 13.9 decision receipt](../implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#product-decision-receipt). The dated decision fulfils this A-class story after review; OI-4, FLUENT-APP-1, D-13 and G-4 stay open. No single identity has green UX-A..UX-F evidence. DW-1985 owns hosted target-identity Quality proof and the new owner decision; DW-1986 owns the unsupported info alias; DW-1987 owns the existing Story 13.6 and UX alias tracker drift. Prior story evidence/statuses remain unchanged. DOC-C / Story 15.4 owns published doc correction.
 
 As the Product Owner and Architect,
 I want to accept an exact catalog-owned Fluent UI V5 identity and upgrade posture,

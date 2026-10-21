@@ -197,12 +197,40 @@ export function registerShellKeyFilter(element) {
         return;
     }
 
+    // Keep the route heading's announcement, but restore forward access to bypass links
+    // on the next Tab. This also supports adopters using Blazor's FocusOnNavigate.
+    const isRouteHeading = (target) => target instanceof HTMLElement
+        && target.matches('h1[tabindex]')
+        && target.closest('#fc-main-content')?.closest('.fc-shell-root') === element
+        && !target.closest(modalContainerSelector)
+        && !isEditableElement(target);
+    let announcedHeading = isRouteHeading(document.activeElement) ? document.activeElement : null;
+    let pointerHeading = null;
+    let pointerHeadingLocation = null;
+    let headingLocation = window.location.href;
+    let tabFocusPending = false;
+    const recordPointer = (event) => {
+        announcedHeading = null;
+        tabFocusPending = false;
+        if (event.target instanceof Element && !event.target.closest(modalContainerSelector)) {
+            pointerHeading = event.target.closest('h1');
+            pointerHeadingLocation = window.location.href;
+            headingLocation = window.location.href;
+        }
+    };
+    element.addEventListener('pointerdown', recordPointer, true);
+    element.__fcShellSkipPointer = recordPointer;
+
     // Native Tab scrolling in WebKit can align the control border with an inner
     // scrollport and clip its outer focus ring. Run after that native scroll so
     // the authored scroll-margin/scroll-padding can protect the complete target.
     // Keep this within the mounted shell and never move focus or follow a stale target.
     const showFocusedTarget = (event) => {
         const target = event.target;
+        const wasPointerHeading = target === pointerHeading && window.location.href === pointerHeadingLocation;
+        announcedHeading = !tabFocusPending && !wasPointerHeading && isRouteHeading(target) ? target : null;
+        tabFocusPending = false;
+        if (isRouteHeading(target)) headingLocation = window.location.href;
         cancelAnimationFrame(element.__fcShellFocusFrame);
         element.__fcShellFocusFrame = requestAnimationFrame(() => {
             if (element.isConnected && target instanceof HTMLElement && target.isConnected
@@ -219,6 +247,22 @@ export function registerShellKeyFilter(element) {
         const active = document.activeElement;
         const hasModifier =
             event.ctrlKey || event.metaKey || (event.shiftKey && (key.length !== 1 || /\p{L}/u.test(key))) || event.altKey;
+
+        tabFocusPending = key === 'tab';
+        // A routed component may reuse its focused heading, so no new focusin fires.
+        const heading = announcedHeading
+            ?? (window.location.href !== headingLocation && isRouteHeading(active) ? active : null);
+        if (key === 'tab' && !hasModifier && !event.defaultPrevented && !event.isComposing
+            && active === heading && isRouteHeading(active) && !window.__fcModalReservation) {
+            const skip = element.querySelector(':scope > a.fc-skip-link[href]');
+            if (skip instanceof HTMLElement && skip.tabIndex >= 0 && !skip.closest('[inert]')) {
+                skip.focus();
+                if (document.activeElement === skip) {
+                    event.preventDefault();
+                    return;
+                }
+            }
+        }
 
         if (key === "/" && (event.isComposing || event.keyCode === 229 || (!hasModifier && isEditableInComposedPath(event)))) {
             event.stopPropagation();
@@ -298,8 +342,10 @@ export function unregisterShellKeyFilter(element) {
 
     element.removeEventListener("keydown", element.__fcShellKeyFilter);
     element.removeEventListener('focusin', element.__fcShellFocusVisibility);
+    element.removeEventListener('pointerdown', element.__fcShellSkipPointer, true);
     cancelAnimationFrame(element.__fcShellFocusFrame);
     element.__fcShellFocusVisibility = null;
+    element.__fcShellSkipPointer = null;
     element.__fcShellKeyFilter = null;
 }
 
