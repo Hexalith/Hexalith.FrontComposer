@@ -563,6 +563,42 @@ def sprint_candidates_for_story(statuses: dict[str, str], story_id: str) -> list
     )
 
 
+def validate_epic_lifecycles(statuses: dict[str, str]) -> list[str]:
+    """Reconcile declared epic completion/start state with numeric child rows."""
+    failures: list[str] = []
+    for epic_key in sorted(statuses):
+        epic = re.fullmatch(r"epic-(\d+)", epic_key)
+        if not epic:
+            continue
+        expected = statuses[epic_key]
+        if expected not in {"backlog", "in-progress", "done"}:
+            failures.append(
+                f"repository integrity: sprint {epic_key} has unsupported epic "
+                f"lifecycle status {expected!r}; expected backlog, in-progress, or done"
+            )
+            continue
+        if expected == "in-progress":
+            continue
+        epic_number = epic.group(1).lstrip("0") or "0"
+        has_children = False
+        for child_key in sorted(statuses):
+            child = re.fullmatch(r"(\d+)[.-]\d+[a-z]*(?:-.*)?", child_key, re.IGNORECASE)
+            if not child or (child.group(1).lstrip("0") or "0") != epic_number:
+                continue
+            has_children = True
+            if statuses[child_key] != expected:
+                failures.append(
+                    f"repository integrity: sprint {epic_key}={expected!r} "
+                    f"disagrees with child {child_key}={statuses[child_key]!r}; "
+                    f"expected every numeric child to be {expected}"
+                )
+        if expected == "done" and not has_children:
+            failures.append(
+                f"repository integrity: sprint {epic_key}='done' has no numeric child rows"
+            )
+    return failures
+
+
 def story_identity_from_heading(value: str) -> tuple[str, bool] | None:
     """Return a canonical repository story identity and whether it used a colon."""
     match = REPOSITORY_STORY_HEADING.match(value.strip())
@@ -1429,6 +1465,7 @@ def validate_repository_integrity(root: Path) -> list[str]:
     planning_path = planning_root / "epics.md"
     sprint_statuses, sprint_failures = parse_sprint_development_status(sprint_path)
     failures.extend(sprint_failures)
+    failures.extend(validate_epic_lifecycles(sprint_statuses))
     artifacts, artifact_failures = parse_repository_story_artifacts(
         root, implementation_root, sprint_statuses
     )
@@ -3339,18 +3376,9 @@ def check_file_list(
 ) -> list[str]:
     classified_paths = set(unrelated)
     if not listed:
-        base_note = f" (baseline_commit {changed_files.base})" if changed_files.base else ""
-        changed_note = ""
-        if changed_files.files:
-            changed_note = "\n" + "\n".join(
-                f"  - {format_git_path(path)} "
-                f"(reason: story-owned change from {changed_files.source} cannot be reconciled)"
-                for path in changed_files.files
-                if not path_is_classified_covered(path, classified_paths, workspace_scope)
-            )
         return [
             "story File List not found or empty; changed files missing from story File List in "
-            f"{story.relative_to(root).as_posix()}{base_note}{changed_note}"
+            f"{format_git_path(story.relative_to(root).as_posix())}"
         ]
     changed_set = set(changed_files.files)
     missing = [
@@ -3379,7 +3407,7 @@ def check_file_list(
         base_note = f" (baseline_commit {changed_files.base})" if changed_files.base else ""
         failures.append(
             "changed files missing from story File List in "
-            f"{story.relative_to(root).as_posix()}{base_note}:\n"
+            f"{format_git_path(story.relative_to(root).as_posix())}{base_note}:\n"
             + "\n".join(
                 f"  - {format_git_path(path)} "
                 f"(reason: story-owned change from {changed_files.source} is not documented)"
@@ -3393,7 +3421,7 @@ def check_file_list(
         exclude_patterns = merged_excludes(list(excludes))
         failures.append(
             "File List entries with no matching story-owned change in "
-            f"{story.relative_to(root).as_posix()}:\n"
+            f"{format_git_path(story.relative_to(root).as_posix())}:\n"
             + "\n".join(
                 f"  - {format_git_path(path)} "
                 + (

@@ -5,7 +5,7 @@ genre: reference
 audience: framework-contributor
 ownerStory: 9-7-add-story-id-and-commit-scope-evidence
 status: published
-reviewed: 2026-10-20
+reviewed: 2026-10-21
 uid: frontcomposer.reference.story-artifact-validation
 slug: reference/story-artifact-validation/
 ---
@@ -78,6 +78,16 @@ queue row. Explicit planning statuses must also map to exactly one row and agree
 Missing inputs, malformed or duplicate rows, unsupported statuses, and ambiguous
 mappings are errors rather than reasons to skip validation.
 
+Every declared `epic-<number>` row also agrees with its numeric child queue rows:
+`done` requires every child to be `done`, and `backlog` requires every child to
+remain `backlog`. A `done` epic must have at least one numeric child row. Epic
+statuses are limited to `backlog`, `in-progress`, and `done`; story-only or
+retrospective-only statuses fail on an epic. An `in-progress` epic may contain
+completed children while it awaits closure. Numeric identities ignore leading
+zeros and letter-suffix case. Retrospective rows and approval actions do not count
+as numeric children. Diagnostics name the epic and contradicting child in stable
+key order.
+
 Done artifacts may not retain unchecked work under `Tasks` or `Review Findings`.
 Disposition labels such as `Defer`, `Dismiss`, `Supersede`, and `Reopen` do not resolve
 an unchecked row; record the disposition and check the row. Review scope ends at a peer
@@ -105,6 +115,48 @@ Recovery is corrective, not suppressive: restore a missing ledger or child, reco
 the artifact/queue/planning status, replace stale revisions with reachable delivery
 commits, explicitly supersede a shadow, or disposition and check unresolved work. The
 repository gate has no per-story exclusion or known-bad bypass.
+
+## Bounded historical inventory validation
+
+Story 11.32's delivered scope is the 21-path Git diff from baseline
+`00d4da4788692ee405a081884e78482a9556b0c3` through delivery
+`9aad029f837b8ecbd9f58e6f89ffdd76bf403bcf`. From the repository root, replay that
+inventory using existing explicit-path mode:
+
+```bash
+python3 - <<'PY'
+import subprocess
+
+baseline = "00d4da4788692ee405a081884e78482a9556b0c3"
+delivery = "9aad029f837b8ecbd9f58e6f89ffdd76bf403bcf"
+paths = subprocess.check_output(
+    ["git", "diff", "--name-only", "-z", baseline, delivery], text=True
+).split("\0")[:-1]
+assert len(paths) == 21
+command = [
+    "python3", "eng/validate-story-artifacts.py", "--story",
+    "_bmad-output/implementation-artifacts/spec-11-32-epic-11-artifact-integrity-enforcement.md",
+]
+for path in paths:
+    command.extend(["--changed-file", path])
+raise SystemExit(subprocess.run(command, check=False).returncode)
+PY
+```
+
+The blocking unit suite separately asserts exact equality between that immutable
+diff and the current File List, including entries with accepted-extra reasons.
+This replay validates inventory; it grants no strict commit ownership. Run
+`python3 eng/validate-story-artifacts.py` separately for current global integrity.
+
+An old legacy invocation with only `--story` discovers changes from the original
+baseline through the current workspace, so it includes later stories and unrelated
+dirty paths. Its broader result is not the historical delivery inventory. Strict
+and legacy discovery retain their existing meanings.
+
+A missing or empty File List reports one contradiction naming the escaped relative
+artifact path, independent of checkout root, baseline, or discovered changes.
+A nonempty incomplete list still names the missing changes; unmatched entries
+still fail under the existing accepted-extra rules.
 
 ## Declaring unrelated workspace state
 
