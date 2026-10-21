@@ -4,43 +4,73 @@
 
 ## Goal
 
-Operators can browse projections, execute commands, recover from transport failures, and understand lifecycle and fresh-row state without stale-tenant leakage or false success. Complete tenant-isolation, interaction, and accessibility proof while preserving delivered surfaces. Product acceptance of the fresh-row live proof and Fluent UI V5 posture remain separate decisions.
+Operators can browse projections, run commands, recover from transport failures, and read lifecycle and fresh-row state with no stale-tenant leakage and no false success. The epic proves tenant/user scope end to end through real production seams (TEN-SCOPE-1). It makes the focus, announcement, validation, state, accessibility, and testing-helper contracts deterministic and evidenced (UX-A to UX-F). It then records two owner decisions: Product acceptance of the Epic 9 fresh-row live proof (E9-APP-1), and finally the Product Owner + Architect decision on the exact Fluent UI V5 catalog identity and RC/GA posture (FLUENT-APP-1). That last decision is made against the identity the UX evidence actually tested. The delivered projection, lifecycle, and FC-NIP runtime is a preserved baseline and is not reimplemented.
 
 ## Stories
 
-- Story 13.1: Prove Tenant-Safe Operator State End to End
-- Story 13.2: Make Shell Navigation and Route Focus Deterministic
-- Story 13.3: Preserve Focus and Input Through Command Safety Outcomes
-- Story 13.4: Announce Projection and Command State Without Noise
-- Story 13.5: Preserve Fresh-Row Meaning Across Visual and Data Changes
-- Story 13.6: Verify Responsive and Assistive Accessibility
-- Story 13.7: Provide Reusable UX Assertions for Adopters
-- Story 13.8: Accept the Completed Fresh-Row Live Proof
-- Story 13.9: Decide the Exact Fluent UI V5 Posture
+- Story 13.1: [I · TEN-SCOPE-1] Prove Tenant-Safe Operator State End to End
+- Story 13.2: [I · UX-A] Make Shell Navigation and Route Focus Deterministic
+- Story 13.3: [I · UX-B] Preserve Focus and Input Through Command Safety Outcomes
+- Story 13.4: [I · UX-C] Announce Projection and Command State Without Noise
+- Story 13.5: [I · UX-D] Preserve Fresh-Row Meaning Across Visual and Data Changes
+- Story 13.6: [I · UX-E] Verify Responsive and Assistive Accessibility
+- Story 13.7: [I · UX-F] Provide Reusable UX Assertions for Adopters
+- Story 13.8: [A · E9-APP-1] Accept the Completed Fresh-Row Live Proof
+- Story 13.9: [A · FLUENT-APP-1] Decide the Exact Fluent UI V5 Posture
 
 ## Requirements & Constraints
 
-- Queries, subscriptions, counts, preferences, pending commands, and fresh rows share resolved tenant/user scope. Unavailable or stale context blocks prior-scope state before rendering with explicit feedback. Scope changes clear state/groups; unresolved scope skips persistence. Prove isolation through production EventStore seams.
-- Transport acceptance never implies confirmation. Preserve distinct lifecycle identities, including IdempotentConfirmed, NeedsReview, Warning, and Degraded. Degraded begins at 10 seconds; silent status polling runs every second and stops at 120 seconds. Exhaustion closes the local lifecycle without success or later automatic mutation. Allow zero pre-accept retries and one transient retry after 250 ms reusing MessageId. Authorization surrounds transformation/dispatch; destructive actions require confirmation; a second local command is blocked without queueing.
-- Projection loading, empty, filter-no-results, query failure, offline, stale, reconnecting, fallback, slow-query, and result-limit states remain distinguishable. SlowQuery starts at two seconds. Recovery retries indefinitely with jittered backoff capped at 30 seconds, restarts closed connections within ten seconds, polls every 15 seconds across at most eight lanes, and shows a three-second recovery notice.
-- Fresh-row publication requires an immutable pre-dispatch target and independent terminal Material evidence. Unknown identity/materiality, NoOp, delete, Rejected, NeedsReview, and server-allocated keys suppress the cue. Atomic first-wins publication per view/entity preserves provenance and the ten-second window; scope removal, duplicate suppression, dismissal, and expiry are silent.
-- Every changed operator surface meets WCAG 2.2 AA: 320 CSS-pixel reflow, 400% zoom, text spacing, target size, fully visible focus, contrast, forced colors, reduced motion, and keyboard semantics. Reuse focused evidence and deterministic time; automation supplements required manual assistive-technology and real-device proof. UI and evidence exclude credentials, tenant payloads, raw backend metadata, stack traces, and unrestricted personal data.
+- **Scope:** tenant/user scope is resolved before every query, subscription, count, preference, pending state, and fresh-row operation. Missing, stale, or mismatched scope fails closed to an explicit blocking state, never to empty-looking data. There is no default tenant. Without scope, persistence is skipped with the governed diagnostic.
+- **Timing truth:** Acknowledged is never success. Degraded starts at 10,000ms, polling runs every 1,000ms for at most 120,000ms, there are zero pre-accept retries, and there is one 250ms same-MessageId transient retry. Realtime retries back off with jitter, capped at 30,000ms, without limit; a closed connection restarts within 10s; fallback polling runs every 15s on at most 8 lanes; the Reconnected notice shows for 3,000ms.
+- **Fresh rows:** a marker appears only for a resolver-owned, eligible Material outcome with an immutable pre-dispatch identity. It is first-wins by ViewKey/EntityKey and expires silently after 10s. No marker for Unknown, NoOp, delete, Rejected, NeedsReview, or server-allocated keys.
+- **Accessibility:** WCAG 2.2 AA, covering 320px reflow, 400% zoom, text spacing, 24×24 targets (or a recorded exception), unobscured focus, forced colors, and reduced motion. Axe runs with WCAG 2.2 AA tags. A manual assistive-technology and real-device pass is mandatory.
+- **Support-safe output:** no tokens, JWTs, EventStore metadata or payloads, stack traces, or unrestricted PII in UI, logs, or evidence.
+- **Evidence economy:** reuse focused tests and immutable artifacts. Never add duplicate packets, wrapper reports, or validators. Approvals cite evidence; they do not reproduce it.
+- **Gate discipline:** I stories claim implementation only. A stories (13.8, 13.9) close only through a dated, named decision receipt. Green evidence never implies OI-16, G-4, FLUENT-APP-1, or Product approval. A rejection leaves its gate open and creates a bounded residual; completed evidence is never relabelled.
+
+**Fluent UI V5 posture (FLUENT-APP-1 / OI-4 / D-13):**
+- The deciders are the Product Owner and the Architect. One approved change proposal named the Release Owner as owner, so state the signer set explicitly in the receipt.
+- The dated decision names:
+  - the exact package ID and version, plus the Builds catalog revision that selects it;
+  - RC or GA status;
+  - the supported token/API names, including the exact API name of the active accent role under that pin;
+  - the breaking-change rule;
+  - the GA re-decision trigger;
+  - the accessibility/visual revalidation trigger;
+  - the accessibility evidence requirement.
+- It either accepts the identity or records a dated alternative with revalidation triggers. A floating label, a legacy token, or an unverified component name cannot stand in for the identity. It must rest on UX-A to UX-F evidence for one exact catalog identity.
+- Accepting closes OI-4 only. G-4 also needs OI-10 (DOC-C), OI-16, and OI-19, then a refreshed digest-bound postfix reviewer gate, then D-9 re-approval through PRD-APP-1. Selecting a package is not approval. Documentation may cite the decision instead of copying its evidence.
 
 ## Technical Decisions
 
-- Preserve Shell dependency direction and scoped Fluxor single-writer state. Routing stays pure; State owns slices, contracts, and mutation coordinators without render dependencies. Components consume these layers; concrete polling workers belong in Infrastructure, scheduler contracts in State.
-- One pending-outcome resolver applies terminal state and publishes eligible fresh rows. Callbacks/adapters supply observations only. Explicit generated metadata uses typed resolution or declared SameAsSource capture; nudges, row differences, AggregateId, and untyped payloads never substitute for identity. Consumers observe mutations and dispose scoped subscriptions.
-- Each bounded context is one Module with a default tab. Routes use `/{module}/{tab}`; `/{module}` selects the default. Projection flyouts remain secondary. Active entries use longest segment-prefix matching; generated commands use `/commands/{BoundedContext}/{CommandTypeName}`.
-- Interactive UI uses FrontComposer/Fluent UI Blazor V5 and Fluent 2 tokens. Preserve typography/density contracts while allowing reflow; inherited Fluent styling owns semantic treatments. Rendering contracts belong in Contracts.UI, UI-neutral contracts in Contracts, fakes in Testing. Update intentional public API baselines; reconcile exact catalog and token/API identity.
+- **Catalog-owned versions:** the Hexalith.Builds catalog (`Props/Directory.Packages.props`) at the root-selected `references/Hexalith.Builds` gitlink pins all versions. No inline versions and no second version registry. Fluent-pin evidence bound to one Builds revision is never projected onto another.
+- **Identity drift (observed at compile time, 2026-10-20):**
+  - The planning docs still record `Microsoft.FluentUI.AspNetCore.Components` `5.0.0-rc.5-26219.1` (and the contingency doc cites rc.2).
+  - The gitlink history moved rc.5 → `5.0.0` GA on 2026-09-30, then → `5.0.1` (Components and Icons) on 2026-10-17. The current gitlink `5d03f1db…` selects `5.0.1`.
+  - So the "GA triggers re-decision" condition has fired, and the "RC posture" wording in the planning docs is stale.
+  - Epic 13 evidence may span more than one of these identities. Check what each evidence set binds to.
+  - Read the identity from the gitlink (`git ls-tree` + `git show <sha>:Props/Directory.Packages.props`), not from a local Builds checkout.
+- **D-13 rule:** a breaking Fluent update is a FrontComposer major version and needs conformance plus accessibility/visual evidence.
+- **Fluent governance:**
+  - Use FrontComposer and Fluent UI Blazor V5 components with Fluent 2 tokens. No raw interactive controls outside documented carve-outs, no legacy v4/FAST tokens, and no theme redefinition.
+  - `--fc-color-accent` may only alias the active Fluent V5 accent role; it never owns a seed or a palette. `FcShellOptions.AccentColor` (default `#0097A7`) is a thread, never a chrome fill.
+  - Keep the nine `FcTypoToken` mappings and `TypographyMappingVersion` 3.1.0. Keep 32px compact rows, 72px/48px rails, and the 75rem measure. No numeric breakpoints.
+- **Name resolution:** documented FrontComposer and Fluent API names must resolve against the selected pin.
+  - `FcPageToolbar` is the public contract; its internal Fluent composition is not promised.
+  - Inherited Fluent types: `FluentAccordion`, `FluentBadge`, `FluentTooltip`.
+  - Surface roles: `--colorNeutralBackground1..3`, `--colorNeutralStroke2`, `--colorNeutralForeground1..3`.
+- **FC-NIP:** `IPendingCommandOutcomeResolver` is the single terminal and fresh-row owner. Identity never comes from SignalR nudges, row diffs, aggregate IDs, or untyped payloads. SignalR groups are keyed by projection type, tenant, and scope; a stale tenant blocks its group.
 
 ## UX & Interaction Patterns
 
-- The canonical announcement, validation, focus, overlay, surface-state, and accessibility matrices govern behavior; visual/journey supplements cannot override them. Use canonical localized microcopy and text plus icon/shape for status meaning.
-- Each event has one speech path: shared polite status, palette-owned polite combobox status, focused non-live summary, or focused non-live heading. Deduplicate by state/result identity; group intermediate changes by lifecycle operation, connection epoch, operator load/filter, or palette session using a trailing 250 ms window. Discard stale results. Terminal outcomes, focused summaries, and navigation failures cancel pending intermediate speech and act immediately. Retry/poll ticks, repeated renders, unchanged background refresh, and expiry stay silent.
-- Successful navigation focuses the unique route h1 outside sticky chrome; failures preserve usable focus. Tab selection keeps tab focus. Modal dialogs capture an invoker before activation and restore it, falling back to the route heading; modal depth is one. The abandonment guard stays in the form flow with Stay initially focused and Escape preserving input. Validation focuses a complete linked summary after insertion and preserves values; safely mapped rejection uses that summary, while unmapped rejection stays in lifecycle context. The `/` shortcut focuses the sole eligible page-search input and otherwise does nothing.
+- `ux-design.md` is the canonical UX authority, and its supplements lose on conflict. AM-row copy is final microcopy, using one channel per event: the polite status region, the focused summary, or the focused heading.
+- The visual treatment of Warning, NeedsReview, Degraded, missing tenant, FallbackPolling, SlowQuery, MaxItems, and fresh-row dismissal is unresolved. These states inherit the nearest Fluent semantic treatment, and UX/Product own the disposition.
+- The visual contract cannot be marked final until the FLUENT-APP-1 pin and the accent-role API name are confirmed. Until then, do not add a replacement alias or a hard-coded token.
 
 ## Cross-Story Dependencies
 
-- Tenant-scope proof underpins preferences, fail-closed visibility, and fresh-row clearing. Navigation, command, lifecycle, and fresh-row stories share canonical speech channels/copy. Accessibility verification and adopter helpers cover their changed surfaces.
-- Implementation completion does not close OI-16, G-4, Fluent approval, or Product re-approval. Closure needs complete evidence and named owner decisions; accessibility review stays separate.
-- Fresh-row acceptance cites immutable Story 9.8 evidence without rewriting completed Epic 9 history or expanding accepted non-goals. Fluent approval consumes UX-A through UX-F evidence for one exact catalog identity and defines breaking-change, GA re-decision, and revalidation triggers before separate Product re-approval.
+- 13.9 comes last on purpose, after UX-A to UX-F (13.2–13.7, done) and E9-APP-1 (13.8, closed 2026-10-20). This puts the accessibility evidence before the Fluent decision.
+- 13.8 is the A-class precedent: a dated decision receipt in the story's implementation spec, cited from the PRD gate/OI rows and the sprint-status alias tracker.
+- Story 15.4 (DOC-C, backlog) consumes 13.9. It names the exact identity, reports the real FLUENT-APP-1 state, cites the decision, and adds a drift check on the existing doc validation path. Stories 15.2/15.3 (DOC-A/DOC-B) close OI-19. Story 17.16 (PRD-APP-1) needs OI-4, OI-10, OI-16, OI-19, and the reviewer gate.
+- Tracker drift: the PRD still lists OI-16 as open, and the alias tracker still marks UX-A to UX-F as `proposed`. Neither means OI-16 is closed or open; never infer closure.
+- The user-visible auth/scope-loss behavior cross-references MCP-SEC-2 (Story 14.2).
