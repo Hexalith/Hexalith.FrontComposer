@@ -2,7 +2,7 @@
 title: 'Story 15.2: Reconcile Component and Page-Pattern Documentation'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 story_id: '15.2'
 story_key: '15-2-i-doc-a-reconcile-component-and-page-pattern-documentation'
@@ -63,6 +63,59 @@ context:
 - Given projection/lifecycle guidance, when vocabularies are compared, then detail states, transport states, command outcomes and `Loading/Empty/Loaded` view summaries remain distinct; acknowledgement never implies confirmation.
 - Given mismatch or rendering failure, when environment/build combinations are exercised, then usable fallback remains deterministic and diagnostic UI is limited to DEBUG Development with bounded, payload-free guidance.
 - Given adopter assertions, when failures are recorded, then synthetic examples and redacted helpers produce deterministic support evidence without app-specific selectors or sensitive values.
+
+### Review Findings
+
+Code review of committed `dfa06286` against `a3fbe9af` (2026-10-21): Blind Hunter, Edge Case Hunter, Verification Gap and Acceptance Auditor layers, plus triage verification. A fresh Debug Shell.Tests run with the CI trait filters gave 3747 tests and 6 failures: two are caused by this story (P1, P2), and four are unrelated pre-existing governance pins in files this story does not touch (`quality.yml` ApiCompat baseline 4.6.0 vs expected 4.7.0, AppHost SDK 13.6.1 vs 13.6.0, central-package inheritance).
+
+- [x] [Review][Patch] (resolved from Decision D1 → Option 1) Debug-only diagnostic gate and sink-redaction branches never run in CI. Every Shell.Tests CI lane uses `--configuration Release`, so the `#if DEBUG` branches never ran in CI, and the P1 Debug failure went unnoticed. Applied:
+  - Added a separate `debug-gated-tests` job to `quality.yml`. It initializes only the Builds submodule, builds Shell.Tests in Debug, runs the five DEBUG-gated classes with `--filter-class`, and checks the results with `validate-mtp-evidence --expected-trx-files 1 --require-tests`.
+  - Pinned the job with `CiGovernanceTests.QualityWorkflow_RunsDebugGatedShellTestsInDebug`.
+  - Ran the job's exact `dotnet test` command locally: 96 passed, 0 failed, 1 TRX, validator `ok: true`.
+  [.github/workflows/quality.yml] [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs] (medium; blind-hunter+verification-gap)
+- [x] [Review][Patch] Debug `FrontComposerShellTests.ContractMismatchDiagnostics_WhenDebugDevelopmentProviderRegistered_RendersExistingDiagnosticPanel` failed because the fixture passed Development only to `AddFrontComposerDevMode(services, environment)`, while the new panel gate reads a DI-registered `IHostEnvironment`. Applied: both DEBUG mismatch tests now register the same environment in DI, as real hosts do, so fail-closed behavior is unchanged. Both pass in the Debug job run above [tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs:131] (high; acceptance-auditor+verification-gap)
+- [x] [Review][Patch] `AnalyzerPolicy_IdentifierInventory_MatchesSeal` drift came from the nine new underscore-bearing public test methods (3568 → 3577); the D1 governance pin adds one more. Applied: resealed `identifierInventory` to 3578 / `8bb2042efec2eddf0967197c4b6292d8a6a0796afcb262823a410aa6d05c65d3`, values only as in the prior reseal `7f57da41`. `AnalyzerPolicyGovernanceTests` 8/8 passed. Re-run the reseal if P8 adds a test [_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json] (high; triage verification)
+- [ ] [Review][Patch] Diagnostic gate conditions are ambiguous in the docs: `#if DEBUG` is compiled into `Hexalith.FrontComposer.Shell`, so adopters on the Release NuGet package never see panels or sink events even in Development, and the runtime check needs an `IHostEnvironment` registered in DI (WebAssembly hosts that register only `IWebAssemblyHostEnvironment` fail closed). State both explicitly [docs/reference/components/customization.md:153] [docs/how-to/customization-gradient-cookbook.md:238] (medium; blind-hunter+acceptance-auditor+edge-case-hunter)
+- [ ] [Review][Patch] Published parameter tables copy XML-doc summaries verbatim: they leak planning IDs (D5, D12 ×3, D13, D14, D17, D19, D22, H4, AC8, UX-DR7, UX-DR30, Story 4.4/4-3/9-5), contain the garbled "falls back to {DisplayLabel}?", and justify the 8-column skeleton cap by "prioritizer defaults" that the same docs set at 10. Rewrite for adopters [docs/reference/components/projection-status.md:35] [docs/reference/components/command-lifecycle.md:75] [docs/reference/components/datagrid.md:21] [docs/reference/components/settings.md:18] (medium; blind-hunter)
+- [ ] [Review][Patch] Adopter-mounted route components are classified infrastructure and mapped to a page that never names them: `front-composer-shell.md:167-220` tells adopters to mount `FcRouteFocus` (`RouteKey`, `FocusHeading`), `FcRouteUnavailable` and `FcRouteBodyLayout` in `Routes.razor`, but the inventory maps them to `page-patterns.md` as infrastructure, and the validators skip infrastructure rows that lack a typed section, so their parameters are never checked. Reclassify them as adopter, map them to `front-composer-shell.md`, and add typed parameter tables [_bmad-output/project-docs/component-inventory.md] (medium; blind-hunter)
+- [ ] [Review][Patch] The toolbar `/` shortcut docs omit two rules: `focusSolePageSearch` is a no-op unless exactly one eligible search exists, and it does nothing while the route is authorizing (`fc-keyboard.js:420,437`). The new `SearchInputId` row even suggests composing multiple toolbars, which is exactly the case where `/` does nothing [docs/reference/components/page-toolbar.md:114] (medium; acceptance-auditor)
+- [ ] [Review][Patch] Support-safe assertion guidance names only `AssertCellValues`, but `AssertAccessibilityAttribute` prints the caller's CSS selector and observed attribute value, `AssertHeadersInOrder` prints header text, and `AssertDataGridEnvelope` prints the projection name (`src/Hexalith.FrontComposer.Testing/Assertions.cs:23-72`); name all raw-output helpers [docs/how-to/test-generated-components.md:181] (medium; acceptance-auditor)
+- [ ] [Review][Patch] Role-specific Level 4 → Level 2 fallback is untested: every fixture uses a null role and role-less descriptors, so dropping `Context.Role` from `RenderLowerLevel`'s `Resolve` or context would pass. Add a `DetailRecord` case with role-specific and any-role templates, and assert the role-specific one renders [tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/FcProjectionViewOverrideHostTests.cs:236] (medium; verification-gap)
+- [ ] [Review][Patch] The stale-parameter regex `^\| (?<names>[^|]+) \| `[^`]+` \|` skips composite rows with two type spans: `ActiveTabId`/`ActiveTabIdChanged` and `SearchValue`/`SearchValueChanged` at `page-tabs.md:67` and `page-toolbar.md:80,93`. Removing either callback would leave a stale row that passes. Fix both validator copies [eng/validate-docs.ps1:287] [tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcDocComponentDocumentationContractTests.cs:448] (low; blind-hunter+edge-case-hunter)
+- [ ] [Review][Patch] Classification and prose contradict each other:
+  - The `page-patterns.md` Overview calls Home and Module landing surfaces "framework compositions", but the inventory marks them adopter, and `docs/migrations/4.5-to-4.6.md:33` tells hosts to render `<FcHomeDirectory />`.
+  - `FcSettingsDialog` is classified adopter, but it is mounted only by the framework launcher, and `settings.md` calls it framework chrome.
+  - "No public component parameters" sits beside the table row for the cascaded `IDialogInstance?`.
+  [docs/reference/components/page-patterns.md:17] [docs/reference/components/settings.md:62] (low; acceptance-auditor)
+- [ ] [Review][Patch] The abandonment guard's "configured threshold" doesn't name `FcShellOptions.FormAbandonmentThresholdSeconds` (default 30, range 5–600) [docs/reference/components/command-lifecycle.md:106] (low; blind-hunter)
+- [x] [Review][Defer] The Level 4 fault fallback adds a new invocation of the stock-ErrorBoundary raw log channel: `RenderLowerLevel` mounts `FcProjectionTemplateHost`, whose stock boundary logs a throwing fallback template's original exception through `IErrorBoundaryLogger` (the test asserts `Received(templateThrows ? 2 : 1)` without checking its content) [src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionViewOverrideHost.cs:176] — deferred: pre-existing stock-boundary logging mechanism, already deferred as BH-02; the same separately scoped host-boundary correction covers this path (acceptance-auditor)
+
+#### Rejected
+
+- BH: IDiagnosticSink no longer receives HFC2115/HFC2121 outside DEBUG Development — low: the spec's own tasks call for gating diagnostics, and the events are `DevDiagnosticEvent`s. A release note is not a direct code correction.
+- BH: Production loses Retry/recovery for Level 2/3 faults — carried: same premise as triage BH-01 (rejected). Retry is panel-owned, and the spec makes panels Development-only.
+- BH/AA: `Am30QueryFailed` copy reads as a load failure — low: it appears only on a double fault (customization fault plus generated-fallback fault), and the fix needs new en/fr resources.
+- BH/EC: Per-cell `role="alert"` message bars and dual panel focus — low: needs both a slot fault and a generated-field fault in every row, or Development-only Level 4 + Level 2 faults; the fix adds branches.
+- BH: Docs claim sanitized logging while the stock boundary logs raw — false: the docs say sanitized warnings are retained, not that they are the only channel. The raw path is the existing BH-02 deferral (carried).
+- BH/EC/AA: `FcCustomizationFallbackBoundary` logs nothing — low: the primary host still logs a sanitized warning for the same episode, and a new log needs a diagnostic identity allocation.
+- BH: Public enums such as `BadgeSlot` and `CapabilityDiscoveryHydrationState` lack value tables or enforcement — low: types are documented and the DocFX API reference lists values. Extending both validators is more than a direct correction.
+- BH/AA/VG/EC: The PowerShell and C# validator copies diverge, and only C# has committed fixtures — low: duplicated validators are the established class pattern ("without shelling out to `eng/validate-docs.ps1`"), and both run in CI, so the stricter copy fails first. No current escape was shown.
+- BH: Tables lack a Default/Required column — low: not required by the spec; documentation enhancement.
+- BH: customization.md lacks Level 3/4 registration examples, and the HFC2115/HFC2121 pages are generic — low: the cookbook covers registration; the HFC pages are registry-generated Story 9-5 narrative outside this scope.
+- BH: The docs gate reads `_bmad-output` inventory/status — false: the spec Code Map names those exact existing artifacts and forbids a second inventory.
+- AA: Tenant/user sentinel assertions are vacuous — low: the fixture never supplies them; strengthening needs a new `NewContext` parameter, and the payload sentinel remains meaningful.
+- AA: The Counter fallback test registers no environment — low: it still proves lower-level content; adding an environment dimension is not a direct correction.
+- AA: Accessibility is checked only by heading presence, and the prose names Fluent controls — false: the prose describes delegated keyboard behavior and caller-owned `FluentMenuItem` content; it does not promise internal APIs.
+- EC: The fallback boundary never recovers on items/context change — low: generated fallback faults are bugs in generated code, and containment until remount is the safe outcome; recovery keys add state.
+- EC: Unkeyed fallback in a reused slot host — low: the ErrorContent fragment re-renders the current row's context; only a second fallback fault persists.
+- EC: `RenderDefault` null yields an empty cell — false: the generator always passes `RenderDefault` (`RazorEmitter.cs:779,791`), and the non-fault path renders the same nothing.
+- EC: A Level 4 fault plus a `RenderContext` change remounts the fallback grid — low: density/theme/context changes are rare and user-initiated; preventing it adds a circuit branch.
+- EC: Empty files / short rows / block-namespace enums crash or false-fail the validator — low: loud failures on malformed input; no reachable silent pass.
+- EC: The context-property regex ignores `{ get; init; }`, inherited `[Parameter]`s, and other component bases — false for current sources: no documented context uses `init`, and no Shell component derives from a parameterized base, `OwningComponentBase`, `InputBase` or `FluentComponentBase`.
+- EC: PowerShell compares case-insensitively — low: the ordinal C# twin rejects the same input in CI.
+- EC: The C# test reads Contracts `obj/` — false: none of the 124 `obj` `.cs` files matches a context or state declaration.
+- EC: Duplicate inventory rows: the last one wins — low: requires an authoring error; the guard adds complexity.
+- EC: Retry deleted outside Development — carried: same premise as triage BH-01, and spec-mandated Development-only panels.
 
 ## Implementation Notes
 
@@ -161,6 +214,8 @@ PYCODE
 
 ## File List
 
+- `.github/workflows/quality.yml`
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`
 - `_bmad-output/contracts/fc-doc-component-documentation-2026-06-03.md`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
 - `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
@@ -187,6 +242,7 @@ PYCODE
 - `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionTemplateHost.cs`
 - `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionViewOverrideHost.cs`
 - `src/Hexalith.FrontComposer.Shell/Services/Diagnostics/CustomizationDiagnosticPublisher.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/FallbackTemplate.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/FcFieldSlotHostTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/FcProjectionTemplateHostTests.cs`
@@ -196,4 +252,5 @@ PYCODE
 - `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Generated/ThrowingCounterReplacement.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Generated/ThrowingCounterTemplate.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcDocComponentDocumentationContractTests.cs`

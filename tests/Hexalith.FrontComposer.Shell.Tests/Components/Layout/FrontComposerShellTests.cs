@@ -128,7 +128,10 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 #if DEBUG
     [Fact]
     public void ContractMismatchDiagnostics_WhenDebugDevelopmentProviderRegistered_RendersExistingDiagnosticPanel() {
-        Services.AddFrontComposerDevMode(new TestHostEnvironment("Development"));
+        // Real hosts register IHostEnvironment in DI; the panel gate fails closed without it.
+        TestHostEnvironment environment = new("Development");
+        Services.AddSingleton<IHostEnvironment>(environment);
+        Services.AddFrontComposerDevMode(environment);
         Services.GetRequiredService<ICustomizationContractRejectionLog>()
             .Record(CustomizationContractMismatchDiagnosticProviderTests.NewRejection());
 
@@ -150,7 +153,9 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 
     [Fact]
     public void ContractMismatchDiagnostics_WhenDebugNonDevelopment_DoesNotRenderDiagnosticPanel() {
-        Services.AddFrontComposerDevMode(new TestHostEnvironment("Production"));
+        TestHostEnvironment environment = new("Production");
+        Services.AddSingleton<IHostEnvironment>(environment);
+        Services.AddFrontComposerDevMode(environment);
         Services.GetRequiredService<ICustomizationContractRejectionLog>()
             .Record(CustomizationContractMismatchDiagnosticProviderTests.NewRejection());
 

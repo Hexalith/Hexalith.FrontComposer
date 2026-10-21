@@ -10636,3 +10636,9 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
   summary: Verify and redact the pre-existing stock ErrorBoundary logging path for customization faults.
   evidence: Baseline 099299cb5da4ec1ffa3b19cc0387f06d5bbb7634 already mounts stock ErrorBoundary in all three customization hosts; the framework default OnErrorAsync logs the original exception independently of sanitized host warnings. Existing tests capture host loggers only. Add IErrorBoundaryLogger coverage and a separately scoped logging correction; Story 15.2 panels remain payload-free.
+
+## Deferred from: code review of spec-15-2-reconcile-component-and-page-pattern-documentation.md (2026-10-21)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
+  summary: Include the Level 4 fault-fallback template host in the stock ErrorBoundary logging correction.
+  evidence: Code review of dfa06286 found FcProjectionViewOverrideHost.RenderLowerLevel mounts FcProjectionTemplateHost inside Level 4 ErrorContent; a throwing fallback template's original exception reaches IErrorBoundaryLogger through that host's stock boundary (FcProjectionViewOverrideHostTests asserts Received(templateThrows ? 2 : 1) without inspecting content). Same pre-existing mechanism as the Story 15.2 BH-02 deferral; the host-boundary correction must cover this nested path and assert the fallback exception text is absent.

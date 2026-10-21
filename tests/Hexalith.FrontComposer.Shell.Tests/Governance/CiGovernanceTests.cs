@@ -433,6 +433,40 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void QualityWorkflow_RunsDebugGatedShellTestsInDebug() {
+        // Story 15.2 review D1: Release lanes compile out `#if DEBUG` diagnostic gates and their
+        // test branches. Pin the separate Debug job so it cannot silently become Release, advisory
+        // or empty.
+        string quality = StripYamlComments(File.ReadAllText(Path.Combine(RepositoryRoot(), ".github/workflows/quality.yml")))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+        string job = ExtractJobBlock(quality, "debug-gated-tests");
+        job.ShouldNotBeNullOrEmpty();
+        Regex.IsMatch(job, @"^[ \t]*if[ \t]*:", RegexOptions.Multiline).ShouldBeFalse();
+        job.ShouldNotContain("continue-on-error:");
+        job.ShouldContain("git -c submodule.recurse=false submodule update --init references/Hexalith.Builds");
+        job.ShouldNotContain("--recursive");
+        ExtractNamedStep(job, "Build Debug Shell tests").ShouldContain(
+            "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Debug");
+        string run = ExtractNamedStep(job, "Run DEBUG-gated Shell test classes");
+        run.ShouldContain("DiffEngine_Disabled: true");
+        run.ShouldContain("--configuration Debug --no-build");
+        string[] debugGatedClasses = [
+            "Components.Layout.FrontComposerShellTests",
+            "Components.Rendering.FcProjectionViewOverrideHostTests",
+            "Components.Rendering.FcProjectionTemplateHostTests",
+            "Components.Rendering.FcFieldSlotHostTests",
+            "Extensions.AddFrontComposerDevModeExtensionsTests",
+        ];
+        foreach (string debugGatedClass in debugGatedClasses) {
+            run.ShouldContain("--filter-class Hexalith.FrontComposer.Shell.Tests." + debugGatedClass);
+        }
+
+        string evidence = ExtractNamedStep(job, "Verify DEBUG-gated MTP evidence");
+        evidence.ShouldContain("--results-dir ./TestResults/debug-gated");
+        evidence.ShouldContain("--require-tests");
+    }
+
+    [Fact]
     public void QualityWorkflow_PinsAccessibilityVisualGate() {
         // REL-2 code-review P3 (2026-07-13): the Playwright a11y/visual job (the sole automated
         // accessibility + visual-regression gate) relocated from ci.yml into quality.yml. Pin the job
