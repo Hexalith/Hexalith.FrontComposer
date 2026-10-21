@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 1-6-theme-density-and-settings-persistence
 status: published
-reviewed: 2026-07-01
+reviewed: 2026-10-21
 uid: frontcomposer.reference.components.settings
 slug: reference/components/settings/
 ---
@@ -66,6 +66,23 @@ for the current session but skips storage, so preferences do not leak across sco
 
 `FcSettingsDialog` does not expose adopter slots. It is framework chrome, not a page-level extension
 surface. Use shell options and localization for supported customization.
+
+Complete component parameter reference follows. Internal Fluent children are implementation details.
+
+### `FcSettingsDialog`
+
+No public component parameters. Framework services supply its state.
+
+### `FcThemeToggle`
+
+No public component parameters. Framework services supply its state.
+
+### `FcDensityPreviewPanel`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `Density` | `DensityLevel` | The density level to render the specimen at. Drives the local data-fc-density wrapper. |
+| `ShowForcedViewportBadge` | `bool` | Whether to render the "Preview only — Comfortable is active" overlay badge (D14 amendment). |
 
 ## Layout (FC-LYT)
 

@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 2-8-confirm-the-fc-tbl-table-api-contract
 status: published
-reviewed: 2026-08-12
+reviewed: 2026-10-21
 uid: frontcomposer.reference.components.datagrid
 slug: reference/components/datagrid/
 ---
@@ -140,6 +140,128 @@ interface's compatibility default sends no notifications.
 Reserved filter keys remain framework-owned: `__status` for status filters, `__search` for in-grid
 search, and `__hidden` for hidden-column persistence. Column filter keys beginning with `__` are
 rejected.
+
+Complete component parameter reference follows. Internal Fluent children are implementation details.
+
+### `FcColumnFilterCell`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `ViewKey` | `string` | Stable per-view key used by the filter action. |
+| `ColumnKey` | `string` | Declared property name of the filtered column. |
+| `ColumnHeader` | `string?` | Humanised column header, used in placeholder / aria-label templates. |
+| `InitialValue` | `string?` | Initial filter value supplied from the hydrated snapshot. |
+
+### `FcColumnPrioritizer`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `ViewKey` | `string` | Stable per-view key. |
+| `AllColumns` | `IReadOnlyList<ColumnDescriptor>` | Full list of columns in priority-then-declaration order (post-Transform sort); the source generator materialises this from the `Transforms.ColumnModel` IR. |
+| `HiddenColumns` | `IReadOnlyList<string>` | Currently hidden column keys (property names). Typically bound to the CSV under GridViewSnapshot.Filters["__hidden"]. |
+| `MaxVisibleColumns` | `int` | Max columns visible by default. Generator always emits 10 per UX-DR7. |
+| `ChildContent` | `RenderFragment<ColumnVisibilityContext>` | Render fragment for the wrapped FluentDataGrid. Receives a `ColumnVisibilityContext` so the data grid can skip rendering hidden columns. |
+
+### `FcExpandInRowDetail`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `ViewKey` | `string` | Stable per-view key (D22 ephemeral form). Reserved for future telemetry; carried for parity with sibling components. |
+| `HasExpanded` | `bool` | True when the host view has resolved an expanded item for this view-key. Drives the panel render gate. |
+| `ChildContent` | `RenderFragment` | The detail body emitted by the generator (factored EmitDetailRecordBody output). |
+| `DetailPanelAriaLabel` | `string` | Localized aria-label for the outer region landmark (per-row item-name interpolated). |
+| `SuppressedAnnouncement` | `string?` | AC8 D19 — populated by the host view when an expansion is "logically active" (state has the entry) but suppressed (filter has hidden the row). Empty / null suppresses the live-region announcement. Polite assertiveness — read after current utterance. |
+| `SuppressStandaloneAnnouncement` | `bool` | Uses the generated view's shared status instead of a standalone live node. |
+| `PanelId` | `string?` | Gets or sets the deterministic element id consumed by the trigger button's aria-controls attribute. When omitted, the component falls back to an instance-local id for standalone use. |
+
+### `FcExpandedRowHiddenBanner`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `ViewKey` | `string` | Stable per-view key (PERSISTED form) — matches the key consumed by `FiltersResetAction` per Story 4-3. |
+| `IsHiddenByFilter` | `bool` | True when the host view detects an expanded row that the current filter predicate has hidden from state.Items. Drives both the render gate and the suppression announcement; false renders nothing. |
+| `IsMissing` | `bool` | Whether the expanded item is absent from the completed visible result, regardless of cause. |
+| `ResultIdentity` | `string?` | Stable filter/result identity for one hidden-detail transition. |
+| `ScopeGeneration` | `long` | Generation of the current tenant and user scope. |
+| `ResultSettled` | `bool` | Whether the filter result that hides this detail has completed. |
+| `SharedStatusOwner` | `bool` | Uses the generated projection's existing shared polite status node. |
+
+### `FcFilterEmptyState`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `ViewKey` | `string` | Stable per-view key. |
+| `TotalCount` | `int` | Total row count pre-filter. |
+| `EntityPlural` | `string` | Humanised entity plural. |
+| `ActiveFilterCount` | `int` | Number of currently active filters (for the reset button's aria-label). |
+
+### `FcFilterResetButton`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `ViewKey` | `string` | Stable per-view key. |
+| `ActiveFilterCount` | `int` | Number of currently active filters; interpolated into the aria-label. |
+| `HasActiveFilters` | `bool` | Whether any filter is active (controls the disabled state). |
+
+### `FcFilterSummary`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `ViewKey` | `string` | Stable per-view key (reserved for future use). |
+| `Filters` | `IReadOnlyDictionary<string, string>` | Column-keyed filters including the reserved __status / __search keys. |
+| `HumanisedColumnHeaders` | `IReadOnlyDictionary<string, string>?` | Column keys → humanised header text. |
+| `SortColumn` | `string?` | Column key currently sorted by, or null. |
+| `SortDescending` | `bool` | Whether the current sort is descending. |
+| `FilteredCount` | `int` | Row count matching the current filters. |
+| `TotalCount` | `int` | Total row count pre-filter. |
+| `EntityPlural` | `string` | Humanised entity plural (e.g. "orders"). |
+
+### `FcMaxItemsCapNotice`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `ViewKey` | `string` | Stable per-view key. It forms this notice's announcement surface. |
+| `ItemsCount` | `int` | Current unfiltered row count in the view's state. |
+| `AnyRealFilterActive` | `bool` | Whether any real column filter / search / status chip is active. The generator-emitted view computes this from column filters, search, and status chips while excluding display-only reserved keys such as hidden columns. |
+| `ResultIdentity` | `string?` | Identity of the completed result that reached the configured limit. |
+| `ScopeGeneration` | `long` | Generation of the current tenant and user scope. |
+| `SharedStatusOwner` | `bool` | Uses the parent surface's persistent status node when true; direct callers own one by default. |
+
+### `FcNewItemIndicator`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `Text` | `string?` | Optional localized fresh-row indicator text. |
+| `AriaLabelOverride` | `string?` | Optional complete accessible name for the fresh-row indicator. |
+| `Entry` | `NewItemIndicatorEntry?` | Fresh-row provenance. When supplied, names the entity and announces through the shared channel. |
+| `SharedStatusOwner` | `bool` | Uses the parent's persistent status node when true; entry-aware direct callers own one by default. |
+
+### `FcProjectionGlobalSearch`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `ViewKey` | `string` | Stable per-view key. |
+| `InitialValue` | `string?` | Initial query seeded from hydrated snapshot. |
+
+### `FcSlowQueryNotice`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `ViewKey` | `string` | Stable per-view key ({boundedContext}:{projectionTypeFqn}). |
+| `VisiblePageSkip` | `int?` | Displayed page offset from the grid's actual scroll position; null keeps standalone view-wide behavior. |
+| `SharedStatusOwner` | `bool` | Uses the parent surface's persistent status node when true; direct callers own one by default. |
+
+### `FcStatusFilterChips`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `ViewKey` | `string` | Stable per-view key used by the filter action. |
+| `AvailableSlots` | `IReadOnlyList<BadgeSlot>` | Slots to render (distinct set from state.Items / chip definition). |
+| `ActiveSlots` | `IReadOnlyList<BadgeSlot>` | Slots currently marked active (filled appearance + aria-pressed="true"). |
+
+### `ColumnVisibilityContext`
+
+The prioritizer supplies this typed context to `ChildContent`. `IsHidden(string columnKey)` returns whether that case-sensitive key is hidden; use it to omit the matching column. The context exposes no public properties.
 
 ## Layout (FC-LYT)
 

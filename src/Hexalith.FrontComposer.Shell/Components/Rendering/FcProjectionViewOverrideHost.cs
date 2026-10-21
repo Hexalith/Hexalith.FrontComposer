@@ -152,16 +152,48 @@ public sealed class FcProjectionViewOverrideHost<TProjection> : ComponentBase, I
                     _consecutiveFailures,
                     _circuitOpen);
 
-                CustomizationDiagnosticPublisher.Publish(Services?.GetService<IDiagnosticSink>(), diagnostic);
+                if (CustomizationDiagnosticPublisher.IsEnabled(Services))
+                {
+                    CustomizationDiagnosticPublisher.Publish(Services?.GetService<IDiagnosticSink>(), diagnostic);
+                }
                 _loggedSinceLastRecover = true;
             }
 
-            builder.OpenComponent<FcCustomizationDiagnosticPanel>(0);
-            builder.AddAttribute(1, "Diagnostic", diagnostic);
-            builder.AddAttribute(2, "CanRetry", !_circuitOpen);
-            builder.AddAttribute(3, "OnRetry", EventCallback.Factory.Create(this, Recover));
+            if (CustomizationDiagnosticPublisher.IsEnabled(Services))
+            {
+                builder.OpenComponent<FcCustomizationDiagnosticPanel>(0);
+                builder.AddAttribute(1, "Diagnostic", diagnostic);
+                builder.AddAttribute(2, "CanRetry", !_circuitOpen);
+                builder.AddAttribute(3, "OnRetry", EventCallback.Factory.Create(this, Recover));
+                builder.CloseComponent();
+            }
+
+            builder.OpenComponent<FcCustomizationFallbackBoundary>(4);
+            builder.AddAttribute(5, "ChildContent", (RenderFragment)RenderLowerLevel);
             builder.CloseComponent();
         };
+
+    private void RenderLowerLevel(RenderTreeBuilder builder)
+    {
+        // Resolve Level 2 directly. DefaultBody is generated output and must never re-enter
+        // the Level 4 registry, even when both customizations fail in the same render.
+        ProjectionTemplateDescriptor? template = Services.GetService<IProjectionTemplateRegistry>()?
+            .Resolve(typeof(TProjection), Context.Role);
+        if (template is null)
+        {
+            builder.AddContent(4, Context.DefaultBody);
+            return;
+        }
+
+        ProjectionTemplateContext<TProjection> templateContext = new(
+            Context.ProjectionType, Context.BoundedContext, Context.Role, Context.RenderContext,
+            Context.Items, Context.Columns, Context.Sections, Context.DefaultBody,
+            Context.SectionRenderer, Context.RowRenderer, Context.FieldRenderer);
+        builder.OpenComponent<FcProjectionTemplateHost<TProjection>>(4);
+        builder.AddAttribute(5, "Descriptor", template);
+        builder.AddAttribute(6, "Context", templateContext);
+        builder.CloseComponent();
+    }
 
     private void Recover() {
         _consecutiveFailures = 0;

@@ -124,7 +124,7 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
 
         builder.OpenComponent<ErrorBoundary>(0);
         builder.AddAttribute(1, "ChildContent", (RenderFragment)(slotBuilder => RenderSlot(slotBuilder, descriptor, context)));
-        builder.AddAttribute(2, "ErrorContent", (RenderFragment<Exception>)(exception => RenderFailure(exception, descriptor)));
+        builder.AddAttribute(2, "ErrorContent", (RenderFragment<Exception>)(exception => RenderFailure(exception, descriptor, context)));
         builder.AddComponentReferenceCapture(3, component => _boundary = (ErrorBoundary)component);
         builder.CloseComponent();
     }
@@ -144,7 +144,8 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
 
     private RenderFragment RenderFailure(
         Exception exception,
-        ProjectionSlotDescriptor descriptor)
+        ProjectionSlotDescriptor descriptor,
+        FieldSlotContext<TProjection, TField> context)
         => builder => {
             CustomizationDiagnostic diagnostic = CreateDiagnostic(exception, descriptor);
             if (!_publishedFault) {
@@ -158,14 +159,25 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
                     ProjectionRole,
                     Field?.Name,
                     exception);
-                CustomizationDiagnosticPublisher.Publish(Services?.GetService<IDiagnosticSink>(), diagnostic);
+                if (CustomizationDiagnosticPublisher.IsEnabled(Services))
+                {
+                    CustomizationDiagnosticPublisher.Publish(Services?.GetService<IDiagnosticSink>(), diagnostic);
+                }
                 _publishedFault = true;
             }
 
-            builder.OpenComponent<FcCustomizationDiagnosticPanel>(0);
-            builder.AddAttribute(1, "Diagnostic", diagnostic);
-            builder.AddAttribute(2, "CanRetry", true);
-            builder.AddAttribute(3, "OnRetry", EventCallback.Factory.Create(this, Recover));
+            if (CustomizationDiagnosticPublisher.IsEnabled(Services))
+            {
+                builder.OpenComponent<FcCustomizationDiagnosticPanel>(0);
+                builder.AddAttribute(1, "Diagnostic", diagnostic);
+                builder.AddAttribute(2, "CanRetry", true);
+                builder.AddAttribute(3, "OnRetry", EventCallback.Factory.Create(this, Recover));
+                builder.CloseComponent();
+            }
+
+            builder.OpenComponent<FcCustomizationFallbackBoundary>(4);
+            builder.AddAttribute(5, "ChildContent", (RenderFragment)(fallback =>
+                fallback.AddContent(0, RenderDefault?.Invoke(context))));
             builder.CloseComponent();
         };
 

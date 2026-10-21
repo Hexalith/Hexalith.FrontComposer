@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 8-3-brand-logo-cell-in-header-start
 status: published
-reviewed: 2026-06-25
+reviewed: 2026-10-21
 uid: frontcomposer.reference.components.frontcomposershell
 slug: reference/components/front-composer-shell/
 ---
@@ -56,15 +56,15 @@ First-time adopters can use the one-line `AddHexalithFrontComposerQuickstart()` 
 The shell exposes a **locked 12-parameter surface**. The original header/navigation/content/footer
 slots keep their established order, and newer accessibility/brand parameters are appended to preserve
 metadata-order compatibility. All slots are optional render fragments except `AppTitle` (a string);
-leaving a slot `null` triggers the documented default.
+leaving a slot `null` triggers the documented default. Internal Fluent children are implementation details.
 
 | Parameter | Type | Default when `null` |
 |---|---|---|
 | `HeaderStart` | `RenderFragment?` | Optional content after the always-present `FcHamburgerToggle` and before the app title. |
 | `HeaderCenter` | `RenderFragment?` | Slot omitted (breadcrumb slot; filled by later stories). |
 | `HeaderEnd` | `RenderFragment?` | Auto-populates the command-palette trigger + settings button. |
-| `Navigation` | `RenderFragment?` | Auto-renders `FrontComposerNavigation` when the registry has ≥ 1 renderable manifest; the Navigation area is omitted entirely when the registry is empty. |
-| `Footer` | `RenderFragment?` | Renders the default localized copyright (`{resolved app title} © {Year}`). |
+| `Navigation` | `RenderFragment?` | Auto-renders the 72px labeled or 48px icon-only `FrontComposerNavigation` rail when the registry has ≥ 1 renderable manifest; the Navigation area is omitted entirely when the registry is empty. |
+| `Footer` | `RenderFragment?` | Renders the localized copyright using `ResolvedAppTitle` and the current year (`{resolved app title} © {Year}`). |
 | `ChildContent` | `RenderFragment?` | The page body (your `@Body`). |
 | `AppTitle` | `string?` | Resolves `FcShellOptions.AppTitle`, then the framework-owned `FcShellResources.AppTitle` product-name string. |
 | `ContentLabel` | `string?` | Optional accessible name for the `#fc-main-content` landmark when no visible heading labels it. |

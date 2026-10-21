@@ -1141,3 +1141,47 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           path: artifacts/epic-9/**
+
+  # Every other .NET test lane builds Release, which compiles out `#if DEBUG` diagnostic gates and
+  # their test branches. This separate job keeps those branches in CI without depending on the
+  # sequential build-and-test gates; nothing it builds is packaged or published.
+  debug-gated-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          # Root-declared references only; never initialize nested submodules recursively.
+          submodules: false
+
+      - name: Initialize root build submodule
+        run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
+
+      - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+        with:
+          dotnet-version: '10.0.402'
+
+      - name: Build Debug Shell tests
+        run: dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Debug --disable-build-servers -m:1
+
+      - name: Run DEBUG-gated Shell test classes
+        env:
+          DiffEngine_Disabled: true
+        run: >-
+          dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj
+          --configuration Debug --no-build
+          --filter-class Hexalith.FrontComposer.Shell.Tests.Components.Layout.FrontComposerShellTests
+          --filter-class Hexalith.FrontComposer.Shell.Tests.Components.Rendering.FcProjectionViewOverrideHostTests
+          --filter-class Hexalith.FrontComposer.Shell.Tests.Components.Rendering.FcProjectionTemplateHostTests
+          --filter-class Hexalith.FrontComposer.Shell.Tests.Components.Rendering.FcFieldSlotHostTests
+          --filter-class Hexalith.FrontComposer.Shell.Tests.Extensions.AddFrontComposerDevModeExtensionsTests
+          --results-directory ./TestResults/debug-gated --report-xunit-trx
+
+      - name: Verify DEBUG-gated MTP evidence
+        run: >-
+          python3 .github/scripts/ci_governance.py validate-mtp-evidence
+          --results-dir ./TestResults/debug-gated
+          --expected-trx-files 1
+          --require-tests

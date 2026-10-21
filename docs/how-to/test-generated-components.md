@@ -26,6 +26,8 @@ using Bunit;
 using Fluxor;
 using Hexalith.FrontComposer.Testing;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -48,9 +50,13 @@ public sealed class CounterViewTests : FrontComposerTestBase
         await InitializeStoreAsync();
 
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        var scope = ProjectionStateScopeOwnership.ResolveCurrentScope(
+            Services.GetRequiredService<IFrontComposerTenantContextAccessor>(), null, "test")
+            ?? throw new InvalidOperationException("Synthetic test scope is unavailable.");
         dispatcher.Dispatch(new CounterProjectionLoadedAction(
-            Guid.NewGuid().ToString(),
-            [new CounterProjection { Id = "counter-1", Count = 12 }]));
+            "counter-initial-read-001",
+            [new CounterProjection { Id = "counter-1", Count = 12 }])
+        { ScopeTenantId = scope.TenantId, ScopeUserId = scope.UserId });
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
@@ -171,3 +177,7 @@ public static class MeasuredValidationExample
 `AssertChannel`, `AssertLinkedSummary`, `AssertState` and `AssertTargetSize` failures name failed checks without printing measured values. Recorder missing-fact, ordinal, setup and contradicted-outcome failures name required or failed facts; non-finite and context failures describe the failed contract. Sequence diagnostics show the mismatch index, catalog row/channel labels, differing member names and counts, omitting observed copy and opaque identifiers. `AssertUnobscured` includes bounded redacted geometry; other helpers, including the `AssertBlockedSubmit` focus and AM-20 count checks, describe the failed contract.
 
 The .NET helpers assert caller measurements; browser acquisition and required manual assistive checks remain separate. This implementation does not close OI-16, G-4, FLUENT-APP-1, or Product approval.
+
+## Support-safe assertions
+
+`GeneratedProjectionAssertions.AssertCellValues` checks raw DOM values and may print them on failure. Use only deterministic synthetic values in those DOM tests; do not copy their failure output into support evidence. Use the existing redacted command/evidence and measured UX assertions for support packets: they report bounded failed contracts without raw values, application selectors or exception details. Include sensitive sentinels in redaction tests and assert they are absent from formatted failure output. Keep the measured timing, focus and accessibility guidance above; these helpers do not replace browser acquisition.

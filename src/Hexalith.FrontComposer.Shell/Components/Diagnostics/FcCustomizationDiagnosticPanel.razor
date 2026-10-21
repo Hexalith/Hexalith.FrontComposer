@@ -5,6 +5,10 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 
 @inject IStringLocalizer<FcShellResources> Localizer
+@inject IServiceProvider Services
+
+@if (Hexalith.FrontComposer.Shell.Services.Diagnostics.CustomizationDiagnosticPublisher.IsEnabled(Services))
+{
 
 <div @ref="_root"
      class="fc-customization-diagnostic"
@@ -60,6 +64,8 @@
     </FluentMessageBar>
 </div>
 
+}
+
 @code {
     private ElementReference _root;
     private string? _focusedDiagnosticId;
@@ -84,7 +90,8 @@
         // Re-focus when the Diagnostic.Id changes (new fault episode) so screen-reader users
         // hear the new content. Do NOT re-focus on every render — that would steal focus
         // from a user mid-interaction.
-        if (_focusedDiagnosticId == Diagnostic.Id) {
+        if (!Hexalith.FrontComposer.Shell.Services.Diagnostics.CustomizationDiagnosticPublisher.IsEnabled(Services)
+            || _focusedDiagnosticId == Diagnostic.Id) {
             return;
         }
 

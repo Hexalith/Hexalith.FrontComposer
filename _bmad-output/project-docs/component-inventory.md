@@ -147,3 +147,81 @@ For adopters writing bUnit tests against generated components:
 | `FrontComposerTestUserContextAccessor` | Mutable user/tenant fake. |
 
 > The Testing library has a committed `PublicAPI.Shipped.txt`; `PackageBoundaryTests` fails if the exported surface drifts without an intentional baseline update.
+
+## H. Current component documentation classifications (Story 15.2, 2026-10-21)
+
+This additive classification preserves the accepted scan above. Adopter rows resolve to grouped FC-DOC pages; infrastructure rows identify framework composition rather than extra public customization seams. Parameter and state tables are checked against source. Classification describes supported adoption, independently of CLR visibility. Infrastructure includes generated routing, headless shell wiring and developer tooling; it is not a promise of new public extension seams.
+
+| Component | Classification | Documentation | Owner |
+|---|---|---|---|
+| `FcAccountMenu` | infrastructure | `docs/reference/components/front-composer-shell.md` | FrontComposer |
+| `FcAggregateDetailPage` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcAggregateListPage` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcAnyAuthorized` | infrastructure | `docs/reference/components/command-lifecycle.md` | FrontComposer |
+| `FcAuthorizedCommandRegion` | adopter | `docs/reference/components/command-lifecycle.md` | FrontComposer |
+| `FcColumnFilterCell` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcColumnPrioritizer` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcCommandBlockedOutcome` | adopter | `docs/reference/components/command-lifecycle.md` | FrontComposer |
+| `FcCommandPalette` | infrastructure | `docs/reference/components/front-composer-shell.md` | FrontComposer |
+| `FcContentLabel` | infrastructure | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcCustomizationFallbackBoundary` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
+| `FcCustomizationDiagnosticPanel` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
+| `FcDensityAnnouncer` | infrastructure | `docs/reference/components/settings.md` | FrontComposer |
+| `FcDensityApplier` | infrastructure | `docs/reference/components/settings.md` | FrontComposer |
+| `FcDensityPreviewPanel` | adopter | `docs/reference/components/settings.md` | FrontComposer |
+| `FcDesaturatedBadge` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcDestructiveConfirmationDialog` | adopter | `docs/reference/components/command-lifecycle.md` | FrontComposer |
+| `FcDevModeAnnotation` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
+| `FcDevModeOverlay` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
+| `FcDevModeToggleButton` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
+| `FcExpandInRowDetail` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcExpandedRowHiddenBanner` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcFieldPlaceholder` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcFieldSlotHost` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
+| `FcFilterEmptyState` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcFilterResetButton` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcFilterSummary` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcFormAbandonmentGuard` | adopter | `docs/reference/components/command-lifecycle.md` | FrontComposer |
+| `FcHamburgerToggle` | infrastructure | `docs/reference/components/front-composer-shell.md` | FrontComposer |
+| `FcHomeCard` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcHomeDirectory` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcHomeRouteView` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcLayoutBreakpointWatcher` | infrastructure | `docs/reference/components/front-composer-shell.md` | FrontComposer |
+| `FcLifecycleWrapper` | adopter | `docs/reference/components/command-lifecycle.md` | FrontComposer |
+| `FcMaxItemsCapNotice` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcModuleLandingPage` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcNewItemIndicator` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcPageHeader` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcPageLayout` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcPageTab` | adopter | `docs/reference/components/page-tabs.md` | FrontComposer |
+| `FcPageTabs` | adopter | `docs/reference/components/page-tabs.md` | FrontComposer |
+| `FcPageToolbar` | adopter | `docs/reference/components/page-toolbar.md` | FrontComposer |
+| `FcPaletteResultList` | infrastructure | `docs/reference/components/front-composer-shell.md` | FrontComposer |
+| `FcPaletteTriggerButton` | infrastructure | `docs/reference/components/front-composer-shell.md` | FrontComposer |
+| `FcPendingCommandSummary` | adopter | `docs/reference/components/command-lifecycle.md` | FrontComposer |
+| `FcProjectionConnectionStatus` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcProjectionEmptyPlaceholder` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcProjectionFailure` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcProjectionGlobalSearch` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcProjectionLoadingSkeleton` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcProjectionStaleNotice` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcProjectionSubtitle` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcProjectionTemplateHost` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
+| `FcProjectionViewOverrideHost` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
+| `FcRouteBodyLayout` | infrastructure | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcRouteFailureHeading` | infrastructure | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcRouteFocus` | infrastructure | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcRouteUnavailable` | infrastructure | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcScopeBlocked` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcSettingsButton` | infrastructure | `docs/reference/components/settings.md` | FrontComposer |
+| `FcSettingsDialog` | adopter | `docs/reference/components/settings.md` | FrontComposer |
+| `FcSlowQueryNotice` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcStatusBadge` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcStatusFilterChips` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
+| `FcStatusIcon` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcSurfaceStatus` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcSystemThemeWatcher` | infrastructure | `docs/reference/components/settings.md` | FrontComposer |
+| `FcThemeToggle` | adopter | `docs/reference/components/settings.md` | FrontComposer |
+| `FcValidationSummary` | adopter | `docs/reference/components/command-lifecycle.md` | FrontComposer |
+| `FrontComposerNavigation` | adopter | `docs/reference/components/navigation.md` | FrontComposer |
+| `FrontComposerShell` | adopter | `docs/reference/components/front-composer-shell.md` | FrontComposer |

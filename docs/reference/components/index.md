@@ -25,11 +25,18 @@ Layout, Accessibility, Localization, Related) so you can adopt a component witho
 - [Page Toolbar](page-toolbar.md) — reusable page search/filter/view/action/tab toolbar (`FcPageToolbar`).
 - [Settings](settings.md) — settings dialog, theme toggle, density selector, preview, and persistence behavior.
 
+- [Page patterns](page-patterns.md) — page slots, detail states and heading focus.
+- [Projection status](projection-status.md) — read-path, connection and shared-status contracts.
+- [Command lifecycle](command-lifecycle.md) — acknowledgement, confirmation and recovery.
+- [Customization](customization.md) — typed seams, precedence and safe fallback.
+
 ## Coverage and tracked gaps
 
 The read-only-MVP component set is **layout, navigation, DataGrid surface, page toolbar, and settings**.
 Layout, navigation, the FC-TBL DataGrid surface, page tabs, the page toolbar, and settings are documented
 above. No read-only-MVP component-doc gap remains open in this index.
+
+Current grouped references also cover page-pattern, projection/status, command/lifecycle and customization contracts. Infrastructure helpers remain implementation composition; their existence does not create adopter extension APIs.
 
 ## Related
 

@@ -231,6 +231,330 @@ public sealed partial class FcDocComponentDocumentationContractTests {
         }
     }
 
+    [Fact]
+    public void CurrentInventoryAndPublishedContractsMatchSource()
+    {
+        ValidateCurrentContracts(ReadContractFiles()).ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("missing-page", "docs/reference/components/page-patterns.md")]
+    [InlineData("unindexed", "docs/reference/components/index.md")]
+    [InlineData("unclassified", "_bmad-output/project-docs/component-inventory.md")]
+    [InlineData("stale-parameter", "docs/reference/components/page-toolbar.md")]
+    [InlineData("stale-state", "docs/reference/components/page-patterns.md")]
+    [InlineData("stale-type", "docs/reference/components/page-tabs.md")]
+    [InlineData("stale-context", "docs/reference/components/customization.md")]
+    [InlineData("stale-infrastructure", "docs/reference/components/customization.md")]
+    [InlineData("missing-view-context", "docs/reference/components/customization.md")]
+    [InlineData("missing-template-context", "docs/reference/components/customization.md")]
+    [InlineData("missing-slot-context", "docs/reference/components/customization.md")]
+    [InlineData("missing-detail-states", "docs/reference/components/page-patterns.md")]
+    [InlineData("missing-command-states", "docs/reference/components/command-lifecycle.md")]
+    [InlineData("missing-connection-states", "docs/reference/components/projection-status.md")]
+    [InlineData("missing-badge-states", "docs/reference/components/projection-status.md")]
+    public void CurrentContractRejectsDeterministicNegativeFixtures(string defect, string path)
+    {
+        Dictionary<string, string> files = ReadContractFiles();
+        files[path] = defect switch
+        {
+            "missing-page" => string.Empty,
+            "missing-view-context" => RemoveSection(files[path], "### `ProjectionViewContext`"),
+            "missing-template-context" => RemoveSection(files[path], "### `ProjectionTemplateContext`"),
+            "missing-slot-context" => RemoveSection(files[path], "### `FieldSlotContext`"),
+            "missing-detail-states" => RemoveSection(files[path], "### `FcAggregateDetailState`"),
+            "missing-command-states" => RemoveSection(files[path], "### `CommandLifecycleState`"),
+            "missing-connection-states" => RemoveSection(files[path], "### `ProjectionConnectionStatus`"),
+            "missing-badge-states" => RemoveSection(files[path], "### `OptimisticBadgeState`"),
+            "unindexed" => files[path].Replace("(page-patterns.md)", "(absent.md)", StringComparison.Ordinal),
+            "unclassified" => files[path].Replace("| `FcPageToolbar` | adopter |", "| `FcPageToolbar` | unknown |", StringComparison.Ordinal),
+            "stale-parameter" => files[path].Replace("`SearchDisabled`", "`RemovedSearchParameter`", StringComparison.Ordinal),
+            "stale-state" => files[path].Replace("| `Ready` |", "| `RemovedReadyState` |", StringComparison.Ordinal),
+            "stale-infrastructure" => files[path].Replace("`CanRetry`", "`RemovedRetry`", StringComparison.Ordinal),
+            "stale-context" => files[path].Replace("`DefaultBody`", "`RemovedDefaultBody`", StringComparison.Ordinal),
+            "stale-type" => files[path].Replace("| `ModuleRoute` | `string?` |", "| `ModuleRoute` | `bool` |", StringComparison.Ordinal),
+            _ => throw new ArgumentException("Unknown synthetic defect.", nameof(defect)),
+        };
+
+        string[] failures = ValidateCurrentContracts(files);
+        failures.ShouldNotBeEmpty();
+        failures.ShouldContain(failure => failure.StartsWith(path + ":", StringComparison.Ordinal));
+        ValidateCurrentContracts(files).ShouldBe(failures);
+        string.Join("\n", failures).ShouldNotContain(ProjectRoot());
+    }
+
+    [Theory]
+    [InlineData("ComponentBase")]
+    [InlineData("IComponent")]
+    [InlineData("CustomBase")]
+    [InlineData("PrimaryConstructor")]
+    [InlineData("SplitPartial")]
+    public void CurrentContractUnclassifiedOrdinaryComponentFails(string baseType)
+    {
+        Dictionary<string, string> files = ReadContractFiles();
+        files["src/Hexalith.FrontComposer.Shell/Components/Synthetic/PlainWidget.cs"] =
+            $"public sealed class PlainWidget : {baseType} {{ }}";
+        if (baseType == "CustomBase")
+        {
+            files["src/Hexalith.FrontComposer.Shell/Components/Synthetic/CustomBase.cs"] =
+                "public abstract class CustomBase : Microsoft.AspNetCore.Components.ComponentBase { }";
+        }
+        if (baseType == "PrimaryConstructor")
+        {
+            files["src/Hexalith.FrontComposer.Shell/Components/Synthetic/PlainWidget.cs"] =
+                "public sealed class PlainWidget() : ComponentBase { }";
+        }
+        if (baseType == "SplitPartial")
+        {
+            files["src/Hexalith.FrontComposer.Shell/Components/Synthetic/PlainWidget.cs"] =
+                "public sealed partial class PlainWidget : ComponentBase { }";
+            files["src/Hexalith.FrontComposer.Shell/Components/Synthetic/PlainWidget.Part.cs"] =
+                "public partial class PlainWidget { }";
+        }
+        ValidateCurrentContracts(files).ShouldContain(
+            "_bmad-output/project-docs/component-inventory.md: unclassified component PlainWidget.");
+    }
+
+    private static string RemoveSection(string text, string heading)
+    {
+        string section = Section(text, heading);
+        section.ShouldNotBeEmpty("The negative fixture must delete an existing complete section.");
+        return text.Replace(heading + section, string.Empty, StringComparison.Ordinal);
+    }
+
+    private static string[] DiscoverComponents(Dictionary<string, string> files)
+    {
+        HashSet<string> componentTypes = new(["ComponentBase", "IComponent", "FluxorComponent", "LayoutComponentBase", "ErrorBoundaryBase", "ErrorBoundary"], StringComparer.Ordinal);
+        HashSet<string> components = files.Keys.Where(path => path.StartsWith("src/Hexalith.FrontComposer.Shell/Components/", StringComparison.Ordinal)
+            && path.EndsWith(".razor", StringComparison.Ordinal)).Select(path => Path.GetFileNameWithoutExtension(path)).ToHashSet(StringComparer.Ordinal);
+        componentTypes.UnionWith(components);
+        Dictionary<string, (bool IsClass, string[] Bases)> declarations = new(StringComparer.Ordinal);
+        foreach (var source in files.Where(file => file.Key.StartsWith("src/Hexalith.FrontComposer.Shell/Components/", StringComparison.Ordinal) && file.Key.EndsWith(".cs", StringComparison.Ordinal)))
+        {
+            foreach (Match declaration in Regex.Matches(source.Value, @"(?m)^\s*(?:(?:public|internal|private|protected|abstract|sealed|partial|static|new)\s+)*(?<kind>class|interface)\s+(?<name>\w+)(?:<[^>{}]+>)?\s*(?:\([^{};]*\))?\s*(?::\s*(?<bases>[^{;]+))?[{;]"))
+            {
+                string bases = Regex.Replace(declaration.Groups["bases"].Value, @"\bwhere\b.*", string.Empty, RegexOptions.Singleline);
+                while (Regex.IsMatch(bases, @"<[^<>]*>"))
+                {
+                    bases = Regex.Replace(bases, @"<[^<>]*>", string.Empty);
+                }
+                string name = declaration.Groups["name"].Value;
+                string[] inheritedTypes = bases.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(baseName => baseName.Split('.').Last()).ToArray();
+                if (declarations.TryGetValue(name, out var previous))
+                {
+                    inheritedTypes = previous.Bases.Union(inheritedTypes, StringComparer.Ordinal).ToArray();
+                }
+                declarations[name] = (declaration.Groups["kind"].Value == "class", inheritedTypes);
+            }
+        }
+        bool changed;
+        do
+        {
+            changed = false;
+            foreach (var declaration in declarations)
+            {
+                if (declaration.Value.Bases.Any(componentTypes.Contains) && componentTypes.Add(declaration.Key))
+                {
+                    changed = true;
+                }
+                if (declaration.Value.IsClass && componentTypes.Contains(declaration.Key))
+                {
+                    components.Add(declaration.Key);
+                }
+            }
+        } while (changed);
+        return components.Order(StringComparer.Ordinal).ToArray();
+    }
+
+    private static Dictionary<string, string> ReadContractFiles()
+        => Directory.EnumerateFiles(Absolute("docs/reference/components"), "*.md")
+            .Concat(Directory.EnumerateFiles(Absolute("src/Hexalith.FrontComposer.Shell/Components"), "*", SearchOption.AllDirectories)
+                .Where(path => path.EndsWith(".cs", StringComparison.Ordinal) || path.EndsWith(".razor", StringComparison.Ordinal)))
+            .Concat(Directory.EnumerateFiles(Absolute("src/Hexalith.FrontComposer.Contracts"), "*.cs", SearchOption.AllDirectories))
+            .Concat(Directory.EnumerateFiles(Absolute("src/Hexalith.FrontComposer.Contracts.UI/Rendering"), "*Context.cs"))
+            .Concat([Absolute("src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionStatus.cs"),
+                Absolute("_bmad-output/project-docs/component-inventory.md"),
+                Absolute("_bmad-output/contracts/fc-doc-component-documentation-2026-06-03.md"), Absolute("docs/toc.yml")])
+            .ToDictionary(Relative, File.ReadAllText, StringComparer.Ordinal);
+
+    private static string[] ValidateCurrentContracts(Dictionary<string, string> files)
+    {
+        const string inventoryPath = "_bmad-output/project-docs/component-inventory.md";
+        const string statusPath = "_bmad-output/contracts/fc-doc-component-documentation-2026-06-03.md";
+        const string indexPath = "docs/reference/components/index.md";
+        List<string> failures = [];
+        string inventory = files[inventoryPath].Split("## H. Current component documentation classifications", StringSplitOptions.None).Last();
+        Dictionary<string, (string Classification, string Page)> rows = new(StringComparer.Ordinal);
+        foreach (Match row in Regex.Matches(inventory, @"(?m)^\| `(?<name>\w+)` \| (?<classification>[^|]+) \| `(?<page>docs/reference/components/[^`]+)` \|"))
+        {
+            rows[row.Groups["name"].Value] = (row.Groups["classification"].Value.Trim(), row.Groups["page"].Value);
+        }
+
+        string[] componentNames = DiscoverComponents(files);
+        Dictionary<string, string> contracts = new(StringComparer.Ordinal);
+        foreach (var source in files.Where(file => file.Key.StartsWith("src/", StringComparison.Ordinal)))
+        {
+            foreach (Match contract in Regex.Matches(source.Value, @"public (?:sealed )?class (?<name>\w+Context)(?:<|\s)|public enum (?<name>\w+State|ProjectionConnectionStatus)\b"))
+            {
+                contracts[contract.Groups["name"].Value] = source.Value;
+            }
+        }
+        Dictionary<string, HashSet<string>> requiredContracts = new(StringComparer.Ordinal);
+        foreach (string name in componentNames)
+        {
+            if (!rows.TryGetValue(name, out var row) || row.Classification is not ("adopter" or "infrastructure"))
+            {
+                failures.Add($"{inventoryPath}: unclassified component {name}.");
+                continue;
+            }
+            if (!files.TryGetValue(row.Page, out string? page) || string.IsNullOrWhiteSpace(page))
+            {
+                failures.Add($"{row.Page}: missing classified component page.");
+                continue;
+            }
+            string sourceText = string.Join("\n", files.Where(file => file.Key.StartsWith("src/Hexalith.FrontComposer.Shell/Components/", StringComparison.Ordinal)
+                && Path.GetFileName(file.Key).Split('.')[0] == name).Select(file => file.Value));
+            if (!requiredContracts.TryGetValue(row.Page, out HashSet<string>? required))
+            {
+                required = new(StringComparer.Ordinal);
+                requiredContracts[row.Page] = required;
+            }
+            required.UnionWith(contracts.Keys.Where(contract => Regex.IsMatch(sourceText, $@"\b{Regex.Escape(contract)}\b")));
+            string parameterSection = Section(page, "## Parameters / slots");
+            string typedSection = Section(parameterSection, $"### `{name}`");
+            if (row.Classification == "infrastructure" && string.IsNullOrEmpty(typedSection))
+            {
+                continue;
+            }
+            string documented = string.IsNullOrEmpty(typedSection) ? parameterSection : typedSection;
+            HashSet<string> actual = new(StringComparer.Ordinal);
+            foreach (var source in files.Where(file => Path.GetFileName(file.Key).Split('.')[0] == name
+                && file.Key.StartsWith("src/Hexalith.FrontComposer.Shell/Components/", StringComparison.Ordinal)))
+                {
+                foreach (Match parameter in Regex.Matches(source.Value, @"\[Parameter[^\]]*\](?:\s*\[[^\]]*\])*\s*public\s+(?<type>[^\r\n{]+?)\s+(?<name>\w+)\s*\{"))
+                {
+                    string parameterName = parameter.Groups["name"].Value;
+                    actual.Add(parameterName);
+                    string parameterType = parameter.Groups["type"].Value.Trim();
+                    string? docRow = documented.Split('\n').FirstOrDefault(line => line.StartsWith('|')
+                        && line.Split('|')[1].Contains($"`{parameterName}`", StringComparison.Ordinal));
+                    if (docRow is null || !docRow.Split('|')[2].Contains($"`{parameterType}`", StringComparison.Ordinal))
+                    {
+                        failures.Add($"{row.Page}: {name}.{parameterName} missing or stale parameter/type.");
+                    }
+                }
+            }
+            foreach (Match parameter in Regex.Matches(documented, @"(?m)^\| (?<names>[^|]+) \| `[^`]+` \|"))
+            {
+                foreach (Match identifier in Regex.Matches(parameter.Groups["names"].Value, @"`(\w+)`"))
+                {
+                    if (!actual.Contains(identifier.Groups[1].Value))
+                    {
+                        failures.Add($"{row.Page}: {name} has stale parameter {identifier.Groups[1].Value}.");
+                    }
+                }
+            }
+        }
+        foreach (string stale in rows.Keys.Except(componentNames, StringComparer.Ordinal).Order(StringComparer.Ordinal))
+        {
+            failures.Add($"{inventoryPath}: stale component classification {stale}.");
+        }
+        foreach (var page in files.Where(file => file.Key.StartsWith("docs/reference/components/", StringComparison.Ordinal)
+            && !file.Key.EndsWith("/index.md", StringComparison.Ordinal)).OrderBy(file => file.Key, StringComparer.Ordinal))
+            {
+            string fileName = Path.GetFileName(page.Key);
+            if (!files[indexPath].Contains($"({fileName})", StringComparison.Ordinal))
+            {
+                failures.Add($"{indexPath}: missing page {fileName}.");
+            }
+            if (!files["docs/toc.yml"].Contains($"href: reference/components/{fileName}", StringComparison.Ordinal))
+            {
+                failures.Add($"docs/toc.yml: missing page {fileName}.");
+            }
+            if (!files[statusPath].Contains($"`{page.Key}` | authored", StringComparison.Ordinal))
+            {
+                failures.Add($"{statusPath}: missing current authored status for {fileName}.");
+            }
+            foreach (string required in requiredContracts.GetValueOrDefault(page.Key) ?? [])
+            {
+                if (!Regex.IsMatch(page.Value, $@"(?m)^### `{Regex.Escape(required)}`\r?$"))
+                {
+                    failures.Add($"{page.Key}: missing source-referenced contract section {required}.");
+                }
+            }
+            foreach (Match contextHeading in Regex.Matches(page.Value, @"(?m)^### `(?<name>\w+Context)`"))
+            {
+                string name = contextHeading.Groups["name"].Value;
+                string? source = contracts.GetValueOrDefault(name);
+                if (source is null)
+                {
+                    failures.Add($"{page.Key}: unresolved context {name}.");
+                    continue;
+                }
+                string documented = Section(page.Value, $"### `{name}`");
+                HashSet<string> expected = new(StringComparer.Ordinal);
+                foreach (Match property in Regex.Matches(source, @"public (?<type>[^\r\n]+?) (?<name>\w+) (?:\{ get; \}|=>[^\r\n]+;)"))
+                {
+                    string propertyName = property.Groups["name"].Value;
+                    expected.Add(propertyName);
+                    string? row = documented.Split('\n').FirstOrDefault(line => line.StartsWith($"| `{propertyName}` |", StringComparison.Ordinal));
+                    if (row is null || !row.Split('|')[2].Contains($"`{property.Groups["type"].Value}`", StringComparison.Ordinal))
+                    {
+                        failures.Add($"{page.Key}: {name}.{propertyName} missing or stale context property/type.");
+                    }
+                }
+                foreach (Match property in Regex.Matches(documented, @"(?m)^\| `(\w+)` \|"))
+                {
+                    if (!expected.Contains(property.Groups[1].Value))
+                    {
+                        failures.Add($"{page.Key}: {name} has stale context property {property.Groups[1].Value}.");
+                    }
+                }
+            }
+            foreach (Match heading in Regex.Matches(page.Value, @"(?m)^### `(?<name>\w+State|ProjectionConnectionStatus)`"))
+            {
+                string name = heading.Groups["name"].Value;
+                if (rows.ContainsKey(name))
+                {
+                    continue;
+                }
+                string? source = contracts.GetValueOrDefault(name);
+                if (source is null)
+                {
+                    failures.Add($"{page.Key}: unresolved state vocabulary {name}.");
+                    continue;
+                }
+                string[] expected = Regex.Matches(source, @"(?m)^    (\w+)(?:\s*=\s*\d+)?,?\s*$")
+                    .Select(match => match.Groups[1].Value).Order(StringComparer.Ordinal).ToArray();
+                string[] actual = Regex.Matches(Section(page.Value, $"### `{name}`"), @"(?m)^\| `(\w+)` \|")
+                    .Select(match => match.Groups[1].Value).Order(StringComparer.Ordinal).ToArray();
+                if (!expected.SequenceEqual(actual, StringComparer.Ordinal))
+                {
+                    failures.Add($"{page.Key}: {name} state vocabulary differs from source.");
+                }
+            }
+        }
+        return failures.Order(StringComparer.Ordinal).ToArray();
+    }
+
+    private static string Section(string text, string heading)
+    {
+        int start = text.IndexOf(heading + "\n", StringComparison.Ordinal);
+        if (start < 0)
+        {
+            start = text.IndexOf(heading + "\r\n", StringComparison.Ordinal);
+        }
+        if (start < 0)
+        {
+            return string.Empty;
+        }
+        int level = heading.TakeWhile(character => character == '#').Count();
+        string remaining = text[(start + heading.Length)..];
+        Match end = Regex.Match(remaining, $@"(?m)^#{{1,{level}}} ");
+        return end.Success ? remaining[..end.Index] : remaining;
+    }
+
     private static string ContractTableRow(string contract, string area) {
         foreach (string line in contract.Split('\n')) {
             string trimmed = line.TrimStart();
