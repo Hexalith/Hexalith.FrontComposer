@@ -71,15 +71,15 @@ The tables describe the public component parameters. Injected services and inter
 |---|---|---|
 | `ChildContent` | `RenderFragment?` | Gets or sets the form children wrapped by the guard. |
 | `EditContext` | `EditContext?` | Gets or sets the edit context exposed by the generated form from `OnEditContextReady`. Required to anchor the first edit; when null the guard is inert. |
-| `CorrelationId` | `string` | Gets or sets the correlation ID bound to the form's lifecycle state so D13 can query `ILifecycleStateService.GetState` for Submitting suppression. |
+| `CorrelationId` | `string` | Command correlation used to suppress the abandonment warning while that operation is Submitting. |
 
 ### `FcDestructiveConfirmationDialog`
 
 | Parameter | Type | Contract |
 |---|---|---|
-| `Title` | `string?` | Gets or sets the dialog title (D12 — falls back to {DisplayLabel}? at the call site when null). |
-| `Body` | `string?` | Gets or sets the dialog body (D12 — falls back to localized "This action cannot be undone." at the call site when null). |
-| `DestructiveLabel` | `string?` | Gets or sets the destructive action button label (D12 — the command's domain-language DisplayLabel). |
+| `Title` | `string?` | Localized dialog title. Generated forms supply the configured confirmation title or a localized question containing the command display label; direct callers must supply a title. |
+| `Body` | `string?` | Localized explanation. Generated forms supply the configured confirmation body or localized "This action cannot be undone." copy; direct callers must supply any body text. |
+| `DestructiveLabel` | `string?` | Destructive action label. Generated forms use the command display label; direct calls without a label display "Confirm". |
 | `OnConfirm` | `EventCallback` | Gets or sets the confirm callback invoked when the user clicks the destructive button. Optional in tests; in production the caller relies on `IDialogService`'s result. |
 | `OnCancel` | `EventCallback` | Gets or sets the cancel callback invoked when the user clicks Cancel or presses Escape. Optional in tests; in production the caller relies on `IDialogService`'s result. |
 
@@ -103,7 +103,7 @@ The tables describe the public component parameters. Injected services and inter
 
 ## Layout (FC-LYT)
 
-The wrapper owns progressive pending feedback, rejection and recovery; the form owns inputs and validation. `FcPendingCommandSummary` bounds visible details with `MaxDetails`. The abandonment guard warns only after the first edit, while the EditContext remains modified and the configured threshold has elapsed. No edit, unmodified input, time below the threshold, Submitting, and wrapper-initiated navigation suppress the warning. Syncing does not suppress it; modified input past the threshold remains protected. Authorization pending/denied and blocked-before-dispatch outcomes must remain distinct from submitted lifecycle entries.
+The wrapper owns progressive pending feedback, rejection and recovery; the form owns inputs and validation. `FcPendingCommandSummary` bounds visible details with `MaxDetails`. The abandonment guard warns only after the first edit, while the EditContext remains modified and `FcShellOptions.FormAbandonmentThresholdSeconds` has elapsed (default 30 seconds, allowed range 5–600). No edit, unmodified input, time below the threshold, Submitting, and wrapper-initiated navigation suppress the warning. Syncing does not suppress it; modified input past the threshold remains protected. Authorization pending/denied and blocked-before-dispatch outcomes must remain distinct from submitted lifecycle entries.
 
 ### `CommandLifecycleState`
 

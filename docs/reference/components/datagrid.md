@@ -17,7 +17,7 @@ slug: reference/components/datagrid/
 The DataGrid surface is the confirmed **FC-TBL** table contract for read-only projection pages. The
 adopter entry point is still the generated projection view: annotate a `partial` read model with
 `[Projection]`, and FrontComposer emits a `FluentDataGrid<T>` page that composes the public DataGrid
-components below. Story 2.8 froze this public surface with
+components below. This public surface is pinned by
 `src/Hexalith.FrontComposer.Shell/PublicAPI.FcTbl.Shipped.txt` and
 `FcTblPackageBoundaryTests`, so component additions, removals, and parameter changes are intentional
 package-boundary events.
@@ -159,18 +159,18 @@ Complete component parameter reference follows. Internal Fluent children are imp
 | `ViewKey` | `string` | Stable per-view key. |
 | `AllColumns` | `IReadOnlyList<ColumnDescriptor>` | Full list of columns in priority-then-declaration order (post-Transform sort); the source generator materialises this from the `Transforms.ColumnModel` IR. |
 | `HiddenColumns` | `IReadOnlyList<string>` | Currently hidden column keys (property names). Typically bound to the CSV under GridViewSnapshot.Filters["__hidden"]. |
-| `MaxVisibleColumns` | `int` | Max columns visible by default. Generator always emits 10 per UX-DR7. |
+| `MaxVisibleColumns` | `int` | Maximum columns visible by default; generated grids supply 10. |
 | `ChildContent` | `RenderFragment<ColumnVisibilityContext>` | Render fragment for the wrapped FluentDataGrid. Receives a `ColumnVisibilityContext` so the data grid can skip rendering hidden columns. |
 
 ### `FcExpandInRowDetail`
 
 | Parameter | Type | Contract |
 |---|---|---|
-| `ViewKey` | `string` | Stable per-view key (D22 ephemeral form). Reserved for future telemetry; carried for parity with sibling components. |
+| `ViewKey` | `string` | Stable key identifying the expanded-detail view, carried for consistency with sibling components. |
 | `HasExpanded` | `bool` | True when the host view has resolved an expanded item for this view-key. Drives the panel render gate. |
 | `ChildContent` | `RenderFragment` | The detail body emitted by the generator (factored EmitDetailRecordBody output). |
 | `DetailPanelAriaLabel` | `string` | Localized aria-label for the outer region landmark (per-row item-name interpolated). |
-| `SuppressedAnnouncement` | `string?` | AC8 D19 — populated by the host view when an expansion is "logically active" (state has the entry) but suppressed (filter has hidden the row). Empty / null suppresses the live-region announcement. Polite assertiveness — read after current utterance. |
+| `SuppressedAnnouncement` | `string?` | Polite announcement supplied when an active expansion is hidden by a filter. Empty or null text suppresses the announcement. |
 | `SuppressStandaloneAnnouncement` | `bool` | Uses the generated view's shared status instead of a standalone live node. |
 | `PanelId` | `string?` | Gets or sets the deterministic element id consumed by the trigger button's aria-controls attribute. When omitted, the component falls back to an instance-local id for standalone use. |
 
@@ -178,7 +178,7 @@ Complete component parameter reference follows. Internal Fluent children are imp
 
 | Parameter | Type | Contract |
 |---|---|---|
-| `ViewKey` | `string` | Stable per-view key (PERSISTED form) — matches the key consumed by `FiltersResetAction` per Story 4-3. |
+| `ViewKey` | `string` | Stable persisted view key, matching the key used by `FiltersResetAction`. |
 | `IsHiddenByFilter` | `bool` | True when the host view detects an expanded row that the current filter predicate has hidden from state.Items. Drives both the render gate and the suppression announcement; false renders nothing. |
 | `IsMissing` | `bool` | Whether the expanded item is absent from the completed visible result, regardless of cause. |
 | `ResultIdentity` | `string?` | Stable filter/result identity for one hidden-detail transition. |

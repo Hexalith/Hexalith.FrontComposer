@@ -32,7 +32,7 @@ The tables describe the public component parameters. Injected services and inter
 
 | Parameter | Type | Contract |
 |---|---|---|
-| `ColumnCount` | `int` | Gets or sets the number of skeleton columns (capped at 8 by the generator to match Story 4.4 prioritizer defaults). |
+| `ColumnCount` | `int` | Number of preview columns; generated views cap this at 8 independently of the grid column-visibility limit. Direct callers supply the count. |
 | `RowCount` | `int` | Gets or sets the number of skeleton rows. Defaults to 5. |
 | `Layout` | `SkeletonLayout` | Gets or sets the layout variant. Default `SkeletonLayout.DataGrid`; DetailRecord renders `SkeletonLayout.Card`; Timeline renders `SkeletonLayout.Timeline`. |
 | `AriaLabel` | `string?` | Gets or sets an accessible label for screen readers. When `null` the component resolves FcProjectionLoadingSkeletonAriaLabel with the projection display label. |
@@ -44,10 +44,10 @@ The tables describe the public component parameters. Injected services and inter
 | Parameter | Type | Contract |
 |---|---|---|
 | `ProjectionType` | `Type` | Gets or sets the projection type this placeholder represents. |
-| `EntityPluralOverride` | `string?` | Gets or sets an optional override for the humanized plural label. When `null` the component resolves `ProjectionType`.Name → humanized → pluralized (simple "s" suffix, English only; French parity deferred to Story 9-5 ICU). |
-| `Role` | `ProjectionRole?` | Gets or sets the projection role emitted by the generator (H4) — drives role-differentiated CTA copy. |
-| `CtaCommandName` | `string?` | Gets or sets an optional explicit command-name override for the CTA. When non-null bypasses [ProjectionEmptyStateCta] attribute discovery; when null the resolver discovers the CTA via attribute or bounded-context fallback per D5. |
-| `SecondaryText` | `string?` | Gets or sets optional secondary empty-state guidance text. When null the component falls back to the {ProjectionFqn}_EmptyStateSecondaryText resource convention (D17); when the convention key is absent, no secondary line renders. |
+| `EntityPluralOverride` | `string?` | Optional localized plural label. When omitted, the projection type name is humanized with a basic English "s" suffix. |
+| `Role` | `ProjectionRole?` | Projection role used to select the empty-state action copy. |
+| `CtaCommandName` | `string?` | Optional action command name. When supplied, bypasses `[ProjectionEmptyStateCta]` discovery; otherwise the resolver uses that attribute or the bounded-context fallback. |
+| `SecondaryText` | `string?` | Optional localized secondary guidance. When omitted, uses the `{ProjectionFqn}_EmptyStateSecondaryText` resource if present; otherwise renders no secondary line. |
 | `SuppressStandaloneStatus` | `bool` | Uses the generated view's shared polite status instead of a second live node. |
 
 ### `FcProjectionFailure`
@@ -118,7 +118,7 @@ No public component parameters. Framework services supply its state.
 | Parameter | Type | Contract |
 |---|---|---|
 | `Slot` | `BadgeSlot` | Gets or sets the semantic slot. Resolves to a Fluent `BadgeColor` + `BadgeAppearance` pair via `SlotAppearanceTable`. Changing this slot at runtime re-resolves the pair on the next render. |
-| `Label` | `string` | Gets or sets the visible badge label. Always rendered — UX-DR30 commitment #1 makes "color is never the sole signal" structurally true. Consumers supply the humanized enum value (typically from HumanizeEnumLabel). |
+| `Label` | `string` | Visible status label, always rendered so status does not depend on color alone. Supply the localized or humanized value. |
 | `ColumnHeader` | `string?` | Gets or sets the optional column-header text used to prefix the aria-label (for example "Status"). When `null` the aria-label falls back to just `Label`. |
 
 ### `FcDesaturatedBadge`

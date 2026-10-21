@@ -14,7 +14,7 @@ slug: reference/components/page-patterns/
 
 ## Overview
 
-Compose page bodies through `FcPageLayout`, `FcPageHeader`, `FcAggregateListPage<TItem>` and `FcAggregateDetailPage<TItem>`. Wrappers own layout and slot placement; domains own queries, data, route policy and copy. Home and Module landing surfaces are framework compositions.
+Compose page bodies through `FcPageLayout`, `FcPageHeader`, `FcAggregateListPage<TItem>` and `FcAggregateDetailPage<TItem>`. Wrappers own layout and slot placement; domains own queries, data, route policy and copy. Adopters can mount the Home and Module landing components documented below; FrontComposer supplies their composition and default behavior.
 
 ## Usage
 

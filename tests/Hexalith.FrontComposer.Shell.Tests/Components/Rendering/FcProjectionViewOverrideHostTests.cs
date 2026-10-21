@@ -1,5 +1,6 @@
 using Bunit;
 
+using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -212,6 +213,8 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
     public void Render_Fault_PreservesGeneratedBodyAndFailsClosedForDiagnostics(string? environmentName)
     {
         Services.RemoveAll<IHostEnvironment>();
+        InMemoryDiagnosticSink sink = new(capacity: 4);
+        Services.AddSingleton<IDiagnosticSink>(sink);
         if (environmentName is not null)
         {
             IHostEnvironment environment = Substitute.For<IHostEnvironment>();
@@ -227,27 +230,42 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
         visible = environmentName == "Development";
 #endif
         cut.FindAll("[data-fc-diagnostic]").Count.ShouldBe(visible ? 1 : 0);
+        sink.RecentEvents.Count.ShouldBe(visible ? 1 : 0);
         cut.Markup.ShouldNotContain("SensitivePayloadSentinel");
         cut.Markup.ShouldNotContain("SensitiveTenantSentinel");
         cut.Markup.ShouldNotContain("SensitiveUserSentinel");
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    public void Render_Level4Fault_TriesCompatibleTemplateThenGeneratedBody(bool templateThrows, bool incompatible)
+    [InlineData(false, false, null)]
+    [InlineData(true, false, null)]
+    [InlineData(false, true, null)]
+    [InlineData(false, false, ProjectionRole.DetailRecord)]
+    public void Render_Level4Fault_TriesCompatibleTemplateThenGeneratedBody(bool templateThrows, bool incompatible, ProjectionRole? role)
     {
+        List<ProjectionTemplateDescriptor> templates =
+        [
+            new(typeof(ViewProjection), role,
+                templateThrows ? typeof(ThrowingFallbackTemplate) : typeof(FallbackTemplate),
+                incompatible ? 999 : ProjectionTemplateContractVersion.Current),
+        ];
+        if (role is not null)
+        {
+            // A lost role selects this any-role template and falls through to generated output.
+            templates.Add(new(typeof(ViewProjection), null, typeof(ThrowingFallbackTemplate), ProjectionTemplateContractVersion.Current));
+        }
         ProjectionTemplateRegistry registry = new(
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ProjectionTemplateRegistry>.Instance,
-            [new ProjectionTemplateAssemblySource([new ProjectionTemplateDescriptor(typeof(ViewProjection), null,
-                templateThrows ? typeof(ThrowingFallbackTemplate) : typeof(FallbackTemplate),
-                incompatible ? 999 : ProjectionTemplateContractVersion.Current)])]);
+            [new ProjectionTemplateAssemblySource(templates)]);
         Services.AddSingleton<IProjectionTemplateRegistry>(registry);
         IRenderedComponent<FcProjectionViewOverrideHost<ViewProjection>> cut = Render<FcProjectionViewOverrideHost<ViewProjection>>(parameters => parameters
             .Add(p => p.Descriptor, NewDescriptor(typeof(ThrowingReplacement)))
-            .Add(p => p.Context, NewContext([new ViewProjection(7, "SensitivePayloadSentinel")])));
+            .Add(p => p.Context, NewContext([new ViewProjection(7, "SensitivePayloadSentinel")], role: role)));
         cut.Markup.ShouldContain(templateThrows || incompatible ? "Generated fallback" : "Level 2 fallback");
+        if (!templateThrows && !incompatible)
+        {
+            cut.FindComponent<FallbackTemplate>().Instance.Context.Role.ShouldBe(role);
+        }
         cut.Markup.ShouldNotContain("SensitivePayloadSentinel");
         _logger.Entries.Count.ShouldBe(1);
     }
@@ -359,11 +377,12 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
         IReadOnlyList<ViewProjection> items,
         string tenant = "tenant",
         string user = "user",
-        RenderFragment? defaultBody = null)
+        RenderFragment? defaultBody = null,
+        ProjectionRole? role = null)
         => new(
             projectionType: typeof(ViewProjection),
             boundedContext: "Tests",
-            role: null,
+            role: role,
             items: items,
             renderContext: new RenderContext(tenant, user, FcRenderMode.Server, DensityLevel.Comfortable, IsReadOnly: false),
             columns: [new ProjectionTemplateColumnDescriptor("Name", "Name", null, null)],
