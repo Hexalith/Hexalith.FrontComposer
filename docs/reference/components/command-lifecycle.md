@@ -73,13 +73,15 @@ The tables describe the public component parameters. Injected services and inter
 | `EditContext` | `EditContext?` | Gets or sets the edit context exposed by the generated form from `OnEditContextReady`. Required to anchor the first edit; when null the guard is inert. |
 | `CorrelationId` | `string` | Command correlation used to suppress the abandonment warning while that operation is Submitting. |
 
+The guard also consumes a boolean cascade named `WrapperInitiatedNavigation`. A wrapper sets it through `CascadingValue` with `Name="WrapperInitiatedNavigation"` and a true value while initiating its own navigation, so the guard yields without prompting. This is a named cascading value, separate from the explicit component parameters above.
+
 ### `FcDestructiveConfirmationDialog`
 
 | Parameter | Type | Contract |
 |---|---|---|
-| `Title` | `string?` | Localized dialog title. Generated forms supply the configured confirmation title or a localized question containing the command display label; direct callers must supply a title. |
-| `Body` | `string?` | Localized explanation. Generated forms supply the configured confirmation body or localized "This action cannot be undone." copy; direct callers must supply any body text. |
-| `DestructiveLabel` | `string?` | Destructive action label. Generated forms use the command display label; direct calls without a label display "Confirm". |
+| `Title` | `string?` | Dialog title. Generated forms pass `[Destructive(ConfirmationTitle = …)]` text literally; without configured text, they use the shell-localized title template with the command display label. Adopters own localization of configured attribute text; direct callers must supply their own localized title. |
+| `Body` | `string?` | Dialog explanation. Generated forms pass `[Destructive(ConfirmationBody = …)]` text literally; without configured text, they use the shell-localized default body. Adopters own localization of configured attribute text; direct callers must supply any localized body text. |
+| `DestructiveLabel` | `string?` | Destructive action label. Generated forms use the command display label. Direct callers own localization; a null label displays the fixed English literal "Confirm". |
 | `OnConfirm` | `EventCallback` | Gets or sets the confirm callback invoked when the user clicks the destructive button. Optional in tests; in production the caller relies on `IDialogService`'s result. |
 | `OnCancel` | `EventCallback` | Gets or sets the cancel callback invoked when the user clicks Cancel or presses Escape. Optional in tests; in production the caller relies on `IDialogService`'s result. |
 
@@ -92,6 +94,8 @@ The tables describe the public component parameters. Injected services and inter
 | `AnnouncementSurface` | `string?` | Gets or sets the shared surface used by a generated command form. |
 | `OwnsSurfaceStatus` | `bool` | Gets or sets whether this visible control owns the shared status node for a hidden form. |
 
+Direct callers capture the component with `@ref` and call `PresentAsync()` for each blocked attempt; setting parameters alone does not present the outcome. `ClearAsync()` withdraws it, for example when a later attempt is admitted. The read-only `IsBlocked` property reports whether an outcome is currently presented.
+
 ### `FcValidationSummary`
 
 | Parameter | Type | Contract |
@@ -101,9 +105,11 @@ The tables describe the public component parameters. Injected services and inter
 | `FormLevelErrors` | `IReadOnlyList<string>` | Gets or sets support-safe form-level errors that have no field target. |
 | `SummaryId` | `string` | Gets or sets the stable summary DOM identifier. |
 
+Direct callers capture the component with `@ref` and call `ShowAndFocusAsync(FcValidationSummaryKind)` to show the current errors and schedule summary focus; setting parameters alone leaves it hidden. The two supported kinds are `ClientValidation` for a client validation attempt blocked before dispatch and `MappedServerRejection` for an authoritative rejection with mapped field errors. `HideAsync()` hides the summary without clearing the underlying validation messages.
+
 ## Layout (FC-LYT)
 
-The wrapper owns progressive pending feedback, rejection and recovery; the form owns inputs and validation. `FcPendingCommandSummary` bounds visible details with `MaxDetails`. The abandonment guard warns only after the first edit, while the EditContext remains modified and `FcShellOptions.FormAbandonmentThresholdSeconds` has elapsed (default 30 seconds, allowed range 5–600). No edit, unmodified input, time below the threshold, Submitting, and wrapper-initiated navigation suppress the warning. Syncing does not suppress it; modified input past the threshold remains protected. Authorization pending/denied and blocked-before-dispatch outcomes must remain distinct from submitted lifecycle entries.
+The wrapper owns progressive pending feedback, rejection and recovery; the form owns inputs and validation. `FcPendingCommandSummary` bounds visible details with `MaxDetails`. The abandonment guard warns only after the first edit, while the EditContext remains modified and `FcShellOptions.FormAbandonmentThresholdSeconds` has elapsed (default 30 seconds, allowed range 5–600). Startup validation also requires `FormAbandonmentThresholdSeconds * 1000 > StillSyncingThresholdMs`; equality or a smaller value fails startup even within that range. No edit, unmodified input, time below the threshold, Submitting, and wrapper-initiated navigation suppress the warning. Syncing does not suppress it; modified input past the threshold remains protected. Authorization pending/denied and blocked-before-dispatch outcomes must remain distinct from submitted lifecycle entries.
 
 ### `CommandLifecycleState`
 

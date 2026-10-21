@@ -6,6 +6,9 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Governance;
@@ -437,33 +440,63 @@ public sealed class CiGovernanceTests {
         // Story 15.2 review D1: Release lanes compile out `#if DEBUG` diagnostic gates and their
         // test branches. Pin the separate Debug job so it cannot silently become Release, advisory
         // or empty.
-        string quality = StripYamlComments(File.ReadAllText(Path.Combine(RepositoryRoot(), ".github/workflows/quality.yml")))
+        string root = RepositoryRoot();
+        string quality = StripYamlComments(File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml")))
             .Replace("\r\n", "\n", StringComparison.Ordinal);
         string job = ExtractJobBlock(quality, "debug-gated-tests");
         job.ShouldNotBeNullOrEmpty();
-        Regex.IsMatch(job, @"^[ \t]*if[ \t]*:", RegexOptions.Multiline).ShouldBeFalse();
+        int stepsStart = job.IndexOf("\n    steps:", StringComparison.Ordinal);
+        stepsStart.ShouldBeGreaterThan(0);
+        Regex.IsMatch(job[..stepsStart], @"^[ \t]*if[ \t]*:", RegexOptions.Multiline).ShouldBeFalse();
         job.ShouldNotContain("continue-on-error:");
         job.ShouldContain("git -c submodule.recurse=false submodule update --init references/Hexalith.Builds");
         job.ShouldNotContain("--recursive");
-        ExtractNamedStep(job, "Build Debug Shell tests").ShouldContain(
+        string build = ExtractNamedStep(job, "Build Debug Shell tests");
+        build.ShouldContain(
             "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Debug");
+        build.ShouldNotContain("\n        if:");
         string run = ExtractNamedStep(job, "Run DEBUG-gated Shell test classes");
         run.ShouldContain("DiffEngine_Disabled: true");
         run.ShouldContain("--configuration Debug --no-build");
-        string[] debugGatedClasses = [
-            "Components.Layout.FrontComposerShellTests",
-            "Components.Rendering.FcProjectionViewOverrideHostTests",
-            "Components.Rendering.FcProjectionTemplateHostTests",
-            "Components.Rendering.FcFieldSlotHostTests",
-            "Extensions.AddFrontComposerDevModeExtensionsTests",
-        ];
-        foreach (string debugGatedClass in debugGatedClasses) {
-            run.ShouldContain("--filter-class Hexalith.FrontComposer.Shell.Tests." + debugGatedClass);
-        }
+        run.ShouldNotContain("--ignore-exit-code");
+        run.ShouldNotContain("|| true");
+        run.ShouldNotContain("\n        if:");
+        string[] workflowClasses = [.. Regex.Matches(run, @"--filter-class\s+(?<identity>\S+)")
+            .Select(match => match.Groups["identity"].Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+        string[] debugGatedClasses = [.. Directory
+            .EnumerateFiles(Path.Combine(root, "tests", "Hexalith.FrontComposer.Shell.Tests"), "*.cs", SearchOption.AllDirectories)
+            .Where(static file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Select(File.ReadAllText)
+            .Where(static source => Regex.IsMatch(source, @"^[ \t]*#if[ \t]+!?DEBUG\b", RegexOptions.Multiline | RegexOptions.CultureInvariant))
+            // Parse both builds so a whole class inside either directive remains discoverable.
+            .SelectMany(static source => new[] {
+                CSharpSyntaxTree.ParseText(source).GetRoot(),
+                CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(preprocessorSymbols: ["DEBUG"])).GetRoot(),
+            })
+            .SelectMany(static syntax => syntax.DescendantNodes().OfType<ClassDeclarationSyntax>())
+            .Where(static declaration => !declaration.Ancestors().OfType<TypeDeclarationSyntax>().Any())
+            .Select(static declaration => string.Join(".", declaration.Ancestors()
+                .OfType<BaseNamespaceDeclarationSyntax>().Reverse().Select(static ns => ns.Name.ToString()))
+                + "." + declaration.Identifier.ValueText)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+        debugGatedClasses.ShouldNotBeEmpty("the Debug lane must cover source classes with DEBUG-dependent assertions");
+        workflowClasses.ShouldBe(debugGatedClasses,
+            "every DEBUG-dependent Shell test class must be selected by the Debug lane, and vice versa");
 
         string evidence = ExtractNamedStep(job, "Verify DEBUG-gated MTP evidence");
         evidence.ShouldContain("--results-dir ./TestResults/debug-gated");
+        evidence.ShouldContain("--expected-trx-files 1");
         evidence.ShouldContain("--require-tests");
+        evidence.ShouldNotContain("\n        if:");
+
+        string upload = ExtractNamedStep(job, "Upload DEBUG-gated test results");
+        upload.ShouldContain("if: always()");
+        upload.ShouldContain("uses: actions/upload-artifact@");
+        upload.ShouldContain("path: 'TestResults/debug-gated/**'");
     }
 
     [Fact]
