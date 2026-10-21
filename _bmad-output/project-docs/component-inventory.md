@@ -208,13 +208,13 @@ This additive classification preserves the accepted scan above. Adopter rows res
 | `FcProjectionSubtitle` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
 | `FcProjectionTemplateHost` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
 | `FcProjectionViewOverrideHost` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
-| `FcRouteBodyLayout` | infrastructure | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcRouteBodyLayout` | adopter | `docs/reference/components/front-composer-shell.md` | FrontComposer |
 | `FcRouteFailureHeading` | infrastructure | `docs/reference/components/page-patterns.md` | FrontComposer |
-| `FcRouteFocus` | infrastructure | `docs/reference/components/page-patterns.md` | FrontComposer |
-| `FcRouteUnavailable` | infrastructure | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcRouteFocus` | adopter | `docs/reference/components/front-composer-shell.md` | FrontComposer |
+| `FcRouteUnavailable` | adopter | `docs/reference/components/front-composer-shell.md` | FrontComposer |
 | `FcScopeBlocked` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
 | `FcSettingsButton` | infrastructure | `docs/reference/components/settings.md` | FrontComposer |
-| `FcSettingsDialog` | adopter | `docs/reference/components/settings.md` | FrontComposer |
+| `FcSettingsDialog` | infrastructure | `docs/reference/components/settings.md` | FrontComposer |
 | `FcSlowQueryNotice` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
 | `FcStatusBadge` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
 | `FcStatusFilterChips` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |

@@ -58,6 +58,8 @@ slots keep their established order, and newer accessibility/brand parameters are
 metadata-order compatibility. All slots are optional render fragments except `AppTitle` (a string);
 leaving a slot `null` triggers the documented default. Internal Fluent children are implementation details.
 
+### `FrontComposerShell`
+
 | Parameter | Type | Default when `null` |
 |---|---|---|
 | `HeaderStart` | `RenderFragment?` | Optional content after the always-present `FcHamburgerToggle` and before the app title. |
@@ -80,6 +82,23 @@ sidebar even with registered domains, pass an empty fragment to `Navigation`.
 > **Surface stability:** this 12-parameter list is locked by `FrontComposerShellParameterSurfaceTests`.
 > Additions must be append-only; no parameter may be removed, renamed, or retyped without a major
 > version bump.
+
+### `FcRouteFocus`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `RouteKey` | `string` | Current route URI; changing it reruns route-heading focus after content renders. |
+| `FocusHeading` | `bool` | Defaults to true. Set false when `FcRouteUnavailable` owns heading focus. |
+
+### `FcRouteUnavailable`
+
+No public component parameters. Mount it in the router's unavailable branch; framework services supply localized unavailable content and heading focus.
+
+### `FcRouteBodyLayout`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `Body` | `RenderFragment?` | Inherited from `LayoutComponentBase`; renders routed content inside the existing shell without adding another shell or main landmark. |
 
 ## Layout (FC-LYT)
 
@@ -182,6 +201,12 @@ The route-focus and page-search scripts read markers that the host router render
   a denied page settles as a failed navigation instead of a success.
 - `data-fc-route-authorizing="true"` marks the authorizing view, so route focus extends its
   heading deadline while authorization is pending.
+
+Before using this router, remove shell-bearing `@layout MainLayout` declarations from routed pages
+and inherited `_Imports.razor` files, or replace them with `@layout FcRouteBodyLayout`. Apply the
+same rule to explicit `LayoutAttribute` declarations and their layout chains. A page's
+`LayoutAttribute` overrides `AuthorizeRouteView.DefaultLayout`; retaining a shell-bearing page
+layout would nest another shell inside the outer `LayoutView`.
 
 A minimal router that satisfies this contract:
 

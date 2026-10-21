@@ -272,19 +272,25 @@ function Assert-ComponentDocumentation([System.Collections.Generic.List[string]]
         if ($row.Classification -eq 'infrastructure' -and [string]::IsNullOrEmpty($typed)) { continue }
         if (-not [string]::IsNullOrEmpty($typed)) { $parameters = $typed }
         $actual = @{}
-        foreach ($source in @($sources | Where-Object { $_.Name.Split('.')[0] -eq $name })) {
-            $text = Get-Content -LiteralPath $source.FullName -Raw
-            foreach ($parameter in [regex]::Matches($text, '\[Parameter[^\]]*\](?:\s*\[[^\]]*\])*\s*public\s+(?<type>[^\r\n{]+?)\s+(?<name>\w+)\s*\{')) {
-                $parameterName = $parameter.Groups['name'].Value
-                $parameterType = $parameter.Groups['type'].Value.Trim()
-                $actual[$parameterName] = $true
-                $docRows = @($parameters -split "\r?\n" | Where-Object { $_.StartsWith('|') -and ($_ -split '\|')[1].Contains('`' + $parameterName + '`') })
-                if ($docRows.Count -eq 0 -or -not (($docRows[0] -split '\|')[2].Contains('`' + $parameterType + '`'))) {
-                    Add-Failure $Failures "$($row.Page): $name.$parameterName missing or stale parameter/type."
-                }
+        if ([regex]::IsMatch($sourceText, '(?m)^@inherits\s+(?:Microsoft\.AspNetCore\.Components\.)?LayoutComponentBase\b')) { $actual['Body'] = 'RenderFragment?' }
+        foreach ($parameter in [regex]::Matches($sourceText, '\[Parameter[^\]]*\](?:\s*\[[^\]]*\])*\s*public\s+(?<type>[^\r\n{]+?)\s+(?<name>\w+)\s*\{')) {
+            $actual[$parameter.Groups['name'].Value] = $parameter.Groups['type'].Value.Trim()
+        }
+        foreach ($parameterName in @($actual.Keys | Sort-Object)) {
+            $parameterType = $actual[$parameterName]
+            $docRows = @($parameters -split "\r?\n" | Where-Object { $_.StartsWith('|') -and ($_ -split '\|')[1].Contains('`' + $parameterName + '`') })
+            $documentedNames = @()
+            $documentedTypes = @()
+            if ($docRows.Count -gt 0) {
+                $documentedNames = @([regex]::Matches(($docRows[0] -split '\|')[1], '`(\w+)`') | ForEach-Object { $_.Groups[1].Value })
+                $documentedTypes = @([regex]::Matches(($docRows[0] -split '\|')[2], '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
+            }
+            $parameterIndex = [array]::IndexOf($documentedNames, $parameterName)
+            if ($parameterIndex -lt 0 -or $documentedNames.Count -ne $documentedTypes.Count -or $documentedTypes[$parameterIndex] -cne $parameterType) {
+                Add-Failure $Failures "$($row.Page): $name.$parameterName missing or stale parameter/type."
             }
         }
-        foreach ($parameter in [regex]::Matches($parameters, '(?m)^\| (?<names>[^|]+) \| `[^`]+` \|')) {
+        foreach ($parameter in [regex]::Matches($parameters, '(?m)^\| (?<names>[^|]+) \| (?<types>[^|]+) \|')) {
             foreach ($identifier in [regex]::Matches($parameter.Groups['names'].Value, '`(\w+)`')) {
                 if (-not $actual.ContainsKey($identifier.Groups[1].Value)) {
                     Add-Failure $Failures "$($row.Page): $name has stale parameter $($identifier.Groups[1].Value)."
@@ -315,7 +321,7 @@ function Assert-ComponentDocumentation([System.Collections.Generic.List[string]]
             $source = $contracts[$name]
             $documented = Get-ComponentSection $page ('### `' + $name + '`')
             $expected = @{}
-            foreach ($property in [regex]::Matches($source, 'public (?<type>[^\r\n]+?) (?<name>\w+) (?:\{ get; \}|=>[^\r\n]+;)')) {
+            foreach ($property in [regex]::Matches($source, 'public (?<type>[^\r\n]+?) (?<name>\w+) (?:\{\s*get;\s*(?:(?:(?:private|protected|internal)\s+)*(?:set|init);\s*)?\}|=>[^\r\n]+;)')) {
                 $propertyName = $property.Groups['name'].Value
                 $expected[$propertyName] = $true
                 $docRows = @($documented -split "\r?\n" | Where-Object { $_.StartsWith('| `' + $propertyName + '` |') })
@@ -332,7 +338,7 @@ function Assert-ComponentDocumentation([System.Collections.Generic.List[string]]
             if ($rows.ContainsKey($name)) { continue }
             if (-not $contracts.ContainsKey($name)) { Add-Failure $Failures "${rel}: unresolved state vocabulary $name."; continue }
             $stateSource = $contracts[$name]
-            $expected = @([regex]::Matches($stateSource, '(?m)^    (\w+)(?:\s*=\s*\d+)?,?\s*$') | ForEach-Object { $_.Groups[1].Value } | Sort-Object)
+            $expected = @([regex]::Matches($stateSource, '(?m)^    (\w+)(?=[\t ]*(?:=|,|\r?$))') | ForEach-Object { $_.Groups[1].Value } | Sort-Object)
             $actualStates = @([regex]::Matches((Get-ComponentSection $page ('### `' + $name + '`')), '(?m)^\| `(\w+)` \|') | ForEach-Object { $_.Groups[1].Value } | Sort-Object)
             if (($expected -join ',') -cne ($actualStates -join ',')) { Add-Failure $Failures "${rel}: $name state vocabulary differs from source." }
         }

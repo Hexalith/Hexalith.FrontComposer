@@ -137,6 +137,8 @@ public sealed class FcProjectionTemplateHostTests : BunitContext {
     public void Render_Fault_PreservesGeneratedBodyAndFailsClosedForDiagnostics(string? environmentName)
     {
         Services.RemoveAll<IHostEnvironment>();
+        InMemoryDiagnosticSink sink = new(capacity: 4);
+        Services.AddSingleton<IDiagnosticSink>(sink);
         if (environmentName is not null)
         {
             IHostEnvironment environment = Substitute.For<IHostEnvironment>();
@@ -152,6 +154,7 @@ public sealed class FcProjectionTemplateHostTests : BunitContext {
         visible = environmentName == "Development";
 #endif
         cut.FindAll("[data-fc-diagnostic]").Count.ShouldBe(visible ? 1 : 0);
+        sink.RecentEvents.Count.ShouldBe(visible ? 1 : 0);
         cut.Markup.ShouldNotContain("SensitivePayloadSentinel");
         cut.Markup.ShouldNotContain("SensitiveTenantSentinel");
         cut.Markup.ShouldNotContain("SensitiveUserSentinel");

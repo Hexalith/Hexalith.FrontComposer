@@ -150,7 +150,7 @@ Resolution selects a compatible Level 4 replacement, then compatible Level 2 tem
 
 Registries skip incompatible major versions under the existing `LogAndSkip` default. `FailClosedOnMajorMismatch` rejects startup instead; minor drift remains selectable with rebuild guidance. Do not infer a policy change from render-fault recovery. Registry descriptors can be cached; contexts, data, culture and rendered fragments cannot.
 
-Diagnostics and Retry panels require a DEBUG build and an explicitly registered Development environment. Production, Staging, Release and missing environment hide them. Generated fallback remains usable in every combination. Retry retains the existing boundary recovery behavior; Level 4 also recovers when its descriptor or render context changes. Items-only churn does not create a new fault/log episode.
+Diagnostic panels, Retry controls and `IDiagnosticSink` events require `Hexalith.FrontComposer.Shell` itself to be compiled with `DEBUG`, plus an `IHostEnvironment` registered in DI whose environment is Development. The published Release NuGet package cannot expose them, even when the adopter application is built in Debug or runs in Development. Production, Staging and missing `IHostEnvironment` fail closed; registering only `IWebAssemblyHostEnvironment` in a WebAssembly host does not satisfy this gate. Generated fallback remains usable in every combination. Retry retains the existing boundary recovery behavior; Level 4 also recovers when its descriptor or render context changes. Items-only churn does not create a new fault/log episode.
 
 ## Accessibility (FC-A11Y)
 

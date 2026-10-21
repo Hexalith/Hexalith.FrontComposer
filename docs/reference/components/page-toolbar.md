@@ -78,7 +78,7 @@ Render the toolbar through the aggregate-list toolbar slot:
 | `AriaLabel` | `string` | Accessible name for the row with `role="toolbar"`. |
 | `Class` | `string?` | Optional root CSS class for page-specific layout hooks. |
 | `SearchValue` / `SearchValueChanged` | `string?` / `EventCallback<string?>` | Caller-owned search state. |
-| `SearchInputId` | `string` | Stable input id; use unique ids when composing multiple toolbars. |
+| `SearchInputId` | `string` | Stable input id; keep it unique within the page. The `/` shortcut requires exactly one eligible search. |
 | `SearchDisabled` | `bool` | Disables search and excludes it from the `/` page-search shortcut. |
 | `SearchPlaceholder` | `string?` | Search input placeholder text. |
 | `SearchAriaLabel` | `string` | Search input accessible name. |
@@ -111,7 +111,7 @@ switch together.
 The component does not change `FcPageHeader` landmarks. In aggregate-list pages it composes through
 the existing `Toolbar` slot, which is forwarded to `FcPageHeader.Actions`.
 
-The `/` shortcut targets an enabled visible page search outside editable controls; disabled or hidden/inactive-panel searches are ineligible. Callers own search filtering, debounce, persistence and local toolbar tab state.
+The `/` shortcut acts only when the current route has exactly one eligible page search and focus is outside editable controls. It does nothing while the route is authorizing, when there is no eligible search, or when multiple eligible searches exist. Disabled or hidden/inactive-panel searches are ineligible. Callers own search filtering, debounce, persistence and local toolbar tab state.
 
 ## Accessibility (FC-A11Y)
 

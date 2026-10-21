@@ -64,14 +64,13 @@ for the current session but skips storage, so preferences do not leak across sco
 | `FcDensityPreviewPanel` | `Density` | Required density to render in the preview specimen. |
 | `FcDensityPreviewPanel` | `ShowForcedViewportBadge` | Shows the preview-only badge when a narrow viewport forces Comfortable density while another density is selected. |
 
-`FcSettingsDialog` does not expose adopter slots. It is framework chrome, not a page-level extension
-surface. Use shell options and localization for supported customization.
+`FcSettingsDialog` is framework chrome opened by the settings launcher; it exposes no adopter slots. Use shell options and localization for supported customization.
 
 Complete component parameter reference follows. Internal Fluent children are implementation details.
 
 ### `FcSettingsDialog`
 
-No public component parameters. Framework services supply its state.
+No explicit component parameters. Fluent supplies the cascaded `Dialog` property (`IDialogInstance?`) to close the hosted dialog; this is framework wiring.
 
 ### `FcThemeToggle`
 
@@ -82,7 +81,7 @@ No public component parameters. Framework services supply its state.
 | Parameter | Type | Contract |
 |---|---|---|
 | `Density` | `DensityLevel` | The density level to render the specimen at. Drives the local data-fc-density wrapper. |
-| `ShowForcedViewportBadge` | `bool` | Whether to render the "Preview only — Comfortable is active" overlay badge (D14 amendment). |
+| `ShowForcedViewportBadge` | `bool` | Whether to show the preview-only badge when the viewport forces Comfortable density. |
 
 ## Layout (FC-LYT)
 

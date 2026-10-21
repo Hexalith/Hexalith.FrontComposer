@@ -242,8 +242,17 @@ public sealed partial class FcDocComponentDocumentationContractTests {
     [InlineData("unindexed", "docs/reference/components/index.md")]
     [InlineData("unclassified", "_bmad-output/project-docs/component-inventory.md")]
     [InlineData("stale-parameter", "docs/reference/components/page-toolbar.md")]
+    [InlineData("removed-toolbar-search-callback", "docs/reference/components/page-toolbar.md")]
+    [InlineData("removed-toolbar-tab-callback", "docs/reference/components/page-toolbar.md")]
+    [InlineData("removed-page-tab-callback", "docs/reference/components/page-tabs.md")]
     [InlineData("stale-state", "docs/reference/components/page-patterns.md")]
     [InlineData("stale-type", "docs/reference/components/page-tabs.md")]
+    [InlineData("swapped-grouped-types", "docs/reference/components/page-toolbar.md")]
+    [InlineData("added-init-property", "docs/reference/components/customization.md")]
+    [InlineData("added-set-property", "docs/reference/components/customization.md")]
+    [InlineData("added-expression-state", "docs/reference/components/page-patterns.md")]
+    [InlineData("stale-route-focus", "docs/reference/components/front-composer-shell.md")]
+    [InlineData("stale-route-body", "docs/reference/components/front-composer-shell.md")]
     [InlineData("stale-context", "docs/reference/components/customization.md")]
     [InlineData("stale-infrastructure", "docs/reference/components/customization.md")]
     [InlineData("missing-view-context", "docs/reference/components/customization.md")]
@@ -255,10 +264,13 @@ public sealed partial class FcDocComponentDocumentationContractTests {
     [InlineData("missing-badge-states", "docs/reference/components/projection-status.md")]
     public void CurrentContractRejectsDeterministicNegativeFixtures(string defect, string path)
     {
+        ArgumentNullException.ThrowIfNull(defect);
         Dictionary<string, string> files = ReadContractFiles();
         files[path] = defect switch
         {
             "missing-page" => string.Empty,
+            "removed-toolbar-search-callback" or "removed-toolbar-tab-callback" or "removed-page-tab-callback"
+                or "added-init-property" or "added-set-property" or "added-expression-state" => files[path],
             "missing-view-context" => RemoveSection(files[path], "### `ProjectionViewContext`"),
             "missing-template-context" => RemoveSection(files[path], "### `ProjectionTemplateContext`"),
             "missing-slot-context" => RemoveSection(files[path], "### `FieldSlotContext`"),
@@ -272,13 +284,46 @@ public sealed partial class FcDocComponentDocumentationContractTests {
             "stale-state" => files[path].Replace("| `Ready` |", "| `RemovedReadyState` |", StringComparison.Ordinal),
             "stale-infrastructure" => files[path].Replace("`CanRetry`", "`RemovedRetry`", StringComparison.Ordinal),
             "stale-context" => files[path].Replace("`DefaultBody`", "`RemovedDefaultBody`", StringComparison.Ordinal),
+            "swapped-grouped-types" => files[path].Replace("| `SearchValue` / `SearchValueChanged` | `string?` / `EventCallback<string?>` |",
+                "| `SearchValue` / `SearchValueChanged` | `EventCallback<string?>` / `string?` |", StringComparison.Ordinal),
+            "stale-route-focus" => files[path].Replace("`FocusHeading`", "`RemovedFocusHeading`", StringComparison.Ordinal),
+            "stale-route-body" => files[path].Replace("| `Body` | `RenderFragment?` |", "| `RemovedBody` | `RenderFragment?` |", StringComparison.Ordinal),
             "stale-type" => files[path].Replace("| `ModuleRoute` | `string?` |", "| `ModuleRoute` | `bool` |", StringComparison.Ordinal),
             _ => throw new ArgumentException("Unknown synthetic defect.", nameof(defect)),
         };
 
+        if (defect.StartsWith("removed-", StringComparison.Ordinal))
+        {
+            string component = defect == "removed-page-tab-callback" ? "FcPageTabs" : "FcPageToolbar";
+            string parameter = defect == "removed-toolbar-search-callback" ? "SearchValueChanged" : "ActiveTabIdChanged";
+            string sourcePath = $"src/Hexalith.FrontComposer.Shell/Components/Layout/{component}.razor.cs";
+            string original = files[sourcePath];
+            files[sourcePath] = Regex.Replace(original,
+                $@"\[Parameter\]\s+public EventCallback<string\?> {parameter} \{{ get; set; \}}", string.Empty);
+            files[sourcePath].ShouldNotBe(original, "The fixture must remove an existing callback parameter.");
+        }
+        if (defect is "added-init-property" or "added-set-property")
+        {
+            const string sourcePath = "src/Hexalith.FrontComposer.Contracts.UI/Rendering/ProjectionViewContext.cs";
+            string accessor = defect == "added-init-property" ? "init" : "set";
+            files[sourcePath] = files[sourcePath].Insert(files[sourcePath].LastIndexOf('}'),
+                $"    public string? AddedContextMember {{ get; {accessor}; }}\n");
+        }
+        if (defect == "added-expression-state")
+        {
+            const string sourcePath = "src/Hexalith.FrontComposer.Contracts/Rendering/FcAggregateDetailState.cs";
+            files[sourcePath] = files[sourcePath].Insert(files[sourcePath].LastIndexOf('}'),
+                "    AddedEnumMember = 1 << 20,\n");
+        }
         string[] failures = ValidateCurrentContracts(files);
         failures.ShouldNotBeEmpty();
         failures.ShouldContain(failure => failure.StartsWith(path + ":", StringComparison.Ordinal));
+        if (defect.StartsWith("removed-", StringComparison.Ordinal))
+        {
+            string component = defect == "removed-page-tab-callback" ? "FcPageTabs" : "FcPageToolbar";
+            string parameter = defect == "removed-toolbar-search-callback" ? "SearchValueChanged" : "ActiveTabIdChanged";
+            failures.ShouldContain($"{path}: {component} has stale parameter {parameter}.");
+        }
         ValidateCurrentContracts(files).ShouldBe(failures);
         string.Join("\n", failures).ShouldNotContain(ProjectRoot());
     }
@@ -428,28 +473,35 @@ public sealed partial class FcDocComponentDocumentationContractTests {
                 continue;
             }
             string documented = string.IsNullOrEmpty(typedSection) ? parameterSection : typedSection;
-            HashSet<string> actual = new(StringComparer.Ordinal);
-            foreach (var source in files.Where(file => Path.GetFileName(file.Key).Split('.')[0] == name
-                && file.Key.StartsWith("src/Hexalith.FrontComposer.Shell/Components/", StringComparison.Ordinal)))
+            Dictionary<string, string> actual = new(StringComparer.Ordinal);
+            if (Regex.IsMatch(sourceText, @"(?m)^@inherits\s+(?:Microsoft\.AspNetCore\.Components\.)?LayoutComponentBase\b"))
+            {
+                actual["Body"] = "RenderFragment?";
+            }
+            foreach (Match parameter in Regex.Matches(sourceText, @"\[Parameter[^\]]*\](?:\s*\[[^\]]*\])*\s*public\s+(?<type>[^\r\n{]+?)\s+(?<name>\w+)\s*\{"))
+            {
+                actual[parameter.Groups["name"].Value] = parameter.Groups["type"].Value.Trim();
+            }
+            foreach (var parameter in actual)
+            {
+                string? docRow = documented.Split('\n').FirstOrDefault(line => line.StartsWith('|')
+                    && line.Split('|')[1].Contains($"`{parameter.Key}`", StringComparison.Ordinal));
+                string[] documentedNames = docRow is null ? [] : Regex.Matches(docRow.Split('|')[1], @"`(\w+)`")
+                    .Select(match => match.Groups[1].Value).ToArray();
+                string[] documentedTypes = docRow is null ? [] : Regex.Matches(docRow.Split('|')[2], @"`([^`]+)`")
+                    .Select(match => match.Groups[1].Value).ToArray();
+                int parameterIndex = Array.IndexOf(documentedNames, parameter.Key);
+                if (parameterIndex < 0 || documentedNames.Length != documentedTypes.Length
+                    || !string.Equals(documentedTypes[parameterIndex], parameter.Value, StringComparison.Ordinal))
                 {
-                foreach (Match parameter in Regex.Matches(source.Value, @"\[Parameter[^\]]*\](?:\s*\[[^\]]*\])*\s*public\s+(?<type>[^\r\n{]+?)\s+(?<name>\w+)\s*\{"))
-                {
-                    string parameterName = parameter.Groups["name"].Value;
-                    actual.Add(parameterName);
-                    string parameterType = parameter.Groups["type"].Value.Trim();
-                    string? docRow = documented.Split('\n').FirstOrDefault(line => line.StartsWith('|')
-                        && line.Split('|')[1].Contains($"`{parameterName}`", StringComparison.Ordinal));
-                    if (docRow is null || !docRow.Split('|')[2].Contains($"`{parameterType}`", StringComparison.Ordinal))
-                    {
-                        failures.Add($"{row.Page}: {name}.{parameterName} missing or stale parameter/type.");
-                    }
+                    failures.Add($"{row.Page}: {name}.{parameter.Key} missing or stale parameter/type.");
                 }
             }
-            foreach (Match parameter in Regex.Matches(documented, @"(?m)^\| (?<names>[^|]+) \| `[^`]+` \|"))
+            foreach (Match parameter in Regex.Matches(documented, @"(?m)^\| (?<names>[^|]+) \| (?<types>[^|]+) \|"))
             {
                 foreach (Match identifier in Regex.Matches(parameter.Groups["names"].Value, @"`(\w+)`"))
                 {
-                    if (!actual.Contains(identifier.Groups[1].Value))
+                    if (!actual.ContainsKey(identifier.Groups[1].Value))
                     {
                         failures.Add($"{row.Page}: {name} has stale parameter {identifier.Groups[1].Value}.");
                     }
@@ -494,7 +546,7 @@ public sealed partial class FcDocComponentDocumentationContractTests {
                 }
                 string documented = Section(page.Value, $"### `{name}`");
                 HashSet<string> expected = new(StringComparer.Ordinal);
-                foreach (Match property in Regex.Matches(source, @"public (?<type>[^\r\n]+?) (?<name>\w+) (?:\{ get; \}|=>[^\r\n]+;)"))
+                foreach (Match property in Regex.Matches(source, @"public (?<type>[^\r\n]+?) (?<name>\w+) (?:\{\s*get;\s*(?:(?:(?:private|protected|internal)\s+)*(?:set|init);\s*)?\}|=>[^\r\n]+;)"))
                 {
                     string propertyName = property.Groups["name"].Value;
                     expected.Add(propertyName);
@@ -525,7 +577,7 @@ public sealed partial class FcDocComponentDocumentationContractTests {
                     failures.Add($"{page.Key}: unresolved state vocabulary {name}.");
                     continue;
                 }
-                string[] expected = Regex.Matches(source, @"(?m)^    (\w+)(?:\s*=\s*\d+)?,?\s*$")
+                string[] expected = Regex.Matches(source, @"(?m)^    (\w+)(?=[\t ]*(?:=|,|\r?$))")
                     .Select(match => match.Groups[1].Value).Order(StringComparer.Ordinal).ToArray();
                 string[] actual = Regex.Matches(Section(page.Value, $"### `{name}`"), @"(?m)^\| `(\w+)` \|")
                     .Select(match => match.Groups[1].Value).Order(StringComparer.Ordinal).ToArray();
