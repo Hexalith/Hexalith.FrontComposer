@@ -166,7 +166,7 @@ Complete component parameter reference follows. Internal Fluent children are imp
 
 | Parameter | Type | Contract |
 |---|---|---|
-| `ViewKey` | `string` | Stable key identifying the expanded-detail view, carried for consistency with sibling components. |
+| `ViewKey` | `string` | Reserved key carried for consistency with sibling components; `FcExpandInRowDetail` does not currently use it. |
 | `HasExpanded` | `bool` | True when the host view has resolved an expanded item for this view-key. Drives the panel render gate. |
 | `ChildContent` | `RenderFragment` | The detail body emitted by the generator (factored EmitDetailRecordBody output). |
 | `DetailPanelAriaLabel` | `string` | Localized aria-label for the outer region landmark (per-row item-name interpolated). |

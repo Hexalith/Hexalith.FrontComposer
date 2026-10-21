@@ -258,13 +258,25 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ProjectionTemplateRegistry>.Instance,
             [new ProjectionTemplateAssemblySource(templates)]);
         Services.AddSingleton<IProjectionTemplateRegistry>(registry);
+        ProjectionViewContext<ViewProjection> context = NewContext([new ViewProjection(7, "SensitivePayloadSentinel")], role: role);
         IRenderedComponent<FcProjectionViewOverrideHost<ViewProjection>> cut = Render<FcProjectionViewOverrideHost<ViewProjection>>(parameters => parameters
             .Add(p => p.Descriptor, NewDescriptor(typeof(ThrowingReplacement)))
-            .Add(p => p.Context, NewContext([new ViewProjection(7, "SensitivePayloadSentinel")], role: role)));
+            .Add(p => p.Context, context));
         cut.Markup.ShouldContain(templateThrows || incompatible ? "Generated fallback" : "Level 2 fallback");
         if (!templateThrows && !incompatible)
         {
-            cut.FindComponent<FallbackTemplate>().Instance.Context.Role.ShouldBe(role);
+            ProjectionTemplateContext<ViewProjection> fallback = cut.FindComponent<FallbackTemplate>().Instance.Context;
+            fallback.Role.ShouldBe(role);
+            fallback.ProjectionType.ShouldBeSameAs(context.ProjectionType);
+            fallback.BoundedContext.ShouldBe(context.BoundedContext);
+            fallback.RenderContext.ShouldBeSameAs(context.RenderContext);
+            fallback.Items.ShouldBeSameAs(context.Items);
+            fallback.Columns.ShouldBeSameAs(context.Columns);
+            fallback.Sections.ShouldBeSameAs(context.Sections);
+            fallback.RowRenderer.ShouldBeSameAs(context.RowRenderer);
+            fallback.SectionRenderer.ShouldBeSameAs(context.SectionRenderer);
+            cut.Markup.ShouldContain("Generated row 7");
+            cut.Markup.ShouldContain("Generated section Body");
         }
         cut.Markup.ShouldNotContain("SensitivePayloadSentinel");
         _logger.Entries.Count.ShouldBe(1);
@@ -391,8 +403,8 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
             entityLabel: "Projection",
             entityPluralLabel: "Projections",
             defaultBody: defaultBody ?? (static builder => builder.AddContent(0, "Generated fallback")),
-            sectionRenderer: static _ => static _ => { },
-            rowRenderer: static _ => static _ => { },
+            sectionRenderer: static section => builder => builder.AddContent(0, $"Generated section {section}"),
+            rowRenderer: static item => builder => builder.AddContent(0, $"Generated row {item.Id}"),
             fieldRenderer: static (_, _) => static _ => { });
 
     public sealed record ViewProjection(int Id, string Name);

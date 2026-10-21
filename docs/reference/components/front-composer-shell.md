@@ -75,7 +75,7 @@ leaving a slot `null` triggers the documented default. Internal Fluent children 
 | `ShowDefaultHeaderLogo` | `bool` | Opts into the framework default decorative logo when `HeaderLogo` is not supplied; default is `false`. |
 | `ShowAccountMenu` | `bool` | Compatibility parameter; the framework account menu remains visible regardless of its value. |
 
-The header always renders the hamburger, theme toggle, and account menu, and renders the dev-mode toggle in DEBUG + `IsDevelopment()` only. An adopter-supplied
+The header always renders the hamburger, theme toggle, and account menu. The dev-mode toggle requires `Hexalith.FrontComposer.Shell` itself to be compiled with `DEBUG` and a Development host environment; building only the adopter application in Debug does not enable it in the published Release NuGet package. An adopter-supplied
 fragment always wins over the framework default; to render **no**
 sidebar even with registered domains, pass an empty fragment to `Navigation`.
 
@@ -87,7 +87,7 @@ sidebar even with registered domains, pass an empty fragment to `Navigation`.
 
 | Parameter | Type | Contract |
 |---|---|---|
-| `RouteKey` | `string` | Current route URI; changing it reruns route-heading focus after content renders. |
+| `RouteKey` | `string` | Pass the exact current `NavigationManager.Uri` value. Success and failure callbacks compare it using ordinal equality; a relative or normalized URI does not match. Changing it reruns route-heading focus after content renders. |
 | `FocusHeading` | `bool` | Defaults to true. Set false when `FcRouteUnavailable` owns heading focus. |
 
 ### `FcRouteUnavailable`

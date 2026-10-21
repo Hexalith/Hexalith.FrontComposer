@@ -209,7 +209,7 @@ This additive classification preserves the accepted scan above. Adopter rows res
 | `FcProjectionTemplateHost` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
 | `FcProjectionViewOverrideHost` | infrastructure | `docs/reference/components/customization.md` | FrontComposer |
 | `FcRouteBodyLayout` | adopter | `docs/reference/components/front-composer-shell.md` | FrontComposer |
-| `FcRouteFailureHeading` | infrastructure | `docs/reference/components/page-patterns.md` | FrontComposer |
+| `FcRouteFailureHeading` | infrastructure | `docs/reference/components/front-composer-shell.md` | FrontComposer |
 | `FcRouteFocus` | adopter | `docs/reference/components/front-composer-shell.md` | FrontComposer |
 | `FcRouteUnavailable` | adopter | `docs/reference/components/front-composer-shell.md` | FrontComposer |
 | `FcScopeBlocked` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |

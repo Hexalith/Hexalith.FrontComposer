@@ -14,7 +14,7 @@ slug: reference/components/page-patterns/
 
 ## Overview
 
-Compose page bodies through `FcPageLayout`, `FcPageHeader`, `FcAggregateListPage<TItem>` and `FcAggregateDetailPage<TItem>`. Wrappers own layout and slot placement; domains own queries, data, route policy and copy. Adopters can mount the Home and Module landing components documented below; FrontComposer supplies their composition and default behavior.
+Compose page bodies through `FcPageLayout`, `FcPageHeader`, `FcAggregateListPage<TItem>` and `FcAggregateDetailPage<TItem>`. Wrappers own layout and slot placement; domains own queries, data, route policy and copy. Adopters can mount `FcHomeDirectory` and `FcHomeCard`. `FcHomeRouteView` and `FcModuleLandingPage` are framework-supplied routed pages discovered through the Shell assembly in `AdditionalAssemblies`; hosts must not redeclare their shared routes. See [Routing and keyboard integration](front-composer-shell.md#routing-and-keyboard-integration).
 
 ## Usage
 
@@ -34,14 +34,14 @@ The tables describe the public component parameters. Injected services and inter
 
 | Parameter | Type | Contract |
 |---|---|---|
-| `Mode` | `FcPageLayoutMode` | The layout mode this page declares. Defaults to `FcPageLayoutMode.FullWidth`, so a bare &lt;FcPageLayout&gt; is a no-op; pass `FcPageLayoutMode.Constrained` to opt into the readable max-measure. |
+| `Mode` | `FcPageLayoutMode` | The layout mode applied to the shell coordinator on every render. Defaults to `FcPageLayoutMode.FullWidth`, overriding any existing constrained mode; pass `FcPageLayoutMode.Constrained` for the readable max-measure. |
 | `ChildContent` | `RenderFragment?` | The page content rendered within the declared measure. |
 
 ### `FcPageHeader`
 
 | Parameter | Type | Contract |
 |---|---|---|
-| `PageTitle` | `string?` | The browser document title rendered through Blazor PageTitle. |
+| `PageTitle` | `string?` | The browser document title rendered through Blazor PageTitle; null, empty or whitespace values fall back to `Heading`. |
 | `Heading` | `string` | The visible route-level heading text. |
 | `Eyebrow` | `string?` | Optional short context text rendered above the heading. |
 | `Description` | `string?` | Optional descriptive text rendered below the heading. |
@@ -59,7 +59,7 @@ The tables describe the public component parameters. Injected services and inter
 | Parameter | Type | Contract |
 |---|---|---|
 | `LayoutMode` | `FcPageLayoutMode` | The FC-LYT layout measure the page declares. Defaults to `FcPageLayoutMode.FullWidth` for dense list surfaces. |
-| `PageTitle` | `string?` | The browser document title forwarded to the composed `FcPageHeader`. |
+| `PageTitle` | `string?` | The browser document title forwarded to `FcPageHeader`; null, empty or whitespace values fall back to `Heading`. |
 | `Heading` | `string` | The visible route-level heading; blank values suppress the heading. Provide a nonblank value when using heading focus. |
 | `Eyebrow` | `string?` | Optional short context text rendered above the heading. |
 | `Description` | `string?` | Optional descriptive text rendered below the heading. |
@@ -96,7 +96,7 @@ The tables describe the public component parameters. Injected services and inter
 | `BackLinkClass` | `string?` | Optional additional CSS classes applied to the back link. |
 | `Item` | `TItem?` | Optional detail payload passed to `ReadyTemplate` when the surface is ready. |
 | `ReadyTemplate` | `RenderFragment<TItem>?` | Optional typed ready body template; rendered with `Item` when both are supplied. |
-| `ReadyContent` | `RenderFragment?` | Untemplated ready body (identity header, facts, sections). Used when `ReadyTemplate` is not supplied. |
+| `ReadyContent` | `RenderFragment?` | Untemplated ready body (identity header, facts, sections). Used when `ReadyTemplate` is absent or `Item` is null. |
 | `LoadingContent` | `RenderFragment?` | Loading-state content rendered only for `FcAggregateDetailState.Loading`. |
 | `UnauthorizedContent` | `RenderFragment?` | Unauthorized-state content rendered only for `FcAggregateDetailState.Unauthorized`. |
 | `NotFoundContent` | `RenderFragment?` | Not-found-state content rendered only for `FcAggregateDetailState.NotFound`. |
@@ -109,6 +109,8 @@ The tables describe the public component parameters. Injected services and inter
 No public component parameters. Framework services supply its state.
 
 ### `FcHomeCard`
+
+The component renders an `li` root. Direct callers must place it inside a `ul` or `ol`; `FcHomeDirectory` supplies this list context when it renders the cards.
 
 | Parameter | Type | Contract |
 |---|---|---|
@@ -126,7 +128,7 @@ No public component parameters. Framework services supply its state.
 | Parameter | Type | Contract |
 |---|---|---|
 | `Module` | `string?` | The registered bounded context selected by the route. |
-| `Tab` | `string?` | The requested child tab. |
+| `Tab` | `string?` | Bound from the route but not read by `FcModuleLandingPage`. The composed `FcPageTabs` reads the URL and owns tab selection. |
 
 ## Layout (FC-LYT)
 

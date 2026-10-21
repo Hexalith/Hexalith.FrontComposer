@@ -19,5 +19,13 @@ internal sealed class FallbackTemplate : ComponentBase
     {
         ArgumentNullException.ThrowIfNull(builder);
         builder.AddContent(0, "Level 2 fallback");
+        foreach (ViewProjection item in Context.Items)
+        {
+            builder.AddContent(1, Context.RowRenderer(item));
+        }
+        foreach (ProjectionTemplateSectionDescriptor section in Context.Sections)
+        {
+            builder.AddContent(2, Context.SectionRenderer(section.Name));
+        }
     }
 }
