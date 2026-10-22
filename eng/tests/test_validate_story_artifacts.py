@@ -63,6 +63,14 @@ HISTORICAL_HISTORY_AVAILABLE = all(
     )
 )
 
+# Story 11.32's immutable delivery range; its restored File List must equal this diff.
+STORY_11_32_BASELINE_COMMIT = "00d4da4788692ee405a081884e78482a9556b0c3"
+STORY_11_32_DELIVERY_COMMIT = "9aad029f837b8ecbd9f58e6f89ffdd76bf403bcf"
+STORY_11_32_HISTORY_AVAILABLE = all(
+    git(REPO_ROOT, "cat-file", "-e", f"{ref}^{{commit}}").returncode == 0
+    for ref in (STORY_11_32_BASELINE_COMMIT, STORY_11_32_DELIVERY_COMMIT)
+)
+
 
 def load_validator_module():
     import importlib.util
@@ -5006,6 +5014,28 @@ class RepositoryIntegrityTests(unittest.TestCase):
                     f"child to be {epic_status}\n",
                 )
 
+    def test_mixed_case_epic_key_conflict_fails_global_cli(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            fixture = self.make_fixture(root)
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(
+                sprint.read_text(encoding="utf-8").replace(
+                    "development_status:\n",
+                    "development_status:\n  Epic-99: done\n  99-1-story: in-progress\n",
+                ),
+                encoding="utf-8",
+            )
+
+            result = run([sys.executable, str(VALIDATOR), "--project-root", str(root)], root)
+
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(
+                result.stderr,
+                "repository integrity: sprint Epic-99='done' disagrees with child "
+                "99-1-story='in-progress'; expected every numeric child to be done\n",
+            )
+
     def test_unsupported_epic_specific_statuses_fail_global_cli(self) -> None:
         for status in ("review", "blocked", "ready-for-dev", "optional"):
             with self.subTest(status=status), tempfile.TemporaryDirectory() as temp:
@@ -5165,17 +5195,23 @@ class RepositoryIntegrityTests(unittest.TestCase):
                 diagnostics.append(result.stderr)
         self.assertEqual(diagnostics[0], diagnostics[1])
 
+    @unittest.skipIf(
+        not STORY_11_32_HISTORY_AVAILABLE and not os.environ.get("CI"),
+        "partial clone: Story 11.32 delivery history is unavailable outside CI",
+    )
     def test_live_story_11_32_file_list_equals_immutable_delivery_and_cli_passes(self) -> None:
-        baseline = "00d4da4788692ee405a081884e78482a9556b0c3"
-        delivery = "9aad029f837b8ecbd9f58e6f89ffdd76bf403bcf"
+        self.assertTrue(STORY_11_32_HISTORY_AVAILABLE, "Story 11.32 delivery history is required in CI")
         story_path = "_bmad-output/implementation-artifacts/spec-11-32-epic-11-artifact-integrity-enforcement.md"
-        diff = git(REPO_ROOT, "diff", "--name-only", "-z", baseline, delivery)
+        diff = git(
+            REPO_ROOT, "diff", "--name-only", "-z",
+            STORY_11_32_BASELINE_COMMIT, STORY_11_32_DELIVERY_COMMIT,
+        )
         self.assertEqual(diff.returncode, 0, diff.stdout + diff.stderr)
         paths = sorted(path for path in diff.stdout.split("\0") if path)
         self.assertEqual(len(paths), 21)
         metadata = VALIDATOR_MODULE.parse_story_metadata(REPO_ROOT / story_path)
         self.assertEqual(metadata.metadata_failures, [])
-        self.assertEqual(metadata.baseline_commit, baseline)
+        self.assertEqual(metadata.baseline_commit, STORY_11_32_BASELINE_COMMIT)
         self.assertEqual(sorted(metadata.file_list), paths)
 
         command = [sys.executable, str(VALIDATOR), "--story", story_path]

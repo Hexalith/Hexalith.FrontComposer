@@ -59,6 +59,42 @@ context:
 - Given closed Epics 9–11 and FR27/FR28/FR29.5/FR29.6 outcomes, when regressions run, then history stays closed with existing focused coverage; residual approvals retain their owners.
 - Given the existing CI lane, when verification completes, then its exact command is unchanged and focused results are recorded here.
 
+### Review Findings
+
+Round 2: maintainer `/bmad-code-review` of delivery commit `76a166aececd3d62d93928eac5025f6798f85648` against baseline `6a6f06fd02f2acb72d00eb4971a639b0e366ee1e` (2026-10-22). Blind Hunter, Edge Case Hunter, Verification Gap, and Acceptance Auditor raised 39 findings: 3 patch, 3 defer, 26 rejected. Validator, test, and reference bytes are unchanged at the review HEAD `9b8cbf28`.
+
+- [x] [Review][Patch] Epic lifecycle check skips non-lowercase epic keys [eng/validate-story-artifacts.py:570] — fixed: epic keys match case-insensitively; `test_mixed_case_epic_key_conflict_fails_global_cli` pins the exact diagnostic.
+- [x] [Review][Patch] Live Story 11.32 inventory test hard-fails without its pinned history instead of following the partial-clone convention [eng/tests/test_validate_story_artifacts.py:5168] — fixed: module-level `STORY_11_32_*` constants and the existing partial-clone skip, still required in CI.
+- [x] [Review][Patch] Story 15.1 deferrals sit under the Story 13.9 ledger heading [_bmad-output/implementation-artifacts/deferred-work.md:10624] — fixed: added `## Deferred from: Story 15.1 review (2026-10-21)` above the round-1 entries.
+- [x] [Review][Defer] Global gate does not require a File List on done dispatch artifacts [eng/validate-story-artifacts.py:1440] — deferred: pre-existing; nine done `route: dispatch` specs, including Epic 11's `spec-11-25-current-eventstore-release-identity-and-evidence.md`, have no File List heading at `9b8cbf28` while global validation passes. The frozen scope repairs Story 11.32 only.
+- [x] [Review][Defer] Artifact-to-queue status drift outside Epic 11 passes global validation [eng/validate-story-artifacts.py:694] — deferred: carried from round-1 BH-06 and already recorded in the deferred-work ledger; this artifact's `done` status beside its `review` row reproduces it.
+- [x] [Review][Defer] Story paths remain unescaped outside `check_file_list` [eng/validate-story-artifacts.py:1631] — deferred: pre-existing; the unrelated-dirty notice prints a raw U+2028 story path (reproduced), and repository-integrity messages such as lines 712, 791, and 903 use raw `relative_to(root).as_posix()`. This extends the round-1 BH-02 checked-task deferral.
+
+Round-2 verification (2026-10-22): `python3 -m unittest eng.tests.test_validate_story_artifacts` ran 222 tests in 96.827 seconds, OK with the two existing skips. `python3 eng/validate-story-artifacts.py` and the Story 15.1 explicit-path check over the eight `76a166ae` delivery paths passed after the patches. The CI workflow and published reference are unchanged.
+
+#### Rejected
+
+- Duplicate zero-normalized epic rows (`epic-99` beside `epic-099`) pass (Blind Hunter, Edge Case Hunter) — low: unlikely in the generated ledger; the fix adds a seen-identity guard.
+- One unsupported epic status is reported twice (Blind Hunter) — low: rare out-of-vocabulary status; suppression adds a branch.
+- Orphan child rows and non-canonical child shapes such as `99-2_story` or `99.2.1` go unchecked (Blind Hunter, Edge Case Hunter, Acceptance Auditor) — low: unlikely hand edits; a fail-closed key grammar adds guards. A missing epic row makes no completion claim to contradict. The `Epic-99` example is covered by the first patch.
+- `epic-15a`-style epic keys are never validated (Edge Case Hunter) — low: unlikely; reporting unknown epic keys adds a branch.
+- Bounded replay and live test include the sentinel scan (Blind Hunter, Edge Case Hunter) — false: the scan is part of every unskipped run, the live test is the only blocking live sentinel check, and a hit names the offending file.
+- Published snippet constants are unpinned and its `assert` disappears under `-O` (Blind Hunter) — low: the SHAs and 21-path count are immutable history, and the snippet runs `python3 -` without `-O`.
+- Missing or empty File List diagnostics no longer list changed files (Blind Hunter) — low: reproduced, but the frozen matrix requires an artifact-only diagnostic with no path dump; changing it requires spec renegotiation.
+- The dirty-state variation in the global drift test cannot fail (Blind Hunter) — low: global mode does not consult unrelated workspace paths; the legacy absent/empty test covers per-story dirty isolation.
+- The dirty-state variation in the explicit-scope incomplete-list test cannot fail (Acceptance Auditor) — low: explicit `--changed-file` mode is workspace-independent by design, as its name states.
+- Absent/empty coverage is legacy-only (Blind Hunter) — false: `check_file_list` has one caller for every mode and returns before reading `changed_files`; the direct-function test pins that branch.
+- AC3 has no mapped FR27/FR28/FR29.5/FR29.6 evidence (Blind Hunter, Acceptance Auditor) — rejected: Epic 9-14 rows and the Epic 11 corpus remain unchanged and pass, so history is not reopened; recording more evidence edits the spec under review.
+- Evidence cites `/tmp` logs; approval names `Administrator` (Blind Hunter, Acceptance Auditor) — rejected: the fix edits the spec under review, and `Administrator` is the configured BMAD `user_name`.
+- Spec record contradictions (BH-07 rationale, retained handoff note, `review_loop_iteration`) (Acceptance Auditor) — rejected: the fix edits the spec under review.
+- The spec narrows the planning AC to a bounded replay (Acceptance Auditor) — rejected: deliberate, human-approved frozen intent explained in the reference.
+- Story 15.1 evidence is duplicated into Story 11.32 (Blind Hunter) — false: dated maintenance notes are point-in-time records.
+- Repeated per-epic scans and lexicographic ordering (Blind Hunter) — low: about 20 epics by 150 rows is negligible, and lexicographic order is the documented stable order.
+- The approval-action exclusion fixture cannot fail (Acceptance Auditor) — false: action items live outside `development_status`, so no reachable regression goes uncaught.
+- Numeric approval story rows count as children (Edge Case Hunter) — false: approval rows are stories; a backlog epic with a started approval row is a genuine contradiction.
+- An ESC character in a written fixture filename breaks Windows (Edge Case Hunter) — low: no lane runs this Python suite on Windows; a platform branch adds complexity.
+- The replay hard-codes `python3` and lacks history-error handling (Edge Case Hunter) — low: it matches the reference's command convention, and Git already fails loudly.
+
 ## Implementation Notes
 
 - Review patches applied: uppercase child suffixes participate, unsupported epic statuses and empty done epics fail, numeric matching avoids int conversion, and scrambled-row tests protect complete diagnostic ordering. Six focused lifecycle tests passed; root final verification follows.

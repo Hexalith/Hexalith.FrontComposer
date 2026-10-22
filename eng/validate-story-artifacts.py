@@ -567,7 +567,7 @@ def validate_epic_lifecycles(statuses: dict[str, str]) -> list[str]:
     """Reconcile declared epic completion/start state with numeric child rows."""
     failures: list[str] = []
     for epic_key in sorted(statuses):
-        epic = re.fullmatch(r"epic-(\d+)", epic_key)
+        epic = re.fullmatch(r"epic-(\d+)", epic_key, re.IGNORECASE)
         if not epic:
             continue
         expected = statuses[epic_key]

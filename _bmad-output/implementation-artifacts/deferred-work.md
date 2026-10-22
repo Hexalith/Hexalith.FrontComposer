@@ -10621,6 +10621,8 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
   summary: Record retention or explicit disposition of the hosted browser evidence before its artifacts expire.
   evidence: Pre-existing `.github/workflows/quality.yml:955,1048` retains accessibility/browser artifacts for 14 days; run 39554582583's 2026-10-21 artifacts can expire on 2026-11-04. Quality/Test should identify the run attempt and artifact identities and either retain the necessary evidence through an approved existing evidence path or explicitly record its expiry and the need for fresh proof. The run URL preserves job metadata, not permanent screenshots, reports or traces. This negative decision and OI-4/FLUENT-APP-1 remain unchanged; no evidence is copied or promoted by this entry.
 
+## Deferred from: Story 15.1 review (2026-10-21)
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-1-restore-current-artifact-integrity-validation.md`
   summary: Resolve pre-existing checked-task basename evidence attribution that depends on unrelated dirty paths.
   evidence: Story 15.1 review BH-01 reproduced identical behavior in HEAD and the candidate: an empty-list story claiming add `owned.txt` loses its checked-task evidence error when notes/unrelated/owned.txt is dirtied. The missing-File-List diagnostic remains stable; check_checked_tasks intentionally accepts basename shorthand from all discovered paths.
@@ -10669,3 +10671,12 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
   summary: Make `FcLifecycleWrapper` Start over deliver `WrapperInitiatedNavigation = true` to `FcFormAbandonmentGuard` before it navigates.
   evidence: Round-6 review (R6-E7+B1) found `OnStartOverClicked` (src/Hexalith.FrontComposer.Shell/Components/Lifecycle/FcLifecycleWrapper.razor.cs:732-742) sets `_wrapperInitiatedNavigation = true` and calls `Nav.NavigateTo(Nav.Uri, forceLoad: true)` in the same handler, with no render in between. Microsoft's Blazor navigation docs state "Calling NavigateTo always invokes the handler" (forceLoad does not bypass `NavigationLock`), and the guard reads the cascaded flag before its first await (`FcFormAbandonmentGuard.razor.cs:165`). So an edited form past `FormAbandonmentThresholdSeconds` in Syncing gets the abandonment warning instead of a reload, and the wrapper comment "forceLoad:true bypasses NavigationLock anyway" is false. Pre-existing (Review 2026-04-17 P3) runtime behaviour outside the Story 15.2 documentation delta. Settle and fix it with a bUnit or Playwright Start-over case on an edited form past the threshold, for example by rendering the flag before navigating or by giving the guard a direct bypass.
+
+## Deferred from: code review of spec-15-1-restore-current-artifact-integrity-validation.md (2026-10-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-1-restore-current-artifact-integrity-validation.md`
+  summary: Require a nonempty File List for done dispatch artifacts in repository integrity mode.
+  evidence: Round-2 review found nine done `route: dispatch` specs without any File List heading at `9b8cbf28`, including Epic 11's `spec-11-25-current-eventstore-release-identity-and-evidence.md`, while `python3 eng/validate-story-artifacts.py` passes. Story 15.1 restored Story 11.32 only. Define how one-shot routes and historical artifacts are handled before enforcing this corpus-wide.
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-1-restore-current-artifact-integrity-validation.md`
+  summary: Escape story and artifact paths at remaining validator report sites.
+  evidence: Round-2 review reproduced a raw U+2028 story path in the unrelated-dirty notice at `eng/validate-story-artifacts.py:1631`; repository-integrity messages such as lines 712, 791, and 903 also format raw `relative_to(root).as_posix()` paths. Extend the existing BH-02 checked-task escaping item with fixtures that combine unsafe story paths and documented unrelated paths.

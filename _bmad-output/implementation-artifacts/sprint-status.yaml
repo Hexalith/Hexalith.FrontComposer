@@ -216,8 +216,9 @@ development_status:
   epic-14-retrospective: optional
 
   # 2026-10-21: Story 15.1 implementation and independent review verified; ready for maintainer review.
+  # 2026-10-22: Story 15.1 maintainer code review round 2 closed; three patches applied.
   epic-15: in-progress
-  15-1-i-plan-int-2-restore-current-artifact-integrity-validation: review
+  15-1-i-plan-int-2-restore-current-artifact-integrity-validation: done
   15-2-i-doc-a-reconcile-component-and-page-pattern-documentation: done
   15-3-i-doc-b-align-migration-and-classification-guidance: backlog
   15-4-i-doc-c-correct-the-fluent-ui-v5-contingency-identity: backlog
