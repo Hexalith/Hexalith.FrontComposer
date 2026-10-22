@@ -27,6 +27,14 @@
       <_FrontComposerPublishedRuntime Include="@(RuntimeCopyLocalItems)"
                                       Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(Identity)', '(?i)[/\\]hexalith\.frontcomposer\.[^/\\]+[/\\][0-9]'))" />
       <RuntimeCopyLocalItems Remove="@(_FrontComposerPublishedRuntime)" />
+      <!-- Source builds also project-reference Commons.UniqueIds at 1.0.0 while a published
+           2.30.3 asset is still in the compile set. Keep the source reference assembly. -->
+      <_FrontComposerPublishedCompile Include="@(ResolvedCompileFileDefinitions)"
+                                      Condition="'$(HexalithCommonsFromSource)' == 'true' and ($([System.String]::Copy('%(ResolvedCompileFileDefinitions.NuGetPackageId)').Equals('Hexalith.Commons.UniqueIds', StringComparison.OrdinalIgnoreCase)) or $([System.Text.RegularExpressions.Regex]::IsMatch('%(Identity)', '(?i)[/\\]hexalith\.commons\.uniqueids[/\\][0-9]')))" />
+      <ResolvedCompileFileDefinitions Remove="@(_FrontComposerPublishedCompile)" />
+      <_FrontComposerPublishedRuntime Include="@(RuntimeCopyLocalItems)"
+                                      Condition="'$(HexalithCommonsFromSource)' == 'true' and ($([System.String]::Copy('%(RuntimeCopyLocalItems.NuGetPackageId)').Equals('Hexalith.Commons.UniqueIds', StringComparison.OrdinalIgnoreCase)) or $([System.Text.RegularExpressions.Regex]::IsMatch('%(Identity)', '(?i)[/\\]hexalith\.commons\.uniqueids[/\\][0-9]')))" />
+      <RuntimeCopyLocalItems Remove="@(_FrontComposerPublishedRuntime)" />
     </ItemGroup>
   </Target>
 
