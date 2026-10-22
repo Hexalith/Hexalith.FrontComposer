@@ -170,6 +170,80 @@ Round 4 is a follow-up code review of the fix delta `dfa06286..f8ae3b58` over Fi
 - R4-B10 (part): Inventory §H records no reason for the classification changes. False: no §H row records a reason; the table has no rationale column.
 - R4-A7 (part): The `debug-gated-tests` lane has not run in CI yet. Low: this is not a code defect. `quality.yml` triggers on pull requests to `main`, and the lane passed locally with 97 tests.
 
+### Review Findings — round 5 (2026-10-22)
+
+Round 5 is a follow-up code review of the fix delta `f8ae3b58..9a2716e8` over File List paths: 11 files, +104/−34, 354 diff lines. The spec, `deferred-work.md` and `sprint-status.yaml` were excluded as narrative. The unrelated baseline-pin commit `a258b992` was also excluded. Four layers ran: Blind Hunter (B), Edge Case Hunter (E), Verification Gap (V) and Acceptance Auditor (A). They raised 55 findings, and triage checked each one against source. Result: 1 decision-needed, 9 patch, 3 defer, 33 rejected.
+
+- [ ] [Review][Decision] (R5-E17, medium) The new startup-validation sentence is false in real hosts, because `FcShellOptionsThresholdValidator` is never registered.
+  - `ServiceCollectionExtensions.cs:257-260` calls `AddOptions<FcShellOptions>().ValidateDataAnnotations()`. That calls `AddSingleton<IValidateOptions<FcShellOptions>>` first, so the following `TryAddSingleton<IValidateOptions<FcShellOptions>, FcShellOptionsThresholdValidator>()` is skipped.
+  - None of the validator's 12 cross-property rules run at `ValidateOnStart`: abandonment > still-syncing, SyncPulse < StillSyncing < TimeoutAction, the toast ordering, `SupportedCultures` ⊇ `DefaultCulture`, virtualization, ETag-cache, and the pending-command polling and retry bounds.
+  - Only the per-property `[Range]` limits are enforced. Every test builds the validator directly (`FcShellOptionsValidationTests`, `Story52FcShellOptionsValidatorTests`) or registers it by hand in bUnit (`FcFormAbandonmentGuardTests.cs:46`, `LifecycleWrapperTestBase.cs:36`), so no test exercises DI.
+  - The defect is pre-existing (`a96e6f74`, 2026-04-16). The R4-A5 patch then published "equality or a smaller value fails startup" at `docs/reference/components/command-lifecycle.md:112`.
+  - The choice: fix the registration under 15.2 with `TryAddEnumerable(ServiceDescriptor.Singleton<…, FcShellOptionsThresholdValidator>())` plus a DI-level `ValidateOnStart` regression, which starts failing hosts that are misconfigured today; or keep 15.2 documentation-only, drop the false sentence, and defer the runtime fix to a separate bugfix story. [src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs:260] [docs/reference/components/command-lifecycle.md:112]
+- [ ] [Review][Patch] (R5-V1+B5+E1+E15, medium) The Debug-lane `if:` ban was narrowed, so the lane can be skipped silently again.
+  - To allow the upload step's `if: always()`, the job-level regex now scans only the text before `\n    steps:`. Only three steps are checked, and only for the literal `\n        if:`.
+  - A job-level `if: ${{ false }}` written after the step list stays a job condition, and in the last job of `quality.yml` it lands inside the unchecked upload-step text. The Verification Gap layer reproduced this by copying the helpers into a script.
+  - `if :` spellings also pass, as do conditions on the checkout, submodule and `initialize-dotnet` steps. A skipped job reports success.
+  - Fix: remove only the upload step's `if: always()` line from the job text, then apply the original whole-job `^[ \t]*if[ \t]*:` regex. [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:448]
+- [ ] [Review][Patch] (R5-B7, medium) The new `WrapperInitiatedNavigation` paragraph promises a recipe that doesn't work as written.
+  - A `CascadingValue` change reaches `FcFormAbandonmentGuard` only after the providing component re-renders. `HandleNavigationChangingAsync` reads the flag before its first await (`FcFormAbandonmentGuard.razor.cs:150-165`).
+  - So setting the field and calling a non-forceLoad `NavigateTo` in the same handler leaves the guard reading `false`, and it can still prompt.
+  - `FcLifecycleWrapper` relies on `forceLoad: true` (`FcLifecycleWrapper.razor.cs:738-740`).
+  - Fix: state that `FcLifecycleWrapper` already supplies the cascade, that a custom provider must render the true value before navigation starts, and that it must reset the flag afterward. [docs/reference/components/command-lifecycle.md:76]
+- [ ] [Review][Patch] (R5-B14, medium) The direct-caller rows for `FcDestructiveConfirmationDialog` leave out the dialog options that generated forms set.
+  - `CommandRendererEmitter.cs:582-590` opens it with `Modal = true`, `Id = "fc-destructive-confirmation"`, `aria-labelledby="fc-destructive-dialog-title"` and `aria-describedby="fc-destructive-dialog-description"`.
+  - A direct caller following the rewritten rows gets a non-modal destructive confirmation without that name and description wiring.
+  - Fix: document the required `IDialogService` options next to the direct-caller guidance. [docs/reference/components/command-lifecycle.md:82]
+- [ ] [Review][Patch] (R5-A2+B8+E20, low) The dev-mode toggle prerequisite leaves out the registration call.
+  - `FcDevModeToggleButton.razor:11,25` renders only when `IDevModeOverlayController` resolves.
+  - Only `AddFrontComposerDevMode(...)` registers it, under `#if DEBUG` and only when that call sees a Development environment (`AddFrontComposerDevModeExtensions.cs:38-46`). The toggle doesn't read the environment at render time.
+  - The R4-B9 fix added this registration prerequisite to `customization.md` but not here. [docs/reference/components/front-composer-shell.md:78]
+- [ ] [Review][Patch] (R5-B9+E14, low) The new mismatch-panel prerequisite doesn't give the call order.
+  - The parameterless `AddFrontComposerDevMode()` only inspects services already registered (`AddFrontComposerDevModeExtensions.cs:21-28`). If `IHostEnvironment` is added after the call (the WebAssembly case this page already names), it silently registers nothing.
+  - Fix: tell callers to register `IHostEnvironment` first or pass the environment to the explicit overload. [docs/reference/components/customization.md:153]
+- [ ] [Review][Patch] (R5-A3+B16, low) The new `FcCommandBlockedOutcome` direct-caller prose names `ClearAsync()` as the only way an outcome is withdrawn.
+  - `OnParametersSet` (`FcCommandBlockedOutcome.razor.cs:91-104`) also clears a presented outcome and cancels its announcement whenever `AttemptedControlId` or `AnnouncementSurface` changes.
+  - Fix: state that rebinding either parameter withdraws the outcome. [docs/reference/components/command-lifecycle.md:97]
+- [ ] [Review][Patch] (R5-B17+E9, low) The new `PageTitle` fallback rows imply there is always a title.
+  - `ResolvedPageTitle` falls back to `Heading` without checking it (`FcPageHeader.razor.cs:137-138`), and `FcAggregateListPage` explicitly allows a blank `Heading`.
+  - When both are blank, the document title is empty (WCAG 2.4.2).
+  - Fix: require at least one nonblank value. [docs/reference/components/page-patterns.md:44] [docs/reference/components/page-patterns.md:62]
+- [ ] [Review][Patch] (R5-B3+E2, low) Debug-lane source discovery checks for `bin`/`obj` in absolute paths.
+  - A checkout under any `bin` or `obj` directory excludes every source file and fails with the misleading "the Debug lane must cover…" message.
+  - The house idiom (`AuthBoundaryTests.cs:53-55`, `SecurityLoggingGovernanceTests.cs:922-927`) tests the path relative to the project root. Use `Path.GetRelativePath` segments. [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:470]
+- [ ] [Review][Patch] (R5-B1 pin part, low) The new upload pin checks only the `actions/upload-artifact@` prefix, so a floating `@v7` tag would pass.
+  - The neighbouring upload pins check the full SHA (`CiGovernanceTests.cs:4336`).
+  - Fix: assert `uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`. [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:498]
+- [x] [Review][Defer] (R5-B1 name part, maybe-false) `name: debug-gated-test-results` has no `-${{ github.run_attempt }}` suffix, so re-running a failed job might hit upload-artifact's 409 "an artifact with this name already exists". [.github/workflows/quality.yml:1193] — deferred: unverified medium. The 409 is documented for duplicate names within one run, but the re-run-attempt case could not be confirmed. The repo's own convention (Story 11.25 EH-01; the browser and successor-candidate pins at `CiGovernanceTests.cs:433,4337`) suffixes new artifacts with `run_attempt`, while the main `test-results` upload does not. Settle it by re-running one failed `debug-gated-tests` attempt on GitHub, or from the upload-artifact v7 documentation.
+- [x] [Review][Defer] (R5-B12, low) `FcPageLayout.Mode` XML documentation still says "a bare `<FcPageLayout>` is a no-op". DocFX publishes that, and it now contradicts the corrected FINAL-BH-01 Markdown row. [src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageLayout.razor.cs:23] — deferred: pre-existing source XML documentation outside the File List. It belongs to the same source-XML pass as the R4-B13 deferral.
+- [x] [Review][Defer] (R5-V2, low) `StoryArtifactValidatorGate_IsBlockingAndExact` checks `build-and-test` for `if:` only before `\n    steps:`, so a job-level `if:` written after the step list escapes the same way as R5-V1. [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:220] — deferred: pre-existing pin outside this delta.
+
+#### Rejected (round 5)
+
+- R5-A1/B10/E19: The page-patterns Overview calls `FcHomeRouteView` and `FcModuleLandingPage` framework-routed pages, while the inventory still classifies them as adopter. Low, carrying R4-A6/R4-B18: the classification is internal metadata, adopters do adopt both pages through `AdditionalAssemblies`, and the published prose is accurate. Reclassifying them is a classification decision, not a direct correction.
+- R5-A4/B11/E21: `FcRouteFailureHeading` maps to a page that never names it. False against the accepted R4-A1 fix: R4-A1 asked for the remap to the page that documents its only consumer, `FcRouteFocus`. Infrastructure rows map to their owning area page by convention (12 other rows do the same), and the validators deliberately skip them.
+- R5-A5: The status-map anchor column mixes labelled and unlabelled infrastructure entries. Low: this is internal contract metadata that no validator reads, and choosing one anchor convention is a decision, not a direct correction.
+- R5-A6/E7/B3 (helper classes): Discovery requires every top-level class in a gated file, not just the gated classes. Low: an extra class fails loudly, and the one-type-per-file rule makes it unlikely.
+- R5-B2: Nothing proves that each `--filter-class` ran tests. Low: a per-class minimum needs a new validator feature, and an exact `--expected-test` list would pin all 97 identities.
+- R5-B3 (`#elif`/parenthesized/compound directives): Carried from FINAL-BH-10.
+- R5-B3/E3 (raw-string `#if DEBUG`): Low: it fails loudly. No Shell.Tests raw string has a line-start directive (the `RenderTreeSequenceRewriterTests` hits are in SourceTools.Tests, which is not scanned), and the fix means rewriting the filter to use trivia.
+- R5-B4: The assertion message overclaims, and product DEBUG code is not linked to the lane. False for the message, which states the invariant over directive-bearing classes. The product shortcut part is carried from the R4-B6 rejection.
+- R5-B6/E18: `DefaultBody`/`FieldRenderer` forwarding is unwitnessed. False: the Verification Gap layer confirmed that the `templateThrows` case renders the forwarded `DefaultBody`, and `CounterProjectionView_OverrideFault_PreservesLowerLevelContent` asserts the forwarded field value 7319.
+- R5-B9 (explicit overload does not register `IHostEnvironment`): Carried from R4-E9.
+- R5-B12 (dispose reset and nested precedence): False: the row says the mode overrides any existing constrained mode, which covers nesting, and the `LayoutMode` row documents the wrapper-owned measure.
+- R5-B13 / R5-B16 (required part): The `[EditorRequired]` status of `ViewKey` and `AttemptedControlId` is not shown. Low: omitting either produces a compile-time RZ2012 warning, and this carries the round-2 Default/Required column rejection.
+- R5-B14 (English "Confirm" literal; null `Title` leaving the `h2` empty): Carried from R4-B12.
+- R5-B15: `StillSyncingThresholdMs` is unqualified and lacks its default and range. False as filed: the harm it describes depends on a startup failure that does not happen (R5-E17), and the sentence already names `FcShellOptions` for the paired property.
+- R5-E4: A `#if DEBUG && OTHER` class is in neither parse. Low: no current source uses it, and the fix needs the project's define constants.
+- R5-E5: `.razor` test classes are not scanned. Low: Roslyn cannot parse Razor, and no Razor test uses DEBUG.
+- R5-E6: DEBUG branches in a shared helper or base class are missed. Low: hypothetical, and the fix needs reference analysis.
+- R5-E8: A global-namespace class produces a `.Name` identity. False: house style requires file-scoped namespaces, and the result is a loud mismatch.
+- R5-E10: A value-type `TItem` never has a null `Item`. False: the rows remain literally accurate, and aggregates are reference types.
+- R5-E11: Disposing one of two mounted `FcPageLayout`s resets the survivor. Low: this is pre-existing runtime behaviour, and the fix adds registration counting.
+- R5-E12: An empty `DestructiveLabel` renders a blank button. Carried from R4-E11.
+- R5-E13: An omitted `RouteKey` never matches. False: the row now says to pass the exact `NavigationManager.Uri`, and every documented host does.
+- R5-E16: `|| :`, `|| exit 0` and `TESTINGPLATFORM_EXITCODE_IGNORE` bypass the failure guard. Low: these are contrived edits, the comparable pins forbid the same two forms, and adding them means more guards.
+
 ## Implementation Notes
 
 - Approved by Administrator on 2026-10-21. Required baseline command `aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json` exited 2 before launch: NU1010 missing central PackageVersion entries in unchanged Parties submodule projects, followed by a NuGet null-reference failure. Output is retained at `/tmp/frontcomposer-15-2-apphost-baseline.log`. No dependency or submodule change is authorized by this story.

@@ -10651,3 +10651,15 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
   summary: State in the migration guide that AddFrontComposerDevMode() has no effect with the Release NuGet Shell package.
   evidence: Round-4 review (R4-B9) found docs/how-to/migration-guides.md:31 recommends services.AddFrontComposerDevMode() without the Shell-assembly DEBUG and DI IHostEnvironment prerequisites now stated in customization.md; the #if DEBUG registration body is compiled out of the published package. Migration guidance belongs to Story 15.3.
+
+## Deferred from: code review round 5 of spec-15-2-reconcile-component-and-page-pattern-documentation.md (2026-10-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
+  summary: Confirm whether the Debug-lane artifact name needs a `run_attempt` suffix to survive a job re-run.
+  evidence: Round-5 review (R5-B1) found `.github/workflows/quality.yml:1193` uploads `name: debug-gated-test-results` with no `-${{ github.run_attempt }}` suffix. The repo convention (Story 11.25 EH-01; the browser and successor-candidate pins at CiGovernanceTests.cs:433,4337) suffixes new artifacts, while the main `test-results` upload does not. Unverified medium: upload-artifact v4+ returns 409 for duplicate names within a run, but the re-run-attempt case was not confirmed. Settle it by re-running one failed `debug-gated-tests` attempt on GitHub, or from the upload-artifact v7 documentation.
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
+  summary: Correct the `FcPageLayout.Mode` XML documentation that DocFX publishes as "a bare `<FcPageLayout>` is a no-op".
+  evidence: Round-5 review (R5-B12) found `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageLayout.razor.cs:23-26` still says no-op, but `OnAfterRender` applies the mode on every render and overrides an existing constrained mode, as the corrected docs/reference/components/page-patterns.md row now says. Pre-existing source XML outside the Story 15.2 File List; pick it up in the same source-XML pass as the round-4 planning-ID deferral.
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-2-reconcile-component-and-page-pattern-documentation.md`
+  summary: Make the Gate 2b `build-and-test` pin reject job-level `if:` conditions anywhere in the job.
+  evidence: Round-5 review (R5-V2) found `StoryArtifactValidatorGate_IsBlockingAndExact` (tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:220-224) checks for `if:` only in the text before `\n    steps:`. YAML key order is free, so a job-level `if:` after the step list would skip the blocking job while the pin stays green. Pre-existing pin outside this delta; it has the same blind spot as the R5-V1 Debug-lane patch.
