@@ -26,15 +26,16 @@ internal static class PathUtilities {
     public static string RedactAbsolute(string path) => Path.IsPathRooted(path) ? RedactedPathSentinel + "/" + Path.GetFileName(path) : path;
 
     /// <summary>
-    /// Refuses file links and linked ancestors, including directory junctions, without reading source bytes.
-    /// Inaccessible path metadata is unsafe as well.
+    /// Refuses file links and linked ancestors below the selected project directory, including directory junctions,
+    /// without reading source bytes. Inaccessible path metadata is unsafe as well.
     /// </summary>
-    public static bool HasLinkedPathSegment(string path)
+    public static bool HasLinkedPathSegment(string projectDirectory, string path)
     {
         try
         {
+            string projectRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(projectDirectory));
             string? current = Path.GetFullPath(path);
-            while (current is not null)
+            while (current is not null && !string.Equals(current, projectRoot, PathComparison))
             {
                 if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
                 {

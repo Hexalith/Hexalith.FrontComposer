@@ -1023,6 +1023,10 @@ public sealed class MigrationCommandTests {
             private static readonly MigrationEdge[] Unrelated = [
                 new("66.0.0", "67.0.0", "docs/migrations/unrelated.md"),
             ];
+            private const char DoubleQuote = '"';
+            private const char Backslash = '\\';
+            private const char Apostrophe = '\'';
+            private const char UnicodeQuote = '\u0022';
             private const string Example = "private static readonly MigrationEdge[] Edges = BuildEdges([fake]);";
             private const string RawExample = """
                 "quoted" // content
@@ -1034,7 +1038,16 @@ public sealed class MigrationCommandTests {
                 """";
             private static readonly MigrationEdge[] Edges
             """"", StringComparison.Ordinal);
+        catalog.ShouldContain("docs/migrations/comment.md");
+        catalog.ShouldContain("docs/migrations/block-comment.md");
+        catalog.ShouldContain("docs/migrations/unrelated.md");
+        catalog.ShouldContain("private const char DoubleQuote");
+        catalog.ShouldContain("private const string Example");
+        catalog.ShouldContain("private const string RawExample");
+        catalog.ShouldContain("private const string WideRawExample");
         File.WriteAllText(catalogPath, catalog);
+        File.AppendAllText(Path.Combine(fixture.Root, "migrations", "index.md"),
+            "\nSee the [CLI reference](../reference/cli.md) for command options.\n");
 
         (await RunMigrationParityAsync(fixture.Root)).ShouldBeEmpty();
     }
@@ -1046,6 +1059,8 @@ public sealed class MigrationCommandTests {
     [InlineData("false-manual", "falsely classifies")]
     [InlineData("manual-executable-alias", "falsely classifies")]
     [InlineData("conditional-catalog", "conditional catalog syntax is unsupported")]
+    [InlineData("unsupported-catalog-syntax", "unsupported tuple syntax")]
+    [InlineData("literal-token-collision", "unsupported tuple syntax")]
     [InlineData("commented-index-row", "missing guide link")]
     [InlineData("fenced-index-row", "missing guide link")]
     [InlineData("tilde-fenced-index-row", "missing guide link")]
@@ -1098,6 +1113,26 @@ public sealed class MigrationCommandTests {
                 break;
             case "conditional-catalog":
                 File.WriteAllText(catalogPath, catalog.Replace("    private static readonly MigrationEdge[] Edges = BuildEdges([", "#if false\n    private static readonly MigrationEdge[] Edges = BuildEdges([", StringComparison.Ordinal).Replace("    ]);", "    ]);\n#else\n    private static readonly MigrationEdge[] Edges = [];\n#endif", StringComparison.Ordinal));
+                break;
+            case "unsupported-catalog-syntax":
+                File.WriteAllText(catalogPath, catalog.Replace("new(\"9.1.0\"",
+                    "new MigrationEdge(\"4.5.0\", \"4.6.0\", \"docs/migrations/4.5-to-4.6.md\"),\n        new(\"9.1.0\"", StringComparison.Ordinal));
+                break;
+            case "literal-token-collision":
+                catalog = catalog.Replace("private static readonly MigrationEdge[] Edges", """
+                    private const string DocumentedFrom = "9.1.0";
+                    private const string DocumentedTo = "9.2.0";
+                    private const string DocumentedGuide = "docs/migrations/9.1-to-9.2.md";
+                    private const string __literal0 = "4.5.0";
+                    private const string __literal1 = "4.6.0";
+                    private const string __literal2 = "docs/migrations/4.5-to-4.6.md";
+                    private static readonly MigrationEdge[] Edges
+                    """, StringComparison.Ordinal);
+                catalog = catalog.Replace("new(\"9.1.0\", \"9.2.0\", \"docs/migrations/9.1-to-9.2.md\")",
+                    "new(__literal0, __literal1, __literal2)", StringComparison.Ordinal);
+                catalog.ShouldContain("private const string __literal0 = \"4.5.0\";");
+                catalog.ShouldContain("new(__literal0, __literal1, __literal2)");
+                File.WriteAllText(catalogPath, catalog);
                 break;
             case "commented-index-row":
                 File.WriteAllText(indexPath, index.Replace(row, "<!--\n" + row + "\n-->", StringComparison.Ordinal));
@@ -1175,6 +1210,93 @@ public sealed class MigrationCommandTests {
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task MigrationPrefersOrdinaryTargetOverItsSymlinkAlias(bool aliasFirst, bool apply)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        const string original = "services.AddFrontComposerDebugOverlay();";
+        string target = fixture.WriteSource("Acme.App", "Z.cs", original);
+        string link = Path.Combine(Path.GetDirectoryName(project)!, "A.cs");
+        FileSystemInfo linkInfo = File.CreateSymbolicLink(link, target);
+        string? originalLinkTarget = linkInfo.LinkTarget;
+        string first = aliasFirst ? "A.cs" : "Z.cs";
+        string second = aliasFirst ? "Z.cs" : "A.cs";
+        File.WriteAllText(project, $$"""
+            <Project><ItemGroup>
+              <Compile Include="{{first}}" />
+              <Compile Include="{{second}}" />
+            </ItemGroup></Project>
+            """);
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, [apply ? "--apply" : "--dry-run", "--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error + output);
+        error.ShouldBeEmpty();
+        using var report = JsonDocument.Parse(output);
+        report.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("frontcomposer.cli.migrate.v1");
+        report.RootElement.GetProperty("applied").GetBoolean().ShouldBe(apply);
+        report.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
+        report.RootElement.GetProperty("summary").GetProperty("failed").GetInt32().ShouldBe(0);
+        report.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(0);
+        report.RootElement.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "safe-fix")
+            .GetProperty("path").GetString().ShouldBe("Z.cs");
+        byte[] expected = Encoding.UTF8.GetBytes(apply ? original.Replace("AddFrontComposerDebugOverlay", "AddFrontComposerDevMode", StringComparison.Ordinal) : original);
+        (await File.ReadAllBytesAsync(target, CancellationToken.None)).ShouldBe(expected);
+        linkInfo.Refresh();
+        linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
+        (linkInfo.Attributes & FileAttributes.ReparsePoint).ShouldBe(FileAttributes.ReparsePoint);
+        output.ShouldNotContain(fixture.Root);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MigrationAllowsOrdinarySourceWhenProjectHasLinkedAncestor(bool apply)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
+        string workspace = Path.Combine(fixture.Root, "Workspace");
+        _ = Directory.CreateDirectory(workspace);
+        string projectDirectory = Path.Combine(workspace, "Acme.App");
+        Directory.Move(Path.GetDirectoryName(project)!, projectDirectory);
+        string source = Path.Combine(projectDirectory, "Program.cs");
+        byte[] original = await File.ReadAllBytesAsync(source, CancellationToken.None);
+        string link = Path.Combine(fixture.Root, "LinkedWorkspace");
+        FileSystemInfo linkInfo = CreateDirectoryMigrationLink(link, workspace);
+        string? originalLinkTarget = linkInfo.LinkTarget;
+        string linkedProject = Path.Combine(link, "Acme.App", "Acme.App.csproj");
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(linkedProject, [apply ? "--apply" : "--dry-run", "--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error + output);
+        error.ShouldBeEmpty();
+        using var report = JsonDocument.Parse(output);
+        report.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("frontcomposer.cli.migrate.v1");
+        report.RootElement.GetProperty("applied").GetBoolean().ShouldBe(apply);
+        report.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
+        report.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(0);
+        report.RootElement.GetProperty("summary").GetProperty("failed").GetInt32().ShouldBe(0);
+        report.RootElement.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "safe-fix")
+            .GetProperty("path").GetString().ShouldBe("Program.cs");
+        if (apply)
+        {
+            File.ReadAllText(source).ShouldContain("AddFrontComposerDevMode");
+        }
+        else
+        {
+            (await File.ReadAllBytesAsync(source, CancellationToken.None)).ShouldBe(original);
+        }
+        linkInfo.Refresh();
+        linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
+        output.ShouldNotContain(fixture.Root);
+    }
+
+    [Theory]
     [InlineData(false, false, false, false)]
     [InlineData(false, false, true, false)]
     [InlineData(false, true, false, false)]
@@ -1224,6 +1346,10 @@ public sealed class MigrationCommandTests {
         document.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("frontcomposer.cli.migrate.v1");
         document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(1);
         document.RootElement.GetProperty("summary").GetProperty("failed").GetInt32().ShouldBe(0);
+        JsonElement skipped = document.RootElement.GetProperty("entries").EnumerateArray()
+            .Single(entry => entry.GetProperty("kind").GetString() == "skipped");
+        skipped.GetProperty("expected").GetString()!.ShouldContain("symlinked file or directory paths");
+        skipped.GetProperty("got").GetString().ShouldBe("Excluded, outside-root, or linked path.");
         (await File.ReadAllBytesAsync(target, CancellationToken.None)).ShouldBe(targetBytes);
         linkInfo.Refresh();
         linkInfo.LinkTarget.ShouldBe(originalLinkTarget);

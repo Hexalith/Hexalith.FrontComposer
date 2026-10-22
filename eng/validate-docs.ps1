@@ -179,16 +179,17 @@ function Assert-MigrationCompleteness([string]$Path, [System.Collections.Generic
 }
 
 function Get-MigrationCatalogEdges([string]$CatalogPath, [System.Collections.Generic.List[string]]$Failures) {
-    # Tokenize strings/comments before locating the private Edges initializer. This prevents
+    # Tokenize string/character literals and comments before locating the private Edges initializer. This prevents
     # comments, string contents, or other new(...) initializers from becoming executable edges.
     $tokens = [System.Collections.Generic.List[string]]::new()
     $literals = [System.Collections.Generic.List[string]]::new()
     $source = Get-Content -LiteralPath $CatalogPath -Raw
-    foreach ($token in [regex]::Matches($source, '(?s)/\*.*?\*/|//[^\r\n]*|(?<raw>"{3,})(?!").*?\k<raw>(?!")|@"(?:""|[^"])*"|"(?:\\.|[^"\\])*"|[A-Za-z_]\w*|\S')) {
+    foreach ($token in [regex]::Matches($source, '(?s)/\*.*?\*/|//[^\r\n]*|(?<raw>"{3,})(?!").*?\k<raw>(?!")|@"(?:""|[^"])*"|"(?:\\.|[^"\\])*"|''(?:\\.|[^''\\\r\n])*''|[A-Za-z_]\w*|\S')) {
         $value = $token.Value
         if ($value.StartsWith('//') -or $value.StartsWith('/*')) { continue }
         if ($value.StartsWith('"') -or $value.StartsWith('@"')) {
-            $tokens.Add('__literal' + $literals.Count)
+            # The colon cannot be part of a source identifier; lexed punctuation is space-separated.
+            $tokens.Add('__literal:' + $literals.Count)
             $literals.Add($value)
         }
         else { $tokens.Add($value) }
@@ -206,7 +207,7 @@ function Get-MigrationCatalogEdges([string]$CatalogPath, [System.Collections.Gen
     }
 
     $body = $initializers[0].Groups['body'].Value
-    $entryPattern = 'new \( (?<from>__literal\d+) , (?<to>__literal\d+) , (?<path>__literal\d+) \)\s*,?'
+    $entryPattern = 'new \( (?<from>__literal:\d+) , (?<to>__literal:\d+) , (?<path>__literal:\d+) \)\s*,?'
     $remaining = [regex]::Replace($body, $entryPattern, '').Trim()
     if ($remaining.Length -gt 0) {
         Add-Failure $Failures 'src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs Edges initializer has unsupported tuple syntax.'
@@ -216,7 +217,7 @@ function Get-MigrationCatalogEdges([string]$CatalogPath, [System.Collections.Gen
     foreach ($entry in [regex]::Matches($body, $entryPattern)) {
         $values = @()
         foreach ($field in @('from', 'to', 'path')) {
-            $literal = $literals[[int]$entry.Groups[$field].Value.Substring('__literal'.Length)]
+            $literal = $literals[[int]$entry.Groups[$field].Value.Substring('__literal:'.Length)]
             if ($literal -notmatch '^"[^"\\\r\n]*"$') {
                 Add-Failure $Failures 'src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs Edges tuples require plain string literals.'
                 return
@@ -293,7 +294,7 @@ function Assert-MigrationParity([string]$MigrationsRoot, [string]$CatalogPath, [
         if ($line -cmatch '^\|\s*fromVersion\s*\|\s*toVersion\s*\|\s*migrationMode\s*\|\s*Guide\s*\|\s*$' -or
             $line -match '^\|(?:\s*:?-{3,}:?\s*\|){4}\s*$') { continue }
         if ($line -notmatch '^\|') {
-            if ($line -match '\[[^\]]+\]\([^)]+\.md(?:[?#][^)]*)?\)') {
+            if ($line -match '\[[^\]]+\]\([^/\\:#?)]+\.md(?:[?#][^)]*)?\)') {
                 Add-Failure $Failures 'docs/migrations/index.md guide links must declare versions and migrationMode in a classified row.'
             }
             continue

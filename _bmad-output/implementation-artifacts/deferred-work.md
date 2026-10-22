@@ -10681,11 +10681,11 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
   summary: Escape story and artifact paths at remaining validator report sites.
   evidence: Round-2 review reproduced a raw U+2028 story path in the unrelated-dirty notice at `eng/validate-story-artifacts.py:1631`; repository-integrity messages such as lines 712, 791, and 903 also format raw `relative_to(root).as_posix()` paths. Extend the existing BH-02 checked-task escaping item with fixtures that combine unsafe story paths and documented unrelated paths.
 
+## Deferred from: code review of spec-15-3-align-migration-and-classification-guidance.md (2026-10-22)
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
   summary: Fail closed with sanitized inspect diagnostics for unsupported JSON sidecar root and entry shapes.
   evidence: Story 15.3 review BH-7 verified that DiagnosticFileReader.Read calls TryGetProperty on primitive roots or non-object array entries, which throws InvalidOperationException outside the existing JsonException/IO/access catches. CliApplication does not catch that exception. The reader is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. Add focused primitive-root and non-object-entry regressions and an explicit sanitized rejected-shape policy; the current story corrects documentation and the separately approved symlink guard only.
-
-## Deferred from: code review of spec-15-3-align-migration-and-classification-guidance.md (2026-10-22)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
   summary: Confirm whether non-link Windows reparse points inside a project are refused as links by the migration write-safety check.
@@ -10693,3 +10693,9 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
   summary: Fail closed with sanitized migrate output for unsupported JSON sidecar root and entry shapes.
   evidence: Story 15.3 post-commit review CR-D2. `MigrationDiagnosticSidecarReader.Read` (src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:41) calls `TryGetProperty` on a scalar root, and `IsManualMigrationDiagnostic` does the same on non-object entries. A probe with a `42` sidecar under `obj/Debug/net10.0/generated/HexalithFrontComposer/` made `migrate` exit 134 with an unhandled `InvalidOperationException`, no report, and a raw stack trace. The reader is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. This is the migrate counterpart of the inspect `DiagnosticFileReader` deferral (BH-7); fix both readers with one `ValueKind` policy and focused regressions.
+
+## Deferred from: Story 15.3 resumed independent review (2026-10-22)
+
+- source_spec: `spec-15-3-align-migration-and-classification-guidance.md`
+  summary: Bound recursive migration discovery when project directories contain cyclic directory links.
+  evidence: Resumed Story 15.3 review R2-BH-2 and an independent parent CLI probe found that two directory links back to the project root prevent a report within three seconds (reviewer timeout: eight seconds). ProjectDocumentLoader.Expand uses recursive Directory.EnumerateFiles before link write-safety checks and is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. Separately prune linked directories/cycles during discovery and regress ordinary files, explicit linked targets, and process termination; preserve the approved minimal write-safety fix.

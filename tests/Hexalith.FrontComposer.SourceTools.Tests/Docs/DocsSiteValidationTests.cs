@@ -151,7 +151,7 @@ public sealed partial class DocsSiteValidationTests {
     [Fact]
     public void MigrationGuidanceDescribesCliSafeFixAndSyntheticManualBoundary()
     {
-        string guide = File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "migrations", "9.1-to-9.2.md"));
+        string guide = NormalizeWhitespace(File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "migrations", "9.1-to-9.2.md")));
         ReadFrontMatter(Path.Combine(ProjectRoot(), "docs", "migrations", "9.1-to-9.2.md"))["codeFixAvailable"].ShouldBe("false");
         guide.ShouldContain("CLI-only safe fix");
         guide.ShouldContain("No IDE analyzer/code fix");
@@ -159,7 +159,7 @@ public sealed partial class DocsSiteValidationTests {
         guide.ShouldContain("Production emission is not approved");
         guide.ShouldContain("--from 9.1.0 --to 9.2.0 --dry-run");
 
-        string howTo = File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "how-to", "migration-guides.md"));
+        string howTo = NormalizeWhitespace(File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "how-to", "migration-guides.md")));
         howTo.ShouldContain("Dry-run is the default and writes nothing");
         howTo.ShouldContain("earlier successful writes remain");
         howTo.ShouldContain("applied=false");
@@ -179,8 +179,9 @@ public sealed partial class DocsSiteValidationTests {
             page.ShouldContain("published Release");
             page.ShouldContain("NuGet package does not emit these customization diagnostics/panels");
         }
-        howTo.ShouldContain("`applied=false` on");
-        howTo.ShouldContain("emitted reports");
+        howTo.ShouldContain("`applied=false` on emitted reports");
+        howTo.ShouldContain("Migration sidecars support arrays of diagnostic objects");
+        howTo.ShouldContain("below the selected project directory are ineligible");
         howTo.ShouldContain("before any report is emitted");
         howTo.ShouldContain("absent or partial report");
         howTo.ShouldContain("unsupported valid JSON shapes");
@@ -190,7 +191,7 @@ public sealed partial class DocsSiteValidationTests {
     [Fact]
     public void CliReferencePinsInspectCountsOrderingFilteringAndPathOptIn()
     {
-        string reference = File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "reference", "cli.md")).ReplaceLineEndings("\n");
+        string reference = NormalizeWhitespace(File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "reference", "cli.md")));
         reference.ShouldContain("frontcomposer.cli.inspect.v1");
         reference.ShouldContain("frontcomposer.cli.migrate.v1");
         reference.ShouldContain("`CommandForm`");
@@ -203,14 +204,23 @@ public sealed partial class DocsSiteValidationTests {
         reference.ShouldContain("warning sentinel `HFCM0002`");
         reference.ShouldContain("Unsupported valid JSON shapes");
         reference.ShouldContain("may throw outside handled failures");
-        reference.ShouldContain("handled CLI");
+        reference.ShouldContain("Handled CLI failures print bounded messages without stack traces");
+        reference.ShouldContain("Single-line fields escape C0 controls (`U+0000`–`U+001F`) and DEL (`U+007F`)");
+        reference.ShouldContain("retain carriage returns, line feeds, and tabs; they escape other C0 controls and DEL");
+        reference.ShouldContain("C1 controls (`U+0080`–`U+009F`) remain unchanged");
+        reference.ShouldNotContain("terminal-safe");
+        reference.ShouldContain("filesystem exception messages may still contain private absolute paths");
+        reference.ShouldContain("Migration sidecars also require the documented diagnostic-object shapes");
+        reference.ShouldContain("Ordinary sidecar diagnostics without `relatedType` receive an empty string and are excluded by `--type`");
+        reference.ShouldContain("linked ancestor directories/junctions below the selected project directory");
+        reference.ShouldNotContain("The only executable edge");
         reference.ShouldContain("`applied=false` on emitted reports");
         reference.ShouldContain("before any report is emitted");
         reference.ShouldContain("absent or partial report");
         reference.ShouldContain("`--absolute-paths`");
         reference.ShouldContain("project and sidecar paths retain their relative/redacted behavior");
         reference.ShouldContain("64,000-character aggregate budget");
-        reference.ShouldContain("do not\nsemantically scrub", Case.Insensitive);
+        reference.ShouldContain("do not semantically scrub", Case.Insensitive);
         reference.ShouldNotContain("reports generated-output paths, project metadata, schema fingerprints");
     }
 
@@ -270,6 +280,9 @@ public sealed partial class DocsSiteValidationTests {
 
         return values;
     }
+
+    private static string NormalizeWhitespace(string value)
+        => Regex.Replace(value, @"\s+", " ").Trim();
 
     private static string Canonical(string value)
         => Regex.Replace(Uri.UnescapeDataString(value).Normalize().Trim().TrimEnd('/').ToLowerInvariant(), @"[\\/_\-\.\s]+", "");

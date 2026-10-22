@@ -40,7 +40,7 @@ internal static class ProjectDocumentLoader {
             projectDirectory,
             documents
                 .GroupBy(x => PathUtilities.Canonical(x.FullPath), PathUtilities.PathComparer)
-                .Select(x => x.First())
+                .Select(group => group.FirstOrDefault(document => !PathUtilities.HasLinkedPathSegment(projectDirectory, document.FullPath)) ?? group.First())
                 .OrderBy(x => x.RelativePath, StringComparer.Ordinal)
                 .ToArray());
     }

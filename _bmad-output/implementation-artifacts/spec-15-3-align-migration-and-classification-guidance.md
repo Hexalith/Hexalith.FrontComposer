@@ -2,7 +2,7 @@
 title: 'Story 15.3: Align Migration and Classification Guidance'
 type: 'bugfix'
 created: '2026-10-22'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 story_id: '15.3'
 story_key: '15-3-i-doc-b-align-migration-and-classification-guidance'
@@ -66,19 +66,19 @@ context:
 
 Post-commit code review of `bf40b927..02af2219` over the File List paths (2026-10-22). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor; none failed. Severity in brackets.
 
-- [ ] [Review][Patch] CR-1 [high] Bound the link-segment walk to the project root [src/Hexalith.FrontComposer.Cli/PathUtilities.cs:37] — `HasLinkedPathSegment` walks every ancestor to the filesystem root, so a project reached through any symlinked ancestor (macOS `/tmp` or `/var`, Fedora Atomic `/home`, a linked workspace folder) has every document skipped. Built-CLI probe: the real path gives `changed: 1`; the symlinked-ancestor path gives `changed: 0, skipped: 1`, and `--apply` reports `applied: true`, exit 0, source unchanged. The baseline migrated it. Stop the walk at the project directory, since only segments below it can redirect a write. Add a symlinked-ancestor regression, and scope the docs' "linked ancestor directories" wording to the project.
-- [ ] [Review][Patch] CR-2 [medium] Extend the unsupported-sidecar caveat to `migrate` [docs/migrations/9.1-to-9.2.md:110] — `MigrationDiagnosticSidecarReader` crashes the same way (probe: a scalar-root sidecar gives an unhandled `InvalidOperationException`, exit 134, and no report). The caveat appears only in inspect paragraphs, yet the new HFCM9002 text invites hand-crafted sidecars. Add the caveat to the migrate guidance in `docs/reference/cli.md` and `docs/how-to/migration-guides.md`. The runtime crash is CR-D2.
-- [ ] [Review][Patch] CR-3 [medium] Cover the "unsupported tuple syntax" fail-closed branch [eng/validate-docs.ps1:212] — no parity scenario leaves residue in the `Edges` body. A mutant that deletes the `$remaining` check passes all 27 scenarios while an executable `new MigrationEdge("4.5.0", ...)` edge escapes classification. Add an `unsupported-catalog-syntax` InlineData.
-- [ ] [Review][Patch] CR-4 [medium] Correct the handled-failure privacy claim [docs/reference/cli.md:64] — `CliApplication.cs:36` prints `IOException`/`UnauthorizedAccessException` messages through `OutputSanitizer.Sanitize`, which only escapes control characters. OS messages with absolute paths therefore reach stderr, contrary to "handled CLI failures avoid ... private absolute paths".
-- [ ] [Review][Patch] CR-5 [low] Name links in the skipped-document reason [src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:63] — refused links, `.git` and outside-root targets report "outside generated, bin, obj, package cache, and submodule paths are eligible" with "Excluded path.". No test pins this text.
-- [ ] [Review][Patch] CR-6 [low] Drop the unchecked "only executable edge" claim [docs/reference/cli.md:45] — the parity gate never reads cli.md, so a new catalog edge leaves this sentence stale (AC4 parallel inventory). Point to the classified index instead.
-- [ ] [Review][Patch] CR-7 [low] Restrict the unclassified-link check to sibling guides [eng/validate-docs.ps1:297] — any `.md` link in index prose, such as `../reference/cli.md`, fails as an unclassified guide link.
-- [ ] [Review][Patch] CR-8 [low] Correct the null-related-type filter claim [docs/reference/cli.md:32] — sidecar diagnostics get `RelatedType = Sanitize(...)`, which is empty and never null (`DiagnosticFileReader.cs:29`). `--type` keeps only null (`TypeMatcher.cs:35`), so project-wide sidecar diagnostics are dropped. Only the HFCM0002 sentinel has null.
-- [ ] [Review][Patch] CR-9 [low] Assert the positive parity fixture injected its decoys [tests/Hexalith.FrontComposer.Cli.Tests/MigrationCommandTests.cs:1018] — reformatting only the whitespace of the `Edges` declaration turns the `Replace` into a no-op, while the tokenized validator still passes, so the test proves nothing.
-- [ ] [Review][Patch] CR-10 [low] Stop pinning wrap positions in docs tests [tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs:213] — `"do not\nsemantically scrub"` and split phrases (`"`applied=false` on"` plus `"emitted reports"`) break when the text is rewrapped. Normalize whitespace and assert whole phrases.
-- [ ] [Review][Patch] CR-11 [low] Add the 3.1 to 4.0 guide to site navigation [docs/toc.yml:14] — `toc.yml` lists three of the four guides (pre-existing; one-line fix).
-- [ ] [Review][Patch] CR-12 [low] Give the BH-7 deferral a Story 15.3 heading [_bmad-output/implementation-artifacts/deferred-work.md:10686] — it was appended under Story 15.1's heading.
-- [ ] [Review][Patch] CR-13 [low] Replace validator jargon in adopter-facing index prose [docs/migrations/index.md:20] — "govern parity".
+- [x] [Review][Patch] CR-1 [high] Bound the link-segment walk to the project root [src/Hexalith.FrontComposer.Cli/PathUtilities.cs:37] — `HasLinkedPathSegment` walks every ancestor to the filesystem root, so a project reached through any symlinked ancestor (macOS `/tmp` or `/var`, Fedora Atomic `/home`, a linked workspace folder) has every document skipped. Built-CLI probe: the real path gives `changed: 1`; the symlinked-ancestor path gives `changed: 0, skipped: 1`, and `--apply` reports `applied: true`, exit 0, source unchanged. The baseline migrated it. Stop the walk at the project directory, since only segments below it can redirect a write. Add a symlinked-ancestor regression, and scope the docs' "linked ancestor directories" wording to the project.
+- [x] [Review][Patch] CR-2 [medium] Extend the unsupported-sidecar caveat to `migrate` [docs/migrations/9.1-to-9.2.md:110] — `MigrationDiagnosticSidecarReader` crashes the same way (probe: a scalar-root sidecar gives an unhandled `InvalidOperationException`, exit 134, and no report). The caveat appears only in inspect paragraphs, yet the new HFCM9002 text invites hand-crafted sidecars. Add the caveat to the migrate guidance in `docs/reference/cli.md` and `docs/how-to/migration-guides.md`. The runtime crash is CR-D2.
+- [x] [Review][Patch] CR-3 [medium] Cover the "unsupported tuple syntax" fail-closed branch [eng/validate-docs.ps1:212] — no parity scenario leaves residue in the `Edges` body. A mutant that deletes the `$remaining` check passes all 27 scenarios while an executable `new MigrationEdge("4.5.0", ...)` edge escapes classification. Add an `unsupported-catalog-syntax` InlineData.
+- [x] [Review][Patch] CR-4 [medium] Correct the handled-failure privacy claim [docs/reference/cli.md:64] — `CliApplication.cs:36` prints `IOException`/`UnauthorizedAccessException` messages through `OutputSanitizer.Sanitize`, which only escapes control characters. OS messages with absolute paths therefore reach stderr, contrary to "handled CLI failures avoid ... private absolute paths".
+- [x] [Review][Patch] CR-5 [low] Name links in the skipped-document reason [src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:63] — refused links, `.git` and outside-root targets report "outside generated, bin, obj, package cache, and submodule paths are eligible" with "Excluded path.". No test pins this text.
+- [x] [Review][Patch] CR-6 [low] Drop the unchecked "only executable edge" claim [docs/reference/cli.md:45] — the parity gate never reads cli.md, so a new catalog edge leaves this sentence stale (AC4 parallel inventory). Point to the classified index instead.
+- [x] [Review][Patch] CR-7 [low] Restrict the unclassified-link check to sibling guides [eng/validate-docs.ps1:297] — any `.md` link in index prose, such as `../reference/cli.md`, fails as an unclassified guide link.
+- [x] [Review][Patch] CR-8 [low] Correct the null-related-type filter claim [docs/reference/cli.md:32] — sidecar diagnostics get `RelatedType = Sanitize(...)`, which is empty and never null (`DiagnosticFileReader.cs:29`). `--type` keeps only null (`TypeMatcher.cs:35`), so project-wide sidecar diagnostics are dropped. Only the HFCM0002 sentinel has null.
+- [x] [Review][Patch] CR-9 [low] Assert the positive parity fixture injected its decoys [tests/Hexalith.FrontComposer.Cli.Tests/MigrationCommandTests.cs:1018] — reformatting only the whitespace of the `Edges` declaration turns the `Replace` into a no-op, while the tokenized validator still passes, so the test proves nothing.
+- [x] [Review][Patch] CR-10 [low] Stop pinning wrap positions in docs tests [tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs:213] — `"do not\nsemantically scrub"` and split phrases (`"`applied=false` on"` plus `"emitted reports"`) break when the text is rewrapped. Normalize whitespace and assert whole phrases.
+- [x] [Review][Patch] CR-11 [low] Add the 3.1 to 4.0 guide to site navigation [docs/toc.yml:14] — `toc.yml` lists three of the four guides (pre-existing; one-line fix).
+- [x] [Review][Patch] CR-12 [low] Give the BH-7 deferral a Story 15.3 heading [_bmad-output/implementation-artifacts/deferred-work.md:10686] — it was appended under Story 15.1's heading.
+- [x] [Review][Patch] CR-13 [low] Replace validator jargon in adopter-facing index prose [docs/migrations/index.md:20] — "govern parity".
 - [x] [Review][Defer] CR-D1 Non-link reparse points inside the project may be refused as links [src/Hexalith.FrontComposer.Cli/PathUtilities.cs:39] — deferred: maybe-false, medium if true. The check tests `FileAttributes.ReparsePoint`, which also marks OneDrive placeholders, deduplicated files and mounted folders. To settle it, check `File.GetAttributes` and `LinkTarget` for a Files-On-Demand placeholder on Windows under default placeholder compatibility.
 - [x] [Review][Defer] CR-D2 `migrate` crashes on scalar-root or non-object-entry sidecars [src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:41] — deferred: pre-existing (the reader is unchanged from the baseline). It is the same runtime gap as BH-7 and falls outside the approved symlink-only runtime exception.
 
@@ -103,6 +103,10 @@ Rejected:
 - CR-R17 The index table is not in version order — false: it keeps the baseline list order, and no reader harm was identified.
 
 ## Implementation Notes
+
+- 2026-10-22 resumed post-commit patch pass: CR-1 bounds link-segment metadata checks below the selected project directory and adds dry-run/apply coverage for ordinary source through a linked workspace ancestor; existing internal/external file-link, nested-directory-link, and plan-to-apply replacement coverage remains green. CR-5 names linked/outside-root/.git exclusions in the skipped-document explanation and pins the link explanation in the existing refusal cases.
+- CR-2 explicitly documents unsupported migration-sidecar shapes in the migration paragraphs of both public guides. CR-4 corrects the filesystem-exception privacy claim; CR-6 uses the classified index for executable edges; CR-8 distinguishes null sentinels from empty sidecar related types. CR-3 adds an unsupported-catalog-syntax negative fixture; CR-7 permits non-sibling prose links; CR-9 proves every catalog decoy was injected before parity executes. CR-10 normalizes whitespace before whole-phrase documentation assertions. CR-11 adds the 3.1 to 4.0 navigation entry; CR-12 places BH-7 under Story 15.3's deferral heading; CR-13 replaces validator jargon in the adopter index.
+- The frozen intent, versioned 9.1 migration guide, and producer fingerprint baseline remain unchanged in this patch pass. The cumulative File List now has 18 paths, adding `docs/toc.yml` and `src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs`. Unrelated retrospective changes and statuses were preserved. All thirteen requested patches are implemented and verified; spec and sprint remain in progress pending the parent review/completion stage. Deferred CR-D1/CR-D2 and the Linux-only execution limit remain.
 
 - 2026-10-22 completion: all three independent review layers returned findings (the blind layer completed after a service-filtered first attempt). Every finding has an individual verdict; all accepted direct patches passed final parent verification. One pre-existing unsupported-sidecar runtime issue is deferred; Windows file-link/junction execution remains unverified on this Linux host. Spec is done, the sprint story is review for maintainer handoff, and Epic 15 remains in progress.
 - Local commit preparation: `node_modules/.bin/commitlint --version` initially failed with exit 127 because the workspace tooling was absent. `npm ci` restored the existing lockfile's tooling without changing dependency manifests/versions. Pinned commitlint 21.2.2 then validated the exact full candidate with `node_modules/.bin/commitlint --edit /tmp/frontcomposer-15-3-commit-message.txt --verbose`: zero problems/warnings, exit 0. Successful evidence: /tmp/frontcomposer-15-3-commitlint.log. Only the 16 owned paths will be included; no push is authorized by this workflow.
@@ -147,11 +151,91 @@ Grouping: BH-4 + EC-1 share hidden Markdown acceptance. All other survivors have
 
 Review patch resolution: BH-1 now checks executable version pairs independently of guide paths; BH-2 recognizes raw literals; BH-3 rejects conditional catalogs. BH-4/EC-1 ignore commented/fenced rows; EC-2 checks complete header/separator rows; EC-3 recognizes unclassified fragment/query links. VG-1 now covers linked grandparents beneath ordinary nested directories; VG-2 runs the actual publication entry point with a catalog-only mismatch in an isolated regular-file copy. BH-9 terminates and drains timed-out PowerShell children. BH-5 documents the existing syntactic rename, BH-6 documents missing/partial cancellation reports, P-1 links DEBUG/Development registration prerequisites, and P-2 qualifies handled-failure/unsupported-shape assurances. All patch paths were independently read by the parent. BH-7 remains the recorded pre-existing runtime deferral; BH-8 remains a disclosed Windows capability limitation rather than skipped evidence. The final parent CLI run passed 117/117 and documentation class passed 10/10, all with zero errors/failures/skips/unrun cases. Frozen-block equality was verified against the baseline plus the two explicitly approved scope edits.
 
+### Resumed independent review (2026-10-22)
+
+All three layers completed; no layer was skipped or failed. Parent independently reran the catalog, Markdown, alias-order and C1-output probes before assigning verdicts. Each finding is retained individually below, before grouping.
+
+| ID | Verdict | Route | Evidence |
+|---|---|---|---|
+| R2-BH-1 | medium | patch | Parent built-CLI probe: Compile order A.cs (symlink to Z.cs), Z.cs gives applied=true/changed=0/skipped=1 and leaves Z.cs obsolete; reverse order migrates it. The new refusal exposes deduplication selecting an ineligible alias. Prefer the ordinary non-link candidate within each canonical group and cover both orders/dry-run/apply. |
+| R2-BH-2 | medium | defer | Parent recursive-discovery probe with two links back to the project root exceeded three seconds without a report; the reviewer also observed an eight-second timeout. ProjectDocumentLoader recursive expansion is unchanged from the captured baseline and runs before write-safety checks. Discovery must separately prune cycles without broadening the approved minimal write-safety correction. |
+| R2-BH-3 | medium | patch | Parent parity probe accepted constants named __literal0..2 as generated literal tokens and returned no failures although their runtime tuple was 4.5.0 to 4.6.0 rather than the documented 9.1.0 to 9.2.0. A collision-free token representation is a direct correction to the existing extractor; retain a negative regression. |
+| R2-BH-4 | low | patch | Parent positive probe with an unrelated valid double-quote character constant lost the recognizable initializer. Recognize character literals in the existing tokenization and retain the fixture; no replacement parser or new public surface is needed. |
+| R2-BH-5 | low | reject | Parent confirmed a valid second class can supply a fake initializer when the owning class has Edges=[]. This requires multiple types in a file, contrary to the repository single-type rule, and deliberately relocating the only recognized initializer. Binding namespace/type scopes needs additional parsing branches for an unlikely maintainer-authored state. |
+| R2-BH-6 | low | reject | Parent confirmed rows hidden in a raw HTML pre block pass parity. The checked-in index uses ordinary Markdown tables; wrapping its entire classified inventory in raw HTML is unlikely in normal maintenance and fixing arbitrary HTML block contexts adds parser state. |
+| R2-BH-7 | low | reject | Parent confirmed a whole classified table enclosed in a multiline inline-code span passes row recognition while rendering without links. This deliberately unusual inventory markup needs a Markdown-context parser rather than a direct correction; ordinary classified rows and fenced-block checks remain covered. |
+| R2-BH-8 | low | reject | Parent confirmed literal HTML-comment markers in fenced/inline code erase the following valid table. The index has no such examples; code-aware comment removal adds parser states for an unlikely index-authoring case. |
+| R2-BH-9 | low | reject | Parent confirmed reference-definition and ./sibling link forms bypass the non-row recognizer. This repeats the prior alternate-Markdown trade-off; normal index rows use bare inline sibling destinations, and general destination normalization/reference resolution adds branches for uncommon authoring. |
+| R2-BH-10 | low | patch | Parent inspect-text probe emitted U+0085 and U+009B unchanged. OutputSanitizer escapes C0 controls and DEL only, while multiline diffs retain line breaks/tabs. Narrow the new prose to those actual guarantees and retain normalized phrase coverage; do not change the sanitizer contract. |
+| R2-EC-1 | medium | patch | Independently reproduced as R2-BH-3: real __literalN identifiers can impersonate string tokens and silently substitute the documented tuple. |
+| R2-EC-2 | low | patch | Independently reproduced as R2-BH-4: the unrelated double-quote character initializer corrupts string tokenization and blocks otherwise valid publication. |
+| R2-EC-3 | low | reject | Independently reproduced reference links bypass the unclassified-row recognizer. The same uncommon-markup/added-parser-complexity rationale as R2-BH-9 applies to this individual finding. |
+| R2-EC-4 | medium | patch | Parent verified the alias-order claim against the actual loader and built CLI; canonical GroupBy.First precedes the newly added link refusal, discarding eligible ordinary source. |
+| R2-VG-1 | medium | patch | This was filed as an Other finding, so parent verified it rather than relying on gap-review evidence. The existing unrelated Ordinary.cs link fixtures do not cover canonical aliases; both Compile orders must preserve the real target and link identity. |
+
+The verified token-collision and character-literal probes supersede CR-R3's earlier rejected assumption that every such misalignment fails loudly.
+
+Survivor grouping: R2-BH-1/EC-4/VG-1 share canonical-candidate selection; R2-BH-3/EC-1 share literal-token collision; R2-BH-4/EC-2 share character tokenization; R2-BH-10 is a direct prose correction. Each smallest fix is internal, guards a demonstrated state and preserves the approved intent, so all four groups route to patch. R2-BH-2 is pre-existing discovery work and routes to defer. No intent_gap or bad_spec loopback is required.
+
+Resumed review resolution: all four patch groups are complete. Canonical deduplication now prefers ordinary candidates while retaining linked-only candidates for refusal; four order/mode cases pin exact target bytes and link identity. Literal markers contain a colon, which source identifiers cannot impersonate; 29 repeated negative parity fixtures include the differing-runtime-constants case. The positive extraction fixture includes quote/backslash/apostrophe/Unicode character literals. Published escaping guidance and normalized phrase assertions match C0/DEL handling and retained diff whitespace without changing runtime sanitization. Parent read the final source/test/doc delta and refreshed the cumulative diff. One pre-existing recursive-discovery issue was deferred; CR-D1/CR-D2 and their Windows/sidecar limitations remain recorded. All three review layers completed successfully.
+
 ## Design Notes
 
 No irreversible action is proposed. Earlier successful writes remain after later failure. Baseline CLI Debug build passed; temporary probes confirmed the symlink gap.
 
 ## Verification
+
+- Local commit preparation: pinned `@commitlint/cli@21.2.2` validated the exact full candidate using `node_modules/.bin/commitlint --edit /tmp/frontcomposer-15-3-resume-commit-message.txt --verbose` with zero problems/warnings and exit 0; successful evidence: `/tmp/frontcomposer-15-3-resume-commitlint.log`. The index contains only this resumed pass's owned changes, including separate owned hunks for the two shared tracking files.
+
+Final parent verification after resumed independent-review patches (2026-10-22):
+
+- `dotnet tests/Hexalith.FrontComposer.Cli.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Cli.Tests.dll -class Hexalith.FrontComposer.Cli.Tests.MigrationCommandTests -class Hexalith.FrontComposer.Cli.Tests.InspectCommandTests -result-xml /tmp/frontcomposer-15-3-resume-final-cli.xml` — passed 125/125, zero errors/failures/skips/unrun cases, 200.591 seconds; `/tmp/frontcomposer-15-3-resume-final-cli.log`. XML confirms four alias order/mode cases, two linked-workspace cases, 12 link-refusal cases, six apply-time link-replacement cases and 29 negative parity cases all executed and passed; all three matrix rows retain passing witnesses.
+- `dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class Hexalith.FrontComposer.SourceTools.Tests.Docs.DocsSiteValidationTests -result-xml /tmp/frontcomposer-15-3-resume-final-docs.xml` — passed 10/10, zero errors/failures/skips/unrun cases; `/tmp/frontcomposer-15-3-resume-final-docs.log`.
+- `pwsh ./eng/validate-docs.ps1` — passed on the final source tree, including Release solution build, eight compiled snippets, five producer fingerprints and DocFX 2.78.5; manifest blockingFailures is empty; `/tmp/frontcomposer-15-3-resume-final-publication.log`.
+- Both affected Debug builds passed with zero warnings/errors, and the implementation agent's affected checks passed 46 CLI cases plus one documentation case; `/tmp/frontcomposer-15-3-review2-cli-build.log`, `/tmp/frontcomposer-15-3-review2-docs-build.log`, `/tmp/frontcomposer-15-3-review2-cli-focused.log`, `/tmp/frontcomposer-15-3-review2-docs-focused.log`.
+- `python3 eng/validate-story-artifacts.py` and per-story validation with all 19 cumulative File List paths supplied as `--changed-file` passed; `/tmp/frontcomposer-15-3-resume-final-artifacts-global.log`, `/tmp/frontcomposer-15-3-resume-final-artifacts-story.log`. `git diff --check` passed. Final cumulative audit: `/tmp/frontcomposer-15-3-resume-final-audit.diff`.
+- Final acceptance: all seven tasks and four acceptance criteria are satisfied. Frozen intent and the existing migration producer baseline are unchanged in this resumed pass. All 13 unrelated changed/untracked files remain byte-identical; every original deferred entry is preserved. Only the Story 15.3 row and last_updated change in sprint tracking. Spec is done, the sprint story is review for maintainer handoff, and Epic 15 remains in progress. The exact AppHost baseline blocker and deferred Windows/sidecar/discovery limits remain documented.
+
+Parent resumed acceptance audit (2026-10-22), after CR-1 through CR-13:
+
+- `dotnet tests/Hexalith.FrontComposer.Cli.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Cli.Tests.dll -class Hexalith.FrontComposer.Cli.Tests.MigrationCommandTests -class Hexalith.FrontComposer.Cli.Tests.InspectCommandTests -xml /tmp/frontcomposer-15-3-resume-parent-cli.xml` — passed 120/120, zero errors/failures/skips/unrun cases, 192.866 seconds; `/tmp/frontcomposer-15-3-resume-parent-cli.log`. XML results confirm that every named witness for all three matrix rows executed and passed, including positive/negative parity and the actual publication entry point; default dry-run/ordinary apply/exclusions/internal and external links/apply-time replacements; and inspect ordering/counts/filtering/redaction/malformed sidecars.
+- Parent inspected the cumulative owned diff from the preserved baseline, the final focused-build/test logs, and the publication manifest (eight snippets passed, five producer fingerprints, no blocking failures). All seven tasks and four acceptance criteria are satisfied. The cumulative File List contains 18 owned paths. The previous AppHost and Windows limitations remain explicit; unsupported valid sidecar shapes remain deferred as documented.
+- Byte comparison against the pre-resume snapshot confirmed all 13 unrelated changed/untracked files are unchanged. Shared deferred-work edits only move the existing Story 15.3 heading ahead of BH-7; unrelated sprint/deferred entries are preserved. Frozen intent is unchanged from the resumed HEAD. Initial audit diff: `/tmp/frontcomposer-15-3-resume-audit-nlnz1e7j.diff`.
+
+Resumed post-commit patch verification (2026-10-22):
+
+- `dotnet build tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj --configuration Debug --no-restore` — passed, zero warnings/errors; `/tmp/frontcomposer-15-3-resumed-cli-build-final.log`. The first attempt caught a nullable test assertion, corrected before this final build.
+- `dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Debug --no-restore` — passed, zero warnings/errors; `/tmp/frontcomposer-15-3-resumed-docs-build.log`.
+- `dotnet tests/Hexalith.FrontComposer.Cli.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Cli.Tests.dll -method '*MigrationAllowsOrdinarySourceWhenProjectHasLinkedAncestor' -method '*MigrationRefusesFileAndAncestorLinksBeforeReadingSource' -method '*MigrationApplyRefusesLinksIntroducedAfterPlanningAndKeepsEarlierWrites' -method '*MigrationPublication*'` — passed 50/50, zero errors/failures/skips/unrun cases, 216.960 seconds; `/tmp/frontcomposer-15-3-resumed-cli-focused.log`. Includes 28 repeated negative parity scenarios and the actual isolated publication entry point.
+- `dotnet tests/Hexalith.FrontComposer.Cli.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Cli.Tests.dll -class Hexalith.FrontComposer.Cli.Tests.InspectCommandTests` — passed 21/21, zero errors/failures/skips/unrun cases; `/tmp/frontcomposer-15-3-resumed-inspect-tests.log`.
+- `dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class Hexalith.FrontComposer.SourceTools.Tests.Docs.DocsSiteValidationTests` — passed 10/10, zero errors/failures/skips/unrun cases; `/tmp/frontcomposer-15-3-resumed-docs-tests.log`.
+- `pwsh ./eng/validate-docs.ps1` — passed, including eight compiled snippets, five producer fingerprints, Release solution build and DocFX publication; zero blocking failures in `artifacts/docs/validation-manifest.json`; `/tmp/frontcomposer-15-3-resumed-publication.log`.
+- `aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json` — pre-edit baseline exited 2: unchanged dependency projects reported MSB3030 for missing Commons.UniqueIds outputs in Parties and CS1704 for duplicate Memories assemblies in Tenants.UI (six warnings/eight errors). `/tmp/frontcomposer-15-3-resumed-apphost-start.log`. Matching `aspire describe --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json` and `aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive` each exited 0 and confirmed no running AppHost; `/tmp/frontcomposer-15-3-resumed-apphost-describe.log`, `/tmp/frontcomposer-15-3-resumed-apphost-stop.log`.
+- `python3 eng/validate-story-artifacts.py` — passed; `/tmp/frontcomposer-15-3-resumed-artifacts-global.log`.
+- The cumulative per-story command below passed; `/tmp/frontcomposer-15-3-resumed-artifacts-story.log`. `git diff --check` passed. Frozen-block equality against HEAD and CRLF preservation for changed code/test files were also checked.
+
+
+```shell
+python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md \
+  --changed-file _bmad-output/implementation-artifacts/deferred-work.md \
+  --changed-file _bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md \
+  --changed-file _bmad-output/implementation-artifacts/sprint-status.yaml \
+  --changed-file docs/how-to/migration-guides.md \
+  --changed-file docs/migrations/index.md \
+  --changed-file docs/migrations/9.1-to-9.2.md \
+  --changed-file docs/migrations/1.12-to-2.0.md \
+  --changed-file docs/migrations/3.1-to-4.0.md \
+  --changed-file docs/migrations/4.5-to-4.6.md \
+  --changed-file docs/reference/cli.md \
+  --changed-file docs/toc.yml \
+  --changed-file docs/validation/producer-fingerprints.json \
+  --changed-file eng/validate-docs.ps1 \
+  --changed-file src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs \
+  --changed-file src/Hexalith.FrontComposer.Cli/PathUtilities.cs \
+  --changed-file src/Hexalith.FrontComposer.Cli/WriteSafetyPolicy.cs \
+  --changed-file tests/Hexalith.FrontComposer.Cli.Tests/MigrationCommandTests.cs \
+  --changed-file tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs
+```
 
 Final parent verification after all review patches (2026-10-22):
 
@@ -217,9 +301,12 @@ python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-arti
 - `docs/migrations/3.1-to-4.0.md`
 - `docs/migrations/4.5-to-4.6.md`
 - `docs/reference/cli.md`
+- `docs/toc.yml`
 - `docs/validation/producer-fingerprints.json`
 - `eng/validate-docs.ps1`
+- `src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs`
 - `src/Hexalith.FrontComposer.Cli/PathUtilities.cs`
+- `src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs`
 - `src/Hexalith.FrontComposer.Cli/WriteSafetyPolicy.cs`
 - `tests/Hexalith.FrontComposer.Cli.Tests/MigrationCommandTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs`

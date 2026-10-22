@@ -69,9 +69,15 @@ emitted reports. Cancellation can return code 4 before any report is emitted; in
 may leave an absent or partial report. Do not require an `applied` field when no complete report
 was emitted.
 
+Migration sidecars support arrays of diagnostic objects or objects containing a `diagnostics`
+array of objects. Unsupported valid JSON shapes, such as scalar roots or non-object diagnostic
+entries, may throw outside handled failures without a structured report or the documented
+exit-code guarantees.
+
 Generated output, `bin`, `obj`, `.git`, package caches, submodules, paths outside the project,
-file symlinks, and linked ancestor directories (including junctions) are ineligible. Explicit
-`Compile` Link metadata does not authorize an outside-root or linked write. The planner refuses
+file symlinks, and linked ancestor directories (including junctions) below the selected project
+directory are ineligible. Explicit `Compile` Link metadata does not authorize an outside-root or
+linked write. The planner refuses
 unsafe documents before source reads and rechecks safety at apply time. Complex MSBuild globs
 and imported Compile items are not fully evaluated. Source reads support UTF-8 (with or without
 BOM), UTF-16 LE/BE, and UTF-32 LE/BE; unknown encodings and files over 16 MiB are refused.
