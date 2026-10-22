@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Options;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 using Shouldly;
@@ -46,6 +48,24 @@ public sealed class FcShellOptionsValidationTests {
         result.Failed.ShouldBeTrue();
         result.FailureMessage.ShouldContain("FormAbandonmentThresholdSeconds", Case.Insensitive);
         result.FailureMessage.ShouldContain("StillSyncingThresholdMs", Case.Insensitive);
+    }
+
+    [Fact]
+    public void RegisteredShellOptionsEnforceCrossPropertyThresholds() {
+        // Story 15.2 review R5-E17: both values sit inside their [Range] bounds, so only the
+        // registered FcShellOptionsThresholdValidator can reject the abandonment/still-syncing pair.
+        ServiceCollection services = [];
+        _ = services.AddHexalithFrontComposer();
+        _ = services.Configure<FcShellOptions>(options => {
+            options.StillSyncingThresholdMs = 6_000;
+            options.FormAbandonmentThresholdSeconds = 5;
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        OptionsValidationException exception = Should.Throw<OptionsValidationException>(
+            () => _ = provider.GetRequiredService<IOptions<FcShellOptions>>().Value);
+
+        exception.Message.ShouldContain("FormAbandonmentThresholdSeconds", Case.Insensitive);
     }
 
     [Fact]

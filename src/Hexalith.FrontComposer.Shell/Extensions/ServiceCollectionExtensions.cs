@@ -254,10 +254,12 @@ public static class ServiceCollectionExtensions {
         // into DataGridNavigationState.Cap by DataGridNavigationFeature at first state construction
         // (Group D code review W1 resolution — no mutable process-static).
         // Story 2-4 Task 3.2 / 3.4 — layer ordered-threshold validator AFTER [Range] annotations.
+        // Story 15.2 review R5-E17 — ValidateDataAnnotations already registered an
+        // IValidateOptions<FcShellOptions>, so TryAddSingleton silently skipped this validator.
         _ = services.AddOptions<FcShellOptions>()
             .ValidateDataAnnotations()
             .ValidateOnStart();
-        services.TryAddSingleton<IValidateOptions<FcShellOptions>, FcShellOptionsThresholdValidator>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FcShellOptions>, FcShellOptionsThresholdValidator>());
 
         // Story 2-4 — TimeProvider is required by FcLifecycleWrapper + LifecycleThresholdTimer.
         // Register the system provider if the adopter has not already.

@@ -174,7 +174,12 @@ Round 4 is a follow-up code review of the fix delta `dfa06286..f8ae3b58` over Fi
 
 Round 5 is a follow-up code review of the fix delta `f8ae3b58..9a2716e8` over File List paths: 11 files, +104/−34, 354 diff lines. The spec, `deferred-work.md` and `sprint-status.yaml` were excluded as narrative. The unrelated baseline-pin commit `a258b992` was also excluded. Four layers ran: Blind Hunter (B), Edge Case Hunter (E), Verification Gap (V) and Acceptance Auditor (A). They raised 55 findings, and triage checked each one against source. Result: 1 decision-needed, 9 patch, 3 defer, 33 rejected.
 
-- [ ] [Review][Decision] (R5-E17, medium) The new startup-validation sentence is false in real hosts, because `FcShellOptionsThresholdValidator` is never registered.
+- [x] [Review][Patch] (resolved from Decision R5-E17 → Option 1, medium) The new startup-validation sentence was false in real hosts, because `FcShellOptionsThresholdValidator` was never registered. Administrator chose to fix the registration under 15.2 (2026-10-22).
+  - Applied: `ServiceCollectionExtensions.cs` now registers the validator with `TryAddEnumerable`, the same form the tenant validator uses a few lines below. Its doc sentence at `command-lifecycle.md:112` is unchanged and is now true.
+  - The new `FcShellOptionsValidationTests.RegisteredShellOptionsEnforceCrossPropertyThresholds` resolves options through `AddHexalithFrontComposer()` with in-range values that break only the abandonment rule. It failed before the fix (no `OptionsValidationException`) and passes after it.
+  - Its PascalCase name leaves the CA1707 identifier seal unchanged.
+  - Blast radius: the defaults and all five in-workspace hosts (UI, AdopterProofKit, Counter, Tenants.UI, Parties.UI) satisfy all 12 rules. The full Shell.Tests and Testing.Tests suites passed with the fix (see Verification).
+  - Adopters whose cross-property values are invalid now fail at startup, as the validator documents. [src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs:262] [tests/Hexalith.FrontComposer.Shell.Tests/Options/FcShellOptionsValidationTests.cs:54]
   - `ServiceCollectionExtensions.cs:257-260` calls `AddOptions<FcShellOptions>().ValidateDataAnnotations()`. That calls `AddSingleton<IValidateOptions<FcShellOptions>>` first, so the following `TryAddSingleton<IValidateOptions<FcShellOptions>, FcShellOptionsThresholdValidator>()` is skipped.
   - None of the validator's 12 cross-property rules run at `ValidateOnStart`: abandonment > still-syncing, SyncPulse < StillSyncing < TimeoutAction, the toast ordering, `SupportedCultures` ⊇ `DefaultCulture`, virtualization, ETag-cache, and the pending-command polling and retry bounds.
   - Only the per-property `[Range]` limits are enforced. Every test builds the validator directly (`FcShellOptionsValidationTests`, `Story52FcShellOptionsValidatorTests`) or registers it by hand in bUnit (`FcFormAbandonmentGuardTests.cs:46`, `LifecycleWrapperTestBase.cs:36`), so no test exercises DI.
@@ -421,6 +426,20 @@ PYCODE
 
 - Final global artifact validation and the cumulative-path per-story invocation passed; the latter independently matched exactly 40 owned paths (`/tmp/frontcomposer-15-2-r4-final-artifacts-global.log`, `/tmp/frontcomposer-15-2-r4-final-artifacts-story.log`). `git diff --check` passed.
 
+### Round 5 decision R5-E17 implementation (2026-10-22)
+
+Logs are in `/tmp/claude-1000/-home-administrator-projects-hexalith-frontcomposer/23b2efcf-2b64-446b-beb3-c85d78647c85/scratchpad/`. The local Builds checkout matched its gitlink (`4248b8c`).
+
+- **Red run, before the registration change:** `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Debug --no-restore -nodeReuse:false --disable-build-servers -m:1` exited 0 with zero warnings and errors (`r5-red-build.log`).
+  - `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method '*RegisteredShellOptionsEnforceCrossPropertyThresholds'` exited 1: 1 test, 1 failure, because no `OptionsValidationException` was thrown (`r5-red-test.log`).
+- **Green, Debug:** the same Debug build exited 0 with zero warnings and errors (`r5-green-build.log`).
+  - `-class Hexalith.FrontComposer.Shell.Tests.Options.FcShellOptionsValidationTests` passed 62 tests (`r5-green-options.log`).
+  - `-method '*AnalyzerPolicy_IdentifierInventory_MatchesSeal'` passed 1 test (`r5-green-seal.log`).
+- **Full Debug Shell.Tests suite** with the CI default-lane exclusions (`-notrait "Category=GovernanceBuild" -notrait "Category=Performance" -notrait "Category=e2e-palette" -notrait "Category=NightlyProperty" -notrait "Category=Quarantined"`) passed 3750 tests: 0 failed, skipped or not run, and no `OptionsValidationException` in the output (`r5-shell-full.log`).
+- **Testing.Tests:** the Debug build exited 0 with zero warnings and errors (`r5-testing-build.log`). The full suite with the same exclusions passed 185 tests with 0 failures (`r5-testing-full.log`).
+- **Release:** the Shell.Tests Release build exited 0 with zero warnings and errors (`r5-release-build.log`). `FcShellOptionsValidationTests` passed 62 tests (`r5-release-options.log`).
+- `git diff --check` passed.
+
 ## File List
 
 - `.github/workflows/quality.yml`
@@ -450,6 +469,7 @@ PYCODE
 - `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldSlotHost.cs`
 - `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionTemplateHost.cs`
 - `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionViewOverrideHost.cs`
+- `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs`
 - `src/Hexalith.FrontComposer.Shell/Services/Diagnostics/CustomizationDiagnosticPublisher.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/FallbackTemplate.cs`
@@ -462,4 +482,5 @@ PYCODE
 - `tests/Hexalith.FrontComposer.Shell.Tests/Generated/ThrowingCounterReplacement.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Generated/ThrowingCounterTemplate.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Options/FcShellOptionsValidationTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcDocComponentDocumentationContractTests.cs`
