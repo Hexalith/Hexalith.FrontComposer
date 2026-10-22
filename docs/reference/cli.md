@@ -29,7 +29,8 @@ lifecycle bridges, last-used subscribers, Fluxor features, actions, reducers, an
 Text and JSON share ordinal file ordering by related type, family name, then path. Diagnostics
 are ordered ordinally by ID, then path. Counts reflect the filtered report. `--type` accepts an
 exact metadata name or an unambiguous simple name; unknown or ambiguous names fail with code 2.
-Global MCP/template manifests and diagnostics with null related type remain in type-filtered output.
+Global MCP/template manifests and the `HFCM0002` sentinel remain in type-filtered output.
+Ordinary sidecar diagnostics without a related type have an empty type string and are removed by `--type`.
 `--severity` filters diagnostics by minimum severity: `hidden` keeps all, `info` (or `information`)
 keeps Info/Warning/Error, `warning` keeps Warning/Error, and `error` keeps Error.
 Both severity and type filters run before fail flags.
@@ -42,14 +43,17 @@ such as scalar roots or non-object diagnostic entries, may throw outside handled
 a structured report or the documented exit-code guarantees. Unsafe sidecar paths are redacted. `--absolute-paths` explicitly opts generated-file paths into absolute output;
 project and sidecar paths retain their relative/redacted behavior.
 
-`frontcomposer migrate` requires explicit `--from` and `--to` versions. The only executable edge
-is `9.1.0` to `9.2.0`; see the [classified index](../migrations/index.md) for manual-only upgrades.
+`frontcomposer migrate` requires explicit `--from` and `--to` versions. Use the
+[classified index](../migrations/index.md) to select CLI-supported edges or manual-only upgrades.
 Dry-run is the default (`--dry-run` makes it explicit) and writes no source. `--apply` atomically
 replaces each eligible file through a same-directory temporary file after path/hash revalidation.
 Earlier successful writes remain if a later file fails or cancellation occurs; there is no whole-run
 rollback. Handled apply failures return code 4 and set `applied=false` on emitted reports.
 Cancellation can return code 4 before any report is emitted; interrupted output may leave an
 absent or partial report. Consumers must not require `applied` when no complete report is emitted.
+Migration sidecars support arrays of diagnostic objects or objects containing a `diagnostics` array
+of objects. Unsupported valid JSON shapes, such as scalar roots or non-object diagnostic entries,
+may throw outside handled failures without a structured report or the documented exit-code guarantees.
 
 Exit codes:
 
@@ -61,8 +65,9 @@ Exit codes:
 | 3 | Generated output unavailable for `inspect`; build the selected project or pass the correct configuration/framework. |
 | 4 | Filesystem, cancellation, workspace setup, or apply/write failure. |
 
-Paths default to project-relative forward slashes; unsafe paths are redacted and handled CLI
-failures avoid raw exceptions and private absolute paths. Output fields escape control characters and use
+Report paths default to project-relative forward slashes; unsafe report paths are redacted.
+Handled filesystem failures print exception messages with escaped control characters; those messages can
+include absolute filesystem paths. Output fields escape control characters and use
 length limits (normally 240 characters); multiline migration diffs have an 8,000-character per-entry
 and 64,000-character aggregate budget with truncation/omission markers. These protections do not
 semantically scrub arbitrary usernames, tenant values, or secrets embedded in free-form sidecar
@@ -75,7 +80,7 @@ Selection and paths:
 | `--project` | Must resolve to an existing `.csproj`; `.fsproj` is unsupported in v1. |
 | `--solution` | Must resolve to a `.sln` with exactly one supported `.csproj`; `.slnx`, malformed entries, unsupported project types, and multiple candidates fail closed. |
 | discovery | With no explicit path, only a single `.csproj` in the current directory is accepted. |
-| migration writes | Generated output, `bin`, `obj`, `.git`, package caches, submodule paths, outside-root targets, file symlinks, linked ancestor directories/junctions, and changed targets are refused before mutation and revalidated immediately before write. |
+| migration writes | Generated output, `bin`, `obj`, `.git`, package caches, submodule paths, outside-root targets, file symlinks, linked ancestor directories/junctions below the project directory, and changed targets are refused before mutation and revalidated immediately before write. |
 
 `inspect --fail-on-warning` is stricter than `--fail-on-error`; when both are supplied, warnings or errors return exit code 1. JSON consumers can read warning/error counts from `summary` but should treat the process exit code as the applied fail behavior.
 

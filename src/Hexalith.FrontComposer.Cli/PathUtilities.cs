@@ -26,15 +26,16 @@ internal static class PathUtilities {
     public static string RedactAbsolute(string path) => Path.IsPathRooted(path) ? RedactedPathSentinel + "/" + Path.GetFileName(path) : path;
 
     /// <summary>
-    /// Refuses file links and linked ancestors, including directory junctions, without reading source bytes.
-    /// Inaccessible path metadata is unsafe as well.
+    /// Refuses file links and linked ancestors below the project directory, including directory junctions,
+    /// without reading source bytes. Inaccessible path metadata is unsafe as well.
     /// </summary>
-    public static bool HasLinkedPathSegment(string path)
+    public static bool HasLinkedPathSegment(string projectDirectory, string path)
     {
         try
         {
+            string projectRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(projectDirectory));
             string? current = Path.GetFullPath(path);
-            while (current is not null)
+            while (current is not null && !string.Equals(current, projectRoot, PathComparison))
             {
                 if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
                 {
@@ -62,25 +63,20 @@ internal static class PathUtilities {
         }
 
         try {
-            if (File.Exists(fullPath)) {
-                FileInfo file = new(fullPath);
-                FileSystemInfo? target = file.ResolveLinkTarget(returnFinalTarget: true);
-                return Path.GetFullPath(target?.FullName ?? file.FullName);
+            // Resolve ancestors first so a stable lexical path cannot hide a changed workspace
+            // link or project directory between the planner snapshot and apply revalidation.
+            string normalizedPath = Path.TrimEndingDirectorySeparator(fullPath);
+            string? parent = Path.GetDirectoryName(normalizedPath);
+            if (parent is null) {
+                return fullPath;
             }
 
-            if (Directory.Exists(fullPath)) {
-                DirectoryInfo directory = new(fullPath);
-                FileSystemInfo? target = directory.ResolveLinkTarget(returnFinalTarget: true);
-                return Path.GetFullPath(target?.FullName ?? directory.FullName);
-            }
-
-            string? parent = Path.GetDirectoryName(fullPath);
-            if (!string.IsNullOrEmpty(parent) && Directory.Exists(parent)) {
-                DirectoryInfo parentInfo = new(parent);
-                FileSystemInfo? parentTarget = parentInfo.ResolveLinkTarget(returnFinalTarget: true);
-                string parentResolved = Path.GetFullPath(parentTarget?.FullName ?? parentInfo.FullName);
-                return Path.GetFullPath(Path.Combine(parentResolved, Path.GetFileName(fullPath)));
-            }
+            string resolvedPath = Path.Combine(Canonical(parent), Path.GetFileName(normalizedPath));
+            FileSystemInfo? entry = Directory.Exists(resolvedPath)
+                ? new DirectoryInfo(resolvedPath)
+                : File.Exists(resolvedPath) ? new FileInfo(resolvedPath) : null;
+            FileSystemInfo? target = entry?.ResolveLinkTarget(returnFinalTarget: true);
+            return target is null ? resolvedPath : Canonical(target.FullName);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or PathTooLongException or NotSupportedException) {
         }

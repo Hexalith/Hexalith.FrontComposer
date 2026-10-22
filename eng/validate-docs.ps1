@@ -184,10 +184,10 @@ function Get-MigrationCatalogEdges([string]$CatalogPath, [System.Collections.Gen
     $tokens = [System.Collections.Generic.List[string]]::new()
     $literals = [System.Collections.Generic.List[string]]::new()
     $source = Get-Content -LiteralPath $CatalogPath -Raw
-    foreach ($token in [regex]::Matches($source, '(?s)/\*.*?\*/|//[^\r\n]*|(?<raw>"{3,})(?!").*?\k<raw>(?!")|@"(?:""|[^"])*"|"(?:\\.|[^"\\])*"|[A-Za-z_]\w*|\S')) {
+    foreach ($token in [regex]::Matches($source, '(?s)/\*.*?\*/|//[^\r\n]*|(?<raw>"{3,})(?!").*?\k<raw>(?!")|@"(?:""|[^"])*"|"(?:\\.|[^"\\])*"|''(?:\\.|[^''\\])*''|[A-Za-z_]\w*|\S')) {
         $value = $token.Value
         if ($value.StartsWith('//') -or $value.StartsWith('/*')) { continue }
-        if ($value.StartsWith('"') -or $value.StartsWith('@"')) {
+        if ($value.StartsWith('"') -or $value.StartsWith('@"') -or $value.StartsWith("'")) {
             $tokens.Add('__literal' + $literals.Count)
             $literals.Add($value)
         }
@@ -248,8 +248,13 @@ function Assert-MigrationParity([string]$MigrationsRoot, [string]$CatalogPath, [
         $path = 'docs/migrations/' + $guide.Name
         $front = (Get-FrontMatter $guide.FullName).Metadata
         $mode = [string]$front['migrationMode']
-        if ($mode -cnotin @('cli-supported', 'manual-only')) {
-            Add-Failure $Failures "$path migrationMode must be cli-supported or manual-only."
+        if ($front.Keys -cnotcontains 'migrationMode' -or $mode -cnotin @('cli-supported', 'manual-only')) {
+            Add-Failure $Failures "$path migrationMode must be cli-supported or manual-only using the canonical migrationMode key."
+        }
+        foreach ($versionField in @('fromVersion', 'toVersion')) {
+            if ([string]$front[$versionField] -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$') {
+                Add-Failure $Failures "$path $versionField must be an exact semantic version."
+            }
         }
         $guides[$path] = [pscustomobject]@{ From = [string]$front['fromVersion']; To = [string]$front['toVersion']; Mode = $mode }
         $matches = @($catalog | Where-Object { $_.From -ceq $front['fromVersion'] -and $_.To -ceq $front['toVersion'] -and $_.Path -ceq $path })
@@ -293,7 +298,7 @@ function Assert-MigrationParity([string]$MigrationsRoot, [string]$CatalogPath, [
         if ($line -cmatch '^\|\s*fromVersion\s*\|\s*toVersion\s*\|\s*migrationMode\s*\|\s*Guide\s*\|\s*$' -or
             $line -match '^\|(?:\s*:?-{3,}:?\s*\|){4}\s*$') { continue }
         if ($line -notmatch '^\|') {
-            if ($line -match '\[[^\]]+\]\([^)]+\.md(?:[?#][^)]*)?\)') {
+            if ($line -match '\[[^\]]+\]\((?:\./)?[^/\\:#?()]+\.md(?:[?#][^)]*)?\)') {
                 Add-Failure $Failures 'docs/migrations/index.md guide links must declare versions and migrationMode in a classified row.'
             }
             continue

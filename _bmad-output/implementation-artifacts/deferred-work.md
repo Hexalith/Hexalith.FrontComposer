@@ -10681,6 +10681,8 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
   summary: Escape story and artifact paths at remaining validator report sites.
   evidence: Round-2 review reproduced a raw U+2028 story path in the unrelated-dirty notice at `eng/validate-story-artifacts.py:1631`; repository-integrity messages such as lines 712, 791, and 903 also format raw `relative_to(root).as_posix()` paths. Extend the existing BH-02 checked-task escaping item with fixtures that combine unsafe story paths and documented unrelated paths.
 
+## Deferred from: Story 15.3 review (2026-10-22)
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
   summary: Fail closed with sanitized inspect diagnostics for unsupported JSON sidecar root and entry shapes.
   evidence: Story 15.3 review BH-7 verified that DiagnosticFileReader.Read calls TryGetProperty on primitive roots or non-object array entries, which throws InvalidOperationException outside the existing JsonException/IO/access catches. CliApplication does not catch that exception. The reader is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. Add focused primitive-root and non-object-entry regressions and an explicit sanitized rejected-shape policy; the current story corrects documentation and the separately approved symlink guard only.
@@ -10693,3 +10695,14 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
   summary: Fail closed with sanitized migrate output for unsupported JSON sidecar root and entry shapes.
   evidence: Story 15.3 post-commit review CR-D2. `MigrationDiagnosticSidecarReader.Read` (src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:41) calls `TryGetProperty` on a scalar root, and `IsManualMigrationDiagnostic` does the same on non-object entries. A probe with a `42` sidecar under `obj/Debug/net10.0/generated/HexalithFrontComposer/` made `migrate` exit 134 with an unhandled `InvalidOperationException`, no report, and a raw stack trace. The reader is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. This is the migrate counterpart of the inspect `DiagnosticFileReader` deferral (BH-7); fix both readers with one `ValueKind` policy and focused regressions.
+
+
+## Deferred from: Story 15.3 resumed review (2026-10-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
+  summary: Bound default-glob source discovery around directory links and cycles before migration safety filtering.
+  evidence: R2-BH-3 reproduced Loop pointing to its project directory yielding 40 redundant skipped entries because ProjectDocumentLoader.Expand recursively traverses linked directories before WriteSafetyPolicy runs. The recursive enumeration is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. Add deterministic default-glob/cycle coverage and avoid traversing refused linked directories without changing ordinary source discovery.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
+  summary: Add the Shell extension namespace import to the 9.1-to-9.2 migration New Code snippet.
+  evidence: R2-BH-9 verified that AddFrontComposerDevMode is declared in Hexalith.FrontComposer.Shell.Extensions while the full New Code snippet imports only Microsoft.Extensions.DependencyInjection. That snippet is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc; include the missing using and validate the complete example under its documented host prerequisites.

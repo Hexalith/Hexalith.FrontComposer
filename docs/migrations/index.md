@@ -17,7 +17,7 @@ The private CLI migration catalog is authoritative for executable version edges.
 `migrationMode: cli-supported` identifies executable guidance; `migrationMode: manual-only`
 identifies package/API upgrades that require manual reference, namespace, and source changes.
 The classifications below match each guide's frontmatter. Version labels in filenames may be
-shortened; the exact versions in this table and the guide metadata govern parity.
+shortened; use the exact versions in this table and the guide metadata when upgrading.
 
 | fromVersion | toVersion | migrationMode | Guide |
 | --- | --- | --- | --- |

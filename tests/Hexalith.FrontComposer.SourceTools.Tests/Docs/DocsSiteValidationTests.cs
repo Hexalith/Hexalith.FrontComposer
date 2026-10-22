@@ -135,6 +135,7 @@ public sealed partial class DocsSiteValidationTests {
     {
         string migrations = Path.Combine(ProjectRoot(), "docs", "migrations");
         string index = File.ReadAllText(Path.Combine(migrations, "index.md"));
+        string toc = File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "toc.yml"));
         foreach (string guide in Directory.EnumerateFiles(migrations, "*.md").Where(path => Path.GetFileName(path) != "index.md"))
         {
             Dictionary<string, string> front = ReadFrontMatter(guide);
@@ -143,6 +144,7 @@ public sealed partial class DocsSiteValidationTests {
             string[] linkedRows = index.Split('\n').Where(line => line.Contains($"]({Path.GetFileName(guide)})", StringComparison.Ordinal)).ToArray();
             linkedRows.Length.ShouldBe(1, $"{Relative(guide)} needs one classified index link.");
             linkedRows[0].ShouldStartWith(row);
+            toc.ShouldContain($"href: migrations/{Path.GetFileName(guide)}");
         }
 
         ReadFrontMatter(Path.Combine(migrations, "3.1-to-4.0.md"))["fromVersion"].ShouldBe("3.1.1");
@@ -151,7 +153,7 @@ public sealed partial class DocsSiteValidationTests {
     [Fact]
     public void MigrationGuidanceDescribesCliSafeFixAndSyntheticManualBoundary()
     {
-        string guide = File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "migrations", "9.1-to-9.2.md"));
+        string guide = NormalizeWhitespace(File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "migrations", "9.1-to-9.2.md")));
         ReadFrontMatter(Path.Combine(ProjectRoot(), "docs", "migrations", "9.1-to-9.2.md"))["codeFixAvailable"].ShouldBe("false");
         guide.ShouldContain("CLI-only safe fix");
         guide.ShouldContain("No IDE analyzer/code fix");
@@ -159,7 +161,7 @@ public sealed partial class DocsSiteValidationTests {
         guide.ShouldContain("Production emission is not approved");
         guide.ShouldContain("--from 9.1.0 --to 9.2.0 --dry-run");
 
-        string howTo = File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "how-to", "migration-guides.md"));
+        string howTo = NormalizeWhitespace(File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "how-to", "migration-guides.md")));
         howTo.ShouldContain("Dry-run is the default and writes nothing");
         howTo.ShouldContain("earlier successful writes remain");
         howTo.ShouldContain("applied=false");
@@ -179,8 +181,10 @@ public sealed partial class DocsSiteValidationTests {
             page.ShouldContain("published Release");
             page.ShouldContain("NuGet package does not emit these customization diagnostics/panels");
         }
-        howTo.ShouldContain("`applied=false` on");
-        howTo.ShouldContain("emitted reports");
+        howTo.ShouldContain("`applied=false` on emitted reports");
+        howTo.ShouldContain("linked ancestor directories below the project directory");
+        howTo.ShouldContain("Migration sidecars support arrays of diagnostic objects");
+        guide.ShouldContain("may make `migrate` throw outside handled failures");
         howTo.ShouldContain("before any report is emitted");
         howTo.ShouldContain("absent or partial report");
         howTo.ShouldContain("unsupported valid JSON shapes");
@@ -190,7 +194,7 @@ public sealed partial class DocsSiteValidationTests {
     [Fact]
     public void CliReferencePinsInspectCountsOrderingFilteringAndPathOptIn()
     {
-        string reference = File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "reference", "cli.md")).ReplaceLineEndings("\n");
+        string reference = NormalizeWhitespace(File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "reference", "cli.md")));
         reference.ShouldContain("frontcomposer.cli.inspect.v1");
         reference.ShouldContain("frontcomposer.cli.migrate.v1");
         reference.ShouldContain("`CommandForm`");
@@ -203,14 +207,20 @@ public sealed partial class DocsSiteValidationTests {
         reference.ShouldContain("warning sentinel `HFCM0002`");
         reference.ShouldContain("Unsupported valid JSON shapes");
         reference.ShouldContain("may throw outside handled failures");
-        reference.ShouldContain("handled CLI");
+        reference.ShouldContain("Handled filesystem failures print exception messages with escaped control characters");
+        reference.ShouldContain("those messages can include absolute filesystem paths");
+        reference.ShouldContain("Migration sidecars support arrays of diagnostic objects");
+        reference.ShouldContain("Global MCP/template manifests and the `HFCM0002` sentinel remain in type-filtered output");
+        reference.ShouldContain("Ordinary sidecar diagnostics without a related type have an empty type string and are removed by `--type`");
+        reference.ShouldContain("linked ancestor directories/junctions below the project directory");
+        reference.ShouldNotContain("The only executable edge");
         reference.ShouldContain("`applied=false` on emitted reports");
         reference.ShouldContain("before any report is emitted");
         reference.ShouldContain("absent or partial report");
         reference.ShouldContain("`--absolute-paths`");
         reference.ShouldContain("project and sidecar paths retain their relative/redacted behavior");
         reference.ShouldContain("64,000-character aggregate budget");
-        reference.ShouldContain("do not\nsemantically scrub", Case.Insensitive);
+        reference.ShouldContain("do not semantically scrub", Case.Insensitive);
         reference.ShouldNotContain("reports generated-output paths, project metadata, schema fingerprints");
     }
 
@@ -233,6 +243,8 @@ public sealed partial class DocsSiteValidationTests {
         releases.ShouldContain("breaking derivable-setter migration");
         releases.ShouldContain("suppression cannot restore generation");
     }
+
+    private static string NormalizeWhitespace(string text) => Regex.Replace(text, @"\s+", " ");
 
     [GeneratedRegex("(?s)<!--\\s*hfc:reference:start\\s*-->(.*?)<!--\\s*hfc:reference:end\\s*-->")]
     private static partial Regex HfcReferenceRegion();
