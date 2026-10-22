@@ -315,3 +315,104 @@ product_approval_inferred: false
 apphost_running: false
 staged_committed_pushed: false
 ```
+
+## Retrospective follow-through — 2026-10-22
+
+Historical packet, baselines, delivery entries and owner decisions above remain unchanged. The
+[bounded follow-through receipt](tests/epic-13-follow-through-2026-10-22.json) binds the current root
+revision, changed runtime/test inputs, tested Shell assembly, realm/fixture and EventStore identities.
+It records successful lifecycle/replay checks and the unsuccessful live prerequisite check. No
+manual observation, accessibility acceptance, Fluent approval, OI-16 closure or G-4 closure is supplied.
+
+### Supported historical replay
+
+From a clean checkout containing historical Git objects, run:
+
+```bash
+python3 eng/replay_story_13_6.py
+```
+
+Optionally pass `--scratch-root` naming an existing directory outside the checkout. The wrapper
+retains a fresh external scratch tree and its receipt/audit/restore logs; it never replaces current
+helpers, dependencies, baselines or sealed packets. The [reconstruction recipes](tests/story-13-6-historical-runtime.json)
+bind all 36 packet inputs and restore 29 runtime/dependency/baseline inputs from Git
+`397dac34a1bd1bf4d789161794a66811360cb59a`. Runtime and package JSON use CRLF; the lockfile uses
+CRLF except LF on lines 14/15; all 24 PNGs retain raw bytes. Size and SHA-256 checks precede npm or
+JavaScript execution. A fresh locked `npm ci --ignore-scripts --no-audit --no-fund` runs only in
+scratch; `NODE_PATH` and `NODE_OPTIONS` are cleared and extraction stays in scratch.
+
+Observed with Node `v26.4.0`, npm `11.18.0`, and locked playwright-core `1.63.0`: wrapper **exit 0**,
+all **2,079 files** and **116 required states per engine** verified, including support logs, unique
+engine/run identities, attachment relocation and unchanged outcomes. The unchanged sealed raw
+validator still exits **1**: **752 passed / 18 visual failed / 4 skipped / 0 flaky**, overall
+accessibility classification **blocked**. Wrapper success means historical reconstruction matches;
+it does not turn the original visual failures green. Missing history or corrupt inputs fail closed.
+Earlier direct live-helper replay commands remain historical; this is the supported reconstruction
+procedure after helper changes. No 15.6/15.7 storage migration or evidence retirement is claimed.
+
+### MAN-136 handoff and observations
+
+E13R-AI-2 stays **open**. The seven existing MAN-136 rows and all eighteen manual boxes above remain
+unperformed/unchecked: no named human tester, supported AT session, actual zoom observation or
+physical device was supplied. Preparing this handoff supplies no observed Pass/Fail result.
+
+Accessibility/Stakeholder and Quality/Test owners should assign named testers and a named reviewer
+to the existing NVDA/Firefox, JAWS/Chrome, VoiceOver/Safari, zoom, tablet, phone and zero-field rows.
+Before each run, select and record the exact tested root revision plus patch/artifact hashes and
+executing Components/Icons identity; the historical packet and this focused lifecycle candidate
+must not be conflated. Use the existing [manual log template](../../docs/accessibility-verification/manual-log-template.md)
+and the common operator/zero-field sequences above. Record date, full OS/browser/AT or device/model
+versions, route/journey, orientation and responsive tier, actual 400% zoom from the measured 1280 CSS
+pixel reference, heard-speech observations, Pass/Fail, issue links, sanitized evidence and the named
+reviewer's approval reference. Reuse these MAN-136 identifiers; append observations to this result.
+
+The release impact remains blocked accessibility completion. Reopen each `not performed` row when
+the named human and required equipment can exercise the identified candidate. Automated focus,
+DOM/speech-owner assertions and viewport resizing cannot satisfy heard speech, actual browser zoom
+or physical-device observations. No assignment, version, result or sign-off has been invented.
+
+### Current verification and live tenant boundary
+
+- `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug --no-restore -m:1 -v:q`
+  — passed, zero warnings/errors. The direct built assembly with `-class '*FcRouteFocusTests'`
+  — **21 passed**, zero failures/skips/errors. Held imports, late failures/callbacks, repeated
+  disposal, disconnected-JS cleanup and mounted normal focus are covered.
+- `python3 -m unittest discover -s tests/eng -p test_replay_story_13_6.py` — **8 passed**,
+  including corruption, absent historical objects, exact newline/binary recipes and isolation.
+  `node --test tests/e2e/scripts/a11y-state-evidence.test.mjs` — **24 passed**.
+- Initial fixture-enabled `TenantScopeFixture__Enabled=true aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json`
+  — exit **2**, NETSDK1004 for Commons.UniqueIds and Memories.Contracts/Client.Rest source assets.
+  An initial Shell file-copy lock warning was also retained. The startup attempt preceded edits,
+  but completed after the first lifecycle patch; no healthy topology baseline was established before
+  those edits. Exact-target stop/describe subsequently confirmed no running AppHost.
+- `dotnet restore src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj -p:Configuration=Debug -v:q`
+  — exit **0**, but the next startup still reported missing source assets. Individual Debug restores
+  of `references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj`,
+  `references/Hexalith.Memories/src/Hexalith.Memories.Contracts/Hexalith.Memories.Contracts.csproj`, and
+  `references/Hexalith.Memories/src/Hexalith.Memories.Client.Rest/Hexalith.Memories.Client.Rest.csproj`
+  all exited **0**. Repeating the exact fixture-enabled start then exited **2** with **CS1704**:
+  Tenants.UI imports both source and NuGet `2.27.1` Memories.Contracts/Client.Rest assemblies
+  (two errors, two MSB3243 warnings). No resource reached readiness and no token was acquired.
+  Dependency versions and gitlinks were not changed to bypass that source/package conflict.
+- All seven required `FC_TEN_SCOPE_*` endpoint/tenant/user/token inputs were absent. The direct
+  built assembly with `-class '*LiveTwoTenantProductionAdapterTests' -result-trx "$RESULTS/live-two-tenant.trx"`
+  in a fresh result directory exited **0** with **one skipped / zero passed**. The existing exact
+  Passed-identity validator exited **1**, reporting `ProvisionedTenants_QueryCountAndSubscribe_StayIsolated=NotExecuted`.
+  The receipt retains the TRX hash and exact commands. This is failed prerequisite evidence, not
+  a current query/count/SignalR isolation pass.
+
+E13R-AI-5 stays **open** pending a provisioned zero-skip run. Its
+[candidate revalidation requirement](../../tests/Hexalith.FrontComposer.CounterFixture/README.md#candidate-revalidation-requirement--2026-10-22)
+now requires the existing production-adapter proof before approving relevant scope, authorization,
+storage, adapter, server, AppHost/realm/fixture or EventStore changes, and again after further relevant
+changes. The advisory default lane and Story 13.1's historical pass remain intact. Final exact-target
+Aspire stop and describe confirm no AppHost running. E13R-AI-1/3/4 are completed by the focused fix,
+dated tracking reconciliation and supported replay; human/live prerequisites remain separately open.
+
+Final repository checks: `python3 eng/validate-story-artifacts.py` passed with the sentinel scan
+enabled; `git diff --check` passed. No sealed packet, approved baseline, dependency version, gitlink,
+historical decision or unrelated work was changed. No staging, commit or push was performed.
+
+Parent browser regression: rebuilt Counter Debug (zero warnings/errors) and executed the existing Chromium route-contract module-routing, invalid-tab and palette/settings focus-return journeys: **3 passed / 0 failed / 0 skipped**. Artifacts remained outside the checkout and the synthetic Test host was stopped. The bounded receipt records the exact selection and executing Shell assembly hash. This is focused UI regression proof, not live tenant isolation or human accessibility evidence.
+
+Post-review final verification: Debug Shell build passed with zero warnings/errors; **22/22** focus tests, **11/11** replay tests and **24/24** Node evidence tests passed. The supported historical command reran successfully with the same 2,079 files, 116 states/engine and blocked 752/18/4/0 outcome. Review added command-exit and surviving-owner regressions, manifest-snapshot provenance, Windows temporary-variable confinement, bounded failure diagnostics, and CI helper-suite wiring; Windows execution itself remains unperformed. A fresh final live test still skipped, and exact-identity TRX validation still rejected NotExecuted. E13R-AI-2/5 remain open. The current bounded receipt contains the final input/assembly hashes and exact raw-byte convention.

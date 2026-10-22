@@ -176,7 +176,9 @@ jobs:
         run: python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py
 
       - name: 'Gate 2b: Story artifact validator tests'
-        run: python3 -m unittest eng.tests.test_validate_story_artifacts
+        run: |
+          python3 -m unittest eng.tests.test_validate_story_artifacts
+          python3 -m unittest discover -s tests/eng -p test_replay_story_13_6.py
 
       - name: 'Gate 2b: Adopter proof runner tests'
         run: python3 -m unittest tests/eng/test_adopter_proof.py

@@ -10604,12 +10604,14 @@ closure: Record a bounded, owner-approved disposition of the unused alias and it
 
 ### DW-1987: Reconcile Story 13.6 and UX alias tracker drift
 
-status: open
+status: done
 origin: Story 13.9 Product Owner + Architect decision, 2026-10-21, residual (c)
 source_spec: `_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#product-decision-receipt`
 owner: Sprint tracking owner
 reason: The Story 13.6 primary spec remains `in-review` while its development_status row says `done`; the UX-A..UX-F alias rows still say `proposed`. Story 13.9 must preserve those existing rows and the 13.2–13.8 evidence/statuses, so neither implementation completion nor accessibility/Fluent approval can be inferred from the drift.
 closure: Reconcile each tracker against its owning story's actual reviewed evidence and completion policy in separately authorized tracking work, recording the dated rationale and any remaining verification or approval gap. Preserve immutable evidence and distinguish story delivery, OI-16 human accessibility approval, FLUENT-APP-1 and G-4; a row correction alone closes none of those approval gates.
+
+resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes only the 2026-10-21 storage amendment's status-preservation instruction. Historical delivery remains recorded; the primary 13.6 spec stays `in-review`, the sprint acceptance row is `review`, and UX-A/B/C/D/F reflect their owning delivered stories while UX-E stays `review`. The [dated reconciliation](spec-13-6-verify-responsive-and-assistive-accessibility.md#retrospective-tracking-reconciliation--2026-10-22) links each historical verification and its limits. OI-16, FLUENT-APP-1, G-4 and current identity revalidation remain open; no acceptance, baseline or historical evidence changed.
 
 ## Deferred from: Story 13.9 review (2026-10-21)
 
@@ -10693,6 +10695,34 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
   summary: Fail closed with sanitized migrate output for unsupported JSON sidecar root and entry shapes.
   evidence: Story 15.3 post-commit review CR-D2. `MigrationDiagnosticSidecarReader.Read` (src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:41) calls `TryGetProperty` on a scalar root, and `IsManualMigrationDiagnostic` does the same on non-object entries. A probe with a `42` sidecar under `obj/Debug/net10.0/generated/HexalithFrontComposer/` made `migrate` exit 134 with an unhandled `InvalidOperationException`, no report, and a raw stack trace. The reader is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. This is the migrate counterpart of the inspect `DiagnosticFileReader` deferral (BH-7); fix both readers with one `ValueKind` policy and focused regressions.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
+  summary: Verify and correct overlapping route-focus import ownership.
+  evidence: BH-1/EC-1: baseline and current awaited import can overwrite the first module when two renders overlap; compiled probe at /tmp/fc-edge-import-xyv699j0 observed disposal counts 0/1. Preserve the completed R-1 held-import/disposal fix; prove acquisition and cleanup across overlapping renders before changing ownership.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
+  summary: Assess owner-scoped cancellation of already queued route-heading browser work.
+  evidence: BH-2: unchanged fc-focus.js:869–1040 retains MutationObserver/timers/input guards after IJSObjectReference disposal, which baseline already did. Reproduce delayed heading appearance after component removal and preserve co-mounted owners before selecting a cancellation protocol.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
+  summary: Verify pending palette confirmation when the final focus owner is removed.
+  evidence: BH-3, potential medium unverified: UnregisterFocusOwner does not settle pending tasks, but baseline disposal already invalidated callbacks and ResetForScopeChange clears confirmations. A composed removal without replacement or scope reset must demonstrate the claimed indefinite await before choosing cancellation semantics.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
+  summary: Preserve ordinary migration targets when a symlink alias precedes them.
+  evidence: BH-4, preserved external Story 15.3: ProjectDocumentLoader canonical GroupBy keeps First before WriteSafetyPolicy rejects links. An A.cs symlink followed by target Z.cs can report successful apply with zero edits and leave the obsolete identifier. Cover both Compile orders in the owning CLI follow-up.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
+  summary: Avoid source-identifier collisions in migration catalog literal tokenization.
+  evidence: BH-5, preserved external Story 15.3: Get-MigrationCatalogEdges maps literals to valid __literalN identifier strings, so real same-named identifiers can select unrelated literal values; isolated reviewer probe returned a false edge without failures. Preserve token kinds or a collision-free representation and regress the exact case.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
+  summary: Recognize unrelated C# character literals in migration catalog extraction.
+  evidence: BH-6/EC-4, preserved external Story 15.3: the tokenizer omits character literals; an unrelated double-quote character declaration makes valid catalog extraction fail. Both reviewers reproduced the case. Extend the owning extraction regression rather than modifying the Epic 13 repair.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
+  summary: Assess bounded child-process deadlines for supported historical replay.
+  evidence: BH-10, potential medium unverified: version, npm restore and audit calls have no wrapper timeout. Reproduce a stalled supported child in an isolated fixture, choose practical budgets and prove process-tree cleanup on supported OSs before adding a timeout mechanism; no observed stalled replay or new deadline policy is claimed.
 
 ## Deferred from: Story 15.3 resumed independent review (2026-10-22)
 

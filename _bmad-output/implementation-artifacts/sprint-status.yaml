@@ -203,7 +203,8 @@ development_status:
   13-3-i-ux-b-preserve-focus-and-input-through-command-safety-outco: done
   13-4-i-ux-c-announce-projection-and-command-state-without-noise: done
   13-5-i-ux-d-preserve-fresh-row-meaning-across-visual-and-data-cha: done
-  13-6-i-ux-e-verify-responsive-and-assistive-accessibility: done
+  # 2026-10-22: delivered history retained; required accessibility verification remains blocked.
+  13-6-i-ux-e-verify-responsive-and-assistive-accessibility: review
   13-7-i-ux-f-provide-reusable-ux-assertions-for-adopters: done
   13-8-a-e9-app-1-accept-the-completed-fresh-row-live-prrevokwg: done
   13-9-a-fluent-app-1-decide-the-exact-fluent-ui-v5-posture: done
@@ -978,7 +979,9 @@ action_items:
       work, dispose any module acquired after disposal, and verify no interop allocation
       or focus call occurs after disposal while normal route focus still works."
     owner: "FrontComposer Shell maintainer"
-    status: open
+    status: done
+    closed: "2026-10-22"
+    evidence: "_bmad-output/implementation-artifacts/tests/epic-13-follow-through-2026-10-22.json"
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
   - id: "E13R-AI-2"
     epic: 13
@@ -987,6 +990,7 @@ action_items:
       unmet cases as blockers and reuse the existing accessibility result."
     owner: "Accessibility/Stakeholder + Quality/Test roles"
     status: open
+    evidence: "_bmad-output/implementation-artifacts/13-6-accessibility-result.md#retrospective-follow-through--2026-10-22"
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
   - id: "E13R-AI-3"
     epic: 13
@@ -995,7 +999,9 @@ action_items:
       amendment, distinguishing delivery, verification and approval without inferring
       gate closure."
     owner: "Sprint tracking owner"
-    status: open
+    status: done
+    closed: "2026-10-22"
+    evidence: "_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md#retrospective-tracking-reconciliation--2026-10-22"
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
   - id: "E13R-AI-4"
     epic: 13
@@ -1004,7 +1010,9 @@ action_items:
       runtime bytes, dependency and baseline inputs, preserve exact line endings and
       unchanged outcomes, and keep drift fail-closed."
     owner: "Quality/Test evidence tooling maintainer"
-    status: open
+    status: done
+    closed: "2026-10-22"
+    evidence: "_bmad-output/implementation-artifacts/tests/epic-13-follow-through-2026-10-22.json"
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
   - id: "E13R-AI-5"
     epic: 13
@@ -1014,6 +1022,7 @@ action_items:
       proof and disclosing advisory default-lane coverage."
     owner: "Quality/Test + tenant-scope maintainer"
     status: open
+    evidence: "_bmad-output/implementation-artifacts/13-6-accessibility-result.md#retrospective-follow-through--2026-10-22"
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
 approved_change_backlog:
   source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md"
@@ -1048,12 +1057,12 @@ approved_change_backlog:
         - {id: "MCP-APP-1", kind: "approval-evidence", status: "done"}
     - name: "UX Conformance and Documentation Parity"
       items:
-        - {id: "UX-A", kind: "implementation", status: "proposed"}
-        - {id: "UX-B", kind: "implementation", status: "proposed"}
-        - {id: "UX-C", kind: "implementation", status: "proposed"}
-        - {id: "UX-D", kind: "implementation", status: "proposed"}
-        - {id: "UX-E", kind: "implementation", status: "proposed"}
-        - {id: "UX-F", kind: "implementation", status: "proposed"}
+        - {id: "UX-A", kind: "implementation", status: "done", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md#verification"}
+        - {id: "UX-B", kind: "implementation", status: "done", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md#verification"}
+        - {id: "UX-C", kind: "implementation", status: "done", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-4-announce-projection-and-command-state-without-noise.md#verification"}
+        - {id: "UX-D", kind: "implementation", status: "done", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md#verification"}
+        - {id: "UX-E", kind: "implementation", status: "review", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md#verification"}
+        - {id: "UX-F", kind: "implementation", status: "done", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md#verification"}
         - {id: "DOC-A", kind: "implementation", status: "proposed"}
         - {id: "DOC-B", kind: "implementation", status: "proposed"}
         - {id: "DOC-C", kind: "implementation", status: "proposed"}

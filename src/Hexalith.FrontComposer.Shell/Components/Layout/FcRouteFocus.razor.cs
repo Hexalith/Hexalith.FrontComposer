@@ -19,6 +19,7 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
     private string? _renderedRouteKey;
     private bool _showUnavailable;
     private bool _unavailableNeedsFocus;
+    private bool _disposed;
 
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
@@ -49,11 +50,21 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!FocusHeading) return;
+        if (_disposed || !FocusHeading) return;
 
         try
         {
-            _focusModule ??= await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
+            if (_focusModule is null)
+            {
+                IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
+                if (_disposed)
+                {
+                    await DisposeModuleAsync(module);
+                    return;
+                }
+
+                _focusModule = module;
+            }
             if (_showUnavailable)
             {
                 if (_unavailableNeedsFocus)
@@ -71,7 +82,7 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
         catch (Exception ex) when (ex is JSDisconnectedException or JSException or OperationCanceledException or InvalidOperationException)
         {
             // A pending activation must settle even when the browser cannot run focus interop.
-            if (NavigationFailure.OwnsAttempt(RouteKey))
+            if (!_disposed && NavigationFailure.OwnsAttempt(RouteKey))
             {
                 HandleRouteFailure(RouteKey, showUnavailable: false);
             }
@@ -82,7 +93,7 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
     [JSInvokable]
     public void ConfirmRouteHeading(string routeKey)
     {
-        if (!_showUnavailable && string.Equals(routeKey, Navigation.Uri, StringComparison.Ordinal))
+        if (!_disposed && !_showUnavailable && string.Equals(routeKey, Navigation.Uri, StringComparison.Ordinal))
         {
             _failedRouteKey = null;
             NavigationFailure.ConfirmRoute(routeKey);
@@ -93,7 +104,7 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
     [JSInvokable]
     public void ReportRouteHeadingMissing(string routeKey)
     {
-        if (!string.Equals(routeKey, Navigation.Uri, StringComparison.Ordinal)
+        if (_disposed || !string.Equals(routeKey, Navigation.Uri, StringComparison.Ordinal)
             || (string.Equals(_failedRouteKey, routeKey, StringComparison.Ordinal)
                 && _failedAttemptVersion == NavigationFailure.AttemptVersion))
         {
@@ -109,7 +120,7 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
     [JSInvokable]
     public void ReportRouteHeadingDenied(string routeKey)
     {
-        if (string.Equals(routeKey, Navigation.Uri, StringComparison.Ordinal)
+        if (!_disposed && string.Equals(routeKey, Navigation.Uri, StringComparison.Ordinal)
             && NavigationFailure.OwnsAttempt(routeKey))
         {
             HandleRouteFailure(routeKey, showUnavailable: false);
@@ -118,7 +129,7 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
 
     private void HandleRouteFailure(string routeKey, bool showUnavailable)
     {
-        if (!string.Equals(routeKey, Navigation.Uri, StringComparison.Ordinal))
+        if (_disposed || !string.Equals(routeKey, Navigation.Uri, StringComparison.Ordinal))
         {
             return;
         }
@@ -147,27 +158,42 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
         {
             _showUnavailable = true;
             _unavailableNeedsFocus = true;
-            _ = InvokeAsync(StateHasChanged);
+            _ = InvokeAsync(() =>
+            {
+                if (!_disposed) StateHasChanged();
+            });
         }
     }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        if (_disposed) return;
+
+        _disposed = true;
+        IJSObjectReference? module = _focusModule;
+        DotNetObjectReference<FcRouteFocus>? selfReference = _selfReference;
+        _focusModule = null;
+        _selfReference = null;
         NavigationFailure.UnregisterFocusOwner();
-        _selfReference?.Dispose();
-        if (_focusModule is not null)
+        selfReference?.Dispose();
+        if (module is not null)
         {
-            try
-            {
-                await _focusModule.DisposeAsync();
-            }
-            catch (Exception ex) when (ex is JSDisconnectedException or JSException or OperationCanceledException)
-            {
-                // Browser circuit already ended.
-            }
+            await DisposeModuleAsync(module);
         }
 
         GC.SuppressFinalize(this);
+    }
+
+    private static async ValueTask DisposeModuleAsync(IJSObjectReference module)
+    {
+        try
+        {
+            await module.DisposeAsync();
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or JSException or OperationCanceledException)
+        {
+            // Browser circuit already ended.
+        }
     }
 }

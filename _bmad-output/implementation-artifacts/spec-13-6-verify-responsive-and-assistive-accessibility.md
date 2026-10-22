@@ -422,3 +422,28 @@ The current uncommitted code/test patch is based on `12e8b8e1f2a683f9b2c29ca296f
 Final broad .NET gates were rerun on this patch: Shell.Tests **3709 total / 7 failed / 1 skipped**; SourceTools.Tests **1313 total / 1 failed**. Shell failures include catalog/governance and Fluent snapshot drift; SourceTools' sole packaged-analyzer test expects Fluent 5.0.0 while the declared catalog resolves 5.0.1. From `tests/e2e`, the complete Story 13.6 selection (`npx playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --workers=4 --retries=0`) ran **732 cases: 711 passed / 18 visual failed / 3 skipped / 0 flaky**, with **zero nonvisual failures**. The earlier 726-case packet remains historical. An exploratory 1203-case root-launched sweep used the wrong working directory for several legacy tests; its 37 failures are not a replacement for the correctly launched story gate. Its isolated WebKit abandonment-focus failure passed on a one-worker rerun from `tests/e2e`.
 
 The [current verification summary](evidence/story-13-6/2026-10-17-review-continuation/verification.json) and [result and human checklist](13-6-accessibility-result.md) distinguish this review patch from historical whole-candidate evidence. Manual AT/heard speech, real zoom/devices, Windows/WebKit forced-palette coverage, visual/catalog/raw-size, live EventStore and owner approvals remain open. Status stays `in-review`, sprint status stays `review`; no completion, staging, commit or push is asserted.
+
+### Retrospective tracking reconciliation — 2026-10-22
+
+The approved [Epic 13 follow-through decision](spec-epic-13-retrospective-follow-through.md#decisions--2026-10-22)
+supersedes the 2026-10-21 storage amendment's status preservation only for this reconciliation. Earlier
+delivery and verification entries remain historical evidence. Story 13.6's primary status stays
+`in-review`; its sprint acceptance row changes from `done` to `review` because mandatory human
+observations remain absent. The [reviewed accessibility result](13-6-accessibility-result.md) still
+records 752 passes, 18 visual failures and four capability skips. Structural replay does not approve
+those failures, the dependency identity, or accessibility completion.
+
+| Alias | Reconciled implementation status | Owning evidence and remaining boundary |
+| --- | --- | --- |
+| UX-A / 13.2 | `done` | [Navigation/focus verification](spec-13-2-make-shell-navigation-and-route-focus-deterministic.md#verification); historical delivery retained, with the newly repaired disposal boundary verified separately by the follow-through tests. Baseline catalog provenance is RC; executing identity remains unverified. |
+| UX-B / 13.3 | `done` | [Command safety verification](spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md#verification); historical RC/5.0.0 mismatch and failed checks remain disclosed. |
+| UX-C / 13.4 | `done` | [Announcement verification](spec-13-4-announce-projection-and-command-state-without-noise.md#verification); historical 5.0.0 focused evidence supplies no current all-engine or human speech approval. |
+| UX-D / 13.5 | `done` | [Fresh-row verification](spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md#verification); baseline-selected 5.0.0 provenance and historical failures/skips retained; executing identity remains unverified. |
+| UX-E / 13.6 | `review` | [Reviewed packet/result and MAN-136 checklist](13-6-accessibility-result.md); final 5.0.1 assembly-bound evidence remains blocked, with mandatory human observations still not performed. |
+| UX-F / 13.7 | `done` | [Reusable assertion verification](spec-13-7-provide-reusable-ux-assertions-for-adopters.md#verification); 5.0.1 .NET/docs delivery does not revalidate UX-A–E browser behavior. |
+
+These alias corrections describe reviewed implementation delivery. They do not establish one green
+Fluent identity. E13R-AI-3 and DW-1987 are satisfied by this evidence-linked reconciliation; OI-16,
+FLUENT-APP-1, OI-4, D-13 and G-4 stay open, and Story 13.9's negative owner decision is unchanged.
+The [follow-through result and manual handoff](13-6-accessibility-result.md#retrospective-follow-through--2026-10-22)
+retain current commands, blockers and the supported historical-runtime replay.
