@@ -2,7 +2,7 @@
 title: 'Story 15.3: Align Migration and Classification Guidance'
 type: 'bugfix'
 created: '2026-10-22'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 story_id: '15.3'
 story_key: '15-3-i-doc-b-align-migration-and-classification-guidance'
@@ -61,6 +61,46 @@ context:
 - Given migration targets, when dry-run or apply runs, then unsafe targets are refused without changing link/target bytes, ordinary eligible edits retain atomic file replacement, failures keep applied=false, and frontcomposer.cli.migrate.v1 is preserved.
 - Given inspect output, when documentation and existing behavior checks are compared, then forms/grids/registrations/manifests, ordering, severity/fail behavior, default redacted paths and frontcomposer.cli.inspect.v1 agree.
 - Given final published edits, when documentation validation runs, then snippets and DocFX pass without introducing parallel inventories or changing CLI/generated contracts.
+
+### Review Findings
+
+Post-commit code review of `bf40b927..02af2219` over the File List paths (2026-10-22). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor; none failed. Severity in brackets.
+
+- [ ] [Review][Patch] CR-1 [high] Bound the link-segment walk to the project root [src/Hexalith.FrontComposer.Cli/PathUtilities.cs:37] — `HasLinkedPathSegment` walks every ancestor to the filesystem root, so a project reached through any symlinked ancestor (macOS `/tmp` or `/var`, Fedora Atomic `/home`, a linked workspace folder) has every document skipped. Built-CLI probe: the real path gives `changed: 1`; the symlinked-ancestor path gives `changed: 0, skipped: 1`, and `--apply` reports `applied: true`, exit 0, source unchanged. The baseline migrated it. Stop the walk at the project directory, since only segments below it can redirect a write. Add a symlinked-ancestor regression, and scope the docs' "linked ancestor directories" wording to the project.
+- [ ] [Review][Patch] CR-2 [medium] Extend the unsupported-sidecar caveat to `migrate` [docs/migrations/9.1-to-9.2.md:110] — `MigrationDiagnosticSidecarReader` crashes the same way (probe: a scalar-root sidecar gives an unhandled `InvalidOperationException`, exit 134, and no report). The caveat appears only in inspect paragraphs, yet the new HFCM9002 text invites hand-crafted sidecars. Add the caveat to the migrate guidance in `docs/reference/cli.md` and `docs/how-to/migration-guides.md`. The runtime crash is CR-D2.
+- [ ] [Review][Patch] CR-3 [medium] Cover the "unsupported tuple syntax" fail-closed branch [eng/validate-docs.ps1:212] — no parity scenario leaves residue in the `Edges` body. A mutant that deletes the `$remaining` check passes all 27 scenarios while an executable `new MigrationEdge("4.5.0", ...)` edge escapes classification. Add an `unsupported-catalog-syntax` InlineData.
+- [ ] [Review][Patch] CR-4 [medium] Correct the handled-failure privacy claim [docs/reference/cli.md:64] — `CliApplication.cs:36` prints `IOException`/`UnauthorizedAccessException` messages through `OutputSanitizer.Sanitize`, which only escapes control characters. OS messages with absolute paths therefore reach stderr, contrary to "handled CLI failures avoid ... private absolute paths".
+- [ ] [Review][Patch] CR-5 [low] Name links in the skipped-document reason [src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:63] — refused links, `.git` and outside-root targets report "outside generated, bin, obj, package cache, and submodule paths are eligible" with "Excluded path.". No test pins this text.
+- [ ] [Review][Patch] CR-6 [low] Drop the unchecked "only executable edge" claim [docs/reference/cli.md:45] — the parity gate never reads cli.md, so a new catalog edge leaves this sentence stale (AC4 parallel inventory). Point to the classified index instead.
+- [ ] [Review][Patch] CR-7 [low] Restrict the unclassified-link check to sibling guides [eng/validate-docs.ps1:297] — any `.md` link in index prose, such as `../reference/cli.md`, fails as an unclassified guide link.
+- [ ] [Review][Patch] CR-8 [low] Correct the null-related-type filter claim [docs/reference/cli.md:32] — sidecar diagnostics get `RelatedType = Sanitize(...)`, which is empty and never null (`DiagnosticFileReader.cs:29`). `--type` keeps only null (`TypeMatcher.cs:35`), so project-wide sidecar diagnostics are dropped. Only the HFCM0002 sentinel has null.
+- [ ] [Review][Patch] CR-9 [low] Assert the positive parity fixture injected its decoys [tests/Hexalith.FrontComposer.Cli.Tests/MigrationCommandTests.cs:1018] — reformatting only the whitespace of the `Edges` declaration turns the `Replace` into a no-op, while the tokenized validator still passes, so the test proves nothing.
+- [ ] [Review][Patch] CR-10 [low] Stop pinning wrap positions in docs tests [tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs:213] — `"do not\nsemantically scrub"` and split phrases (`"`applied=false` on"` plus `"emitted reports"`) break when the text is rewrapped. Normalize whitespace and assert whole phrases.
+- [ ] [Review][Patch] CR-11 [low] Add the 3.1 to 4.0 guide to site navigation [docs/toc.yml:14] — `toc.yml` lists three of the four guides (pre-existing; one-line fix).
+- [ ] [Review][Patch] CR-12 [low] Give the BH-7 deferral a Story 15.3 heading [_bmad-output/implementation-artifacts/deferred-work.md:10686] — it was appended under Story 15.1's heading.
+- [ ] [Review][Patch] CR-13 [low] Replace validator jargon in adopter-facing index prose [docs/migrations/index.md:20] — "govern parity".
+- [x] [Review][Defer] CR-D1 Non-link reparse points inside the project may be refused as links [src/Hexalith.FrontComposer.Cli/PathUtilities.cs:39] — deferred: maybe-false, medium if true. The check tests `FileAttributes.ReparsePoint`, which also marks OneDrive placeholders, deduplicated files and mounted folders. To settle it, check `File.GetAttributes` and `LinkTarget` for a Files-On-Demand placeholder on Windows under default placeholder compatibility.
+- [x] [Review][Defer] CR-D2 `migrate` crashes on scalar-root or non-object-entry sidecars [src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:41] — deferred: pre-existing (the reader is unchanged from the baseline). It is the same runtime gap as BH-7 and falls outside the approved symlink-only runtime exception.
+
+Rejected:
+
+- CR-R1 TOCTOU between apply revalidation and write — low: it needs concurrent local tampering during a developer-run command. Reordering would not close the temp-file/move window, and a real fix needs handle-based no-follow opens. The "revalidated immediately before write" wording predates this story.
+- CR-R2 A link-probe IO error turns a failed read into a skipped entry — low: it needs an explicit Compile item under a non-traversable directory, and the fix adds a tri-state result.
+- CR-R3 Catalog tokenizer gaps (char literals, `@$` verbatim strings, `__literalN` identifiers) — false: `MigrationCatalog.cs` has no char literals (its only `'` characters are inside strings at lines 27-31) and no such identifiers. Any misalignment fails loudly.
+- CR-R4 An empty `BuildEdges([])` is not recognized — this is a loud failure on a state the catalog never reaches.
+- CR-R5 A missing `MigrationCatalog.cs` terminates the validator — this is a loud failure on a state that cannot occur in a full checkout.
+- CR-R6 `$matches` shadows the automatic `$Matches` — false: each `$Matches` read follows a successful `-match`, and no PSScriptAnalyzer runs in eng/ or CI.
+- CR-R7 Guide links written as reference definitions, HTML anchors, `<dest>`, titled links or `.MD` bypass the index gate — low: this needs deliberately unusual markup, and the fix adds branches.
+- CR-R8 The isolated publication test depends on a hand-kept input list and on pwsh — low: a missing input fails loudly; carried from the prior VG-2 trade-off.
+- CR-R9 The docs index test duplicates the gate and hardcodes 3.1.1 — false: Tasks 1 and 5 require preserving the exact 3.1.1 and extending DocsSiteValidationTests, and a missing key still fails loudly.
+- CR-R10 The rename docs omit declarations, generics and crefs that are not renamed, and keep the "Analyzer And Code Fix" heading — carried: the prior BH-5 accepted the "not semantic validation; review the diff" caveat.
+- CR-R11 The dev-mode paragraph drops the type-registration and WebAssembly caveats — false: it requires an `IHostEnvironment` in DI, limits detection to instance and factory registrations, and links the canonical reference.
+- CR-R12 The inspect contract omits item fields, exact family strings, severity case and the CLI-help `information` alias — low and pre-existing; AC3 does not require item fields to be enumerated.
+- CR-R13 The packaged CLI README was not updated — false: it makes no write-exclusion claim that this change made stale.
+- CR-R14 Windows junction and file-link coverage, and file-link failures without elevation — carried from the prior BH-8 (a disclosed Windows limitation).
+- CR-R15 The how-to migration page has version frontmatter without `migrationMode` — false: no validator or test reads version metadata from how-to pages.
+- CR-R16 BOM-less UTF-16/32 ASCII is decoded as UTF-8 instead of failing closed — low; both the runtime behaviour and the claim are pre-existing, and the fix needs heuristic detection.
+- CR-R17 The index table is not in version order — false: it keeps the baseline list order, and no reader harm was identified.
 
 ## Implementation Notes
 
