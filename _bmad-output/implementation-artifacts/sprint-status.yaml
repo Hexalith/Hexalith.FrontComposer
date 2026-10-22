@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 2026-10-22
+last_updated: 10-22-2026 17:38
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -207,7 +207,7 @@ development_status:
   13-7-i-ux-f-provide-reusable-ux-assertions-for-adopters: done
   13-8-a-e9-app-1-accept-the-completed-fresh-row-live-prrevokwg: done
   13-9-a-fluent-app-1-decide-the-exact-fluent-ui-v5-posture: done
-  epic-13-retrospective: optional
+  epic-13-retrospective: done
 
   epic-14: done
   14-1-i-mcp-sec-1-enforce-production-mcp-authorization-composition: done
@@ -733,7 +733,8 @@ action_items:
     closed: "2026-10-20"
     approver: "Administrator (requesting Product Owner; git author Jérôme Piquot)"
     decision: "accept"
-    decision_timing: "The 2026-10-20 Product decision was recorded before Story 13.8 acceptance; story delivery status is maintained separately in development_status."
+    decision_timing: "The 2026-10-20 Product decision was recorded before Story 13.8
+      acceptance; story delivery status is maintained separately in development_status."
     implementation_story: "13.8"
     ref: "_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt"
     kind: "approval"
@@ -755,9 +756,11 @@ action_items:
     owner: "Quality/Test role for evidence; Product Owner + Architect for re-decision"
     status: open
     decision_date: "2026-10-21"
-    approver: "Administrator (requesting Product Owner and Architect; git author Jérôme Piquot)"
+    approver: "Administrator (requesting Product Owner and Architect; git author Jérôme
+      Piquot)"
     decision: "not-approved"
-    decision_timing: "The dated negative decision fulfils Story 13.9 after review; approval stays open."
+    decision_timing: "The dated negative decision fulfils Story 13.9 after review;
+      approval stays open."
     implementation_story: "13.9"
     ref: "_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#product-decision-receipt"
     kind: "approval"
@@ -766,13 +769,19 @@ action_items:
       - "Microsoft.FluentUI.AspNetCore.Components@5.0.1"
       - "Microsoft.FluentUI.AspNetCore.Components.Icons@5.0.1"
     evidence_required:
-      - "One green hosted Quality run URL on a main commit whose root Builds gitlink selects the exact identity; Chromium, Firefox, WebKit, accessibility-visual and Gate 3a bUnit."
-      - "Human AT/zoom/device evidence remains under OI-16 and must name the same identity."
+      - "One green hosted Quality run URL on a main commit whose root Builds gitlink
+        selects the exact identity; Chromium, Firefox, WebKit, accessibility-visual
+        and Gate 3a bUnit."
+      - "Human AT/zoom/device evidence remains under OI-16 and must name the same
+        identity."
     evidence:
-      - "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/39554582583 (red; candidate 530994af, Builds 5d03f1db, Fluent 5.0.1)"
+      - "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/39554582583
+        (red; candidate 530994af, Builds 5d03f1db, Fluent 5.0.1)"
       - "_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#evidence-identity-by-set"
     residuals: ["DW-1985", "DW-1986", "DW-1987"]
-    closure_rule: "Only a dated Product Owner + Architect acceptance citing exact-identity evidence closes FLUENT-APP-1/OI-4; story delivery is not approval. G-4 retains its other prerequisites."
+    closure_rule: "Only a dated Product Owner + Architect acceptance citing exact-identity
+      evidence closes FLUENT-APP-1/OI-4; story delivery is not approval. G-4 retains
+      its other prerequisites."
   - id: "E11R-AI-1"
     epic: 11
     action: "Capture one passing provider-plus-AppHost record for the exact FrontComposer/EventStore/package/Builds
@@ -963,6 +972,49 @@ action_items:
     owner: "Developer"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-09-27.md"
+  - id: "E13R-AI-1"
+    epic: 13
+    action: "Fix the FcRouteFocus pending-import disposal race: invalidate pending
+      work, dispose any module acquired after disposal, and verify no interop allocation
+      or focus call occurs after disposal while normal route focus still works."
+    owner: "FrontComposer Shell maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
+  - id: "E13R-AI-2"
+    epic: 13
+    action: "Assign individuals to the existing MAN-136 checklist and record candidate-bound
+      AT/heard-speech, actual 400-percent zoom and physical-device observations; retain
+      unmet cases as blockers and reuse the existing accessibility result."
+    owner: "Accessibility/Stakeholder + Quality/Test roles"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
+  - id: "E13R-AI-3"
+    epic: 13
+    action: "Resolve existing DW-1987 with a dated evidence-based reconciliation of
+      Story 13.6 primary status, sprint status and UX aliases under the approved storage
+      amendment, distinguishing delivery, verification and approval without inferring
+      gate closure."
+    owner: "Sprint tracking owner"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
+  - id: "E13R-AI-4"
+    epic: 13
+    action: "Make the reviewed Story 13.6 packet replayable from a clean checkout
+      through the existing 15.6/15.7 consumer migration: supply hash-verified historical
+      runtime bytes, dependency and baseline inputs, preserve exact line endings and
+      unchanged outcomes, and keep drift fail-closed."
+    owner: "Quality/Test evidence tooling maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
+  - id: "E13R-AI-5"
+    epic: 13
+    action: "Record the candidate-revalidation trigger for the existing live two-tenant
+      test; at that boundary provision inputs through existing infrastructure and
+      require a zero-skip query/count/SignalR isolation run, while preserving historical
+      proof and disclosing advisory default-lane coverage."
+    owner: "Quality/Test + tenant-scope maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
 approved_change_backlog:
   source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md"
   approved: "2026-09-22"
@@ -1028,4 +1080,5 @@ approved_change_backlog:
         - {id: "REL-LEDGER-2", kind: "implementation-evidence", status: "proposed"}
         - {id: "REL-BASE-1", kind: "implementation", status: "proposed"}
         - {id: "REL-A3-APP-1", kind: "approval", status: "open"}
-        - {id: "E9-APP-1", kind: "approval", status: "done", closed: "2026-10-20", ref: "_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt"}
+        - {id: "E9-APP-1", kind: "approval", status: "done", closed: "2026-10-20",
+          ref: "_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt"}
