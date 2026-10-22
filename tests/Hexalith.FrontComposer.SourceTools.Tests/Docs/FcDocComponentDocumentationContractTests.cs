@@ -194,7 +194,7 @@ public sealed partial class FcDocComponentDocumentationContractTests {
         componentsNestedUnderReference.ShouldBeTrue(
             "A `Components` group must be nested under the Reference node in docs/toc.yml.");
 
-        lines.Any(line => line.Contains("reference/components/index.md", StringComparison.Ordinal)).ShouldBeTrue(
+        lines.Any(line => Regex.IsMatch(line, @"^[ \t]*(?:-[ \t]+)?href:[ \t]+reference/components/index\.md[ \t]*(?:#.*)?$")).ShouldBeTrue(
             "The Components TOC group must point at reference/components/index.md.");
     }
 
@@ -241,9 +241,11 @@ public sealed partial class FcDocComponentDocumentationContractTests {
     [InlineData("missing-page", "docs/reference/components/page-patterns.md")]
     [InlineData("unindexed", "docs/reference/components/index.md")]
     [InlineData("commented-index-link", "docs/reference/components/index.md")]
+    [InlineData("unterminated-comment-index-link", "docs/reference/components/index.md")]
     [InlineData("commented-toc-href", "docs/toc.yml")]
     [InlineData("added-qualified-parameter", "docs/reference/components/page-toolbar.md")]
     [InlineData("added-global-qualified-parameter", "docs/reference/components/page-toolbar.md")]
+    [InlineData("added-attribute-suffixed-parameter", "docs/reference/components/page-toolbar.md")]
     [InlineData("unclassified", "_bmad-output/project-docs/component-inventory.md")]
     [InlineData("stale-parameter", "docs/reference/components/page-toolbar.md")]
     [InlineData("removed-toolbar-search-callback", "docs/reference/components/page-toolbar.md")]
@@ -275,7 +277,8 @@ public sealed partial class FcDocComponentDocumentationContractTests {
             "missing-page" => string.Empty,
             "removed-toolbar-search-callback" or "removed-toolbar-tab-callback" or "removed-page-tab-callback"
                 or "added-init-property" or "added-set-property" or "added-expression-state"
-                or "added-qualified-parameter" or "added-global-qualified-parameter" => files[path],
+                or "added-qualified-parameter" or "added-global-qualified-parameter"
+                or "added-attribute-suffixed-parameter" => files[path],
             "missing-view-context" => RemoveSection(files[path], "### `ProjectionViewContext`"),
             "missing-template-context" => RemoveSection(files[path], "### `ProjectionTemplateContext`"),
             "missing-slot-context" => RemoveSection(files[path], "### `FieldSlotContext`"),
@@ -286,6 +289,8 @@ public sealed partial class FcDocComponentDocumentationContractTests {
             "unindexed" => files[path].Replace("(page-patterns.md)", "(absent.md)", StringComparison.Ordinal),
             "commented-index-link" => files[path].Replace("[Page patterns](page-patterns.md)",
                 "<!--\n[Page patterns](page-patterns.md)\n-->", StringComparison.Ordinal),
+            "unterminated-comment-index-link" => files[path].Replace("[Page patterns](page-patterns.md)",
+                "<!--\n[Page patterns](page-patterns.md)", StringComparison.Ordinal),
             "commented-toc-href" => files[path].Replace("href: reference/components/page-patterns.md",
                 "# href: reference/components/page-patterns.md", StringComparison.Ordinal),
             "unclassified" => files[path].Replace("| `FcPageToolbar` | adopter |", "| `FcPageToolbar` | unknown |", StringComparison.Ordinal),
@@ -311,12 +316,17 @@ public sealed partial class FcDocComponentDocumentationContractTests {
                 $@"\[Parameter\]\s+public EventCallback<string\?> {parameter} \{{ get; set; \}}", string.Empty);
             files[sourcePath].ShouldNotBe(original, "The fixture must remove an existing callback parameter.");
         }
-        if (defect is "added-qualified-parameter" or "added-global-qualified-parameter")
+        if (defect is "added-qualified-parameter" or "added-global-qualified-parameter" or "added-attribute-suffixed-parameter")
         {
             const string sourcePath = "src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbar.razor.cs";
-            string qualifier = defect == "added-global-qualified-parameter" ? "global::" : string.Empty;
+            string attribute = defect switch
+            {
+                "added-global-qualified-parameter" => "global::Microsoft.AspNetCore.Components.Parameter",
+                "added-attribute-suffixed-parameter" => "ParameterAttribute",
+                _ => "Microsoft.AspNetCore.Components.Parameter",
+            };
             files[sourcePath] = files[sourcePath].Insert(files[sourcePath].LastIndexOf('}'),
-                $"    [{qualifier}Microsoft.AspNetCore.Components.Parameter]\n    public string? AddedParameter {{ get; set; }}\n");
+                $"    [{attribute}]\n    public string? AddedParameter {{ get; set; }}\n");
         }
         if (defect is "added-init-property" or "added-set-property")
         {

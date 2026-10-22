@@ -54,6 +54,7 @@ public sealed class FcShellOptionsValidationTests {
     public void RegisteredShellOptionsEnforceCrossPropertyThresholds() {
         // Story 15.2 review R5-E17: both values sit inside their [Range] bounds, so only the
         // registered FcShellOptionsThresholdValidator can reject the abandonment/still-syncing pair.
+        // R6-B8: resolve the ValidateOnStart startup validator rather than the lazy options value.
         ServiceCollection services = [];
         _ = services.AddHexalithFrontComposer();
         _ = services.Configure<FcShellOptions>(options => {
@@ -63,7 +64,7 @@ public sealed class FcShellOptionsValidationTests {
         using ServiceProvider provider = services.BuildServiceProvider();
 
         OptionsValidationException exception = Should.Throw<OptionsValidationException>(
-            () => _ = provider.GetRequiredService<IOptions<FcShellOptions>>().Value);
+            () => provider.GetRequiredService<IStartupValidator>().Validate());
 
         exception.Message.ShouldContain("FormAbandonmentThresholdSeconds", Case.Insensitive);
     }

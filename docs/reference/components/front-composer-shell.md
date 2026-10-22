@@ -51,6 +51,30 @@ builder.Services
 First-time adopters can use the one-line `AddHexalithFrontComposerQuickstart()` sugar, which chains
 `AddLocalization()` + `AddHexalithShellLocalization()` for you.
 
+### Startup option validation
+
+`AddHexalithFrontComposer()` validates `FcShellOptions` when the host starts. Besides each
+property's own allowed range, the bound values must satisfy these cross-property rules. A host that
+breaks one fails at startup with an `OptionsValidationException` naming both properties and their
+values. One in-range override can break a rule against another property's default, so check these
+pairs when you change shell options or upgrade.
+
+| Rule | Defaults |
+|---|---|
+| `SyncPulseThresholdMs` < `StillSyncingThresholdMs` < `TimeoutActionThresholdMs` | 300 < 2000 < 10000 |
+| `FormAbandonmentThresholdSeconds` × 1000 > `StillSyncingThresholdMs` | 30000 > 2000 |
+| `IdempotentInfoToastDurationMs` ≤ `ConfirmedToastDurationMs` | 5000 ≤ 5000 |
+| `SupportedCultures` contains `DefaultCulture` | `en`, `fr` contains `en` |
+| `VirtualizationServerSideThreshold` < `MaxUnfilteredItems` | 500 < 10000 |
+| `MaxETagCacheEntries` ≤ `LocalStorageMaxEntries` | 200 ≤ 500 |
+| `MaxPendingCommandPollingPerTick` ≤ `MaxPendingCommandEntries` | 25 ≤ 100 |
+| `PendingCommandPollingIntervalMs` ≤ `MaxPendingCommandPollingDurationMs`, when the interval is above 0 | 1000 ≤ 120000 |
+| `MaxPendingCommandPollingDurationMs` > `TimeoutActionThresholdMs` | 120000 > 10000 |
+| `CommandDispatchRetryDelayMs` ≤ `MaxPendingCommandPollingDurationMs`, when `CommandDispatchRetryAttempts` is above 0 | 250 ≤ 120000 |
+
+For example, `LocalStorageMaxEntries = 100` is within its range but fails against the default
+`MaxETagCacheEntries` of 200; lower both together.
+
 ## Parameters / slots
 
 The shell exposes a **locked 12-parameter surface**. The original header/navigation/content/footer
@@ -75,7 +99,7 @@ leaving a slot `null` triggers the documented default. Internal Fluent children 
 | `ShowDefaultHeaderLogo` | `bool` | Opts into the framework default decorative logo when `HeaderLogo` is not supplied; default is `false`. |
 | `ShowAccountMenu` | `bool` | Compatibility parameter; the framework account menu remains visible regardless of its value. |
 
-The header always renders the hamburger, theme toggle, and account menu. The dev-mode toggle requires `Hexalith.FrontComposer.Shell` itself to be compiled with `DEBUG` and `AddFrontComposerDevMode(...)` to register its controller using a Development host environment; building only the adopter application in Debug does not enable it in the published Release NuGet package. An adopter-supplied
+The header always renders the hamburger, theme toggle, and account menu. The dev-mode toggle requires `Hexalith.FrontComposer.Shell` itself to be compiled with `DEBUG` and `AddFrontComposerDevMode(...)` to register its controller using a Development host environment, registered as described in [Customization](customization.md); building only the adopter application in Debug does not enable it in the published Release NuGet package. An adopter-supplied
 fragment always wins over the framework default; to render **no**
 sidebar even with registered domains, pass an empty fragment to `Navigation`.
 

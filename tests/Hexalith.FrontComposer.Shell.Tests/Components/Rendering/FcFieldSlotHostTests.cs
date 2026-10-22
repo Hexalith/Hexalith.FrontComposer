@@ -299,6 +299,10 @@ public sealed class FcFieldSlotHostTests : BunitContext {
 
         cut.Markup.ShouldContain("Refreshed generated field 84");
         cut.Markup.ShouldNotContain("Generated field 42");
+        cut.Markup.ShouldNotContain("SensitivePayloadSentinel");
+        cut.Markup.ShouldNotContain("test-tenant");
+        cut.Markup.ShouldNotContain("test-user");
+        cut.Markup.ShouldNotContain("raw slot exception");
         cut.FindAll("[data-fc-diagnostic]").Count.ShouldBe(visible ? 1 : 0);
         sink.RecentEvents.Count.ShouldBe(visible ? 1 : 0);
     }
