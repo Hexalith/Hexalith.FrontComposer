@@ -2,7 +2,7 @@
 title: 'Story 15.2: Reconcile Component and Page-Pattern Documentation'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 story_id: '15.2'
 story_key: '15-2-i-doc-a-reconcile-component-and-page-pattern-documentation'
