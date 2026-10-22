@@ -10,14 +10,23 @@
     <ProjectReference Include="$([MSBuild]::NormalizePath('$(HexalithFrontComposerRoot)', 'src', 'Hexalith.FrontComposer.Contracts.UI', 'Hexalith.FrontComposer.Contracts.UI.csproj'))" />
   </ItemGroup>
 
+  <!-- G-6 sets NUGET_PACKAGES outside ~/.nuget/packages. Match the package id and the
+       package-folder name (hexalith.frontcomposer.*), not one global-packages layout.
+       Source outputs live under .../hexalith.frontcomposer/ and stay in the graph. -->
   <Target Name="FrontComposerUiDropPublishedFrontComposerAssemblies"
           AfterTargets="ResolvePackageAssets"
           BeforeTargets="ResolveAssemblyReferences">
     <ItemGroup>
-      <ResolvedCompileFileDefinitions Remove="@(ResolvedCompileFileDefinitions)"
-                                      Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
-      <RuntimeCopyLocalItems Remove="@(RuntimeCopyLocalItems)"
-                             Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
+      <_FrontComposerPublishedCompile Include="@(ResolvedCompileFileDefinitions)"
+                                      Condition="$([System.String]::Copy('%(ResolvedCompileFileDefinitions.NuGetPackageId)').StartsWith('Hexalith.FrontComposer', StringComparison.OrdinalIgnoreCase))" />
+      <_FrontComposerPublishedCompile Include="@(ResolvedCompileFileDefinitions)"
+                                      Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(Identity)', '(?i)[/\\]hexalith\.frontcomposer\.[^/\\]+[/\\][0-9]'))" />
+      <ResolvedCompileFileDefinitions Remove="@(_FrontComposerPublishedCompile)" />
+      <_FrontComposerPublishedRuntime Include="@(RuntimeCopyLocalItems)"
+                                      Condition="$([System.String]::Copy('%(RuntimeCopyLocalItems.NuGetPackageId)').StartsWith('Hexalith.FrontComposer', StringComparison.OrdinalIgnoreCase))" />
+      <_FrontComposerPublishedRuntime Include="@(RuntimeCopyLocalItems)"
+                                      Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(Identity)', '(?i)[/\\]hexalith\.frontcomposer\.[^/\\]+[/\\][0-9]'))" />
+      <RuntimeCopyLocalItems Remove="@(_FrontComposerPublishedRuntime)" />
     </ItemGroup>
   </Target>
 
@@ -25,10 +34,16 @@
           AfterTargets="ResolveReferencedProjectsStaticWebAssets"
           BeforeTargets="ResolveBuildCompressedStaticWebAssetsConfiguration;GenerateStaticWebAssetsDevelopmentManifest">
     <ItemGroup>
-      <StaticWebAsset Remove="@(StaticWebAsset)"
-                      Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
-      <StaticWebAssetEndpoint Remove="@(StaticWebAssetEndpoint)"
-                              Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
+      <_FrontComposerPublishedStaticAsset Include="@(StaticWebAsset)"
+                                          Condition="$([System.String]::Copy('%(StaticWebAsset.NuGetPackageId)').StartsWith('Hexalith.FrontComposer', StringComparison.OrdinalIgnoreCase))" />
+      <_FrontComposerPublishedStaticAsset Include="@(StaticWebAsset)"
+                                          Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(Identity)', '(?i)[/\\]hexalith\.frontcomposer\.[^/\\]+[/\\][0-9]'))" />
+      <StaticWebAsset Remove="@(_FrontComposerPublishedStaticAsset)" />
+      <_FrontComposerPublishedStaticEndpoint Include="@(StaticWebAssetEndpoint)"
+                                             Condition="$([System.String]::Copy('%(StaticWebAssetEndpoint.NuGetPackageId)').StartsWith('Hexalith.FrontComposer', StringComparison.OrdinalIgnoreCase))" />
+      <_FrontComposerPublishedStaticEndpoint Include="@(StaticWebAssetEndpoint)"
+                                             Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(Identity)', '(?i)[/\\]hexalith\.frontcomposer\.[^/\\]+[/\\][0-9]'))" />
+      <StaticWebAssetEndpoint Remove="@(_FrontComposerPublishedStaticEndpoint)" />
     </ItemGroup>
   </Target>
 </Project>

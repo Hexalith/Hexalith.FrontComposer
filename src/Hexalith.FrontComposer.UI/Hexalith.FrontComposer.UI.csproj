@@ -59,12 +59,18 @@
     <ItemGroup>
       <StaticWebAsset Remove="@(StaticWebAsset)"
                       Condition="('%(StaticWebAsset.SourceId)' == 'Hexalith.Tenants.UI' or '%(StaticWebAsset.SourceId)' == 'Hexalith.Parties.UI') and '%(StaticWebAsset.BasePath)' == '/' and !$([System.String]::Copy('%(StaticWebAsset.RelativePath)').Contains('.styles.css'))" />
-      <StaticWebAsset Remove="@(StaticWebAsset)"
-                      Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
+      <_FrontComposerPublishedStaticAsset Include="@(StaticWebAsset)"
+                                          Condition="$([System.String]::Copy('%(StaticWebAsset.NuGetPackageId)').StartsWith('Hexalith.FrontComposer', StringComparison.OrdinalIgnoreCase))" />
+      <_FrontComposerPublishedStaticAsset Include="@(StaticWebAsset)"
+                                          Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(Identity)', '(?i)[/\\]hexalith\.frontcomposer\.[^/\\]+[/\\][0-9]'))" />
+      <StaticWebAsset Remove="@(_FrontComposerPublishedStaticAsset)" />
       <StaticWebAssetEndpoint Remove="@(StaticWebAssetEndpoint)"
                               Condition="('%(StaticWebAssetEndpoint.SourceId)' == 'Hexalith.Tenants.UI' or '%(StaticWebAssetEndpoint.SourceId)' == 'Hexalith.Parties.UI') and !$([System.String]::Copy('%(StaticWebAssetEndpoint.Route)').Contains('.styles.css'))" />
-      <StaticWebAssetEndpoint Remove="@(StaticWebAssetEndpoint)"
-                              Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
+      <_FrontComposerPublishedStaticEndpoint Include="@(StaticWebAssetEndpoint)"
+                                             Condition="$([System.String]::Copy('%(StaticWebAssetEndpoint.NuGetPackageId)').StartsWith('Hexalith.FrontComposer', StringComparison.OrdinalIgnoreCase))" />
+      <_FrontComposerPublishedStaticEndpoint Include="@(StaticWebAssetEndpoint)"
+                                             Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(Identity)', '(?i)[/\\]hexalith\.frontcomposer\.[^/\\]+[/\\][0-9]'))" />
+      <StaticWebAssetEndpoint Remove="@(_FrontComposerPublishedStaticEndpoint)" />
     </ItemGroup>
   </Target>
 
