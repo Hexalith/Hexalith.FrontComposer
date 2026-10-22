@@ -75,7 +75,7 @@ leaving a slot `null` triggers the documented default. Internal Fluent children 
 | `ShowDefaultHeaderLogo` | `bool` | Opts into the framework default decorative logo when `HeaderLogo` is not supplied; default is `false`. |
 | `ShowAccountMenu` | `bool` | Compatibility parameter; the framework account menu remains visible regardless of its value. |
 
-The header always renders the hamburger, theme toggle, and account menu. The dev-mode toggle requires `Hexalith.FrontComposer.Shell` itself to be compiled with `DEBUG` and a Development host environment; building only the adopter application in Debug does not enable it in the published Release NuGet package. An adopter-supplied
+The header always renders the hamburger, theme toggle, and account menu. The dev-mode toggle requires `Hexalith.FrontComposer.Shell` itself to be compiled with `DEBUG` and `AddFrontComposerDevMode(...)` to register its controller using a Development host environment; building only the adopter application in Debug does not enable it in the published Release NuGet package. An adopter-supplied
 fragment always wins over the framework default; to render **no**
 sidebar even with registered domains, pass an empty fragment to `Navigation`.
 

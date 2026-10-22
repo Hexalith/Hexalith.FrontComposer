@@ -232,7 +232,7 @@ function Assert-ComponentDocumentation([System.Collections.Generic.List[string]]
     $statusPath = '_bmad-output/contracts/fc-doc-component-documentation-2026-06-03.md'
     $inventory = (Get-Content -LiteralPath (Join-Path $RepoRoot $inventoryPath) -Raw) -split '## H. Current component documentation classifications' | Select-Object -Last 1
     $status = Get-Content -LiteralPath (Join-Path $RepoRoot $statusPath) -Raw
-    $index = Get-Content -LiteralPath (Join-Path $DocsRoot 'reference/components/index.md') -Raw
+    $index = [regex]::Replace((Get-Content -LiteralPath (Join-Path $DocsRoot 'reference/components/index.md') -Raw), '<!--.*?(?:-->|\z)', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
     $toc = Get-Content -LiteralPath (Join-Path $DocsRoot 'toc.yml') -Raw
     $rows = @{}
     foreach ($row in [regex]::Matches($inventory, '(?m)^\| `(?<name>\w+)` \| (?<classification>[^|]+) \| `(?<page>docs/reference/components/[^`]+)` \|')) {
@@ -273,7 +273,7 @@ function Assert-ComponentDocumentation([System.Collections.Generic.List[string]]
         if (-not [string]::IsNullOrEmpty($typed)) { $parameters = $typed }
         $actual = @{}
         if ([regex]::IsMatch($sourceText, '(?m)^@inherits\s+(?:Microsoft\.AspNetCore\.Components\.)?LayoutComponentBase\b')) { $actual['Body'] = 'RenderFragment?' }
-        foreach ($parameter in [regex]::Matches($sourceText, '\[Parameter[^\]]*\](?:\s*\[[^\]]*\])*\s*public\s+(?<type>[^\r\n{]+?)\s+(?<name>\w+)\s*\{')) {
+        foreach ($parameter in [regex]::Matches($sourceText, '\[(?:global::)?(?:Microsoft\.AspNetCore\.Components\.)?Parameter(?:Attribute)?\b[^\]]*\](?:\s*\[[^\]]*\])*\s*public\s+(?<type>[^\r\n{]+?)\s+(?<name>\w+)\s*\{')) {
             $actual[$parameter.Groups['name'].Value] = $parameter.Groups['type'].Value.Trim()
         }
         foreach ($parameterName in @($actual.Keys | Sort-Object)) {
@@ -304,8 +304,8 @@ function Assert-ComponentDocumentation([System.Collections.Generic.List[string]]
     foreach ($file in Get-ChildItem -LiteralPath (Join-Path $DocsRoot 'reference/components') -Filter '*.md' -File | Where-Object { $_.Name -ne 'index.md' } | Sort-Object Name) {
         $rel = ConvertTo-RepoPath $file.FullName
         $page = Get-Content -LiteralPath $file.FullName -Raw
-        if (-not $index.Contains('(' + $file.Name + ')')) { Add-Failure $Failures "docs/reference/components/index.md: missing page $($file.Name)." }
-        if (-not $toc.Contains('href: reference/components/' + $file.Name)) { Add-Failure $Failures "docs/toc.yml: missing page $($file.Name)." }
+        if (-not [regex]::IsMatch($index, '\[[^\]\r\n]+\]\(' + [regex]::Escape($file.Name) + '\)')) { Add-Failure $Failures "docs/reference/components/index.md: missing page $($file.Name)." }
+        if (-not [regex]::IsMatch($toc, '(?m)^[ \t]*(?:-[ \t]+)?href:[ \t]+reference/components/' + [regex]::Escape($file.Name) + '[ \t]*(?:#.*)?\r?$')) { Add-Failure $Failures "docs/toc.yml: missing page $($file.Name)." }
         if (-not $status.Contains('`' + $rel + '` | authored')) { Add-Failure $Failures "${statusPath}: missing current authored status for $($file.Name)." }
         foreach ($section in @('Overview', 'Usage', 'Parameters / slots', 'Layout (FC-LYT)', 'Accessibility (FC-A11Y)', 'Localization (FC-L10N)', 'Related')) {
             if (-not $page.Contains('## ' + $section)) { Add-Failure $Failures "${rel}: missing FC-DOC section $section." }

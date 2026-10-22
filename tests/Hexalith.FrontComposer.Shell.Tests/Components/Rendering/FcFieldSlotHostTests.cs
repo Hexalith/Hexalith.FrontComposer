@@ -292,6 +292,15 @@ public sealed class FcFieldSlotHostTests : BunitContext {
 #endif
         cut.FindAll("[data-fc-diagnostic]").Count.ShouldBe(visible ? 1 : 0);
         sink.RecentEvents.Count.ShouldBe(visible ? 1 : 0);
+
+        cut.Render(parameters => parameters
+            .Add(p => p.Value, 84)
+            .Add(p => p.RenderDefault, context => builder => builder.AddContent(0, "Refreshed generated field " + context.Value)));
+
+        cut.Markup.ShouldContain("Refreshed generated field 84");
+        cut.Markup.ShouldNotContain("Generated field 42");
+        cut.FindAll("[data-fc-diagnostic]").Count.ShouldBe(visible ? 1 : 0);
+        sink.RecentEvents.Count.ShouldBe(visible ? 1 : 0);
     }
 
     [Theory]

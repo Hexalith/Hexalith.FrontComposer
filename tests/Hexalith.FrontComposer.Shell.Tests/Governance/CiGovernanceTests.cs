@@ -445,9 +445,12 @@ public sealed class CiGovernanceTests {
             .Replace("\r\n", "\n", StringComparison.Ordinal);
         string job = ExtractJobBlock(quality, "debug-gated-tests");
         job.ShouldNotBeNullOrEmpty();
-        int stepsStart = job.IndexOf("\n    steps:", StringComparison.Ordinal);
-        stepsStart.ShouldBeGreaterThan(0);
-        Regex.IsMatch(job[..stepsStart], @"^[ \t]*if[ \t]*:", RegexOptions.Multiline).ShouldBeFalse();
+        string upload = ExtractNamedStep(job, "Upload DEBUG-gated test results");
+        const string uploadCondition = "        if: always()\n";
+        int conditionStart = upload.IndexOf(uploadCondition, StringComparison.Ordinal);
+        conditionStart.ShouldBeGreaterThanOrEqualTo(0);
+        string unconditionalJob = job.Remove(job.IndexOf(upload, StringComparison.Ordinal) + conditionStart, uploadCondition.Length);
+        Regex.IsMatch(unconditionalJob, @"^[ \t]*if[ \t]*:", RegexOptions.Multiline).ShouldBeFalse();
         job.ShouldNotContain("continue-on-error:");
         job.ShouldContain("git -c submodule.recurse=false submodule update --init references/Hexalith.Builds");
         job.ShouldNotContain("--recursive");
@@ -465,10 +468,11 @@ public sealed class CiGovernanceTests {
             .Select(match => match.Groups["identity"].Value)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)];
+        string testRoot = Path.Combine(root, "tests", "Hexalith.FrontComposer.Shell.Tests");
         string[] debugGatedClasses = [.. Directory
-            .EnumerateFiles(Path.Combine(root, "tests", "Hexalith.FrontComposer.Shell.Tests"), "*.cs", SearchOption.AllDirectories)
-            .Where(static file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .EnumerateFiles(testRoot, "*.cs", SearchOption.AllDirectories)
+            .Where(file => !Path.GetRelativePath(testRoot, file).Split(Path.DirectorySeparatorChar)
+                .Any(static segment => segment is "bin" or "obj"))
             .Select(File.ReadAllText)
             .Where(static source => Regex.IsMatch(source, @"^[ \t]*#if[ \t]+!?DEBUG\b", RegexOptions.Multiline | RegexOptions.CultureInvariant))
             // Parse both builds so a whole class inside either directive remains discoverable.
@@ -493,9 +497,7 @@ public sealed class CiGovernanceTests {
         evidence.ShouldContain("--require-tests");
         evidence.ShouldNotContain("\n        if:");
 
-        string upload = ExtractNamedStep(job, "Upload DEBUG-gated test results");
-        upload.ShouldContain("if: always()");
-        upload.ShouldContain("uses: actions/upload-artifact@");
+        upload.ShouldContain("uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
         upload.ShouldContain("path: 'TestResults/debug-gated/**'");
     }
 

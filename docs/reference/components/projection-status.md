@@ -22,7 +22,7 @@ Generated projections compose loading, empty, failure, stale and scope-blocked s
 <FcProjectionLoadingSkeleton ColumnCount="3" EntityLabel="orders" />
 ```
 
-This standalone skeleton keeps its own status semantics. Set `SharedStatusOwner="true"` only when a containing surface already mounts `FcSurfaceStatus` and its producer publishes the localized loading announcement to that same surface. A bare shared node without a producer does not announce loading. Wire a separately rendered `FcProjectionFailure.OnRetry` to the actual scoped query. A generated operator-initiated load request is a request for adopter reload work; answer it with matching correlation and current scope provenance.
+This standalone skeleton keeps its own status semantics. Set `SharedStatusOwner="true"` only when a containing surface already mounts `FcSurfaceStatus` and its producer publishes the localized loading announcement to that same surface. A bare shared node without a producer does not announce loading. Direct callers rendering `FcProjectionFailure` must mount `FcSurfaceStatus` for the scoped surface, publish the localized failure announcement through `ISurfaceAnnouncementCoordinator` to that same surface, and wire `OnRetry` to the actual scoped query. The failure component supplies neither its own live node nor an announcement producer. A generated operator-initiated load request is a request for adopter reload work; answer it with matching correlation and current scope provenance.
 
 ## Parameters / slots
 

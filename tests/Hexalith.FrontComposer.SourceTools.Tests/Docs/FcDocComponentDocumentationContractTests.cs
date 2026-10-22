@@ -240,6 +240,10 @@ public sealed partial class FcDocComponentDocumentationContractTests {
     [Theory]
     [InlineData("missing-page", "docs/reference/components/page-patterns.md")]
     [InlineData("unindexed", "docs/reference/components/index.md")]
+    [InlineData("commented-index-link", "docs/reference/components/index.md")]
+    [InlineData("commented-toc-href", "docs/toc.yml")]
+    [InlineData("added-qualified-parameter", "docs/reference/components/page-toolbar.md")]
+    [InlineData("added-global-qualified-parameter", "docs/reference/components/page-toolbar.md")]
     [InlineData("unclassified", "_bmad-output/project-docs/component-inventory.md")]
     [InlineData("stale-parameter", "docs/reference/components/page-toolbar.md")]
     [InlineData("removed-toolbar-search-callback", "docs/reference/components/page-toolbar.md")]
@@ -270,7 +274,8 @@ public sealed partial class FcDocComponentDocumentationContractTests {
         {
             "missing-page" => string.Empty,
             "removed-toolbar-search-callback" or "removed-toolbar-tab-callback" or "removed-page-tab-callback"
-                or "added-init-property" or "added-set-property" or "added-expression-state" => files[path],
+                or "added-init-property" or "added-set-property" or "added-expression-state"
+                or "added-qualified-parameter" or "added-global-qualified-parameter" => files[path],
             "missing-view-context" => RemoveSection(files[path], "### `ProjectionViewContext`"),
             "missing-template-context" => RemoveSection(files[path], "### `ProjectionTemplateContext`"),
             "missing-slot-context" => RemoveSection(files[path], "### `FieldSlotContext`"),
@@ -279,6 +284,10 @@ public sealed partial class FcDocComponentDocumentationContractTests {
             "missing-connection-states" => RemoveSection(files[path], "### `ProjectionConnectionStatus`"),
             "missing-badge-states" => RemoveSection(files[path], "### `OptimisticBadgeState`"),
             "unindexed" => files[path].Replace("(page-patterns.md)", "(absent.md)", StringComparison.Ordinal),
+            "commented-index-link" => files[path].Replace("[Page patterns](page-patterns.md)",
+                "<!--\n[Page patterns](page-patterns.md)\n-->", StringComparison.Ordinal),
+            "commented-toc-href" => files[path].Replace("href: reference/components/page-patterns.md",
+                "# href: reference/components/page-patterns.md", StringComparison.Ordinal),
             "unclassified" => files[path].Replace("| `FcPageToolbar` | adopter |", "| `FcPageToolbar` | unknown |", StringComparison.Ordinal),
             "stale-parameter" => files[path].Replace("`SearchDisabled`", "`RemovedSearchParameter`", StringComparison.Ordinal),
             "stale-state" => files[path].Replace("| `Ready` |", "| `RemovedReadyState` |", StringComparison.Ordinal),
@@ -301,6 +310,13 @@ public sealed partial class FcDocComponentDocumentationContractTests {
             files[sourcePath] = Regex.Replace(original,
                 $@"\[Parameter\]\s+public EventCallback<string\?> {parameter} \{{ get; set; \}}", string.Empty);
             files[sourcePath].ShouldNotBe(original, "The fixture must remove an existing callback parameter.");
+        }
+        if (defect is "added-qualified-parameter" or "added-global-qualified-parameter")
+        {
+            const string sourcePath = "src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbar.razor.cs";
+            string qualifier = defect == "added-global-qualified-parameter" ? "global::" : string.Empty;
+            files[sourcePath] = files[sourcePath].Insert(files[sourcePath].LastIndexOf('}'),
+                $"    [{qualifier}Microsoft.AspNetCore.Components.Parameter]\n    public string? AddedParameter {{ get; set; }}\n");
         }
         if (defect is "added-init-property" or "added-set-property")
         {
@@ -429,6 +445,7 @@ public sealed partial class FcDocComponentDocumentationContractTests {
         const string statusPath = "_bmad-output/contracts/fc-doc-component-documentation-2026-06-03.md";
         const string indexPath = "docs/reference/components/index.md";
         List<string> failures = [];
+        string index = Regex.Replace(files[indexPath], @"<!--.*?(?:-->|\z)", string.Empty, RegexOptions.Singleline);
         string inventory = files[inventoryPath].Split("## H. Current component documentation classifications", StringSplitOptions.None).Last();
         Dictionary<string, (string Classification, string Page)> rows = new(StringComparer.Ordinal);
         foreach (Match row in Regex.Matches(inventory, @"(?m)^\| `(?<name>\w+)` \| (?<classification>[^|]+) \| `(?<page>docs/reference/components/[^`]+)` \|"))
@@ -478,7 +495,7 @@ public sealed partial class FcDocComponentDocumentationContractTests {
             {
                 actual["Body"] = "RenderFragment?";
             }
-            foreach (Match parameter in Regex.Matches(sourceText, @"\[Parameter[^\]]*\](?:\s*\[[^\]]*\])*\s*public\s+(?<type>[^\r\n{]+?)\s+(?<name>\w+)\s*\{"))
+            foreach (Match parameter in Regex.Matches(sourceText, @"\[(?:global::)?(?:Microsoft\.AspNetCore\.Components\.)?Parameter(?:Attribute)?\b[^\]]*\](?:\s*\[[^\]]*\])*\s*public\s+(?<type>[^\r\n{]+?)\s+(?<name>\w+)\s*\{"))
             {
                 actual[parameter.Groups["name"].Value] = parameter.Groups["type"].Value.Trim();
             }
@@ -516,11 +533,11 @@ public sealed partial class FcDocComponentDocumentationContractTests {
             && !file.Key.EndsWith("/index.md", StringComparison.Ordinal)).OrderBy(file => file.Key, StringComparer.Ordinal))
             {
             string fileName = Path.GetFileName(page.Key);
-            if (!files[indexPath].Contains($"({fileName})", StringComparison.Ordinal))
+            if (!Regex.IsMatch(index, $@"\[[^\]\r\n]+\]\({Regex.Escape(fileName)}\)"))
             {
                 failures.Add($"{indexPath}: missing page {fileName}.");
             }
-            if (!files["docs/toc.yml"].Contains($"href: reference/components/{fileName}", StringComparison.Ordinal))
+            if (!Regex.IsMatch(files["docs/toc.yml"], $@"(?m)^[ \t]*(?:-[ \t]+)?href:[ \t]+reference/components/{Regex.Escape(fileName)}[ \t]*(?:#.*)?\r?$"))
             {
                 failures.Add($"docs/toc.yml: missing page {fileName}.");
             }

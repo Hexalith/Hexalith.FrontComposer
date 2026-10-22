@@ -73,9 +73,11 @@ The tables describe the public component parameters. Injected services and inter
 | `EditContext` | `EditContext?` | Gets or sets the edit context exposed by the generated form from `OnEditContextReady`. Required to anchor the first edit; when null the guard is inert. |
 | `CorrelationId` | `string` | Command correlation used to suppress the abandonment warning while that operation is Submitting. |
 
-The guard also consumes a boolean cascade named `WrapperInitiatedNavigation`. A wrapper sets it through `CascadingValue` with `Name="WrapperInitiatedNavigation"` and a true value while initiating its own navigation, so the guard yields without prompting. This is a named cascading value, separate from the explicit component parameters above.
+The guard also consumes a boolean cascade named `WrapperInitiatedNavigation`. `FcLifecycleWrapper` already supplies it. In custom compositions, provide it through `CascadingValue` with `Name="WrapperInitiatedNavigation"`, render the true value before navigation starts so the guard receives it, and reset the flag afterward. The guard yields without prompting while the received value is true. This is a named cascading value, separate from the explicit component parameters above.
 
 ### `FcDestructiveConfirmationDialog`
+
+Direct callers must open the component through `IDialogService` with the generated forms' dialog options: `Modal = true`, `PreventDismissOnEscape = false`, `Id = "fc-destructive-confirmation"`, and `AdditionalAttributes` containing `aria-labelledby = "fc-destructive-dialog-title"` and `aria-describedby = "fc-destructive-dialog-description"`. These attributes connect the dialog to its title and explanation.
 
 | Parameter | Type | Contract |
 |---|---|---|
@@ -94,7 +96,7 @@ The guard also consumes a boolean cascade named `WrapperInitiatedNavigation`. A 
 | `AnnouncementSurface` | `string?` | Gets or sets the shared surface used by a generated command form. |
 | `OwnsSurfaceStatus` | `bool` | Gets or sets whether this visible control owns the shared status node for a hidden form. |
 
-Direct callers capture the component with `@ref` and call `PresentAsync()` for each blocked attempt; setting parameters alone does not present the outcome. `ClearAsync()` withdraws it, for example when a later attempt is admitted. The read-only `IsBlocked` property reports whether an outcome is currently presented.
+Direct callers capture the component with `@ref` and call `PresentAsync()` for each blocked attempt; setting parameters alone does not present the outcome. `ClearAsync()` withdraws it, for example when a later attempt is admitted. Rebinding either `AttemptedControlId` or `AnnouncementSurface` also withdraws the presented outcome and cancels its announcement. The read-only `IsBlocked` property reports whether an outcome is currently presented.
 
 ### `FcValidationSummary`
 

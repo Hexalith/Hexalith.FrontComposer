@@ -41,7 +41,7 @@ The tables describe the public component parameters. Injected services and inter
 
 | Parameter | Type | Contract |
 |---|---|---|
-| `PageTitle` | `string?` | The browser document title rendered through Blazor PageTitle; null, empty or whitespace values fall back to `Heading`. |
+| `PageTitle` | `string?` | The browser document title rendered through Blazor PageTitle; null, empty or whitespace values fall back to `Heading`. Supply a nonblank `PageTitle` or `Heading` so the document has a title. |
 | `Heading` | `string` | The visible route-level heading text. |
 | `Eyebrow` | `string?` | Optional short context text rendered above the heading. |
 | `Description` | `string?` | Optional descriptive text rendered below the heading. |
@@ -59,7 +59,7 @@ The tables describe the public component parameters. Injected services and inter
 | Parameter | Type | Contract |
 |---|---|---|
 | `LayoutMode` | `FcPageLayoutMode` | The FC-LYT layout measure the page declares. Defaults to `FcPageLayoutMode.FullWidth` for dense list surfaces. |
-| `PageTitle` | `string?` | The browser document title forwarded to `FcPageHeader`; null, empty or whitespace values fall back to `Heading`. |
+| `PageTitle` | `string?` | The browser document title forwarded to `FcPageHeader`; null, empty or whitespace values fall back to `Heading`. Supply a nonblank `PageTitle` or `Heading` so the document has a title. |
 | `Heading` | `string` | The visible route-level heading; blank values suppress the heading. Provide a nonblank value when using heading focus. |
 | `Eyebrow` | `string?` | Optional short context text rendered above the heading. |
 | `Description` | `string?` | Optional descriptive text rendered below the heading. |
