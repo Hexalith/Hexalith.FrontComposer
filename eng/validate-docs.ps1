@@ -178,6 +178,161 @@ function Assert-MigrationCompleteness([string]$Path, [System.Collections.Generic
     }
 }
 
+function Get-MigrationCatalogEdges([string]$CatalogPath, [System.Collections.Generic.List[string]]$Failures) {
+    # Tokenize strings/comments before locating the private Edges initializer. This prevents
+    # comments, string contents, or other new(...) initializers from becoming executable edges.
+    $tokens = [System.Collections.Generic.List[string]]::new()
+    $literals = [System.Collections.Generic.List[string]]::new()
+    $source = Get-Content -LiteralPath $CatalogPath -Raw
+    foreach ($token in [regex]::Matches($source, '(?s)/\*.*?\*/|//[^\r\n]*|(?<raw>"{3,})(?!").*?\k<raw>(?!")|@"(?:""|[^"])*"|"(?:\\.|[^"\\])*"|[A-Za-z_]\w*|\S')) {
+        $value = $token.Value
+        if ($value.StartsWith('//') -or $value.StartsWith('/*')) { continue }
+        if ($value.StartsWith('"') -or $value.StartsWith('@"')) {
+            $tokens.Add('__literal' + $literals.Count)
+            $literals.Add($value)
+        }
+        else { $tokens.Add($value) }
+    }
+
+    $tokenText = $tokens -join ' '
+    if ($tokenText -match '# (?:if|elif|else|endif)\b') {
+        Add-Failure $Failures 'src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs conditional catalog syntax is unsupported.'
+        return
+    }
+    $initializers = [regex]::Matches($tokenText, 'private static readonly MigrationEdge \[ \] Edges = BuildEdges \( \[ (?<body>.*?) \] \) ;')
+    if ($initializers.Count -ne 1) {
+        Add-Failure $Failures 'src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs must contain one recognizable private Edges initializer.'
+        return
+    }
+
+    $body = $initializers[0].Groups['body'].Value
+    $entryPattern = 'new \( (?<from>__literal\d+) , (?<to>__literal\d+) , (?<path>__literal\d+) \)\s*,?'
+    $remaining = [regex]::Replace($body, $entryPattern, '').Trim()
+    if ($remaining.Length -gt 0) {
+        Add-Failure $Failures 'src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs Edges initializer has unsupported tuple syntax.'
+        return
+    }
+
+    foreach ($entry in [regex]::Matches($body, $entryPattern)) {
+        $values = @()
+        foreach ($field in @('from', 'to', 'path')) {
+            $literal = $literals[[int]$entry.Groups[$field].Value.Substring('__literal'.Length)]
+            if ($literal -notmatch '^"[^"\\\r\n]*"$') {
+                Add-Failure $Failures 'src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs Edges tuples require plain string literals.'
+                return
+            }
+            $values += $literal.Substring(1, $literal.Length - 2)
+        }
+        [pscustomobject]@{ From = $values[0]; To = $values[1]; Path = $values[2] }
+    }
+}
+
+function Assert-MigrationParity([string]$MigrationsRoot, [string]$CatalogPath, [System.Collections.Generic.List[string]]$Failures) {
+    $catalog = @(Get-MigrationCatalogEdges $CatalogPath $Failures)
+    $seenEdges = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($edge in $catalog) {
+        if (-not $seenEdges.Add($edge.From + '->' + $edge.To)) {
+            Add-Failure $Failures "src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs duplicate executable edge $($edge.From)->$($edge.To)."
+        }
+        if ($edge.Path -cnotmatch '^docs/migrations/[^/\\]+\.md$' -or $edge.Path.Contains('..')) {
+            Add-Failure $Failures 'src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs executable guide path must be under docs/migrations.'
+        }
+    }
+
+    $guides = [System.Collections.Generic.Dictionary[string,object]]::new([System.StringComparer]::Ordinal)
+    [string[]]$guidePaths = @(Get-ChildItem -LiteralPath $MigrationsRoot -Filter '*.md' -File | ForEach-Object { $_.FullName })
+    [array]::Sort($guidePaths, [System.StringComparer]::Ordinal)
+    foreach ($guidePath in $guidePaths) {
+        $guide = Get-Item -LiteralPath $guidePath
+        if ($guide.Name -eq 'index.md') { continue }
+        $path = 'docs/migrations/' + $guide.Name
+        $front = (Get-FrontMatter $guide.FullName).Metadata
+        $mode = [string]$front['migrationMode']
+        if ($mode -cnotin @('cli-supported', 'manual-only')) {
+            Add-Failure $Failures "$path migrationMode must be cli-supported or manual-only."
+        }
+        $guides[$path] = [pscustomobject]@{ From = [string]$front['fromVersion']; To = [string]$front['toVersion']; Mode = $mode }
+        $matches = @($catalog | Where-Object { $_.From -ceq $front['fromVersion'] -and $_.To -ceq $front['toVersion'] -and $_.Path -ceq $path })
+        if ($mode -ceq 'cli-supported' -and $matches.Count -ne 1) {
+            Add-Failure $Failures "$path cli-supported guide must match exactly one complete catalog tuple."
+        }
+        if ($mode -ceq 'manual-only' -and $seenEdges.Contains([string]$front['fromVersion'] + '->' + [string]$front['toVersion'])) {
+            Add-Failure $Failures "$path manual-only guide falsely classifies an executable catalog tuple."
+        }
+    }
+    foreach ($edge in $catalog) {
+        if (-not $guides.ContainsKey($edge.Path)) {
+            Add-Failure $Failures "src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs executable edge $($edge.From)->$($edge.To) is missing catalog guidance."
+        }
+        elseif ($guides[$edge.Path].From -cne $edge.From -or $guides[$edge.Path].To -cne $edge.To -or $guides[$edge.Path].Mode -cne 'cli-supported') {
+            Add-Failure $Failures "$($edge.Path) must match catalog versions and cli-supported classification."
+        }
+    }
+
+    $indexPath = Join-Path $MigrationsRoot 'index.md'
+    if (-not (Test-Path -LiteralPath $indexPath)) {
+        Add-Failure $Failures 'docs/migrations/index.md is missing.'
+        return
+    }
+    $index = [regex]::Replace((Get-FrontMatter $indexPath).Body, '(?s)<!--.*?(?:-->|\z)', '')
+    $indexed = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $fenceCharacter = $null
+    $fenceLength = 0
+    foreach ($line in ($index -split '\r?\n')) {
+        if ($null -ne $fenceCharacter) {
+            if ($line -match ('^ {0,3}' + [regex]::Escape($fenceCharacter) + '{' + $fenceLength + ',}\s*$')) {
+                $fenceCharacter = $null
+            }
+            continue
+        }
+        if ($line -match '^ {0,3}(?<fence>`{3,}|~{3,})') {
+            $fenceCharacter = $Matches['fence'].Substring(0, 1)
+            $fenceLength = $Matches['fence'].Length
+            continue
+        }
+        if ($line -cmatch '^\|\s*fromVersion\s*\|\s*toVersion\s*\|\s*migrationMode\s*\|\s*Guide\s*\|\s*$' -or
+            $line -match '^\|(?:\s*:?-{3,}:?\s*\|){4}\s*$') { continue }
+        if ($line -notmatch '^\|') {
+            if ($line -match '\[[^\]]+\]\([^)]+\.md(?:[?#][^)]*)?\)') {
+                Add-Failure $Failures 'docs/migrations/index.md guide links must declare versions and migrationMode in a classified row.'
+            }
+            continue
+        }
+        $row = [regex]::Match($line, '^\|\s*(?<from>[^|]+?)\s*\|\s*(?<to>[^|]+?)\s*\|\s*(?<mode>[^|]+?)\s*\|\s*\[[^\]]+\]\((?<link>[^)]+)\)\s*\|\s*$')
+        if (-not $row.Success) {
+            Add-Failure $Failures 'docs/migrations/index.md has a malformed classified migration row.'
+            continue
+        }
+        $link = $row.Groups['link'].Value
+        if ($link -cnotmatch '^[^/\\:#?]+\.md$' -or $link.Contains('..')) {
+            Add-Failure $Failures 'docs/migrations/index.md has an unsafe or stale guide link.'
+            continue
+        }
+        $path = 'docs/migrations/' + $link
+        if (-not $indexed.Add($path)) {
+            Add-Failure $Failures "docs/migrations/index.md has duplicate guide link $path."
+        }
+        if (-not $guides.ContainsKey($path)) {
+            Add-Failure $Failures "docs/migrations/index.md has stale guide link $path."
+            continue
+        }
+        $guide = $guides[$path]
+        if ($row.Groups['mode'].Value -cnotin @('cli-supported', 'manual-only')) {
+            Add-Failure $Failures "docs/migrations/index.md $path migrationMode must be cli-supported or manual-only."
+        }
+        if ($row.Groups['from'].Value -cne $guide.From -or $row.Groups['to'].Value -cne $guide.To -or $row.Groups['mode'].Value -cne $guide.Mode) {
+            Add-Failure $Failures "docs/migrations/index.md $path versions or migrationMode do not match guide metadata."
+        }
+    }
+    [string[]]$paths = @($guides.Keys)
+    [array]::Sort($paths, [System.StringComparer]::Ordinal)
+    foreach ($path in $paths) {
+        if (-not $indexed.Contains($path)) {
+            Add-Failure $Failures "docs/migrations/index.md is missing guide link $path."
+        }
+    }
+}
+
 function Get-ComponentSection([string]$Text, [string]$Heading) {
     $start = $Text.IndexOf($Heading, [System.StringComparison]::Ordinal)
     if ($start -lt 0) { return '' }
@@ -778,7 +933,7 @@ else {
 foreach ($migration in Get-ChildItem -Path (Join-Path $DocsRoot 'migrations') -Filter '*.md' -File) {
     if ($migration.Name -eq 'index.md') { continue }
     $front = (Get-FrontMatter $migration.FullName).Metadata
-    foreach ($field in @('fromVersion', 'toVersion', 'diagnosticId', 'ownerStory', 'skillCorpusImpact', 'codeFixAvailable')) {
+    foreach ($field in @('fromVersion', 'toVersion', 'diagnosticId', 'ownerStory', 'skillCorpusImpact', 'codeFixAvailable', 'migrationMode')) {
         if (-not $front.Contains($field)) {
             Add-Failure $failures "$(ConvertTo-RepoPath $migration.FullName) migration guide is missing '$field'."
         }
@@ -786,6 +941,8 @@ foreach ($migration in Get-ChildItem -Path (Join-Path $DocsRoot 'migrations') -F
 
     Assert-MigrationCompleteness $migration.FullName $failures
 }
+
+Assert-MigrationParity (Join-Path $DocsRoot 'migrations') (Join-Path $RepoRoot 'src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs') $failures
 
 $submodules = @()
 $gitmodules = Join-Path $RepoRoot '.gitmodules'

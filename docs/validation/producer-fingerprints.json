@@ -14,7 +14,7 @@
     {
       "story": "9-2-cli-inspection-and-migration-tools",
       "path": "docs/migrations/9.1-to-9.2.md",
-      "sha256": "e0e60ce97dbbf4050c6e01ab97803abacdfaefeba8858140b690db4d1f8b173a"
+      "sha256": "9006e563679ae32c66b0a6417b7f5ab0248e7ddb55e4289f1952b3b9b4ee770b"
     },
     {
       "story": "9-3-ide-parity-and-developer-experience",

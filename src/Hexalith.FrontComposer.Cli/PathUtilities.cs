@@ -25,6 +25,33 @@ internal static class PathUtilities {
 
     public static string RedactAbsolute(string path) => Path.IsPathRooted(path) ? RedactedPathSentinel + "/" + Path.GetFileName(path) : path;
 
+    /// <summary>
+    /// Refuses file links and linked ancestors, including directory junctions, without reading source bytes.
+    /// Inaccessible path metadata is unsafe as well.
+    /// </summary>
+    public static bool HasLinkedPathSegment(string path)
+    {
+        try
+        {
+            string? current = Path.GetFullPath(path);
+            while (current is not null)
+            {
+                if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+                {
+                    return true;
+                }
+
+                current = Path.GetDirectoryName(current);
+            }
+
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return true;
+        }
+    }
+
     public static string Canonical(string path) {
         string fullPath;
         try {

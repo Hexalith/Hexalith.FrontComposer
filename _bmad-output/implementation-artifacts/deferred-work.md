@@ -10680,3 +10680,7 @@ closure: Reconcile each tracker against its owning story's actual reviewed evide
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-1-restore-current-artifact-integrity-validation.md`
   summary: Escape story and artifact paths at remaining validator report sites.
   evidence: Round-2 review reproduced a raw U+2028 story path in the unrelated-dirty notice at `eng/validate-story-artifacts.py:1631`; repository-integrity messages such as lines 712, 791, and 903 also format raw `relative_to(root).as_posix()` paths. Extend the existing BH-02 checked-task escaping item with fixtures that combine unsafe story paths and documented unrelated paths.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
+  summary: Fail closed with sanitized inspect diagnostics for unsupported JSON sidecar root and entry shapes.
+  evidence: Story 15.3 review BH-7 verified that DiagnosticFileReader.Read calls TryGetProperty on primitive roots or non-object array entries, which throws InvalidOperationException outside the existing JsonException/IO/access catches. CliApplication does not catch that exception. The reader is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. Add focused primitive-root and non-object-entry regressions and an explicit sanitized rejected-shape policy; the current story corrects documentation and the separately approved symlink guard only.

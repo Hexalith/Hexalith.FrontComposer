@@ -1009,6 +1009,490 @@ public sealed class MigrationCommandTests {
         provider.GetFixAllProvider().ShouldBeNull();
     }
 
+    [Fact]
+    public async Task MigrationPublicationParityAcceptsTheCatalogAndIgnoresUnrelatedInitializersAndComments()
+    {
+        using var fixture = CreateMigrationParityFixture();
+        string catalogPath = Path.Combine(fixture.Root, "MigrationCatalog.cs");
+        string catalog = File.ReadAllText(catalogPath);
+        catalog = catalog.Replace("private static readonly MigrationEdge[] Edges", """""
+            // new("88.0.0", "89.0.0", "docs/migrations/comment.md"),
+            /* private static readonly MigrationEdge[] Edges = BuildEdges([
+                new("77.0.0", "78.0.0", "docs/migrations/block-comment.md"),
+            ]); */
+            private static readonly MigrationEdge[] Unrelated = [
+                new("66.0.0", "67.0.0", "docs/migrations/unrelated.md"),
+            ];
+            private const string Example = "private static readonly MigrationEdge[] Edges = BuildEdges([fake]);";
+            private const string RawExample = """
+                "quoted" // content
+                #if false
+                private static readonly MigrationEdge[] Edges = BuildEdges([fake]);
+                """;
+            private const string WideRawExample = """"
+                """ and "quotes" are literal content
+                """";
+            private static readonly MigrationEdge[] Edges
+            """"", StringComparison.Ordinal);
+        File.WriteAllText(catalogPath, catalog);
+
+        (await RunMigrationParityAsync(fixture.Root)).ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("missing-guide-mode", "migrationMode must be")]
+    [InlineData("unknown-guide-mode", "migrationMode must be")]
+    [InlineData("false-executable", "complete catalog tuple")]
+    [InlineData("false-manual", "falsely classifies")]
+    [InlineData("manual-executable-alias", "falsely classifies")]
+    [InlineData("conditional-catalog", "conditional catalog syntax is unsupported")]
+    [InlineData("commented-index-row", "missing guide link")]
+    [InlineData("fenced-index-row", "missing guide link")]
+    [InlineData("tilde-fenced-index-row", "missing guide link")]
+    [InlineData("header-prefix-duplicate-row", "duplicate guide link")]
+    [InlineData("separator-prefix-duplicate-row", "duplicate guide link")]
+    [InlineData("unclassified-fragment-link", "classified row")]
+    [InlineData("unclassified-query-link", "classified row")]
+    [InlineData("missing-index-link", "missing guide link")]
+    [InlineData("duplicate-index-link", "duplicate guide link")]
+    [InlineData("unclassified-index-link", "classified row")]
+    [InlineData("stale-index-link", "stale guide link")]
+    [InlineData("index-version-mismatch", "versions or migrationMode")]
+    [InlineData("index-path-mismatch", "versions or migrationMode")]
+    [InlineData("index-path-case-mismatch", "stale guide link")]
+    [InlineData("index-unknown-mode", "migrationMode must be")]
+    [InlineData("index-false-executable", "versions or migrationMode")]
+    [InlineData("guide-version-mismatch", "must match catalog versions")]
+    [InlineData("catalog-version-mismatch", "must match catalog versions")]
+    [InlineData("catalog-path-mismatch", "missing catalog guidance")]
+    [InlineData("missing-catalog-guidance", "missing catalog guidance")]
+    [InlineData("duplicate-catalog-edge", "duplicate executable edge")]
+    public async Task MigrationPublicationParityRejectsDriftWithDeterministicRelativeDiagnostics(string scenario, string expected)
+    {
+        using var fixture = CreateMigrationParityFixture();
+        string indexPath = Path.Combine(fixture.Root, "migrations", "index.md");
+        string guidePath = Path.Combine(fixture.Root, "migrations", "9.1-to-9.2.md");
+        string manualPath = Path.Combine(fixture.Root, "migrations", "3.1-to-4.0.md");
+        string catalogPath = Path.Combine(fixture.Root, "MigrationCatalog.cs");
+        string index = File.ReadAllText(indexPath);
+        string guide = File.ReadAllText(guidePath);
+        string catalog = File.ReadAllText(catalogPath);
+        string row = index.Split('\n').Single(line => line.Contains("(9.1-to-9.2.md)", StringComparison.Ordinal)).TrimEnd('\r');
+        switch (scenario)
+        {
+            case "missing-guide-mode":
+                File.WriteAllText(guidePath, guide.Replace("migrationMode: cli-supported", "", StringComparison.Ordinal));
+                break;
+            case "unknown-guide-mode":
+                File.WriteAllText(guidePath, guide.Replace("migrationMode: cli-supported", "migrationMode: automatic", StringComparison.Ordinal));
+                break;
+            case "false-executable":
+                File.WriteAllText(manualPath, File.ReadAllText(manualPath).Replace("migrationMode: manual-only", "migrationMode: cli-supported", StringComparison.Ordinal));
+                break;
+            case "false-manual":
+                File.WriteAllText(guidePath, guide.Replace("migrationMode: cli-supported", "migrationMode: manual-only", StringComparison.Ordinal));
+                break;
+            case "manual-executable-alias":
+                File.WriteAllText(Path.Combine(fixture.Root, "migrations", "alias.md"), guide.Replace("migrationMode: cli-supported", "migrationMode: manual-only", StringComparison.Ordinal));
+                File.AppendAllText(indexPath, row.Replace("| cli-supported |", "| manual-only |", StringComparison.Ordinal).Replace("(9.1-to-9.2.md)", "(alias.md)", StringComparison.Ordinal) + "\n");
+                break;
+            case "conditional-catalog":
+                File.WriteAllText(catalogPath, catalog.Replace("    private static readonly MigrationEdge[] Edges = BuildEdges([", "#if false\n    private static readonly MigrationEdge[] Edges = BuildEdges([", StringComparison.Ordinal).Replace("    ]);", "    ]);\n#else\n    private static readonly MigrationEdge[] Edges = [];\n#endif", StringComparison.Ordinal));
+                break;
+            case "commented-index-row":
+                File.WriteAllText(indexPath, index.Replace(row, "<!--\n" + row + "\n-->", StringComparison.Ordinal));
+                break;
+            case "fenced-index-row":
+                File.WriteAllText(indexPath, index.Replace(row, "```markdown\n" + row + "\n```", StringComparison.Ordinal));
+                break;
+            case "tilde-fenced-index-row":
+                File.WriteAllText(indexPath, index.Replace(row, "~~~~markdown\n" + row + "\n~~~~", StringComparison.Ordinal));
+                break;
+            case "header-prefix-duplicate-row":
+                File.AppendAllText(indexPath, row.Replace("| 9.1.0 |", "| fromVersion |", StringComparison.Ordinal) + "\n");
+                break;
+            case "separator-prefix-duplicate-row":
+                File.AppendAllText(indexPath, row.Replace("| 9.1.0 |", "| --- |", StringComparison.Ordinal) + "\n");
+                break;
+            case "unclassified-fragment-link":
+                File.AppendAllText(indexPath, "- [Unclassified guide](9.1-to-9.2.md#analyzer-and-code-fix)\n");
+                break;
+            case "unclassified-query-link":
+                File.AppendAllText(indexPath, "- [Unclassified guide](9.1-to-9.2.md?view=manual)\n");
+                break;
+            case "missing-index-link":
+                File.WriteAllText(indexPath, index.Replace(row, "", StringComparison.Ordinal));
+                break;
+            case "duplicate-index-link":
+                File.AppendAllText(indexPath, row + "\n");
+                break;
+            case "unclassified-index-link":
+                File.AppendAllText(indexPath, "- [Unclassified guide](9.1-to-9.2.md)\n");
+                break;
+            case "stale-index-link":
+                File.WriteAllText(indexPath, index.Replace("(9.1-to-9.2.md)", "(stale.md)", StringComparison.Ordinal));
+                break;
+            case "index-version-mismatch":
+                File.WriteAllText(indexPath, index.Replace("| 3.1.1 |", "| 3.1.0 |", StringComparison.Ordinal));
+                break;
+            case "index-path-mismatch":
+                File.WriteAllText(indexPath, index.Replace("(9.1-to-9.2.md)", "(3.1-to-4.0.md)", StringComparison.Ordinal));
+                break;
+            case "index-path-case-mismatch":
+                File.WriteAllText(indexPath, index.Replace("(9.1-to-9.2.md)", "(9.1-TO-9.2.md)", StringComparison.Ordinal));
+                break;
+            case "index-unknown-mode":
+                File.WriteAllText(indexPath, index.Replace("| cli-supported |", "| automatic |", StringComparison.Ordinal));
+                break;
+            case "index-false-executable":
+                File.WriteAllText(indexPath, index.Replace("| manual-only |", "| cli-supported |", StringComparison.Ordinal));
+                break;
+            case "guide-version-mismatch":
+                File.WriteAllText(guidePath, guide.Replace("fromVersion: \"9.1.0\"", "fromVersion: \"9.0.0\"", StringComparison.Ordinal));
+                break;
+            case "catalog-version-mismatch":
+                File.WriteAllText(catalogPath, catalog.Replace("\"9.1.0\"", "\"9.0.0\"", StringComparison.Ordinal));
+                break;
+            case "catalog-path-mismatch":
+                File.WriteAllText(catalogPath, catalog.Replace("docs/migrations/9.1-to-9.2.md", "docs/migrations/stale.md", StringComparison.Ordinal));
+                break;
+            case "missing-catalog-guidance":
+                File.Delete(guidePath);
+                break;
+            case "duplicate-catalog-edge":
+                File.WriteAllText(catalogPath, catalog.Replace("new(\"9.1.0\"", "new(\"9.1.0\", \"9.2.0\", \"docs/migrations/9.1-to-9.2.md\"),\n        new(\"9.1.0\"", StringComparison.Ordinal));
+                break;
+            default:
+                throw new InvalidOperationException("Unknown fixture.");
+        }
+
+        string[] failures = await RunMigrationParityAsync(fixture.Root);
+        failures.ShouldNotBeEmpty();
+        string.Join('\n', failures).ShouldContain(expected);
+        string.Join('\n', failures).ShouldNotContain(fixture.Root);
+        string.Join('\n', failures).ShouldNotContain(ProjectRoot().FullName);
+        (await RunMigrationParityAsync(fixture.Root)).ShouldBe(failures);
+    }
+
+    [Theory]
+    [InlineData(false, false, false, false)]
+    [InlineData(false, false, true, false)]
+    [InlineData(false, true, false, false)]
+    [InlineData(false, true, true, false)]
+    [InlineData(true, false, false, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(true, true, false, false)]
+    [InlineData(true, true, true, false)]
+    [InlineData(true, false, false, true)]
+    [InlineData(true, false, true, true)]
+    [InlineData(true, true, false, true)]
+    [InlineData(true, true, true, true)]
+    public async Task MigrationRefusesFileAndAncestorLinksBeforeReadingSource(bool directoryLink, bool external, bool apply, bool nested)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string projectDirectory = Path.GetDirectoryName(project)!;
+        string targetDirectory = Path.Combine(external ? fixture.Root : projectDirectory, "Target");
+        _ = Directory.CreateDirectory(targetDirectory);
+        string target = Path.Combine(targetDirectory, nested ? "Nested/Regular/Source.cs" : "Source.cs");
+        _ = Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        // Invalid UTF-8 would produce a failed read if the planner touched target bytes.
+        byte[] targetBytes = [0xFF, 0x00, 0xFF];
+        await File.WriteAllBytesAsync(target, targetBytes, CancellationToken.None);
+        string link = Path.Combine(projectDirectory, directoryLink ? "LinkedDirectory" : "Linked.cs");
+        FileSystemInfo linkInfo = directoryLink
+            ? CreateDirectoryMigrationLink(link, targetDirectory)
+            : File.CreateSymbolicLink(link, target);
+        string? originalLinkTarget = linkInfo.LinkTarget;
+        string include = directoryLink ? (nested ? "LinkedDirectory/Nested/Regular/Source.cs" : "LinkedDirectory/Source.cs") : "Linked.cs";
+        File.WriteAllText(project, $$"""
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+              <ItemGroup>
+                <Compile Include="{{include}}" Link="ReportedSource.cs" />
+                <Compile Include="Ordinary.cs" />
+              </ItemGroup>
+            </Project>
+            """);
+        string ordinary = fixture.WriteSource("Acme.App", "Ordinary.cs", "services.AddFrontComposerDebugOverlay();");
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, [apply ? "--apply" : "--dry-run", "--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error + output);
+        error.ShouldBeEmpty();
+        using var document = JsonDocument.Parse(output);
+        document.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("frontcomposer.cli.migrate.v1");
+        document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(1);
+        document.RootElement.GetProperty("summary").GetProperty("failed").GetInt32().ShouldBe(0);
+        (await File.ReadAllBytesAsync(target, CancellationToken.None)).ShouldBe(targetBytes);
+        linkInfo.Refresh();
+        linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
+        File.ReadAllText(ordinary).ShouldContain(apply ? "AddFrontComposerDevMode" : "AddFrontComposerDebugOverlay");
+        output.ShouldNotContain(fixture.Root);
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    public async Task MigrationApplyRefusesLinksIntroducedAfterPlanningAndKeepsEarlierWrites(bool directoryLink, bool external, bool nested)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string projectDirectory = Path.GetDirectoryName(project)!;
+        string earlier = fixture.WriteSource("Acme.App", "A.cs", "services.AddFrontComposerDebugOverlay();");
+        string relativeSource = directoryLink ? (nested ? "Z/Nested/Regular/Source.cs" : "Z/Source.cs") : "Z.cs";
+        string source = fixture.WriteSource("Acme.App", relativeSource, "services.AddFrontComposerDebugOverlay();");
+        MigrationPlan plan = await MigrationPlanner.PlanAsync(project, MigrationCatalog.Resolve("9.1.0", "9.2.0")!, CancellationToken.None);
+        plan.FileEdits.Count.ShouldBe(2);
+        string targetDirectory = Path.Combine(external ? fixture.Root : projectDirectory, "Target");
+        _ = Directory.CreateDirectory(targetDirectory);
+        string target = Path.Combine(targetDirectory, directoryLink ? (nested ? "Nested/Regular/Source.cs" : "Source.cs") : "Target.cs");
+        _ = Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        byte[] targetBytes = await File.ReadAllBytesAsync(source, CancellationToken.None);
+        await File.WriteAllBytesAsync(target, targetBytes, CancellationToken.None);
+        File.Delete(source);
+        string link = directoryLink ? Path.Combine(projectDirectory, "Z") : source;
+        if (directoryLink)
+        {
+            Directory.Delete(link, recursive: true);
+        }
+        FileSystemInfo linkInfo = directoryLink
+            ? CreateDirectoryMigrationLink(link, targetDirectory)
+            : File.CreateSymbolicLink(link, target);
+        string? originalLinkTarget = linkInfo.LinkTarget;
+
+        MigrationResult result = await MigrationApplier.ApplyAsync(plan, CancellationToken.None);
+
+        result.Applied.ShouldBeFalse();
+        result.Summary.Failed.ShouldBe(1);
+        result.Summary.Changed.ShouldBe(1);
+        File.ReadAllText(earlier).ShouldContain("AddFrontComposerDevMode");
+        (await File.ReadAllBytesAsync(target, CancellationToken.None)).ShouldBe(targetBytes);
+        linkInfo.Refresh();
+        linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
+        result.Entries.Single(entry => entry.Kind == "failed").Path.ShouldBe(relativeSource);
+    }
+
+    [Fact]
+    public async Task MigrationRefusesOutsideRootCompileLinkMetadata()
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string target = fixture.WriteSource("Outside", "Source.cs", "services.AddFrontComposerDebugOverlay();");
+        byte[] original = await File.ReadAllBytesAsync(target, CancellationToken.None);
+        File.WriteAllText(project, """
+            <Project><ItemGroup><Compile Include="../Outside/Source.cs" Link="Source.cs" /></ItemGroup></Project>
+            """);
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, ["--apply", "--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, output + error);
+        using var document = JsonDocument.Parse(output);
+        document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(1);
+        (await File.ReadAllBytesAsync(target, CancellationToken.None)).ShouldBe(original);
+        output.ShouldNotContain(fixture.Root);
+    }
+
+    [Fact]
+    public async Task MigrationPublicationCommandRejectsCatalogOnlyMismatchInAnIsolatedCopy()
+    {
+        using var fixture = CliFixture.Create();
+        foreach (string relative in new[]
+        {
+            "eng/validate-docs.ps1", "global.json", ".gitmodules", "docs",
+            "src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs",
+            "src/Hexalith.FrontComposer.Shell/Components",
+            "src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionStatus.cs",
+            "src/Hexalith.FrontComposer.Contracts", "src/Hexalith.FrontComposer.Contracts.UI/Rendering",
+            "_bmad-output/project-docs/component-inventory.md",
+            "_bmad-output/contracts/fc-doc-component-documentation-2026-06-03.md",
+        })
+        {
+            CopyPublicationInput(Path.Combine(ProjectRoot().FullName, relative), Path.Combine(fixture.Root, relative));
+        }
+        string catalogPath = Path.Combine(fixture.Root, "src", "Hexalith.FrontComposer.Cli", "MigrationCatalog.cs");
+        File.WriteAllText(catalogPath, File.ReadAllText(catalogPath).Replace("\"9.1.0\"", "\"9.0.0\"", StringComparison.Ordinal));
+        ProcessStartInfo start = new("pwsh")
+        {
+            WorkingDirectory = fixture.Root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (string argument in new[] { "-NoProfile", "-File", "eng/validate-docs.ps1", "-SkipDocFx", "-SkipSnippetBuild" })
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        (int exitCode, string output, string error) = await RunProcessCaptureAsync(start, TimeSpan.FromSeconds(90));
+
+        exitCode.ShouldNotBe(0, output + error);
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(fixture.Root, "artifacts", "docs", "validation-manifest.json")));
+        string[] failures = manifest.RootElement.GetProperty("blockingFailures").EnumerateArray().Select(value => value.GetString()!).ToArray();
+        failures.ShouldNotBeEmpty();
+        string.Join('\n', failures).ShouldContain("must match catalog versions and cli-supported classification");
+        failures.ShouldAllBe(failure => failure.StartsWith("docs/migrations/9.1-to-9.2.md ", StringComparison.Ordinal));
+        string.Join('\n', failures).ShouldNotContain(fixture.Root);
+    }
+
+    [Theory]
+    [InlineData("--dry-run", "json")]
+    [InlineData("--apply", "json")]
+    [InlineData("--dry-run", "text")]
+    [InlineData("--apply", "text")]
+    public async Task MigrationPreCancelledBeforePlanningReturnsFourWithoutAReport(string mode, string format)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string source = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
+        byte[] original = await File.ReadAllBytesAsync(source, CancellationToken.None);
+        using StringWriter output = new();
+        using StringWriter error = new();
+
+        int exitCode = await CliApplication.RunAsync(
+            ["migrate", "--project", project, "--from", "9.1.0", "--to", "9.2.0", mode, "--format", format],
+            output, error, new CancellationToken(canceled: true));
+
+        exitCode.ShouldBe(ExitCodes.ApplyWriteFailure);
+        output.ToString().ShouldBeEmpty();
+        error.ToString().ShouldContain("Operation was cancelled");
+        (await File.ReadAllBytesAsync(source, CancellationToken.None)).ShouldBe(original);
+    }
+
+    [Fact]
+    public async Task MigrationSyntacticRenameIncludesSameNamedNonApiIdentifiersAndExcludesNameof()
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteSource("Acme.App", "Program.cs", """
+            var callback = AddFrontComposerDebugOverlay;
+            var display = nameof(AddFrontComposerDebugOverlay);
+            """);
+
+        MigrationPlan plan = await MigrationPlanner.PlanAsync(project, MigrationCatalog.Resolve("9.1.0", "9.2.0")!, CancellationToken.None);
+
+        plan.FileEdits.Single().UpdatedText.ShouldContain("var callback = AddFrontComposerDevMode;");
+        plan.FileEdits.Single().UpdatedText.ShouldContain("nameof(AddFrontComposerDebugOverlay)");
+    }
+
+    private static void CopyPublicationInput(string source, string destination)
+    {
+        if (File.Exists(source))
+        {
+            _ = Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(source, destination);
+            return;
+        }
+        _ = Directory.CreateDirectory(destination);
+        foreach (string file in Directory.EnumerateFiles(source))
+        {
+            File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
+        }
+        foreach (string directory in Directory.EnumerateDirectories(source))
+        {
+            if (Path.GetFileName(directory) is "bin" or "obj" or "_site")
+            {
+                continue;
+            }
+            CopyPublicationInput(directory, Path.Combine(destination, Path.GetFileName(directory)));
+        }
+    }
+
+    private static FileSystemInfo CreateDirectoryMigrationLink(string link, string target)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return Directory.CreateSymbolicLink(link, target);
+        }
+
+        // Junctions are directory reparse points and do not require Windows symlink privileges.
+        ProcessStartInfo start = new("cmd") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+        foreach (string argument in new[] { "/c", "mklink", "/J", link, target })
+        {
+            start.ArgumentList.Add(argument);
+        }
+        using Process process = Process.Start(start)!;
+        process.WaitForExit(10_000).ShouldBeTrue();
+        process.ExitCode.ShouldBe(0, process.StandardError.ReadToEnd());
+        return new DirectoryInfo(link);
+    }
+
+    private static CliFixture CreateMigrationParityFixture()
+    {
+        var fixture = CliFixture.Create();
+        string migrations = Path.Combine(fixture.Root, "migrations");
+        _ = Directory.CreateDirectory(migrations);
+        foreach (string file in Directory.EnumerateFiles(Path.Combine(ProjectRoot().FullName, "docs", "migrations"), "*.md"))
+        {
+            File.Copy(file, Path.Combine(migrations, Path.GetFileName(file)));
+        }
+        File.Copy(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Cli", "MigrationCatalog.cs"), Path.Combine(fixture.Root, "MigrationCatalog.cs"));
+        return fixture;
+    }
+
+    private static async Task<string[]> RunMigrationParityAsync(string fixtureRoot)
+    {
+        string runner = Path.Combine(fixtureRoot, "parity.ps1");
+        await File.WriteAllTextAsync(runner, """
+            param([string]$Validator, [string]$FixtureRoot)
+            $ErrorActionPreference = 'Stop'
+            Set-StrictMode -Version Latest
+            $tokens = $null; $errors = $null
+            $ast = [System.Management.Automation.Language.Parser]::ParseFile($Validator, [ref]$tokens, [ref]$errors)
+            if ($errors.Count) { throw 'Publication validator has parse errors.' }
+            $names = @('Add-Failure', 'Get-FrontMatter', 'Get-MigrationCatalogEdges', 'Assert-MigrationParity')
+            foreach ($function in $ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) {
+                if ($function.Name -in $names) { . ([scriptblock]::Create($function.Extent.Text)) }
+            }
+            $failures = [System.Collections.Generic.List[string]]::new()
+            Assert-MigrationParity (Join-Path $FixtureRoot 'migrations') (Join-Path $FixtureRoot 'MigrationCatalog.cs') $failures
+            ConvertTo-Json -InputObject $failures.ToArray() -Compress
+            """, CancellationToken.None).ConfigureAwait(false);
+        ProcessStartInfo start = new("pwsh")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (string argument in new[] { "-NoProfile", "-File", runner, Path.Combine(ProjectRoot().FullName, "eng", "validate-docs.ps1"), fixtureRoot })
+        {
+            start.ArgumentList.Add(argument);
+        }
+        (int exitCode, string output, string error) = await RunProcessCaptureAsync(start, TimeSpan.FromSeconds(30)).ConfigureAwait(false);
+        exitCode.ShouldBe(0, error);
+        return JsonSerializer.Deserialize<string[]>(output)!;
+    }
+
+    private static async Task<(int ExitCode, string Output, string Error)> RunProcessCaptureAsync(ProcessStartInfo start, TimeSpan limit)
+    {
+        using Process process = Process.Start(start)!;
+        Task<string> output = process.StandardOutput.ReadToEndAsync();
+        Task<string> error = process.StandardError.ReadToEndAsync();
+        using CancellationTokenSource timeout = new(limit);
+        try
+        {
+            await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or System.ComponentModel.Win32Exception)
+            {
+            }
+            // Uncancelled reads drain both redirected streams after terminating the process tree.
+            await Task.WhenAll(output, error).ConfigureAwait(false);
+            throw new TimeoutException(start.FileName + " did not exit within " + limit + ".");
+        }
+        return (process.ExitCode, await output.ConfigureAwait(false), await error.ConfigureAwait(false));
+    }
+
     private sealed class UnsupportedCodeActionOperation : CodeActionOperation {
         public override void Apply(Workspace workspace, CancellationToken cancellationToken) {
         }

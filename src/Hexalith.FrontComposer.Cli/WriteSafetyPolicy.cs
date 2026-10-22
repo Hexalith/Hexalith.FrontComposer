@@ -3,7 +3,9 @@ namespace Hexalith.FrontComposer.Cli;
 internal static class WriteSafetyPolicy {
     public static bool IsAllowed(string projectDirectory, string path, HashSet<string> submoduleRoots) {
         string relative = PathUtilities.ToProjectRelative(projectDirectory, path);
-        if (relative == PathUtilities.RedactedPathSentinel || PathUtilities.HasExcludedSegment(projectDirectory, path)) {
+        if (relative == PathUtilities.RedactedPathSentinel
+            || PathUtilities.HasExcludedSegment(projectDirectory, path)
+            || PathUtilities.HasLinkedPathSegment(path)) {
             return false;
         }
 
