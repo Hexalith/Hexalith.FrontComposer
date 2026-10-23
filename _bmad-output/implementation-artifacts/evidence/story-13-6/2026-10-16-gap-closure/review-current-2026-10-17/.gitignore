@@ -1,2 +1,0 @@
-# Retain this packet's verification logs alongside their manifests and archives.
-!*.log

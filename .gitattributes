@@ -1,53 +1,9 @@
 * text=auto eol=crlf
 *.verified.txt text eol=lf
-# Current Pact JSON is runtime evidence input and must have identical bytes on every runner.
+# Generated Pact JSON keeps identical LF bytes on every runner; the EventStore provider reads these files.
 tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json text eol=lf
-# This capture-bound AppHost source had mixed line endings before recapture; keep it stable.
+# This AppHost source had mixed line endings; keep it stable.
 src/Hexalith.FrontComposer.AppHost/HexalithTenantsSample.cs text eol=lf
 # Shell scripts and husky hooks require LF on Unix runners (CRLF breaks /bin/sh shebangs).
 *.sh text eol=lf
 .husky/* text eol=lf
-# These paths are hash-bound evidence: `-text` alone keeps checkout and check-in byte-exact.
-# `eol` is read only when it is set to lf or crlf, so `-eol` would be inert noise here.
-# Story 11.24 preserves externally captured evidence bytes; checkout must never rewrite them.
-_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/** -text
-# Live Gate 2c receipts bind SHA-256 of these files; checkout must not rewrite EOL.
-_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/** -text
-# Story 11.25 preserves dated provider/AppHost packets as immutable prior evidence.
-_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/** -text
-# Active identity v2 binds exact recapture, decision, roster, and receipt bytes.
-_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/** -text
-# Active identity v3 binds the hosted recapture candidate and its decision bytes.
-_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/** -text
-_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json -text
-_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md -text
-# Identity v4 is intentionally absent during successor preparation; reserve its future
-# identity/evidence coordinates so imported hosted bytes can never be EOL-normalized.
-_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v4/** -text
-_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v4.json -text
-# The active decision hash-binds this human-approved proposal's canonical LF bytes.
-_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md -text
-# Story 13.6 preserves candidate-bound browser and verification evidence bytes.
-_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/** -text
-
-# Story 13.6 gap-closure hashes bind the original diagnostic and verification bytes.
-_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/** -text
-# Story 13.6 final gate packet hashes bind raw report and attachment bytes.
-_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/** -text
-# Story 13.6 field-layout proof retains exact browser and verification bytes.
-_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/** -text
-# Story 13.6 screenshot-attempt proof retains exact reports and attachment bytes.
-_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-attempt-ownership/** -text
-# Story 13.6 PNG-integrity replay retains exact source and verification bytes.
-_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-png-integrity/** -text
-# Story 13.6 resumed Build preserves exact regression and verification bytes.
-_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-build-resume/** -text
-
-# Story 13.6 repeatable browser packets preserve exact reports and capture bytes.
-_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser/** -text
-
-# Reviewed Story 13.6 final browser proof retains exact evidence bytes.
-_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/** -text
-
-# Story 13.8 replays the exact historical verifier blob beside its proof archive.
-_bmad-output/implementation-artifacts/evidence/story-13-8/validate-epic9-artifacts.mjs -text

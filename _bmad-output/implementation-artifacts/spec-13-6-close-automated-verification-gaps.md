@@ -11,6 +11,8 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-13-context.md'
 ---
 
+> **Evidence policy (2026-10-23):** proof is the repository's tests plus CI, recorded here as commands, pass/fail counts, commit SHA and CI run link (PRD §7). The committed `evidence/story-13-6/` folders this record links to were removed by [`spec-evidence-storage-simplification.md`](spec-evidence-storage-simplification.md); `evidence/` folders are ignored local scratch and `eng/check-committed-files.sh` rejects new evidence commits.
+
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 
 ## Intent

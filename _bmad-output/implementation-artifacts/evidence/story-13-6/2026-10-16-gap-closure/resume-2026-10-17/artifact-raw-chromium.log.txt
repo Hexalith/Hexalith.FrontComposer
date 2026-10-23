@@ -1,1 +1,0 @@
-Accessibility artifact root is unexpectedly large: /tmp/story-13-6-resume-final4-20261017, /tmp/story-13-6-resume-final4-20261017-report

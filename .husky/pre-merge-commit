@@ -1,0 +1,2 @@
+#!/bin/sh
+bash eng/check-committed-files.sh --staged

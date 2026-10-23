@@ -1,4 +1,0 @@
-{
-  "error": "github.com/hexalith/hexalith.frontcomposer@489f3ad4cbf09965c675d7bf2007c6a8b7a0861e -> references/Hexalith.Builds -> github.com/hexalith/hexalith.builds@4f53d9f37c5b86cfd43fbcc8fa5dd4df19b84c77: Microsoft.Extensions.Localization expected version '10.0.12', found '10.0.13'",
-  "ok": false
-}

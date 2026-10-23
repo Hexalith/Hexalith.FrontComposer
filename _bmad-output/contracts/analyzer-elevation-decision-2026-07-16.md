@@ -64,15 +64,9 @@ The census enumeration additionally used command-line-only `TreatWarningsAsError
 candidate mode could report the full 4,070 set; that override is instrumentation only and is not a
 policy change.
 
-Raw machine-readable evidence (SHA-256 of the committed `.binlog.gz` files):
-
-| Evidence file | SHA-256 |
-| --- | --- |
-| `_bmad-output/contracts/analyzer-elevation-current-2026-07-16.binlog.gz` | `0c2c90476c3f05ae50743c006c6c1a8b1be77483c0b184ce5278ad3b5b48299c` |
-| `_bmad-output/contracts/analyzer-elevation-recommended-strict-2026-07-16.binlog.gz` | `bc0dcf1d68e9be3c8d0eb66282ffd8f47bea3d50f185a6d5cfe5585eb5da977b` |
-| `_bmad-output/contracts/analyzer-elevation-recommended-census-2026-07-16.binlog.gz` | `a3bc2d1da395cde8b66e4ef9544cb96e8e1b3ddc81ab7a0b2c3878fe77e23d48` |
-
-To inspect an evidence file, decompress it and open the `.binlog` with an MSBuild binary-log reader.
+The three raw `.binlog.gz` captures were removed from the repository on 2026-10-23 (proof is the
+recorded commands and counts above plus CI; see PRD §7). Re-run the commands above to regenerate them
+as local scratch.
 
 ## Effective current configuration
 

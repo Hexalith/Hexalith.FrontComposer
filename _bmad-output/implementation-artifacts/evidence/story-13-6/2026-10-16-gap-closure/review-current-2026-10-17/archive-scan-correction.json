@@ -1,8 +1,0 @@
-{
-  "sourceIdentitySha256": "0bfddb4016c3bfe00e84ae88ca698b3a63c373b1ac2be5048577cdae0ee6b77a",
-  "failedRun": "review6-configured-shell.xml",
-  "observed": "Historical .cs source copies were included by repository-wide AuthBoundary scan; functional tests and the two catalog failures otherwise unchanged.",
-  "correction": "All52 exact historical source bytes archived and verified in superseded-complete-review4/source-snapshot/raw-artifacts.json, then only the own uncompressed source copies removed.",
-  "productOrTestCodeChanged": false,
-  "followup": "current-configured-shell.xml"
-}
