@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, statSync, readFileSync } from 'node:fs';
-import { validateStateEvidence } from './a11y-state-evidence.mjs';
+import { FORCED_COLORS_MEDIA_ONLY_STATUS, reportStructureErrors, validateStateEvidence } from './a11y-state-evidence.mjs';
 import { basename, join, resolve } from 'node:path';
 import manifest from '../specimens/frontcomposer-specimen-manifest.json' with { type: 'json' };
 
@@ -62,7 +62,9 @@ const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.
 let report;
 try {
   report = JSON.parse(readFileSync(required[2], 'utf8'));
-  if (!isRecord(report) || report.suites !== undefined && !Array.isArray(report.suites)) throw new Error('expected a report object with a suites array');
+  if (!isRecord(report)) throw new Error('expected a report object with a suites array');
+  const shapeErrors = reportStructureErrors(report);
+  if (shapeErrors.length) throw new Error(shapeErrors.join('; '));
 } catch (error) {
   console.error(`Invalid authoritative Playwright report ${required[2]}: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
@@ -96,7 +98,7 @@ const stateErrors = engines.flatMap(expectedEngine => {
     try { capability = JSON.parse(readFileSync(capabilityAttachments[0].path, 'utf8')); } catch { /* reported below */ }
     if (isRecord(capability)) unsupportedForcedColorsCapability = capability;
     else capabilityErrors.push(`Unreadable forced-color capability attachment for ${expectedEngine}: ${capabilityAttachments[0].path}`);
-  } else if (owned.some(file => /^ae-state-.+\.json$/u.test(basename(file)) && stateEvidence(file)?.forcedColorsStatus === 'unsupported authored-color replacement; media rules only')) {
+  } else if (owned.some(file => /^ae-state-.+\.json$/u.test(basename(file)) && stateEvidence(file)?.forcedColorsStatus === FORCED_COLORS_MEDIA_ONLY_STATUS)) {
     // Media-only forced colors are acceptable only with the run's own capability attachment.
     capabilityErrors.push(`Missing forced-color capability attachment for ${expectedEngine}: state evidence declares media-only forced colors`);
   }

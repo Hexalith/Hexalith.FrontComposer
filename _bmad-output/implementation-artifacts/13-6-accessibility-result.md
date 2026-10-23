@@ -1,5 +1,30 @@
 # Story 13.6 accessibility result and human checklist
 
+## Current Pass 6 continuation — 2026-10-23
+
+All fifteen pending Pass 6 patches are implemented. This local candidate is root `4a4051c2511e5c4b7c0285fbc129c72146c1c275` plus unstaged source/test patch `sha256:e78f81ed6d708f39aa123a4860ae07b0e77164247a8e2ed9ba4404520666183f`; the fourteen raw input hashes include the new TypeScript declaration. The [bounded verification receipt](tests/story-13-6-pass6-2026-10-23.json) records exact commands, outcomes, source/assembly/report hashes and external scratch paths. No durable immutable accepted-proof packet is claimed.
+
+| Verification | Current result |
+| --- | --- |
+| Focused browser regressions | 57/57 across Chromium, Firefox and WebKit |
+| Helper negative controls | All twelve deliberate mutations detected; 60 expected failures, zero surviving mutants |
+| Scope-disposal / validator controls | Removing the production guard and using the baseline nested-report validator both fail their regressions |
+| Affected Shell / generator / Node | 136/136; 103/103; 29/29; TypeScript passes |
+| Configured SourceTools lane | 1,415 passed; zero failed/skipped/errors |
+| Configured Shell lane | 3,760 passed / 9 failed / 0 skipped; Fluent chrome and analyzer seal pass |
+| Complete per-engine browser selection | 941 passed / 12 failed / 4 skipped / 0 flaky; no retries |
+| Required state files | Chromium 116, Firefox 116, WebKit 116 of 116 each; validation details in receipt |
+| Artifact-size policy | All six roots below 52,428,800 bytes |
+| Full artifact validator exits | Chromium 0; Firefox 1; WebKit 1 |
+
+The Shell failures are six MCP 2.3.0 assembly-load cases and three governance checks: the approved AppHost SDK expectation, centralized catalog policy and story-validator workflow wiring. Their source/configuration is unchanged by this patch. The Debug Shell build also records three MSB3277 dependency-conflict warnings; the SourceTools build has zero warnings/errors. Broad failures are retained separately from passing focused checks.
+
+The first combined browser command exceeded its 600-second wrapper budget after 940 passing, ten failing and four skipped log entries, leaving three cases unreported and no final outcome report. Its owned leftover Test host was stopped. The subsequent three complete per-engine runs provide final reports and separate raw/HTML roots; the interrupted attempt remains failed history. The Debug Test host is configured with the existing Test-only timings and Fluent Components/Icons 5.0.1. This supplies no live-backend acceptance.
+
+All twenty-four approved PNGs, frozen intent, dependency configuration, root gitlinks and historical packets remain unchanged. Only two generator text approvals changed, each by the disposed guard. All eighteen manual boxes remain open. Actual AT/heard speech, browser zoom, physical devices, Windows, WebKit system-palette coverage and named owner approvals are unperformed or unresolved. Story and sprint status remain **in-progress**; Build does not claim acceptance or completion. Nothing is staged, committed or pushed. Earlier dated sections below remain historical evidence.
+
+Final repository checks: `python3 eng/validate-story-artifacts.py` and `git diff --check` pass. Recorded log hashes, source and frozen intent match; all eighteen manual boxes remain unchecked. Exact-target Aspire describe reports no running AppHost, and the owned Test-host port is closed.
+
 ## Current reviewed verification — 2026-10-18
 
 **Story 13.6 remains in review; accessibility classification is blocked.** The final candidate is root `1f8c7b2b4424b6232121a7cc567f7129e46577d3` plus source/test/configuration patch `sha256:b6b5b7a761b4927d21ee0fe9ba5daf78ce31ea87928f28b3e2a3b842e8fe5fc3`. Its [candidate](evidence/story-13-6/2026-10-18-repeatable-browser-reviewed/candidate.json) binds seven source/config inputs, 37 unchanged host assemblies, eight unchanged submodules and 26 unchanged approved PNG/text baselines.

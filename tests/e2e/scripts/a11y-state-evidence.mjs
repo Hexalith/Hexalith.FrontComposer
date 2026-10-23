@@ -3,6 +3,31 @@ import { readFileSync, statSync } from 'node:fs';
 import { crc32, inflateSync } from 'node:zlib';
 import { PNG } from 'playwright-core/lib/utilsBundle';
 
+export const FORCED_COLORS_MEDIA_ONLY_STATUS = 'unsupported authored-color replacement; media rules only';
+
+// Validate before either consumer traverses the authoritative reporter tree.
+export function reportStructureErrors(report) {
+  const errors = [];
+  const record = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  const object = (value, path) => {
+    if (record(value)) return true;
+    errors.push(`Invalid authoritative Playwright report: ${path} must be an object`);
+    return false;
+  };
+  const array = (owner, key, path, visit) => {
+    if (owner[key] === undefined) return;
+    if (!Array.isArray(owner[key])) { errors.push(`Invalid authoritative Playwright report: ${path}.${key} must be an array`); return; }
+    owner[key].forEach((value, index) => { const child = `${path}.${key}[${index}]`; if (object(value, child)) visit(value, child); });
+  };
+  const suite = (value, path) => {
+    array(value, 'suites', path, suite);
+    array(value, 'specs', path, (spec, specPath) => array(spec, 'tests', specPath, (test, testPath) =>
+      array(test, 'results', testPath, (result, resultPath) => array(result, 'attachments', resultPath, () => {}))));
+  };
+  if (object(report, 'report')) array(report, 'suites', 'report', suite);
+  return errors;
+}
+
 const outcomes = ['validation', 'returned-rejection', 'exception-rejection', 'forbidden', 'unavailable', 'blank-unavailable', 'rate-limited', 'blank-rate-limited', 'transport', 'admission', 'policy'];
 const lifecycle = ['idle', 'submitting', 'acknowledged', 'syncing', 'confirmed', 'rejected', 'idempotent-confirmed', 'needs-review', 'warning', 'degraded', 'degraded-exhausted'];
 export const requiredStates = ['light', 'dark'].flatMap(theme => [
@@ -14,7 +39,8 @@ export const requiredStates = ['light', 'dark'].flatMap(theme => [
 ]);
 
 export function validateStateEvidence(files, { unsupportedForcedColorsCapability = null, expectedEngine = null, expectedRun = null, report = null } = {}) {
-  const errors = [];
+  const errors = report ? reportStructureErrors(report) : [];
+  if (errors.length) return errors;
   if (report?.errors !== undefined && (!Array.isArray(report.errors) || report.errors.length)) errors.push('Authoritative Playwright report has runner/setup/teardown errors');
   const validEdges = group => Array.isArray(group) && group.length > 0
     && group.every(sample => Number.isInteger(sample.owner) && sample.owner >= 0 && Number.isFinite(sample.ratio) && sample.minimum === 3)
@@ -106,7 +132,7 @@ export function validateStateEvidence(files, { unsupportedForcedColorsCapability
       if (evidence.theme !== (state.endsWith('-dark') ? 'Dark' : 'Light') || !Array.isArray(evidence.themePaint?.rgb) || evidence.themePaint.rgb.length !== 3 || (evidence.themePaint.rgb.reduce((sum, channel) => sum + channel, 0) < 384) !== state.endsWith('-dark')) errors.push(`Mismatched actual theme paint: ${file}`);
       if (evidence.state !== state) errors.push(`Mismatched state identity: ${file}`);
       if (evidence.viewport?.width !== (state.startsWith('rail-') ? 1600 : 320) || evidence.viewport?.height !== 900) errors.push(`Missing exact viewport evidence: ${file}`);
-      const mediaOnly = evidence.engine === 'webkit' && ownedUnsupportedCapability && evidence.forcedColorsPaint === false && evidence.forcedColorsStatus === 'unsupported authored-color replacement; media rules only';
+      const mediaOnly = evidence.engine === 'webkit' && ownedUnsupportedCapability && evidence.forcedColorsPaint === false && evidence.forcedColorsStatus === FORCED_COLORS_MEDIA_ONLY_STATUS;
       const keys = mediaOnly ? ['text'] : ['text', 'systemText'];
       if (!mediaOnly && evidence.forcedColorsPaint !== true) errors.push(`Missing actual forced palette paint: ${file}`);
       for (const key of keys) {

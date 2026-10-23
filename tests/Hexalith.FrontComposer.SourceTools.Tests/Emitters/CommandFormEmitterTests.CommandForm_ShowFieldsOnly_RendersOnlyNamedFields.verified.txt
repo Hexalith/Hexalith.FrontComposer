@@ -270,6 +270,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         if (reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable)
         {
             await PresentScopeUnavailableAsync().ConfigureAwait(false);
+            if (_disposed) return;
             // BH4-04 — the same attempted-control rule as AM-20: Enter in a field keeps that field focused.
             await FocusAttemptedControlAsync(_formDomId + "-submit").ConfigureAwait(false);
             return;

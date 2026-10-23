@@ -1324,6 +1324,10 @@ public class CommandFormEmitterTests {
         int scopeBranchEnd = presentBody.IndexOf("await FocusAttemptedControlAsync(_formDomId + \"-submit\").ConfigureAwait(false);", StringComparison.Ordinal);
         int blockedClear = presentBody.IndexOf("await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);", StringComparison.Ordinal);
         int blockedPublish = presentBody.IndexOf("CommandFeedbackPublisher.PublishWarning(CreateCommandBlockedWarning(reason));", StringComparison.Ordinal);
+        int scopePresentation = presentBody.IndexOf("await PresentScopeUnavailableAsync().ConfigureAwait(false);", StringComparison.Ordinal);
+        int scopeDisposedGuard = presentBody.IndexOf("if (_disposed) return;", scopePresentation, StringComparison.Ordinal);
+        scopeDisposedGuard.ShouldBeGreaterThan(scopePresentation);
+        scopeDisposedGuard.ShouldBeLessThan(scopeBranchEnd);
         scopeBranchEnd.ShouldBeGreaterThan(0);
         blockedClear.ShouldBeGreaterThan(scopeBranchEnd);
         blockedPublish.ShouldBeGreaterThan(blockedClear);

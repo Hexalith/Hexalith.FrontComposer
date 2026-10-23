@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { crc32, deflateSync, inflateSync } from 'node:zlib';
 import specimenManifest from '../specimens/frontcomposer-specimen-manifest.json' with { type: 'json' };
-import { requiredStates, validateStateEvidence } from './a11y-state-evidence.mjs';
+import { FORCED_COLORS_MEDIA_ONLY_STATUS, requiredStates, validateStateEvidence } from './a11y-state-evidence.mjs';
 
 // Genuine 1x1 RGBA PNGs with different pixels and equal encoded lengths.
 const fixturePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4AWMAgv8AAQQBAP8H9UQAAAAASUVORK5CYII=', 'base64');
@@ -113,7 +113,7 @@ test('WebKit capability attribution exempts absent images without weakening Chro
     owner.results[0].attachments = owner.results[0].attachments.filter(item => item.contentType !== 'image/png');
   }
   all = all.filter(path => !path.endsWith('.png'));
-  for (let i = 0; i < files.length; i++) update(i, { engine: 'webkit', forcedColorsPaint: false, systemText: [], systemIcon: [], systemBoundaries: [], systemCues: [], systemSnapshot: null, forcedColorsStatus: 'unsupported authored-color replacement; media rules only' });
+  for (let i = 0; i < files.length; i++) update(i, { engine: 'webkit', forcedColorsPaint: false, systemText: [], systemIcon: [], systemBoundaries: [], systemCues: [], systemSnapshot: null, forcedColorsStatus: FORCED_COLORS_MEDIA_ONLY_STATUS });
   assert.match(validateStateEvidence(all, { report }).join('\n'), /Missing actual forced palette paint/);
   const capability = { engine: 'webkit', runId: 'fixture-run', testId: 'fixture-test', attempt: 0, authoredColorReplacement: false, forced: { forcedColors: true } };
   const path = join(root, 'forced-colors-capability-webkit.json');
@@ -400,7 +400,7 @@ test('runner, setup and teardown errors invalidate an otherwise passing report',
 test('CLI resolves capability from the successful retry while retaining the failed file', () => matrix(({ report, root, files, update }) => {
   const owner = report.suites[0].specs[0].tests[2];
   owner.status = 'flaky'; owner.results = [{ retry: 0, status: 'failed' }, { ...owner.results[0], retry: 1 }];
-  for (let i = 0; i < files.length; i++) update(i, { engine: 'webkit', attempt: 1, forcedColorsPaint: false, systemText: [], systemIcon: [], systemBoundaries: [], systemCues: [], systemSnapshot: null, forcedColorsStatus: 'unsupported authored-color replacement; media rules only' });
+  for (let i = 0; i < files.length; i++) update(i, { engine: 'webkit', attempt: 1, forcedColorsPaint: false, systemText: [], systemIcon: [], systemBoundaries: [], systemCues: [], systemSnapshot: null, forcedColorsStatus: FORCED_COLORS_MEDIA_ONLY_STATUS });
   const paths = ['a-failed', 'z-final'].map(name => { const dir = join(root, name); mkdirSync(dir); return join(dir, 'forced-colors-capability-webkit.json'); });
   const capability = { engine: 'webkit', runId: 'fixture-run', testId: 'capability-test', attempt: 1, authoredColorReplacement: false, forced: { forcedColors: true } };
   writeFileSync(paths[0], JSON.stringify({ ...capability, attempt: 0 }));
@@ -444,10 +444,10 @@ test('CLI rejects non-object report, state and capability JSON by name', () => m
   assert.equal(result.status, 1, result.stdout + result.stderr);
   assert.match(result.stderr, /Invalid JSON: .*ae-state-/);
   assert.doesNotMatch(result.stderr, /TypeError/);
-  for (const content of [null, 'null']) {
-    const capability = join(root, `capability-${content}.json`);
+  for (const [label, content] of [['unreadable', null], ['non-object', 'null']]) {
+    const capability = join(root, `capability-${label}.json`);
     if (content !== null) writeFileSync(capability, content);
-    const spec = { id: `capability-${content}`, tests: [{ projectName: 'chromium', expectedStatus: 'passed', status: 'expected', results: [{ retry: 0, status: 'passed', attachments: [{ path: capability, name: 'forced-color-capability', contentType: 'application/json' }] }] }] };
+    const spec = { id: `capability-${label}`, tests: [{ projectName: 'chromium', expectedStatus: 'passed', status: 'expected', results: [{ retry: 0, status: 'passed', attachments: [{ path: capability, name: 'forced-color-capability', contentType: 'application/json' }] }] }] };
     report.suites[0].specs.push(spec);
     result = runValidator(root, report, 'chromium');
     assert.equal(result.status, 1, result.stdout + result.stderr);
@@ -457,8 +457,33 @@ test('CLI rejects non-object report, state and capability JSON by name', () => m
 }));
 
 test('CLI names a missing capability when evidence declares media-only forced colors', () => matrix(({ report, root, files, update }) => {
-  for (let i = 0; i < files.length; i++) update(i, { engine: 'webkit', forcedColorsPaint: false, systemText: [], systemIcon: [], systemBoundaries: [], systemCues: [], systemSnapshot: null, forcedColorsStatus: 'unsupported authored-color replacement; media rules only' });
+  for (let i = 0; i < files.length; i++) update(i, { engine: 'webkit', forcedColorsPaint: false, systemText: [], systemIcon: [], systemBoundaries: [], systemCues: [], systemSnapshot: null, forcedColorsStatus: FORCED_COLORS_MEDIA_ONLY_STATUS });
   const result = runValidator(root, report, 'webkit');
   assert.equal(result.status, 1, result.stdout + result.stderr);
   assert.match(result.stderr, /Missing forced-color capability attachment for webkit: state evidence declares media-only forced colors/);
+}));
+
+
+test('CLI rejects malformed nested reporter shapes without a traversal exception', () => matrix(({ report, root, all }) => {
+  const badShapes = [
+    ['suites object', value => { value.suites = {}; }],
+    ['null suite', value => { value.suites = [null]; }],
+    ['nested suites object', value => { value.suites[0].suites = {}; }],
+    ['specs object', value => { value.suites[0].specs = {}; }],
+    ['null spec', value => { value.suites[0].specs = [null]; }],
+    ['tests object', value => { value.suites[0].specs[0].tests = {}; }],
+    ['null test', value => { value.suites[0].specs[0].tests = [null]; }],
+    ['results object', value => { value.suites[0].specs[0].tests[0].results = {}; }],
+    ['null result', value => { value.suites[0].specs[0].tests[0].results = [null]; }],
+    ['attachments object', value => { value.suites[0].specs[0].tests[0].results[0].attachments = {}; }],
+    ['null attachment', value => { value.suites[0].specs[0].tests[0].results[0].attachments = [null]; }],
+  ];
+  for (const [label, corrupt] of badShapes) {
+    const malformed = structuredClone(report); corrupt(malformed);
+    assert.match(validateStateEvidence(all, { report: malformed }).join('\n'), /Invalid authoritative Playwright report/, label);
+    const result = runValidator(root, malformed, 'chromium');
+    assert.equal(result.status, 1, label + ': ' + result.stdout + result.stderr);
+    assert.match(result.stderr, /Invalid authoritative Playwright report.*must be an (array|object)/, label);
+    assert.doesNotMatch(result.stderr, /TypeError|at visit|at Array\./, label);
+  }
 }));

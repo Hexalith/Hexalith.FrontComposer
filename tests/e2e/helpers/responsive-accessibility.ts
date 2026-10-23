@@ -914,7 +914,7 @@ export async function expectTextContrast(target: Locator, minimum?: number, colo
     for (let current: Element | null = element; current; current = current.assignedSlot ?? current.parentElement ?? (current.getRootNode() instanceof ShadowRoot ? (current.getRootNode() as ShadowRoot).host : null)) {
       const css = getComputedStyle(current);
       if (Number(css.opacity) !== 1) throw new Error('Group opacity needs pixel evidence');
-      backgrounds.push(parse(css.backgroundColor));
+      if (css.visibility !== 'hidden') backgrounds.push(parse(css.backgroundColor));
     }
     const probe = document.createElement('span'); probe.style.color = 'Canvas'; document.documentElement.append(probe);
     let background = parse(getComputedStyle(probe).color); probe.remove();
@@ -1055,10 +1055,12 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
     const parse = audit.parse;
     const resting = sampleKind === 'focus' ? audit.resting(scope) : new Map();
     const composite = (fg: number[], bg: number[]) => [0, 1, 2].map(i => fg[i] * fg[3] + bg[i] * (1 - fg[3])).concat(1);
-    const background = (element: Element | null, boxes: PaintBox[] = []) => {
+    const background = (element: Element | null, boxes: PaintBox[] = [], origin = element) => {
       const layers: number[][] = [];
       // undefined: in flow; null: escaped to the viewport; Element: escaped until that containing block.
-      let outOfFlowBlock: Element | null | undefined;
+      // Exterior paint skips its own fill but retains the focused element's positioning context.
+      const position = origin ? getComputedStyle(origin).position : 'static';
+      let outOfFlowBlock: Element | null | undefined = origin && origin !== element && ['absolute', 'fixed'].includes(position) ? containingBlock(origin, position) : undefined;
       for (let current = element; current; current = parent(current)) {
         const css = getComputedStyle(current);
         const escaped = outOfFlowBlock !== undefined && current !== outOfFlowBlock;
@@ -1073,8 +1075,9 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
           const fill = current.getBoundingClientRect();
           const inside = boxes.every(box => box.left >= fill.left - .5 && box.right <= fill.right + .5 && box.top >= fill.top - .5 && box.bottom <= fill.bottom + .5);
           const disjoint = boxes.every(box => box.right <= fill.left || box.left >= fill.right || box.bottom <= fill.top || box.top >= fill.bottom);
-          if (!inside && !disjoint) throw new Error('Out-of-flow paint over a partial ancestor background needs pixel evidence');
-          paints = inside;
+          const empty = fill.width <= 0 || fill.height <= 0;
+          if (!empty && !inside && !disjoint) throw new Error('Out-of-flow paint over a partial ancestor background needs pixel evidence');
+          paints = !empty && inside;
         }
         if (paints && css.backgroundImage !== 'none') throw new Error('Background image needs pixel evidence');
         if (css.filter !== 'none' || css.mixBlendMode !== 'normal' || css.getPropertyValue('backdrop-filter') && css.getPropertyValue('backdrop-filter') !== 'none') throw new Error('Filtered or blended paint needs pixel evidence');
@@ -1171,7 +1174,7 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
         if (style.transform !== 'none' || style.perspective !== 'none' || style.filter !== 'none' || style.transformStyle === 'preserve-3d'
           || [style.translate, style.scale, style.rotate].some(value => value && value !== 'none')
           || style.contentVisibility && style.contentVisibility !== 'visible'
-          || /\b(paint|layout|strict|content)\b/u.test(style.contain) || /\b(transform|perspective|filter|translate|scale|rotate|contain)\b/u.test(style.willChange)
+          || /\b(paint|layout|strict|content)\b/u.test(style.contain) || style.willChange.split(',').some(value => ['transform','perspective','filter','translate','scale','rotate','contain'].includes(value.trim()))
           || position === 'absolute' && style.position !== 'static') return ancestor;
       }
       return null;
@@ -1423,7 +1426,7 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
       }
       const color = parse(value); color[3] *= alpha;
       if (color[3] === 0 && sampleKind !== 'icon') return;
-      const bg = background(outside ? parent(element) : element, boxes);
+      const bg = background(outside ? parent(element) : element, boxes, element);
       const fg = composite(color, bg), a = luminance(fg), b = luminance(bg);
       let measuredBound = shadowBound;
       for (const [index,layers] of competingShadows.entries()) {

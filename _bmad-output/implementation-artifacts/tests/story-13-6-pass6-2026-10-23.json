@@ -1,0 +1,1136 @@
+{
+  "schema": "story-13-6-pass6-continuation.v1",
+  "date": "2026-10-23",
+  "candidate": {
+    "root_revision": "4a4051c2511e5c4b7c0285fbc129c72146c1c275",
+    "original_story_baseline": "3c8679628ebdb8995afc09f712a04fcde623695c",
+    "source_patch_sha256": "e78f81ed6d708f39aa123a4860ae07b0e77164247a8e2ed9ba4404520666183f",
+    "source_inputs": [
+      {
+        "path": "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs",
+        "sha256": "16d7033f0d46f2663bbda08ec675f3f9d7822b5a873221a84750c426eeac5f59"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs",
+        "sha256": "b65bdc9bd074ef7fc1f4b884cd66f398eabc0c3eec46336215efc6ab47647f86"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs",
+        "sha256": "53b5addcd0e411c9d1e488323a56aa50ab478ca4c4da352709ea80999fc002e1"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs",
+        "sha256": "bbe8d5ccdd2e998314f10569f4f95b03609687e86753aca1a4978d3f5e4c0acb"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt",
+        "sha256": "cb3133956a05bacc5bfe1b73474f90e938736f2d956cfc529d6288ac36724434"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt",
+        "sha256": "f1365281d00cce5bd417fee7a65eef33fbcdc9931cf59226f5fef32b105410a1"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs",
+        "sha256": "a9a65c57ae231770f7accac0b384f391d435735cebfd1b87f36cd0154d8e7dcc"
+      },
+      {
+        "path": "tests/e2e/helpers/responsive-accessibility.ts",
+        "sha256": "c09b7162b2b0093444ed3113c6443501edfbc297bfd7ebf71242922f5f4c0471"
+      },
+      {
+        "path": "tests/e2e/scripts/a11y-state-evidence.mjs",
+        "sha256": "2e97048b245747a2500baf3c52de70ab6bdf80dc9ad5914b200edd87ec698db5"
+      },
+      {
+        "path": "tests/e2e/scripts/a11y-state-evidence.test.mjs",
+        "sha256": "bcdc02cf0cc7a44c7d2f5b5ed149a194b034467ebca0805183355af00ec5a639"
+      },
+      {
+        "path": "tests/e2e/scripts/validate-a11y-artifacts.mjs",
+        "sha256": "9d1ffcaa750db0856e38743767e35e4eaab984df2b1a305b4dfe5926e12d469b"
+      },
+      {
+        "path": "tests/e2e/specs/accessibility-state-matrix.spec.ts",
+        "sha256": "8e342f0e2323838e317b63f5886d21ea7ce11a6cab38763c004340f6571b194d"
+      },
+      {
+        "path": "tests/e2e/specs/responsive-accessibility.spec.ts",
+        "sha256": "94f0776242890322d0058218e5ad5df97ca396b98dcedac19e8393d42bfbb0a2"
+      },
+      {
+        "path": "tests/e2e/scripts/a11y-state-evidence.d.mts",
+        "sha256": "08c5fcd57819374c3dd8f83fb3e71b74e6d7d20ead1fba42981a33943d64a452"
+      }
+    ],
+    "protected_pngs": [
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-chromium-linux.png",
+        "sha256": "bf5e8356f7613525ef23dc0be1e3bc96d4d6828d3f587dc025cd3778c4d1dcd7"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-chromium-win32.png",
+        "sha256": "a480d7c0fe0a269fe1274285aa085afc7d2d25761a74661e17a4b179e6011601"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-firefox-linux.png",
+        "sha256": "cc370d32ab88b5a748d77dbd7bb1101db789a0ed014319497378d620aa60ba52"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-webkit-linux.png",
+        "sha256": "27f44ed96f1846736ca02a4259eea97db7f42b9906d0a526c11b32f212f2aa9c"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-chromium-linux.png",
+        "sha256": "809ef9e3de466b4f398759e78bedd8736ef21d8117c1222428bf1dac623e4f4b"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-chromium-win32.png",
+        "sha256": "9e3cc990325d120ddc6d320d1563fc24dcf453378a808ce0354cc683d8fb11fe"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-firefox-linux.png",
+        "sha256": "30ceb9bec915cdd994209c61331ece67c7d88c37821b8bfac36907618093d5c4"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-webkit-linux.png",
+        "sha256": "b6aa3fad71ba3d639e3a70994f6bf08729dd6007d4c0a46542b85cb2f8b82bd9"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-chromium-linux.png",
+        "sha256": "36c5c748e983e7f30280f187d94708b3ba90b3bb7abb31351646a67a2d27d278"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-chromium-win32.png",
+        "sha256": "1c789b64a7564e485ecd53117296670acaed844fca13c10b73ccad0c3417bac4"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-firefox-linux.png",
+        "sha256": "1c73183f8cb1eaff2f64898d34e49821ccd5c696b390af92b3b2e29b27741de3"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-webkit-linux.png",
+        "sha256": "2c9279307fe10d2d4099a4c648a2808a39b004ca09f022875d80fc725cf0be3f"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-chromium-linux.png",
+        "sha256": "a71f1111a912ed826c7a34b735537593db37f19168b8f0370ef1cd5decf3de7a"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-chromium-win32.png",
+        "sha256": "8aceb1e0f9d2b1707cd50fe901190f3ff5831016983e5a665a0d189b55f1817b"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-firefox-linux.png",
+        "sha256": "de3b6eaf4af04f28be8af90e63679ba36206bfc5e544a8a165dadccd3c14723d"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-webkit-linux.png",
+        "sha256": "6301a175d23bcd92a64ab9a098d4f1cfc077889e7b4f991fa42addc7d50f3dbe"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-chromium-linux.png",
+        "sha256": "f4676bf27562981b0753cedbd92592fbfb5a6e5ebe4192009fb0707940fffd7a"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-chromium-win32.png",
+        "sha256": "38cdc6d0b5df745a84e86b0766d06fcb87e96e5627573052a2987dc1e7b0b87d"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-firefox-linux.png",
+        "sha256": "329fbbcb54a763a2a05f79e5d1dc2e84fd1adfa5ed35f11af5035fe14e779011"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-webkit-linux.png",
+        "sha256": "3dd9f24a1717ee68912e1075e481d7efa6ee9043d264db41e3aa5b285379dee3"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-chromium-linux.png",
+        "sha256": "a7e8ba3a90cb255b5d8afd4dc5771816f1593febb5db119fc72c0ef693577f9b"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-chromium-win32.png",
+        "sha256": "da2a72e07f5c3348168974149a27c5c89b4bd590f6e147ec3cc304620344f70d"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-firefox-linux.png",
+        "sha256": "c92ebd17a44fe4df9b3bd4761670e28ea2cdf9c0fe926ec384ee4a195a9bd4d4"
+      },
+      {
+        "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-webkit-linux.png",
+        "sha256": "83a2049108406186fed05691bef2da84fa329c446bff1f22416f06748417f534"
+      }
+    ],
+    "frozen_intent_preserved": true,
+    "root_gitlinks_and_dependency_config_preserved": true,
+    "diff_files": [
+      {
+        "path": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/current-implementation.diff",
+        "bytes": 51904,
+        "sha256": "e78f81ed6d708f39aa123a4860ae07b0e77164247a8e2ed9ba4404520666183f"
+      },
+      {
+        "path": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/since-original-baseline.diff",
+        "bytes": 951895996,
+        "sha256": "6ce61dede11edd75e3b07eb7741f7834ad7e95607c59f240fd1c0ddf70ad475a"
+      }
+    ]
+  },
+  "focused_verification": {
+    "schema": "story-13-6-pass6-focused-verification.v1",
+    "createdUtc": "2026-10-23T18:27:53.537692+00:00",
+    "rootHead": "4a4051c2511e5c4b7c0285fbc129c72146c1c275",
+    "scope": "Fifteen Pass 6 patches only; full candidate/manual/platform/visual/catalog/owner acceptance remains separate.",
+    "sourcePatch": {
+      "command": "git diff --binary HEAD -- src tests | sha256sum",
+      "sha256": "b18d2a745b4ec00f633360a6b98e5a82ee450310fb287e39f45b63c8b737800d",
+      "untrackedDeclarationIncludedInInputManifest": true
+    },
+    "inputs": [
+      {
+        "path": "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs",
+        "sha256": "16d7033f0d46f2663bbda08ec675f3f9d7822b5a873221a84750c426eeac5f59"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs",
+        "sha256": "b65bdc9bd074ef7fc1f4b884cd66f398eabc0c3eec46336215efc6ab47647f86"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs",
+        "sha256": "53b5addcd0e411c9d1e488323a56aa50ab478ca4c4da352709ea80999fc002e1"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs",
+        "sha256": "bbe8d5ccdd2e998314f10569f4f95b03609687e86753aca1a4978d3f5e4c0acb"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt",
+        "sha256": "cb3133956a05bacc5bfe1b73474f90e938736f2d956cfc529d6288ac36724434"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt",
+        "sha256": "f1365281d00cce5bd417fee7a65eef33fbcdc9931cf59226f5fef32b105410a1"
+      },
+      {
+        "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs",
+        "sha256": "a9a65c57ae231770f7accac0b384f391d435735cebfd1b87f36cd0154d8e7dcc"
+      },
+      {
+        "path": "tests/e2e/helpers/responsive-accessibility.ts",
+        "sha256": "c09b7162b2b0093444ed3113c6443501edfbc297bfd7ebf71242922f5f4c0471"
+      },
+      {
+        "path": "tests/e2e/scripts/a11y-state-evidence.mjs",
+        "sha256": "2e97048b245747a2500baf3c52de70ab6bdf80dc9ad5914b200edd87ec698db5"
+      },
+      {
+        "path": "tests/e2e/scripts/a11y-state-evidence.test.mjs",
+        "sha256": "bcdc02cf0cc7a44c7d2f5b5ed149a194b034467ebca0805183355af00ec5a639"
+      },
+      {
+        "path": "tests/e2e/scripts/validate-a11y-artifacts.mjs",
+        "sha256": "9d1ffcaa750db0856e38743767e35e4eaab984df2b1a305b4dfe5926e12d469b"
+      },
+      {
+        "path": "tests/e2e/specs/accessibility-state-matrix.spec.ts",
+        "sha256": "8e342f0e2323838e317b63f5886d21ea7ce11a6cab38763c004340f6571b194d"
+      },
+      {
+        "path": "tests/e2e/specs/responsive-accessibility.spec.ts",
+        "sha256": "94f0776242890322d0058218e5ad5df97ca396b98dcedac19e8393d42bfbb0a2"
+      },
+      {
+        "path": "tests/e2e/scripts/a11y-state-evidence.d.mts",
+        "sha256": "08c5fcd57819374c3dd8f83fb3e71b74e6d7d20ead1fba42981a33943d64a452"
+      }
+    ],
+    "checks": [
+      {
+        "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=/tmp/pass6-browser FC_E2E_HTML_REPORT_DIR=/tmp/pass6-browser-report npx playwright test specs/responsive-accessibility.spec.ts --grep \"R6 |R5 visible descendants\" --workers=3 --retries=0",
+        "cwd": "tests/e2e",
+        "result": {
+          "startTime": "2026-10-23T18:19:09.070Z",
+          "duration": 34081.614,
+          "expected": 57,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "json": "/tmp/pass6-browser/playwright.json",
+        "log": "/tmp/pass6-browser.log",
+        "report": "/tmp/pass6-browser-report"
+      },
+      {
+        "command": "node --test tests/e2e/scripts/a11y-state-evidence.test.mjs",
+        "result": {
+          "passed": 29,
+          "failed": 0
+        },
+        "log": "/tmp/pass6-node-final.log"
+      },
+      {
+        "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug --no-restore -m:1",
+        "result": {
+          "exitCode": 0,
+          "warnings": 3,
+          "errors": 0,
+          "warning": "Existing MSB3277 ModelContextProtocol/Abstractions 2.2.0 vs 2.3.0 conflicts"
+        },
+        "log": "/tmp/pass6-shell-build-restored.log"
+      },
+      {
+        "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*ZeroFieldFailureAccessibilityTests' -class '*CommandRendererWrapperIntegrationTests' -class '*FcExpandedRowHiddenBannerTests' -parallel none",
+        "result": {
+          "total": 136,
+          "failed": 0,
+          "skipped": 0
+        },
+        "log": "/tmp/pass6-shell-restored-focused.log"
+      },
+      {
+        "command": "dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Debug --no-restore -m:1",
+        "result": {
+          "exitCode": 0,
+          "warnings": 0,
+          "errors": 0
+        },
+        "log": "/tmp/pass6-sourcetools-build.log"
+      },
+      {
+        "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class '*CommandFormEmitterTests' -class '*CommandRendererEmitterTests' -parallel none",
+        "result": {
+          "total": 103,
+          "failed": 0,
+          "skipped": 0
+        },
+        "log": "/tmp/pass6-sourcetools-focused.log"
+      },
+      {
+        "command": "npm --prefix tests/e2e run typecheck",
+        "result": {
+          "exitCode": 0
+        }
+      },
+      {
+        "command": "git diff --check",
+        "result": {
+          "exitCode": 0
+        }
+      },
+      {
+        "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 npx playwright test specs/accessibility-state-matrix.spec.ts --list",
+        "cwd": "tests/e2e",
+        "result": {
+          "exitCode": 0,
+          "listed": 309,
+          "purpose": "Verify state-spec shared-constant import loads"
+        },
+        "log": "/tmp/pass6-state-list.log"
+      }
+    ],
+    "negativeControls": {
+      "helperMutations": {
+        "command": "python3 /tmp/pass6_mutations.py",
+        "scriptSha256": "952dca303cad52d65b28d49af7fd0e47e44e0d4247e8bcef42a25a4d46bed6a5",
+        "results": [
+          {
+            "mutation": "contents",
+            "exit": 1,
+            "passed": 0,
+            "failed": 3,
+            "skipped": 0
+          },
+          {
+            "mutation": "containing-properties",
+            "exit": 1,
+            "passed": 18,
+            "failed": 3,
+            "skipped": 0
+          },
+          {
+            "mutation": "will-change",
+            "exit": 1,
+            "passed": 0,
+            "failed": 12,
+            "skipped": 0
+          },
+          {
+            "mutation": "content-visibility",
+            "exit": 1,
+            "passed": 0,
+            "failed": 6,
+            "skipped": 0
+          },
+          {
+            "mutation": "inside-fill",
+            "exit": 1,
+            "passed": 0,
+            "failed": 3,
+            "skipped": 0
+          },
+          {
+            "mutation": "nested-background",
+            "exit": 1,
+            "passed": 0,
+            "failed": 3,
+            "skipped": 0
+          },
+          {
+            "mutation": "opaque-hidden",
+            "exit": 1,
+            "passed": 0,
+            "failed": 3,
+            "skipped": 0
+          },
+          {
+            "mutation": "glyph-reach",
+            "exit": 1,
+            "passed": 0,
+            "failed": 6,
+            "skipped": 0
+          },
+          {
+            "mutation": "outside-context",
+            "exit": 1,
+            "passed": 0,
+            "failed": 12,
+            "skipped": 0
+          },
+          {
+            "mutation": "exact-will-change",
+            "exit": 1,
+            "passed": 0,
+            "failed": 3,
+            "skipped": 0
+          },
+          {
+            "mutation": "zero-area",
+            "exit": 1,
+            "passed": 0,
+            "failed": 3,
+            "skipped": 0
+          },
+          {
+            "mutation": "simple-hidden",
+            "exit": 1,
+            "passed": 0,
+            "failed": 3,
+            "skipped": 0
+          }
+        ],
+        "expectedFailures": 60,
+        "survivingMutants": 0,
+        "logPattern": "/tmp/pass6-mutant-<mutation>.log",
+        "artifactPattern": "/tmp/pass6-mutant-<mutation>/playwright.json"
+      },
+      "scopeDisposal": {
+        "command": "python3 /tmp/pass6_scope_mutation.py",
+        "scriptSha256": "23c47787e2709b7626b9b9f23118225fab5703c08509fce83d98ba28b526d967",
+        "mutantBuildExit": 0,
+        "total": 3,
+        "failed": 1,
+        "passed": 2,
+        "failure": "Scope-unavailable disposal still invokes focusAttemptedControl if guard removed",
+        "buildLog": "/tmp/pass6-scope-mutant-build.log",
+        "testLog": "/tmp/pass6-scope-mutant-test.log",
+        "restored": true
+      },
+      "baselineValidator": {
+        "command": "node --test --test-name-pattern \"malformed nested\" tests/e2e/scripts/pass6-mutant-evidence.test.mjs (temporary test redirects CLI to HEAD validator; both temp files removed)",
+        "total": 1,
+        "failed": 1,
+        "log": "/tmp/pass6-validator-red.log"
+      }
+    },
+    "supersededAttempts": [
+      {
+        "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug --no-restore -m:1",
+        "exitCode": 1,
+        "error": "CS1061: JSRuntimeInvocationDictionary does not contain a definition for Clear",
+        "reason": "Initial test-helper API assumption corrected before runtime execution. Original log path was reused; exact error retained in tool transcript."
+      },
+      {
+        "log": "/tmp/pass6-shell-focused-initial.log",
+        "total": 97,
+        "failed": 2,
+        "reason": "Two assertion assumptions corrected: exact AM-20 text and scope warning publication precedes callback disposal."
+      },
+      {
+        "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*ZeroFieldFailureAccessibilityTests' -class '*CommandRendererWrapperIntegrationTests' -class '*FcExpandedRowHiddenBannerTests' -parallel none",
+        "total": 136,
+        "failed": 1,
+        "failure": "New-focus invocation inventory should have single item but had 2 (safe hasActiveLifecycle probe plus actual focus command).",
+        "reason": "Assertion now filters actual focus commands; final 136-test restored result passes. Original log path was reused; failure output retained in tool transcript."
+      }
+    ],
+    "incomplete": [
+      "Full browser/visual and configured broad .NET gates not run by implementation subagent; parent owns them.",
+      "Manual AT/heard speech, actual 400% zoom, physical devices and Windows remain unperformed.",
+      "WebKit forced-palette capability, visual/catalog/raw-size, owner and live-backend gates remain open."
+    ],
+    "protected": "No dependency, gitlink, approved PNG, threshold, public product API, frozen intent, staging, commit or push change."
+  },
+  "external_focused_files": [
+    {
+      "path": "/tmp/pass6-browser.log",
+      "sha256": "120a4d8274c1517c5fe151e07d0b65b978f8f8307c28b4fca3ed25964e81770d",
+      "bytes": 10197
+    },
+    {
+      "path": "/tmp/pass6-browser/playwright.json",
+      "sha256": "52bb385c9bfe9015f220a8c84abe51f0ee9f04422e113a428971d07f02a336cd",
+      "bytes": 65843
+    },
+    {
+      "path": "/tmp/pass6-focused-index.json",
+      "sha256": "a26f81d8369f985a1b1bae3480b8813276dbff9363636f8d1de0be9e687d6a86",
+      "bytes": 11008
+    },
+    {
+      "path": "/tmp/pass6-mutant-containing-properties/playwright.json",
+      "sha256": "15047f024bb6604ae64293dd0c9c06d75998d850ce9fa9e22d2014eca74e4963",
+      "bytes": 40105
+    },
+    {
+      "path": "/tmp/pass6-mutant-content-visibility/playwright.json",
+      "sha256": "8b9c5d716ac6a6615cf61ee0498340e8a7a8547bbf6f970de305686da9c9869e",
+      "bytes": 37533
+    },
+    {
+      "path": "/tmp/pass6-mutant-contents/playwright.json",
+      "sha256": "b7399cee684a0ac782b0282bded58b9ed8495ab42cc2935c6a64dd691e2cf77a",
+      "bytes": 21566
+    },
+    {
+      "path": "/tmp/pass6-mutant-exact-will-change/playwright.json",
+      "sha256": "a339106228ec7aec710803ba9c505295c0463d2b1316ae7f695d2bbb63d9230d",
+      "bytes": 21727
+    },
+    {
+      "path": "/tmp/pass6-mutant-glyph-reach/playwright.json",
+      "sha256": "4607293108d625759d404341605e1fed22d56c465735d9d91f30b6b338d03556",
+      "bytes": 38209
+    },
+    {
+      "path": "/tmp/pass6-mutant-inside-fill/playwright.json",
+      "sha256": "8e48182fe05480892d26dea39bd8fd8d6c440fd8ee5ce17f21ed4ec52e6c8b6f",
+      "bytes": 25144
+    },
+    {
+      "path": "/tmp/pass6-mutant-nested-background/playwright.json",
+      "sha256": "cf325b5bd4df35414ba6215e18d7ca60f4a4b58cd1ef9f654f6c5d8bcf976d42",
+      "bytes": 20620
+    },
+    {
+      "path": "/tmp/pass6-mutant-opaque-hidden/playwright.json",
+      "sha256": "97af01f4d5baa9646b38090ecdbcf6a1724f6cfd8d3bddb418822cc8bf4902ad",
+      "bytes": 23988
+    },
+    {
+      "path": "/tmp/pass6-mutant-outside-context/playwright.json",
+      "sha256": "e96a0a6c762840a95724106c45c769aea636a8d8306c436e01c89853e83e5afc",
+      "bytes": 67707
+    },
+    {
+      "path": "/tmp/pass6-mutant-simple-hidden/playwright.json",
+      "sha256": "afeb167de7bc7de27a3323c5bc1180c9e8c9607e99c77b4b3c779d51a092e04f",
+      "bytes": 21158
+    },
+    {
+      "path": "/tmp/pass6-mutant-will-change/playwright.json",
+      "sha256": "bdefbb702a2223a1df4040f69d567dd5fd7540e02df155887bdaaa0a5b9ac521",
+      "bytes": 70600
+    },
+    {
+      "path": "/tmp/pass6-mutant-zero-area/playwright.json",
+      "sha256": "1d8bd60ac50ad13a560a905a4cfb68c0d71b261103958bd39525d2a4e6713e98",
+      "bytes": 22649
+    },
+    {
+      "path": "/tmp/pass6-node-final.log",
+      "sha256": "2036947bef34642244b1efab409ad51e3cd01f7dd8893aee767ffa5655409f59",
+      "bytes": 2817
+    },
+    {
+      "path": "/tmp/pass6-scope-mutant-build.log",
+      "sha256": "63df6f2a5338e081651a5a73d7cfc36e2e9c6675cc86063e74915b23c54722bd",
+      "bytes": 32211
+    },
+    {
+      "path": "/tmp/pass6-scope-mutant-test.log",
+      "sha256": "48307c9fe79f122de337c527c62c7145f4dc7683a334481a509674828392209d",
+      "bytes": 1757
+    },
+    {
+      "path": "/tmp/pass6-shell-build-restored.log",
+      "sha256": "c4bd7daea8866db7d77bcf2bfa4f2ce5b690df39f0461584639e4f3de4e61cff",
+      "bytes": 32211
+    },
+    {
+      "path": "/tmp/pass6-shell-focused-initial.log",
+      "sha256": "a78601abdc88efcab39b6973c4d9cfb651f6757fc222605f30e3bfd8c349af53",
+      "bytes": 4840
+    },
+    {
+      "path": "/tmp/pass6-shell-restored-focused.log",
+      "sha256": "be171cce64fff91072cf6c48f18026d1b300b55f502522f9173295f261f2c60b",
+      "bytes": 604
+    },
+    {
+      "path": "/tmp/pass6-sourcetools-build.log",
+      "sha256": "8099d8af90649352e684886604ba24371b31d1b3b18563d259930c7fdaa0c45b",
+      "bytes": 1996
+    },
+    {
+      "path": "/tmp/pass6-sourcetools-focused.log",
+      "sha256": "cb0bdfffa767798ef62e2a7658a5f6a22dcbf9a437c689a94ee254d9d377b784",
+      "bytes": 634
+    },
+    {
+      "path": "/tmp/pass6-state-list.log",
+      "sha256": "e79ca8e54b9cfb65d2fbaf44e5bfbeae240051d9e110701d8ec631f30aa722f5",
+      "bytes": 48402
+    },
+    {
+      "path": "/tmp/pass6-validator-red.log",
+      "sha256": "3c0e27db38e4625b4a95d901014c9d9eed3ebd2170b298a1e3fe165f16c500ae",
+      "bytes": 1432
+    },
+    {
+      "path": "/tmp/pass6_mutations.py",
+      "sha256": "952dca303cad52d65b28d49af7fd0e47e44e0d4247e8bcef42a25a4d46bed6a5",
+      "bytes": 3319
+    },
+    {
+      "path": "/tmp/pass6_scope_mutation.py",
+      "sha256": "23c47787e2709b7626b9b9f23118225fab5703c08509fce83d98ba28b526d967",
+      "bytes": 2166
+    }
+  ],
+  "executing_assets": [
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+      "sha256": "51a488ea2649a6521b06cd7b3b8e4dcc36ae20638ea0b3be5f6e736e0dd6c9dd",
+      "bytes": 8381440
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+      "sha256": "78803ad35ed36781a9c6297d6a780c592fe1f56cfffb4cd8e89326fb7c626c48",
+      "bytes": 1540608
+    },
+    {
+      "path": "samples/Counter/Counter.Web/bin/Debug/net10.0/Counter.Web.dll",
+      "sha256": "834a7fa85a2b0aded8fe7386705e524c0e0b44466830d05ffaadf89b62a9a916",
+      "bytes": 93184
+    },
+    {
+      "path": "samples/Counter/Counter.Web/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll",
+      "sha256": "1872637cab1f7edcb8f538ef9c030cf77d46f384ce91ee04c1b0b6455009549e",
+      "bytes": 2011136
+    },
+    {
+      "path": "samples/Counter/Counter.Web/bin/Debug/net10.0/Microsoft.FluentUI.AspNetCore.Components.dll",
+      "sha256": "82718d81e3d28d7a8b80bfb6a543390678ab136bfc4af02af11f55101d613964",
+      "bytes": 1817600
+    }
+  ],
+  "toolchain": {
+    "dotnet": "10.0.402",
+    "node": "v26.4.0",
+    "npm": "11.18.0",
+    "aspire_cli": "13.6.1+3751e615ad660621f2a7aa4c390ef48e08a0eed8"
+  },
+  "story_status": "in-progress",
+  "sprint_status": "in-progress",
+  "approval_inferred": false,
+  "evidence_scope": "Local verification only; external scratch files have no durable immutable retrieval and do not constitute accepted proof. All full qualification output stays outside the checkout. Historical sealed packets remain unchanged.",
+  "completed_utc": "2026-10-23T19:01:32.907350+00:00",
+  "checks": [
+    {
+      "label": "shell-configured",
+      "argv": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-trait-",
+        "Category=Performance",
+        "-trait-",
+        "Category=e2e-palette",
+        "-trait-",
+        "Category=NightlyProperty",
+        "-trait-",
+        "Category=Quarantined",
+        "-longRunning",
+        "30",
+        "-result-xml",
+        "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/shell-configured.xml"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "exit_code": 1,
+      "elapsed_seconds": 95.832,
+      "log": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/shell-configured.log",
+      "log_sha256": "f2d51d91902b589c38b3575bf78d138d1864e445a531722a520463500598e3f0",
+      "log_bytes": 15965
+    },
+    {
+      "label": "sourcetools-configured",
+      "argv": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-trait-",
+        "Category=Performance",
+        "-trait-",
+        "Category=e2e-palette",
+        "-trait-",
+        "Category=NightlyProperty",
+        "-trait-",
+        "Category=Quarantined",
+        "-longRunning",
+        "30",
+        "-result-xml",
+        "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/sourcetools-configured.xml"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "exit_code": 0,
+      "elapsed_seconds": 424.997,
+      "log": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/sourcetools-configured.log",
+      "log_sha256": "94eb909ac0f0ed8f045959a5d5b91e4477dc365e1a6cec158daacd5fba56040b",
+      "log_bytes": 2615
+    },
+    {
+      "label": "browser-complete",
+      "argv": [
+        "env",
+        "BASE_URL=http://127.0.0.1:15070",
+        "FC_E2E_OUTPUT_DIR=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-results",
+        "FC_E2E_HTML_REPORT_DIR=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-html",
+        "FC_E2E_JSON_PATH=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-results/playwright.json",
+        "FC_E2E_JUNIT_PATH=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-results/junit.xml",
+        "FC_A11Y_EVIDENCE_RUN_ID=story-13-6-pass6-4a4051c2511e5c4b7c0285fbc129c72146c1c275",
+        "npx",
+        "--no-install",
+        "playwright",
+        "test",
+        "-c",
+        "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/playwright.debug.config.ts",
+        "specs/specimen-accessibility.spec.ts",
+        "specs/responsive-accessibility.spec.ts",
+        "specs/accessibility-state-matrix.spec.ts",
+        "--workers=4",
+        "--retries=0"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exit_code": 124,
+      "elapsed_seconds": 599.977,
+      "log": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-complete.log",
+      "log_sha256": "d6821bef1a6aac662ef66f26be14375db8e5e5d5c109eb343f51bd1fbd1b5f09",
+      "log_bytes": 165625
+    },
+    {
+      "label": "browser-chromium",
+      "argv": [
+        "npx",
+        "--no-install",
+        "playwright",
+        "test",
+        "-c",
+        "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/playwright.debug.config.ts",
+        "specs/specimen-accessibility.spec.ts",
+        "specs/responsive-accessibility.spec.ts",
+        "specs/accessibility-state-matrix.spec.ts",
+        "--project=chromium",
+        "--workers=4",
+        "--retries=0"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exit_code": 0,
+      "elapsed_seconds": 184.474,
+      "log": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-chromium.log",
+      "log_sha256": "1de803283d321d3c24d97481bf4e88646d58151f5a07b47e068d4c8c1d4e181c",
+      "log_bytes": 55446
+    },
+    {
+      "label": "artifact-chromium",
+      "argv": [
+        "env",
+        "FC_E2E_OUTPUT_DIR=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-chromium",
+        "FC_E2E_HTML_REPORT_DIR=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-chromium-html",
+        "FC_E2E_JSON_PATH=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-chromium/playwright.json",
+        "FC_A11Y_EVIDENCE_ENGINE=chromium",
+        "FC_A11Y_EVIDENCE_RUN_ID=story-13-6-pass6-4a4051c2511e5c4b7c0285fbc129c72146c1c275-chromium",
+        "node",
+        "scripts/validate-a11y-artifacts.mjs"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exit_code": 0,
+      "elapsed_seconds": 0.72,
+      "log": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/artifact-chromium.log",
+      "log_sha256": "c80c6a911e7398c00cc6c966d3b1500c2561bdf9b3479aede9b6ab4abe37f855",
+      "log_bytes": 42
+    },
+    {
+      "label": "browser-firefox",
+      "argv": [
+        "npx",
+        "--no-install",
+        "playwright",
+        "test",
+        "-c",
+        "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/playwright.debug.config.ts",
+        "specs/specimen-accessibility.spec.ts",
+        "specs/responsive-accessibility.spec.ts",
+        "specs/accessibility-state-matrix.spec.ts",
+        "--project=firefox",
+        "--workers=4",
+        "--retries=0"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exit_code": 1,
+      "elapsed_seconds": 260.693,
+      "log": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-firefox.log",
+      "log_sha256": "e2a38b535dd0a87dbf8d96cbfbc69fc26bbb3220fde1dd49d8c5f810fa58f8b0",
+      "log_bytes": 90532
+    },
+    {
+      "label": "artifact-firefox",
+      "argv": [
+        "env",
+        "FC_E2E_OUTPUT_DIR=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-firefox",
+        "FC_E2E_HTML_REPORT_DIR=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-firefox-html",
+        "FC_E2E_JSON_PATH=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-firefox/playwright.json",
+        "FC_A11Y_EVIDENCE_ENGINE=firefox",
+        "FC_A11Y_EVIDENCE_RUN_ID=story-13-6-pass6-4a4051c2511e5c4b7c0285fbc129c72146c1c275-firefox",
+        "node",
+        "scripts/validate-a11y-artifacts.mjs"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exit_code": 1,
+      "elapsed_seconds": 0.72,
+      "log": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/artifact-firefox.log",
+      "log_sha256": "46d545b40d96f67c7965ebb365ed6abe97ec96d296eabb215f6edb6053d2ab1c",
+      "log_bytes": 612
+    },
+    {
+      "label": "browser-webkit",
+      "argv": [
+        "npx",
+        "--no-install",
+        "playwright",
+        "test",
+        "-c",
+        "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/playwright.debug.config.ts",
+        "specs/specimen-accessibility.spec.ts",
+        "specs/responsive-accessibility.spec.ts",
+        "specs/accessibility-state-matrix.spec.ts",
+        "--project=webkit",
+        "--workers=4",
+        "--retries=0"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exit_code": 1,
+      "elapsed_seconds": 208.047,
+      "log": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-webkit.log",
+      "log_sha256": "8667c53a788720a2a25e1b26938e0e6742291843b8c20f47fa897707af781f07",
+      "log_bytes": 90103
+    },
+    {
+      "label": "artifact-webkit",
+      "argv": [
+        "env",
+        "FC_E2E_OUTPUT_DIR=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-webkit",
+        "FC_E2E_HTML_REPORT_DIR=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-webkit-html",
+        "FC_E2E_JSON_PATH=/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-webkit/playwright.json",
+        "FC_A11Y_EVIDENCE_ENGINE=webkit",
+        "FC_A11Y_EVIDENCE_RUN_ID=story-13-6-pass6-4a4051c2511e5c4b7c0285fbc129c72146c1c275-webkit",
+        "node",
+        "scripts/validate-a11y-artifacts.mjs"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exit_code": 1,
+      "elapsed_seconds": 0.265,
+      "log": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/artifact-webkit.log",
+      "log_sha256": "a035845209c7d5ce7f15181d6501bbde119a0953c0c4d3437524f5939478c527",
+      "log_bytes": 606
+    },
+    {
+      "label": "state-inventory",
+      "argv": [
+        "node",
+        "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/inspect_state_evidence.mjs"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "exit_code": 1,
+      "elapsed_seconds": 0.92,
+      "log": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/state-inventory.log",
+      "log_sha256": "50d6e7deaaddd233573ff75019f7871edc851c3396fab37b83a830b9352e4a8a",
+      "log_bytes": 1691
+    },
+    {
+      "label": "story-artifacts",
+      "argv": [
+        "python3",
+        "eng/validate-story-artifacts.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/frontcomposer",
+      "exit_code": 0,
+      "elapsed_seconds": 0.817,
+      "log": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/story-artifacts.log",
+      "log_sha256": "736e1b8e38c287c09f4f729350d00b4b29dfc5908c13a37171fb00db63a42db7",
+      "log_bytes": 34
+    }
+  ],
+  "dotnet": {
+    "shell-configured": {
+      "total": 3769,
+      "passed": 3760,
+      "failed": 9,
+      "skipped": 0,
+      "errors": 0,
+      "xml_sha256": "ba7529e3e16f17c027db3f173ad90ee52ad44c2fb178f492a4c35b6c05b11019",
+      "failures": [
+        "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.StoryArtifactValidatorGate_IsBlockingAndExact",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.ToolchainPins_MatchApprovedDotnetAndAspireVersions",
+        "Hexalith.FrontComposer.Shell.Tests.Samples.CounterMcpSampleAccessTests.SampleGates_RejectUnknownDescriptorsAndMismatchedPrincipalClaims",
+        "Hexalith.FrontComposer.Shell.Tests.Samples.CounterMcpSampleAccessTests.SampleGates_RestrictGeneratedDescriptorsToTheAuthenticatedSampleIdentity(tenantId: \\\"demo-tenant\\\", userId: \\\"demo-user\\\", authenticated: True, admitted: True)",
+        "Hexalith.FrontComposer.Shell.Tests.Samples.CounterMcpSampleAccessTests.SampleGates_RestrictGeneratedDescriptorsToTheAuthenticatedSampleIdentity(tenantId: \\\"demo-tenant\\\", userId: \\\"demo-user\\\", authenticated: False, admitted: False)",
+        "Hexalith.FrontComposer.Shell.Tests.Samples.CounterMcpSampleAccessTests.SampleGates_RestrictGeneratedDescriptorsToTheAuthenticatedSampleIdentity(tenantId: \\\"other-tenant\\\", userId: \\\"demo-user\\\", authenticated: True, admitted: False)",
+        "Hexalith.FrontComposer.Shell.Tests.Samples.CounterMcpSampleAccessTests.SampleGates_RestrictGeneratedDescriptorsToTheAuthenticatedSampleIdentity(tenantId: \\\"demo-tenant\\\", userId: \\\"other-user\\\", authenticated: True, admitted: False)",
+        "Hexalith.FrontComposer.Shell.Tests.Samples.CounterMcpSampleAccessTests.SampleGates_RestrictGeneratedDescriptorsToTheAuthenticatedSampleIdentity(tenantId: \\\"\\\", userId: \\\"demo-user\\\", authenticated: True, admitted: False)",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds"
+      ]
+    },
+    "sourcetools-configured": {
+      "total": 1415,
+      "passed": 1415,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "xml_sha256": "584c2c11a03018def14effce3245938ed47bbb326f4c1177ccc951175e1b77e1",
+      "failures": []
+    },
+    "shell_governance_passes": [
+      "Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests.Shell_chrome_styles_never_use_accent_as_surface_background",
+      "Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_IdentifierInventory_MatchesSeal"
+    ]
+  },
+  "state_validation": {
+    "chromium": {
+      "required": 116,
+      "stateFiles": 116,
+      "errorCount": 0,
+      "errors": []
+    },
+    "firefox": {
+      "required": 116,
+      "stateFiles": 116,
+      "errorCount": 6,
+      "errors": [
+        "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-4733f3821f9630840cc4\"]",
+        "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-16326aa150749ec2b8ed\"]",
+        "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-12c004cb1a4802243759\"]",
+        "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-2cc8fc483960b6273aa3\"]",
+        "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-0671136a2c1d6edeee10\"]",
+        "Ambiguous or unsuccessful Playwright outcome: [\"firefox\",\"1d4b08b56195ecf56b6b-2c58b1a5e131b2e07a8e\"]"
+      ]
+    },
+    "webkit": {
+      "required": 116,
+      "stateFiles": 116,
+      "errorCount": 6,
+      "errors": [
+        "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-897e5447993ba66b3d7c\"]",
+        "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-0340360035b3ea941177\"]",
+        "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-3f927a9e71eb9dad1f80\"]",
+        "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-0e895918642780866f83\"]",
+        "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-85939b7c29788bfba246\"]",
+        "Ambiguous or unsuccessful Playwright outcome: [\"webkit\",\"1d4b08b56195ecf56b6b-196b619fca8d446598e1\"]"
+      ]
+    }
+  },
+  "browser": {
+    "chromium": {
+      "stats": {
+        "startTime": "2026-10-23T18:49:27.095Z",
+        "duration": 183575.442,
+        "expected": 319,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "runner_errors": [],
+      "failed_tests": [],
+      "report": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-chromium/playwright.json",
+      "report_sha256": "f3bb7c2f24d205c29513d18f6d6066c175c799f5cfbeede448a5cee3c7f1e9cf",
+      "junit_sha256": "3b4f30d376c6c8105f4228c5f01a9f36daa094549c392024a166168403d80d3c",
+      "run_id": "story-13-6-pass6-4a4051c2511e5c4b7c0285fbc129c72146c1c275-chromium",
+      "root_bytes": {
+        "browser-chromium": 13842665,
+        "browser-chromium-html": 7674170
+      }
+    },
+    "firefox": {
+      "stats": {
+        "startTime": "2026-10-23T18:52:31.571Z",
+        "duration": 259811.639,
+        "expected": 311,
+        "skipped": 2,
+        "unexpected": 6,
+        "flaky": 0
+      },
+      "runner_errors": [],
+      "failed_tests": [
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline light compact"
+        },
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline light comfortable"
+        },
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline light roomy"
+        },
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline dark compact"
+        },
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline dark comfortable"
+        },
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline dark roomy"
+        }
+      ],
+      "report": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-firefox/playwright.json",
+      "report_sha256": "6a939ef98a33926ce9a1f3c2672e2ffb7361524620a519fc886731a4e26514fe",
+      "junit_sha256": "de8b7371fef45c42013de4150d9571209fa0be3c11f63d750187467c02874c9f",
+      "run_id": "story-13-6-pass6-4a4051c2511e5c4b7c0285fbc129c72146c1c275-firefox",
+      "root_bytes": {
+        "browser-firefox": 42979255,
+        "browser-firefox-html": 37668723
+      }
+    },
+    "webkit": {
+      "stats": {
+        "startTime": "2026-10-23T18:56:52.280Z",
+        "duration": 207189.108,
+        "expected": 311,
+        "skipped": 2,
+        "unexpected": 6,
+        "flaky": 0
+      },
+      "runner_errors": [],
+      "failed_tests": [
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline light compact"
+        },
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline light comfortable"
+        },
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline light roomy"
+        },
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline dark compact"
+        },
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline dark comfortable"
+        },
+        {
+          "file": "specimen-accessibility.spec.ts",
+          "title": "visual baseline dark roomy"
+        }
+      ],
+      "report": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/browser-webkit/playwright.json",
+      "report_sha256": "b12a3fa7eaddad169377fa2947cc2e76ba5e5ed250e0bede0fea407aa2db7d61",
+      "junit_sha256": "19a5c1ee161653c9aab60dbfee1e3a4d831d5d7e8666d17e3933c3e653005cdc",
+      "run_id": "story-13-6-pass6-4a4051c2511e5c4b7c0285fbc129c72146c1c275-webkit",
+      "root_bytes": {
+        "browser-webkit": 34153967,
+        "browser-webkit-html": 29907095
+      }
+    }
+  },
+  "remaining_gates": [
+    "Nine configured Shell dependency/governance failures",
+    "Firefox/WebKit visual comparisons and unsuccessful artifact outcomes",
+    "Manual NVDA/JAWS/VoiceOver and heard-speech observations",
+    "Actual 400% browser zoom from a measured 1280 CSS-pixel reference",
+    "Physical tablet and phone observations",
+    "Windows execution",
+    "Actual WebKit forced-palette coverage",
+    "OI-16, FLUENT-APP-1, G-4 and named Product/Architecture acceptance",
+    "Live EventStore acceptance and provisioned zero-skip tenant proof",
+    "Durable immutable evidence retrieval and storage migration remain outside this continuation"
+  ],
+  "interrupted_browser_attempt": {
+    "label": "browser-complete",
+    "exit_code": 124,
+    "budget_seconds": 600,
+    "authoritative_final_report": false,
+    "completed_log_cases": {
+      "passed": 940,
+      "failed": 10,
+      "skipped": 4
+    },
+    "unreported_cases": 3,
+    "owned_leftover_test_host_stopped": true,
+    "superseded_for_execution_coverage_by": "Three complete per-engine runs; the interrupted attempt is retained as unsuccessful history."
+  },
+  "review_scope": "Parent audited the 625-line current implementation diff and every Pass 6 patch. The full 951895996-byte diff since the original story baseline is retained externally as historical context; no new review of that entire historical range is claimed. Build does not advance beyond Tasks & Acceptance because required story acceptance remains unsatisfied.",
+  "browser_execution": {
+    "script": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/run_browser_engines.py",
+    "script_sha256": "f414ad9225a7216a81d73b3b9a853667c87707a556401f641f30cb1f2426272e",
+    "debug_config": "/tmp/frontcomposer-13-6-pass6-parent-uimb7_8b/playwright.debug.config.ts",
+    "debug_config_sha256": "1b3eaad3ce29a7110948dbc6acf2a7fd35b93b759dc948da73568f5ce6fc37b2",
+    "host": "Owned Counter Debug Test host on http://127.0.0.1:15070; no live backend proof",
+    "retries": 0,
+    "workers": 4,
+    "full_story_selection": [
+      "specimen-accessibility.spec.ts",
+      "responsive-accessibility.spec.ts",
+      "accessibility-state-matrix.spec.ts"
+    ]
+  },
+  "resolved_counter_packages": [
+    "Microsoft.FluentUI.AspNetCore.Components/5.0.1",
+    "Microsoft.FluentUI.AspNetCore.Components.Icons/5.0.1",
+    "ModelContextProtocol/2.3.0",
+    "ModelContextProtocol.Core/2.3.0"
+  ],
+  "playwright_version": "1.63.0",
+  "owned_test_host_stopped": true,
+  "protected": {
+    "frozen_intent_preserved": true,
+    "approved_pngs_unchanged": 24,
+    "generator_text_approvals_changed": 2,
+    "generator_approval_change": "Only the new disposed guard",
+    "dependencies_and_gitlinks_unchanged": true,
+    "historical_packets_unchanged": true,
+    "staged_committed_pushed": false
+  },
+  "final_repository_checks": {
+    "story_artifacts": "passed",
+    "git_diff_check": "passed",
+    "recorded_log_hashes": "all match",
+    "source_and_frozen_intent": "unchanged from tested inputs",
+    "manual_boxes_unchecked": 18,
+    "apphost": "exact-target describe reports none running",
+    "owned_counter_test_host": "stopped; port 15070 closed"
+  }
+}

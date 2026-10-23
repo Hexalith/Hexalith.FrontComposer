@@ -562,6 +562,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        if (reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            await PresentScopeUnavailableAsync().ConfigureAwait(false);");
+        _ = sb.AppendLine("            if (_disposed) return;");
         _ = sb.AppendLine("            // BH4-04 — the same attempted-control rule as AM-20: Enter in a field keeps that field focused.");
         _ = sb.AppendLine("            await FocusAttemptedControlAsync(_formDomId + \"-submit\").ConfigureAwait(false);");
         _ = sb.AppendLine("            return;");

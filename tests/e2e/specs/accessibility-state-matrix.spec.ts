@@ -1,3 +1,4 @@
+import { FORCED_COLORS_MEDIA_ONLY_STATUS } from '../scripts/a11y-state-evidence.mjs';
 import { PageToolbarSpecimenPage } from '../page-objects/page-toolbar-specimen.page.js';
 import { fillFieldByLabel } from '../helpers/fluent-fields.js';
 import { writeFile } from 'node:fs/promises';
@@ -137,7 +138,7 @@ async function evidence(page: Page, root: Locator, state: string, info: TestInfo
     if (state.startsWith('lifecycle-rejected-')) expect(systemIcon.length, 'Required forced-color rejected-state icon samples').toBeGreaterThan(0);
     if (state.startsWith('policy-denied-')) expect(systemBoundaries.length, 'Required forced-color policy control-boundary samples').toBeGreaterThan(0);
   }
-  const forcedColorsStatus = forcedColorsPaint ? 'painted system palette' : 'unsupported authored-color replacement; media rules only';
+  const forcedColorsStatus = forcedColorsPaint ? 'painted system palette' : FORCED_COLORS_MEDIA_ONLY_STATUS;
   if (!forcedColorsPaint) expect(info.project.name, 'Only the probed WebKit engine lacks forced palette emulation').toBe('webkit');
   await expect(root).toBeVisible();
   await measureCurrentState(() => expectNoPageOverflow(page));
