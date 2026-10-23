@@ -33,7 +33,7 @@
     <Fluxor.Blazor.Web.StoreInitializer />
     <a class="fc-skip-link" href="@MainContentHref" data-enhance-nav="false"
        @onclick="FocusMainContentAsync" @onclick:preventDefault="true">@Localizer["SkipToContentLabel"].Value</a>
-    @if (HasNavigation)
+    @if (HasNavigation && !IsSubCompactDesktopViewport)
     {
         <a class="fc-skip-link" href="@NavigationHref" data-enhance-nav="false"
            @onclick="FocusNavigationAsync" @onclick:preventDefault="true">@Localizer["SkipToNavigationLabel"].Value</a>
