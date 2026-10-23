@@ -1,5 +1,17 @@
 # Story 13.6 accessibility result and human checklist
 
+## Current committed-source reconciliation — 2026-10-23
+
+**Story and sprint remain in-progress; accessibility acceptance is incomplete.** The final observed root is `637ecb8ba7cf9e21831ee3f3bb32eb2cceaf9990`, retaining the frontend source from initial root `6f6eb8982ca1e97e28586de1d4ffc540467058af`. The [current reconciliation receipt](tests/story-13-6-committed-reconciliation-2026-10-23.json) verifies all fourteen Pass 6 source inputs and twenty-four approved PNGs against the [prior bounded receipt](tests/story-13-6-pass6-2026-10-23.json). The frozen intent also matches the pre-Pass-6 version after Git line-ending normalization. The prior receipt and every dated section below retain their historical attribution.
+
+Reused local evidence remains **941 browser passes / 12 Firefox-WebKit visual failures / 4 capability skips**, **3,760 Shell passes / 9 dependency-governance failures**, and **1,415 SourceTools passes**. Five assembly hashes, twenty-seven focused artifact hashes, eleven broad command-log hashes and three browser-report hashes still match their recorded bytes. These checks establish availability and byte identity of the previous local observations; the broad lanes were not rerun and no durable immutable accepted-proof retrieval is established.
+
+New execution in this reconciliation: the Node evidence suite passes **29/29**, TypeScript checking passes, and the repository artifact/diff checks pass. Exact commands, exits and bounded sanitized excerpts are in the current receipt. This task changes only the result, spec and reconciliation receipt; production source, tests, approved images and dependency declarations are preserved.
+
+The dependencies changed concurrently, independently of this work: EventStore and Memories first drifted from their tracked gitlinks, then an external `/pushall` advanced the root to `637ecb8ba7cf9e21831ee3f3bb32eb2cceaf9990` and committed updated EventStore, Memories and Parties gitlinks. The receipt lists all three before/after identities and final checked-out revisions; every final checkout matches its tracked gitlink. This task preserves those external changes. Prior browser/.NET evidence does not revalidate the final whole-runtime identity.
+
+All eighteen manual checklist boxes remain open: no human observation log was supplied. Actual screen-reader/heard-speech, 400% browser zoom, physical devices, Windows and WebKit system-palette observations remain unperformed. Visual, catalog, owner, live-backend and durable-proof gates remain unresolved. The matrix, result and Evidence tasks remain unchecked, and Build cannot advance beyond Tasks & Acceptance.
+
 ## Current Pass 6 continuation — 2026-10-23
 
 All fifteen pending Pass 6 patches are implemented. This local candidate is root `4a4051c2511e5c4b7c0285fbc129c72146c1c275` plus unstaged source/test patch `sha256:e78f81ed6d708f39aa123a4860ae07b0e77164247a8e2ed9ba4404520666183f`; the fourteen raw input hashes include the new TypeScript declaration. The [bounded verification receipt](tests/story-13-6-pass6-2026-10-23.json) records exact commands, outcomes, source/assembly/report hashes and external scratch paths. No durable immutable accepted-proof packet is claimed.
