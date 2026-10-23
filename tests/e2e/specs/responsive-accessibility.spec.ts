@@ -602,13 +602,36 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
         fixture.innerHTML = '<button class="fc-expand-button" type="button">Expand</button><div class="fc-row-expanded">Expanded row</div><div class="fc-reconciliation-sweep">Reconciled grid</div>';
         document.body.append(fixture);
       });
-      for (const selector of ['.fc-expand-button', '.fc-row-expanded', '.fc-reconciliation-sweep']) {
-        const cue = page.locator(`#ae-motion-fixture ${selector}`);
-        await expect(cue).toBeVisible();
-        const motion = await cue.evaluate(element => ({ transition: getComputedStyle(element).transitionDuration, animation: getComputedStyle(element).animationName }));
+      const cues = ['.fc-expand-button', '.fc-row-expanded', '.fc-reconciliation-sweep'];
+      const motionOf = (selector: string) => page.locator(`#ae-motion-fixture ${selector}`).evaluate(element => {
+        const css = getComputedStyle(element);
+        return { transition: css.transitionDuration, animation: css.animationName, outline: `${css.outlineStyle} ${css.outlineWidth}` };
+      });
+      // Positive control: the real fc-projection.css rules match and move before reduced motion removes them.
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      for (const selector of cues) {
+        await expect(page.locator(`#ae-motion-fixture ${selector}`)).toBeVisible();
+        const motion = await motionOf(selector);
+        expect(motion.transition.split(',').some(duration => parseFloat(duration) > 0) || motion.animation !== 'none', `${selector} normal motion`).toBe(true);
+      }
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      for (const selector of cues) {
+        const motion = await motionOf(selector);
         expect(motion.transition.split(',').every(duration => parseFloat(duration) === 0), `${selector} transition`).toBe(true);
         expect(motion.animation, `${selector} animation`).toBe('none');
       }
+      // No essential meaning is lost: the reconciliation sweep keeps its outline without the flash,
+      // both with the forced palette and with its own authored, non-transparent color.
+      expect((await motionOf('.fc-reconciliation-sweep')).outline, 'reduced-motion sweep outline').toMatch(/^solid [1-9]/u);
+      await page.emulateMedia({ forcedColors: 'none', reducedMotion: 'reduce' });
+      const authoredOutline = await page.locator('#ae-motion-fixture .fc-reconciliation-sweep').evaluate(element => {
+        const css = getComputedStyle(element), probe = document.createElement('canvas').getContext('2d')!;
+        probe.fillStyle = 'rgba(0,0,0,0)'; probe.fillStyle = css.outlineColor; probe.fillRect(0, 0, 1, 1);
+        return { style: css.outlineStyle, width: parseFloat(css.outlineWidth), alpha: probe.getImageData(0, 0, 1, 1).data[3] };
+      });
+      expect(authoredOutline.style).toBe('solid');
+      expect(authoredOutline.width).toBeGreaterThan(0);
+      expect(authoredOutline.alpha, 'reduced-motion sweep outline paints a visible authored color').toBeGreaterThan(0);
       await page.locator('#ae-motion-fixture').evaluate(element => element.remove());
 
       await page.emulateMedia({ forcedColors: 'none' });
@@ -1998,7 +2021,7 @@ test('C2 target size uses remaining pointer area while valid coverage and owned 
   expect((await inventoryTargets(page)).inventory.find(target=>target.target==='#scroll-target')).toMatchObject({width:30,height:30,conforming:true,failure:null});
   expect(await page.evaluate(()=>({dialog:document.querySelector('dialog')!.scrollTop,page:document.scrollingElement!.scrollTop,focus:document.activeElement?.id}))).toEqual(before);
   await page.locator('dialog').evaluate(element=>{const cover=document.createElement('div');cover.style.cssText='position:fixed;inset:0;background:black;z-index:100';element.append(cover);});
-  expect((await inventoryTargets(page)).inventory.find(target=>target.target==='#scroll-target')).toMatchObject({width:0,height:0,conforming:false,failure:'Clipping leaves the target without the required reachable area'});
+  expect((await inventoryTargets(page)).inventory.find(target=>target.target==='#scroll-target')).toMatchObject({width:0,height:0,conforming:false,failure:expect.stringContaining('Clipping leaves the target without the required reachable area')});
   expect(await page.evaluate(()=>({dialog:document.querySelector('dialog')!.scrollTop,page:document.scrollingElement!.scrollTop,focus:document.activeElement?.id}))).toEqual(before);
 });
 
@@ -2047,7 +2070,10 @@ test('shadow-root scroll labels resolve within their own root', async ({ page })
 test('offscreen controls must have a reachable viewport position', async ({ page }) => {
   await page.setContent('<style>html,body{height:100%;overflow:clip;margin:0}</style><button id="unreachable" style="position:absolute;top:2000px;left:20px;width:30px;height:30px">Save</button>');
   const target = (await inventoryTargets(page)).inventory.find(item => item.target === '#unreachable');
-  expect(target).toMatchObject({ conforming: false, failure: 'Clipping leaves the target without the required reachable area' });
+  expect(target?.conforming).toBe(false);
+  // The clipping reason is added to, never substituted for, the missing-exception reason.
+  expect(target?.failure).toContain('Undersized target lacks an evidenced exception');
+  expect(target?.failure).toContain('Clipping leaves the target without the required reachable area');
 });
 
 test('clipped pointer covers use their painted edge for target size', async ({ page }) => {
@@ -2109,7 +2135,7 @@ test('overflowing table text preserves only the native reachable pointer strip',
       expect(undersized?.width).toBeGreaterThan(0);
       expect(undersized?.height).toBeGreaterThan(0);
       expect(Math.min(undersized!.width, undersized!.height)).toBeLessThan(24);
-      expect(undersized).toMatchObject({ conforming: false, failure: 'Clipping leaves the target without the required reachable area' });
+      expect(undersized).toMatchObject({ conforming: false, failure: expect.stringContaining('Clipping leaves the target without the required reachable area') });
     }
   }
   await sizeDateText(96);
@@ -2117,4 +2143,76 @@ test('overflowing table text preserves only the native reachable pointer strip',
   await expect(cell).toHaveAttribute('data-clicked', 'true');
   await page.getByRole('link', { name: 'Help', exact: true }).click();
   await expect(page).toHaveURL(/#docs$/);
+});
+
+test('R4 painted descendants of a visibility:hidden ancestor stay in target and contrast evidence', async ({ page }) => {
+  await page.setContent('<style>body{margin:0;background:white}</style><div style="visibility:hidden"><button id="painted" style="visibility:visible;position:absolute;left:20px;top:20px;width:10px;height:10px;padding:0;border:0">x</button><button id="gone" style="position:absolute;left:200px;top:20px;width:40px;height:40px">y</button></div><div id="root" style="padding-top:80px"><div style="visibility:hidden"><p style="visibility:visible;color:#bbb;background:white;margin:0 20px">Faint visible label</p></div></div>');
+  const inventory = (await inventoryTargets(page)).inventory;
+  expect(inventory.find(target => target.target === '#painted')?.failure).toContain('lacks an evidenced exception');
+  expect(inventory.some(target => target.target === '#gone')).toBe(false);
+  const samples = await measureSurfaceContrast(page.locator('#root'));
+  expect(samples.some(sample => sample.paint === 'Faint visible label' && sample.ratio < 4.5)).toBe(true);
+});
+
+test('R4 out-of-flow text beyond an intermediate overflow clip keeps contrast evidence', async ({ page }) => {
+  await page.setContent('<style>body{margin:0;background:white}span{color:#777;background:#888}</style><div id="root" style="position:relative;width:400px;height:200px">'
+    + '<div style="overflow:hidden;width:50px;height:20px"><span style="position:absolute;left:100px;top:0">Escaped absolute</span></div>'
+    + '<div style="overflow:hidden;width:50px;height:20px"><span style="position:fixed;left:100px;top:300px">Escaped fixed</span></div>'
+    + '<div style="position:relative;overflow:hidden;width:50px;height:20px;margin-top:60px"><span style="position:absolute;left:100px;top:0">Clipped by its block</span></div></div>');
+  const samples = await measureSurfaceContrast(page.locator('#root'));
+  expect(samples.filter(sample => ['Escaped absolute', 'Escaped fixed'].includes(sample.paint) && sample.ratio < 4.5)).toHaveLength(2);
+  // Overflow on the positioned containing block still clips its absolute content.
+  expect(samples.some(sample => sample.paint === 'Clipped by its block')).toBe(false);
+});
+
+test('R4 unrelated shadowed text cannot block a distant contrast measurement', async ({ page }) => {
+  await page.setContent('<style>body{margin:0;background:white}p{margin:0;font:16px sans-serif}</style><div id="root" style="padding:20px"><p style="color:black">Measured label</p></div><p id="shadowed" style="position:absolute;left:20px;top:400px;color:black;text-shadow:1px 1px red">Unrelated shadow</p>');
+  await expectSurfaceContrast(page.locator('#root'));
+  await page.locator('#shadowed').evaluate(element => { element.style.top = '20px'; });
+  await expect(measureSurfaceContrast(page.locator('#root'))).rejects.toThrow(/needs pixel evidence/);
+});
+
+test('R5 hidden ancestors contribute no backdrop and no sample to contrast evidence', async ({ page }) => {
+  await page.setContent('<style>body{margin:0;background:white}p{margin:0;padding:4px 20px;font:16px sans-serif}</style><div id="root">'
+    + '<div style="visibility:hidden;background:black"><p style="visibility:visible;color:#ccc">Ghost label</p></div>'
+    + '<div style="visibility:hidden"><p style="color:#ccc">Inherited hidden label</p></div></div>');
+  const samples = await measureSurfaceContrast(page.locator('#root'));
+  // The black fill never paints: the light label is measured against the white canvas and fails.
+  expect(samples.find(sample => sample.paint === 'Ghost label')?.ratio).toBeLessThan(4.5);
+  expect(samples.some(sample => sample.paint === 'Inherited hidden label')).toBe(false);
+});
+
+test('R5 escaped out-of-flow text keeps its real containing block and backdrop', async ({ page }) => {
+  await page.setContent('<style>body{margin:0;background:white}span{font:16px sans-serif}</style><div id="root" style="position:relative;width:500px;height:240px">'
+    + '<div style="position:relative;overflow:hidden;width:50px;height:20px"><div style="position:absolute"><span style="position:fixed;left:100px;top:300px;color:#777;background:#888">Nested fixed</span></div></div>'
+    + '<div style="overflow:hidden;width:50px;height:20px;background:black;margin-top:40px"><span style="position:absolute;left:150px;top:60px;color:#ddd">Escaped over white</span></div></div>');
+  const samples = await measureSurfaceContrast(page.locator('#root'));
+  expect(samples.find(sample => sample.paint === 'Nested fixed')?.ratio).toBeLessThan(4.5);
+  // The black overflow box is not behind the escaped label, so it cannot certify its contrast.
+  expect(samples.find(sample => sample.paint === 'Escaped over white')?.ratio).toBeLessThan(4.5);
+  await page.locator('span').last().evaluate(element => { element.style.left = '30px'; });
+  await expect(measureSurfaceContrast(page.locator('#root'))).rejects.toThrow(/partial ancestor background needs pixel evidence/);
+});
+
+test('R5 visible descendants of hidden ancestors stay in clipping, focus and competing-paint evidence', async ({ page }) => {
+  await page.setContent('<style>body{margin:0}</style><div style="visibility:hidden"><div style="visibility:visible;width:40px;overflow:hidden;white-space:nowrap">Clipped visible label text</div></div>');
+  await expect(expectNoTextClipping(page)).rejects.toThrow(/clipped text ranges/);
+  await page.setContent('<style>body{margin:0}</style><div style="visibility:hidden"><div style="width:40px;overflow:hidden;white-space:nowrap">Clipped hidden label text</div></div>');
+  await expectNoTextClipping(page);
+  await page.setContent('<style>body{margin:0;background:white}button{position:absolute;left:100px;top:100px;width:80px;height:32px;outline:2px solid black;outline-offset:2px}</style><button>Save</button>'
+    + '<div style="visibility:hidden"><div id="cover" style="visibility:visible;position:absolute;left:94px;top:94px;width:92px;height:44px;border:3px solid red;box-sizing:border-box;pointer-events:none"></div></div>');
+  await page.locator('button').focus();
+  expect((await fixtureFocusGeometry(page.locator('button'))).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+  await page.locator('#cover').evaluate(cover => { cover.style.visibility = ''; });
+  expect((await fixtureFocusGeometry(page.locator('button'))).failures).toEqual([]);
+  await page.setContent('<style>body{margin:0;background:white}p{position:absolute;left:20px;top:20px;margin:0;font:16px sans-serif;color:black}</style><p id="text">Covered label</p>'
+    + '<div style="visibility:hidden"><div style="visibility:visible;position:absolute;left:10px;top:15px;width:200px;height:30px;background:black;pointer-events:none"></div></div>');
+  await expect(measureSurfaceContrast(page.locator('#text'))).rejects.toThrow(/needs pixel evidence/);
+});
+
+test('R5 unrelated text whose shadow reaches the sample still needs pixel evidence', async ({ page }) => {
+  await page.setContent('<style>body{margin:0;background:white}p{margin:0;font:16px sans-serif;color:black}</style><div id="root" style="padding:20px"><p>Measured label</p></div><p id="shadowed" style="position:absolute;left:20px;top:-12px;text-shadow:0 30px 0 red">Distant letters</p>');
+  await expect(measureSurfaceContrast(page.locator('#root'))).rejects.toThrow(/needs pixel evidence/);
+  await page.locator('#shadowed').evaluate(element => { element.style.textShadow = 'none'; });
+  await expectSurfaceContrast(page.locator('#root'));
 });

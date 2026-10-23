@@ -5,6 +5,8 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Services.Announcements;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
+using Hexalith.FrontComposer.Shell.Services.Feedback;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 
@@ -92,14 +94,25 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
                 ProblemDetailsPayload.Empty with { Detail = "Safe hidden failure." })));
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
         await InitializeStoreAsync();
-        bool disposed = false;
+        bool disposed = false, leaseHeldDuringClear = false;
         IRenderedComponent<ZeroFieldInlineCommandForm>? cut = null;
         List<string> speech = [];
         using IDisposable subscription = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>().Subscribe("dispose-hidden", speech.Add);
+        ICommandExecutionAdmissionGate admissionGate = Services.GetRequiredService<ICommandExecutionAdmissionGate>();
         cut = Render<ZeroFieldInlineCommandForm>(p => p
             .Add(c => c.AnnouncementSurface, "dispose-hidden")
             .Add(c => c.OnHiddenOutcome, async (string? message) => {
-                if (disposeOnClear == (message is null)) { cut!.Instance.Dispose(); disposed = true; }
+                if (disposeOnClear == (message is null))
+                {
+                    // Negative control: the admitted clear runs while this attempt still holds the lease.
+                    if (message is null)
+                    {
+                        using CommandExecutionAdmission held = admissionGate.TryAcquire(new CommandExecutionAdmissionRequest("held-probe"));
+                        leaseHeldDuringClear = !held.IsAdmitted;
+                    }
+                    cut!.Instance.Dispose();
+                    disposed = true;
+                }
                 await Task.Yield();
             }));
         await cut.InvokeAsync(() => (Task)typeof(ZeroFieldInlineCommandForm)
@@ -107,13 +120,88 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
             .Invoke(cut.Instance, [false])!);
         cut.WaitForAssertion(() => disposed.ShouldBeTrue());
         speech.Where(message => message == "Safe hidden failure.").ShouldBeEmpty();
-        if (disposeOnClear) _ = service.DidNotReceive().DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+        if (disposeOnClear)
+        {
+            _ = service.DidNotReceive().DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+            // The disposed exit follows admission, so it must still release the circuit-scoped lease.
+            leaseHeldDuringClear.ShouldBeTrue();
+            SpinWait.SpinUntil(() => {
+                using CommandExecutionAdmission probe = admissionGate.TryAcquire(new CommandExecutionAdmissionRequest("settlement-probe"));
+                return probe.IsAdmitted;
+            }, TimeSpan.FromSeconds(2)).ShouldBeTrue();
+        }
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task EarlierHiddenOutcomeIsClearedOnlyByAnAdmittedAttempt(bool admissionDenied)
+    [InlineData("admission-busy")]
+    [InlineData("in-flight")]
+    public async Task BlockedAttemptDisposedDuringItsClearPresentsNothing(string blocked)
+    {
+        ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        List<CommandFeedbackWarning> published = [];
+        using IDisposable feedback = Services.GetRequiredService<ICommandFeedbackPublisher>().Subscribe(published.Add);
+        int blockedPresentations = 0;
+        bool disposed = false;
+        IRenderedComponent<ZeroFieldInlineCommandForm>? cut = null;
+        cut = Render<ZeroFieldInlineCommandForm>(p => p
+            .Add(c => c.OnHiddenOutcome, async (string? message) => {
+                if (message is null) { cut!.Instance.Dispose(); disposed = true; }
+                await Task.Yield();
+            })
+            .Add(c => c.OnBlockedSubmission, (bool _) => { blockedPresentations++; return Task.CompletedTask; }));
+        using CommandExecutionAdmission? holder = blocked == "admission-busy"
+            ? Services.GetRequiredService<ICommandExecutionAdmissionGate>().TryAcquire(new CommandExecutionAdmissionRequest("holder"))
+            : null;
+        holder?.IsAdmitted.ShouldBeTrue();
+        if (blocked == "in-flight")
+        {
+            Services.GetRequiredService<Fluxor.IDispatcher>().Dispatch(
+                new ZeroFieldInlineCommandActions.SubmittedAction("01ERZ3NDEKTSV4RRFFQ69G5FAV", new ZeroFieldInlineCommand()));
+        }
+        await cut.InvokeAsync(() => (Task)typeof(ZeroFieldInlineCommandForm)
+            .GetMethod("SubmitAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .Invoke(cut.Instance, [false])!);
+
+        // A parent that disposes the blocked form during its clear receives no blocked outcome afterwards.
+        cut.WaitForAssertion(() => disposed.ShouldBeTrue());
+        published.ShouldBeEmpty();
+        blockedPresentations.ShouldBe(0);
+        _ = service.DidNotReceive().DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task BlockedRendererAttemptWithdrawsTheEarlierVisibleOutcomeWithoutDispatch()
+    {
+        ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
+        _ = service.DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<CommandResult>(new CommandWarningException(CommandWarningKind.RateLimited,
+                ProblemDetailsPayload.Empty with { Detail = "Too many requests." }, TimeSpan.FromSeconds(17))));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<ZeroFieldInlineCommandRenderer> cut = Render<ZeroFieldInlineCommandRenderer>();
+        cut.Find("fluent-button").Click();
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-zero-field-outcome']").TextContent.ShouldContain("Retry after 17 seconds."));
+        using CommandExecutionAdmission holder = Services.GetRequiredService<ICommandExecutionAdmissionGate>().TryAcquire(new CommandExecutionAdmissionRequest("holder"));
+        holder.IsAdmitted.ShouldBeTrue();
+
+        cut.Find("fluent-button").Click();
+
+        // Decision 2 / R4-A1 — the blocked click is the next attempt: the stale retry guidance leaves while
+        // the blocked outcome is presented beside the trigger, and nothing more is dispatched.
+        cut.WaitForAssertion(() => {
+            cut.FindAll("[data-testid='fc-zero-field-outcome']").ShouldBeEmpty();
+            cut.Find("[data-testid='fc-command-blocked-outcome']").GetAttribute("data-fc-blocked").ShouldBe("true");
+        });
+        _ = service.Received(1).DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("admitted")]
+    [InlineData("admission-busy")]
+    [InlineData("scope-unavailable")]
+    public async Task EveryAttemptWithdrawsTheEarlierHiddenOutcomeButOnlyAdmissionDispatches(string attempt)
     {
         ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
         _ = service.DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>())
@@ -126,18 +214,24 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
                 hiddenOutcomes.Add(message);
                 return Task.CompletedTask;
             }));
-        if (admissionDenied) UserContext.TenantId = null;
+        if (attempt == "scope-unavailable") UserContext.TenantId = null;
+        using CommandExecutionAdmission? holder = attempt == "admission-busy"
+            ? Services.GetRequiredService<ICommandExecutionAdmissionGate>().TryAcquire(new CommandExecutionAdmissionRequest("holder"))
+            : null;
+        holder?.IsAdmitted.ShouldBeTrue();
         await cut.InvokeAsync(() => (Task)typeof(ZeroFieldInlineCommandForm)
             .GetMethod("SubmitAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
             .Invoke(cut.Instance, [false])!);
 
-        // A blocked attempt must leave the parent's earlier hidden outcome alone; only admission clears it.
-        hiddenOutcomes.Count(message => message is null).ShouldBe(admissionDenied ? 0 : 1);
-        _ = service.Received(admissionDenied ? 0 : 1).DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+        // Decision 2 — a blocked attempt is the next attempt too: it withdraws the earlier outcome
+        // (scope loss replaces it with its own copy), while only an admitted attempt dispatches.
+        if (attempt == "scope-unavailable") hiddenOutcomes.ShouldHaveSingleItem().ShouldNotBeNullOrWhiteSpace();
+        else hiddenOutcomes.ShouldBe([null]);
+        _ = service.Received(attempt == "admitted" ? 1 : 0).DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task EarlierHiddenOutcomeIsNotClearedByAnInFlightStateGuardedAttempt()
+    public async Task InFlightStateGuardedAttemptWithdrawsTheEarlierHiddenOutcomeWithoutDispatch()
     {
         ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
@@ -154,8 +248,9 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
             .GetMethod("SubmitAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
             .Invoke(cut.Instance, [false])!);
 
-        // A rapid second activation while a command is in flight must leave the earlier outcome alone.
-        hiddenOutcomes.Count(message => message is null).ShouldBe(0);
+        // A rapid second activation while a command is in flight is blocked: it withdraws the earlier
+        // outcome after the state guard has decided, so the awaited clear cannot admit it.
+        hiddenOutcomes.ShouldBe([null]);
         _ = service.DidNotReceive().DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
     }
 

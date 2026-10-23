@@ -570,6 +570,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        // Story 13.3 VR-05 / AM-20 — nothing is queued or dispatched and no validation runs. The");
         _ = sb.AppendLine("        // always-mounted status node announces AM-20 once for this attempt while the attempted");
         _ = sb.AppendLine("        // control keeps focus; a hidden zero-field form hands that outcome to its renderer.");
+        _ = sb.AppendLine("        // Story 13.6 R4-A1 — a blocked activation is the next attempt, so withdraw the earlier hidden");
+        _ = sb.AppendLine("        // outcome. The guard that chose this denial already returned, so this await admits nothing.");
+        _ = sb.AppendLine("        await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);");
+        _ = sb.AppendLine("        if (_disposed) return;");
         _ = sb.AppendLine("        CommandFeedbackPublisher.PublishWarning(CreateCommandBlockedWarning(reason));");
         _ = sb.AppendLine("        if (OnBlockedSubmission.HasDelegate)");
         _ = sb.AppendLine("        {");
@@ -1339,7 +1343,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            await PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId).ConfigureAwait(false);");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        // Clear the earlier hidden outcome only once admitted: the awaited parent callback must not precede the synchronous state/admission guards.");
+        _ = sb.AppendLine("        // Clear the earlier hidden outcome after the synchronous state/admission guards: the awaited parent callback must not precede them. Denials clear it in PresentBlockedSubmissionAsync.");
         _ = sb.AppendLine("        await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);");
         _ = sb.AppendLine("        if (_disposed) return;");
         _ = sb.AppendLine();
@@ -2047,7 +2051,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__msg =>");
         _ = sb.AppendLine("                {");
         _ = sb.AppendLine("                    int mseq = 0;");
-        _ = sb.AppendLine("                    string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer[\"RetryableDispatchFailedFallback\"].Value : (new[] { _serverWarning.Detail, _serverWarning.EntityLabel }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? ShellLocalizer[\"CommandWarningFallback\"].Value);");
+        _ = sb.AppendLine("                    // Story 13.6 R4-A2/R5-E2 — never show or speak one sentence twice: a body equal to the server title is");
+        _ = sb.AppendLine("                    // skipped, and a blank server title already carries the fallback.");
+        _ = sb.AppendLine("                    string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer[\"RetryableDispatchFailedFallback\"].Value : (new[] { _serverWarning.Detail, _serverWarning.EntityLabel }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value) && !string.Equals(value.Trim(), _serverWarning.Title?.Trim(), StringComparison.Ordinal)) ?? (string.IsNullOrWhiteSpace(_serverWarning.Title) ? string.Empty : ShellLocalizer[\"CommandWarningFallback\"].Value));");
         _ = sb.AppendLine("                    __msg.AddContent(mseq++, body);");
         _ = sb.AppendLine("                    if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is not null)");
         _ = sb.AppendLine("                    {");

@@ -5,8 +5,14 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// <summary>Records actual hidden-detail focus calls after a delayed module import.</summary>
 internal sealed class RecordingHiddenDetailFocusModule : IJSObjectReference
 {
-    /// <summary>Gets the number of focus requests.</summary>
+    /// <summary>Gets the number of focus requests of either kind.</summary>
     public int FocusCalls { get; private set; }
+
+    /// <summary>Gets the number of filter-recovery first-button focus requests.</summary>
+    public int FirstButtonFocusCalls { get; private set; }
+
+    /// <summary>Gets the number of missing-detail replacement-heading focus requests.</summary>
+    public int ReplacementHeadingFocusCalls { get; private set; }
 
     /// <summary>Gets the number of detail listener registrations.</summary>
     public int TrackingCalls { get; private set; }
@@ -33,7 +39,8 @@ internal sealed class RecordingHiddenDetailFocusModule : IJSObjectReference
     /// <inheritdoc />
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
     {
-        if (identifier is "focusFirstButtonWithin" or "focusReplacementHeading") { FocusCalls++; }
+        if (identifier == "focusFirstButtonWithin") { FocusCalls++; FirstButtonFocusCalls++; }
+        if (identifier == "focusReplacementHeading") { FocusCalls++; ReplacementHeadingFocusCalls++; }
         if (identifier == "trackDetailFocus") { TrackingCalls++; }
         if (identifier == "cancelReplacementFocus")
         {

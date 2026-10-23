@@ -10757,3 +10757,7 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
   summary: Add the Shell extension namespace import to the 9.1-to-9.2 migration New Code snippet.
   evidence: R2-BH-9 verified that AddFrontComposerDevMode is declared in Hexalith.FrontComposer.Shell.Extensions while the full New Code snippet imports only Microsoft.Extensions.DependencyInjection. That snippet is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc; include the missing using and validate the complete example under its documented host prerequisites.
+
+## Deferred from: code review of spec-13-6-verify-responsive-and-assistive-accessibility.md (2026-10-23, pass 6)
+
+- `background()` in `tests/e2e/helpers/responsive-accessibility.ts` assumes every fill from an out-of-flow box's containing block upward is behind it; an absolute box placed outside its containing block (negative offsets, non-top-layer `top:100%` menus) is composited against that fill (pre-existing, medium). Settle with a non-top-layer menu fixture outside a filled containing block, then extend the inside/disjoint fill test beyond the containing block.

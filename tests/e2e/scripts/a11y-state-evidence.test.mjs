@@ -33,6 +33,14 @@ function rewriteChunk(png, type, edit) {
   throw new Error(`Fixture PNG has no ${type} chunk`);
 }
 
+function runValidator(root, report, engine) {
+  const html = join(root, 'html'); mkdirSync(html, { recursive: true }); writeFileSync(join(html, 'index.html'), 'Fixture report');
+  writeFileSync(join(root, 'junit.xml'), 'Fixture outcomes');
+  const reportPath = join(root, 'playwright.json'); writeFileSync(reportPath, typeof report === 'string' ? report : JSON.stringify(report));
+  for (const artifact of specimenManifest.routes.flatMap(route => route.expectedArtifacts).filter(name => name.startsWith('axe-') || name.startsWith('focus-'))) writeFileSync(join(root, artifact), '{}');
+  return spawnSync(process.execPath, [fileURLToPath(new URL('./validate-a11y-artifacts.mjs', import.meta.url))], { encoding: 'utf8', env: { ...process.env, FC_E2E_OUTPUT_DIR: root, FC_E2E_HTML_REPORT_DIR: html, FC_E2E_JSON_PATH: reportPath, FC_A11Y_EVIDENCE_ENGINE: engine, FC_A11Y_EVIDENCE_RUN_ID: 'fixture-run' } });
+}
+
 function matrix(run) {
   const root = mkdtempSync(join(tmpdir(), 'ae-evidence-test-'));
   try {
@@ -398,11 +406,59 @@ test('CLI resolves capability from the successful retry while retaining the fail
   writeFileSync(paths[0], JSON.stringify({ ...capability, attempt: 0 }));
   writeFileSync(paths[1], JSON.stringify(capability));
   report.suites[0].specs.push({ id: 'capability-test', tests: [{ projectName: 'webkit', expectedStatus: 'passed', status: 'flaky', results: paths.map((path, retry) => ({ retry, status: retry ? 'passed' : 'failed', attachments: [{ path, name: 'forced-color-capability', contentType: 'application/json' }] })) }] });
-  const html = join(root, 'html'); mkdirSync(html); writeFileSync(join(html, 'index.html'), 'Fixture report');
-  writeFileSync(join(root, 'junit.xml'), 'Fixture outcomes');
-  const reportPath = join(root, 'playwright.json'); writeFileSync(reportPath, JSON.stringify(report));
-  for (const artifact of specimenManifest.routes.flatMap(route => route.expectedArtifacts).filter(name => name.startsWith('axe-') || name.startsWith('focus-'))) writeFileSync(join(root, artifact), '{}');
-  const result = spawnSync(process.execPath, [fileURLToPath(new URL('./validate-a11y-artifacts.mjs', import.meta.url))], { encoding: 'utf8', env: { ...process.env, FC_E2E_OUTPUT_DIR: root, FC_E2E_HTML_REPORT_DIR: html, FC_E2E_JSON_PATH: reportPath, FC_A11Y_EVIDENCE_ENGINE: 'webkit', FC_A11Y_EVIDENCE_RUN_ID: 'fixture-run' } });
+  const result = runValidator(root, report, 'webkit');
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /artifact validation passed/);
+}));
+
+test('CLI names unreadable and unowned state evidence instead of crashing', () => matrix(({ report, root, files, update }) => {
+  writeFileSync(files[0], readFileSync(files[0], 'utf8').slice(0, 20));
+  update(1, { engine: undefined });
+  const result = runValidator(root, report, 'chromium');
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /Invalid JSON: .*ae-state-/);
+  assert.match(result.stderr, /Missing engine\/run ownership: .*ae-state-/);
+  assert.doesNotMatch(result.stderr, /SyntaxError|at JSON\.parse/);
+}));
+
+test('CLI reports an unreadable report and ambiguous capability attachments explicitly', () => matrix(({ report, root }) => {
+  let result = runValidator(root, '{"config":', 'chromium');
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /Invalid authoritative Playwright report/);
+  assert.doesNotMatch(result.stderr, /at JSON\.parse/);
+  const capability = join(root, 'capability.json'); writeFileSync(capability, '{}');
+  const attachment = { path: capability, name: 'forced-color-capability', contentType: 'application/json' };
+  report.suites[0].specs.push({ id: 'capability-test', tests: [{ projectName: 'chromium', expectedStatus: 'passed', status: 'expected', results: [{ retry: 0, status: 'passed', attachments: [attachment, attachment] }] }] });
+  result = runValidator(root, report, 'chromium');
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /Ambiguous forced-color capability: 2 final attachments for chromium/);
+}));
+
+test('CLI rejects non-object report, state and capability JSON by name', () => matrix(({ report, root, files }) => {
+  let result = runValidator(root, 'null', 'chromium');
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /Invalid authoritative Playwright report .*expected a report object/);
+  assert.doesNotMatch(result.stderr, /TypeError/);
+  writeFileSync(files[0], 'null');
+  result = runValidator(root, report, 'chromium');
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /Invalid JSON: .*ae-state-/);
+  assert.doesNotMatch(result.stderr, /TypeError/);
+  for (const content of [null, 'null']) {
+    const capability = join(root, `capability-${content}.json`);
+    if (content !== null) writeFileSync(capability, content);
+    const spec = { id: `capability-${content}`, tests: [{ projectName: 'chromium', expectedStatus: 'passed', status: 'expected', results: [{ retry: 0, status: 'passed', attachments: [{ path: capability, name: 'forced-color-capability', contentType: 'application/json' }] }] }] };
+    report.suites[0].specs.push(spec);
+    result = runValidator(root, report, 'chromium');
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, /Unreadable forced-color capability attachment for chromium/);
+    report.suites[0].specs.pop();
+  }
+}));
+
+test('CLI names a missing capability when evidence declares media-only forced colors', () => matrix(({ report, root, files, update }) => {
+  for (let i = 0; i < files.length; i++) update(i, { engine: 'webkit', forcedColorsPaint: false, systemText: [], systemIcon: [], systemBoundaries: [], systemCues: [], systemSnapshot: null, forcedColorsStatus: 'unsupported authored-color replacement; media rules only' });
+  const result = runValidator(root, report, 'webkit');
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /Missing forced-color capability attachment for webkit: state evidence declares media-only forced colors/);
 }));

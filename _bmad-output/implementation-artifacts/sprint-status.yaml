@@ -204,7 +204,7 @@ development_status:
   13-4-i-ux-c-announce-projection-and-command-state-without-noise: done
   13-5-i-ux-d-preserve-fresh-row-meaning-across-visual-and-data-cha: done
   # 2026-10-22: delivered history retained; required accessibility verification remains blocked.
-  13-6-i-ux-e-verify-responsive-and-assistive-accessibility: review
+  13-6-i-ux-e-verify-responsive-and-assistive-accessibility: in-progress
   13-7-i-ux-f-provide-reusable-ux-assertions-for-adopters: done
   13-8-a-e9-app-1-accept-the-completed-fresh-row-live-prrevokwg: done
   13-9-a-fluent-app-1-decide-the-exact-fluent-ui-v5-posture: done

@@ -81,6 +81,7 @@ export function validateStateEvidence(files, { unsupportedForcedColorsCapability
   for (const file of files.filter(file => /^ae-state-.+\.json$/u.test(basename(file)))) {
     let evidence;
     try { evidence = JSON.parse(readFileSync(file, 'utf8')); } catch { errors.push(`Invalid JSON: ${file}`); continue; }
+    if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) { errors.push(`Invalid JSON: ${file}`); continue; }
     if (!['chromium','firefox','webkit'].includes(evidence.engine) || typeof evidence.runId !== 'string' || !evidence.runId.trim()) { errors.push(`Missing engine/run ownership: ${file}`); continue; }
     if (expectedEngine && evidence.engine !== expectedEngine || expectedRun && evidence.runId !== expectedRun) { errors.push(`Unexpected engine/run ownership: ${file}`); continue; }
     if (!report || evidence.runId !== report.config?.metadata?.a11yEvidenceRunId || typeof evidence.testId !== 'string'

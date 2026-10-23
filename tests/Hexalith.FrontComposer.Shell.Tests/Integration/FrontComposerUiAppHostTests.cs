@@ -21,6 +21,21 @@ public sealed class FrontComposerUiAppHostTests {
         branch.ShouldContain(".WithEnvironment(\"ASPNETCORE_ENVIRONMENT\", \"Test\")");
         branch.ShouldContain(".WithEnvironment(\"Hexalith__FrontComposer__Specimens__Enabled\", \"true\")");
         program.Remove(gate, end - gate).ShouldNotContain(".WithEnvironment(\"ASPNETCORE_ENVIRONMENT\", \"Test\")");
+
+        // The explicit Test run claims the browser lane's timings, which state evidence records as fixture options.
+        string playwright = File.ReadAllText(Path.Combine(FindRepoRoot(), "tests", "e2e", "playwright.config.ts"));
+        (string Key, string Value, string Lane)[] timings = [
+            ("Hexalith__Shell__FormAbandonmentThresholdSeconds", "5", "Hexalith__Shell__FormAbandonmentThresholdSeconds: '5'"),
+            ("Hexalith__Shell__TimeoutActionThresholdMs", "5000", "Hexalith__Shell__TimeoutActionThresholdMs: '5000'"),
+            ("Hexalith__Shell__ProjectionReconnectedNoticeDurationMs", "30000", "const PROJECTION_RECONNECTED_NOTICE_DURATION_MS = '30000';"),
+            ("Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs", "6500", "process.env.FC_E2E_STORY_3_6_CONFIRM_DELAY_MS ?? '6500'"),
+        ];
+        foreach ((string key, string value, string lane) in timings)
+        {
+            branch.ShouldContain($".WithEnvironment(\"{key}\", \"{value}\")");
+            playwright.ShouldContain(lane);
+        }
+        playwright.ShouldContain("Hexalith__Shell__ProjectionReconnectedNoticeDurationMs: PROJECTION_RECONNECTED_NOTICE_DURATION_MS");
     }
 
     [Fact]

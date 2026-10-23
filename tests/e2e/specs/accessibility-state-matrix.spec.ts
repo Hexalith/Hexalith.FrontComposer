@@ -205,6 +205,7 @@ for (const theme of ['light', 'dark']) {
           await expect(trigger).toBeFocused();
           // Inspect the global accepted summary separately after proving trigger retention.
           await page.locator('#fc-main-content h1').first().focus();
+          await expect(page.locator('#fc-main-content h1').first()).toBeFocused();
           await page.locator('.fc-pending-command-summary').scrollIntoViewIfNeeded();
           await evidence(page, page.locator('.fc-pending-command-summary'), `zero-accepted-${theme}`, info);
         }

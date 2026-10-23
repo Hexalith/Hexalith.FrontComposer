@@ -2,7 +2,7 @@
 title: 'Story 13.6: Verify Responsive and Assistive Accessibility'
 type: 'feature'
 created: '2026-10-15'
-status: 'in-review'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: '3c8679628ebdb8995afc09f712a04fcde623695c'
@@ -134,6 +134,128 @@ Code review 2026-10-16, pass 1 of 2 (`src/`, `samples/`, `.github/`, `docs/` of 
 - Specimen/Test-only seams (`Action<bool>` resolution, fake-auth replacement, `Select` throwing, cascading RenderContext, scenario toggle query), `PresentHiddenOutcomeAsync` claim race, and palette 11px→12px token change: Test-host or specimen fixtures, or negligible.
 - Missing tests in this diff: refuted, tests are in the `tests/` group (pass 2) and Verification Gap found no gaps.
 
+#### Pass 4 (`tests/` since pass 2 + `src/` fix delta, 2026-10-23)
+
+Scope: `fc0cfaeb..386ec94f` over the 25 Story 13.6 test files plus `02626ead..386ec94f` for `CommandFormEmitter.cs` and the specimen CSS (27 files, +3,877/−319). Evidence packets, spec/ledger narrative and unrelated sync files are excluded; `FrontComposerShellTests.cs` lines 128–153 belong to Story 15.2 (`e08a8ab4`). Four layers returned 41 raw findings (`R4-A/V/B/E#`); each verdict is in the Review Triage Log.
+
+- [x] [Review][Decision→Patch, chosen 2026-10-23: clear on blocked attempts too; applied] Blocked activation leaves the earlier hidden outcome visible — since `9265b09f` the null clear runs only after admission, so a state-guard or admission denial (`PendingCommandAlreadyExists`, `AdmissionAlreadyInProgress`, policy) announces AM-20 through `_blockedOutcome` while the renderer's visible bar keeps the previous attempt's text (for example "Retry after 17 seconds."). Decision 2 retains feedback "until next attempt"; the emitter itself calls a blocked submission an attempt. `EarlierHiddenOutcomeIsClearedOnlyByAnAdmittedAttempt` pins the current behavior. Decide whether a denied activation clears the prior hidden outcome; clearing inside the denial branch does not reintroduce the pass-3 race (R4-A1) [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:1333]
+- [x] [Review][Patch] (applied) The ordinary warning bar repeats `CommandWarningFallback` as both title and body when Title, Detail and EntityLabel are all blank, so the sentence shows twice and the implicit status region speaks it twice; omit the body sentence when the title already carries the fallback, keep the RetryAfter line, and update `OrdinaryBlankWarningUsesSafeLocalizedFallbackAndRetryHint` plus the two CommandForm snapshots (R4-A2, R4-B11) [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:2050]
+- [x] [Review][Patch] (applied) The reduced-motion fixture can pass vacuously: it asserts only an absent transition/animation under `reduce`, so an unloaded stylesheet or renamed class still passes. First assert motion under `no-preference`, then its removal under `reduce`, and assert that the `.fc-reconciliation-sweep` outline still paints (R4-A4, R4-B7, R4-E15) [tests/e2e/specs/responsive-accessibility.spec.ts:598]
+- [x] [Review][Patch] (applied) The AppHost Test branch omits `Hexalith__Shell__ProjectionReconnectedNoticeDurationMs=30000` although it claims the browser lane's timings, while state evidence records `fixtureOptions` from Playwright config metadata; add the variable and pin every `webServer.env` timing in `AppHostCounterAccessibilityOverridesAreConfinedToExplicitLocalTestRuns` (R4-A5, R4-B2, R4-E14) [src/Hexalith.FrontComposer.AppHost/Program.cs:171]
+- [x] [Review][Patch] (applied) Prove the admission lease is released when the parent clear callback disposes the form: add the existing settlement probe to the `disposeOnClear: true` case (R4-V1) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs:87]
+- [x] [Review][Patch] (applied) `visibility:hidden` on any ancestor excludes a painted `visibility:visible` descendant from the target, clipping and competing-paint inventories (a probe's visible 10px button was omitted). Test the element's own inherited computed visibility and keep the ancestor walk for display/opacity/inert (R4-E3) [tests/e2e/helpers/responsive-accessibility.ts:90]
+- [x] [Review][Patch] (applied) `clippedPaint(content=true)` clips absolute/fixed text by overflow ancestors that are not its containing block, so `sample()` returns early (a probe's visible 1.2:1 escaped label produced no sample). Resolve the containing block for out-of-flow content, or fail for pixel evidence (R4-E4) [tests/e2e/helpers/responsive-accessibility.ts:1171]
+- [x] [Review][Patch] (applied) `validate-a11y-artifacts.mjs` parses the report, each state JSON and the capability attachment without guards: a truncated file crashes with a stack trace, and zero or multiple capability attachments surface as "Missing actual forced palette paint". Report each as a validation error (R4-B3, R4-E13) [tests/e2e/scripts/validate-a11y-artifacts.mjs:64]
+- [x] [Review][Patch] (applied) `glyphPaint` runs before the overlap test, so any unrelated `text-shadow` or text stroke on the page makes every text contrast measurement throw (reproduced by probe). Compute glyph boxes first and call `glyphPaint` only for intersecting text (R4-E1) [tests/e2e/helpers/responsive-accessibility.ts:1329]
+- [x] [Review][Patch] (applied) Assert the `#fc-main-content h1` focus move (`toBeFocused`) before the `zero-accepted` evidence (R4-B8) [tests/e2e/specs/accessibility-state-matrix.spec.ts:207]
+- [x] [Review][Patch] (applied) The target inventory overwrites an earlier exception failure with the limitation/clipping reason; retain every reason (R4-B9) [tests/e2e/helpers/responsive-accessibility.ts:259]
+- [x] [Review][Patch] (applied) `RecordingHiddenDetailFocusModule.FocusCalls` merges `focusFirstButtonWithin` and `focusReplacementHeading`; count each identifier and assert the replacement-heading call in the co-mounted missing test (R4-B14) [tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/RecordingHiddenDetailFocusModule.cs:36]
+- [x] [Review][Defer] Consecutive missing episodes with an identical `ResultIdentity` share one episode group, so a stale `focusReplacementHeading` completion could pass `IsCurrentRecovery` (R4-E17) [src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs:246] — deferred: maybe-false (medium if true), carried by pass 3's "two consecutive missing episodes" ledger entry, so no new entry; settle by showing that a generated view can repeat page `Identity`/`LastResultCorrelationId` across two missing episodes, then add a bUnit case.
+
+Patches applied 2026-10-23, uncommitted (12 entries; R4-B1/R4-E12 reclassified as rejected before any change). Verification:
+- SourceTools: CommandForm/CommandRenderer emitter classes 103/103; the two CommandForm approvals were updated with only the intended three hunks.
+- Shell Debug: build clean; the five affected classes 214/214 (ZeroFieldFailureAccessibility, CommandRendererWrapperIntegration, FcExpandedRowHiddenBanner, FrontComposerUiAppHost, CommandTargetGeneratedForm); `AnalyzerPolicy_IdentifierInventory_MatchesSeal` passes.
+- Node evidence suite 26/26. The two new CLI cases fail against the HEAD validator.
+- Browser regressions fail against the HEAD helper and pass after the fix: the three new R4 synthetic tests plus the updated offscreen-target test on Chromium, Firefox and WebKit (12 red, 9 + 3 green).
+- Complete Story 13.6 browser selection against a Playwright-started Release Test host: 891 cases, 875 passed / 12 failed / 4 skipped, no retries. All 12 failures are Firefox/WebKit specimen visual-baseline height mismatches, the visual gate the result already records as open; they were not re-run on an unmodified HEAD build. TypeScript typecheck passes.
+- Blocked: `dotnet build src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj -c Debug` fails with MSB3030 file locks held by another session's running Aspire AppHost, plus CS1704 duplicate `Hexalith.Memories.*` (source vs NuGet 2.27.1). No error is in `Program.cs`, and Release is not a valid AppHost configuration. The one added `.WithEnvironment` call is pinned by `AppHostCounterAccessibilityOverridesAreConfinedToExplicitLocalTestRuns`.
+
+##### Rejected (pass 4)
+
+- R4-A3 (low): the 320px page Tab cycle includes the offscreen skip link and runs `expectFocusVisible` on it once revealed (AE-05). The unmeasured size and contrast are low-risk (8px/12px padding, Fluent foreground/background tokens), and the skip link is not a 13.6-changed surface.
+- R4-A5 sub-claim (false): the shipped 3,000ms notice is covered by `FcProjectionConnectionStatusTests`; only the AppHost lockstep survives, as the patch above.
+- R4-A6 (false): the remount assertion (`ReferenceEquals` false) proves a fresh renderer whose `_hiddenOutcome` is a per-instance field, so the carried BH02 premise holds; the redundant empty-feedback check does not weaken it.
+- R4-A7 (low): no aria-hidden horizontally scrolling surface exists; removing the exclusion needs a composed walk and a review of why it was added.
+- R4-B1/R4-E12 (low; reclassified from patch on 2026-10-23 before any change): a two-project probe with the pinned Playwright 1.63.0 shows that the JSON reporter merges specs across projects only when the working directory is the `testDir` itself. Its merge compares an already-relative `spec.file` with `relative(rootDir, spec.file)` resolved from the working directory. Every documented invocation runs from `tests/e2e` or the repository root, so each project keeps its own spec and `spec.id` equals that project's `info.testId`; earlier three-engine replays accepted 116 rows per engine. A run launched from `tests/e2e/specs` fails closed with "Unbound" errors. Recheck on a Playwright upgrade.
+- R4-B4 (false): snapshot bytes must equal the final passed attempt's own `image/png` attachment. The PNG-integrity spec records that element screenshots are not viewport-sized and scopes the contract to decodability.
+- R4-B5 (low): reusing the pinned Playwright decoder without dependency changes was a recorded decision of the PNG-integrity spec. `./lib/utilsBundle` is in playwright-core 1.63.0's exports map, and an upgrade fails loudly in the Node suite.
+- R4-B6 (low): a failing normal-mode geometry or contrast measurement fails its test, and the validator accepts only final passed attempts. Only the removal of an opt-in goes unnoticed, and guarding it would mean new validator rules and fixtures.
+- R4-B10/R4-E7 (low): fails closed. Current exception records each match one element (density radio by value, the single abandonment breadcrumb link), and per-record staleness would also need a validator change.
+- R4-B12 (low; upper-bound claim false): leaving out a cap was deliberate (R-G01: JS acknowledges every positive finite measured height), and the generated guards are pinned by approved RazorEmitter snapshots.
+- R4-B13 (low): reflection is the established pattern in these suites and fails loudly; `InternalsVisibleTo` hooks would add test-only surface.
+- R4-B15 (low): the seams register after quickstart/domain (`Program.cs:176`), `Replace` makes them resolve, and the Test-host browser lane exercises each one; the test's purpose is environment gating.
+- R4-B16 (false): neither Shell nor Fluent 5.0.1 sets `color-scheme` on html/body (only on `.fluent-datepicker`), so both probes resolve the same Canvas; as `color` and as `background-color` it resolves to the same system color.
+- R4-E2 (low): fails closed, and no current page triggers it (lanes green). A correct prefilter needs pseudo-envelope geometry, because flow pseudos can overflow their host.
+- R4-E5 (low): real Fluent focus strokes against elevation layers of at most 0.28 alpha keep more than a 10:1 margin; the fix would restructure the conservative shadow bound.
+- R4-E6 (low): the shell's single modal reservation prevents stacked modals, and no current surface stacks them.
+- R4-E8 (low): reproduced as a fail-closed false failure, but no current surface triggers it, and a correct inline-host envelope proof is not a direct fix.
+- R4-E9 (low): the evidence intentionally binds to the currently painted 320×900 state, matching its PNG. Scrolling would disturb the root-scroll/transient-state protocol, and the boundary paint uses shared Fluent tokens.
+- R4-E10 (false): `ready()` applies text spacing (`accessibility-state-matrix.spec.ts:13-22`).
+- R4-E11 (low): fails closed, every current page cycle passes, and deep shadow active-element tracking is nontrivial.
+- R4-E16 (false): `ResolveHiddenWarningText` receives only Shell-built warnings with localized non-blank Title/Detail and no EntityLabel/RetryAfter; server warnings take the catch path.
+
+#### Pass 5 (pass 4 fix delta, 2026-10-23)
+
+Scope: the uncommitted pass 4 fix delta `git diff HEAD -- src tests` (15 files, +247/−54); spec and sprint narrative excluded. Four layers returned 40 raw findings (`R5-A/V/B/E#`); each verdict is in the Review Triage Log. Several entries correct the pass 4 patches themselves.
+
+- [x] [Review][Patch] (applied) `background()` composites a `visibility:hidden` ancestor's background, which never paints, under the visible descendants that R4-E3 now samples. Two probes certified 13.08:1 and 21:1 for text whose real backdrop is white. Skip hidden layers there and in the opaque-plane proof, and extend the R4 fixture with a background-bearing hidden ancestor (R5-V3, R5-A1, R5-E4) [tests/e2e/helpers/responsive-accessibility.ts:1053]
+- [x] [Review][Patch] (applied) While an out-of-flow escape is in progress, a nested absolute ancestor replaces the fixed element's viewport containing block, so a positioned overflow box re-clips the fixed text and drops its sample (probe-confirmed). Assign `outOfFlowBlock` only when not already escaped (R5-V6, R5-A2, R5-E6) [tests/e2e/helpers/responsive-accessibility.ts:1193]
+- [x] [Review][Patch] (applied) Escaped out-of-flow text is composited against intermediate ancestors' backgrounds even where those boxes are not behind it. Include such a layer only when its box contains the sampled boxes; otherwise skip it when disjoint, or fail for pixel evidence on partial overlap (R5-E5) [tests/e2e/helpers/responsive-accessibility.ts:1053]
+- [x] [Review][Patch] (applied) `expectNoTextClipping` still returns at a `visibility:hidden` element, so the visible descendants R4-E3 meant to include are never visited. Descend through own-visibility-hidden elements while keeping the other exclusions (R5-E14) [tests/e2e/helpers/responsive-accessibility.ts:990]
+- [x] [Review][Patch] (applied) Add visibility fixtures for `focusGeometry` (painted descendant of a hidden ancestor covering the ring), `expectNoTextClipping` (clipped visible text in a hidden ancestor), competing paint, and a contrast negative control (inherited-hidden text yields no sample) (R5-V4, R5-B3) [tests/e2e/specs/responsive-accessibility.spec.ts:2138]
+- [x] [Review][Patch] (applied) Overlap is now tested on glyph boxes only, so unrelated text whose shadow or stroke (not its letters) reaches the sample is skipped instead of requiring pixel evidence. Expand the glyph boxes by the shadow offset/blur and stroke extent before the overlap test (R5-B1) [tests/e2e/helpers/responsive-accessibility.ts:1364]
+- [x] [Review][Patch] (applied) No test disposes the form during a blocked attempt's hidden-outcome clear; removing the new `_disposed` return would still publish "Command not run" and invoke `OnBlockedSubmission`. Add blocked (admission-busy and in-flight) disposal cases asserting nothing is published, and pin the guard in the emitter test (R5-V1, R5-B9) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs:88]
+- [x] [Review][Patch] (applied) No rendered test keeps `CommandWarningFallback` in the body when the server title is non-blank and Detail/EntityLabel are blank; add en/fr cases asserting title, body fallback and retry hint (R5-V2, R5-B14) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs:41]
+- [x] [Review][Patch] (applied) R4-A1 is proven only at the form callback. Add a renderer-level case: an earlier RateLimited outcome is visible, a blocked click removes `fc-zero-field-outcome`, AM-20 is presented once, and focus stays on the trigger with nothing dispatched (R5-A4, R5-B9) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs:124]
+- [x] [Review][Patch] (applied) Validator robustness: a report, state file or capability that parses to `null` or a non-object still crashes or is silently ignored; zero capability attachments still surface only as per-file "Missing actual forced palette paint" while evidence declares media-only forced colors; the unreadable-capability branch is untested (R5-A3, R5-B6, R5-E10, R5-E11, R5-E12) [tests/e2e/scripts/validate-a11y-artifacts.mjs:62]
+- [x] [Review][Patch] (applied) `containingBlock` misses `will-change: translate|scale|rotate|contain`, `content-visibility` other than `visible`, and `transform-style: preserve-3d`, and accepts a positioned `display: contents` ancestor; add those direct cases. Applying `contain: paint` clipping in `clippedPaint` is pre-existing and stays out of scope (R5-E7, R5-B5) [tests/e2e/helpers/responsive-accessibility.ts:1142]
+- [x] [Review][Patch] (applied) The warning bar still repeats itself when a non-blank Detail or EntityLabel equals the server Title; skip a body candidate equal to the title (R5-E2) [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:2055]
+- [x] [Review][Patch] (applied) The lease-release probe lacks a negative control; assert inside the clearing callback that the gate denies a probe (the lease is held) before disposing (R5-B10) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs:101]
+- [x] [Review][Patch] (applied) Other banner focus tests still assert the merged `FocusCalls`; assert the identifier-specific counters where the path is known (R5-B11) [tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs:376]
+- [x] [Review][Patch] (applied) The reduced-motion sweep-outline assertion runs under forced colors and ignores color; check a non-transparent outline with forced colors off as well (R5-B15) [tests/e2e/specs/responsive-accessibility.spec.ts:634]
+- [x] [Review][Patch] (applied) `visible(element, ownVisibility = true)` has one caller, which passes `false`; drop the dead parameter and the duplicate `getComputedStyle` in `visit` (R5-B16) [tests/e2e/helpers/responsive-accessibility.ts:1067]
+- [x] [Review][Defer] The AppHost Test-run timing is pinned only as source text; nothing proves that the AppHost-launched host binds 30000 ms or that a reused/manual host matches the recorded `fixtureOptions` (R5-V5, R5-B12) [src/Hexalith.FrontComposer.AppHost/Program.cs:177] — deferred: carried by the existing R-VG02 ledger entry (effective Counter resource configuration needs an AppHost launch harness); no new entry.
+
+Patches applied 2026-10-23, uncommitted (16 entries). Red/green and broad checks:
+- The four new R5 browser tests fail against the Pass 4 helper (12 failures across three engines) and pass after the fix.
+- The two new validator CLI cases fail against the Pass 4 scripts; the Node evidence suite passes 28/28.
+- The blocked-attempt disposal theory fails with the new `_disposed` guard temporarily removed, then passes after it is restored and rebuilt.
+- SourceTools emitter classes 103/103: the two CommandForm approvals changed only in the R5-E2 body hunk.
+- Affected Shell classes 220/220; `AnalyzerPolicy_IdentifierInventory_MatchesSeal` passes.
+- Complete Story 13.6 browser selection against a rebuilt Release Test host: 903 cases, 887 passed / 12 failed / 4 skipped. Failures are the same twelve Firefox/WebKit specimen visual-baseline height mismatches, with no non-visual failure. TypeScript typecheck passes.
+
+##### Rejected (pass 5)
+
+- R5-E1/R5-B8 (low): for a newer attempt to be admitted during the blocked clear, the blocking condition must clear within one parent render, and the pre-existing `InvokeAsync` hop before `OnBlockedSubmission` already allows the same interleaving. An attempt sequence would add state for an undemonstrated window.
+- R5-E3/R5-B2 (low): a `visibility:visible` pseudo-element inside a hidden host was excluded before this delta as well; sampling it needs the visit body restructured per sample kind.
+- R5-E8 (low): propagated html/body overflow leaves offscreen escaped boxes unclipped, which only adds conservative samples.
+- R5-E9 (low): `visibility: collapse` follows the helpers' existing `hidden`-only pattern; collapsed table tracks are not a current surface.
+- R5-E13 (low): `FC_E2E_STORY_3_6_CONFIRM_DELAY_MS` is an explicit developer override of the lane default; the AppHost pins the default.
+- R5-B4 (low): the target and clipping helpers clipped every overflow ancestor before this delta and fail closed; unifying the containing-block walk across helpers is a separate refactor.
+- R5-B7 (false): Decision 2 covers zero-field feedback only; ordinary-form warning lifetime is Story 13.3 behavior and unchanged.
+- R5-B13 (low): the reachable area of an unreachable target really is below 24px, so both retained reasons are accurate.
+- R5-B14 fallback-chain sub-claim (false, carried R4-E16): `ResolveHiddenWarningText` receives only Shell-built warnings.
+
+#### Pass 6 (pass 5 fix delta, 2026-10-23)
+
+Scope: the pass 5 fix delta (pass 4 working state → current, 12 files, 610 diff lines). Four layers returned 50 raw findings (`R6-A/V/B/E#`); most are coverage gaps on the pass 5 helper branches. Verdicts are in the Review Triage Log.
+
+- [ ] [Review][Decision] Reduced-motion reconciliation sweep contrast — under `prefers-reduced-motion` the sweep keeps only `outline: 1px solid` brand at 35% alpha (about 1.6:1 on white; at most about 2.4:1 at 35% alpha), below AC1's 3:1 non-text threshold. The pass 4 test asserts only alpha > 0 yet comments "no essential meaning is lost". Decide whether the sweep is supplementary to the Reconnected notice (record the disposition and reword the assertion) or essential (raise it to ≥3:1 through a Fluent stroke token, a Story 5.4 visual change needing owner approval) (R6-A2, R6-B15, R6-E16) [src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css:151]
+- [ ] [Review][Patch] Pin the pass 5 helper branches with three-engine fixtures. Mutation probes passed all 146 synthetic fixtures for each of: the `display:contents` skip and new containing-block conditions; `background()` `paints = inside` and its nested-absolute guard; the opaque-plane visibility guard; shadow blur reach, stroke-only reach, and a shadow that stops short (R6-V1, R6-V2, R6-V3, R6-V4, R6-A4, R6-A5, R6-B16) [tests/e2e/specs/responsive-accessibility.spec.ts:2185]
+- [ ] [Review][Patch] The `will-change` containing-block regex treats `contain-intrinsic-size` as `contain`; match comma-separated tokens exactly (R6-E12) [tests/e2e/helpers/responsive-accessibility.ts:1174]
+- [ ] [Review][Patch] Outside samples (focus rings, borders) start `background()` at the parent, so an absolute/fixed focused element never seeds its containing-block escape; seed it from the element itself (R6-A7, R6-B11, R6-E6) [tests/e2e/helpers/responsive-accessibility.ts:1426]
+- [ ] [Review][Patch] A zero-area escaped ancestor fill that the sample boxes straddle throws a spurious partial-background error; treat zero-area fills as not painting (R6-E8) [tests/e2e/helpers/responsive-accessibility.ts:1073]
+- [ ] [Review][Patch] `expectTextContrast` still composites `visibility:hidden` ancestors' backgrounds; skip them as `background()` now does (R6-A8, R6-B13) [tests/e2e/helpers/responsive-accessibility.ts:905]
+- [ ] [Review][Patch] The renderer-level blocked test omits the speech-once and trigger-focus assertions that R5-A4 named; subscribe to the renderer surface and verify no focus move (R6-A1, R6-B7) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs:175]
+- [ ] [Review][Patch] The blocked-disposal theory cannot distinguish the blocked path from the admitted path; probe inside the callback that this attempt holds no lease (R6-A9, R6-B4, R6-E15) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs:136]
+- [ ] [Review][Patch] The scope-unavailable blocked branch calls `FocusAttemptedControlAsync` after a parent callback that may dispose the form; add the `_disposed` return and a scope-unavailable disposal arm (R6-B5, R6-E5) [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:562]
+- [ ] [Review][Patch] The lease negative control accepts any denial; require `AdmissionAlreadyInProgress` (R6-E4) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs:111]
+- [ ] [Review][Patch] The warning-dedupe theory lacks padded-equal, EntityLabel-equal and Detail-equal-with-different-EntityLabel rows (R6-B3, R6-E3, R6-V5) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs:73]
+- [ ] [Review][Patch] Filter-path banner tests no longer rule out a stray `focusReplacementHeading` call, and `CoMountedHeldFocusImportHandsCurrentEpisodeToSurvivingOwner` still uses the merged counter (R6-A3, R6-B6, R6-E14) [tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs:316]
+- [ ] [Review][Patch] The validator still throws `TypeError` on nested bad shapes (`{"suites":[null]}`, non-array `results`/`attachments`) and on `{"suites":{}}`, which is untested; the capability loop in the new test is order-dependent (R6-A10, R6-B8, R6-B9, R6-E13, R6-V6) [tests/e2e/scripts/validate-a11y-artifacts.mjs:65]
+- [ ] [Review][Patch] The media-only status literal is duplicated in three files; export one constant (R6-B10) [tests/e2e/scripts/a11y-state-evidence.mjs:109]
+- [ ] [Review][Patch] The competing-paint visibility fixture has no valid counterpart (inherited-hidden cover must pass) (R6-A6) [tests/e2e/specs/responsive-accessibility.spec.ts:2197]
+- [x] [Review][Defer] An absolute box placed outside its containing block (negative offsets, `top:100%` menus) still composites that block's fill and every ancestor above it; pre-existing compositing scope (R6-B12, R6-E7) [tests/e2e/helpers/responsive-accessibility.ts:1064] — deferred: pre-existing, medium; settle with a non-top-layer menu fixture outside a filled containing block.
+- [x] [Review][Defer] Pass 4/5 change contrast/clipping semantics but no candidate digest binds them and `13-6-accessibility-result.md` predates them (R6-A11) — deferred: covered by the open Evidence task; record after the fixes are committed.
+
+##### Rejected (pass 6)
+
+- R6-B1/R6-E1/R6-E2 (low): normalizing case/punctuation or comparing against the localized fallback adds locale heuristics; the demonstrated duplicate was an exact title match.
+- R6-B2 (low): the hidden zero-field outcome is intentionally one sentence; a server title is meaningful content there.
+- R6-B14/R6-E11/R6-V-Other (low, carried R5-E3): a `visibility:visible` pseudo-element in a hidden host is now probe-confirmed in a synthetic page, but no current surface uses it; sampling it needs per-kind restructuring.
+- R6-E9 (low): multi-line inline/border/background-clip fill geometry is an approximation outside any current surface.
+- R6-E10 (low, carried R5-E9): `visibility: collapse`.
+
 ## Implementation Notes
 
 ### Completion follow-up, 2026-10-16
@@ -253,6 +375,130 @@ All three context-free layers returned before classification: ten Blind Hunter f
 | BR-EC02 overlapping sibling glyphs | medium | Transparent-background sibling glyphs bypass the unrelated paint inventory and can erase a warning while nominal contrast certifies 21:1. The new fixture fails on all three engines before correction. | patch P3 |
 
 P1–P4 are direct private implementation corrections under the existing opacity/paint/focus/stale-recovery requirements. No frozen intent change, public API, threshold reduction, baseline regeneration or dependency update is needed. The three helper regressions retain valid positive cases. Component regressions await the actual lifecycle task before asserting stale-completion effects. Prior evidence remains historical; manual/platform/visual/catalog/raw-size/owner/live-backend gates remain open.
+
+### Code review pass 4 — 2026-10-23
+
+All four layers returned before classification: Blind Hunter 16, Edge Case Hunter 17, Verification Gap 1 (pre-verified) and Acceptance Auditor 7. Synthetic Chromium probes against the HEAD helper reproduced R4-E1, R4-E3, R4-E4 and R4-E8. Each row is an individual verdict before grouping.
+
+| Finding | Verdict | Verified evidence | Route |
+| --- | --- | --- | --- |
+| R4-A1 blocked attempt keeps prior outcome | medium | `9265b09f` moved the null clear after both denials; `PresentBlockedSubmissionAsync` never clears `_hiddenOutcome`; a test pins it | decision |
+| R4-A2 fallback title and body | medium | Emitter `:2045`/`:2050` both fall back to `CommandWarningFallback`; the new theory pins both | patch G2 |
+| R4-A3 revealed skip link | low | Page cycle runs `expectFocusVisible` on the revealed link; size/contrast are token/padding-bound | reject |
+| R4-A4 reduced-motion fixture | medium | No `no-preference` positive control; outline never asserted | patch G3 |
+| R4-A5 30s notice provenance | medium | AppHost `:167-178` lacks the variable; `fixtureOptions` comes from config. The 3,000ms sub-claim is false (bUnit coverage) | patch G4 |
+| R4-A6 scope-change test | false | The remount assertion proves fresh per-instance `_hiddenOutcome` | reject |
+| R4-A7 aria-hidden scroller | low | No such surface; the exclusion's purpose is unreviewed | reject |
+| R4-V1 lease on dispose exit | medium | Pre-verified: no settlement probe on the `disposeOnClear` exit | patch G6 |
+| R4-B1 multi-project ids | low | Probe: merging occurs only when the working directory is `tests/e2e/specs`; documented runs keep per-project spec ids; fails closed | reject (reclassified) |
+| R4-B2 AppHost timings | medium | Same as R4-A5 | patch G4 |
+| R4-B3 CLI parse guards | low | Unguarded `JSON.parse` at `:61-78`; fails closed with a poor diagnostic | patch G9 |
+| R4-B4 PNG plausibility | false | Byte-bound to the final attempt's own attachment; dimensions out of scope by decision | reject |
+| R4-B5 internal Playwright import | low | Recorded decision; exported subpath; fails loudly | reject |
+| R4-B6 normal-focus fields | low | In-test assertions plus passed-attempt authority | reject |
+| R4-B7 reduced motion | medium | Same as R4-A4 | patch G3 |
+| R4-B8 unasserted focus move | low | Works today via route-focus `tabindex=-1`; direct assertion | patch G11 |
+| R4-B9 overwritten reasons | low | `:259-260` replace earlier reasons; direct fix | patch G12 |
+| R4-B10 per-element stale | low | Fails closed; current records match one element | reject |
+| R4-B11 duplicate fallback | medium | Same as R4-A2 | patch G2 |
+| R4-B12 row-metric guards | low | Cap omitted deliberately (R-G01); guards snapshot-pinned | reject |
+| R4-B13 reflection | low | Established pattern; loud failure | reject |
+| R4-B14 merged focus counter | low | `FocusCalls` counts two identifiers; direct fix | patch G13 |
+| R4-B15 seam override proof | low | Registration order correct; the e2e lane exercises the seams | reject |
+| R4-B16 Canvas probes | false | No html/body `color-scheme`; identical Canvas | reject |
+| R4-E1 unrelated text-shadow | low | Probe throws "Text shadow composition needs pixel evidence"; direct reorder | patch G10 |
+| R4-E2 unrelated flow pseudo | low | Fails closed; prefilter needs envelope geometry | reject |
+| R4-E3 hidden ancestor | medium | Probe omitted a visible 10px button | patch G7 |
+| R4-E4 escaped out-of-flow text | medium | Probe skipped a visible 1.2:1 label | patch G8 |
+| R4-E5 later elevation layers | low | Real stroke margins exceed 10:1 | reject |
+| R4-E6 stacked modals | low | Single modal reservation | reject |
+| R4-E7 shared stale selector | low | Same as R4-B10 | reject |
+| R4-E8 inline generated glyph | low | Probe false failure; fails closed; no current surface | reject |
+| R4-E9 below-fold boundaries | low | Painted-state evidence by design | reject |
+| R4-E10 missing text spacing | false | `ready()` applies it | reject |
+| R4-E11 multi-stop shadow host | low | Fails closed; no current surface | reject |
+| R4-E12 multi-project ids | low | Same as R4-B1 | reject (reclassified) |
+| R4-E13 CLI parse guards | low | Same as R4-B3 | patch G9 |
+| R4-E14 AppHost timings | medium | Same as R4-A5 | patch G4 |
+| R4-E15 reduced motion | medium | Same as R4-A4 | patch G3 |
+| R4-E16 hidden warning helper | false | Helper sees only Shell-built warnings | reject |
+| R4-E17 same-identity episode | maybe-false | Reachability of a repeated `ResultIdentity` is unproven | carried defer; no new ledger entry |
+
+### Code review pass 5 — 2026-10-23
+
+All four layers returned before classification over the pass 4 fix delta: Blind Hunter 16, Edge Case Hunter 14, Verification Gap 6 (five pre-verified gaps plus one probe-confirmed other finding) and Acceptance Auditor 4. Two layers independently reproduced the hidden-ancestor background and nested-fixed false passes with Chromium probes.
+
+| Finding | Verdict | Evidence | Route |
+| --- | --- | --- | --- |
+| R5-V1 blocked disposal gap | medium | Pre-verified: no blocked-path disposal case | patch |
+| R5-V2 non-blank title gap | medium | Pre-verified: only blank-title runtime cases | patch |
+| R5-V3 hidden ancestor background | medium | Probe 13.08:1 vs white pixels | patch |
+| R5-V4 visibility fixtures | medium | Pre-verified: no focus/clipping fixture | patch |
+| R5-V5 AppHost runtime binding | medium | Pre-verified; no AppHost harness | carried defer (R-VG02) |
+| R5-V6 nested fixed escape | medium | Probe: sample dropped under absolute wrapper | patch |
+| R5-A1 hidden ancestor background | medium | Same as R5-V3 (probe 21:1) | patch |
+| R5-A2 nested fixed escape | medium | Same as R5-V6 | patch |
+| R5-A3 zero capability | low | Spec entry named zero and multiple; only multiple/unreadable reported | patch |
+| R5-A4 renderer-level A1 proof | medium | Tests assert callbacks only | patch |
+| R5-E1 newer attempt race | low | Narrow pre-existing interleaving | reject |
+| R5-E2 Detail equals Title | low | Direct dedupe on the same bar | patch |
+| R5-E3 hidden host pseudo | low | Pre-existing exclusion; restructure needed | reject |
+| R5-E4 hidden ancestor background | medium | Same as R5-V3 | patch |
+| R5-E5 escaped intermediate backgrounds | medium | `background()` walks every ancestor; new exposure from R4-E4 | patch |
+| R5-E6 nested fixed escape | medium | Same as R5-V6 | patch |
+| R5-E7 containing-block cases | low | Direct predicate additions | patch |
+| R5-E8 propagated overflow | low | Conservative extra samples only | reject |
+| R5-E9 visibility collapse | low | Existing pattern; no surface | reject |
+| R5-E10 null report | low | `report.suites` TypeError; direct guard | patch |
+| R5-E11 null state evidence | low | `evidence.engine` TypeError; direct guard | patch |
+| R5-E12 null capability | low | Silently absent; direct guard | patch |
+| R5-E13 confirm-delay override | low | Explicit developer override | reject |
+| R5-E14 clipping traversal | medium | `visit` returns at the hidden element (`:990`) | patch |
+| R5-B1 shadow-only overlap | medium | Glyph boxes exclude shadow/stroke extent | patch |
+| R5-B2 hidden host pseudo | low | Same as R5-E3 | reject |
+| R5-B3 visibility coverage | medium | Same as R5-V4 | patch |
+| R5-B4 helper containing blocks | low | Pre-existing, fails closed | reject |
+| R5-B5 containing-block cases | low | Same as R5-E7; `contain: paint` clipping pre-existing | patch (direct part) |
+| R5-B6 validator guards | low | Same as R5-A3/E10-E12 | patch |
+| R5-B7 visible-form blocked attempt | false | Decision 2 is zero-field only | reject |
+| R5-B8 newer attempt race | low | Same as R5-E1 | reject |
+| R5-B9 blocked-path proofs | medium | Same as R5-V1/R5-A4 | patch |
+| R5-B10 lease negative control | low | Direct in-callback assertion | patch |
+| R5-B11 merged focus counters | low | Direct per-identifier assertions | patch |
+| R5-B12 AppHost pin provenance | medium | Same as R5-V5 | carried defer |
+| R5-B13 undersized reason | low | Reachable area is undersized | reject |
+| R5-B14 rendered fallback | medium | Same as R5-V2; chain sub-claim carried false | patch |
+| R5-B15 outline color | low | Forced colors mask authored color | patch |
+| R5-B16 dead parameter | low | Single caller passes `false` | patch |
+
+### Code review pass 6 — 2026-10-23
+
+All four layers returned before classification: Acceptance Auditor 11, Blind Hunter 16, Edge Case Hunter 16, Verification Gap 7 (six mutation-verified gaps plus one probe-confirmed other finding). Duplicates are grouped by root cause in the Pass 6 checklist; every finding keeps the verdict below.
+
+| Findings | Verdict | Evidence | Route |
+| --- | --- | --- | --- |
+| R6-A2, R6-B15, R6-E16 | medium | Reduced-motion rule paints 35% brand outline (~1.6:1) | decision |
+| R6-V1–V4, R6-A4, R6-A5, R6-B16 | medium | Mutants pass all 146 synthetic fixtures; only scratch probes fail | patch |
+| R6-E12 | low | `\bcontain\b` matches `contain-intrinsic-size` | patch |
+| R6-A7, R6-B11, R6-E6 | low | Outside samples start at the parent | patch |
+| R6-E8 | low | Zero-area fill can be neither inside nor disjoint | patch |
+| R6-A8, R6-B13 | low | Separate `expectTextContrast` walk unchanged | patch |
+| R6-A1, R6-B7 | medium | Claimed speech/focus assertions absent | patch |
+| R6-A9, R6-B4, R6-E15 | low | No blocked-path precondition (red run currently proves it) | patch |
+| R6-B5, R6-E5 | low | Scope branch focuses after a disposing callback | patch |
+| R6-E4 | low | Any denial satisfies the control | patch |
+| R6-B3, R6-E3, R6-V5 | low | Trim and EntityLabel branches unexercised | patch |
+| R6-A3, R6-B6, R6-E14 | low | Merged/one-sided counters remain | patch |
+| R6-A10, R6-B8, R6-B9, R6-E13, R6-V6 | low | Probed `suites:[null]`, `results:{}`; `{"suites":{}}` untested | patch |
+| R6-B10 | low | Literal in three files | patch |
+| R6-A6 | low | Missing valid counterpart | patch |
+| R6-B12, R6-E7 | medium | Pre-existing containing-block fill assumption | defer |
+| R6-A11 | medium | No candidate digest; result predates changes | defer (Evidence task) |
+| R6-B1, R6-E1, R6-E2 | low | Heuristic normalization | reject |
+| R6-B2 | low | One-sentence hidden outcome by design | reject |
+| R6-B14, R6-E11, R6-V-Other | low | Synthetic only; carried R5-E3 | reject |
+| R6-E9 | low | Approximation, no surface | reject |
+| R6-E10 | low | Carried R5-E9 | reject |
 
 ## Verification
 

@@ -104,7 +104,9 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
             .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "same"));
 
         spoken.Count(message => message.Length > 0).ShouldBe(failureFirst ? 1 : 0);
-        module.FocusCalls.ShouldBe(failureFirst ? 0 : 1);
+        // The missing-detail owner focuses its replacement heading, never the filter recovery button.
+        module.ReplacementHeadingFocusCalls.ShouldBe(failureFirst ? 0 : 1);
+        module.FirstButtonFocusCalls.ShouldBe(0);
     }
 
     [Fact]
@@ -371,7 +373,7 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
 
         runtime.Import.TrySetResult(module);
         await module.Released.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
-        cut.WaitForAssertion(() => module.FocusCalls.ShouldBe(1));
+        cut.WaitForAssertion(() => module.FirstButtonFocusCalls.ShouldBe(1));
         Services.GetRequiredService<ISurfaceAnnouncementCoordinator>().Current("projection:orders:Orders").ShouldBeEmpty();
     }
 
@@ -389,7 +391,7 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
         runtime.Import.TrySetResult(module);
         await module.Released.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
         cut.Render();
-        module.FocusCalls.ShouldBe(1);
+        module.FirstButtonFocusCalls.ShouldBe(1);
         Services.GetRequiredService<ISurfaceAnnouncementCoordinator>().Current("projection:orders:Orders").ShouldBeEmpty();
     }
 
@@ -411,7 +413,7 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
         runtime.Import.TrySetResult(module);
         await module.Released.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
         cut.Render();
-        module.FocusCalls.ShouldBe(0);
+        module.FirstButtonFocusCalls.ShouldBe(0);
         runtime.ImportCalls.ShouldBe(1);
         delivered.ShouldBe(["Expanded item hidden by current filter."]);
     }
@@ -433,9 +435,9 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
             .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsHiddenByFilter, false));
         typeof(FcExpandedRowHiddenBanner).GetProperty("JS", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(cut.Instance, runtime);
         cut.Render(p => p.Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "first"));
-        cut.WaitForAssertion(() => module.FocusCalls.ShouldBe(timedOutCall == "focusFirstButtonWithin" ? 2 : 1));
+        cut.WaitForAssertion(() => module.FirstButtonFocusCalls.ShouldBe(timedOutCall == "focusFirstButtonWithin" ? 2 : 1));
         cut.Render();
-        module.FocusCalls.ShouldBe(timedOutCall == "focusFirstButtonWithin" ? 2 : 1);
+        module.FirstButtonFocusCalls.ShouldBe(timedOutCall == "focusFirstButtonWithin" ? 2 : 1);
         runtime.ImportCalls.ShouldBe(timedOutCall == "dispose" ? 1 : 2);
         Services.GetRequiredService<ISurfaceAnnouncementCoordinator>().Current("projection:orders:Orders").ShouldBeEmpty();
     }
@@ -468,7 +470,7 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
         cut.Render();
 
         runtime.ImportCalls.ShouldBe(2);
-        module.FocusCalls.ShouldBe(timedOutCall == "focusFirstButtonWithin" ? 2 : 0);
+        module.FirstButtonFocusCalls.ShouldBe(timedOutCall == "focusFirstButtonWithin" ? 2 : 0);
         spoken.Where(message => message.Length > 0).ShouldBe(["Expanded item hidden by current filter."]);
         cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe("Expanded item hidden by current filter.");
     }

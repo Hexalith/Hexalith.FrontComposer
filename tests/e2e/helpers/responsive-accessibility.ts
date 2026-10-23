@@ -87,7 +87,8 @@ export async function inventoryTargets(page: Page, exceptions: TargetException[]
       if (rect.width <= 0 || rect.height <= 0 || style.pointerEvents === 'none' || element.matches('.fc-skip-link:not(:focus)')) return false;
       for (let current: Element | null = element; current; current = parent(current)) {
         const css = getComputedStyle(current);
-        if (current.hasAttribute('inert') || css.visibility === 'hidden' || css.display === 'none' || Number(css.opacity) === 0) return false;
+        // Computed visibility inherits, yet a visible descendant still paints inside a hidden ancestor.
+        if (current.hasAttribute('inert') || current === element && css.visibility === 'hidden' || css.display === 'none' || Number(css.opacity) === 0) return false;
       }
       // aria-hidden does not deactivate a painted pointer target.
       return true;
@@ -256,8 +257,12 @@ export async function inventoryTargets(page: Page, exceptions: TargetException[]
         } else if (record.kind === 'Essential' && (!record.essentialReason?.trim() || !element.matches('[data-ae-essential-target]'))) failure = 'Essential exception requires an identified essential presentation and specific justification';
         else if (record.kind === 'User Agent Control' && (!element.matches('input,select,textarea') || getComputedStyle(element).appearance === 'none' || element.hasAttribute('style'))) failure = 'User agent exception requires an unmodified native control';
       }
-      if (limitation) failure = limitation;
-      if (rect.width === 0 || rect.height === 0 || clipped && !conforming) failure = 'Clipping leaves the target without the required reachable area';
+      // Keep every reason: a limitation or clip must not hide an exception failure found above.
+      if (limitation) failure = failure ? `${failure}; ${limitation}` : limitation;
+      if (rect.width === 0 || rect.height === 0 || clipped && !conforming) {
+        const clip = 'Clipping leaves the target without the required reachable area';
+        failure = failure ? `${failure}; ${clip}` : clip;
+      }
       const css = getComputedStyle(element);
       const equivalent = record?.kind === 'Equivalent' && record.equivalentSelector ? document.querySelector(record.equivalentSelector) : null;
       const equivalentBox = equivalent ? reachable(equivalent).rect : null;
@@ -629,7 +634,7 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
       const css = getComputedStyle(visual, pseudo);
       if (css.visibility === 'hidden' || css.display === 'none' || Number(css.opacity) === 0 || pseudo && css.content === 'none') continue;
       let hiddenAncestor = false;
-      for (let owner: Element | null = visual; owner; owner = composedParent(owner)) { const style = getComputedStyle(owner); if (Number(style.opacity) === 0 || style.visibility === 'hidden' || style.display === 'none') hiddenAncestor = true; }
+      for (let owner: Element | null = visual; owner; owner = composedParent(owner)) { const style = getComputedStyle(owner); if (Number(style.opacity) === 0 || style.display === 'none') hiddenAncestor = true; }
       if (hiddenAncestor) continue;
       if (css.transform !== 'none') { const matrix = new DOMMatrixReadOnly(css.transform); if (matrix.a === 0 || matrix.d === 0) continue; }
       const outline = audit.changed(visual, pseudo, css, resting, ['outline-width','outline-style','outline-color','outline-offset']) && parseFloat(css.outlineWidth) > 0 && css.outlineStyle !== 'none' && painted(css.outlineColor);
@@ -851,7 +856,8 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
     for (const candidate of candidates) {
       if (related(candidate) || focusPlane && !plane(candidate)) continue;
       let hidden = false;
-      for (let owner: Element | null = candidate; owner; owner = parent(owner)) { const css = getComputedStyle(owner); if (css.visibility === 'hidden' || css.display === 'none' || Number(css.opacity) === 0) hidden = true; }
+      // Own and pseudo visibility are checked by extraPaint; a visible descendant of a hidden ancestor still paints.
+      for (let owner: Element | null = candidate; owner; owner = parent(owner)) { const css = getComputedStyle(owner); if (css.display === 'none' || Number(css.opacity) === 0) hidden = true; }
       if (hidden) continue;
       for (const pseudo of [null, '::before', '::after']) {
         if (!pseudo && paintsAbove(candidate,element) === false) continue;
@@ -933,11 +939,11 @@ export async function expectNoTextClipping(page: Page): Promise<void> {
       ? node.assignedSlot : node instanceof Text && node.assignedSlot ? node.assignedSlot
         : node.parentElement ?? (node.getRootNode() instanceof ShadowRoot ? (node.getRootNode() as ShadowRoot).host : null);
     const identify = (element: Element) => element.id ? `#${element.id}` : `${element.tagName.toLowerCase()}.${String(element.className).trim().replace(/\s+/gu, '.')}`;
-    const excluded = (element: Element) => {
+    const excluded = (element: Element, ownVisibility = true) => {
       for (let current: Element | null = element; current; current = parent(current)) {
         const css = getComputedStyle(current);
         if (current.matches('style,script,template,[hidden],.fc-sr-only,.fc-skip-link:not(:focus),.fc-lifecycle-heading:not(:focus-within)')
-          || css.visibility === 'hidden' || css.display === 'none' || Number(css.opacity) === 0) return true;
+          || ownVisibility && current === element && css.visibility === 'hidden' || css.display === 'none' || Number(css.opacity) === 0) return true;
       }
       return false;
     };
@@ -972,6 +978,11 @@ export async function expectNoTextClipping(page: Page): Promise<void> {
         if (current.matches(':popover-open,:modal')) break;
       }
     };
+    const visitChildren = (node: Element) => {
+      if (node instanceof HTMLSlotElement) for (const child of node.assignedNodes({ flatten: true })) visit(child);
+      if (node.shadowRoot) for (const child of node.shadowRoot.childNodes) visit(child);
+      for (const child of node.childNodes) visit(child);
+    };
     const visit = (node: Node) => {
       if (visited.has(node)) return;
       visited.add(node);
@@ -981,7 +992,9 @@ export async function expectNoTextClipping(page: Page): Promise<void> {
         const range = document.createRange(); range.selectNodeContents(node);
         check(owner, [...range.getClientRects()]);
       } else if (node instanceof Element) {
-        if (excluded(node)) return;
+        if (excluded(node, false)) return;
+        // A visibility:hidden element paints nothing itself, but its visible descendants still do.
+        if (getComputedStyle(node).visibility === 'hidden') { visitChildren(node); return; }
         if ((node instanceof HTMLInputElement && ['text','search','email','url','tel','password','number'].includes(node.type) || node instanceof HTMLTextAreaElement || node instanceof HTMLSelectElement)
           && (node instanceof HTMLSelectElement ? node.selectedOptions.length > 0 : node.value || node.placeholder)) {
           const css = getComputedStyle(node), bounds = node.getBoundingClientRect();
@@ -1022,9 +1035,7 @@ export async function expectNoTextClipping(page: Page): Promise<void> {
             if (owner.matches(':popover-open,:modal')) break;
           }
         }
-        if (node instanceof HTMLSlotElement) for (const child of node.assignedNodes({ flatten: true })) visit(child);
-        if (node.shadowRoot) for (const child of node.shadowRoot.childNodes) visit(child);
-        for (const child of node.childNodes) visit(child);
+        visitChildren(node);
       }
     };
     visit(document.documentElement);
@@ -1044,14 +1055,32 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
     const parse = audit.parse;
     const resting = sampleKind === 'focus' ? audit.resting(scope) : new Map();
     const composite = (fg: number[], bg: number[]) => [0, 1, 2].map(i => fg[i] * fg[3] + bg[i] * (1 - fg[3])).concat(1);
-    const background = (element: Element | null) => {
+    const background = (element: Element | null, boxes: PaintBox[] = []) => {
       const layers: number[][] = [];
+      // undefined: in flow; null: escaped to the viewport; Element: escaped until that containing block.
+      let outOfFlowBlock: Element | null | undefined;
       for (let current = element; current; current = parent(current)) {
         const css = getComputedStyle(current);
-        if (css.backgroundImage !== 'none') throw new Error('Background image needs pixel evidence');
+        const escaped = outOfFlowBlock !== undefined && current !== outOfFlowBlock;
+        if (current === outOfFlowBlock) outOfFlowBlock = undefined;
+        // A visibility:hidden ancestor paints no background behind its visible descendants.
+        let paints = css.visibility !== 'hidden';
+        // Between out-of-flow paint and its containing block an ancestor fills only its own box
+        // (root and body backgrounds propagate to the canvas): disjoint fills are not behind the
+        // sample, and a partial overlap needs pixel evidence.
+        if (paints && escaped && boxes.length && current !== document.documentElement && current !== document.body
+          && (parse(css.backgroundColor)[3] > 0 || css.backgroundImage !== 'none')) {
+          const fill = current.getBoundingClientRect();
+          const inside = boxes.every(box => box.left >= fill.left - .5 && box.right <= fill.right + .5 && box.top >= fill.top - .5 && box.bottom <= fill.bottom + .5);
+          const disjoint = boxes.every(box => box.right <= fill.left || box.left >= fill.right || box.bottom <= fill.top || box.top >= fill.bottom);
+          if (!inside && !disjoint) throw new Error('Out-of-flow paint over a partial ancestor background needs pixel evidence');
+          paints = inside;
+        }
+        if (paints && css.backgroundImage !== 'none') throw new Error('Background image needs pixel evidence');
         if (css.filter !== 'none' || css.mixBlendMode !== 'normal' || css.getPropertyValue('backdrop-filter') && css.getPropertyValue('backdrop-filter') !== 'none') throw new Error('Filtered or blended paint needs pixel evidence');
         if (Number(css.opacity) > 0 && Number(css.opacity) < 1) throw new Error(`Translucent group needs pixel evidence: ${current.tagName}.${current.className} opacity=${css.opacity}`);
-        layers.push(parse(css.backgroundColor));
+        if (paints) layers.push(parse(css.backgroundColor));
+        if (!escaped && ['absolute', 'fixed'].includes(css.position)) outOfFlowBlock = containingBlock(current, css.position);
       }
       const probe = document.createElement('span'); probe.style.color = 'Canvas'; document.documentElement.append(probe);
       const canvas = parse(getComputedStyle(probe).color); probe.remove();
@@ -1064,7 +1093,8 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
         const css = getComputedStyle(current);
         if (sampleKind === 'icon' && current.matches('fluent-skeleton,.fluent-skeleton,.fc-empty-state-body__icon')) return false;
         if (audit.clip(css, current.getBoundingClientRect()).kind === 'hidden') return false;
-        if (css.visibility === 'hidden' || css.display === 'none' || Number(css.opacity) === 0 || current.matches('[hidden],.fc-sr-only,.fc-skip-link:not(:focus),[disabled],[aria-disabled="true"]')) return false;
+        // Own visibility is handled by visit: a hidden element can still contain painted descendants.
+        if (css.display === 'none' || Number(css.opacity) === 0 || current.matches('[hidden],.fc-sr-only,.fc-skip-link:not(:focus),[disabled],[aria-disabled="true"]')) return false;
       }
       return true;
     };
@@ -1131,8 +1161,25 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
       for (const candidate of root.querySelectorAll('*')) { pagePaint.push(candidate); if (candidate.shadowRoot) collectPaint(candidate.shadowRoot); }
     };
     collectPaint(document);
+    // CSS Position 3 containing blocks: an absolute box belongs to its nearest positioned or
+    // transform-like ancestor; a fixed box only to a transform-like ancestor, else the viewport.
+    const containingBlock = (node: Element, position: string): Element | null => {
+      for (let ancestor = parent(node); ancestor; ancestor = parent(ancestor)) {
+        const style = getComputedStyle(ancestor);
+        // display:contents generates no box, so it cannot contain anything.
+        if (style.display === 'contents') continue;
+        if (style.transform !== 'none' || style.perspective !== 'none' || style.filter !== 'none' || style.transformStyle === 'preserve-3d'
+          || [style.translate, style.scale, style.rotate].some(value => value && value !== 'none')
+          || style.contentVisibility && style.contentVisibility !== 'visible'
+          || /\b(paint|layout|strict|content)\b/u.test(style.contain) || /\b(transform|perspective|filter|translate|scale|rotate|contain)\b/u.test(style.willChange)
+          || position === 'absolute' && style.position !== 'static') return ancestor;
+      }
+      return null;
+    };
     const clippedPaint = (element: Element, boxes: PaintBox[], content = true): PaintBox[] => {
       if (!boxes.length) return [];
+      // undefined: in flow; null: escaped to the viewport; Element: escaped until that containing block.
+      let outOfFlowBlock: Element | null | undefined;
       for (let current: Element | null = element; current; current = parent(current)) {
         const css = getComputedStyle(current);
         if (css.filter !== 'none' || css.mixBlendMode !== 'normal' || css.getPropertyValue('backdrop-filter') && css.getPropertyValue('backdrop-filter') !== 'none') throw new Error('Filtered or blended paint needs pixel evidence');
@@ -1144,8 +1191,12 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
         // offscreen remainder cannot overlap a footer or another neighboring surface.
         const bounds = current.getBoundingClientRect();
         const clipX = /(auto|scroll|hidden|clip)/u.test(css.overflowX), clipY = /(auto|scroll|hidden|clip)/u.test(css.overflowY);
+        // Overflow clips out-of-flow content only from its containing block outward; the ancestors
+        // between them neither clip nor scroll it. Clip-path/clip above still apply to every descendant.
+        const escaped = outOfFlowBlock !== undefined && current !== outOfFlowBlock;
+        if (current === outOfFlowBlock) outOfFlowBlock = undefined;
         // Non-replaced inline boxes and display:contents have no overflow clip box.
-        if ((content || current !== element) && !['inline', 'contents'].includes(css.display) && (clipX || clipY)) {
+        if (!escaped && (content || current !== element) && !['inline', 'contents'].includes(css.display) && (clipX || clipY)) {
           for (let ancestor: Element | null = current; ancestor; ancestor = parent(ancestor)) {
             const style = getComputedStyle(ancestor), transform = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
             if (!transform.is2D || transform.a !== 1 || transform.d !== 1 || transform.b !== 0 || transform.c !== 0
@@ -1166,6 +1217,8 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
             bottom: clipY ? Math.min(box.bottom, bottom) : box.bottom,
           }));
         }
+        // An absolute ancestor inside an escape does not change the escaped box's containing block.
+        if (content && !escaped && ['absolute', 'fixed'].includes(css.position)) outOfFlowBlock = containingBlock(current, css.position);
         // Out-of-flow backgrounds can escape an outer overflow clip. Without
         // resolving their containing block, retain the overlap for pixel evidence.
         if (current.matches(':popover-open,:modal') || !content && ['absolute', 'fixed'].includes(css.position)) break;
@@ -1232,7 +1285,7 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
         };
         const roundCorners = ['corner-shape', 'corner-top-left-shape', 'corner-top-right-shape', 'corner-bottom-right-shape', 'corner-bottom-left-shape']
           .every(property => css.getPropertyValue(property).trim().split(/\s+/u).every(shape => !shape || ['round', 'superellipse(1)'].includes(shape)));
-        if (roundCorners && parse(css.backgroundColor)[3] === 1 && Number(css.opacity) === 1 && css.backgroundClip === 'border-box'
+        if (roundCorners && css.visibility !== 'hidden' && parse(css.backgroundColor)[3] === 1 && Number(css.opacity) === 1 && css.backgroundClip === 'border-box'
           && css.transform === 'none' && (!css.scale || ['none','1'].includes(css.scale)) && (!css.rotate || css.rotate === 'none')
           && boxes.every(box => covered(box.left, box.top) && covered(box.right, box.top) && covered(box.left, box.bottom) && covered(box.right, box.bottom))) opaquePlaneBackdrop = true;
         if (current.matches(':popover-open,:modal')) { plane = current; break; }
@@ -1259,7 +1312,7 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
           let hiddenPaint = false;
           for (let current: Element | null = candidate; current; current = parent(current)) {
             const style = getComputedStyle(current);
-            if (style.visibility === 'hidden' || style.display === 'none' || Number(style.opacity) === 0 || audit.clip(style, current.getBoundingClientRect()).kind === 'hidden') { hiddenPaint = true; break; }
+            if (style.display === 'none' || Number(style.opacity) === 0 || audit.clip(style, current.getBoundingClientRect()).kind === 'hidden') { hiddenPaint = true; break; }
           }
           if (hiddenPaint) continue;
           const intersects = (rect: PaintBox) => boxes.some(box => rect.left < box.right && rect.right > box.left && rect.top < box.bottom && rect.bottom > box.top);
@@ -1326,13 +1379,25 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
             }
           }
           if (ancestor) continue;
-          if (sampleKind === 'text' && !containsComposed(element, candidate) && parse(glyphPaint(css))[3] > 0) {
+          // A visibility:hidden candidate paints no glyphs or fills of its own; its pseudo paint was checked above.
+          if (css.visibility === 'hidden') continue;
+          if (sampleKind === 'text' && !containsComposed(element, candidate)) {
             const glyphBoxes = [...candidate.childNodes].flatMap(node => {
               if (!(node instanceof Text) || !node.textContent?.trim()) return [];
               const range = document.createRange(); range.selectNodeContents(node);
               return [...range.getClientRects()];
             });
-            if (clippedPaint(candidate, glyphBoxes, false).some(intersects)) throw new Error('Overlapping text needs pixel evidence');
+            // Resolve glyph paint only for text whose letters, shadow or stroke can reach the sample:
+            // unrelated shadowed text elsewhere must not block every measurement. The reach bounds each
+            // shadow by its offset plus 1.5x blur and adds the stroke width; clipping only shrinks it.
+            const stroke = parseFloat(css.getPropertyValue('-webkit-text-stroke-width')) || 0;
+            const reach = css.textShadow === 'none' ? stroke : Math.max(stroke, ...css.textShadow.split(/,(?![^()]*\))/u).map(layer => {
+              const [x = 0, y = 0, blur = 0] = layer.replace(/[a-z][a-z0-9-]*\([^()]*\)/giu, '').match(/-?[\d.]+px/gu)?.map(Number.parseFloat) ?? [];
+              return Math.max(Math.abs(x), Math.abs(y)) + blur * 1.5 + stroke;
+            }));
+            const reachBoxes = glyphBoxes.map(box => ({ left: box.left - reach, right: box.right + reach, top: box.top - reach, bottom: box.bottom + reach }));
+            if (reachBoxes.some(intersects) && clippedPaint(candidate, reachBoxes, false).some(intersects)
+              && parse(glyphPaint(css))[3] > 0) throw new Error('Overlapping text needs pixel evidence');
           }
           const vector = candidate.matches('svg path,svg polygon,svg circle,svg rect,svg ellipse,svg line,svg polyline,svg use,svg text');
           const vectorPaint = vector && (css.fill !== 'none' && Number(css.fillOpacity) > 0 && parse(css.fill)[3] > 0
@@ -1358,7 +1423,7 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
       }
       const color = parse(value); color[3] *= alpha;
       if (color[3] === 0 && sampleKind !== 'icon') return;
-      const bg = background(outside ? parent(element) : element);
+      const bg = background(outside ? parent(element) : element, boxes);
       const fg = composite(color, bg), a = luminance(fg), b = luminance(bg);
       let measuredBound = shadowBound;
       for (const [index,layers] of competingShadows.entries()) {
@@ -1403,10 +1468,17 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
     };
     const sampledText = new Set<Node>();
     const visited = new Set<Element>();
+    const visitChildren = (element: Element) => {
+      if (element instanceof HTMLSlotElement) for (const child of element.assignedElements({ flatten: true })) visit(child);
+      if (element.shadowRoot) for (const child of element.shadowRoot.children) visit(child);
+      for (const child of element.children) if (!child.matches('style,script,template')) visit(child);
+    };
     const visit = (element: Element) => {
       if (visited.has(element) || !visible(element)) return;
       visited.add(element);
       const css = getComputedStyle(element);
+      // A visibility:hidden element paints nothing itself, but a visible descendant still paints.
+      if (css.visibility === 'hidden') { visitChildren(element); return; }
       if (sampleKind === 'text') {
         if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
           const placeholder = getComputedStyle(element, '::placeholder');
@@ -1525,9 +1597,7 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
           }
         }
       }
-      if (element instanceof HTMLSlotElement) for (const child of element.assignedElements({ flatten: true })) visit(child);
-      if (element.shadowRoot) for (const child of element.shadowRoot.children) visit(child);
-      for (const child of element.children) if (!child.matches('style,script,template')) visit(child);
+      visitChildren(element);
     };
     visit(scope);
     return samples;

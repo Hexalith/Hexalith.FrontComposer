@@ -174,6 +174,7 @@ if (builder.ExecutionContext.IsRunMode && builder.Environment.IsEnvironment("Tes
         .WithEnvironment("Hexalith__FrontComposer__Specimens__Enabled", "true")
         .WithEnvironment("Hexalith__Shell__FormAbandonmentThresholdSeconds", "5")
         .WithEnvironment("Hexalith__Shell__TimeoutActionThresholdMs", "5000")
+        .WithEnvironment("Hexalith__Shell__ProjectionReconnectedNoticeDurationMs", "30000")
         .WithEnvironment("Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs", "6500");
 }
 

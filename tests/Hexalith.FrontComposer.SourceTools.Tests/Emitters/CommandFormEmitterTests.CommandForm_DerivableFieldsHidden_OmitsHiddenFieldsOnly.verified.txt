@@ -278,6 +278,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         // Story 13.3 VR-05 / AM-20 — nothing is queued or dispatched and no validation runs. The
         // always-mounted status node announces AM-20 once for this attempt while the attempted
         // control keeps focus; a hidden zero-field form hands that outcome to its renderer.
+        // Story 13.6 R4-A1 — a blocked activation is the next attempt, so withdraw the earlier hidden
+        // outcome. The guard that chose this denial already returned, so this await admits nothing.
+        await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);
+        if (_disposed) return;
         CommandFeedbackPublisher.PublishWarning(CreateCommandBlockedWarning(reason));
         if (OnBlockedSubmission.HasDelegate)
         {
@@ -529,7 +533,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             await PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId).ConfigureAwait(false);
             return;
         }
-        // Clear the earlier hidden outcome only once admitted: the awaited parent callback must not precede the synchronous state/admission guards.
+        // Clear the earlier hidden outcome after the synchronous state/admission guards: the awaited parent callback must not precede them. Denials clear it in PresentBlockedSubmissionAsync.
         await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);
         if (_disposed) return;
 
@@ -1094,7 +1098,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 __b.AddAttribute(12, "AllowDismiss", true);
                 __b.AddAttribute(13, "ChildContent", (RenderFragment)(__msg =>
                 {
-                    string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedFallback"].Value : (new[] { _serverWarning.Detail, _serverWarning.EntityLabel }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? ShellLocalizer["CommandWarningFallback"].Value);
+                    // Story 13.6 R4-A2/R5-E2 — never show or speak one sentence twice: a body equal to the server title is
+                    // skipped, and a blank server title already carries the fallback.
+                    string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedFallback"].Value : (new[] { _serverWarning.Detail, _serverWarning.EntityLabel }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value) && !string.Equals(value.Trim(), _serverWarning.Title?.Trim(), StringComparison.Ordinal)) ?? (string.IsNullOrWhiteSpace(_serverWarning.Title) ? string.Empty : ShellLocalizer["CommandWarningFallback"].Value));
                     __msg.AddContent(0, body);
                     if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is not null)
                     {

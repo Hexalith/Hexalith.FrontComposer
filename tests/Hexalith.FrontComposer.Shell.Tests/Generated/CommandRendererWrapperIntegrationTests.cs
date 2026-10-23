@@ -60,11 +60,41 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             var warning = cut.FindComponent<FluentMessageBar>();
             warning.Instance.Title.ShouldBe(fallback);
             var body = Render<FluentMessageBar>(p => p.Add(c => c.ChildContent, warning.Instance.ChildContent));
-            body.Markup.ShouldContain(entityWarning ? "Affected item" : fallback);
+            // The fallback title is spoken with the bar's implicit status region; the body never repeats it.
+            if (entityWarning) body.Markup.ShouldContain("Affected item");
+            body.Markup.ShouldNotContain(fallback);
             body.Markup.ShouldContain(retry);
             cut.Find("[name='Name']").GetAttribute("value").ShouldBe("Preserved operator value");
         });
         _ = service.Received(1).DispatchAsync(Arg.Any<TwoFieldCompactCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("en", "  ", "Please review the warning and try again.", "Retry after 17 seconds.")]
+    [InlineData("fr", null, "Veuillez lire l’avertissement et réessayer.", "Réessayez dans 17 secondes.")]
+    [InlineData("en", "Item unavailable", "Please review the warning and try again.", "Retry after 17 seconds.")]
+    public async Task ServerTitledWarningKeepsOneLocalizedFallbackBodyAndRetryHint(string culture, string? detail, string fallback, string retry)
+    {
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+        ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
+        _ = service.DispatchAsync(Arg.Any<TwoFieldCompactCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<CommandResult>(new CommandWarningException(CommandWarningKind.RateLimited,
+                ProblemDetailsPayload.Empty with { Title = "Item unavailable", Detail = detail, EntityLabel = null }, TimeSpan.FromSeconds(17))));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(p => p
+            .Add(c => c.InitialValue, new TwoFieldCompactCommand { Name = "Preserved operator value", Amount = 7 }));
+        cut.Find("form").Submit();
+        cut.WaitForAssertion(() => {
+            var warning = cut.FindComponent<FluentMessageBar>();
+            warning.Instance.Title.ShouldBe("Item unavailable");
+            var body = Render<FluentMessageBar>(p => p.Add(c => c.ChildContent, warning.Instance.ChildContent));
+            // A server title keeps the localized guidance in the body, and a detail equal to the title is not repeated.
+            body.Markup.ShouldContain(fallback);
+            body.Markup.ShouldNotContain("Item unavailable");
+            body.Markup.ShouldContain(retry);
+        });
     }
 
     [Theory]

@@ -58,10 +58,24 @@ if (oversized.length > 0) {
   process.exit(1);
 }
 
-const report = JSON.parse(readFileSync(required[2], 'utf8'));
+const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+let report;
+try {
+  report = JSON.parse(readFileSync(required[2], 'utf8'));
+  if (!isRecord(report) || report.suites !== undefined && !Array.isArray(report.suites)) throw new Error('expected a report object with a suites array');
+} catch (error) {
+  console.error(`Invalid authoritative Playwright report ${required[2]}: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+}
 const engines = process.env.FC_A11Y_EVIDENCE_ENGINE ? [process.env.FC_A11Y_EVIDENCE_ENGINE] : ['chromium'];
+const stateEvidence = file => { try { const value = JSON.parse(readFileSync(file, 'utf8')); return isRecord(value) ? value : undefined; } catch { return undefined; } };
 const stateErrors = engines.flatMap(expectedEngine => {
-  const owned = files.filter(file => !/^ae-state-.+\.json$/u.test(basename(file)) || JSON.parse(readFileSync(file, 'utf8')).engine === expectedEngine);
+  // Unreadable or unowned state evidence stays in scope so the validator reports it by name.
+  const owned = files.filter(file => {
+    if (!/^ae-state-.+\.json$/u.test(basename(file))) return true;
+    const engine = stateEvidence(file)?.engine;
+    return engine === expectedEngine || !['chromium', 'firefox', 'webkit'].includes(engine);
+  });
   // Retained failed attempts may have the same basename. Only the final successful
   // result's attachment can establish this run's capability.
   const capabilityAttachments = [];
@@ -74,9 +88,19 @@ const stateErrors = engines.flatMap(expectedEngine => {
     for (const child of suite.suites ?? []) visit(child);
   };
   for (const suite of report.suites ?? []) visit(suite);
-  const capabilityPath = capabilityAttachments.length === 1 ? capabilityAttachments[0].path : null;
-  const unsupportedForcedColorsCapability = capabilityPath ? JSON.parse(readFileSync(capabilityPath, 'utf8')) : null;
-  return validateStateEvidence(owned, { report, expectedEngine, expectedRun: process.env.FC_A11Y_EVIDENCE_RUN_ID || null, unsupportedForcedColorsCapability });
+  const capabilityErrors = [];
+  let unsupportedForcedColorsCapability = null;
+  if (capabilityAttachments.length > 1) capabilityErrors.push(`Ambiguous forced-color capability: ${capabilityAttachments.length} final attachments for ${expectedEngine}`);
+  else if (capabilityAttachments.length === 1) {
+    let capability;
+    try { capability = JSON.parse(readFileSync(capabilityAttachments[0].path, 'utf8')); } catch { /* reported below */ }
+    if (isRecord(capability)) unsupportedForcedColorsCapability = capability;
+    else capabilityErrors.push(`Unreadable forced-color capability attachment for ${expectedEngine}: ${capabilityAttachments[0].path}`);
+  } else if (owned.some(file => /^ae-state-.+\.json$/u.test(basename(file)) && stateEvidence(file)?.forcedColorsStatus === 'unsupported authored-color replacement; media rules only')) {
+    // Media-only forced colors are acceptable only with the run's own capability attachment.
+    capabilityErrors.push(`Missing forced-color capability attachment for ${expectedEngine}: state evidence declares media-only forced colors`);
+  }
+  return [...capabilityErrors, ...validateStateEvidence(owned, { report, expectedEngine, expectedRun: process.env.FC_A11Y_EVIDENCE_RUN_ID || null, unsupportedForcedColorsCapability })];
 });
 if (stateErrors.length) {
   console.error(stateErrors.join('\n'));

@@ -482,9 +482,12 @@ public class CommandFormEmitterTests {
 
         source.ShouldContain("CommandWarningKind.RetryableDispatchFailed");
         source.ShouldContain("if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is not null)");
-        source.ShouldContain("new[] { _serverWarning.Detail, _serverWarning.EntityLabel }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))");
+        // R5-E2 — a body equal to the server title is skipped, so the bar never repeats one sentence.
+        source.ShouldContain("new[] { _serverWarning.Detail, _serverWarning.EntityLabel }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value) && !string.Equals(value.Trim(), _serverWarning.Title?.Trim(), StringComparison.Ordinal))");
         source.ShouldContain("string.IsNullOrWhiteSpace(_serverWarning.Title)");
         source.ShouldContain("ShellLocalizer[\"CommandWarningFallback\"].Value");
+        // R4-A2 — a blank server title already shows the fallback, so the body never repeats it.
+        source.ShouldContain("?? (string.IsNullOrWhiteSpace(_serverWarning.Title) ? string.Empty : ShellLocalizer[\"CommandWarningFallback\"].Value)");
         warningCatchIndex.ShouldBeGreaterThan(0);
         resetIndex.ShouldBeGreaterThan(warningCatchIndex);
         registerIndex.ShouldBe(-1);
@@ -1316,6 +1319,18 @@ public class CommandFormEmitterTests {
         presentBody.ShouldNotContain("Validate()");
         presentBody.ShouldNotContain("Dispatcher.Dispatch");
         presentBody.ShouldNotContain("ShowAndFocusAsync");
+        // R4-A1 — every blocked attempt withdraws the earlier hidden outcome before AM-20; scope loss
+        // replaces it through its own presentation instead.
+        int scopeBranchEnd = presentBody.IndexOf("await FocusAttemptedControlAsync(_formDomId + \"-submit\").ConfigureAwait(false);", StringComparison.Ordinal);
+        int blockedClear = presentBody.IndexOf("await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);", StringComparison.Ordinal);
+        int blockedPublish = presentBody.IndexOf("CommandFeedbackPublisher.PublishWarning(CreateCommandBlockedWarning(reason));", StringComparison.Ordinal);
+        scopeBranchEnd.ShouldBeGreaterThan(0);
+        blockedClear.ShouldBeGreaterThan(scopeBranchEnd);
+        blockedPublish.ShouldBeGreaterThan(blockedClear);
+        // A parent that disposes the form during that clear stops the blocked presentation.
+        int blockedDisposedGuard = presentBody.IndexOf("if (_disposed) return;", blockedClear, StringComparison.Ordinal);
+        blockedDisposedGuard.ShouldBeGreaterThan(blockedClear);
+        blockedDisposedGuard.ShouldBeLessThan(blockedPublish);
 
         // BH4-04 — a scope-unavailable attempt uses the AM-20 attempted-control rule instead of forcing
         // focus onto the submit button, so Enter in a field keeps that field focused.
