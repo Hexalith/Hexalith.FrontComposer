@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
+    <!-- Outer multi-target evaluation also runs source validation before restore.
+         Supply the SDK's ordinary assets path without changing selection or skipping validation. -->
+    <ProjectAssetsFile Condition="'$(ProjectAssetsFile)' == ''">$(MSBuildProjectExtensionsPath)project.assets.json</ProjectAssetsFile>
     <IsPackable>true</IsPackable>
     <PackageId>Hexalith.FrontComposer.Contracts</PackageId>
     <IsTrimmable
