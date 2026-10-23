@@ -195,6 +195,9 @@ jobs:
           python3 -m unittest tests/eng/test_release_contract.py
           python3 -m unittest tests/eng/test_release_evidence_v2.py
 
+      - name: 'Gate 2b: AppHost Memories dependency modes'
+        run: python3 -m unittest discover -s tests/eng -p test_apphost_dependency_modes.py -v
+
       # Gate 2c: File-based consumer pacts for the FrontComposer/EventStore REST boundary.
       # This lane intentionally uses explicit root-declared submodule initialization above and
       # does not run recursive nested submodule initialization.
