@@ -1024,8 +1024,10 @@ public sealed class MigrationCommandTests {
                 new("66.0.0", "67.0.0", "docs/migrations/unrelated.md"),
             ];
             private const char DoubleQuote = '"';
+            private const char Quote = '"';
             private const char Backslash = '\\';
             private const char Apostrophe = '\'';
+            private const char EscapedQuote = '\'';
             private const char UnicodeQuote = '\u0022';
             private const string Example = "private static readonly MigrationEdge[] Edges = BuildEdges([fake]);";
             private const string RawExample = """
@@ -1041,13 +1043,19 @@ public sealed class MigrationCommandTests {
         catalog.ShouldContain("docs/migrations/comment.md");
         catalog.ShouldContain("docs/migrations/block-comment.md");
         catalog.ShouldContain("docs/migrations/unrelated.md");
+        catalog.ShouldContain("private static readonly MigrationEdge[] Unrelated");
         catalog.ShouldContain("private const char DoubleQuote");
+        catalog.ShouldContain("private const char Quote = '\"';");
+        catalog.ShouldContain("private const char EscapedQuote = '\\'';");
+        catalog.ShouldContain("private const char Backslash = '\\\\';");
+        catalog.ShouldContain("private const char Apostrophe");
+        catalog.ShouldContain("private const char UnicodeQuote = '\\u0022';");
         catalog.ShouldContain("private const string Example");
         catalog.ShouldContain("private const string RawExample");
         catalog.ShouldContain("private const string WideRawExample");
         File.WriteAllText(catalogPath, catalog);
         File.AppendAllText(Path.Combine(fixture.Root, "migrations", "index.md"),
-            "\nSee the [CLI reference](../reference/cli.md) for command options.\n");
+            "\nSee the [CLI reference](../reference/cli.md) for command options.\nSee [CLI reference](../reference/cli.md).\n");
 
         (await RunMigrationParityAsync(fixture.Root)).ShouldBeEmpty();
     }
@@ -1055,6 +1063,9 @@ public sealed class MigrationCommandTests {
     [Theory]
     [InlineData("missing-guide-mode", "migrationMode must be")]
     [InlineData("unknown-guide-mode", "migrationMode must be")]
+    [InlineData("noncanonical-guide-mode-key", "canonical migrationMode key")]
+    [InlineData("manual-non-exact-from-version", "fromVersion must be an exact semantic version")]
+    [InlineData("manual-non-exact-to-version", "toVersion must be an exact semantic version")]
     [InlineData("false-executable", "complete catalog tuple")]
     [InlineData("false-manual", "falsely classifies")]
     [InlineData("manual-executable-alias", "falsely classifies")]
@@ -1103,6 +1114,17 @@ public sealed class MigrationCommandTests {
             case "unknown-guide-mode":
                 File.WriteAllText(guidePath, guide.Replace("migrationMode: cli-supported", "migrationMode: automatic", StringComparison.Ordinal));
                 break;
+            case "noncanonical-guide-mode-key":
+                File.WriteAllText(guidePath, guide.Replace("migrationMode:", "MigrationMode:", StringComparison.Ordinal));
+                break;
+            case "manual-non-exact-from-version":
+                File.WriteAllText(manualPath, File.ReadAllText(manualPath).Replace("fromVersion: \"3.1.1\"", "fromVersion: \"latest\"", StringComparison.Ordinal));
+                File.WriteAllText(indexPath, index.Replace("| 3.1.1 |", "| latest |", StringComparison.Ordinal));
+                break;
+            case "manual-non-exact-to-version":
+                File.WriteAllText(manualPath, File.ReadAllText(manualPath).Replace("toVersion: \"4.0.0\"", "toVersion: \"latest\"", StringComparison.Ordinal));
+                File.WriteAllText(indexPath, index.Replace("| 4.0.0 |", "| latest |", StringComparison.Ordinal));
+                break;
             case "false-executable":
                 File.WriteAllText(manualPath, File.ReadAllText(manualPath).Replace("migrationMode: manual-only", "migrationMode: cli-supported", StringComparison.Ordinal));
                 break;
@@ -1117,8 +1139,13 @@ public sealed class MigrationCommandTests {
                 File.WriteAllText(catalogPath, catalog.Replace("    private static readonly MigrationEdge[] Edges = BuildEdges([", "#if false\n    private static readonly MigrationEdge[] Edges = BuildEdges([", StringComparison.Ordinal).Replace("    ]);", "    ]);\n#else\n    private static readonly MigrationEdge[] Edges = [];\n#endif", StringComparison.Ordinal));
                 break;
             case "unsupported-catalog-syntax":
-                File.WriteAllText(catalogPath, catalog.Replace("new(\"9.1.0\"",
-                    "new MigrationEdge(\"4.5.0\", \"4.6.0\", \"docs/migrations/4.5-to-4.6.md\"),\n        new(\"9.1.0\"", StringComparison.Ordinal));
+                string explicitEdge = "new MigrationEdge(\"4.5.0\", \"4.6.0\", \"docs/migrations/4.5-to-4.6.md\"),";
+                string unsupportedCatalog = catalog.Replace(
+                    "new(\"9.1.0\"",
+                    explicitEdge + "\n        new(\"9.1.0\"",
+                    StringComparison.Ordinal);
+                unsupportedCatalog.ShouldContain(explicitEdge);
+                File.WriteAllText(catalogPath, unsupportedCatalog);
                 break;
             case "literal-token-collision":
                 catalog = catalog.Replace("private static readonly MigrationEdge[] Edges", """
@@ -1355,6 +1382,107 @@ public sealed class MigrationCommandTests {
         output.ShouldNotContain(fixture.Root);
     }
 
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task MigrationRetainsOrdinarySourceWhenLinkedAliasSharesItsCanonicalTarget(bool linkFirst, bool apply)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string source = fixture.WriteSource("Acme.App", "Source.cs", "services.AddFrontComposerDebugOverlay();");
+        string link = Path.Combine(Path.GetDirectoryName(project)!, "Linked.cs");
+        FileSystemInfo linkInfo = File.CreateSymbolicLink(link, source);
+        string? originalLinkTarget = linkInfo.LinkTarget;
+        string first = linkFirst ? "Linked.cs" : "Source.cs";
+        string second = linkFirst ? "Source.cs" : "Linked.cs";
+        File.WriteAllText(project, $$"""
+            <Project><ItemGroup>
+              <Compile Include="{{first}}" Link="First.cs" />
+              <Compile Include="{{second}}" Link="Second.cs" />
+            </ItemGroup></Project>
+            """);
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, [apply ? "--apply" : "--dry-run", "--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error + output);
+        error.ShouldBeEmpty();
+        using var document = JsonDocument.Parse(output);
+        document.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("frontcomposer.cli.migrate.v1");
+        document.RootElement.GetProperty("applied").GetBoolean().ShouldBe(apply);
+        document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
+        document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(0);
+        document.RootElement.GetProperty("summary").GetProperty("failed").GetInt32().ShouldBe(0);
+        document.RootElement.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "safe-fix").GetProperty("path").GetString().ShouldBe("Source.cs");
+        File.ReadAllText(source).ShouldBe(apply ? "services.AddFrontComposerDevMode();" : "services.AddFrontComposerDebugOverlay();");
+        linkInfo.Refresh();
+        linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
+        output.ShouldNotContain(fixture.Root);
+    }
+
+    [Theory]
+    [InlineData("project-root")]
+    [InlineData("workspace-ancestor")]
+    [InlineData("nested-workspace-ancestor")]
+    public async Task MigrationApplyRefusesChangedResolvedProjectRootOrWorkspaceAncestor(string scenario)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteSource("Acme.App", "A.cs", "services.AddFrontComposerDebugOverlay();");
+        _ = fixture.WriteSource("Acme.App", "Z.cs", "services.AddFrontComposerDebugOverlay();");
+        string workspace = Path.Combine(fixture.Root, "Workspace");
+        string relativeProject = scenario == "nested-workspace-ancestor" ? "Nested/Acme.App" : "Acme.App";
+        string originalDirectory = Path.Combine(workspace, relativeProject);
+        _ = Directory.CreateDirectory(Path.GetDirectoryName(originalDirectory)!);
+        Directory.Move(Path.GetDirectoryName(project)!, originalDirectory);
+        string link = scenario == "project-root" ? originalDirectory : Path.Combine(fixture.Root, "LinkedWorkspace");
+        if (scenario != "project-root")
+        {
+            _ = CreateDirectoryMigrationLink(link, workspace);
+        }
+        string selectedProject = Path.Combine(scenario == "project-root" ? originalDirectory : Path.Combine(link, relativeProject), "Acme.App.csproj");
+        MigrationPlan plan = await MigrationPlanner.PlanAsync(selectedProject, MigrationCatalog.Resolve("9.1.0", "9.2.0")!, CancellationToken.None);
+        plan.FileEdits.Count.ShouldBe(2);
+        string[] sourceNames = ["A.cs", "Z.cs"];
+        plan.FileEdits.Select(edit => edit.CanonicalPath).ShouldBe(sourceNames.Select(name => Path.Combine(originalDirectory, name)));
+        string replacementWorkspace = Path.Combine(fixture.Root, "Replacement");
+        string replacementDirectory = Path.Combine(replacementWorkspace, relativeProject);
+        _ = Directory.CreateDirectory(replacementDirectory);
+        byte[] originalBytes = File.ReadAllBytes(Path.Combine(originalDirectory, "Z.cs"));
+        foreach (string name in sourceNames)
+        {
+            File.WriteAllBytes(Path.Combine(replacementDirectory, name), originalBytes);
+        }
+        if (scenario == "project-root")
+        {
+            string savedDirectory = Path.Combine(fixture.Root, "SavedProject");
+            Directory.Move(originalDirectory, savedDirectory);
+            originalDirectory = savedDirectory;
+        }
+        else
+        {
+            Directory.Delete(link);
+        }
+        FileSystemInfo linkInfo = CreateDirectoryMigrationLink(link, scenario == "project-root" ? replacementDirectory : replacementWorkspace);
+        string? originalLinkTarget = linkInfo.LinkTarget;
+
+        MigrationResult result = await MigrationApplier.ApplyAsync(plan, CancellationToken.None);
+
+        result.Applied.ShouldBeFalse();
+        result.Summary.Changed.ShouldBe(0);
+        result.Summary.Failed.ShouldBe(2);
+        result.Entries.ShouldAllBe(entry => entry.Kind == "failed" && entry.What == "Resolved write target changed or became unsafe between planning and apply.");
+        foreach (string name in sourceNames)
+        {
+            File.ReadAllBytes(Path.Combine(originalDirectory, name)).ShouldBe(originalBytes);
+            File.ReadAllBytes(Path.Combine(replacementDirectory, name)).ShouldBe(originalBytes);
+        }
+        linkInfo.Refresh();
+        linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
+    }
+
     [Theory]
     [InlineData(false, false, false, false)]
     [InlineData(false, false, true, false)]
@@ -1408,12 +1536,80 @@ public sealed class MigrationCommandTests {
         JsonElement skipped = document.RootElement.GetProperty("entries").EnumerateArray()
             .Single(entry => entry.GetProperty("kind").GetString() == "skipped");
         skipped.GetProperty("expected").GetString()!.ShouldContain("file symlink, and linked directory or junction paths below the project");
+        skipped.GetProperty("expected").GetString()!.ShouldContain("without file links or linked directories below the project root");
         skipped.GetProperty("got").GetString().ShouldBe("Excluded, outside-root, or linked path.");
         skipped.GetProperty("fix").GetString()!.ShouldContain("replace a link with a regular file or directory");
         (await File.ReadAllBytesAsync(target, CancellationToken.None)).ShouldBe(targetBytes);
         linkInfo.Refresh();
         linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
         File.ReadAllText(ordinary).ShouldContain(apply ? "AddFrontComposerDevMode" : "AddFrontComposerDebugOverlay");
+        output.ShouldNotContain(fixture.Root);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task MigrationAllowsProjectReachedThroughLinkedWorkspaceAncestors(bool nestedProject, bool apply)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string source = fixture.WriteSource("Acme.App", "Source.cs", "services.AddFrontComposerDebugOverlay();");
+        string workspace = Path.Combine(fixture.Root, "Workspace");
+        _ = Directory.CreateDirectory(workspace);
+        string projectDirectory = Path.Combine(workspace, nestedProject ? "Nested/Acme.App" : "Acme.App");
+        _ = Directory.CreateDirectory(Path.GetDirectoryName(projectDirectory)!);
+        Directory.Move(Path.GetDirectoryName(project)!, projectDirectory);
+        source = Path.Combine(projectDirectory, Path.GetFileName(source));
+        string link = Path.Combine(fixture.Root, "LinkedWorkspace");
+        FileSystemInfo linkInfo = CreateDirectoryMigrationLink(link, workspace);
+        string? originalLinkTarget = linkInfo.LinkTarget;
+        string selectedProject = Path.Combine(link, nestedProject ? "Nested/Acme.App" : "Acme.App", "Acme.App.csproj");
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(selectedProject, [apply ? "--apply" : "--dry-run", "--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error + output);
+        error.ShouldBeEmpty();
+        using var document = JsonDocument.Parse(output);
+        document.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("frontcomposer.cli.migrate.v1");
+        document.RootElement.GetProperty("applied").GetBoolean().ShouldBe(apply);
+        document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
+        document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(0);
+        document.RootElement.GetProperty("summary").GetProperty("failed").GetInt32().ShouldBe(0);
+        File.ReadAllText(source).ShouldBe(apply ? "services.AddFrontComposerDevMode();" : "services.AddFrontComposerDebugOverlay();");
+        linkInfo.Refresh();
+        linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
+        output.ShouldNotContain(fixture.Root);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MigrationAllowsProjectWhoseDirectoryIsALink(bool apply)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string source = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
+        string realDirectory = Path.Combine(fixture.Root, "RealApp");
+        Directory.Move(Path.GetDirectoryName(project)!, realDirectory);
+        source = Path.Combine(realDirectory, "Program.cs");
+        string link = Path.Combine(fixture.Root, "LinkedApp");
+        FileSystemInfo linkInfo = CreateDirectoryMigrationLink(link, realDirectory);
+        string? originalLinkTarget = linkInfo.LinkTarget;
+        string linkedProject = Path.Combine(link, "Acme.App.csproj");
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(linkedProject, [apply ? "--apply" : "--dry-run", "--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error + output);
+        error.ShouldBeEmpty();
+        using var document = JsonDocument.Parse(output);
+        document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
+        document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(0);
+        document.RootElement.GetProperty("summary").GetProperty("failed").GetInt32().ShouldBe(0);
+        File.ReadAllText(source).ShouldBe(apply ? "services.AddFrontComposerDevMode();" : "services.AddFrontComposerDebugOverlay();");
+        linkInfo.Refresh();
+        linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
         output.ShouldNotContain(fixture.Root);
     }
 
