@@ -73,7 +73,7 @@ diagnostic entries, may throw outside handled failures without a structured repo
 documented exit-code guarantees.
 
 Generated output, `bin`, `obj`, `.git`, package caches, submodules and other nested repositories, paths outside the project,
-file symlinks, and linked ancestor directories below the project directory (including junctions) are ineligible. Paths below the selected project directory are ineligible. Explicit `Compile` Link metadata does not authorize an outside-root or
+file symlinks, and linked ancestor directories below the project directory (including junctions) are ineligible. Paths below the selected project directory are ineligible when they are generated output, nested repositories, file symlinks, or linked directories. Explicit `Compile` Link metadata does not authorize an outside-root or
 linked write. The planner refuses
 unsafe documents before source reads and rechecks safety at apply time. Complex MSBuild globs
 and imported Compile items are not fully evaluated. Source reads support UTF-8 (with or without

@@ -29,8 +29,8 @@ lifecycle bridges, last-used subscribers, Fluxor features, actions, reducers, an
 Text and JSON share ordinal file ordering by related type, family name, then path. Diagnostics
 are ordered ordinally by ID, then path. Counts reflect the filtered report. `--type` accepts an
 exact metadata name or an unambiguous simple name; unknown or ambiguous names fail with code 2.
-Global MCP/template manifests and diagnostics with null related type, such as `HFCM0002`, remain
-in type-filtered output. Global MCP/template manifests and the `HFCM0002` sentinel remain in type-filtered output.
+Global MCP/template manifests and the `HFCM0002` sentinel remain in type-filtered output.
+Diagnostics with null related type, such as `HFCM0002`, remain in type-filtered output.
 Ordinary sidecar diagnostics without `relatedType` receive an empty string and are excluded by `--type`.
 Ordinary sidecar diagnostics without a related type have an empty type string and are removed by `--type`.
 `--severity` filters diagnostics by minimum severity: `hidden` keeps all, `info` (or `information`)
@@ -46,7 +46,7 @@ a structured report or the documented exit-code guarantees. Unsafe sidecar paths
 project and sidecar paths retain their relative/redacted behavior.
 
 `frontcomposer migrate` requires explicit `--from` and `--to` versions. Use the
-[classified index](../migrations/index.md) to find executable edges and select CLI-supported edges or manual-only upgrades.
+[classified index](../migrations/index.md) to find and select executable CLI-supported edges and manual-only upgrades.
 Dry-run is the default (`--dry-run` makes it explicit) and writes no source. `--apply` atomically
 replaces each eligible file through a same-directory temporary file after path/hash revalidation.
 Earlier successful writes remain if a later file fails or cancellation occurs; there is no whole-run
@@ -69,7 +69,7 @@ Exit codes:
 | 4 | Filesystem, cancellation, workspace setup, or apply/write failure. |
 
 Report path fields default to project-relative forward slashes; unsafe report paths are redacted.
-Handled CLI failures print messages without stack traces. Most are sanitized and bounded, but
+Handled CLI failures print messages without stack traces. Handled filesystem failures print exception messages with escaped control characters; those messages can include absolute filesystem paths. Most are sanitized and bounded, but
 filesystem exception messages may still contain private absolute paths, and unsupported project
 extensions read from a `.sln` file are echoed without escaping or a length budget. Handled filesystem failures print exception messages with escaped control characters; those messages can
 include absolute filesystem paths. Single-line fields escape C0 controls

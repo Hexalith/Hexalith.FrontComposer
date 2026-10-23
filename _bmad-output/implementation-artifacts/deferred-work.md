@@ -10713,7 +10713,7 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
   evidence: BH-4, preserved external Story 15.3: ProjectDocumentLoader canonical GroupBy keeps First before WriteSafetyPolicy rejects links. An A.cs symlink followed by target Z.cs can report successful apply with zero edits and leave the obsolete identifier. Cover both Compile orders in the owning CLI follow-up.
   status: done
   resolved: 2026-10-22
-  resolution: Fixed by Story 15.3 resumed review R2-BH-1/EC-4 in 05dec310: canonical deduplication prefers the ordinary candidate and keeps linked-only candidates for refusal. `MigrationCommandTests.MigrationPrefersOrdinaryTargetOverItsSymlinkAlias` pins both Compile orders in dry-run and apply with exact target bytes. Recorded by the Story 15.3 round-4 review (R4-A7).
+  resolution: Ordinary targets stay eligible when a symlink alias is also included. Documents are grouped by lexical full path, so the alias is skipped and the ordinary file is the safe fix in either Compile order. `MigrationCommandTests.MigrationPrefersOrdinaryTargetOverItsSymlinkAlias` and `MigrationRetainsOrdinarySourceWhenLinkedAliasSharesItsCanonicalTarget` pin that behavior. Recorded by the Story 15.3 round-4 review (R4-A7).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
   summary: Avoid source-identifier collisions in migration catalog literal tokenization.

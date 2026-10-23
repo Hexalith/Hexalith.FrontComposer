@@ -1140,10 +1140,8 @@ public sealed class MigrationCommandTests {
                 break;
             case "unsupported-catalog-syntax":
                 string explicitEdge = "new MigrationEdge(\"4.5.0\", \"4.6.0\", \"docs/migrations/4.5-to-4.6.md\"),";
-                string unsupportedCatalog = catalog.Replace(
-                    "new(\"9.1.0\"",
-                    explicitEdge + "\n        new(\"9.1.0\"",
-                    StringComparison.Ordinal);
+                string unsupportedCatalog = catalog.Replace("new(\"9.1.0\"",
+                    explicitEdge + "\n        new(\"9.1.0\"", StringComparison.Ordinal);
                 unsupportedCatalog.ShouldContain(explicitEdge);
                 File.WriteAllText(catalogPath, unsupportedCatalog);
                 break;
@@ -1276,14 +1274,56 @@ public sealed class MigrationCommandTests {
         report.RootElement.GetProperty("applied").GetBoolean().ShouldBe(apply);
         report.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
         report.RootElement.GetProperty("summary").GetProperty("failed").GetInt32().ShouldBe(0);
-        report.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(0);
+        report.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(1);
         report.RootElement.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "safe-fix")
             .GetProperty("path").GetString().ShouldBe("Z.cs");
+        report.RootElement.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "skipped")
+            .GetProperty("path").GetString().ShouldBe("A.cs");
         byte[] expected = Encoding.UTF8.GetBytes(apply ? original.Replace("AddFrontComposerDebugOverlay", "AddFrontComposerDevMode", StringComparison.Ordinal) : original);
         (await File.ReadAllBytesAsync(target, CancellationToken.None)).ShouldBe(expected);
         linkInfo.Refresh();
         linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
         (linkInfo.Attributes & FileAttributes.ReparsePoint).ShouldBe(FileAttributes.ReparsePoint);
+        output.ShouldNotContain(fixture.Root);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task MigrationRetainsOrdinarySourceWhenLinkedAliasSharesItsCanonicalTarget(bool linkFirst, bool apply)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string source = fixture.WriteSource("Acme.App", "Source.cs", "services.AddFrontComposerDebugOverlay();");
+        string link = Path.Combine(Path.GetDirectoryName(project)!, "Linked.cs");
+        FileSystemInfo linkInfo = File.CreateSymbolicLink(link, source);
+        string? originalLinkTarget = linkInfo.LinkTarget;
+        string first = linkFirst ? "Linked.cs" : "Source.cs";
+        string second = linkFirst ? "Source.cs" : "Linked.cs";
+        File.WriteAllText(project, $$"""
+            <Project><ItemGroup>
+              <Compile Include="{{first}}" Link="First.cs" />
+              <Compile Include="{{second}}" Link="Second.cs" />
+            </ItemGroup></Project>
+            """);
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, [apply ? "--apply" : "--dry-run", "--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error + output);
+        error.ShouldBeEmpty();
+        using var document = JsonDocument.Parse(output);
+        document.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("frontcomposer.cli.migrate.v1");
+        document.RootElement.GetProperty("applied").GetBoolean().ShouldBe(apply);
+        document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
+        document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(1);
+        document.RootElement.GetProperty("summary").GetProperty("failed").GetInt32().ShouldBe(0);
+        document.RootElement.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "skipped").GetProperty("path").GetString().ShouldBe("Linked.cs");
+        document.RootElement.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "safe-fix").GetProperty("path").GetString().ShouldBe("Source.cs");
+        File.ReadAllText(source).ShouldBe(apply ? "services.AddFrontComposerDevMode();" : "services.AddFrontComposerDebugOverlay();");
+        linkInfo.Refresh();
+        linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
         output.ShouldNotContain(fixture.Root);
     }
 
@@ -1379,46 +1419,6 @@ public sealed class MigrationCommandTests {
         {
             File.ReadAllText(source).ShouldContain("AddFrontComposerDevMode");
         }
-        output.ShouldNotContain(fixture.Root);
-    }
-
-
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public async Task MigrationRetainsOrdinarySourceWhenLinkedAliasSharesItsCanonicalTarget(bool linkFirst, bool apply)
-    {
-        using var fixture = CliFixture.Create();
-        string project = fixture.WriteProject("Acme.App", "net10.0");
-        string source = fixture.WriteSource("Acme.App", "Source.cs", "services.AddFrontComposerDebugOverlay();");
-        string link = Path.Combine(Path.GetDirectoryName(project)!, "Linked.cs");
-        FileSystemInfo linkInfo = File.CreateSymbolicLink(link, source);
-        string? originalLinkTarget = linkInfo.LinkTarget;
-        string first = linkFirst ? "Linked.cs" : "Source.cs";
-        string second = linkFirst ? "Source.cs" : "Linked.cs";
-        File.WriteAllText(project, $$"""
-            <Project><ItemGroup>
-              <Compile Include="{{first}}" Link="First.cs" />
-              <Compile Include="{{second}}" Link="Second.cs" />
-            </ItemGroup></Project>
-            """);
-
-        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, [apply ? "--apply" : "--dry-run", "--format", "json"]);
-
-        exitCode.ShouldBe(ExitCodes.Success, error + output);
-        error.ShouldBeEmpty();
-        using var document = JsonDocument.Parse(output);
-        document.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("frontcomposer.cli.migrate.v1");
-        document.RootElement.GetProperty("applied").GetBoolean().ShouldBe(apply);
-        document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
-        document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(0);
-        document.RootElement.GetProperty("summary").GetProperty("failed").GetInt32().ShouldBe(0);
-        document.RootElement.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "safe-fix").GetProperty("path").GetString().ShouldBe("Source.cs");
-        File.ReadAllText(source).ShouldBe(apply ? "services.AddFrontComposerDevMode();" : "services.AddFrontComposerDebugOverlay();");
-        linkInfo.Refresh();
-        linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
         output.ShouldNotContain(fixture.Root);
     }
 
