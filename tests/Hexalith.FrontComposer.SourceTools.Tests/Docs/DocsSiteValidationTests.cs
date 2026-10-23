@@ -135,6 +135,7 @@ public sealed partial class DocsSiteValidationTests {
     {
         string migrations = Path.Combine(ProjectRoot(), "docs", "migrations");
         string index = File.ReadAllText(Path.Combine(migrations, "index.md"));
+        string toc = File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "toc.yml"));
         foreach (string guide in Directory.EnumerateFiles(migrations, "*.md").Where(path => Path.GetFileName(path) != "index.md"))
         {
             Dictionary<string, string> front = ReadFrontMatter(guide);
@@ -143,6 +144,7 @@ public sealed partial class DocsSiteValidationTests {
             string[] linkedRows = index.Split('\n').Where(line => line.Contains($"]({Path.GetFileName(guide)})", StringComparison.Ordinal)).ToArray();
             linkedRows.Length.ShouldBe(1, $"{Relative(guide)} needs one classified index link.");
             linkedRows[0].ShouldStartWith(row);
+            toc.ShouldContain($"href: migrations/{Path.GetFileName(guide)}");
         }
 
         ReadFrontMatter(Path.Combine(migrations, "3.1-to-4.0.md"))["fromVersion"].ShouldBe("3.1.1");
@@ -182,6 +184,8 @@ public sealed partial class DocsSiteValidationTests {
         howTo.ShouldContain("`applied=false` on emitted reports");
         howTo.ShouldContain("Migration sidecars support arrays of diagnostic objects");
         howTo.ShouldContain("below the selected project directory are ineligible");
+        howTo.ShouldContain("linked ancestor directories below the project directory");
+        guide.ShouldContain("may make `migrate` throw outside handled failures");
         howTo.ShouldContain("before any report is emitted");
         howTo.ShouldContain("absent or partial report");
         howTo.ShouldContain("unsupported valid JSON shapes");
@@ -214,6 +218,12 @@ public sealed partial class DocsSiteValidationTests {
         reference.ShouldContain("Migration sidecars also require the documented diagnostic-object shapes");
         reference.ShouldContain("Ordinary sidecar diagnostics without `relatedType` receive an empty string and are excluded by `--type`");
         reference.ShouldContain("linked ancestor directories/junctions below the selected project directory");
+        reference.ShouldContain("Handled filesystem failures print exception messages with escaped control characters");
+        reference.ShouldContain("those messages can include absolute filesystem paths");
+        reference.ShouldContain("Migration sidecars support arrays of diagnostic objects");
+        reference.ShouldContain("Global MCP/template manifests and the `HFCM0002` sentinel remain in type-filtered output");
+        reference.ShouldContain("Ordinary sidecar diagnostics without a related type have an empty type string and are removed by `--type`");
+        reference.ShouldContain("linked ancestor directories/junctions below the project directory");
         reference.ShouldNotContain("The only executable edge");
         reference.ShouldContain("`applied=false` on emitted reports");
         reference.ShouldContain("before any report is emitted");

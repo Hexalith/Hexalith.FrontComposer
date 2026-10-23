@@ -67,16 +67,13 @@ This is per-file atomicity: earlier successful writes remain after a later failu
 there is no whole-run rollback. Handled write failures return code 4 and set `applied=false` on
 emitted reports. Cancellation can return code 4 before any report is emitted; interrupted output
 may leave an absent or partial report. Do not require an `applied` field when no complete report
-was emitted.
-
-Migration sidecars support arrays of diagnostic objects or objects containing a `diagnostics`
-array of objects. Unsupported valid JSON shapes, such as scalar roots or non-object diagnostic
-entries, may throw outside handled failures without a structured report or the documented
-exit-code guarantees.
+was emitted. Migration sidecars support arrays of diagnostic objects or objects containing a
+`diagnostics` array of objects. Unsupported valid JSON shapes, such as scalar roots or non-object
+diagnostic entries, may throw outside handled failures without a structured report or the
+documented exit-code guarantees.
 
 Generated output, `bin`, `obj`, `.git`, package caches, submodules and other nested repositories, paths outside the project,
-file symlinks, and linked ancestor directories (including junctions) below the selected project
-directory are ineligible. Explicit `Compile` Link metadata does not authorize an outside-root or
+file symlinks, and linked ancestor directories below the project directory (including junctions) are ineligible. Paths below the selected project directory are ineligible when they are generated output, nested repositories, file symlinks, or linked directories. Explicit `Compile` Link metadata does not authorize an outside-root or
 linked write. The planner refuses
 unsafe documents before source reads and rechecks safety at apply time. Complex MSBuild globs
 and imported Compile items are not fully evaluated. Source reads support UTF-8 (with or without

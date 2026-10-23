@@ -10744,3 +10744,13 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 - source_spec: `spec-15-3-align-migration-and-classification-guidance.md`
   summary: Migrate projects whose own directory is a symlink or junction instead of silently dropping every document.
   evidence: Story 15.3 round-4 review R4-V3/E2/A1. Three independent Release-CLI probes: `LinkedApp/Acme.App.csproj` (a directory link to the real project) returned exit 0 with changed 0, skipped 0, unchanged 1, while the real path and a linked strict ancestor returned changed 1. `ProjectDocumentLoader.EnumerateGlob` (src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:70) compares `PathUtilities.Canonical(projectDirectory)`, which resolves the directory's own link, with `Canonical(file)`, which resolves only a final-segment link, so every document looks outside the project and is dropped without an entry. The check is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. Compare both sides in one path space and regress dry-run/apply through a linked project directory alongside CR-1's linked-ancestor case.
+
+## Deferred from: Story 15.3 resumed review (2026-10-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
+  summary: Bound default-glob source discovery around directory links and cycles before migration safety filtering.
+  evidence: R2-BH-3 reproduced Loop pointing to its project directory yielding 40 redundant skipped entries because ProjectDocumentLoader.Expand recursively traverses linked directories before WriteSafetyPolicy runs. The recursive enumeration is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. Add deterministic default-glob/cycle coverage and avoid traversing refused linked directories without changing ordinary source discovery.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-3-align-migration-and-classification-guidance.md`
+  summary: Add the Shell extension namespace import to the 9.1-to-9.2 migration New Code snippet.
+  evidence: R2-BH-9 verified that AddFrontComposerDevMode is declared in Hexalith.FrontComposer.Shell.Extensions while the full New Code snippet imports only Microsoft.Extensions.DependencyInjection. That snippet is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc; include the missing using and validate the complete example under its documented host prerequisites.

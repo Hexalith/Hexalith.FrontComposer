@@ -187,7 +187,7 @@ function Get-MigrationCatalogEdges([string]$CatalogPath, [System.Collections.Gen
     foreach ($token in [regex]::Matches($source, '(?s)/\*.*?\*/|//[^\r\n]*|(?<raw>"{3,})(?!").*?\k<raw>(?!")|@"(?:""|[^"])*"|"(?:\\.|[^"\\])*"|''(?:\\.|[^''\\\r\n])*''|[A-Za-z_]\w*|\S')) {
         $value = $token.Value
         if ($value.StartsWith('//') -or $value.StartsWith('/*')) { continue }
-        if ($value.StartsWith('"') -or $value.StartsWith('@"')) {
+        if ($value.StartsWith('"') -or $value.StartsWith('@"') -or $value.StartsWith("'")) {
             # The colon cannot be part of a source identifier; lexed punctuation is space-separated.
             $tokens.Add('__literal:' + $literals.Count)
             $literals.Add($value)
@@ -249,8 +249,13 @@ function Assert-MigrationParity([string]$MigrationsRoot, [string]$CatalogPath, [
         $path = 'docs/migrations/' + $guide.Name
         $front = (Get-FrontMatter $guide.FullName).Metadata
         $mode = [string]$front['migrationMode']
-        if ($mode -cnotin @('cli-supported', 'manual-only')) {
-            Add-Failure $Failures "$path migrationMode must be cli-supported or manual-only."
+        if ($front.Keys -cnotcontains 'migrationMode' -or $mode -cnotin @('cli-supported', 'manual-only')) {
+            Add-Failure $Failures "$path migrationMode must be cli-supported or manual-only using the canonical migrationMode key."
+        }
+        foreach ($versionField in @('fromVersion', 'toVersion')) {
+            if ([string]$front[$versionField] -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$') {
+                Add-Failure $Failures "$path $versionField must be an exact semantic version."
+            }
         }
         $guides[$path] = [pscustomobject]@{ From = [string]$front['fromVersion']; To = [string]$front['toVersion']; Mode = $mode }
         $matches = @($catalog | Where-Object { $_.From -ceq $front['fromVersion'] -and $_.To -ceq $front['toVersion'] -and $_.Path -ceq $path })
