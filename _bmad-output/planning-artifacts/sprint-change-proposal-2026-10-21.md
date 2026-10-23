@@ -1,7 +1,9 @@
 # Approved Course Correction: Bounded Browser Evidence Storage
 
+> **Superseded 2026-10-23.** The owner replaced this storage amendment with the story-file-only evidence policy in PRD §7: proof is the repository's tests plus CI, recorded in the story or spec as commands, pass/fail counts, commit SHA and CI run link. All committed evidence and its machinery were removed by [`spec-evidence-storage-simplification.md`](../implementation-artifacts/spec-evidence-storage-simplification.md); Stories 15.6 and 15.7 are closed as superseded. The text below is history only and authorizes no work.
+
 Date: 2026-10-21
-Status: Approved by Administrator in the course-correction conversation, with the reply “approve”
+Status: Superseded 2026-10-23 (originally approved by Administrator in the course-correction conversation, with the reply “approve”)
 Scope: Moderate; FrontComposer planning application and PO/developer handoff
 
 ## Approval and Source

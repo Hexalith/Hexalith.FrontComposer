@@ -11,7 +11,8 @@ name: Quality
 # use the path form and the exact module string is pinned by
 # CiGovernanceTests.StoryArtifactValidatorGate_IsBlockingAndExact), docs validation (Gate 2d), the trait-filtered default
 # unit/bUnit lane plus advisory palette/perf/quarantine lanes (Gate 3), quarantine +
-# CI-duration telemetry, and the Playwright a11y/visual lane. Those gates live here and
+# CI-duration telemetry, the Playwright a11y/visual lane, and the committed-files guard
+# (no evidence/ folder and no file over 1 MiB may be tracked). Those gates live here and
 # THIS WORKFLOW IS CI-AUTHORITATIVE for them. Every `dotnet test` step uses
 # Microsoft.Testing.Platform's native xUnit filters and reporter and keeps
 # `DiffEngine_Disabled: true` (belt-and-suspenders alongside the repo-level
@@ -21,27 +22,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      frontcomposer_revision:
-        description: Exact pushed FrontComposer preparation revision
-        required: true
-        type: string
-      eventstore_source_revision:
-        description: Exact EventStore source gitlink
-        required: true
-        type: string
-      eventstore_package_version:
-        description: Exact EventStore package version
-        required: true
-        type: string
-      builds_catalog_revision:
-        description: Exact Builds catalog gitlink
-        required: true
-        type: string
 
 concurrency:
-  group: quality-${{ github.event_name == 'workflow_dispatch' && format('dispatch-{0}', inputs.frontcomposer_revision) || github.ref }}
+  group: quality-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -176,9 +159,7 @@ jobs:
         run: python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py
 
       - name: 'Gate 2b: Story artifact validator tests'
-        run: |
-          python3 -m unittest eng.tests.test_validate_story_artifacts
-          python3 -m unittest discover -s tests/eng -p test_replay_story_13_6.py
+        run: python3 -m unittest eng.tests.test_validate_story_artifacts
 
       - name: 'Gate 2b: Adopter proof runner tests'
         run: python3 -m unittest tests/eng/test_adopter_proof.py
@@ -206,77 +187,17 @@ jobs:
           DiffEngine_Disabled: true
         run: dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter-trait "Category=Contract" --results-directory ./TestResults/contract --report-xunit-trx --report-xunit-trx-filename test-results-contract.trx
 
-      - name: 'Gate 2c: Validate EventStore successor target'
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        shell: bash
-        env:
-          TARGET_FRONTCOMPOSER_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.frontcomposer_revision || github.sha }}
-          TARGET_EVENTSTORE_SOURCE_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || 'fcf78d6cafb6c0c9f52dc350a9a09aff54ded288' }}
-          TARGET_EVENTSTORE_PACKAGE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '3.125.1' }}
-          TARGET_BUILDS_CATALOG_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '5c04dab754e269f52306b9582cacd7cf1dc1540f' }}
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REF" = "refs/heads/main"
-          python3 eng/eventstore_runtime_evidence.py \
-            --prepare-runtime-successor \
-            --active-identity _bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json \
-            --active-evidence-root _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3 \
-            --history-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5 \
-            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
-            --repository-root . \
-            --successor-frontcomposer-revision "$TARGET_FRONTCOMPOSER_REVISION" \
-            --successor-eventstore-source-revision "$TARGET_EVENTSTORE_SOURCE_REVISION" \
-            --successor-eventstore-package-version "$TARGET_EVENTSTORE_PACKAGE_VERSION" \
-            --successor-builds-catalog-revision "$TARGET_BUILDS_CATALOG_REVISION"
-
+      # EventStore owns provider execution over real loopback TCP. The pinned EventStore tests
+      # resolve the accepted Pact corpus through the EventStore submodule's FrontComposer gitlink:
+      # never initialize that nested checkout; stage the current, already-gated JSON inputs into
+      # its empty worktree. The provider application exits nonzero on any failed interaction,
+      # unsafe host, or incomplete cleanup; its report is a CI artifact, never a committed file.
       - name: 'Gate 2c: Live EventStore provider verification'
         shell: bash
         run: |
           set -euo pipefail
-          runtime_manifest="$RUNNER_TEMP/frontcomposer-runtime-inputs.json"
-          # The same sealed manifest that gates the provider lane is handed to the final
-          # validator, so the AppHost packet's recorded capture boundary is bound to it
-          # instead of being echoed back from the artifact under validation.
-          echo "FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST=$runtime_manifest" >> "$GITHUB_ENV"
-          provider_ledger="$RUNNER_TEMP/frontcomposer-provider-packages.json"
-          provider_packages="$(mktemp -d "$RUNNER_TEMP/frontcomposer-provider-packages.XXXXXX")"
-          test ! -L "$provider_packages"
-          test -z "$(find "$provider_packages" -mindepth 1 -maxdepth 1 -print -quit)"
-          echo "FRONTCOMPOSER_PROVIDER_PACKAGES=$provider_packages" >> "$GITHUB_ENV"
-          export NUGET_PACKAGES="$provider_packages"
-          python3 eng/eventstore_runtime_evidence.py \
-            --write-runtime-input-manifest \
-            --runtime-input-manifest-output "$runtime_manifest" \
-            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact
-          # The live evidence root must contain exactly this invocation's five files, so every
-          # stale artifact from a previous run is removed before the lane rebuilds them.
-          rm -f "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json" \
-            "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/apphost-smoke.json" \
-            "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-package-ledger.json" \
-            "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/apphost-package-ledger.json"
-          dotnet clean references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release -m:1 -p:NuGetAudit=false
-          dotnet restore references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --force --force-evaluate --no-cache --disable-parallel -p:Configuration=Release -p:NuGetAudit=false
-          python3 eng/eventstore_runtime_evidence.py \
-            --write-package-ledger \
-            --prune-unselected-packages \
-            --package-ledger-output "$provider_ledger" \
-            --package-root "$provider_packages" \
-            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/obj/project.assets.json \
-            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Client/obj/project.assets.json \
-            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/obj/project.assets.json \
-            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/obj/project.assets.json \
-            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/obj/project.assets.json \
-            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Server/obj/project.assets.json \
-            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/obj/project.assets.json \
-            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/obj/project.assets.json \
-            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/obj/project.assets.json \
-            --package-assets references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/obj/project.assets.json \
-            --package-assets references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json \
-            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact
-          dotnet build references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false
-          # The pinned EventStore tests resolve their accepted Pact corpus through the
-          # repository's FrontComposer gitlink. Do not initialize that historical nested
-          # checkout: stage the six current, already-gated JSON inputs into its empty worktree.
+          dotnet restore references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj -p:Configuration=Release -p:NuGetAudit=false
+          dotnet build references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release --no-restore -m:1 -p:NuGetAudit=false
           provider_test_pact_dir="$GITHUB_WORKSPACE/references/Hexalith.EventStore/references/Hexalith.FrontComposer/tests/Hexalith.FrontComposer.Shell.Tests/Pact"
           mkdir -p "$provider_test_pact_dir"
           find "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
@@ -286,9 +207,10 @@ jobs:
             cd references/Hexalith.EventStore &&
             dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
           )
-          # The tool derives its own repository root (source sha, Builds sibling gitlink) by
-          # walking up from the process CWD looking for Hexalith.EventStore.slnx, so it must be
-          # invoked from inside the EventStore submodule; pact/manifest/report paths stay absolute.
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/contracts"
+          rm -f "$GITHUB_WORKSPACE/artifacts/contracts/provider-verification.json"
+          # The tool derives its own repository root by walking up from the process CWD looking for
+          # Hexalith.EventStore.slnx, so it runs inside the EventStore submodule with absolute paths.
           (
             cd references/Hexalith.EventStore &&
             dotnet "$GITHUB_WORKSPACE/references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll" \
@@ -296,179 +218,13 @@ jobs:
               --pact-directory "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
               --manifest "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json" \
               --provider-state-catalog "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json" \
-              --report-output "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
+              --report-output "$GITHUB_WORKSPACE/artifacts/contracts/provider-verification.json"
           )
-          test -s "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
-          python3 eng/eventstore_runtime_evidence.py \
-            --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
-            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
-            --runtime-input-manifest "$runtime_manifest" \
-            --package-ledger "$provider_ledger" \
-            --package-root "$provider_packages" \
-            --write-live-receipt
-          # AppHost restore uses the same source projects with a different isolated package
-          # root, so preserve the eleven just-validated provider assets graphs for the final
-          # provider recomputation after the AppHost authority has been checked in place.
-          provider_assets_snapshot="$RUNNER_TEMP/frontcomposer-provider-assets"
-          echo "FRONTCOMPOSER_PROVIDER_ASSETS_SNAPSHOT=$provider_assets_snapshot" >> "$GITHUB_ENV"
-          while IFS= read -r relative; do
-            install -D -m 0644 "$GITHUB_WORKSPACE/$relative" "$provider_assets_snapshot/$relative"
-          done <<'PROVIDER_ASSETS'
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Client/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Server/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/obj/project.assets.json
-          references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/obj/project.assets.json
-          references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json
-          PROVIDER_ASSETS
-          test "$(find "$provider_assets_snapshot" -type f -name project.assets.json | wc -l)" -eq 11
-
-      - name: Install Aspire CLI
-        run: |
-          ${{ env.ASPIRE_CLI_INSTALL }}
-          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
-
-      - name: Install Dapr CLI
-        uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
-        with:
-          version: '1.18.0'
-
-      - name: Initialize Dapr runtime
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          dapr init --runtime-version 1.18.2
-          dapr --version
-
-      - name: 'Gate 2c: Authenticated AppHost smoke'
-        shell: bash
-        run: |
-          set -euo pipefail
-          apphost_packages="$(mktemp -d "$RUNNER_TEMP/frontcomposer-apphost-packages.XXXXXX")"
-          test ! -L "$apphost_packages"
-          test -z "$(find "$apphost_packages" -mindepth 1 -maxdepth 1 -print -quit)"
-          echo "FRONTCOMPOSER_APPHOST_PACKAGES=$apphost_packages" >> "$GITHUB_ENV"
-          python3 eng/pact_provider_apphost_smoke.py \
-            --timeout-seconds 600 \
-            --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
-            --package-root "$apphost_packages" \
-            --runtime-diagnostics-output artifacts/contracts/apphost-runtime-diagnostics/runtime-state.json \
-            2>&1 | tee "$RUNNER_TEMP/frontcomposer-apphost-smoke.log"
-
-      - name: 'Gate 2c: Validate current live capture'
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Validate the AppHost package authority while its assets graphs are current. The
-          # provider report/receipt/ledger are still checked semantically in this invocation.
-          python3 eng/eventstore_runtime_evidence.py \
-            --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
-            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
-            --repository-root . \
-            --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
-            --apphost-package-root "$FRONTCOMPOSER_APPHOST_PACKAGES"
-          # Restore the exact provider assets bytes that were independently validated before
-          # AppHost restore, then recompute the provider package authority. The AppHost packet
-          # remains hash/semantics-validated in this second invocation.
-          test -d "$FRONTCOMPOSER_PROVIDER_ASSETS_SNAPSHOT"
-          while IFS= read -r relative; do
-            install -m 0644 "$FRONTCOMPOSER_PROVIDER_ASSETS_SNAPSHOT/$relative" "$GITHUB_WORKSPACE/$relative"
-          done <<'PROVIDER_ASSETS'
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Client/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Server/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/obj/project.assets.json
-          references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/obj/project.assets.json
-          references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/obj/project.assets.json
-          references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json
-          PROVIDER_ASSETS
-          python3 eng/eventstore_runtime_evidence.py \
-            --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
-            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
-            --repository-root . \
-            --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
-            --provider-package-root "$FRONTCOMPOSER_PROVIDER_PACKAGES"
-
-      - name: Stage EventStore successor capture candidate
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        shell: bash
-        run: |
-          set -euo pipefail
-          candidate_root="$RUNNER_TEMP/eventstore-runtime-successor-candidate"
-          python3 eng/eventstore_runtime_evidence.py \
-            --assemble-runtime-successor-candidate \
-            --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
-            --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
-            --successor-candidate-output "$candidate_root" \
-            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact
-
-      - name: Publish EventStore successor capture candidate
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: eventstore-runtime-successor-candidate-${{ github.run_attempt }}
-          retention-days: 14
-          if-no-files-found: error
-          path: ${{ runner.temp }}/eventstore-runtime-successor-candidate
+          test -s "$GITHUB_WORKSPACE/artifacts/contracts/provider-verification.json"
 
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh
-        run: |
-          # Historical v1, the dated prior packet, active v2 evidence, live compatibility,
-          # and role receipts are independent authorities. Evidence success never invents approval.
-          python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py tests/eng/test_pact_provider_apphost_smoke.py
-          # pwsh does not fail a step on a native non-zero exit, and the validator below resets
-          # $LASTEXITCODE, so the evidence suite must propagate its own failure explicitly.
-          # $LASTEXITCODE is $null until a native command sets it, and `exit $null` exits 0,
-          # so never re-use it as the exit code: a suite that could not launch must fail closed.
-          if (-not $? -or $LASTEXITCODE -ne 0) { exit 1 }
-          ./eng/validate-contract-artifacts.ps1 `
-            -RequireProviderVerification `
-            -PrepareRuntimeSuccessor `
-            -SuccessorFrontComposerRevision "${{ github.sha }}" `
-            -SuccessorEventStoreSourceRevision "fcf78d6cafb6c0c9f52dc350a9a09aff54ded288" `
-            -SuccessorEventStorePackageVersion "3.125.1" `
-            -SuccessorBuildsCatalogRevision "5c04dab754e269f52306b9582cacd7cf1dc1540f" `
-            -AppHostPackageRoot "" `
-            -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
-
-      - name: 'Gate 2c: Preserve runtime diagnostics'
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Actual receipts and inputs remain useful after an early runtime failure.
-          # Redaction-scan each bounded file before exporting it as diagnostics only;
-          # approved contract authority still requires every blocking validator below.
-          python3 eng/pact_provider_apphost_smoke.py \
-            --export-diagnostics artifacts/contracts/apphost-runtime-diagnostics \
-            --runtime-input-manifest "$RUNNER_TEMP/frontcomposer-runtime-inputs.json"
-
-      - name: 'Gate 2c: Clean package authority roots'
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          for package_root in "${FRONTCOMPOSER_PROVIDER_PACKAGES:-}" "${FRONTCOMPOSER_APPHOST_PACKAGES:-}"; do
-            if [ -n "$package_root" ] && [ -d "$package_root" ] && [ ! -L "$package_root" ]; then
-              find "$package_root" -mindepth 1 -delete
-              rmdir "$package_root"
-            fi
-          done
-          if [ -n "${FRONTCOMPOSER_PROVIDER_ASSETS_SNAPSHOT:-}" ] && [ -d "$FRONTCOMPOSER_PROVIDER_ASSETS_SNAPSHOT" ] && [ ! -L "$FRONTCOMPOSER_PROVIDER_ASSETS_SNAPSHOT" ]; then
-            find "$FRONTCOMPOSER_PROVIDER_ASSETS_SNAPSHOT" -mindepth 1 -delete
-            rmdir "$FRONTCOMPOSER_PROVIDER_ASSETS_SNAPSHOT"
-          fi
-          rm -f -- "$RUNNER_TEMP/frontcomposer-runtime-inputs.json" "$RUNNER_TEMP/frontcomposer-provider-packages.json"
+        run: ./eng/validate-contract-artifacts.ps1
 
       - name: 'Gate 2c: Fail on stale pact diff'
         shell: bash
@@ -489,8 +245,7 @@ jobs:
             cat artifacts/contracts/job-summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # Diagnostic-only copies are bounded and redaction-scanned before export. They
-      # preserve failed runtime receipts without representing validated contract authority.
+      # Keeps the provider report and validator output of a failed run for diagnosis.
       - name: Upload contract diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -502,7 +257,7 @@ jobs:
             artifacts/contracts/**
 
       - name: Upload contract artifacts
-        # Never upload a rejected evidence tree after redaction/integrity validation fails.
+        # Only a run whose pacts, provider verification and contract validation all passed.
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -511,17 +266,6 @@ jobs:
           if-no-files-found: error
           path: |
             artifacts/contracts/**
-            _bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json
-            _bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json
-            _bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json
-            _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md
-            _bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md
-            _bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md
-            _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/**/*
-            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/**/*
-            _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/**/*
-            _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/**/*
-            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/**/*
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md
 
@@ -836,7 +580,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         env:
-          # Step-scoped Git config lets checkout create the preserved evidence paths on Windows.
+          # Step-scoped Git config lets checkout create long repository paths on Windows.
           GIT_CONFIG_COUNT: 1
           GIT_CONFIG_KEY_0: core.longpaths
           GIT_CONFIG_VALUE_0: 'true'
@@ -1199,3 +943,23 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
           path: 'TestResults/debug-gated/**'
+
+  # Proof is the repository's tests plus CI: a story or spec records the commands run,
+  # pass/fail counts, commit SHA and CI run link, and every evidence/ folder is ignored local
+  # scratch. The Husky pre-commit/pre-merge-commit hooks run the same guard on staged files;
+  # this job checks every tracked file so a hook bypass cannot land evidence or a large file.
+  committed-files:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          # Root-declared references are gitlinks the guard skips; no submodule checkout is needed.
+          submodules: false
+
+      - name: Reject committed evidence and oversized files
+        run: bash eng/check-committed-files.sh
+
+      - name: Committed-files guard tests
+        run: python3 -m unittest tests/eng/test_check_committed_files.py

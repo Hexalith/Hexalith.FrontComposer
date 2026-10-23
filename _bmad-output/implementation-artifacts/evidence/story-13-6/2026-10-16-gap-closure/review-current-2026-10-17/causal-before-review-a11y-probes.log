@@ -1,7 +1,0 @@
-ariahiddenclip "PASS"
-textareaclip {"scrollHeight":38,"clientHeight":10,"value":"Important label"}
-pseudoclip "PASS"
-inputbaseline {"scrollHeight":40,"clientHeight":40}
-shadowtext [{"owner":0,"node":"p","paint":"Hello","foreground":[0,0,0,1],"background":[255,255,255,1],"ratio":21,"minimum":4.5}]
-bordernoContrast [{"owner":0,"node":"button","paint":"element border-top","foreground":[0,0,0,1],"background":[255,255,255,1],"ratio":21,"minimum":3},{"owner":0,"node":"button","paint":"element border-right","foreground":[0,0,0,1],"background":[255,255,255,1],"ratio":21,"minimum":3},{"owner":0,"node":"button","paint":"element border-bottom","foreground":[0,0,0,1],"background":[255,255,255,1],"ratio":21,"minimum":3},{"owner":0,"node":"button","paint":"element border-left","foreground":[0,0,0,1],"background":[255,255,255,1],"ratio":21,"minimum":3}]
-occludedtarget {"inventory":[{"target":"button[inventory-index=\"0\"]","width":30,"height":30,"box":{"left":40,"top":40,"right":70,"bottom":70},"traits":{"runningText":false,"nativeUnmodified":false,"essentialIdentified":false},"equivalent":null,"conforming":true,"exception":null,"failure":null}],"unusedExceptions":[]}

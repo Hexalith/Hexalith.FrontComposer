@@ -12,7 +12,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/ux-designs/ux-frontcomposer-2026-09-09/DESIGN.md
   - _bmad-output/planning-artifacts/ux-designs/ux-frontcomposer-2026-09-09/EXPERIENCE.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md
-updated: 2026-10-21
+updated: 2026-10-23
 numberingNote: >-
   Epics 1-11 are completed delivery history restored from epics.md at commit
   aeff9f83 with the approved 2026-09-22 section 9.4 annotations. The 2026-09-22
@@ -372,7 +372,7 @@ Framework maintainers can customize, inspect, migrate, document, test, and upgra
 
 **Implementation notes:** Complete PLAN-INT-2, DOC-A/DOC-B/DOC-C parity, REL-BASE-1, and Testing/documentation gaps without reopening completed Epic 9–11 decisions. PLAN-INT-1 remains closed. Delivered baselines remain regression traceability rather than reimplementation.
 
-**Approved storage follow-up (2026-10-21):** Stories 15.6 and 15.7 externalize generated browser proof, retain bounded receipts, and retire selected tracked output after consumer migration. Prevention precedes removal; source-owned baselines, accepted history and separate approval gates are preserved.
+**Storage follow-up superseded (2026-10-23):** the owner's evidence policy (PRD §7; [`spec-evidence-storage-simplification.md`](../implementation-artifacts/spec-evidence-storage-simplification.md)) replaces Stories 15.6 and 15.7: proof is tests plus CI recorded in the story or spec, and committed evidence plus its machinery were removed instead of externalized. Source-owned baselines, accepted history and separate approval gates are preserved.
 
 ### Epic 16: Maintainers Verify and Approve Exact Runtime Compatibility
 
@@ -2803,7 +2803,8 @@ So that analyzer strictness becomes a durable v1.0 build invariant.
 historical tuple is not the active release target. Story 11.25 owns the current
 `059f6a89… / 3.103.0 / a32cb422…` release identity, exact-tuple evidence, and named approval.
 The historical acceptance text below is retained for audit and must not be used to select the current
-runtime.
+runtime. **Evidence policy (2026-10-23):** the committed v1 identity record and this story's evidence
+packet were removed under PRD §7; this story remains history.
 
 As a FrontComposer maintainer,
 I want source and package modes aligned to the owner-approved EventStore runtime identity,
@@ -2847,7 +2848,9 @@ EventStore container; any behavioral migration is routed to a separately approve
 ### Story 11.25: Current EventStore Release Identity and Evidence
 
 **Status:** done. **Owner:** Architect + EventStore Maintainer + FrontComposer Maintainer + Release
-Owner. **Retrospective action:** E11R-AI-1.
+Owner. **Retrospective action:** E11R-AI-1. **Evidence policy (2026-10-23):** the committed v2/v3
+identity records, recapture packets and their validators were removed under PRD §7; this story remains
+history.
 
 **Completion boundary (reconciled 2026-09-22):** this story delivered the v2 technical capture and
 remains done. It did not obtain migration receipts, set migration approval true, or close G-3. Its
@@ -3641,7 +3644,7 @@ So that accessibility does not depend on a preferred viewport or input mode.
 **Then** OI-16, G-4, FLUENT-APP-1, and Product approval stay open and are not closed or inferred by this story
 **And** each closes only through its own evidence record and owner decision (ux-design.md:356-359).
 
-**Storage amendment (approved 2026-10-21):** Backlog Story 15.6 implements this story’s one-candidate-bound-result/reference rule at the output boundary; 15.7 migrates consumers before exact-path retirement of bulky runs. This amendment changes storage and result links only. Story 13.6’s completion record, AE-01–AE-09, manual assistive-technology/device evidence, and independent owner decisions retain their original meanings. See the [approved amendment](sprint-change-proposal-2026-10-21.md).
+**Evidence policy (owner decision 2026-10-23; supersedes the 2026-10-21 storage amendment):** this story's results are recorded in its story/spec as commands, pass/fail counts, commit SHA and CI run link (PRD §7). Its committed evidence folders were removed and Stories 15.6/15.7 are superseded. Story 13.6’s completion record, AE-01–AE-09, manual assistive-technology/device evidence, and independent owner decisions retain their original meanings.
 
 ### Story 13.7: [I · UX-F] Provide Reusable UX Assertions for Adopters
 
@@ -3711,6 +3714,8 @@ So that downstream modules can verify generated failure and recovery UX without 
 ### Story 13.8: [A · E9-APP-1] Accept the Completed Fresh-Row Live Proof
 
 **Disposition (2026-10-20):** Product acceptance is recorded in the [Story 13.8 decision receipt](../implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt), closing E9-APP-1/G-5/OI-1 for the exact historical record/candidate with disclosed limitations. The Product decision was recorded before Story 13.8 acceptance; story delivery status is tracked separately in the implementation spec and sprint development status. Epic 9 remains done.
+
+**Evidence policy (2026-10-23):** the committed `evidence/story-13-8` replay files were removed under PRD §7; the decision receipt in the spec remains the record.
 
 As the Product Owner,
 I want to accept or reject the completed Story 9.8 live proof explicitly,
@@ -4002,6 +4007,8 @@ So that breaking-change detection reflects the public package history consumers 
 
 ### Story 15.6: External Browser Artifacts And Bounded Accessibility Receipts
 
+**Superseded (2026-10-23):** done — superseded by the owner's evidence policy (PRD §7) and [`spec-evidence-storage-simplification.md`](../implementation-artifacts/spec-evidence-storage-simplification.md). Browser proof is a CI workflow artifact plus the story record; no external store, receipts or admission budgets are built. The text below is history only.
+
 As a framework maintainer,
 I want browser proof stored once outside Git with a bounded candidate-bound receipt,
 So that accessibility verification stays reviewable across retries without retaining every report copy in the checkout.
@@ -4023,6 +4030,8 @@ So that accessibility verification stays reviewable across retries without retai
 **Current reconciliation (2026-10-21):** Backlog. Administrator approved the complete course-correction proposal with “approve” in the conversation. This work does not reopen Stories 13.6/13.7 or grant Product, FLUENT-APP-1, OI-16 or G-4 approval. Story 15.7 removes selected tracked output only after migration and verification.
 
 ### Story 15.7: Retire Bulky Browser Evidence
+
+**Superseded (2026-10-23):** done — [`spec-evidence-storage-simplification.md`](../implementation-artifacts/spec-evidence-storage-simplification.md) removed all committed evidence (including `evidence/story-13-6`) outright, without a retirement manifest or external retrieval. Git history keeps the old objects until a separately confirmed rewrite. The text below is history only.
 
 As a framework maintainer,
 I want selected bulky browser output removed from the current source tree after its consumers are migrated,
@@ -4056,29 +4065,29 @@ So that compatibility evidence cannot be projected onto a later repository ident
 **Acceptance Criteria:**
 
 **Given** the repository state at story execution
-**When** the successor identity is captured
-**Then** it binds the exact FrontComposer HEAD, EventStore source gitlink, Builds gitlink, catalog-owned EventStore package version, and schema/version identity
+**When** the current tuple is recorded
+**Then** the story or spec records the exact FrontComposer commit SHA, EventStore source gitlink, Builds gitlink, and catalog-owned EventStore package version
 **And** every repository identity is recorded as the exact lowercase commit selected at execution.
 
-**Given** the exact tuple is frozen
-**When** provider and AppHost verification run
-**Then** live Pact provider evidence and the AppHost smoke result execute against that same tuple and their artifact hashes are recorded
-**And** a result from Story 11.24, Story 11.25, v3, or any other prior tuple is retained as history but cannot satisfy the successor.
+**Given** the exact tuple is recorded
+**When** the Quality workflow runs on that commit
+**Then** the story records its CI run link with the Gate 2c provider-verification and `epic9-live-acceptance` AppHost results for that same tuple
+**And** a result from Story 11.24, Story 11.25, v3, or any other prior tuple is history and cannot satisfy this story.
 
-**Given** the successor record is created before owner approval
+**Given** the tuple record exists before owner approval
 **When** its initial state is inspected
-**Then** migrationApprovalClaimed remains false and required approval receipts remain absent
-**And** technical capture alone does not close G-3.
+**Then** it claims no migration approval and records no approval sign-off
+**And** the technical record alone does not close G-3.
 
-**Given** FrontComposer HEAD, either gitlink, the catalog package, provider evidence, AppHost evidence, or an artifact hash changes
-**When** governance compares the active identity with the candidate
-**Then** validation fails closed and requires a new successor record
-**And** no existing immutable identity or evidence packet is edited to describe the new tuple.
+**Given** FrontComposer HEAD, either gitlink, or the catalog package changes
+**When** the release candidate is reviewed against the recorded tuple
+**Then** the mismatch requires a new tuple record and CI run link
+**And** no earlier record is edited to describe the new tuple.
 
-**Given** existing identity, Pact, AppHost, hashing, and governance mechanisms can produce the required proof
+**Given** the existing Pact, provider-verification and CI lanes produce the required proof
 **When** this story is implemented
-**Then** those mechanisms are reused for one candidate-bound packet
-**And** no parallel identity schema, duplicate compatibility suite, or reconstructed evidence bundle is introduced.
+**Then** those lanes are reused and only the story or spec record is committed (PRD §7)
+**And** no identity schema, evidence packet, package ledger, or reconstructed evidence bundle is introduced.
 
 ### Story 16.2: [A · EVT-XFER-1 · Conditional] Transfer Migration-Approval Ownership Explicitly
 
