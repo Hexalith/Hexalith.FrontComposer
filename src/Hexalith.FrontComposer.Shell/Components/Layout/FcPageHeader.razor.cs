@@ -131,7 +131,31 @@ public sealed partial class FcPageHeader : ComponentBase {
                 + "silent no-op and post-navigation focus restoration fails. Set HeadingTabIndex=\"-1\" on the header.");
         }
 
+        if (_headingElement.Context is null)
+        {
+            throw new InvalidOperationException(
+                $"{nameof(FcPageHeader)}.{nameof(FocusHeadingAsync)} requires the {nameof(Heading)} "
+                + "element to finish rendering before focus can move. Call it after rendering.");
+        }
+
         return _headingElement.FocusAsync();
+    }
+
+    /// <inheritdoc />
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(PageTitle) && !HasHeading)
+        {
+            throw new InvalidOperationException(
+                $"{nameof(FcPageHeader)} requires a non-blank {nameof(PageTitle)} or {nameof(Heading)} "
+                + "so the browser document has a title.");
+        }
+
+        if (!HasHeading)
+        {
+            // A removed heading's captured reference must never be reused if it is later restored.
+            _headingElement = default;
+        }
     }
 
     private string ResolvedPageTitle

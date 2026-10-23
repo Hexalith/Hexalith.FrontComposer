@@ -195,4 +195,70 @@ public sealed class FcPageHeaderTests : LayoutComponentTestBase {
         header.GetAttribute("role").ShouldBe("presentation");
         cut.FindAll("[role='banner']").ShouldBeEmpty();
     }
+
+    [Theory]
+    [InlineData(null, "")]
+    [InlineData("", "   ")]
+    [InlineData("\t", "\t")]
+    public void FcPageHeaderWithBothTitlesBlankFailsDiagnostically(string? pageTitle, string heading)
+    {
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+            Render<FcPageHeader>(parameters => parameters
+                .Add(component => component.PageTitle, pageTitle)
+                .Add(component => component.Heading, heading)));
+
+        exception.Message.ShouldContain(nameof(FcPageHeader.PageTitle));
+        exception.Message.ShouldContain(nameof(FcPageHeader.Heading));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void FcPageHeaderWithBlankPageTitleUsesHeading(string? pageTitle)
+    {
+        IRenderedComponent<FcPageHeader> cut = Render<FcPageHeader>(parameters => parameters
+            .Add(component => component.PageTitle, pageTitle)
+            .Add(component => component.Heading, "Derived title"));
+
+        Render(cut.FindComponent<PageTitle>().Instance.ChildContent!).Markup.ShouldBe("Derived title");
+    }
+
+    [Fact]
+    public async Task FcPageHeaderFocusHeadingAsyncBeforeRenderFailsDiagnostically()
+    {
+        FcPageHeader header = new();
+        ParameterView.FromDictionary(new Dictionary<string, object?>
+        {
+            [nameof(FcPageHeader.Heading)] = "Pending heading",
+            [nameof(FcPageHeader.HeadingTabIndex)] = -1,
+        }).SetParameterProperties(header);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => header.FocusHeadingAsync().AsTask());
+
+        exception.Message.ShouldContain("rendering");
+        JSInterop.Invocations.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task FcPageHeaderHeadingRemovedAndRestoredFocusesCurrentElement()
+    {
+        IRenderedComponent<FcPageHeader> cut = Render<FcPageHeader>(parameters => parameters
+            .Add(component => component.PageTitle, "Browser title")
+            .Add(component => component.Heading, "First heading")
+            .Add(component => component.HeadingTabIndex, -1));
+
+        await cut.InvokeAsync(() => cut.Instance.FocusHeadingAsync().AsTask());
+        ElementReference first = (ElementReference)JSInterop.Invocations.Last().Arguments[0]!;
+        cut.Render(parameters => parameters.Add(component => component.Heading, ""));
+        await Should.ThrowAsync<InvalidOperationException>(() => cut.Instance.FocusHeadingAsync().AsTask());
+        cut.Render(parameters => parameters.Add(component => component.Heading, "Restored heading"));
+        await cut.InvokeAsync(() => cut.Instance.FocusHeadingAsync().AsTask());
+        ElementReference restored = (ElementReference)JSInterop.Invocations.Last().Arguments[0]!;
+
+        restored.Id.ShouldNotBe(first.Id);
+        cut.Find("h1").TextContent.ShouldBe("Restored heading");
+    }
+
 }

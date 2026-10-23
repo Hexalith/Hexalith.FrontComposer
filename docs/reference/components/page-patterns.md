@@ -41,7 +41,7 @@ The tables describe the public component parameters. Injected services and inter
 
 | Parameter | Type | Contract |
 |---|---|---|
-| `PageTitle` | `string?` | The browser document title rendered through Blazor PageTitle; null, empty or whitespace values fall back to `Heading`. Supply a nonblank `PageTitle` or `Heading` so the document has a title. |
+| `PageTitle` | `string?` | The browser document title rendered through Blazor PageTitle; null, empty or whitespace values fall back to `Heading`. Supply a nonblank `PageTitle` or `Heading`; leaving both blank throws an `InvalidOperationException` naming both parameters. |
 | `Heading` | `string` | The visible route-level heading text. |
 | `Eyebrow` | `string?` | Optional short context text rendered above the heading. |
 | `Description` | `string?` | Optional descriptive text rendered below the heading. |
@@ -59,7 +59,7 @@ The tables describe the public component parameters. Injected services and inter
 | Parameter | Type | Contract |
 |---|---|---|
 | `LayoutMode` | `FcPageLayoutMode` | The FC-LYT layout measure the page declares. Defaults to `FcPageLayoutMode.FullWidth` for dense list surfaces. |
-| `PageTitle` | `string?` | The browser document title forwarded to `FcPageHeader`; null, empty or whitespace values fall back to `Heading`. Supply a nonblank `PageTitle` or `Heading` so the document has a title. |
+| `PageTitle` | `string?` | The browser document title forwarded to `FcPageHeader`; null, empty or whitespace values fall back to `Heading`. Supply a nonblank `PageTitle` or `Heading`; leaving both blank throws an `InvalidOperationException` naming both parameters. |
 | `Heading` | `string` | The visible route-level heading; blank values suppress the heading. Provide a nonblank value when using heading focus. |
 | `Eyebrow` | `string?` | Optional short context text rendered above the heading. |
 | `Description` | `string?` | Optional descriptive text rendered below the heading. |
@@ -150,7 +150,7 @@ Only Ready, Stale and Degraded expose projection-proven detail content. `BackHre
 
 ## Accessibility (FC-A11Y)
 
-`FcPageHeader` renders the route `h1` without adding a banner landmark. A blank `Heading` suppresses the heading. For `FocusHeadingAsync`, provide a nonblank heading and explicit `HeadingTabIndex` (usually `-1`); missing either throws. `FcAggregateListPage.FocusHeadingAsync` forwards this behavior. Give the heading a stable `HeadingId` and use the shell content-label contract. Route focus, tab focus and return-context restoration must have one owner per transition. Keep caller content named and keyboard reachable; see [HFC1050](../../diagnostics/HFC1050.md) and [HFC1051](../../diagnostics/HFC1051.md).
+`FcPageHeader` renders the route `h1` without adding a banner landmark. A blank `Heading` suppresses the heading. For `FocusHeadingAsync`, provide a nonblank heading and explicit `HeadingTabIndex` (usually `-1`); missing either throws. Calling before the heading element has been captured by rendering also throws before browser interop; use `OnAfterRenderAsync` or a rendered interaction. Removing and restoring a heading requires the new element to render before focus. `FcAggregateListPage.FocusHeadingAsync` forwards this behavior. Give the heading a stable `HeadingId` and use the shell content-label contract. Route focus, tab focus and return-context restoration must have one owner per transition. Keep caller content named and keyboard reachable; see [HFC1050](../../diagnostics/HFC1050.md) and [HFC1051](../../diagnostics/HFC1051.md).
 
 ## Localization (FC-L10N)
 
