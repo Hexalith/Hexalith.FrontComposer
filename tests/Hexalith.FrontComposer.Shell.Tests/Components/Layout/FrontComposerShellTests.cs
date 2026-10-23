@@ -586,6 +586,38 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         });
     }
 
+    /// <summary>Skip links follow the mounted rail across repeated compact/desktop transitions.</summary>
+    /// <param name="customNavigation">Whether the adopter supplies its own rail content.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NavigationSkipLinkTracksMountedTargetAcrossViewportChanges(bool customNavigation)
+    {
+        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+        registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+        Services.Replace(ServiceDescriptor.Singleton(registry));
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(parameters =>
+        {
+            parameters.AddChildContent("<h1>Body</h1>");
+            if (customNavigation) { parameters.Add(shell => shell.Navigation, builder => builder.AddMarkupContent(0, "<nav>Custom rail</nav>")); }
+        });
+        foreach (ViewportTier tier in new[] { ViewportTier.Desktop, ViewportTier.Phone, ViewportTier.Tablet, ViewportTier.CompactDesktop, ViewportTier.Phone, ViewportTier.Desktop })
+        {
+            await cut.InvokeAsync(() => Services.GetRequiredService<IDispatcher>().Dispatch(new ViewportTierChangedAction(tier)));
+            bool mounted = tier is ViewportTier.Desktop or ViewportTier.CompactDesktop;
+            cut.WaitForAssertion(() =>
+            {
+                cut.FindAll("#fc-nav").Count.ShouldBe(mounted ? 1 : 0);
+                cut.FindAll(".fc-skip-link[href$='#fc-nav']").Count.ShouldBe(mounted ? 1 : 0);
+                cut.FindAll(".fc-skip-link[href$='#fc-main-content']").Count.ShouldBe(1);
+                cut.Find("#fc-main-content").GetAttribute("tabindex").ShouldBe("-1");
+                cut.Find("[data-testid='fc-route-navigation-status']").GetAttribute("aria-live").ShouldBe("polite");
+            });
+        }
+    }
+
     // --- Story 3-4 Task 10.10 / 10.10a (D5 / D18 / AC2 / AC8) — palette trigger + Ctrl+K wiring ---
 
     [Fact]
