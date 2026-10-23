@@ -294,7 +294,7 @@ function Assert-MigrationParity([string]$MigrationsRoot, [string]$CatalogPath, [
         if ($line -cmatch '^\|\s*fromVersion\s*\|\s*toVersion\s*\|\s*migrationMode\s*\|\s*Guide\s*\|\s*$' -or
             $line -match '^\|(?:\s*:?-{3,}:?\s*\|){4}\s*$') { continue }
         if ($line -notmatch '^\|') {
-            if ($line -match '\[[^\]]+\]\([^/\\:#?)]+\.md(?:[?#][^)]*)?\)') {
+            if ($line -match '\[[^\]]+\]\((?:\./|\.\./migrations/)?[^/\\:#?)]+\.md(?:[?#][^)]*)?\)') {
                 Add-Failure $Failures 'docs/migrations/index.md guide links must declare versions and migrationMode in a classified row.'
             }
             continue
@@ -931,8 +931,12 @@ else {
     }
 }
 
+$tocText = if (Test-Path -LiteralPath $toc) { Get-Content -LiteralPath $toc -Raw } else { $null }
 foreach ($migration in Get-ChildItem -Path (Join-Path $DocsRoot 'migrations') -Filter '*.md' -File) {
     if ($migration.Name -eq 'index.md') { continue }
+    if ($null -ne $tocText -and -not [regex]::IsMatch($tocText, '(?m)^[ \t]*(?:-[ \t]+)?href:[ \t]+migrations/' + [regex]::Escape($migration.Name) + '[ \t]*(?:#.*)?\r?$')) {
+        Add-Failure $failures "docs/toc.yml: missing migration guide $($migration.Name)."
+    }
     $front = (Get-FrontMatter $migration.FullName).Metadata
     foreach ($field in @('fromVersion', 'toVersion', 'diagnosticId', 'ownerStory', 'skillCorpusImpact', 'codeFixAvailable', 'migrationMode')) {
         if (-not $front.Contains($field)) {

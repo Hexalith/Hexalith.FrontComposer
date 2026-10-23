@@ -10711,14 +10711,23 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
   summary: Preserve ordinary migration targets when a symlink alias precedes them.
   evidence: BH-4, preserved external Story 15.3: ProjectDocumentLoader canonical GroupBy keeps First before WriteSafetyPolicy rejects links. An A.cs symlink followed by target Z.cs can report successful apply with zero edits and leave the obsolete identifier. Cover both Compile orders in the owning CLI follow-up.
+  status: done
+  resolved: 2026-10-22
+  resolution: Fixed by Story 15.3 resumed review R2-BH-1/EC-4 in 05dec310: canonical deduplication prefers the ordinary candidate and keeps linked-only candidates for refusal. `MigrationCommandTests.MigrationPrefersOrdinaryTargetOverItsSymlinkAlias` pins both Compile orders in dry-run and apply with exact target bytes. Recorded by the Story 15.3 round-4 review (R4-A7).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
   summary: Avoid source-identifier collisions in migration catalog literal tokenization.
   evidence: BH-5, preserved external Story 15.3: Get-MigrationCatalogEdges maps literals to valid __literalN identifier strings, so real same-named identifiers can select unrelated literal values; isolated reviewer probe returned a false edge without failures. Preserve token kinds or a collision-free representation and regress the exact case.
+  status: done
+  resolved: 2026-10-22
+  resolution: Fixed by Story 15.3 resumed review R2-BH-3/EC-1 in 05dec310: catalog extraction no longer accepts real identifiers as generated literal tokens. The `literal-token-collision` case of `MigrationCommandTests.MigrationPublicationParityRejectsDriftWithDeterministicRelativeDiagnostics` regresses the exact `__literal0..2` collision. Recorded by the Story 15.3 round-4 review (R4-A7).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
   summary: Recognize unrelated C# character literals in migration catalog extraction.
   evidence: BH-6/EC-4, preserved external Story 15.3: the tokenizer omits character literals; an unrelated double-quote character declaration makes valid catalog extraction fail. Both reviewers reproduced the case. Extend the owning extraction regression rather than modifying the Epic 13 repair.
+  status: done
+  resolved: 2026-10-22
+  resolution: Fixed by Story 15.3 resumed review R2-BH-4/EC-2 in 05dec310: the tokenizer recognizes character literals. `MigrationCommandTests.MigrationPublicationParityAcceptsTheCatalogAndIgnoresUnrelatedInitializersAndComments` keeps an unrelated `private const char DoubleQuote` declaration in the passing fixture. Recorded by the Story 15.3 round-4 review (R4-A7).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md`
   summary: Assess bounded child-process deadlines for supported historical replay.
@@ -10729,3 +10738,9 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 - source_spec: `spec-15-3-align-migration-and-classification-guidance.md`
   summary: Bound recursive migration discovery when project directories contain cyclic directory links.
   evidence: Resumed Story 15.3 review R2-BH-2 and an independent parent CLI probe found that two directory links back to the project root prevent a report within three seconds (reviewer timeout: eight seconds). ProjectDocumentLoader.Expand uses recursive Directory.EnumerateFiles before link write-safety checks and is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. Separately prune linked directories/cycles during discovery and regress ordinary files, explicit linked targets, and process termination; preserve the approved minimal write-safety fix.
+
+## Deferred from: code review of spec-15-3-align-migration-and-classification-guidance.md round 4 (2026-10-22)
+
+- source_spec: `spec-15-3-align-migration-and-classification-guidance.md`
+  summary: Migrate projects whose own directory is a symlink or junction instead of silently dropping every document.
+  evidence: Story 15.3 round-4 review R4-V3/E2/A1. Three independent Release-CLI probes: `LinkedApp/Acme.App.csproj` (a directory link to the real project) returned exit 0 with changed 0, skipped 0, unchanged 1, while the real path and a linked strict ancestor returned changed 1. `ProjectDocumentLoader.EnumerateGlob` (src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:70) compares `PathUtilities.Canonical(projectDirectory)`, which resolves the directory's own link, with `Canonical(file)`, which resolves only a final-segment link, so every document looks outside the project and is dropped without an entry. The check is unchanged from baseline bf40b9276f440646e753a0636854595cc7d0affc. Compare both sides in one path space and regress dry-run/apply through a linked project directory alongside CR-1's linked-ancestor case.

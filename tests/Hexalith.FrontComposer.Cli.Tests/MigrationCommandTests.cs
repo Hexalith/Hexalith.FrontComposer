@@ -1068,6 +1068,8 @@ public sealed class MigrationCommandTests {
     [InlineData("separator-prefix-duplicate-row", "duplicate guide link")]
     [InlineData("unclassified-fragment-link", "classified row")]
     [InlineData("unclassified-query-link", "classified row")]
+    [InlineData("unclassified-dot-slash-link", "classified row")]
+    [InlineData("unclassified-migrations-relative-link", "classified row")]
     [InlineData("missing-index-link", "missing guide link")]
     [InlineData("duplicate-index-link", "duplicate guide link")]
     [InlineData("unclassified-index-link", "classified row")]
@@ -1154,6 +1156,12 @@ public sealed class MigrationCommandTests {
                 break;
             case "unclassified-query-link":
                 File.AppendAllText(indexPath, "- [Unclassified guide](9.1-to-9.2.md?view=manual)\n");
+                break;
+            case "unclassified-dot-slash-link":
+                File.AppendAllText(indexPath, "- [Unclassified guide](./9.1-to-9.2.md)\n");
+                break;
+            case "unclassified-migrations-relative-link":
+                File.AppendAllText(indexPath, "- [Unclassified guide](../migrations/9.1-to-9.2.md)\n");
                 break;
             case "missing-index-link":
                 File.WriteAllText(indexPath, index.Replace(row, "", StringComparison.Ordinal));
@@ -1297,6 +1305,57 @@ public sealed class MigrationCommandTests {
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task MigrationRefusesSubmoduleSourceWhenProjectIsOpenedThroughLink(bool outsideRepository, bool apply)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
+        _ = fixture.WriteSource("Acme.App", "Sub/Code.cs", "services.AddFrontComposerDebugOverlay();");
+        File.WriteAllText(Path.Combine(fixture.Root, "Acme.App", "Sub", ".git"), "gitdir: ../../../.git/modules/Sub\n");
+        string repository = Path.Combine(fixture.Root, "Repo");
+        string realDirectory = Path.Combine(repository, "Real");
+        _ = Directory.CreateDirectory(Path.Combine(repository, ".git"));
+        _ = Directory.CreateDirectory(realDirectory);
+        File.WriteAllText(
+            Path.Combine(repository, ".gitmodules"),
+            """
+            [submodule "Sub"]
+              path = Real/Acme.App/Sub
+              url = https://example.invalid/sub.git
+            """);
+        string projectDirectory = Path.Combine(realDirectory, "Acme.App");
+        Directory.Move(Path.GetDirectoryName(project)!, projectDirectory);
+        string source = Path.Combine(projectDirectory, "Program.cs");
+        string submoduleSource = Path.Combine(projectDirectory, "Sub", "Code.cs");
+        byte[] originalSubmodule = await File.ReadAllBytesAsync(submoduleSource, CancellationToken.None);
+
+        // Neither link spelling matches the .gitmodules root, so only the submodule's .git marker can refuse it.
+        string link = outsideRepository ? Path.Combine(fixture.Root, "OuterLink") : Path.Combine(repository, "Linked");
+        _ = CreateDirectoryMigrationLink(link, realDirectory);
+        string linkedProject = Path.Combine(link, "Acme.App", "Acme.App.csproj");
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(linkedProject, [apply ? "--apply" : "--dry-run", "--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error + output);
+        error.ShouldBeEmpty();
+        using var report = JsonDocument.Parse(output);
+        report.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
+        report.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(1);
+        report.RootElement.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "skipped")
+            .GetProperty("path").GetString().ShouldBe("Sub/Code.cs");
+        (await File.ReadAllBytesAsync(submoduleSource, CancellationToken.None)).ShouldBe(originalSubmodule);
+        if (apply)
+        {
+            File.ReadAllText(source).ShouldContain("AddFrontComposerDevMode");
+        }
+        output.ShouldNotContain(fixture.Root);
+    }
+
+    [Theory]
     [InlineData(false, false, false, false)]
     [InlineData(false, false, true, false)]
     [InlineData(false, true, false, false)]
@@ -1348,8 +1407,9 @@ public sealed class MigrationCommandTests {
         document.RootElement.GetProperty("summary").GetProperty("failed").GetInt32().ShouldBe(0);
         JsonElement skipped = document.RootElement.GetProperty("entries").EnumerateArray()
             .Single(entry => entry.GetProperty("kind").GetString() == "skipped");
-        skipped.GetProperty("expected").GetString()!.ShouldContain("symlinked file or directory paths");
+        skipped.GetProperty("expected").GetString()!.ShouldContain("file symlink, and linked directory or junction paths below the project");
         skipped.GetProperty("got").GetString().ShouldBe("Excluded, outside-root, or linked path.");
+        skipped.GetProperty("fix").GetString()!.ShouldContain("replace a link with a regular file or directory");
         (await File.ReadAllBytesAsync(target, CancellationToken.None)).ShouldBe(targetBytes);
         linkInfo.Refresh();
         linkInfo.LinkTarget.ShouldBe(originalLinkTarget);
@@ -1426,7 +1486,35 @@ public sealed class MigrationCommandTests {
     [Fact]
     public async Task MigrationPublicationCommandRejectsCatalogOnlyMismatchInAnIsolatedCopy()
     {
-        using var fixture = CliFixture.Create();
+        using var fixture = CreatePublicationCopy();
+        string catalogPath = Path.Combine(fixture.Root, "src", "Hexalith.FrontComposer.Cli", "MigrationCatalog.cs");
+        File.WriteAllText(catalogPath, File.ReadAllText(catalogPath).Replace("\"9.1.0\"", "\"9.0.0\"", StringComparison.Ordinal));
+
+        string[] failures = await RunPublicationValidatorAsync(fixture.Root);
+
+        failures.ShouldNotBeEmpty();
+        string.Join('\n', failures).ShouldContain("must match catalog versions and cli-supported classification");
+        failures.ShouldAllBe(failure => failure.StartsWith("docs/migrations/9.1-to-9.2.md ", StringComparison.Ordinal));
+        string.Join('\n', failures).ShouldNotContain(fixture.Root);
+    }
+
+    [Fact]
+    public async Task MigrationPublicationCommandRejectsGuideMissingFromTocInAnIsolatedCopy()
+    {
+        using var fixture = CreatePublicationCopy();
+        string tocPath = Path.Combine(fixture.Root, "docs", "toc.yml");
+        string toc = File.ReadAllText(tocPath);
+        toc.ShouldContain("href: migrations/9.1-to-9.2.md");
+        File.WriteAllText(tocPath, toc.Replace("href: migrations/9.1-to-9.2.md", "# href: migrations/9.1-to-9.2.md", StringComparison.Ordinal));
+
+        string[] failures = await RunPublicationValidatorAsync(fixture.Root);
+
+        failures.ShouldBe(["docs/toc.yml: missing migration guide 9.1-to-9.2.md."]);
+    }
+
+    private static CliFixture CreatePublicationCopy()
+    {
+        var fixture = CliFixture.Create();
         foreach (string relative in new[]
         {
             "eng/validate-docs.ps1", "global.json", ".gitmodules", "docs",
@@ -1440,11 +1528,15 @@ public sealed class MigrationCommandTests {
         {
             CopyPublicationInput(Path.Combine(ProjectRoot().FullName, relative), Path.Combine(fixture.Root, relative));
         }
-        string catalogPath = Path.Combine(fixture.Root, "src", "Hexalith.FrontComposer.Cli", "MigrationCatalog.cs");
-        File.WriteAllText(catalogPath, File.ReadAllText(catalogPath).Replace("\"9.1.0\"", "\"9.0.0\"", StringComparison.Ordinal));
+
+        return fixture;
+    }
+
+    private static async Task<string[]> RunPublicationValidatorAsync(string root)
+    {
         ProcessStartInfo start = new("pwsh")
         {
-            WorkingDirectory = fixture.Root,
+            WorkingDirectory = root,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -1454,15 +1546,11 @@ public sealed class MigrationCommandTests {
             start.ArgumentList.Add(argument);
         }
 
-        (int exitCode, string output, string error) = await RunProcessCaptureAsync(start, TimeSpan.FromSeconds(90));
+        (int exitCode, string output, string error) = await RunProcessCaptureAsync(start, TimeSpan.FromSeconds(90)).ConfigureAwait(false);
 
         exitCode.ShouldNotBe(0, output + error);
-        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(fixture.Root, "artifacts", "docs", "validation-manifest.json")));
-        string[] failures = manifest.RootElement.GetProperty("blockingFailures").EnumerateArray().Select(value => value.GetString()!).ToArray();
-        failures.ShouldNotBeEmpty();
-        string.Join('\n', failures).ShouldContain("must match catalog versions and cli-supported classification");
-        failures.ShouldAllBe(failure => failure.StartsWith("docs/migrations/9.1-to-9.2.md ", StringComparison.Ordinal));
-        string.Join('\n', failures).ShouldNotContain(fixture.Root);
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "artifacts", "docs", "validation-manifest.json")));
+        return manifest.RootElement.GetProperty("blockingFailures").EnumerateArray().Select(value => value.GetString()!).ToArray();
     }
 
     [Theory]

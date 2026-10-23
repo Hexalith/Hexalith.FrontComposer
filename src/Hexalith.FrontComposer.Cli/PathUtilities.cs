@@ -53,6 +53,36 @@ internal static class PathUtilities {
         }
     }
 
+    /// <summary>
+    /// Refuses paths inside a nested repository below the selected project directory, such as an initialized
+    /// submodule, worktree, or clone. Probing the <c>.git</c> marker follows links, so the boundary holds however
+    /// the project path is spelled, unlike the <c>.gitmodules</c> roots.
+    /// </summary>
+    public static bool HasNestedRepositorySegment(string projectDirectory, string path)
+    {
+        try
+        {
+            string projectRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(projectDirectory));
+            string? current = Path.GetDirectoryName(Path.GetFullPath(path));
+            while (current is not null && !string.Equals(current, projectRoot, PathComparison))
+            {
+                string marker = Path.Combine(current, ".git");
+                if (File.Exists(marker) || Directory.Exists(marker))
+                {
+                    return true;
+                }
+
+                current = Path.GetDirectoryName(current);
+            }
+
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return true;
+        }
+    }
+
     public static string Canonical(string path) {
         string fullPath;
         try {

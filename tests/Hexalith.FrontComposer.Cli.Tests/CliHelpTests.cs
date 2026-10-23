@@ -16,6 +16,8 @@ public sealed class CliHelpTests {
         output.ToString().ShouldContain("frontcomposer inspect");
         output.ToString().ShouldNotContain("--summary");
         output.ToString().ShouldContain("frontcomposer migrate");
+        output.ToString().ShouldContain("diffs are bounded informational output");
+        output.ToString().ShouldNotContain("terminal-safe");
         error.ToString().ShouldBeEmpty();
     }
 }

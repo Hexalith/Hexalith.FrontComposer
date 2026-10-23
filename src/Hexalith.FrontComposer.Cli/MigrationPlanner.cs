@@ -60,9 +60,9 @@ internal static class MigrationPlanner {
                     "skipped",
                     document.RelativePath,
                     "Excluded project document was not scanned or written.",
-                    "Only explicit source documents inside the selected project, outside generated, bin, obj, .git, package cache, submodule, and symlinked file or directory paths are eligible.",
+                    "Only explicit source documents inside the selected project are eligible; generated, bin, obj, .git, package cache, submodule or nested repository, file symlink, and linked directory or junction paths below the project are refused.",
                     "Excluded, outside-root, or linked path.",
-                    "Move source into the selected project or apply the migration manually.",
+                    "Move source into the selected project, replace a link with a regular file or directory, or apply the migration manually.",
                     edge.DocsLink,
                     null));
                 continue;

@@ -68,8 +68,9 @@ Exit codes:
 | 4 | Filesystem, cancellation, workspace setup, or apply/write failure. |
 
 Report path fields default to project-relative forward slashes; unsafe report paths are redacted.
-Handled CLI failures print bounded messages without stack traces, but filesystem exception
-messages may still contain private absolute paths. Single-line fields escape C0 controls
+Handled CLI failures print messages without stack traces. Most are sanitized and bounded, but
+filesystem exception messages may still contain private absolute paths, and unsupported project
+extensions read from a `.sln` file are echoed without escaping or a length budget. Single-line fields escape C0 controls
 (`U+0000`–`U+001F`) and DEL (`U+007F`), normally with a 240-character content budget before
 truncation markers. Multiline migration diffs retain carriage returns, line feeds, and tabs; they
 escape other C0 controls and DEL. C1 controls
@@ -85,7 +86,7 @@ Selection and paths:
 | `--project` | Must resolve to an existing `.csproj`; `.fsproj` is unsupported in v1. |
 | `--solution` | Must resolve to a `.sln` with exactly one supported `.csproj`; `.slnx`, malformed entries, unsupported project types, and multiple candidates fail closed. |
 | discovery | With no explicit path, only a single `.csproj` in the current directory is accepted. |
-| migration writes | Generated output, `bin`, `obj`, `.git`, package caches, submodule paths, outside-root targets, file symlinks, linked ancestor directories/junctions below the selected project directory, and changed targets are refused before mutation and revalidated immediately before write. |
+| migration writes | Generated output, `bin`, `obj`, `.git`, package caches, submodule and other nested repository paths (any directory with a `.git` marker), outside-root targets, file symlinks, linked ancestor directories/junctions below the selected project directory, and changed targets are refused before mutation and revalidated immediately before write. |
 
 `inspect --fail-on-warning` is stricter than `--fail-on-error`; when both are supplied, warnings or errors return exit code 1. JSON consumers can read warning/error counts from `summary` but should treat the process exit code as the applied fail behavior.
 

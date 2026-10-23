@@ -74,7 +74,7 @@ array of objects. Unsupported valid JSON shapes, such as scalar roots or non-obj
 entries, may throw outside handled failures without a structured report or the documented
 exit-code guarantees.
 
-Generated output, `bin`, `obj`, `.git`, package caches, submodules, paths outside the project,
+Generated output, `bin`, `obj`, `.git`, package caches, submodules and other nested repositories, paths outside the project,
 file symlinks, and linked ancestor directories (including junctions) below the selected project
 directory are ineligible. Explicit `Compile` Link metadata does not authorize an outside-root or
 linked write. The planner refuses

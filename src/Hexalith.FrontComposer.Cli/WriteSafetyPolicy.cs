@@ -5,7 +5,8 @@ internal static class WriteSafetyPolicy {
         string relative = PathUtilities.ToProjectRelative(projectDirectory, path);
         if (relative == PathUtilities.RedactedPathSentinel
             || PathUtilities.HasExcludedSegment(projectDirectory, path)
-            || PathUtilities.HasLinkedPathSegment(projectDirectory, path)) {
+            || PathUtilities.HasLinkedPathSegment(projectDirectory, path)
+            || PathUtilities.HasNestedRepositorySegment(projectDirectory, path)) {
             return false;
         }
 

@@ -204,7 +204,8 @@ public sealed partial class DocsSiteValidationTests {
         reference.ShouldContain("warning sentinel `HFCM0002`");
         reference.ShouldContain("Unsupported valid JSON shapes");
         reference.ShouldContain("may throw outside handled failures");
-        reference.ShouldContain("Handled CLI failures print bounded messages without stack traces");
+        reference.ShouldContain("Handled CLI failures print messages without stack traces");
+        reference.ShouldContain("echoed without escaping or a length budget");
         reference.ShouldContain("Single-line fields escape C0 controls (`U+0000`–`U+001F`) and DEL (`U+007F`)");
         reference.ShouldContain("retain carriage returns, line feeds, and tabs; they escape other C0 controls and DEL");
         reference.ShouldContain("C1 controls (`U+0080`–`U+009F`) remain unchanged");
@@ -222,6 +223,13 @@ public sealed partial class DocsSiteValidationTests {
         reference.ShouldContain("64,000-character aggregate budget");
         reference.ShouldContain("do not semantically scrub", Case.Insensitive);
         reference.ShouldNotContain("reports generated-output paths, project metadata, schema fingerprints");
+
+        string readme = NormalizeWhitespace(File.ReadAllText(Path.Combine(ProjectRoot(), "src", "Hexalith.FrontComposer.Cli", "README.md")));
+        readme.ShouldNotContain("terminal-safe");
+        readme.ShouldNotContain("log-safe");
+        readme.ShouldNotContain("bounded/redacted");
+        readme.ShouldContain("not semantically scrubbed");
+        readme.ShouldContain("may throw outside handled failures");
     }
 
     [Fact]

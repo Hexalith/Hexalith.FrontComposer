@@ -57,12 +57,13 @@ initialization failures, report the selected project file name instead.
 - `schemaVersion`: `frontcomposer.cli.migrate.v1`.
 - `applied`: `true` only when `--apply` ran to completion and every planned write succeeded.
 - `summary`: `changed`, `unchanged`, `skipped`, `failed`, `manualOnly`, and `conflicts` counts.
-- `entries[]`: `diagnosticId`, `kind`, project-relative `path`, bounded/redacted `what`,
-  `expected`, `got`, `fix`, `docsLink`, terminal-safe informational `diff`, and
-  `formattingApplied`.
+- `entries[]`: `diagnosticId`, `kind`, project-relative `path`, `what`, `expected`, `got`, `fix`,
+  `docsLink`, informational `diff`, and `formattingApplied`.
 
-Unified diffs are terminal/log-safe informational diffs, not a patch-applicability contract.
-Control characters and long hunks are escaped or truncated before text and JSON output.
+Unified diffs are bounded informational output, not a patch-applicability contract. Single-line
+fields escape C0 controls and DEL within a content budget; multiline diffs keep carriage returns,
+line feeds, and tabs, and C1 controls remain unchanged. Output is not semantically scrubbed of
+usernames, tenant values, or secrets, so review captured output before sharing it.
 
 The migration planner reads explicit `<Compile Include="...">` project items and the SDK-style
 default `**/*.cs` shape used by FrontComposer fixtures. More complex MSBuild glob semantics and item
@@ -96,7 +97,9 @@ will generate migration sidecars.
 
 Sidecar files that fail to parse or read are surfaced as a single sentinel
 manual-only entry per file rather than being silently dropped, so corrupted
-sidecars are visible in the migration output.
+sidecars are visible in the migration output. Only arrays of diagnostic objects, or objects
+containing a `diagnostics` array of objects, are supported; other valid JSON shapes, such as scalar
+roots or non-object entries, may throw outside handled failures without a structured report.
 
 Sidecar `path` values must normalize to project-relative source paths. Drive-relative paths
 (`C:foo.cs`), URI-shaped paths, traversal, and paths outside the selected project are reported as
