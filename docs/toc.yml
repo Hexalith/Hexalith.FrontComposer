@@ -3,6 +3,8 @@
 - name: How-to
   href: how-to/index.md
   items:
+  - name: Fluent UI v5 contingency
+    href: fluent-ui-v5-contingency.md
   - name: Migrations
     href: migrations/index.md
     items:

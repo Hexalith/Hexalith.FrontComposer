@@ -25,6 +25,7 @@
       {
         "files": [
           "index.md",
+          "fluent-ui-v5-contingency.md",
           "toc.yml",
           "tutorials/**.md",
           "how-to/**.md",

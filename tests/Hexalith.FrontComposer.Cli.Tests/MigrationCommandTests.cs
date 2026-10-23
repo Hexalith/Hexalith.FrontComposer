@@ -1682,7 +1682,7 @@ public sealed class MigrationCommandTests {
     [Fact]
     public async Task MigrationPublicationCommandRejectsCatalogOnlyMismatchInAnIsolatedCopy()
     {
-        using var fixture = CreatePublicationCopy();
+        using var fixture = await CreatePublicationCopyAsync();
         string catalogPath = Path.Combine(fixture.Root, "src", "Hexalith.FrontComposer.Cli", "MigrationCatalog.cs");
         File.WriteAllText(catalogPath, File.ReadAllText(catalogPath).Replace("\"9.1.0\"", "\"9.0.0\"", StringComparison.Ordinal));
 
@@ -1697,7 +1697,7 @@ public sealed class MigrationCommandTests {
     [Fact]
     public async Task MigrationPublicationCommandRejectsGuideMissingFromTocInAnIsolatedCopy()
     {
-        using var fixture = CreatePublicationCopy();
+        using var fixture = await CreatePublicationCopyAsync();
         string tocPath = Path.Combine(fixture.Root, "docs", "toc.yml");
         string toc = File.ReadAllText(tocPath);
         toc.ShouldContain("href: migrations/9.1-to-9.2.md");
@@ -1708,7 +1708,7 @@ public sealed class MigrationCommandTests {
         failures.ShouldBe(["docs/toc.yml: missing migration guide 9.1-to-9.2.md."]);
     }
 
-    private static CliFixture CreatePublicationCopy()
+    private static async Task<CliFixture> CreatePublicationCopyAsync()
     {
         var fixture = CliFixture.Create();
         foreach (string relative in new[]
@@ -1725,7 +1725,40 @@ public sealed class MigrationCommandTests {
             CopyPublicationInput(Path.Combine(ProjectRoot().FullName, relative), Path.Combine(fixture.Root, relative));
         }
 
+        await SeedPublicationCatalogAuthorityAsync(fixture.Root).ConfigureAwait(false);
         return fixture;
+    }
+
+    private static async Task SeedPublicationCatalogAuthorityAsync(string root)
+    {
+        string selection = await RunPublicationGitAsync(ProjectRoot().FullName, "ls-tree", "HEAD", "--", "references/Hexalith.Builds").ConfigureAwait(false);
+        string selected = selection.Split(' ', '\t')[2];
+        string catalog = await RunPublicationGitAsync(Path.Combine(ProjectRoot().FullName, "references", "Hexalith.Builds"), "show", selected + ":Props/Directory.Packages.props").ConfigureAwait(false);
+        string builds = Path.Combine(root, "references", "Hexalith.Builds");
+        _ = Directory.CreateDirectory(Path.Combine(builds, "Props"));
+        await RunPublicationGitAsync(builds, "init", "--quiet").ConfigureAwait(false);
+        await File.WriteAllTextAsync(Path.Combine(builds, "Props", "Directory.Packages.props"), catalog, CancellationToken.None).ConfigureAwait(false);
+        await RunPublicationGitAsync(builds, "add", "Props/Directory.Packages.props").ConfigureAwait(false);
+        await RunPublicationGitAsync(builds, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=", "commit", "--quiet", "-m", "test: seed catalog fixture").ConfigureAwait(false);
+        string fixtureSelected = (await RunPublicationGitAsync(builds, "rev-parse", "HEAD").ConfigureAwait(false)).Trim();
+        await RunPublicationGitAsync(root, "init", "--quiet").ConfigureAwait(false);
+        await RunPublicationGitAsync(root, "update-index", "--add", "--cacheinfo", "160000," + fixtureSelected + ",references/Hexalith.Builds").ConfigureAwait(false);
+        await RunPublicationGitAsync(root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=", "commit", "--quiet", "-m", "test: seed catalog fixture").ConfigureAwait(false);
+    }
+
+    private static async Task<string> RunPublicationGitAsync(string root, params string[] arguments)
+    {
+        ProcessStartInfo start = new("git")
+        {
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (string argument in arguments) { start.ArgumentList.Add(argument); }
+        (int exitCode, string output, string error) = await RunProcessCaptureAsync(start, TimeSpan.FromSeconds(30)).ConfigureAwait(false);
+        exitCode.ShouldBe(0, error + output);
+        return output;
     }
 
     private static async Task<string[]> RunPublicationValidatorAsync(string root)

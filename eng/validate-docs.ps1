@@ -58,6 +58,7 @@ function Get-FrontMatter([string]$Path) {
 function Get-ContentFiles {
     $patterns = @(
         'index.md',
+        'fluent-ui-v5-contingency.md',
         'tutorials/**/*.md',
         'how-to/**/*.md',
         'reference/**/*.md',
@@ -75,7 +76,7 @@ function Get-ContentFiles {
                     if ($rel.StartsWith($prefix, [System.StringComparison]::Ordinal)) { return $true }
                 }
 
-                return $rel -eq 'docs/index.md'
+                return $rel -in @('docs/index.md', 'docs/fluent-ui-v5-contingency.md')
             } |
             ForEach-Object { if (-not $files.Contains($_.FullName)) { $files.Add($_.FullName) | Out-Null } }
     }
@@ -339,6 +340,205 @@ function Assert-MigrationParity([string]$MigrationsRoot, [string]$CatalogPath, [
             Add-Failure $Failures "docs/migrations/index.md is missing guide link $path."
         }
     }
+}
+
+function Invoke-FluentCatalogGit([string]$Root, [string[]]$Arguments) {
+    # Do not surface Git's stderr: missing objects/repositories can contain private machine paths.
+    try {
+        $start = [System.Diagnostics.ProcessStartInfo]::new('git')
+        $start.WorkingDirectory = $Root
+        foreach ($argument in $Arguments) { $start.ArgumentList.Add($argument) }
+        $start.RedirectStandardOutput = $true
+        $start.RedirectStandardError = $true
+        $start.UseShellExecute = $false
+        $process = [System.Diagnostics.Process]::Start($start)
+        try {
+            $output = $process.StandardOutput.ReadToEndAsync()
+            $errorOutput = $process.StandardError.ReadToEndAsync()
+            $process.WaitForExit()
+            $null = $errorOutput.GetAwaiter().GetResult()
+            return [pscustomobject]@{ ExitCode = $process.ExitCode; Output = $output.GetAwaiter().GetResult() }
+        }
+        finally { $process.Dispose() }
+    }
+    catch { return [pscustomobject]@{ ExitCode = -1; Output = '' } }
+}
+
+function Get-FluentCatalogVersions([string]$Root, [System.Collections.Generic.List[string]]$Failures) {
+    $authority = 'references/Hexalith.Builds/Props/Directory.Packages.props'
+    $repository = Invoke-FluentCatalogGit $Root @('rev-parse', '--show-toplevel')
+    if ($repository.ExitCode -ne 0 -or $repository.Output.Trim().Replace('\', '/') -cne [System.IO.Path]::GetFullPath($Root).Replace('\', '/')) {
+        Add-Failure $Failures 'references/Hexalith.Builds: root HEAD Git authority is unavailable.'
+        return
+    }
+    $selection = Invoke-FluentCatalogGit $Root @('ls-tree', 'HEAD', '--', 'references/Hexalith.Builds')
+    $gitlink = [regex]::Match($selection.Output, '\A160000 commit (?<sha>[0-9a-f]{40}|[0-9a-f]{64})\treferences/Hexalith\.Builds\r?\n?\z')
+    if ($selection.ExitCode -ne 0 -or -not $gitlink.Success) {
+        Add-Failure $Failures 'references/Hexalith.Builds: root HEAD must select exactly one Builds gitlink.'
+        return
+    }
+    $buildsRoot = Join-Path $Root 'references/Hexalith.Builds'
+    $buildsRepository = Invoke-FluentCatalogGit $buildsRoot @('rev-parse', '--show-toplevel')
+    if ($buildsRepository.ExitCode -ne 0 -or $buildsRepository.Output.Trim().Replace('\', '/') -cne [System.IO.Path]::GetFullPath($buildsRoot).Replace('\', '/')) {
+        Add-Failure $Failures "${authority}: selected catalog Git object is unavailable."
+        return
+    }
+    $catalog = Invoke-FluentCatalogGit $buildsRoot @('show', ($gitlink.Groups['sha'].Value + ':Props/Directory.Packages.props'))
+    if ($catalog.ExitCode -ne 0) {
+        Add-Failure $Failures "${authority}: selected catalog Git object is unavailable."
+        return
+    }
+    try {
+        $settings = [System.Xml.XmlReaderSettings]::new()
+        $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
+        $settings.XmlResolver = $null
+        $reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]::new($catalog.Output), $settings)
+        try {
+            $xml = [System.Xml.XmlDocument]::new()
+            $xml.XmlResolver = $null
+            $xml.Load($reader)
+        }
+        finally { $reader.Dispose() }
+    }
+    catch {
+        Add-Failure $Failures "${authority}: selected catalog must be valid XML without a DTD."
+        return
+    }
+    $packageEntries = @($xml.SelectNodes('//*[local-name()="PackageVersion"]'))
+    foreach ($entry in $packageEntries) {
+        foreach ($attribute in @('Include', 'Update', 'Remove')) {
+            $target = $entry.GetAttribute($attribute)
+            if ($target -and $target -cnotmatch '^[A-Za-z0-9_.-]+$') {
+                # An item expression or glob may update the Fluent entries despite naming neither package literally.
+                Add-Failure $Failures "${authority}: selected catalog contains an unresolved PackageVersion target."
+                return
+            }
+        }
+    }
+    $versions = [System.Collections.Generic.Dictionary[string,string]]::new([System.StringComparer]::Ordinal)
+    foreach ($package in @('Microsoft.FluentUI.AspNetCore.Components', 'Microsoft.FluentUI.AspNetCore.Components.Icons')) {
+        $entries = @($packageEntries | Where-Object {
+            $_.GetAttribute('Include').Equals($package, [System.StringComparison]::OrdinalIgnoreCase) -or
+            $_.GetAttribute('Update').Equals($package, [System.StringComparison]::OrdinalIgnoreCase) -or
+            $_.GetAttribute('Remove').Equals($package, [System.StringComparison]::OrdinalIgnoreCase)
+        })
+        if ($entries.Count -ne 1) {
+            Add-Failure $Failures "${authority}: selected catalog must contain exactly one literal PackageVersion for $package."
+            continue
+        }
+        $entry = $entries[0]
+        $version = $entry.GetAttribute('Version')
+        # No MSBuild evaluation or checkout fallback: conditional/property/range/floating versions are unresolved authority.
+        if ($entry.GetAttribute('Include') -cne $package -or $entry.HasAttribute('Update') -or $entry.HasAttribute('Remove') -or
+            $entry.SelectNodes('ancestor-or-self::*[@Condition]').Count -gt 0 -or $entry.HasChildNodes -or
+            $entry.ParentNode.LocalName -cne 'ItemGroup' -or $entry.ParentNode.ParentNode.LocalName -cne 'Project' -or
+            $version -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$') {
+            Add-Failure $Failures "${authority}: selected catalog requires an unconditional literal version for $package."
+            continue
+        }
+        $versions.Add($package, $version)
+    }
+    return ,$versions
+}
+
+function Assert-FluentContingencyParity([string]$Root, [System.Collections.Generic.List[string]]$Failures) {
+    $versions = Get-FluentCatalogVersions $Root $Failures
+    $relative = 'docs/fluent-ui-v5-contingency.md'
+    $page = Join-Path $Root $relative
+    if (-not (Test-Path -LiteralPath $page -PathType Leaf)) {
+        Add-Failure $Failures "${relative}: missing contingency page."
+        return
+    }
+    # Comments, fenced examples and raw HTML pre blocks do not publish an identity table.
+    $body = [regex]::Replace((Get-FrontMatter $page).Body, '(?s)<!--.*?(?:-->|\z)', '')
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $fenceCharacter = $null
+    $fenceLength = 0
+    $preBlock = $false
+    foreach ($line in ($body -split '\r?\n')) {
+        if ($null -ne $fenceCharacter) {
+            if ($line -match ('^ {0,3}' + [regex]::Escape($fenceCharacter) + '{' + $fenceLength + ',}\s*$')) { $fenceCharacter = $null }
+            continue
+        }
+        if ($preBlock) {
+            if ($line -match '(?i)</pre\s*>') { $preBlock = $false }
+            continue
+        }
+        if ($line -match '^ {0,3}(?<fence>`{3,}|~{3,})') {
+            $fenceCharacter = $Matches['fence'].Substring(0, 1)
+            $fenceLength = $Matches['fence'].Length
+            continue
+        }
+        if ($line -match '(?i)^ {0,3}<pre(?:\s|>)') {
+            $preBlock = $line -notmatch '(?i)</pre\s*>'
+            continue
+        }
+        $lines.Add($line)
+    }
+    $published = $lines -join "`n"
+    $tables = [regex]::Matches($published, '(?m)^\| Package ID \| Selected version \|\n\| --- \| --- \|\n(?<rows>(?:\|[^\n]+\|\n?)+)')
+    if ($tables.Count -ne 1) {
+        Add-Failure $Failures "${relative}: must publish exactly one Package ID / Selected version table."
+    }
+    foreach ($package in @('Microsoft.FluentUI.AspNetCore.Components', 'Microsoft.FluentUI.AspNetCore.Components.Icons')) {
+        $rowPattern = '(?m)^\|\s*`?' + [regex]::Escape($package) + '`?\s*\|(?<version>[^|]*)\|\s*$'
+        $rows = [regex]::Matches($published, $rowPattern)
+        if ($tables.Count -ne 1 -or $rows.Count -ne 1 -or [regex]::Matches($tables[0].Groups['rows'].Value, $rowPattern).Count -ne 1) {
+            Add-Failure $Failures "${relative}: must publish exactly one identity table row for $package."
+        }
+        elseif ($null -ne $versions -and $versions.ContainsKey($package) -and $rows[0].Groups['version'].Value.Trim().Trim('`') -cne $versions[$package]) {
+            Add-Failure $Failures "${relative}: version for $package must match the root HEAD-selected catalog."
+        }
+    }
+}
+
+function Test-DocFxExclusion([string]$Page, [array]$Patterns) {
+    # Reuse the pinned DocFX matcher: **/ includes zero directories, unlike PowerShell -like.
+    $toolManifest = Get-Content -LiteralPath (Join-Path $RepoRoot '.config/dotnet-tools.json') -Raw | ConvertFrom-Json
+    $version = [string]$toolManifest.tools.docfx.version
+    if ($version -cnotmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$') { throw 'Unresolved DocFX tool version.' }
+    $packageRoot = $env:NUGET_PACKAGES
+    if ([string]::IsNullOrWhiteSpace($packageRoot)) {
+        $location = Invoke-Process 'dotnet' @('nuget', 'locals', 'global-packages', '--list', '--force-english-output') $RepoRoot
+        $packageRoot = [regex]::Match($location, '(?m)^global-packages: (.+?)\r?$').Groups[1].Value
+    }
+    if ([string]::IsNullOrWhiteSpace($packageRoot)) { throw 'DocFX package cache is unavailable.' }
+    $assemblies = @(Get-ChildItem -LiteralPath (Join-Path $packageRoot "docfx/$version/tools") -Filter 'Docfx.Glob.dll' -Recurse -File |
+        Where-Object { $_.Directory.Name -eq 'any' -and $_.Directory.Parent.Name -match '^net[0-9]+\.[0-9]+$' -and [version]$_.Directory.Parent.Name.Substring(3) -le [System.Environment]::Version } |
+        Sort-Object { [version]$_.Directory.Parent.Name.Substring(3) } -Descending)
+    if ($assemblies.Count -eq 0) { throw 'Pinned DocFX glob matcher is unavailable.' }
+    [System.Reflection.Assembly]::LoadFrom($assemblies[0].FullName) | Out-Null
+    foreach ($pattern in $Patterns) {
+        $matcher = [Docfx.Glob.GlobMatcher]::new([string]$pattern, [Docfx.Glob.GlobMatcher]::DefaultOptions)
+        if ($matcher.Match($Page)) { return $true }
+    }
+    return $false
+}
+
+function Assert-FluentContingencyPublication([System.Collections.Generic.List[string]]$Failures) {
+    $page = 'fluent-ui-v5-contingency.md'
+    $tocPath = Join-Path $DocsRoot 'toc.yml'
+    $toc = if (Test-Path -LiteralPath $tocPath -PathType Leaf) { Get-Content -LiteralPath $tocPath -Raw } else { '' }
+    $howTo = [regex]::Match($toc, '(?ms)^- name: How-to\r?\n(?<section>.*?)(?=^- name:|\z)').Groups['section'].Value
+    $items = [regex]::Match($howTo, '(?ms)^  items:[ \t]*\r?\n(?<items>.*?)(?=^  (?!- )[^\s#]|\z)').Groups['items'].Value
+    $linked = $false
+    foreach ($item in [regex]::Matches($items, '(?ms)^  - name:[ \t]+[^\r\n|>]+\r?\n(?<item>.*?)(?=^  - |\z)')) {
+        if ([regex]::IsMatch($item.Groups['item'].Value, '(?m)^    href: ' + [regex]::Escape($page) + '[ \t]*\r?$')) { $linked = $true }
+    }
+    if (-not $linked) {
+        Add-Failure $Failures 'docs/toc.yml: missing Fluent contingency page under How-to.'
+    }
+    try {
+        $config = Get-Content -LiteralPath (Join-Path $DocsRoot 'docfx.json') -Raw | ConvertFrom-Json -AsHashtable
+        $entries = @($config.build.content | Where-Object {
+            @($_.files | Where-Object { $_ -ceq $page }).Count -eq 1 -and
+            (-not $_.ContainsKey('src') -or $_.src -ceq '.') -and
+            (-not $_.ContainsKey('dest') -or $_.dest -ceq '.') -and
+            (-not $_.ContainsKey('exclude') -or -not (Test-DocFxExclusion $page @($_.exclude)))
+        })
+        if ($entries.Count -ne 1) { throw 'Missing publication mapping.' }
+    }
+    catch { Add-Failure $Failures 'docs/docfx.json: must publish the Fluent contingency page at its documentation path.' }
 }
 
 function Get-ComponentSection([string]$Text, [string]$Heading) {
@@ -907,6 +1107,8 @@ else {
     }
 }
 
+Assert-FluentContingencyParity $RepoRoot $failures
+Assert-FluentContingencyPublication $failures
 Assert-ComponentDocumentation $failures
 
 $registryPath = Join-Path $DocsRoot 'diagnostics/diagnostic-registry.json'
@@ -1077,7 +1279,7 @@ $manifest = [ordered]@{
     generatedAt = '2026-05-10T00:00:00Z'
     validationCommand = 'pwsh ./eng/validate-docs.ps1'
     toolVersions = $toolVersions
-    inputRoots = @('docs/index.md', 'docs/tutorials', 'docs/how-to', 'docs/reference', 'docs/concepts', 'docs/diagnostics', 'docs/migrations', 'docs/validation/producer-fingerprints.json', 'docs/validation/api-summary-baseline.txt')
+    inputRoots = @('docs/index.md', 'docs/fluent-ui-v5-contingency.md', 'docs/tutorials', 'docs/how-to', 'docs/reference', 'docs/concepts', 'docs/diagnostics', 'docs/migrations', 'docs/validation/producer-fingerprints.json', 'docs/validation/api-summary-baseline.txt')
     producerFingerprints = $producerFingerprints
     generatedOutputRoots = @($docfxOutput, 'artifacts/docs/mcp-reference', 'artifacts/docs/snippets', $(if (-not $SkipDocFx) { 'artifacts/docs/api-references' })) | Where-Object { $_ }
     mcpReferenceSlices = $mcpOutputs

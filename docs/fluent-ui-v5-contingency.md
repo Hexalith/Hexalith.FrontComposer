@@ -1,212 +1,86 @@
-# Fluent UI v5 Contingency Plan
-
-> **Audience:** A developer who has *never* read the architecture doc. This plan must be actionable on its own.
->
-> **Current state:** `Microsoft.FluentUI.AspNetCore.Components` is pinned at the **exact** RC version `5.0.0-rc.2-26098.1` in `Directory.Packages.props` (line 15). FrontComposer's shell, DataGrid, navigation, and Epic 2 form components are built against this RC. Any subsequent Fluent UI RC or GA release may contain breaking changes.
->
-> **Purpose of this document:** Give an adopter a concrete, step-by-step procedure to (a) move to a newer Fluent UI version when it ships, (b) validate that the load-bearing APIs still work, (c) roll back cleanly if something breaks, and (d) understand the canary workflow that will (W2 / Epic 3) catch regressions against pre-release versions automatically.
-
+---
+title: Fluent UI v5 Contingency Plan
+description: Resolve the selected Fluent identity, preserve its approval gates, and validate catalog-owned upgrades and rollback.
+genre: how-to
+audience: framework-contributor
+ownerStory: 15.4
+status: authored
+reviewed: 2026-10-23
+uid: frontcomposer.how-to.fluent-ui-v5-contingency
 ---
 
-## 1. Version Pin Update Procedure
+# Fluent UI v5 Contingency Plan
 
-All Fluent UI versions are pinned centrally in `Directory.Packages.props`. Never bump a version in a project-level `.csproj`.
+Use this plan when maintaining FrontComposer's Fluent dependency or assessing an upgrade. Package selection and Product acceptance have separate authorities.
 
-1. **Identify the target version.** Either a new RC (e.g., `5.0.0-rc.3-...`) or the GA release (`5.0.0`). Prefer exact pins (no floating `*` or `-*` ranges) so builds remain reproducible.
-2. **Update the pin.** Edit `Directory.Packages.props` and replace the existing line with the new exact version:
-   ```xml
-   <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="5.0.0-rc.3-<suffix>" />
-   ```
-   Keep the central-package-management layout; do not add a `Version="..."` attribute inside any `<PackageReference>`.
-3. **Restore and rebuild.**
-   ```bash
-   dotnet restore
-   dotnet build
-   ```
-   If restore fails with `NU1102` (package not found on configured feeds), the target RC is not yet published to the public NuGet feed — wait, or add the Fluent UI nightly feed if you know the version exists on it.
-4. **Validate the load-bearing APIs** (see §2). Every row in that checklist must be green before the pin is considered adopted.
-5. **Run the full test suite:**
-   ```bash
-   dotnet build
-   dotnet test --no-build
-   ```
-   Baseline is 204 tests (Contracts 9, Shell 43, SourceTools 152). A bump must leave this green.
-6. **Manually verify the Counter sample** (`samples/Counter/Counter.Web`) via `dotnet watch` — see `docs/hot-reload-guide.md` for the human-validation steps.
-7. **Commit the pin change in its own commit** with message `chore(deps): bump Fluent UI to <version>`. This gives a single clean revert target if rollback is needed (§4).
+## Selected package identity
 
-### Validating a rollback command
+The root `Directory.Packages.props` imports the central catalog at `references/Hexalith.Builds/Props/Directory.Packages.props`. The authoritative version is the catalog object at the Builds gitlink selected by **root HEAD**, regardless of the Builds working-tree or checkout state.
 
-The rollback / pin-update command template is:
+| Package ID | Selected version |
+| --- | --- |
+| `Microsoft.FluentUI.AspNetCore.Components` | `5.0.1` |
+| `Microsoft.FluentUI.AspNetCore.Components.Icons` | `5.0.1` |
+
+Both selections are **GA**. To inspect the authority, run these read-only commands from the FrontComposer root, substituting the exact gitlink SHA printed by the first command into the second:
 
 ```bash
-dotnet add <project> package Microsoft.FluentUI.AspNetCore.Components --version "5.0.0-rc.2-26098.1"
+git ls-tree HEAD -- references/Hexalith.Builds
+git -C references/Hexalith.Builds show <selected-builds-sha>:Props/Directory.Packages.props
 ```
 
-**Quoting / escaping notes for this command:**
+`pwsh ./eng/validate-docs.ps1` compares this table with those committed XML entries. Missing gitlinks, unavailable objects, ambiguous entries, unresolved versions and document drift block documentation validation. A local checkout version cannot replace missing authority.
 
-- The version **must** be quoted because the suffix contains a `-` that some shells can misinterpret as an option flag if omitted.
-- On **PowerShell (pwsh)** on Windows, use single quotes around the whole value if you need to paste a version containing `$` or `!` (neither occurs in the current pin, but future RC suffixes could). Example: `--version '5.0.0-rc.3-26xxxxx.1'`.
-- On **cmd.exe**, double quotes are mandatory and single quotes are treated literally — do not use single quotes there.
-- On **bash / zsh**, either single or double quotes work; prefer double quotes for consistency with the Windows guidance above.
-- `dotnet add package` alone (without `--version`) resolves the **highest** version permitted by the central-package-management floor, which defeats the point of an exact pin — always pass `--version` explicitly when scripting.
+## Decision and evidence requirements
 
-> **Preferred path:** Edit `Directory.Packages.props` directly rather than calling `dotnet add package`. `dotnet add package` under central-package-management writes a `<PackageVersion>` line into `Directory.Packages.props`, which can produce a duplicate entry if one already exists — a manual edit is less error-prone.
+The **2026-10-21 Product Owner + Architect decision is not approved**, as recorded in [Story 13.9's Product Decision Receipt](https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#product-decision-receipt). **OI-4, FLUENT-APP-1, D-13 and G-4 remain open.** Selecting GA packages, completing Story 13.9 or correcting this page confers no acceptance.
 
-## 2. Load-Bearing API Validation Checklist
+No single exact identity has green UX-A..UX-F evidence. The receipt's [hosted Quality run 39554582583](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/39554582583) is red: WebKit has 12 failures, Gate 2b fails and Gate 3a bUnit is skipped. Earlier evidence spans RC, GA 5.0.0 and GA 5.0.1 and remains bound to its own candidate, revision and executing identity. Equal package versions across Builds revisions do not transfer evidence between candidates.
 
-After a version bump, **every** row below must be verified. A red cell blocks adoption and triggers the rollback procedure (§4).
+The Quality/Test role must obtain **one green hosted Quality run**, cited by run URL, on a **main commit whose root gitlink selects the exact target identity**. It must cover Chromium, Firefox, WebKit, `accessibility-visual` and Gate 3a bUnit. Fix or explicitly disposition the 12 WebKit failures first; Gate 3a depends on the existing Gate 2b work. Then the **Product Owner + Architect** must make a dated re-decision citing that run, under DW-1985. A passing run alone cannot approve the posture.
 
-| # | API / component                                  | Where it is used                                        | Verify                                                                                      | Status |
-|---|--------------------------------------------------|---------------------------------------------------------|---------------------------------------------------------------------------------------------|--------|
-| 1 | `FluentLayout` + `FluentLayoutItem`              | Shell layout (`MainLayout.razor` in `Counter.Web`)      | Shell renders with header / sidebar / content regions; no console errors.                   | ☐ |
-| 2 | `<FluentProviders />` | App-level provider registration             | Page loads without JS provider-resolution errors in the browser console.                    | ☐ |
-| 3 | `DefaultValues` (application-wide component defaults — button appearance, density, etc.) | Shell startup configuration                        | Default appearance for buttons / inputs matches what it was before the bump.                | ☐ |
-| 4 | `FluentDataGrid`                                  | Primary projection rendering                            | Columns render, sorting / virtualization still work, accessibility tree includes `<table>`. | ☐ |
-| 5 | `FluentNav` (renamed from `FluentNavMenu` in v5) | Sidebar navigation                                      | Bounded-context groups render; active item highlights; keyboard nav works.                  | ☐ |
-| 6 | Epic 2 form components: `FluentTextField`, `FluentCheckbox`, `FluentDatePicker`, `FluentSelect`, `FluentNumberField` | Generated command forms (when Epic 2 lands) | Each component binds correctly to the Fluxor store; validation messages display.            | ☐ |
-| 7 | Toast / message bar (`FluentMessageBar`, Toast component in RC2) | Command lifecycle feedback                                  | Success / error notifications render; `IToastService` is **not** referenced (removed in v5). | ☐ |
+Human assistive-technology, zoom and device observations remain separate evidence under **OI-16**, naming the same package identity; automated checks cannot supply them. G-4 also retains its prerequisite closures, refreshed digest-bound reviewer gate and D-9 re-approval. This page grants none of those approvals and does not rewrite historical evidence or accessibility statuses.
 
-### Known legacy-provider breaking changes to watch for
+## Verified APIs and Fluent 2 tokens
 
-- `FluentNavMenu` → `FluentNav` (**renamed**).
-- `IToastService` → **removed**; use `FluentMessageBar` or the new Toast component shipped in RC2.
-- `SelectedOptions` → `SelectedItems` (binding property renamed).
-- `FluentDesignTheme` → CSS custom properties (theming moved to CSS vars).
-- `<FluentDesignSystemProvider>` → `<FluentProviders />` (simplified).
-- Miscellaneous property / attribute renames to align with Fluent UI React v9.
+Story 13.9 verified these names in the selected package. Validate the affected surface at every proposed identity; a supported API name does not promise FrontComposer's internal component composition.
 
-If you hit a breaking change not listed above, the Fluent UI **MCP Server migration service** (new in RC2) can assist component-by-component. It is recommended for large surface-area migrations rather than best-effort grep-and-replace.
+| Surface | Verified names or contract | Upgrade check |
+| --- | --- | --- |
+| Providers and layout | `FluentProviders`, `FluentLayout`, `FluentStack`, `FluentGrid` | Provider resolution, layout regions, keyboard order and responsive behavior remain correct. |
+| Presentation | `FluentAccordion`, `FluentBadge`, `FluentTooltip` | Accessible names, expansion state, visible status text and keyboard interaction remain correct. |
+| Theme service | `IThemeService.SetThemeAsync(ThemeSettings)`, `ThemeMode` | Theme changes preserve the brand ramp and light/dark behavior. |
+| Theme settings | `ThemeSettings(Color, HueTorsion, Vibrancy, Mode, IsExact)` | The shell seeds the ramp with `new ThemeSettings(AccentColor, 0, 0, mode, false)`. |
+| FrontComposer surfaces | [Page toolbar](reference/components/page-toolbar.md), [DataGrid](reference/components/datagrid.md), [navigation](reference/components/navigation.md), [command lifecycle](reference/components/command-lifecycle.md) | Validate public FrontComposer contracts, generated bindings, focus, sorting and lifecycle announcements against the target package. |
 
-## 3. Migration Effort Estimate
+The active accent foreground role is **`--colorBrandForeground1`**. The seed configures the brand ramp; it does not authorize using accent as a chrome surface fill or inventing a palette. Supported Fluent 2 token names verified by the receipt are:
 
-- **Budget:** **1–2 weeks** for a solo developer to bump from the current pin to Fluent UI v5 GA.
-- **Driver:** Surface area of breaking renames across shell, DataGrid, nav, and Epic 2 form components — not algorithmic complexity.
-- **Accelerators:**
-  - Fluent UI MCP Server migration service (RC2+) for mechanical renames.
-  - `rg --multiline` against `FluentNavMenu`, `IToastService`, `SelectedOptions`, `FluentDesignTheme`, `FluentDesignSystemProvider` as a first pass.
-  - The load-bearing checklist in §2 as the acceptance gate — do not declare migration complete until every row is green.
+- `--colorBrandForeground1`, `--colorBrandBackground`.
+- `--colorNeutralBackground1`, `--colorNeutralBackground2`, `--colorNeutralBackground3`.
+- `--colorNeutralStroke2`.
+- `--colorNeutralForeground1`, `--colorNeutralForeground2`, `--colorNeutralForeground3`.
+- `--colorStatusSuccessForeground1`, `--colorStatusWarningForeground1`, `--colorStatusDangerForeground1`.
 
-## 4. Rollback Procedure
+**Unsupported:** `--colorStatusInfoForeground1` does not resolve in 5.0.1. Consequently, the existing `--fc-color-info` alias is unresolvable. It has no runtime consumers but is pinned by `SlotMappingRegressionTests`; **DW-1986** owns its disposition. Do not copy that alias as supported guidance or treat this correction as an alias fix.
 
-If the load-bearing checklist (§2) or the test suite fails after a version bump, roll back immediately:
+Legacy v4/FAST tokens, including `--type-ramp-*`, `--neutral-*`, `--accent-*`, `--neutral-fill-*` and `--palette-*`, remain outside the supported Fluent 2 contract. Use the verified Fluent 2 roles and existing FrontComposer customization seams.
 
-1. **Revert the commit** that bumped the pin (the "one commit per bump" rule in §1 makes this a single revert):
-   ```bash
-   git revert <commit-sha>
-   ```
-2. **Or** edit `Directory.Packages.props` back to the previous exact version — currently `5.0.0-rc.2-26098.1`:
-   ```xml
-   <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="5.0.0-rc.2-26098.1" />
-   ```
-3. Run `dotnet restore && dotnet build && dotnet test --no-build` to confirm the baseline is green again.
-4. Open an issue describing what broke (which checklist row, what error, what environment) and link it from this document.
+## Catalog-owned upgrade procedure
 
-Do **not** attempt to "patch forward" (shim missing APIs, revert only part of the change) — the exact pin exists precisely so rollback is atomic.
+1. Record both target package IDs and exact literal versions, the selecting Builds revision and the FrontComposer candidate. Coordinate version changes in the **Hexalith.Builds repository**; its catalog owns the pins. Do not add project-level versions, local catalog overrides or duplicate root entries. Updating FrontComposer's selected root gitlink is a separate reviewed dependency change.
+2. Restore and build the affected projects using the repository's dependency mode: local development uses Debug project references, while CI uses Release packages. Build test projects individually and run their current relevant suites, including Fluent conformance, token mapping, package boundaries, generated forms, navigation and DataGrid behavior. Use current test discovery and gate results rather than a historical fixed test count.
+3. Revalidate conformance and accessibility/visual behavior at the exact proposed identity, including the shell accent-as-thread rule. Preserve every existing failure, skip, candidate binding and human evidence requirement. Never project earlier evidence onto the proposed identity.
+4. Run `pwsh ./eng/validate-docs.ps1` after reconciling the identity table with the selected catalog. Passing documentation validation establishes identity and publication parity; acceptance still follows the decision receipt.
+5. Obtain the required hosted Quality evidence and dated owner decision before claiming acceptance. Review the whole dependency change and document the affected APIs and migration/deprecation handling.
 
-## 5. Canary Workflow (W2 / Epic 3 implementation — skeleton documented here)
+The GA re-decision trigger fired on **2026-09-30** and was consumed by the 2026-10-21 negative decision. While the target remains unapproved, obtain the Product Owner + Architect re-decision described above. **After acceptance**, a **patch** bump requires a green Quality run on the bump commit plus a dated one-line **Architect addendum** to the receipt naming the exact version and run URL. A **minor or major** bump requires a **new Product Owner + Architect decision**. Every identity change requires conformance and accessibility/visual revalidation. A **breaking Fluent change requires a FrontComposer major version**, with conformance and accessibility/visual evidence under **D-13**.
 
-The canary workflow is **not yet implemented**. It is described here so that W2 / Epic 3 implementation has an actionable specification:
+## Rollback and contingency
 
-**Filename:** `.github/workflows/canary-fluentui.yml`
-**Trigger:** Weekly, Monday 06:00 UTC (`cron: "0 6 * * 1"`) and `workflow_dispatch`.
+If validation fails, stop adoption and record the failing surface, exact package identity, selecting revision and evidence. Coordinate a reviewed rollback through **Hexalith.Builds**, then select the intended root Builds gitlink through the normal dependency workflow. Review the full catalog impact because a Builds revision can change other dependencies. Restore, build and re-run the affected checks at the rollback identity, and reconcile this table and the decision receipt as required. Returning to an earlier selection does not make its evidence current or confer acceptance.
 
-**Structure:**
+Do not use local `dotnet add package` pins, project-level overrides or partial shims as a substitute for a catalog-owned rollback. Keep the failure and prior decision records intact for the next owner decision.
 
-```yaml
-# .github/workflows/canary-fluentui.yml
-# Weekly canary that overrides the Fluent UI pin to the latest pre-release
-# and verifies FrontComposer still builds and tests green. Does NOT block
-# PRs (advisory only). Failures open a labeled GitHub issue.
-name: canary-fluentui
-on:
-  schedule:
-    - cron: "0 6 * * 1"          # Mondays 06:00 UTC
-  workflow_dispatch:
+The Fluent canary workflow is **not implemented**. There is no scheduled Fluent prerelease qualification or advisory canary result to rely on. Any future canary implementation is separate work and cannot replace the hosted Quality, human evidence or owner decision gates.
 
-jobs:
-  canary:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          # Root-declared references submodules only; never recurse into nested submodules.
-          submodules: true
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-
-      - name: Resolve latest Fluent UI pre-release
-        id: fluentui
-        run: |
-          # NOTE: `dotnet nuget search --format json | jq` is FRAGILE —
-          # the JSON shape has changed between dotnet SDK minors.
-          # Before trusting the output below, W2 must:
-          #   1) Add a `dotnet nuget search --format json ... | jq 'has("searchResult")'`
-          #      validation step (fail the job if shape changes).
-          #   2) Provide a fallback: on jq failure, call the NuGet v3 Search
-          #      API directly via `curl` + parse — treat that result as
-          #      authoritative.
-          #   3) Pin the jq version used in CI for reproducibility.
-          version=$(dotnet nuget search Microsoft.FluentUI.AspNetCore.Components \
-                      --prerelease --format json \
-                    | jq -r '.searchResult[0].packages[0].latestVersion')
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Validate resolved version (guard against sed/regex corruption)
-        run: |
-          # Defense against jq-shape drift: reject anything that isn't a safe
-          # NuGet semver-style string. `sed` replacement is fed this value, so
-          # characters like `&`, `\`, `|` in the resolved string would corrupt
-          # `Directory.Packages.props` silently.
-          v='${{ steps.fluentui.outputs.version }}'
-          case "$v" in
-            ''|*[!A-Za-z0-9.\-]*)
-              echo "::error::Resolved Fluent UI version '$v' contains unsafe characters for sed/XML replacement"; exit 1 ;;
-          esac
-
-      - name: Override pin
-        run: |
-          # Temporarily bump the central package version to the resolved pre-release.
-          # The previous step validated the version string so sed will not corrupt XML.
-          # Longer-term (see "Known fragility" below), prefer an `XmlPoke`-style MSBuild
-          # target or a small `dotnet` script rather than regex-over-XML.
-          sed -i -E "s|(<PackageVersion Include=\"Microsoft.FluentUI.AspNetCore.Components\" Version=\")[^\"]+(\".*)|\1${{ steps.fluentui.outputs.version }}\2|" Directory.Packages.props
-
-      - name: Build
-        run: dotnet build
-
-      - name: Test
-        run: dotnet test --no-build
-
-      - name: Create issue on failure
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `[canary] Fluent UI ${{ steps.fluentui.outputs.version }} broke the build`,
-              labels: ['canary-failure'],
-              body: `See workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
-            });
-```
-
-**Known fragility (must be addressed before the canary is trusted):**
-
-- `dotnet nuget search --format json | jq` output shape has changed between dotnet SDK minors. W2 **must** add a validation step (fail fast if the expected keys are missing) and a fallback to the NuGet v3 Search HTTP API.
-- `sed -i -E` with a regex over XML is brittle; prefer an `XmlPoke`-style MSBuild target or a small dotnet script once W2 implementation begins.
-
-## 6. Human Process Step (ADR-003 requirement)
-
-**Subscribe to `microsoft/fluentui-blazor` releases** on GitHub to be notified of pre-release and GA drops. This is a **manual** action — the repository should subscribe a team-owned watcher account (not a single individual) so notifications don't disappear when ownership changes.
-
-- Repository: <https://github.com/microsoft/fluentui-blazor>
-- Watch setting: **Releases only**.
-
-## 7. References
-
-- Architecture: **ADR-003** (Fluent UI contingency).
-- Central pin: `Directory.Packages.props` (line 15, pinned to `5.0.0-rc.2-26098.1`).
-- Hot reload / inner-loop: `docs/hot-reload-guide.md`.
-- Story spec: `_bmad-output/implementation-artifacts/1-8-hot-reload-and-fluent-ui-contingency.md`.
+Maintainers can manually watch [Fluent UI Blazor releases](https://github.com/microsoft/fluentui-blazor/releases) through a team-owned watcher account. Release notifications initiate assessment; they do not change the selected catalog or approval posture.

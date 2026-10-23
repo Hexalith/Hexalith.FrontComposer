@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -262,6 +263,396 @@ public sealed partial class DocsSiteValidationTests {
         releases.ShouldContain("suppression cannot restore generation");
     }
 
+    [Fact]
+    public void FluentContingencyPreservesDatedDecisionAndReceiptLifecycle()
+    {
+        string page = NormalizeWhitespace(File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "fluent-ui-v5-contingency.md")));
+        page.ShouldContain("2026-10-21 Product Owner + Architect decision is not approved");
+        page.ShouldContain("https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/_bmad-output/implementation-artifacts/spec-13-9-decide-the-exact-fluent-ui-v5-posture.md#product-decision-receipt");
+        page.ShouldContain("OI-4, FLUENT-APP-1, D-13 and G-4 remain open");
+        page.ShouldContain("one green hosted Quality run");
+        page.ShouldContain("main commit whose root gitlink selects the exact target identity");
+        page.ShouldContain("Chromium, Firefox, WebKit, `accessibility-visual` and Gate 3a bUnit");
+        page.ShouldContain("Product Owner + Architect** must make a dated re-decision citing that run");
+        page.ShouldContain("Human assistive-technology, zoom and device observations remain separate evidence under **OI-16**");
+        page.ShouldContain("Equal package versions across Builds revisions do not transfer evidence between candidates");
+        page.ShouldContain("After acceptance");
+        page.ShouldContain("Architect addendum");
+        page.ShouldContain("minor or major");
+        page.ShouldContain("new Product Owner + Architect decision");
+        page.ShouldContain("breaking Fluent change requires a FrontComposer major version");
+        page.ShouldContain("2026-09-30");
+        page.ShouldContain("Fluent canary workflow is **not implemented**");
+        page.ShouldContain("Hexalith.Builds repository");
+        foreach (string name in new[] { "FluentProviders", "FluentAccordion", "FluentBadge", "FluentTooltip", "FluentStack", "FluentGrid", "FluentLayout", "IThemeService.SetThemeAsync(ThemeSettings)", "ThemeSettings(Color, HueTorsion, Vibrancy, Mode, IsExact)", "ThemeMode", "--colorBrandForeground1", "--colorStatusSuccessForeground1", "--colorStatusWarningForeground1", "--colorStatusDangerForeground1" })
+        {
+            page.ShouldContain(name);
+        }
+        page.ShouldContain("**Unsupported:** `--colorStatusInfoForeground1` does not resolve");
+        page.ShouldContain("`--fc-color-info` alias is unresolvable");
+        page.ShouldContain("DW-1986");
+        page.ShouldContain("Legacy v4/FAST tokens");
+        page.ShouldNotContain("5.0.0-rc.2");
+        page.ShouldNotContain("DefaultValues");
+        page.ShouldNotContain("FluentLayoutItem");
+        page.ShouldNotContain("204 tests");
+    }
+
+    [Fact]
+    public void FluentContingencyParticipatesInMetadataAndHowToPublication()
+    {
+        string page = Path.Combine(ProjectRoot(), "docs", "fluent-ui-v5-contingency.md");
+        ContentFiles().ShouldContain(page);
+        Dictionary<string, string> front = ReadFrontMatter(page);
+        front["genre"].ShouldBe("how-to");
+        front["ownerStory"].ShouldBe("15.4");
+        front["status"].ShouldBe("authored");
+        using var config = JsonDocument.Parse(File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "docfx.json")));
+        config.RootElement.GetProperty("build").GetProperty("content").EnumerateArray()
+            .SelectMany(entry => entry.GetProperty("files").EnumerateArray())
+            .Count(file => file.GetString() == "fluent-ui-v5-contingency.md").ShouldBe(1);
+        string toc = File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "toc.yml"));
+        Regex.Match(toc, @"(?ms)^- name: How-to\r?\n(.*?)(?=^- name:|\z)").Groups[1].Value
+            .ShouldContain("href: fluent-ui-v5-contingency.md");
+    }
+
+    [Theory]
+    [InlineData("Match", true)]
+    [InlineData("MissingComponentsRow", false)]
+    [InlineData("MissingIconsRow", false)]
+    [InlineData("StaleComponentsRow", false)]
+    [InlineData("StaleIconsRow", false)]
+    [InlineData("DuplicateComponentsRow", false)]
+    [InlineData("DuplicateIconsRow", false)]
+    [InlineData("MissingComponentsCatalog", false)]
+    [InlineData("MissingIconsCatalog", false)]
+    [InlineData("DuplicateComponentsCatalog", false)]
+    [InlineData("DuplicateIconsCatalog", false)]
+    [InlineData("UnresolvedComponentsVersion", false)]
+    [InlineData("UnresolvedIconsVersion", false)]
+    [InlineData("UnresolvedDocumentVersion", false)]
+    [InlineData("FloatingVersion", false)]
+    [InlineData("ConditionalVersion", false)]
+    [InlineData("MalformedXml", false)]
+    [InlineData("MissingGitlink", false)]
+    [InlineData("MissingObject", false)]
+    [InlineData("MissingBuildsRepository", false)]
+    [InlineData("MissingPage", false)]
+    [InlineData("FencedTable", false)]
+    [InlineData("SplitTables", false)]
+    [InlineData("AdvancedCheckout", true)]
+    [InlineData("DirtyCheckout", true)]
+    public async Task FluentCatalogParityUsesRootHeadSelectedObjectsAsync(string scenario, bool passes)
+    {
+        await AssertFluentCatalogParityAsync(scenario, passes);
+    }
+
+    [Theory]
+    [InlineData("AmbiguousItemUpdate", false)]
+    [InlineData("UnrelatedLiteralEntries", true)]
+    [InlineData("HtmlPreTable", false)]
+    [InlineData("UnclosedHtmlPreTable", false)]
+    [InlineData("UppercaseHtmlPreTable", false)]
+    [InlineData("FencedPreExample", true)]
+    public async Task FluentCatalogParityCoversReviewRegressionsAsync(string scenario, bool passes)
+    {
+        await AssertFluentCatalogParityAsync(scenario, passes);
+    }
+
+    private static async Task AssertFluentCatalogParityAsync(string scenario, bool passes)
+    {
+        string root = NewFluentFixtureRoot();
+        try
+        {
+            const string components = "Microsoft.FluentUI.AspNetCore.Components";
+            const string icons = components + ".Icons";
+            string catalog = FluentCatalog("7.8.9", "8.9.0");
+            string page = "| Package ID | Selected version |\n| --- | --- |\n" +
+                $"| `{components}` | `7.8.9` |\n| `{icons}` | `8.9.0` |\n";
+            string componentRow = $"| `{components}` | `7.8.9` |\n";
+            string iconsRow = $"| `{icons}` | `8.9.0` |\n";
+            switch (scenario)
+            {
+                case "MissingComponentsRow": page = page.Replace(componentRow, "", StringComparison.Ordinal); break;
+                case "MissingIconsRow": page = page.Replace(iconsRow, "", StringComparison.Ordinal); break;
+                case "StaleComponentsRow": page = page.Replace("7.8.9", "7.8.8", StringComparison.Ordinal); break;
+                case "StaleIconsRow": page = page.Replace("8.9.0", "8.8.9", StringComparison.Ordinal); break;
+                case "DuplicateComponentsRow": page += componentRow; break;
+                case "DuplicateIconsRow": page += iconsRow; break;
+                case "MissingComponentsCatalog": catalog = catalog.Replace($"<PackageVersion Include=\"{components}\" Version=\"7.8.9\" />", "", StringComparison.Ordinal); break;
+                case "MissingIconsCatalog": catalog = catalog.Replace($"<PackageVersion Include=\"{icons}\" Version=\"8.9.0\" />", "", StringComparison.Ordinal); break;
+                case "DuplicateComponentsCatalog": catalog = catalog.Replace("</ItemGroup>", $"<PackageVersion Include=\"{components}\" Version=\"7.8.9\" /></ItemGroup>", StringComparison.Ordinal); break;
+                case "DuplicateIconsCatalog": catalog = catalog.Replace("</ItemGroup>", $"<PackageVersion Include=\"{icons}\" Version=\"8.9.0\" /></ItemGroup>", StringComparison.Ordinal); break;
+                case "UnresolvedComponentsVersion": catalog = catalog.Replace("7.8.9", "$(FluentVersion)", StringComparison.Ordinal); break;
+                case "UnresolvedIconsVersion": catalog = catalog.Replace("8.9.0", "$(FluentVersion)", StringComparison.Ordinal); break;
+                case "UnresolvedDocumentVersion": page = page.Replace("7.8.9", "$(FluentVersion)", StringComparison.Ordinal); break;
+                case "FloatingVersion": catalog = catalog.Replace("7.8.9", "7.*", StringComparison.Ordinal); break;
+                case "ConditionalVersion": catalog = catalog.Replace("<ItemGroup>", "<ItemGroup Condition=\"'$(TargetFramework)' == 'net10.0'\">", StringComparison.Ordinal); break;
+                case "AmbiguousItemUpdate": catalog = catalog.Replace("</ItemGroup>", "<PackageVersion Update=\"@(PackageVersion)\" Version=\"99.0.0\" /></ItemGroup>", StringComparison.Ordinal); break;
+                case "UnrelatedLiteralEntries": catalog = catalog.Replace("</ItemGroup>", "<PackageVersion Include=\"Unrelated.Package\" Version=\"$(OtherVersion)\" /><PackageVersion Update=\"Unrelated.Package\" Version=\"99.0.0\" /></ItemGroup>", StringComparison.Ordinal); break;
+                case "MalformedXml": catalog = "<Project>"; break;
+                case "FencedTable": page = "```markdown\n" + page + "```\n"; break;
+                case "HtmlPreTable": page = "<pre>\n" + page + "</pre>\n"; break;
+                case "UnclosedHtmlPreTable": page = "<pre>\n" + page; break;
+                case "UppercaseHtmlPreTable": page = "<PRE class=\"example\">\n" + page + "</PRE>\n"; break;
+                case "FencedPreExample": page = "```html\n<pre>\n```\n\n" + page; break;
+                case "SplitTables": page = page.Replace(iconsRow, "\n| Package ID | Selected version |\n| --- | --- |\n" + iconsRow, StringComparison.Ordinal); break;
+            }
+            _ = Directory.CreateDirectory(Path.Combine(root, "docs"));
+            string pagePath = Path.Combine(root, "docs", "fluent-ui-v5-contingency.md");
+            if (scenario != "MissingPage") { await File.WriteAllTextAsync(pagePath, page, CancellationToken.None).ConfigureAwait(false); }
+            await SeedFluentAuthorityAsync(root, catalog, scenario == "MissingGitlink", scenario == "MissingObject").ConfigureAwait(false);
+            string builds = Path.Combine(root, "references", "Hexalith.Builds");
+            if (scenario is "AdvancedCheckout" or "DirtyCheckout")
+            {
+                await File.WriteAllTextAsync(Path.Combine(builds, "Props", "Directory.Packages.props"), FluentCatalog("99.0.0", "99.0.0"), CancellationToken.None).ConfigureAwait(false);
+                if (scenario == "AdvancedCheckout") { await CommitFluentFixtureAsync(builds).ConfigureAwait(false); }
+            }
+            if (scenario == "MissingBuildsRepository") { Directory.Delete(Path.Combine(builds, ".git"), recursive: true); }
+
+            string[] failures = await RunFluentParityAsync(root).ConfigureAwait(false);
+
+            if (passes) { failures.ShouldBeEmpty(); }
+            else { failures.ShouldNotBeEmpty(scenario); }
+            failures.ShouldAllBe(failure => failure.StartsWith("docs/fluent-ui-v5-contingency.md:", StringComparison.Ordinal) || failure.StartsWith("references/Hexalith.Builds", StringComparison.Ordinal));
+            failures.ShouldAllBe(failure => failure.Length < 260);
+            string.Join('\n', failures).ShouldNotContain(root);
+            // Deterministic diagnostics do not contain Git stderr, XML contents or random fixture paths.
+            (await RunFluentParityAsync(root).ConfigureAwait(false)).ShouldBe(failures);
+        }
+        finally { DeleteFluentFixture(root); }
+    }
+
+    [Theory]
+    [InlineData("Match")]
+    [InlineData("ComponentsDrift")]
+    [InlineData("IconsDrift")]
+    [InlineData("MissingToc")]
+    [InlineData("MissingDocfx")]
+    [InlineData("MissingMetadata")]
+    public async Task FluentContingencyPublicationCommandChecksIdentityAndWiringAsync(string scenario)
+    {
+        await AssertFluentPublicationAsync(scenario);
+    }
+
+    [Theory]
+    [InlineData("RecursiveMarkdownExclusion")]
+    [InlineData("UnrelatedDocfxExclusion")]
+    [InlineData("TocDescriptionScalar")]
+    [InlineData("TocItemNameScalar")]
+    public async Task FluentContingencyPublicationCoversReviewRegressionsAsync(string scenario)
+    {
+        await AssertFluentPublicationAsync(scenario);
+    }
+
+    private static async Task AssertFluentPublicationAsync(string scenario)
+    {
+        string root = NewFluentFixtureRoot();
+        try
+        {
+            foreach (string relative in new[]
+            {
+                "eng/validate-docs.ps1", "global.json", ".gitmodules", ".config/dotnet-tools.json", "docs",
+                "src/Hexalith.FrontComposer.Cli/MigrationCatalog.cs",
+                "src/Hexalith.FrontComposer.Shell/Components",
+                "src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionStatus.cs",
+                "src/Hexalith.FrontComposer.Contracts", "src/Hexalith.FrontComposer.Contracts.UI/Rendering",
+                "_bmad-output/project-docs/component-inventory.md",
+                "_bmad-output/contracts/fc-doc-component-documentation-2026-06-03.md",
+            })
+            {
+                CopyFluentPublicationInput(Path.Combine(ProjectRoot(), relative), Path.Combine(root, relative));
+            }
+            string selection = await RunFluentGitAsync(ProjectRoot(), "ls-tree", "HEAD", "--", "references/Hexalith.Builds").ConfigureAwait(false);
+            string selected = selection.Split(' ', '\t')[2];
+            string catalog = await RunFluentGitAsync(Path.Combine(ProjectRoot(), "references", "Hexalith.Builds"), "show", selected + ":Props/Directory.Packages.props").ConfigureAwait(false);
+            await SeedFluentAuthorityAsync(root, catalog).ConfigureAwait(false);
+            string page = Path.Combine(root, "docs", "fluent-ui-v5-contingency.md");
+            if (scenario is "ComponentsDrift" or "IconsDrift")
+            {
+                string package = "Microsoft.FluentUI.AspNetCore.Components" + (scenario == "IconsDrift" ? ".Icons" : "");
+                string text = File.ReadAllText(page);
+                string drifted = Regex.Replace(text, @"(?m)^(\| `" + Regex.Escape(package) + @"` \| )`[^`]+`", "$1`99.0.0`");
+                drifted.ShouldNotBe(text);
+                File.WriteAllText(page, drifted);
+            }
+            if (scenario == "MissingToc")
+            {
+                string toc = Path.Combine(root, "docs", "toc.yml");
+                File.WriteAllText(toc, File.ReadAllText(toc).Replace("    href: fluent-ui-v5-contingency.md", "    # href: fluent-ui-v5-contingency.md", StringComparison.Ordinal));
+            }
+            if (scenario is "TocDescriptionScalar" or "TocItemNameScalar")
+            {
+                string toc = Path.Combine(root, "docs", "toc.yml");
+                string text = File.ReadAllText(toc).Replace("\r\n", "\n", StringComparison.Ordinal);
+                if (scenario == "TocDescriptionScalar")
+                {
+                    text = text.Replace("  - name: Fluent UI v5 contingency\n    href: fluent-ui-v5-contingency.md\n", "", StringComparison.Ordinal)
+                        .Replace("  href: how-to/index.md\n", "  href: how-to/index.md\n  description: |\n    href: fluent-ui-v5-contingency.md\n", StringComparison.Ordinal);
+                }
+                else
+                {
+                    text = text.Replace("  - name: Fluent UI v5 contingency", "  - name: |", StringComparison.Ordinal);
+                }
+                File.WriteAllText(toc, text);
+            }
+            if (scenario is "RecursiveMarkdownExclusion" or "UnrelatedDocfxExclusion")
+            {
+                string config = Path.Combine(root, "docs", "docfx.json");
+                System.Text.Json.Nodes.JsonNode json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(config))!;
+                json["build"]!["content"]![0]!["exclude"] = JsonSerializer.SerializeToNode(new[] { scenario == "RecursiveMarkdownExclusion" ? "**/*.md" : "reference/**/*.md" });
+                File.WriteAllText(config, json.ToJsonString());
+            }
+            if (scenario == "MissingDocfx")
+            {
+                string config = Path.Combine(root, "docs", "docfx.json");
+                File.WriteAllText(config, File.ReadAllText(config).Replace("\"fluent-ui-v5-contingency.md\",", "", StringComparison.Ordinal));
+            }
+            if (scenario == "MissingMetadata")
+            {
+                File.WriteAllText(page, Regex.Replace(File.ReadAllText(page), @"(?m)^reviewed:[^\n]*\n", ""));
+            }
+            (int exitCode, string output, string error) = await RunFluentProcessAsync(root, "pwsh", "-NoProfile", "-File", "eng/validate-docs.ps1", "-SkipDocFx", "-SkipSnippetBuild").ConfigureAwait(false);
+            using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "artifacts", "docs", "validation-manifest.json")));
+            manifest.RootElement.GetProperty("inputRoots").EnumerateArray().Select(value => value.GetString())
+                .ShouldContain("docs/fluent-ui-v5-contingency.md");
+            string[] failures = manifest.RootElement.GetProperty("blockingFailures").EnumerateArray().Select(value => value.GetString()!).ToArray();
+            if (scenario is "Match" or "UnrelatedDocfxExclusion")
+            {
+                exitCode.ShouldBe(0, output + error);
+                failures.ShouldBeEmpty();
+            }
+            else
+            {
+                exitCode.ShouldNotBe(0, output + error);
+                failures.Length.ShouldBe(1);
+                string expected = scenario switch
+                {
+                    "MissingToc" or "TocDescriptionScalar" or "TocItemNameScalar" => "docs/toc.yml: missing Fluent contingency page under How-to.",
+                    "MissingDocfx" or "RecursiveMarkdownExclusion" => "docs/docfx.json: must publish the Fluent contingency page at its documentation path.",
+                    "MissingMetadata" => "docs/fluent-ui-v5-contingency.md is missing required front matter 'reviewed'.",
+                    _ => "docs/fluent-ui-v5-contingency.md: version for Microsoft.FluentUI.AspNetCore.Components" + (scenario == "IconsDrift" ? ".Icons" : "") + " must match the root HEAD-selected catalog.",
+                };
+                failures[0].ShouldBe(expected);
+                failures[0].ShouldNotContain(root);
+            }
+        }
+        finally { DeleteFluentFixture(root); }
+    }
+
+    private static string FluentCatalog(string components, string icons) => $"""
+        <Project><ItemGroup>
+          <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="{components}" />
+          <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="{icons}" />
+        </ItemGroup></Project>
+        """;
+
+    private static string NewFluentFixtureRoot()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "hfc-fluent-doc-tests", Guid.NewGuid().ToString("N"));
+        _ = Directory.CreateDirectory(root);
+        return root;
+    }
+
+    private static async Task SeedFluentAuthorityAsync(string root, string catalog, bool missingGitlink = false, bool missingObject = false)
+    {
+        string builds = Path.Combine(root, "references", "Hexalith.Builds");
+        _ = Directory.CreateDirectory(Path.Combine(builds, "Props"));
+        await RunFluentGitAsync(builds, "init", "--quiet").ConfigureAwait(false);
+        await File.WriteAllTextAsync(Path.Combine(builds, "Props", "Directory.Packages.props"), catalog, CancellationToken.None).ConfigureAwait(false);
+        await CommitFluentFixtureAsync(builds).ConfigureAwait(false);
+        string selected = (await RunFluentGitAsync(builds, "rev-parse", "HEAD").ConfigureAwait(false)).Trim();
+        await RunFluentGitAsync(root, "init", "--quiet").ConfigureAwait(false);
+        if (!missingGitlink)
+        {
+            await RunFluentGitAsync(root, "update-index", "--add", "--cacheinfo", "160000," + (missingObject ? new string('1', 40) : selected) + ",references/Hexalith.Builds").ConfigureAwait(false);
+        }
+        await RunFluentGitAsync(root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=", "commit", "--quiet", "--allow-empty", "-m", "test: seed catalog fixture").ConfigureAwait(false);
+    }
+
+    private static async Task CommitFluentFixtureAsync(string root)
+    {
+        await RunFluentGitAsync(root, "add", "Props/Directory.Packages.props").ConfigureAwait(false);
+        await RunFluentGitAsync(root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=", "commit", "--quiet", "-m", "test: seed catalog fixture").ConfigureAwait(false);
+    }
+
+    private static async Task<string[]> RunFluentParityAsync(string root)
+    {
+        string runner = Path.Combine(root, "fluent-parity.ps1");
+        await File.WriteAllTextAsync(runner, """
+            param([string]$Validator, [string]$FixtureRoot)
+            $ErrorActionPreference = 'Stop'
+            Set-StrictMode -Version Latest
+            $tokens = $null; $errors = $null
+            $ast = [System.Management.Automation.Language.Parser]::ParseFile($Validator, [ref]$tokens, [ref]$errors)
+            if ($errors.Count) { throw 'Publication validator has parse errors.' }
+            $names = @('Add-Failure', 'Get-FrontMatter', 'Invoke-FluentCatalogGit', 'Get-FluentCatalogVersions', 'Assert-FluentContingencyParity')
+            foreach ($function in $ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) {
+                if ($function.Name -in $names) { . ([scriptblock]::Create($function.Extent.Text)) }
+            }
+            $failures = [System.Collections.Generic.List[string]]::new()
+            Assert-FluentContingencyParity $FixtureRoot $failures
+            ConvertTo-Json -InputObject $failures.ToArray() -Compress
+            """, CancellationToken.None).ConfigureAwait(false);
+        (int exitCode, string output, string error) = await RunFluentProcessAsync(root, "pwsh", "-NoProfile", "-File", runner, Path.Combine(ProjectRoot(), "eng", "validate-docs.ps1"), root).ConfigureAwait(false);
+        exitCode.ShouldBe(0, error + output);
+        return JsonSerializer.Deserialize<string[]>(output)!;
+    }
+
+    private static async Task<string> RunFluentGitAsync(string root, params string[] arguments)
+    {
+        (int exitCode, string output, string error) = await RunFluentProcessAsync(root, "git", arguments).ConfigureAwait(false);
+        exitCode.ShouldBe(0, error + output);
+        return output;
+    }
+
+    private static async Task<(int ExitCode, string Output, string Error)> RunFluentProcessAsync(string root, string fileName, params string[] arguments)
+    {
+        ProcessStartInfo start = new(fileName)
+        {
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (string argument in arguments) { start.ArgumentList.Add(argument); }
+        using Process process = Process.Start(start)!;
+        Task<string> output = process.StandardOutput.ReadToEndAsync();
+        Task<string> error = process.StandardError.ReadToEndAsync();
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(90));
+        try { await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false); }
+        catch (OperationCanceledException)
+        {
+            process.Kill(entireProcessTree: true);
+            await Task.WhenAll(output, error).ConfigureAwait(false);
+            throw new TimeoutException(fileName + " did not exit within 90 seconds.");
+        }
+        return (process.ExitCode, await output.ConfigureAwait(false), await error.ConfigureAwait(false));
+    }
+
+    private static void CopyFluentPublicationInput(string source, string destination)
+    {
+        if (File.Exists(source))
+        {
+            _ = Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(source, destination);
+            return;
+        }
+        _ = Directory.CreateDirectory(destination);
+        foreach (string file in Directory.EnumerateFiles(source)) { File.Copy(file, Path.Combine(destination, Path.GetFileName(file))); }
+        foreach (string directory in Directory.EnumerateDirectories(source))
+        {
+            if (Path.GetFileName(directory) is "bin" or "obj" or "_site") { continue; }
+            CopyFluentPublicationInput(directory, Path.Combine(destination, Path.GetFileName(directory)));
+        }
+    }
+
+    private static void DeleteFluentFixture(string root)
+    {
+        foreach (string file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)) { File.SetAttributes(file, FileAttributes.Normal); }
+        Directory.Delete(root, recursive: true);
+    }
+
     [GeneratedRegex("(?s)<!--\\s*hfc:reference:start\\s*-->(.*?)<!--\\s*hfc:reference:end\\s*-->")]
     private static partial Regex HfcReferenceRegion();
 
@@ -270,6 +661,7 @@ public sealed partial class DocsSiteValidationTests {
         string[] roots = ["tutorials", "how-to", "reference", "concepts", "migrations"];
 
         yield return Path.Combine(docs, "index.md");
+        yield return Path.Combine(docs, "fluent-ui-v5-contingency.md");
         foreach (string root in roots) {
             foreach (string file in Directory.EnumerateFiles(Path.Combine(docs, root), "*.md", SearchOption.AllDirectories)) {
                 yield return file;
