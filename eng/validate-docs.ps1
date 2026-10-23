@@ -428,12 +428,13 @@ function Get-FluentCatalogVersions([string]$Root, [System.Collections.Generic.Li
         }
         $entry = $entries[0]
         $version = $entry.GetAttribute('Version')
-        # No MSBuild evaluation or checkout fallback: conditional/property/range/floating versions are unresolved authority.
+        # No MSBuild evaluation or checkout fallback: exclusions and conditional/property/range/floating versions are unresolved authority.
         if ($entry.GetAttribute('Include') -cne $package -or $entry.HasAttribute('Update') -or $entry.HasAttribute('Remove') -or
+            $entry.HasAttribute('Exclude') -or
             $entry.SelectNodes('ancestor-or-self::*[@Condition]').Count -gt 0 -or $entry.HasChildNodes -or
             $entry.ParentNode.LocalName -cne 'ItemGroup' -or $entry.ParentNode.ParentNode.LocalName -cne 'Project' -or
             $version -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$') {
-            Add-Failure $Failures "${authority}: selected catalog requires an unconditional literal version for $package."
+            Add-Failure $Failures "${authority}: selected catalog requires an unconditional literal version without Exclude for $package."
             continue
         }
         $versions.Add($package, $version)

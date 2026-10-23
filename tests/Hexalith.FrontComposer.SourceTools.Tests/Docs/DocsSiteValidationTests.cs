@@ -359,6 +359,23 @@ public sealed partial class DocsSiteValidationTests {
         await AssertFluentCatalogParityAsync(scenario, passes);
     }
 
+    /// <summary>
+    /// Verifies exclusions cannot supply a Fluent identity while unrelated items remain permitted.
+    /// </summary>
+    /// <param name="scenario">The catalog fixture to validate.</param>
+    /// <param name="passes">Whether the fixture should pass identity validation.</param>
+    [Theory]
+    [InlineData("ExcludedComponentsCatalog", false)]
+    [InlineData("ExcludedIconsCatalog", false)]
+    [InlineData("UnresolvedExclude", false)]
+    [InlineData("EmptyExclude", false)]
+    [InlineData("UnrelatedExclude", false)]
+    [InlineData("UnrelatedExcludedPackage", true)]
+    public async Task FluentCatalogParityHandlesExcludedItemsAsync(string scenario, bool passes)
+    {
+        await AssertFluentCatalogParityAsync(scenario, passes);
+    }
+
     private static async Task AssertFluentCatalogParityAsync(string scenario, bool passes)
     {
         string root = NewFluentFixtureRoot();
@@ -390,6 +407,12 @@ public sealed partial class DocsSiteValidationTests {
                 case "ConditionalVersion": catalog = catalog.Replace("<ItemGroup>", "<ItemGroup Condition=\"'$(TargetFramework)' == 'net10.0'\">", StringComparison.Ordinal); break;
                 case "AmbiguousItemUpdate": catalog = catalog.Replace("</ItemGroup>", "<PackageVersion Update=\"@(PackageVersion)\" Version=\"99.0.0\" /></ItemGroup>", StringComparison.Ordinal); break;
                 case "UnrelatedLiteralEntries": catalog = catalog.Replace("</ItemGroup>", "<PackageVersion Include=\"Unrelated.Package\" Version=\"$(OtherVersion)\" /><PackageVersion Update=\"Unrelated.Package\" Version=\"99.0.0\" /></ItemGroup>", StringComparison.Ordinal); break;
+                case "ExcludedComponentsCatalog": catalog = catalog.Replace($"Include=\"{components}\"", $"Include=\"{components}\" Exclude=\"{components}\"", StringComparison.Ordinal); break;
+                case "ExcludedIconsCatalog": catalog = catalog.Replace($"Include=\"{icons}\"", $"Include=\"{icons}\" Exclude=\"{icons}\"", StringComparison.Ordinal); break;
+                case "UnresolvedExclude": catalog = catalog.Replace($"Include=\"{components}\"", $"Include=\"{components}\" Exclude=\"$(ExcludedPackages)\"", StringComparison.Ordinal); break;
+                case "EmptyExclude": catalog = catalog.Replace($"Include=\"{components}\"", $"Include=\"{components}\" Exclude=\"\"", StringComparison.Ordinal); break;
+                case "UnrelatedExclude": catalog = catalog.Replace($"Include=\"{components}\"", $"Include=\"{components}\" Exclude=\"Unrelated.Package\"", StringComparison.Ordinal); break;
+                case "UnrelatedExcludedPackage": catalog = catalog.Replace("</ItemGroup>", "<PackageVersion Include=\"Unrelated.Package\" Exclude=\"Unrelated.Package\" Version=\"99.0.0\" /></ItemGroup>", StringComparison.Ordinal); break;
                 case "MalformedXml": catalog = "<Project>"; break;
                 case "FencedTable": page = "```markdown\n" + page + "```\n"; break;
                 case "HtmlPreTable": page = "<pre>\n" + page + "</pre>\n"; break;
