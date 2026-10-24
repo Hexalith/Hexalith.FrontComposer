@@ -7,9 +7,8 @@ const AxeBuilder = require('@axe-core/playwright').default;
 
 const repoRoot = path.resolve(__dirname, '../../..');
 const baseUrl = 'http://127.0.0.1:5055';
-const outputDir = process.env.FC_STORY_2_2_OUTPUT_DIR
-  ? path.resolve(repoRoot, process.env.FC_STORY_2_2_OUTPUT_DIR)
-  : __dirname;
+// Results and screenshots are ignored local scratch (CI uploads them as a workflow artifact).
+const outputDir = path.resolve(repoRoot, process.env.FC_STORY_2_2_OUTPUT_DIR || 'artifacts/story-2-2-live');
 const artifactPath = path.join(outputDir, '2-2-e2e-results.json');
 const evidenceDir = path.join(outputDir, 'evidence');
 

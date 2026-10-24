@@ -249,7 +249,7 @@ function Write-IssueBlock {
     [void]$Builder.AppendLine("- affected matrix rows: $($Rows -join ', ')")
     [void]$Builder.AppendLine("- expected behavior: generated-source navigation, diagnostics, XML docs, symbol search, and path contract remain stable")
     [void]$Builder.AppendLine("- observed behavior: configured version moved outside the pinned range")
-    [void]$Builder.AppendLine("- evidence needed: refresh sanitized evidence manifests and Visual Studio calibration row before widening the range")
+    [void]$Builder.AppendLine("- evidence needed: record the revalidation commands or manual steps, results, commit SHA and CI run link in the owning story or spec before widening the range")
     [void]$Builder.AppendLine("- labels: $($RequiredLabels -join ', ')")
     if (-not $GithubAvailable) {
         [void]$Builder.AppendLine("- fallback: GitHub CLI not authenticated; this dry-run artifact blocks the release checklist")

@@ -224,9 +224,10 @@ development_status:
   15-3-i-doc-b-align-migration-and-classification-guidance: done
   15-4-i-doc-c-correct-the-fluent-ui-v5-contingency-identity: review
   15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: backlog
-  # Approved 2026-10-21: external proof first, retirement after consumer migration.
-  15-6-external-browser-artifacts-and-bounded-accessibility-receipts: backlog
-  15-7-retire-bulky-browser-evidence: backlog
+  # superseded 2026-10-23 by spec-evidence-storage-simplification.md (PRD §7 evidence policy):
+  # committed evidence and its machinery were removed instead of externalized; closed as done.
+  15-6-external-browser-artifacts-and-bounded-accessibility-receipts: done
+  15-7-retire-bulky-browser-evidence: done
   epic-15-retrospective: optional
 
   epic-16: backlog
@@ -746,8 +747,6 @@ action_items:
     candidate: "7a5737630611b4d54b0180a3fa4c9c4ccd23a28c"
     evidence:
       - "_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md"
-      - "_bmad-output/implementation-artifacts/evidence/story-13-8/9-8-live-proof-7a573763.tar.gz"
-      - "_bmad-output/implementation-artifacts/evidence/story-13-8/validate-epic9-artifacts.mjs"
     closure_rule: "Only a dated Product record closes this task; implementation status
       is not approval."
   - id: "FLUENT-APP-1"
@@ -981,7 +980,7 @@ action_items:
     owner: "FrontComposer Shell maintainer"
     status: done
     closed: "2026-10-22"
-    evidence: "_bmad-output/implementation-artifacts/tests/epic-13-follow-through-2026-10-22.json"
+    evidence: "_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md"
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
   - id: "E13R-AI-2"
     epic: 13
@@ -1012,7 +1011,7 @@ action_items:
     owner: "Quality/Test evidence tooling maintainer"
     status: done
     closed: "2026-10-22"
-    evidence: "_bmad-output/implementation-artifacts/tests/epic-13-follow-through-2026-10-22.json"
+    evidence: "_bmad-output/implementation-artifacts/spec-epic-13-retrospective-follow-through.md"
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
   - id: "E13R-AI-5"
     epic: 13

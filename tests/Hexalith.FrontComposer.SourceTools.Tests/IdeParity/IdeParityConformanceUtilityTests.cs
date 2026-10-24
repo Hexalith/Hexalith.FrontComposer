@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -71,69 +70,6 @@ public sealed class IdeParityConformanceUtilityTests {
         hash.ShouldStartWith("sha256:");
         hash.Length.ShouldBe("sha256:".Length + 64);
         ComputeIdeParityCounterFixtureHash().ShouldBe(hash);
-    }
-
-    [Fact]
-    [Trait("MatrixRowId", "IDE-MUST-003")]
-    public void EvidencePathNormalization_RejectsTraversalAbsoluteUserAndUnsupportedUriPaths() {
-        string root = Path.Combine(Path.GetTempPath(), "frontcomposer-ide-parity-root");
-
-        IdeParityEvidencePath
-            .TryNormalizeProjectRelativePath(root, "artifacts/ide-parity/evidence/IDE-MUST-001.json", caseSensitive: false, out string normalized)
-            .ShouldBeTrue();
-        normalized.ShouldBe("artifacts/ide-parity/evidence/IDE-MUST-001.json");
-
-        // Traversal: leading, embedded, trailing.
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "../outside.json", caseSensitive: false, out _).ShouldBeFalse();
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "artifacts/../escaped.json", caseSensitive: false, out _).ShouldBeFalse();
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "artifacts/foo/..", caseSensitive: false, out _).ShouldBeFalse();
-
-        // Absolute / drive-rooted.
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "C:/Users/Ada/AppData/Local/Temp/evidence.json", caseSensitive: false, out _).ShouldBeFalse();
-
-        // Scheme-prefixed (not just file:/http:/https:).
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "file:///C:/Users/Ada/evidence.json", caseSensitive: false, out _).ShouldBeFalse();
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "https://example.test/evidence.json", caseSensitive: false, out _).ShouldBeFalse();
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "javascript:alert(1)", caseSensitive: false, out _).ShouldBeFalse();
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "data:application/json;base64,e30=", caseSensitive: false, out _).ShouldBeFalse();
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "mailto:owner@example.test", caseSensitive: false, out _).ShouldBeFalse();
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "vbscript:msgbox", caseSensitive: false, out _).ShouldBeFalse();
-
-        // UNC-style (forward and back).
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "//attacker/share/evidence.json", caseSensitive: false, out _).ShouldBeFalse();
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "\\\\attacker\\share\\evidence.json", caseSensitive: false, out _).ShouldBeFalse();
-
-        // Bidi/zero-width chars and BOM.
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "artifacts‮/evidence.json", caseSensitive: false, out _).ShouldBeFalse();
-        IdeParityEvidencePath.TryNormalizeProjectRelativePath(root, "﻿artifacts/ide-parity/evidence/IDE-MUST-001.json", caseSensitive: false, out _).ShouldBeFalse();
-    }
-
-    [Fact]
-    [Trait("MatrixRowId", "IDE-REMOTE-001")]
-    public void EvidencePathNormalization_DefaultCaseSensitivityFollowsRuntime() {
-        bool expected = !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
-        IdeParityEvidencePath.DefaultCaseSensitivityForFilesystem().ShouldBe(expected);
-    }
-
-    [Fact]
-    [Trait("MatrixRowId", "IDE-REMOTE-001")]
-    public void EvidencePathNormalization_HonorsCaseSensitiveFlagOnLinux() {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
-            return;
-        }
-
-        string root = Path.Combine(Path.GetTempPath(), "frontcomposer-ide-parity-case");
-        _ = Directory.CreateDirectory(Path.Combine(root, "artifacts", "ide-parity", "evidence"));
-
-        IdeParityEvidencePath
-            .TryNormalizeProjectRelativePath(root, "artifacts/ide-parity/evidence/IDE.json", caseSensitive: true, out string lower)
-            .ShouldBeTrue();
-        lower.ShouldBe("artifacts/ide-parity/evidence/IDE.json");
-
-        IdeParityEvidencePath
-            .TryNormalizeProjectRelativePath(root, "Artifacts/IDE-Parity/Evidence/IDE.json", caseSensitive: true, out _)
-            .ShouldBeFalse();
     }
 
     [Fact]

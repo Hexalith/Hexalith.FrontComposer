@@ -10766,3 +10766,9 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 
 - `background()` in `tests/e2e/helpers/responsive-accessibility.ts` composites every non-escaped ancestor fill without geometry. This extends the pass 6 containing-block entry above: in-flow text overflowing a zero-height filled ancestor is a probe-confirmed false pass (15.46:1 against black for text actually on white, about 1.4:1) (pre-existing, medium; R7-A3, R7-B10, R7-E8). Settle with an in-flow overflow fixture plus the non-top-layer menu fixture, then apply the inside/disjoint/empty fill test to in-flow and containing-block layers.
 - `13-6-accessibility-result.md` does not record the reduced-motion reconciliation sweep's sub-3:1 non-text classification or the UX follow-up it permits (low; R7-A2). Covered by the open Story 13.6 Evidence task; record after the pending R7-A1 sweep-premise decision.
+
+## Deferred from: evidence storage simplification review
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-evidence-storage-simplification.md`
+  summary: Quality build-and-test is red on main because `eng/dependency-graph-policy.json` pins `FsCheck.Xunit.v3` 3.5.0 while the Builds catalog has 3.6.0, and `CiGovernanceTests.ToolchainPins_MatchApprovedDotnetAndAspireVersions` expects `Aspire.AppHost.Sdk/13.6.1` while the AppHost uses 13.6.3.
+  evidence: Quality failed on main at 4a4051c2, 6f6eb898, 2d92bb1a and adc0dbe2 (2026-10-23); `InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds`, 8 `tests/eng/test_dependency_graph.py` cases and the ToolchainPins fact fail on inputs the evidence simplification did not change. Until fixed, no Quality run reaches a passing Gate 2c provider link for G-3.

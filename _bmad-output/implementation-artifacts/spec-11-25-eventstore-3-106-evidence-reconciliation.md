@@ -2,10 +2,13 @@
 title: 'Reconcile EventStore 3.106 Runtime Evidence'
 type: 'fix'
 created: '2026-09-19'
-status: 'in-review'
+status: 'superseded'
+superseded_by: '_bmad-output/implementation-artifacts/spec-evidence-storage-simplification.md'
 route: 'dispatch'
 baseline_commit: 'e0388be3e3746288bc2e0069ae6e26696c17b1f3'
 ---
+
+> **Superseded 2026-10-23** by [`spec-evidence-storage-simplification.md`](spec-evidence-storage-simplification.md) (PRD §7 evidence policy): the identity v3 record, its evidence packet and the runtime-identity validators were removed, so nothing in this spec remains to deliver. A current tuple is recorded by Story 16.1 as commit SHA, gitlinks, package version and CI run link.
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 

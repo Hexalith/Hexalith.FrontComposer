@@ -1,48 +1,11 @@
 param(
   [string] $PactDir = "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
   [string] $ArtifactDir = "artifacts/contracts",
-  [string] $ProviderVerificationReport = "",
-  [string] $FrontComposerEvidenceRoot = "",
-  [string] $LiveEvidenceRoot = "",
-  [string] $PriorEvidenceRoot = "",
-  [string] $ActiveEvidenceRoot = "",
-  [string] $ActiveIdentity = "",
-  [string] $ProviderPackageRoot = $env:FRONTCOMPOSER_PROVIDER_PACKAGES,
-  [string] $AppHostPackageRoot = $env:FRONTCOMPOSER_APPHOST_PACKAGES,
-  [string] $RuntimeInputManifest = $env:FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST,
-  [switch] $PrepareRuntimeSuccessor,
-  [string] $SuccessorFrontComposerRevision = "",
-  [string] $SuccessorEventStoreSourceRevision = "",
-  [string] $SuccessorEventStorePackageVersion = "",
-  [string] $SuccessorBuildsCatalogRevision = "",
+  [string] $ProviderVerificationReport = "artifacts/contracts/provider-verification.json",
   [switch] $RequireProviderVerification
 )
 
 $ErrorActionPreference = "Stop"
-
-$successorBindings = @(
-  @{ Name = "SuccessorFrontComposerRevision"; Value = $SuccessorFrontComposerRevision },
-  @{ Name = "SuccessorEventStoreSourceRevision"; Value = $SuccessorEventStoreSourceRevision },
-  @{ Name = "SuccessorEventStorePackageVersion"; Value = $SuccessorEventStorePackageVersion },
-  @{ Name = "SuccessorBuildsCatalogRevision"; Value = $SuccessorBuildsCatalogRevision }
-)
-if ($PrepareRuntimeSuccessor -and !$RequireProviderVerification) {
-  throw "PrepareRuntimeSuccessor requires RequireProviderVerification."
-}
-if ($PrepareRuntimeSuccessor) {
-  foreach ($binding in $successorBindings) {
-    if ([string]::IsNullOrWhiteSpace([string] $binding.Value)) {
-      throw "$($binding.Name) is required when PrepareRuntimeSuccessor is set."
-    }
-  }
-} else {
-  $orphanedSuccessorBindings = @($successorBindings | Where-Object {
-    ![string]::IsNullOrWhiteSpace([string] $_.Value)
-  })
-  if ($orphanedSuccessorBindings.Count -gt 0) {
-    throw "Successor coordinates require PrepareRuntimeSuccessor: $($orphanedSuccessorBindings.Name -join ', ')."
-  }
-}
 
 # Every repository-relative input resolves against the repository root, not the caller's
 # working directory, so the documented command works from anywhere.
@@ -217,8 +180,7 @@ function Find-RedactionLeaks([string] $Text) {
 
   # The cookie rule is a key shape, not the bare substring: "cookies": [...] and
   # "cookieHeader" must fail while an ordinary source path such as
-  # FrontComposerAuthCookieOptions.cs must not. Kept byte-identical to SECRET_PATTERNS
-  # in eng/eventstore_runtime_evidence.py.
+  # FrontComposerAuthCookieOptions.cs must not.
   foreach ($secretKey in @("access[_-]?token", "client[_-]?secret", "private[_-]?key", "sas[_-]?token", "api[_-]?key", "password", "cookie[A-Za-z0-9_.\-]*")) {
     if ([regex]::IsMatch($normalized, '"?' + $secretKey + '"?\s*[=:]', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
       $leaks.Add("quoted secret key: $secretKey")
@@ -241,7 +203,6 @@ function Find-RedactionLeaks([string] $Text) {
     $leaks.Add("environment-shaped secret")
   }
 
-  # Python performs encoded-value classification only after a duplicate-free JSON parse.
   # Prose artifacts such as provider-verification-handoff.md are published too, so they are
   # scanned with the same grammar; only path-shaped matches are excluded, never whole files.
   if ($true) {
@@ -292,150 +253,38 @@ foreach ($file in $requiredFiles) {
 
 $redactionLines | Set-Content -LiteralPath (Join-Path $ArtifactDir "redaction-scan.txt") -Encoding utf8
 
-function Resolve-EvidencePath([string] $value, [string] $defaultRelative) {
-  if ([string]::IsNullOrWhiteSpace($value)) {
-    return Join-Path $repositoryRoot $defaultRelative
-  }
-
-  return [System.IO.Path]::GetFullPath($value, $repositoryRoot)
-}
-
-$frontComposerEvidenceRoot = Resolve-EvidencePath $FrontComposerEvidenceRoot "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24"
-$liveEvidenceRoot = Resolve-EvidencePath $LiveEvidenceRoot "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation"
-$priorEvidenceRoot = Resolve-EvidencePath $PriorEvidenceRoot "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5"
-$activeEvidenceRoot = Resolve-EvidencePath $ActiveEvidenceRoot "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3"
-$activeIdentity = Resolve-EvidencePath $ActiveIdentity "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json"
-$expectedProviderVerificationReport = Join-Path $liveEvidenceRoot "provider-verification.json"
 $providerStatus = "NOT_REQUIRED"
-$historicalStatus = "NOT_REQUIRED"
-$priorStatus = "NOT_REQUIRED"
-$activeStatus = "NOT_REQUIRED"
-$approvalStatus = "NOT_REQUIRED"
-$appHostStatus = "NOT_REQUIRED"
 if ($RequireProviderVerification) {
-  # Required-and-rejected must never be summarized as required-and-absent. The frozen
-  # Story 11.24 archive and the current compatibility lane have independent hash authority.
+  # The EventStore provider application exits nonzero on any failed interaction; this check
+  # only refuses a missing, empty, or leaking report before it is published as a CI artifact.
   $providerStatus = "REQUIRED_REJECTED"
-  $historicalStatus = "REQUIRED_REJECTED"
-  $priorStatus = "REQUIRED_REJECTED"
-  $activeStatus = "REQUIRED_REJECTED"
-  $approvalStatus = "REQUIRED_REJECTED"
-  $appHostStatus = "REQUIRED_REJECTED"
-  if ([string]::IsNullOrWhiteSpace($ProviderVerificationReport)) {
-    $ProviderVerificationReport = $expectedProviderVerificationReport
-  }
-
-  # Resolve a relative argument against the repository root, not the caller's working directory,
-  # so a correct relative path is accepted from anywhere.
   $resolvedProviderVerificationReport = [System.IO.Path]::GetFullPath($ProviderVerificationReport, $repositoryRoot)
-  $resolvedExpectedProviderVerificationReport = [System.IO.Path]::GetFullPath($expectedProviderVerificationReport)
-  if (![string]::Equals(
-      $resolvedProviderVerificationReport,
-      $resolvedExpectedProviderVerificationReport,
-      [System.StringComparison]::Ordinal)) {
-    $errors.Add("Provider verification must use the FrontComposer-owned report: $expectedProviderVerificationReport")
-  } elseif (!(Test-Path -LiteralPath $resolvedProviderVerificationReport)) {
-    $errors.Add("Provider verification is required for this lane but '$resolvedProviderVerificationReport' was not found.")
+  if (!(Test-Path -LiteralPath $resolvedProviderVerificationReport)) {
+    $errors.Add("Provider verification is required but '$resolvedProviderVerificationReport' was not found.")
   } elseif ((Get-Item -LiteralPath $resolvedProviderVerificationReport).Length -eq 0) {
     $errors.Add("Provider verification report is empty: $resolvedProviderVerificationReport")
   } else {
-    $providerText = Get-Content -LiteralPath $resolvedProviderVerificationReport -Raw
-    $providerLeaks = Find-RedactionLeaks $providerText
+    $providerLeaks = Find-RedactionLeaks (Get-Content -LiteralPath $resolvedProviderVerificationReport -Raw)
     if ($providerLeaks.Count -gt 0) {
       $errors.Add("Redaction scan failed for provider verification report: $($providerLeaks -join ', ')")
-    }
-
-    $validator = Join-Path $repositoryRoot "eng/eventstore_runtime_evidence.py"
-    $packageArguments = @()
-    if (![string]::IsNullOrWhiteSpace($ProviderPackageRoot)) {
-      $packageArguments += @("--provider-package-root", [System.IO.Path]::GetFullPath($ProviderPackageRoot, $repositoryRoot))
-    }
-    if (![string]::IsNullOrWhiteSpace($AppHostPackageRoot)) {
-      $packageArguments += @("--apphost-package-root", [System.IO.Path]::GetFullPath($AppHostPackageRoot, $repositoryRoot))
-    }
-    # The sealed pre-provider manifest binds the live AppHost capture boundary; without it
-    # the live lane can only check that boundary's shape and chronology.
-    if (![string]::IsNullOrWhiteSpace($RuntimeInputManifest)) {
-      $packageArguments += @("--runtime-input-manifest", [System.IO.Path]::GetFullPath($RuntimeInputManifest, $repositoryRoot))
-    }
-    $successorArguments = @()
-    if ($PrepareRuntimeSuccessor) {
-      $successorArguments = @(
-        "--prepare-runtime-successor",
-        "--successor-frontcomposer-revision", $SuccessorFrontComposerRevision,
-        "--successor-eventstore-source-revision", $SuccessorEventStoreSourceRevision,
-        "--successor-eventstore-package-version", $SuccessorEventStorePackageVersion,
-        "--successor-builds-catalog-revision", $SuccessorBuildsCatalogRevision
-      )
-    }
-    $validationOutput = @(& python3 $validator `
-      --evidence-root $frontComposerEvidenceRoot `
-      --live-evidence-root $liveEvidenceRoot `
-      --active-identity $activeIdentity `
-      --active-evidence-root $activeEvidenceRoot `
-      --history-evidence-root $priorEvidenceRoot `
-      --pact-dir $PactDir `
-      --repository-root $repositoryRoot `
-      @successorArguments `
-      @packageArguments 2>&1)
-    if ($LASTEXITCODE -ne 0) {
-      foreach ($line in $validationOutput) {
-        $errors.Add([string] $line)
-      }
-    } elseif ($providerLeaks.Count -eq 0) {
-      # A leaking report is a rejected lane; the summary must never call it complete.
-      $historicalStatus = "IMMUTABLE_ARCHIVE_VALID"
-      $priorStatus = "PRIOR_COMPATIBILITY_ARCHIVE_VALID"
-      $activeStatus = if ($PrepareRuntimeSuccessor) {
-        "SEALED_V3_PREDECESSOR_VALID_ACTIVE_V4_PENDING"
-      } else {
-        "ACTIVE_IDENTITY_AND_EVIDENCE_VALID"
-      }
-      $approvalLines = @($validationOutput | Where-Object {
-        ([string] $_).StartsWith("EventStore runtime approval", [System.StringComparison]::Ordinal)
-      })
-      $approvalLines | ForEach-Object { Write-Host ([string] $_) }
-      if ($validationOutput -contains "EventStore runtime approval: APPROVED") {
-        $approvalStatus = "APPROVED"
-      } elseif ($validationOutput -contains "EventStore runtime approval: OPEN") {
-        $issues = @($approvalLines | Where-Object {
-          ([string] $_).StartsWith("EventStore runtime approval issue:", [System.StringComparison]::Ordinal)
-        } | ForEach-Object {
-          ([string] $_).Substring("EventStore runtime approval issue:".Length).Trim()
-        })
-        $approvalStatus = if ($issues.Count -gt 0) {
-          "OPEN: $($issues -join '; ')"
-        } else {
-          "OPEN: validator supplied no actionable approval issue"
-        }
-      } else {
-        $errors.Add("EventStore runtime evidence validator supplied no approval state.")
-      }
-      $providerStatus = "CURRENT_PROVIDER_PASSED"
-      $appHostStatus = "AUTHENTICATED_APPHOST_PASSED"
+    } else {
+      $providerStatus = "PRESENT_AND_CLEAN"
     }
   }
 }
 
 $summary = @"
-## Contract Evidence
+## Contract Validation
 
 - Pact files: $($expectedPacts -join ', ')
 - Interaction count: $($interactionDescriptions.Count)
-- Historical Story 11.24 integrity: $historicalStatus
-- Prior Builds 35c3d1e5 compatibility archive: $priorStatus
-- Active EventStore identity v3 and sealed evidence: $activeStatus
-- Migration approval: $approvalStatus
-- Current provider verification: $providerStatus
-- Current authenticated AppHost smoke: $appHostStatus
+- Provider verification report: $providerStatus
 - Pact specification: 4.0
 - PactNet package: 5.0.1
 - Manifest: tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json
 - Provider states: tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json
 - Redaction scan: $(if ($errors.Count -eq 0) { "clean" } else { "failed" })
 - Submodules: root-level checkout only; no recursive nested submodule command is used by this lane
-- Provider verification required in this lane: $RequireProviderVerification
-- Authority model: historical v1, dated prior compatibility, sealed active evidence, live recapture, and role receipts validate independently
 "@
 $summary | Set-Content -LiteralPath (Join-Path $ArtifactDir "job-summary.md") -Encoding utf8
 

@@ -1,9 +1,0 @@
-{
-  "sourceIdentitySha256": "635d52ce2dab0601bbe6a773cadcdbc2e9d4f9809664352018571184786436c8",
-  "allSevenAgentInputsMatch": true,
-  "configuredShellBinaryHashesMatch": true,
-  "bannerClassInCurrentFullRun": {
-    "passed": 34,
-    "failed": 0
-  }
-}

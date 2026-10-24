@@ -239,8 +239,9 @@ npm run test:runner
 npm run story2.2:e2e
 ```
 
-Set `FC_STORY_2_2_OUTPUT_DIR` to a repository-relative directory when results and screenshots should
-be isolated from the checked-in historical evidence beside the harness.
+Results and screenshots go to the ignored `artifacts/story-2-2-live/` directory; set
+`FC_STORY_2_2_OUTPUT_DIR` to another repository-relative directory to isolate a run. They are local
+scratch or CI artifacts and are never committed.
 
 ---
 
