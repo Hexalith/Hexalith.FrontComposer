@@ -10761,3 +10761,8 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 ## Deferred from: code review of spec-13-6-verify-responsive-and-assistive-accessibility.md (2026-10-23, pass 6)
 
 - `background()` in `tests/e2e/helpers/responsive-accessibility.ts` assumes every fill from an out-of-flow box's containing block upward is behind it; an absolute box placed outside its containing block (negative offsets, non-top-layer `top:100%` menus) is composited against that fill (pre-existing, medium). Settle with a non-top-layer menu fixture outside a filled containing block, then extend the inside/disjoint fill test beyond the containing block.
+
+## Deferred from: code review of spec-13-6-verify-responsive-and-assistive-accessibility.md (2026-10-23, pass 7)
+
+- `background()` in `tests/e2e/helpers/responsive-accessibility.ts` composites every non-escaped ancestor fill without geometry. This extends the pass 6 containing-block entry above: in-flow text overflowing a zero-height filled ancestor is a probe-confirmed false pass (15.46:1 against black for text actually on white, about 1.4:1) (pre-existing, medium; R7-A3, R7-B10, R7-E8). Settle with an in-flow overflow fixture plus the non-top-layer menu fixture, then apply the inside/disjoint/empty fill test to in-flow and containing-block layers.
+- `13-6-accessibility-result.md` does not record the reduced-motion reconciliation sweep's sub-3:1 non-text classification or the UX follow-up it permits (low; R7-A2). Covered by the open Story 13.6 Evidence task; record after the pending R7-A1 sweep-premise decision.

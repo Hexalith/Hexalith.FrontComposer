@@ -145,7 +145,7 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
         List<CommandFeedbackWarning> published = [];
         using IDisposable feedback = Services.GetRequiredService<ICommandFeedbackPublisher>().Subscribe(published.Add);
         int blockedPresentations = 0, publishedBeforeDisposal = 0;
-        bool disposed = false, noLeaseDuringClear = false;
+        bool disposed = false, noLeaseDuringCallback = false;
         ICommandExecutionAdmissionGate admissionGate = Services.GetRequiredService<ICommandExecutionAdmissionGate>();
         CommandExecutionAdmission? holder = null;
         IRenderedComponent<ZeroFieldInlineCommandForm>? cut = null;
@@ -154,15 +154,19 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
                 if (message is null || blocked == "scope-unavailable")
                 {
                     // Withdraw the external blocker, then prove this attempt owns no admission lease.
+                    // The probe needs a scope, so the scope row lends one and always withdraws it.
                     holder?.Dispose();
                     string? tenant = UserContext.TenantId;
                     if (blocked == "scope-unavailable") UserContext.TenantId = "test-tenant";
-                    using (CommandExecutionAdmission probe = admissionGate.TryAcquire(new CommandExecutionAdmissionRequest("blocked-probe")))
+                    try
                     {
-                        noLeaseDuringClear = probe.IsAdmitted;
-                        probe.IsAdmitted.ShouldBeTrue();
+                        using CommandExecutionAdmission probe = admissionGate.TryAcquire(new CommandExecutionAdmissionRequest("blocked-probe"));
+                        noLeaseDuringCallback = probe.IsAdmitted;
                     }
-                    UserContext.TenantId = tenant;
+                    finally
+                    {
+                        UserContext.TenantId = tenant;
+                    }
                     publishedBeforeDisposal = published.Count;
                     cut!.Instance.Dispose();
                     disposed = true;
@@ -184,9 +188,10 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
             .GetMethod("SubmitAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
             .Invoke(cut.Instance, [false])!);
 
-        // A parent that disposes the blocked form during its clear receives no blocked outcome afterwards.
+        // A parent that disposes the blocked form during its hidden-outcome callback (the clear, or the
+        // scope row's warning) receives no blocked outcome, focus or dispatch afterwards.
         cut.WaitForAssertion(() => disposed.ShouldBeTrue());
-        noLeaseDuringClear.ShouldBeTrue();
+        noLeaseDuringCallback.ShouldBeTrue();
         published.Count.ShouldBe(publishedBeforeDisposal);
         published.Count.ShouldBe(blocked == "scope-unavailable" ? 1 : 0);
         blockedPresentations.ShouldBe(0);
@@ -309,13 +314,22 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
         using IDisposable subscription = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>()
             .Subscribe("command-renderer:" + triggerId, speech.Add);
         UserContext.TenantId = null;
+        List<JSRuntimeInvocation> AttemptedControlFocus() => [.. FcFocusModule.Invocations.Where(call => call.Identifier == "focusAttemptedControl")];
         cut.Find("fluent-button").Click();
         cut.WaitForAssertion(() => cut.Find("[data-testid='fc-zero-field-outcome']").TextContent.ShouldContain("workspace identity"));
         cut.WaitForAssertion(() => speech.Count(message => message.Contains("workspace identity", StringComparison.Ordinal)).ShouldBe(1));
+        // The live form still applies the attempted-control rule once per attempt: the positive control
+        // for the disposed exit that skips it.
+        cut.WaitForAssertion(() => AttemptedControlFocus().ShouldHaveSingleItem());
         cut.Render();
         speech.Count(message => message.Contains("workspace identity", StringComparison.Ordinal)).ShouldBe(1);
         cut.Find("fluent-button").Click();
         cut.WaitForAssertion(() => speech.Count(message => message.Contains("workspace identity", StringComparison.Ordinal)).ShouldBe(2));
+        cut.WaitForAssertion(() => AttemptedControlFocus().Count.ShouldBe(2));
+        string attemptedControlId = AttemptedControlFocus()[0].Arguments[0].ShouldBeOfType<string>();
+        attemptedControlId.ShouldStartWith("fc-command-form-");
+        attemptedControlId.ShouldEndWith("-submit");
+        AttemptedControlFocus().ShouldAllBe(call => call.Arguments.SequenceEqual(new object?[] { attemptedControlId, false }));
         _ = service.DidNotReceive().DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
         FcFocusModule.VerifyNotInvoke("focusValidationOutcome");
         FcFocusModule.VerifyNotInvoke("focusElementById");
