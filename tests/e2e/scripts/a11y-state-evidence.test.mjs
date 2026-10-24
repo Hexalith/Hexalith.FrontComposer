@@ -437,7 +437,8 @@ test('CLI reports an unreadable report and ambiguous capability attachments expl
 test('CLI rejects non-object report, state and capability JSON by name', () => matrix(({ report, root, files }) => {
   let result = runValidator(root, 'null', 'chromium');
   assert.equal(result.status, 1, result.stdout + result.stderr);
-  assert.match(result.stderr, /Invalid authoritative Playwright report .*expected a report object/);
+  assert.match(result.stderr, /Invalid authoritative Playwright report \S+: report must be an object/);
+  assert.doesNotMatch(result.stderr, /Invalid authoritative Playwright report.*Invalid authoritative Playwright report/);
   assert.doesNotMatch(result.stderr, /TypeError/);
   writeFileSync(files[0], 'null');
   result = runValidator(root, report, 'chromium');
@@ -483,7 +484,7 @@ test('CLI rejects malformed nested reporter shapes without a traversal exception
     assert.match(validateStateEvidence(all, { report: malformed }).join('\n'), /Invalid authoritative Playwright report/, label);
     const result = runValidator(root, malformed, 'chromium');
     assert.equal(result.status, 1, label + ': ' + result.stdout + result.stderr);
-    assert.match(result.stderr, /Invalid authoritative Playwright report.*must be an (array|object)/, label);
+    assert.match(result.stderr, /Invalid authoritative Playwright report \S+: report\.\S+ must be an (array|object)/, label);
     assert.doesNotMatch(result.stderr, /TypeError|at visit|at Array\./, label);
   }
 }));

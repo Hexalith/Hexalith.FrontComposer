@@ -5,6 +5,7 @@ pre-commit (--staged) and CI (all tracked files) modes.
 """
 
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -16,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 GUARD = ROOT / "eng" / "check-committed-files.sh"
 LIMIT = 1_048_576
 ALLOWLISTED = "_bmad-output/implementation-artifacts/deferred-work.md"
+EVIDENCE_IGNORE = "**/[Ee][Vv][Ii][Dd][Ee][Nn][Cc][Ee]/"
 
 
 class CheckCommittedFilesTests(unittest.TestCase):
@@ -35,7 +37,7 @@ class CheckCommittedFilesTests(unittest.TestCase):
             "GIT_COMMITTER_EMAIL": "guard@example.invalid",
         })
         self.git("init", "--quiet")
-        self.write(".gitignore", "**/evidence/\n")
+        self.write(".gitignore", EVIDENCE_IGNORE + "\n")
         self.write("README.md", "baseline\n")
         self.git("add", "--", ".gitignore", "README.md")
         self.git("commit", "--quiet", "-m", "test: baseline")
@@ -295,7 +297,10 @@ class GuardWiringTests(unittest.TestCase):
     def test_quality_workflow_runs_the_guard_and_its_tests_in_a_blocking_job(self):
         workflow = (ROOT / ".github" / "workflows" / "quality.yml").read_text(encoding="utf-8")
         workflow = workflow.replace("\r\n", "\n")
-        job = workflow[workflow.index("\n  committed-files:\n"):]
+        start = workflow.index("\n  committed-files:\n") + 1
+        # The job ends at the next top-level job key (two-space indent), or at end of file.
+        following = re.search(r"^  [A-Za-z0-9_-]+:[ \t]*$", workflow[start + 1:], re.MULTILINE)
+        job = workflow[start:start + 1 + following.start()] if following else workflow[start:]
         header = job[:job.index("\n    steps:\n")]
         steps = (
             "      - uses: actions/checkout@",
@@ -316,7 +321,7 @@ class GuardWiringTests(unittest.TestCase):
     def test_evidence_folders_and_stray_playwright_results_are_ignored(self):
         ignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
 
-        self.assertIn("**/evidence/", ignore)
+        self.assertIn(EVIDENCE_IGNORE, ignore)
         self.assertIn("/test-results/", ignore)
         self.assertFalse(
             [line for line in ignore if line.startswith("!") and "evidence" in line.lower()],

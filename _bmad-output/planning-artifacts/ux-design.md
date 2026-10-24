@@ -393,7 +393,7 @@ security approval.
 - Preserve stable accessible names and test selectors where they form an evidence contract.
 - Visual/accessibility-sensitive changes require rendered DOM, computed style, bUnit, e2e, or
   governance evidence mapped to the matrices above.
-- Matrix results follow the PRD §7 evidence policy: the story or spec records the commands, pass/fail counts, commit SHA and CI run link; generated run screenshots and reports are CI workflow artifacts or local scratch, never commits. This does not change AE-01–AE-09, manual evidence, or approval requirements, and committed visual baseline fixtures remain source. The policy (2026-10-23) supersedes the 2026-10-21 storage amendment and Stories 15.6/15.7 without closing Product approval, OI-16 or G-4.
+- Matrix results follow the PRD §7 evidence policy (2026-10-23, superseding the 2026-10-21 storage amendment and Stories 15.6/15.7), which changes no AE-01–AE-09, manual-evidence, approval or committed visual-baseline requirement and closes no Product approval, OI-16 or G-4.
 
 ## Story Design Notes
 

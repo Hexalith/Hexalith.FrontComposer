@@ -2,7 +2,7 @@
 title: 'Simplify evidence: story file + CI only, remove committed evidence and its machinery'
 type: 'chore'
 created: '2026-10-23'
-status: 'in-review'
+status: 'done'
 baseline_commit: '4a4051c2511e5c4b7c0285fbc129c72146c1c275'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -66,15 +66,48 @@ context: []
 ## Implementation Notes
 
 - Guard: `eng/check-committed-files.sh` matches any `evidence/` directory segment (root or nested, case-insensitive); the allowlist holds only `deferred-work.md`. The Quality `committed-files` job is appended after `debug-gated-tests` and runs the guard over the full tree plus its unittest; `ci.yml` is untouched.
-- Gate 2c keeps pacts → provider tests + `live-compatibility` run (report `artifacts/contracts/provider-verification.json`, uploaded as a CI artifact) → plain `./eng/validate-contract-artifacts.ps1` → stale-pact guard. The `workflow_dispatch` inputs (and the trigger, which existed only for successor capture) are gone; concurrency is `quality-${{ github.ref }}`. The validator keeps an opt-in `-RequireProviderVerification` (report exists, non-empty, redaction-clean) for the documented local run.
+- Gate 2c keeps pacts → provider tests + `live-compatibility` run (report `artifacts/contracts/provider-verification.json`, uploaded as a CI artifact) → `./eng/validate-contract-artifacts.ps1 -RequireProviderVerification` (report exists, non-empty, redaction-clean) → stale-pact guard. The `workflow_dispatch` inputs are gone; a bare trigger stays; concurrency is `quality-${{ github.ref }}`.
 - `mcp-g7-candidate*.json` and `mcp-g7-build-test*.txt` (hash manifests and run logs) were deleted; `mcp-g7-security-review-2026-09-26.md` stays because PRD G-7 cites it as the sign-off record.
 - Follow-on fixes forced by the deletions: CA1707 identifier inventory resealed 3578 → 3574 in `analyzer-policy-exception-ledger-v1.json` (four removed underscore test names); producer fingerprint of `docs/ide-parity-matrix.md` updated; `sprint-status.yaml` E13R-AI-1/AI-4 `evidence:` repointed from the deleted follow-through JSON to `spec-epic-13-retrospective-follow-through.md`; `docs/accessibility-verification/baseline-change-rationale.md` no longer links the deleted before-images.
 - Left in place: `eng/validate-story-artifacts.py` still lists `eng/pact_provider_apphost_smoke.py` in `HISTORICAL_OWNED_MIXED_UNOWNED_PATHS` — the digest-sealed path inventory of historical commit `ee9762e6`, not a reference to the tool. The `13-6-accessibility-result.md` policy line is appended at the end because `main` (`6f6eb898`) inserted a new section right after its title.
 - Pre-existing failures at base `4a4051c2` (unchanged inputs, not caused here): `InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` and 8 cases in `tests/eng/test_dependency_graph.py` (policy pins `FsCheck.Xunit.v3` 3.5.0, Builds catalog has 3.6.0); `CiGovernanceTests.ToolchainPins_MatchApprovedDotnetAndAspireVersions` (test expects `Aspire.AppHost.Sdk/13.6.1`, AppHost uses 13.6.3).
+- Review pass 1 patches (triage rows 1-13): validator switch in CI + governance pin; `tests/eng/test_validate_contract_artifacts.py` (4 cases, run in Gate 2b); new `epic9-live-acceptance` step restarts the prebuilt AppHost and requires 401/403 for a bogus bearer on command submit, command status, query and hub negotiate (checked locally against stubbed `aspire` + fake 401/200 servers; live behaviour CI-only); stale IDE drift text; bare `workflow_dispatch`; guard-job comment; case-insensitive `.gitignore` evidence pattern; pact-contracts local recipe matches CI; G-3/D-12/architecture/16.1 share one closure set; mcp-g7 note; architecture/ux pointers to PRD §7; CONTRIBUTING line; guard test slice bound. Row 14 deferred to `deferred-work.md`.
 
 ## Spec Change Log
 
 ## Review Triage Log
+
+Pass 1 (2026-10-23; Blind Hunter BH, Edge Case Hunter ECH, Verification Gap VG). Diff: all non-deletion changes since baseline plus the deletion file list outside the evidence folder.
+
+| # | Source | Finding | Verdict | Evidence / route |
+|---|--------|---------|---------|------------------|
+| 1 | BH, ECH, VG | Gate 2c runs the contract validator without `-RequireProviderVerification`, so the uploaded provider report is never redaction-scanned; `CiGovernanceTests` pins the omission | medium | Confirmed `quality.yml` `run: ./eng/validate-contract-artifacts.ps1`; base passed the switch. Patch: pass the switch, update the pin. |
+| 2 | VG | The kept PowerShell redaction checker lost its only tests with `test_eventstore_runtime_evidence.py` | medium | Gap pre-verified (no test runs the script). Patch: port the two deleted cases to `tests/eng/test_validate_contract_artifacts.py`, run it in a Gate 2b step. |
+| 3 | BH, VG, ECH | Deleting the AppHost smoke drops the only invalid-bearer 401/403 checks on the AppHost-composed command, status, query and SignalR endpoints; the `epic9` lane is positive-only | medium | Gap pre-verified by grep of `tests/e2e`, `eng/run-epic9-live-proof.sh`. Not a small addition inside the `epic9` proof (no EventStore endpoint there; its command list is the recorded 9.8 proof format). Owner chose a separate CI step: patched as the `epic9-live-acceptance` step "AppHost rejects invalid bearer tokens". |
+| 4 | BH, ECH, VG | `jobs/ide-parity-version-revalidation.ps1:252` still asks to refresh deleted evidence manifests | low | Confirmed. Patch: reword to the story-record policy. |
+| 5 | BH | `workflow_dispatch` trigger removed with its inputs | low | Spec dropped only the inputs; a bare trigger lets Gate 2c run on a chosen commit. Patch: restore bare trigger. |
+| 6 | BH, ECH | `committed-files` comment claims a hook bypass "cannot land" evidence; main has no protection | low | Confirmed (`branches/main/protection` 404, no ruleset). Patch: reword as detection on every push/PR. |
+| 7 | BH | `.gitignore` `**/evidence/` is case-sensitive while the guard is not | low | One-line correction. Patch: case-insensitive pattern. |
+| 8 | BH | Local recipe in `docs/reference/pact-contracts.md` dropped the provider test-assembly run CI still does | low | Confirmed against `quality.yml`. Patch: restore the step in the recipe. |
+| 9 | ECH | Story 16.1 AC cites the `epic9` AppHost result; PRD G-3/D-12 cite only Gate 2c | low | Two authorities differ. Patch: state the same closure set (Quality run: Gate 2c provider + `epic9-live-acceptance`) in PRD G-3/D-12, architecture. |
+| 10 | ECH | `mcp-g7-security-review-2026-09-26.md` links the deleted `mcp-g7-*` files and their manifest hash | low | Confirmed. Patch: add the dated policy note there. |
+| 11 | ECH | Policy restated in full in architecture/ux/pact-contracts, not once | low | Drift risk on the next policy change. Patch: reduce to pointers to PRD §7 (project-context keeps its Never rule). |
+| 12 | BH | Contributor docs do not mention the guard or that hooks need a root `npm ci` | low | Patch: one line in `CONTRIBUTING.md`. |
+| 13 | BH | Guard test slices `quality.yml` from `committed-files:` to EOF; a later job breaks it | low | Direct correction. Patch: stop at the next top-level job. |
+| 14 | ECH | Shell.Tests `CentralPackageVersions…`/`ToolchainPins…` and `test_dependency_graph.py` fail, so build-and-test stays red | medium | Pre-existing: Quality on main fails at base `4a4051c2` (run list), inputs (`dependency-graph-policy.json`, Builds gitlink, AppHost) untouched by this diff. Defer. |
+| 15 | BH | `-RequireProviderVerification` does not check verdict/interaction count/staleness | low | Provider app exits nonzero on any failed interaction and CI deletes the old report first; adding semantic checks adds validation logic. Rejected. |
+| 16 | BH, ECH | IDE matrix JSON lost its machine-readable `revalidation-pending` status | low | `docs/ide-parity-matrix.md` states 10.0.402 is not revalidated; restoring the field re-adds evidence metadata and schema. Rejected. |
+| 17 | BH, ECH | Open DW entries target deleted code | low | bmad-loop sweep verifies entries against code (same as EventStore triage #11). Rejected. |
+| 18 | BH | Spec record lacks the change SHA and CI link | — | Fix edits this spec; results are recorded at presentation. Rejected per workflow. |
+| 19 | BH | Allowlist has no size ceiling | low | One fixed entry; a ceiling adds parameters (EventStore triage #19). Rejected. |
+| 20 | BH | CI run links/artifacts expire before late sign-off | low | Owner's policy chose commands + counts + SHA + CI link, so outcomes are copied into the story. Rejected (intent). |
+| 21 | BH | History rewrite has no tracked follow-up | low | Intent excludes it ("later, coordinated with EventStore"). Rejected. |
+| 22 | BH | Guard tests miss spaces/newlines, symlinks, ITA, cat-file failure | false | `-z` parsing handles names; only mode 160000 is skipped; a size-read failure exits 2 (EventStore triage #20). |
+| 23 | ECH | Empty or directory `-ProviderVerificationReport` throws instead of reporting | false | Default value is used by every caller; a loud failure on an unreached input is correct. |
+| 24 | ECH | A PR commit could add then remove evidence and a non-squash merge lands the blob | low | Range scan adds complexity; the hook covers local commits (EventStore triage #6). Rejected. |
+| 25 | ECH | `--staged` during an unresolved conflict exits 2 without naming the path | false | `git commit` refuses unmerged paths before hooks run; manual use fails loudly with exit 2. |
+| 26 | ECH | Must row IDE-REMOTE-001 has no trait-tagged test after the deletions | low | Tagging an unrelated test would be fake coverage; no gate counts traits. Rejected. |
+| 27 | ECH | AC grep still matches `eng/validate-story-artifacts.py:404` and ledger entries | false | Both are historical records (digest-sealed path inventory of `ee9762e6`; ledger history), not live references. |
 
 ## Design Notes
 
@@ -98,3 +131,4 @@ Decisions (agent-owned): keep the release pipeline despite its "evidence" name (
 - Shell.Tests DLL (default-lane trait exclusions) -- 3,762 run, 3,760 passed after the CA1707 reseal; the 2 failures are the pre-existing `CentralPackageVersions…` and `ToolchainPins…` facts. Governance + Pact namespaces rerun: 191 run, same 2 failures. `StoryArtifactValidatorGate_IsBlockingAndExact`, red at base, now passes.
 - Story 2.2 runner contract (`node --test run-story-2-2-e2e.test.cjs`) -- 6/6 passed. `pwsh ./eng/validate-docs.ps1` -- "Docs validation passed", zero blocking failures (the pwsh host then hung and was stopped).
 - Not run locally: `GovernanceBuild` trait lane, live provider verification, Playwright/a11y and Epic 9 live lanes (CI only).
+- After review patches (2026-10-24): guard exit 0 (6,280 files); guard tests 20/20; contract-validator tests 4/4; `tests/eng` suites all pass except the deferred `test_dependency_graph.py` (102 run, 1 failure + 7 errors, pre-existing); story validator tests 222 OK (2 skipped) and validator passed; Release `-warnaserror` build 0 warnings/0 errors; solution default lane 6,192/6,194 and Governance lane 536/538 (both failures the deferred pre-existing pins); Contract lane 3/3; `actionlint` clean.

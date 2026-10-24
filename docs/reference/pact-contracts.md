@@ -46,15 +46,27 @@ The EventStore-owned command shape is recorded in `provider-verification-handoff
 
 Quality Gate 2c (`.github/workflows/quality.yml`) runs, in order: the Contract pact tests; the EventStore provider-verification test assembly; the EventStore provider application in `live-compatibility` mode, which writes its report to `artifacts/contracts/provider-verification.json`; `eng/validate-contract-artifacts.ps1`; and the stale-pact diff guard. The provider application exits nonzero on any failed interaction, unsafe host, or incomplete cleanup, and that fails the job. The report is uploaded with the `contract-artifacts` workflow artifact and is never committed.
 
-Run the provider application locally from the repository root:
+Run the same steps locally from the repository root. The pinned EventStore tests resolve the Pact corpus through the EventStore submodule's `references/Hexalith.FrontComposer` gitlink: leave that nested submodule uninitialized and stage the six current Pact JSON files into its empty worktree.
 
 ```bash
 set -euo pipefail
 workspace_root="$PWD"
 report="$workspace_root/artifacts/contracts/provider-verification.json"
+dotnet restore references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj \
+  -p:Configuration=Release -p:NuGetAudit=false
 dotnet build references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj \
-  --configuration Release -m:1 -p:NuGetAudit=false
+  --configuration Release --no-restore -m:1 -p:NuGetAudit=false
+provider_test_pact_dir="$workspace_root/references/Hexalith.EventStore/references/Hexalith.FrontComposer/tests/Hexalith.FrontComposer.Shell.Tests/Pact"
+mkdir -p "$provider_test_pact_dir"
+find "$workspace_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
+  -maxdepth 1 -type f -name '*.json' -exec install -m 0644 {} "$provider_test_pact_dir/" \;
+test "$(find "$provider_test_pact_dir" -maxdepth 1 -type f -name '*.json' | wc -l)" -eq 6
+(
+  cd references/Hexalith.EventStore
+  dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
+)
 mkdir -p "$(dirname "$report")"
+rm -f "$report"
 (
   cd references/Hexalith.EventStore
   dotnet "$workspace_root/references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll" \
@@ -64,6 +76,7 @@ mkdir -p "$(dirname "$report")"
     --provider-state-catalog "$workspace_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json" \
     --report-output "$report"
 )
+test -s "$report"
 pwsh -NoLogo -NoProfile -File ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification
 ```
 
@@ -73,7 +86,7 @@ NFR55 release rule: a release is blocked unless the checked-in pacts verify agai
 
 ### Recording a verification
 
-Proof is the repository's tests plus CI. The story or spec that needs a provider verification records the commands run, the pass/fail counts, the commit SHA, and the CI run link. Provider reports, package ledgers, AppHost smoke packets, runtime-identity records, and approval receipts are not committed: every `evidence/` folder is ignored local scratch, and `eng/check-committed-files.sh` rejects evidence paths and files over 1 MiB in the pre-commit hook and in CI.
+A provider verification is recorded under the repository evidence policy (PRD §7, `_bmad-output/planning-artifacts/prd.md`): the owning story or spec records the commands, pass/fail counts, commit SHA and CI run link, and the report itself is never committed.
 
 Re-verification rules:
 

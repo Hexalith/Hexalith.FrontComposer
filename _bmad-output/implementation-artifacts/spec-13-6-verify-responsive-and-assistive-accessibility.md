@@ -230,7 +230,7 @@ Patches applied 2026-10-23, uncommitted (16 entries). Red/green and broad checks
 
 Scope: the pass 5 fix delta (pass 4 working state → current, 12 files, 610 diff lines). Four layers returned 50 raw findings (`R6-A/V/B/E#`); most are coverage gaps on the pass 5 helper branches. Verdicts are in the Review Triage Log.
 
-- [x] [Review][Decision→Patch, chosen 2026-10-23: supplementary cue] Disposition: the sweep is a transient 700ms (`SweepTtl`) reinforcement, dispatched in the same render cycle as the "Reconnected -- data refreshed" notice for the same changed lanes; the text carries the meaning, so WCAG 1.4.11 does not apply. It is subtle by Story 5.4 design in both motion modes (45%/35% brand outline). This is an engineering classification, not a UX approval; UX may later raise it to a ≥3:1 Fluent stroke token as a Story 5.4 follow-up. Patch: reword the test to assert that a static, non-moving marker remains, without claiming preserved meaning. Original finding: reduced-motion reconciliation sweep contrast — under `prefers-reduced-motion` the sweep keeps only `outline: 1px solid` brand at 35% alpha (about 1.6:1 on white; at most about 2.4:1 at 35% alpha), below AC1's 3:1 non-text threshold. The pass 4 test asserts only alpha > 0 yet comments "no essential meaning is lost". Decide whether the sweep is supplementary to the Reconnected notice (record the disposition and reword the assertion) or essential (raise it to ≥3:1 through a Fluent stroke token, a Story 5.4 visual change needing owner approval) (R6-A2, R6-B15, R6-E16) [src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css:151]
+- [x] [Review][Decision→Patch, chosen 2026-10-23: supplementary cue; rationale corrected in pass 7, R7-A1] Disposition: the sweep is a transient 700ms (`SweepTtl`) reinforcement, dispatched in the same render cycle as the "Reconnected -- data refreshed" notice for the same changed lanes; the text carries the meaning, so WCAG 1.4.11 does not apply. It is subtle by Story 5.4 design in both motion modes (45%/35% brand outline). This is an engineering classification, not a UX approval; UX may later raise it to a ≥3:1 Fluent stroke token as a Story 5.4 follow-up. Patch: reword the test to assert that a static, non-moving marker remains, without claiming preserved meaning. Original finding: reduced-motion reconciliation sweep contrast — under `prefers-reduced-motion` the sweep keeps only `outline: 1px solid` brand at 35% alpha (about 1.6:1 on white; at most about 2.4:1 at 35% alpha), below AC1's 3:1 non-text threshold. The pass 4 test asserts only alpha > 0 yet comments "no essential meaning is lost". Decide whether the sweep is supplementary to the Reconnected notice (record the disposition and reword the assertion) or essential (raise it to ≥3:1 through a Fluent stroke token, a Story 5.4 visual change needing owner approval) (R6-A2, R6-B15, R6-E16) [src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css:151]
 - [x] [Review][Patch] Pin the pass 5 helper branches with three-engine fixtures. Mutation probes passed all 146 synthetic fixtures for each of: the `display:contents` skip and new containing-block conditions; `background()` `paints = inside` and its nested-absolute guard; the opaque-plane visibility guard; shadow blur reach, stroke-only reach, and a shadow that stops short (R6-V1, R6-V2, R6-V3, R6-V4, R6-A4, R6-A5, R6-B16) [tests/e2e/specs/responsive-accessibility.spec.ts:2185]
 - [x] [Review][Patch] The `will-change` containing-block regex treats `contain-intrinsic-size` as `contain`; match comma-separated tokens exactly (R6-E12) [tests/e2e/helpers/responsive-accessibility.ts:1174]
 - [x] [Review][Patch] Outside samples (focus rings, borders) start `background()` at the parent, so an absolute/fixed focused element never seeds its containing-block escape; seed it from the element itself (R6-A7, R6-B11, R6-E6) [tests/e2e/helpers/responsive-accessibility.ts:1426]
@@ -255,6 +255,36 @@ Scope: the pass 5 fix delta (pass 4 working state → current, 12 files, 610 dif
 - R6-B14/R6-E11/R6-V-Other (low, carried R5-E3): a `visibility:visible` pseudo-element in a hidden host is now probe-confirmed in a synthetic page, but no current surface uses it; sampling it needs per-kind restructuring.
 - R6-E9 (low): multi-line inline/border/background-clip fill geometry is an approximation outside any current surface.
 - R6-E10 (low, carried R5-E9): `visibility: collapse`.
+
+#### Pass 7 (pass 6 fix delta, 2026-10-23)
+
+Scope: the pass 6 fix delta `git diff 4a4051c2..HEAD -- src tests` (code-only commit `6f6eb898`; 14 files, +241/−39, 625 diff lines); spec, result and receipt narrative excluded. Four layers returned 33 raw findings (`R7-A/V/B/E#`): Blind Hunter 18, Edge Case Hunter 9, Verification Gap 2 (one pre-verified gap plus one probe-confirmed other finding) and Acceptance Auditor 4. Each verdict is in the Review Triage Log. A three-engine triage probe confirmed that `will-change: backdrop-filter|transform-style|offset-path` and the `backdrop-filter` property create containing blocks; the Acceptance Auditor's probe confirmed the in-flow zero-height false pass.
+
+- [x] [Review][Decision→Patch, chosen 2026-10-24: keep supplementary on a corrected rationale] The sweep stays an engineering-classified supplementary cue, independent of the Reconnected notice: it is a transient 700ms (`SweepTtl`) marker on rows whose refreshed values are themselves the content, and it is never the only carrier of information. It is not guaranteed to accompany the notice, because a partial reconnect paints it with no notice. This replaces the pass 6 "same render cycle" rationale; it is still not a UX approval, and the ≥3:1 Fluent stroke token stays an optional Story 5.4 follow-up. The patch below rewords the test comment. Original finding: Sweep disposition premise is false for partial reconnects — The pass 6 decision classified the reduced-motion reconciliation sweep (35% brand outline, about 1.6:1) as supplementary because it is "dispatched in the same render cycle as the Reconnected notice". `ReconnectionReconciliationCoordinator` dispatches `MarkReconciliationSweepAction` whenever `ChangedViewKeys.Count > 0` (`:228`), but completes `succeeded: false` when any lane failed, was skipped or read incompletely; `Complete` maps that to `Idle`, and `FcProjectionConnectionStatus` shows and announces Reconnected only for `Refreshed` (and also suppresses it offline or after an epoch change). A partial reconnect therefore paints the sub-3:1 sweep with no notice, and the new test comment (`responsive-accessibility.spec.ts:623-624`) states the false premise. Options: (a) keep the supplementary classification on a corrected rationale (the transient 700ms marker highlights changed data that itself carries the content; no notice dependency) and reword the comment; (b) dispatch the sweep only for a fully successful pass, coupling it to the notice (Story 5.4/5-5 behavior change); (c) raise the reduced-motion marker to a ≥3:1 Fluent stroke token (Story 5.4 visual change needing owner approval) (R7-A1, R7-B18)
+- [ ] [Review][Patch] Reword the sweep test comment to the corrected rationale: a supplementary transient marker on changed rows whose refreshed values carry the content, with no dependency on the Reconnected notice, and no contrast claim (R7-A1 resolution, R7-B18) [tests/e2e/specs/responsive-accessibility.spec.ts:623]
+- [ ] [Review][Patch] `containingBlock` misses demonstrated containing-block triggers: the R6-E12 exact-token rewrite dropped `will-change: backdrop-filter` and `transform-style` (the old regex matched them across hyphen word boundaries), and neither version handles `will-change: offset-path`, the `backdrop-filter` property, or WebKit's `-webkit-backdrop-filter` (property and `will-change` token). A fixed label inside such an `overflow:hidden` ancestor is really clipped in all three engines but is still sampled as escaped. Add the tokens and property checks, and extend the R6 containing-block fixture loop with those rows (R7-V2, R7-B12, R7-E9; the bare `offset-path` property is not demonstrated and stays out) [tests/e2e/helpers/responsive-accessibility.ts:1177]
+- [ ] [Review][Patch] No test proves that a non-disposed scope-unavailable attempt still focuses its attempted control: `ScopeUnavailableIsVisibleWithoutDispatchOrHiddenFocusAndEachAttemptSpeaksOnce` never asserts `focusAttemptedControl`, so an always-true `_disposed` guard would pass every runtime test, and the disposed row's `VerifyNotInvoke` has no positive control. Assert one `focusAttemptedControl(<form>-submit, false)` per click there (R7-V1, R7-B3) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs:301]
+- [ ] [Review][Patch] The blocked-disposal theory was not updated coherently for its scope row: the comment and `noLeaseDuringClear` still say "clear" although the scope row disposes during its warning; the tenant restore is outside `finally`; and the in-callback `probe.IsAdmitted.ShouldBeTrue()` duplicates the post-callback assertion while throwing inside the component (R7-B4) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs:140]
+- [ ] [Review][Patch] The warning-dedupe theory has no row with a non-blank Detail distinct from the title, so Detail-over-EntityLabel precedence is unverified, and the `"Affected item"` row never asserts the localized fallback is absent ("one body"); rename `fallback` to `expectedBody` (R7-B5, R7-E4 distinct-Detail part) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererWrapperIntegrationTests.cs:79]
+- [ ] [Review][Patch] The emitter ordering test throws `ArgumentOutOfRangeException` instead of a named assertion when the scope-presentation line is missing (`IndexOf(..., -1, ...)`), and checks the guard against `scopeBranchEnd` before asserting that branch exists; assert both anchors first (R7-B8, R7-E3) [tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs:1327]
+- [ ] [Review][Patch] The negative half of "R6 simple contrast ignores hidden ancestor fills" uses an unconstrained `rejects.toThrow()`; any locator or "needs pixel evidence" error satisfies it. Match the contrast assertion failure (R7-B14, R7-A4) [tests/e2e/specs/responsive-accessibility.spec.ts:2280]
+- [ ] [Review][Patch] The validator CLI prints the prefix twice ("Invalid authoritative Playwright report <path>: Invalid authoritative Playwright report: …"), and the now-redundant `isRecord` pre-check claims a required suites array although `suites` is optional (R7-B15) [tests/e2e/scripts/validate-a11y-artifacts.mjs:65]
+- [x] [Review][Defer] `background()` composites every non-escaped ancestor fill without geometry. Beyond the pass 6 containing-block case (R6-B12), in-flow text overflowing a zero-height filled ancestor is a probe-confirmed false pass (15.46:1 against black for text actually on white, about 1.4:1) [tests/e2e/helpers/responsive-accessibility.ts:1058] — deferred: pre-existing, medium; extends the R6-B12 entry. Settle with an in-flow overflow fixture plus the non-top-layer menu fixture, then apply the inside/disjoint/empty fill test to in-flow and containing-block layers (R7-A3, R7-B10, R7-E8).
+- [x] [Review][Defer] `13-6-accessibility-result.md` does not record the sweep's sub-3:1 non-text classification or the UX follow-up it permits [_bmad-output/implementation-artifacts/13-6-accessibility-result.md] — deferred: covered by the open Evidence task; record after the R7-A1 decision (R7-A2).
+
+##### Rejected (pass 7)
+
+- R7-B1/R7-E1 (false): after disposal, `PresentScopeUnavailableAsync` and the authorization-denied branches only queue `StateHasChanged` and log. The renderer ignores a render queued for a disposed component, and no speech, focus or dispatch follows.
+- R7-E2 (false): `_formDomId` is instance-unique (`Interlocked` sequence), so a disposed form's control is disconnected and `focusAttemptedControl` returns false without moving focus.
+- R7-B7 (false): the whole-test `VerifyNotInvoke` checks are stricter than a windowed check, and `restoreOverlayOrigin` is emitted only on the overlay renderer path (`CommandRendererEmitter.cs:642`), not the inline zero-field renderer.
+- R7-B16 (false): no TypeScript consumer imports the module's other exports; a future one fails loudly at typecheck.
+- R7-B17 (false): the single exported constant (R6-B10) changes writer and validator together; re-validating older evidence after a change fails loudly. `'painted system palette'` is informational; validity is gated on `forcedColorsPaint`.
+- R7-B2 (low): the post-admission scope exits return immediately and the `finally` releases the lease; there is no disposal-sensitive continuation to test, and the code is unchanged by this delta.
+- R7-B6/R7-E4 case part (low, carried R6-B1/E1/E2): case-insensitive dedupe adds locale heuristics.
+- R7-B9/R7-E5 (low, carried R5-E9/R6-E10): `visibility: collapse`.
+- R7-B11/R7-E7 (low): positioned exterior pseudo paint on a static host is pre-existing with no current surface; fixing it means threading pseudo position through `sample()` and `background()`.
+- R7-B13 (low): skipped `content-visibility:hidden` contents only add conservative samples; no current surface; needs a new `visible()` branch.
+- R7-E6 (low): a `visibility:hidden` target was measured before this delta as well; callers target visible text, and failing closed needs a new guard.
 
 ## Implementation Notes
 
@@ -499,6 +529,46 @@ All four layers returned before classification: Acceptance Auditor 11, Blind Hun
 | R6-B14, R6-E11, R6-V-Other | low | Synthetic only; carried R5-E3 | reject |
 | R6-E9 | low | Approximation, no surface | reject |
 | R6-E10 | low | Carried R5-E9 | reject |
+
+### Code review pass 7 — 2026-10-23
+
+All four layers returned before classification over the pass 6 fix delta: Blind Hunter 18, Edge Case Hunter 9, Verification Gap 2 (one pre-verified gap plus one probe-confirmed other finding) and Acceptance Auditor 4. Each row is an individual verdict before grouping.
+
+| Finding | Verdict | Evidence | Route |
+| --- | --- | --- | --- |
+| R7-A1 sweep premise | medium | Coordinator `:228` dispatches the sweep for any changed lane; `succeeded:false` → `Idle` → no Reconnected notice | decision → patch (supplementary, corrected rationale) |
+| R7-A2 result omits sweep disposition | low | No "sweep" in the result | defer (Evidence task) |
+| R7-A3 in-flow zero-height fill | medium | Probe: 15.46:1 false pass; pre-existing | defer |
+| R7-A4 unconstrained toThrow | low | Same as R7-B14 | patch |
+| R7-V1 non-disposed scope focus | medium | Pre-verified: no runtime `focusAttemptedControl` assertion | patch |
+| R7-V2 will-change regression | medium | Probe: backdrop-filter/transform-style/offset-path create containing blocks in 3 engines | patch |
+| R7-B1 continuation after dispose | false | Disposed render is a renderer no-op; only logging follows | reject |
+| R7-B2 post-admission scope exits | low | Immediate return; `finally` releases; unchanged | reject |
+| R7-B3 vacuous focus rows | low | Positive-control half same as R7-V1 | patch (with R7-V1) |
+| R7-B4 stale scope-row test text | low | Comment/flag say "clear"; restore outside `finally` | patch |
+| R7-B5 distinct-Detail row | low | No distinct Detail; fallback absence unasserted | patch |
+| R7-B6 case-variant title | low | Carried R6-B1/E1/E2 | reject |
+| R7-B7 focus windows | false | Whole-test checks are stricter; overlay restore path unreachable | reject |
+| R7-B8 IndexOf −1 | low | Throws instead of a named assertion | patch |
+| R7-B9 visibility collapse | low | Carried R5-E9 | reject |
+| R7-B10 containing-block fill | medium | Same root as R6-B12/R7-A3 | defer |
+| R7-B11 positioned pseudo | low | Pre-existing; no surface; threading needed | reject |
+| R7-B12 backdrop-filter | medium | Same as R7-V2 | patch |
+| R7-B13 content-visibility hidden | low | Conservative extra sample; no surface | reject |
+| R7-B14 unconstrained toThrow | low | Any error satisfies the negative | patch |
+| R7-B15 CLI prefix | low | Duplicated prefix; stale message | patch |
+| R7-B16 d.mts coverage | false | No TS consumer; loud typecheck failure | reject |
+| R7-B17 unpinned status | false | Single source by R6-B10; loud on change | reject |
+| R7-B18 sweep comment | medium | Same as R7-A1 | decision → patch |
+| R7-E1 scope StateHasChanged | false | Same as R7-B1 | reject |
+| R7-E2 focus after import | false | Instance-unique id; disconnected control | reject |
+| R7-E3 IndexOf −1 | low | Same as R7-B8 | patch |
+| R7-E4 dedupe rows | low | Distinct-Detail part with R7-B5; case part carried | patch / reject |
+| R7-E5 visibility collapse | low | Carried | reject |
+| R7-E6 hidden target | low | Pre-existing; guard needed | reject |
+| R7-E7 positioned pseudo | low | Same as R7-B11 | reject |
+| R7-E8 seeded block outside fill | medium | Known R6-B12 | defer |
+| R7-E9 will-change/offset-path | medium | Same as R7-V2; bare `offset-path` undemonstrated | patch |
 
 ## Verification
 

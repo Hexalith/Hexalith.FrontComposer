@@ -1166,15 +1166,19 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
     collectPaint(document);
     // CSS Position 3 containing blocks: an absolute box belongs to its nearest positioned or
     // transform-like ancestor; a fixed box only to a transform-like ancestor, else the viewport.
+    const containingHints = ['transform', 'perspective', 'filter', 'backdrop-filter', 'transform-style', 'offset-path', 'translate', 'scale', 'rotate', 'contain'];
+    // Only WebKit honors its prefixed backdrop-filter alias as a will-change hint.
+    if (CSS.supports('-webkit-backdrop-filter', 'none')) containingHints.push('-webkit-backdrop-filter');
     const containingBlock = (node: Element, position: string): Element | null => {
       for (let ancestor = parent(node); ancestor; ancestor = parent(ancestor)) {
         const style = getComputedStyle(ancestor);
         // display:contents generates no box, so it cannot contain anything.
         if (style.display === 'contents') continue;
         if (style.transform !== 'none' || style.perspective !== 'none' || style.filter !== 'none' || style.transformStyle === 'preserve-3d'
+          || style.getPropertyValue('backdrop-filter') && style.getPropertyValue('backdrop-filter') !== 'none'
           || [style.translate, style.scale, style.rotate].some(value => value && value !== 'none')
           || style.contentVisibility && style.contentVisibility !== 'visible'
-          || /\b(paint|layout|strict|content)\b/u.test(style.contain) || style.willChange.split(',').some(value => ['transform','perspective','filter','translate','scale','rotate','contain'].includes(value.trim()))
+          || /\b(paint|layout|strict|content)\b/u.test(style.contain) || style.willChange.split(',').some(value => containingHints.includes(value.trim()))
           || position === 'absolute' && style.position !== 'static') return ancestor;
       }
       return null;

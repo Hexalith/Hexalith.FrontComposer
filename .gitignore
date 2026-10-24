@@ -451,8 +451,8 @@ _bmad-output/**/_tmp/
 
 # Evidence is ignored local scratch: proof is the repository's tests plus CI, recorded in the
 # story or spec (commands, pass/fail counts, commit SHA, CI run link). eng/check-committed-files.sh
-# rejects any tracked path under an evidence/ folder, even when force-added.
-**/evidence/
+# rejects any tracked path under an evidence/ folder (any case), even when force-added.
+**/[Ee][Vv][Ii][Dd][Ee][Nn][Cc][Ee]/
 # Stray Playwright output from running the e2e configuration at the repository root.
 /test-results/
 
