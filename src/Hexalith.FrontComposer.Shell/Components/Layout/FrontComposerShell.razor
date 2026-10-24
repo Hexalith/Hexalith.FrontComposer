@@ -109,8 +109,9 @@
 
             @if (HasNavigation && !IsSubCompactDesktopViewport)
             {
-                <FluentLayoutItem Area="@LayoutArea.Navigation" Width="@NavigationWidth" data-testid="fc-shell-navigation">
-                    <div id="fc-nav" tabindex="-1">
+                @* FluentLayout copies ChildContent into its hamburger drawer. Keep the
+                   target on the owning item so that hidden copy cannot duplicate its id. *@
+                <FluentLayoutItem Area="@LayoutArea.Navigation" Width="@NavigationWidth" data-testid="fc-shell-navigation" id="fc-nav" tabindex="-1">
                         @if (Navigation is not null)
                         {
                             @Navigation
@@ -119,7 +120,6 @@
                         {
                             <FrontComposerNavigation />
                         }
-                    </div>
                 </FluentLayoutItem>
             }
 
