@@ -1,7 +1,0 @@
-{
-  "reason": "Confirmed P02 translucent permanent shadow masks focus contrast; stop immutable run before source correction",
-  "ownedRunnerPid": 10280,
-  "signalledPlaywrightPid": 41555,
-  "signal": "SIGINT",
-  "argv": "node /home/administrator/projects/hexalith/frontcomposer/tests/e2e/node_modules/.bin/playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --project=chromium --project=firefox --project=webkit --workers=3 "
-}

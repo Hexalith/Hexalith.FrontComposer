@@ -1,5 +1,7 @@
 # Contributing
 
+Git hooks install with a root `npm ci` (Husky `prepare`); the pre-commit hook rejects files under any `evidence/` folder and files over 1 MiB (PRD §7 evidence policy), and `bash eng/check-committed-files.sh --staged` runs the same check by hand.
+
 ## Source Generator Debugging
 
 This section is contributor-only guidance for debugging the FrontComposer source generator. Adopter onboarding should stay focused on generated application behavior, generated files, diagnostics, and `frontcomposer inspect`.

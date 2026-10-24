@@ -620,8 +620,9 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
         expect(motion.transition.split(',').every(duration => parseFloat(duration) === 0), `${selector} transition`).toBe(true);
         expect(motion.animation, `${selector} animation`).toBe('none');
       }
-      // The supplementary reconciliation marker remains static and paints in both palettes.
-      // The accompanying Reconnected notice carries the meaning; this checks no contrast claim.
+      // The supplementary reconciliation marker remains static and paints in both palettes. It briefly
+      // marks changed rows whose refreshed values carry the content; partial reconnects show it without
+      // the Reconnected notice, so it depends on no notice. This checks no contrast claim.
       expect((await motionOf('.fc-reconciliation-sweep')).outline, 'reduced-motion sweep outline').toMatch(/^solid [1-9]/u);
       await page.emulateMedia({ forcedColors: 'none', reducedMotion: 'reduce' });
       const authoredOutline = await page.locator('#ae-motion-fixture .fc-reconciliation-sweep').evaluate(element => {
@@ -2222,15 +2223,28 @@ test('R5 unrelated text whose shadow reaches the sample still needs pixel eviden
 
 for (const property of [
   'will-change:translate', 'will-change:scale', 'will-change:rotate', 'will-change:contain',
+  'will-change:backdrop-filter', 'will-change:transform-style', 'will-change:offset-path', 'will-change:-webkit-backdrop-filter',
   'content-visibility:auto', 'content-visibility:hidden', 'transform-style:preserve-3d',
 ]) test(`R6 containing block ${property} retains its overflow clip`, async ({ page }) => {
   await page.setContent(`<style>body{margin:0;background:white}span{color:#bbb;font:16px sans-serif}</style><div id="root"><p>Visible control</p><div id="block" style="${property};overflow:hidden;width:50px;height:30px"><span style="position:fixed;left:120px;top:100px">Clipped fixed label</span></div></div>`);
+  // Layout is the oracle: a contained label moves with the block. Only WebKit honors the prefixed hint.
+  const contained = await page.locator('span').evaluate(element => Math.abs(element.getBoundingClientRect().top - 100) > .5);
+  if (!property.includes('-webkit-')) expect(contained, `${property} creates a containing block`).toBe(true);
   const samples = await measureSurfaceContrast(page.locator('#root'));
   expect(samples.some(sample => sample.paint === 'Visible control')).toBe(true);
-  expect(samples.some(sample => sample.paint === 'Clipped fixed label')).toBe(false);
+  expect(samples.some(sample => sample.paint === 'Clipped fixed label')).toBe(!contained);
   await page.locator('#block').evaluate(element => { element.style.cssText = 'overflow:hidden;width:50px;height:30px'; });
   const escaped = await measureSurfaceContrast(page.locator('#root'));
   expect(escaped.find(sample => sample.paint === 'Clipped fixed label')?.ratio).toBeLessThan(4.5);
+});
+
+// A backdrop-filter block contains the label, and its backdrop paint fails closed in every engine.
+for (const property of ['backdrop-filter:blur(1px)', '-webkit-backdrop-filter:blur(1px)']) test(`R7 containing block ${property} needs pixel evidence`, async ({ page }) => {
+  await page.setContent(`<style>body{margin:0;background:white}span{color:#bbb;font:16px sans-serif}</style><div id="root"><p>Visible control</p><div style="${property};overflow:hidden;width:50px;height:30px"><span style="position:fixed;left:120px;top:100px">Clipped fixed label</span></div></div>`);
+  const contained = await page.locator('span').evaluate(element => Math.abs(element.getBoundingClientRect().top - 100) > .5);
+  if (!property.startsWith('-webkit-')) expect(contained, `${property} creates a containing block`).toBe(true);
+  if (contained) await expect(measureSurfaceContrast(page.locator('#root'))).rejects.toThrow(/Filtered or blended paint needs pixel evidence/);
+  else expect((await measureSurfaceContrast(page.locator('#root'))).find(sample => sample.paint === 'Clipped fixed label')?.ratio).toBeLessThan(4.5);
 });
 
 test('R6 display contents and contain-intrinsic-size do not create containing blocks', async ({ page }) => {
@@ -2279,7 +2293,7 @@ test('R6 hidden ancestors cannot shield a native plane from competing page paint
 
 test('R6 simple contrast ignores hidden ancestor fills', async ({ page }) => {
   await page.setContent('<style>body{background:white}</style><div style="visibility:hidden;background:black"><p style="visibility:visible;color:#ccc">Ghost simple label</p></div>');
-  await expect(expectTextContrast(page.locator('p'))).rejects.toThrow();
+  await expect(expectTextContrast(page.locator('p'))).rejects.toThrow(/toBeGreaterThanOrEqual/);
   await page.locator('p').evaluate(element => { element.style.color = 'black'; });
   expect((await expectTextContrast(page.locator('p'))).ratio).toBe(21);
 });

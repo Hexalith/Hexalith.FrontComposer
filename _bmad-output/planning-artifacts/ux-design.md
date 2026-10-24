@@ -6,7 +6,7 @@ g_4: open
 oi_16: open-implementation-and-evidence-work
 oi_19: open-documentation-parity-work
 created: 2026-07-05
-updated: 2026-10-21
+updated: 2026-10-23
 reconciliation_revision: readiness-correct-course-2026-09-22
 sourceOfRecord:
   - _bmad-output/planning-artifacts/prd.md
@@ -393,7 +393,7 @@ security approval.
 - Preserve stable accessible names and test selectors where they form an evidence contract.
 - Visual/accessibility-sensitive changes require rendered DOM, computed style, bUnit, e2e, or
   governance evidence mapped to the matrices above.
-- Matrix evidence uses one candidate-bound result and verified external artifact references. Storage location does not change AE-01–AE-09, manual evidence, or approval requirements. Committed visual baseline fixtures remain source; generated run screenshots and reports are artifacts. The [2026-10-21 storage amendment](sprint-change-proposal-2026-10-21.md) assigns implementation to 15.6/15.7 without closing Product approval, OI-16 or G-4.
+- Matrix results follow the PRD §7 evidence policy (2026-10-23, superseding the 2026-10-21 storage amendment and Stories 15.6/15.7), which changes no AE-01–AE-09, manual-evidence, approval or committed visual-baseline requirement and closes no Product approval, OI-16 or G-4.
 
 ## Story Design Notes
 

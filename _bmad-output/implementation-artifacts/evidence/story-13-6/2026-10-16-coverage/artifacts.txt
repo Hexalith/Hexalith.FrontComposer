@@ -1,5 +1,0 @@
-
-> hexalith-frontcomposer-e2e@0.0.0 validate:a11y-artifacts
-> node scripts/validate-a11y-artifacts.mjs
-
-Accessibility artifact validation passed.

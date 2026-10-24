@@ -1,5 +1,0 @@
-
-> hexalith-frontcomposer-e2e@0.0.0 validate:visual-governance
-> node scripts/validate-visual-baseline-governance.mjs
-
-No committed visual baseline changes detected.

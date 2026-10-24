@@ -4,7 +4,7 @@ user_name: 'Administrator'
 date: '2026-07-19'
 sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'code_quality', 'workflow_rules', 'critical_rules']
 status: 'complete'
-rule_count: 78
+rule_count: 79
 optimized_for_llm: true
 ---
 
@@ -369,6 +369,9 @@ _This file contains critical rules and patterns that AI agents must follow when 
   submodule files without explicit approval
 - **Never use `docs/` as scratch space** — it's the published, CI-gated DocFX site; generated docs go
   to `_bmad-output/`
+- **Never commit evidence packets, captures, or files over 1 MiB** — proof is tests plus CI; record
+  commands, pass/fail counts, commit SHA and CI run link in the story/spec (PRD §7). Every `evidence/`
+  folder is ignored scratch; `eng/check-committed-files.sh` (pre-commit hook + Quality CI) rejects them
 - **Never leave `Debugger.Launch()` in `src/**/*.cs`** — the IDE-parity suite fails on it
 - **Never start the MCP server without both fail-closed gates registered**, and never accept
   `TenantId`/`UserId`/`MessageId`/`CorrelationId` from agent tool input

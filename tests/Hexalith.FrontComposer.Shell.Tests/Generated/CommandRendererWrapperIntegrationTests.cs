@@ -38,6 +38,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// emitted <c>&lt;EditForm&gt;</c> in <c>&lt;FcLifecycleWrapper&gt;</c> (Task 4.1).
 /// </summary>
 public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTestBase {
+    private static readonly string[] ServerTitledWarningBodies =
+        ["Restore the item first.", "Affected item", "Please review the warning and try again.", "Veuillez lire l’avertissement et réessayer."];
+
     [Theory]
     [InlineData("en", false, "Please review the warning and try again.", "Retry after 17 seconds.")]
     [InlineData("en", true, "Please review the warning and try again.", "Retry after 17 seconds.")]
@@ -76,7 +79,8 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     [InlineData("en", null, "Item unavailable", "Please review the warning and try again.", "Retry after 17 seconds.")]
     [InlineData("en", "Item unavailable", "Affected item", "Affected item", "Retry after 17 seconds.")]
     [InlineData("en", "Item unavailable", null, "Please review the warning and try again.", "Retry after 17 seconds.")]
-    public async Task ServerTitledWarningKeepsOneDistinctBodyAndRetryHint(string culture, string? detail, string? entityLabel, string fallback, string retry)
+    [InlineData("en", "Restore the item first.", "Affected item", "Restore the item first.", "Retry after 17 seconds.")]
+    public async Task ServerTitledWarningKeepsOneDistinctBodyAndRetryHint(string culture, string? detail, string? entityLabel, string expectedBody, string retry)
     {
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
@@ -93,9 +97,14 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             var warning = cut.FindComponent<FluentMessageBar>();
             warning.Instance.Title.ShouldBe("Item unavailable");
             var body = Render<FluentMessageBar>(p => p.Add(c => c.ChildContent, warning.Instance.ChildContent));
-            // Keep distinct detail/entity guidance or the localized fallback; never repeat the title.
-            body.Markup.ShouldContain(fallback);
+            // Keep one body: distinct detail, else distinct entity guidance, else the localized fallback;
+            // never repeat the title.
+            body.Markup.ShouldContain(expectedBody);
             body.Markup.ShouldNotContain("Item unavailable");
+            foreach (string other in ServerTitledWarningBodies.Where(candidate => candidate != expectedBody))
+            {
+                body.Markup.ShouldNotContain(other);
+            }
             body.Markup.ShouldContain(retry);
         });
     }

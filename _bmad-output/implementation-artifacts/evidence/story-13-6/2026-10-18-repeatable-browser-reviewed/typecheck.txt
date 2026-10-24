@@ -1,4 +1,0 @@
-
-> hexalith-frontcomposer-e2e@0.0.0 typecheck
-> tsc --noEmit
-

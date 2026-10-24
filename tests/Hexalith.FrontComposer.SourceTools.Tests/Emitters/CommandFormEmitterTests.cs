@@ -1325,10 +1325,12 @@ public class CommandFormEmitterTests {
         int blockedClear = presentBody.IndexOf("await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);", StringComparison.Ordinal);
         int blockedPublish = presentBody.IndexOf("CommandFeedbackPublisher.PublishWarning(CreateCommandBlockedWarning(reason));", StringComparison.Ordinal);
         int scopePresentation = presentBody.IndexOf("await PresentScopeUnavailableAsync().ConfigureAwait(false);", StringComparison.Ordinal);
+        // Both scope anchors must exist before any search starts from them, so a missing line fails by name.
+        scopePresentation.ShouldBeGreaterThanOrEqualTo(0);
+        scopeBranchEnd.ShouldBeGreaterThan(0);
         int scopeDisposedGuard = presentBody.IndexOf("if (_disposed) return;", scopePresentation, StringComparison.Ordinal);
         scopeDisposedGuard.ShouldBeGreaterThan(scopePresentation);
         scopeDisposedGuard.ShouldBeLessThan(scopeBranchEnd);
-        scopeBranchEnd.ShouldBeGreaterThan(0);
         blockedClear.ShouldBeGreaterThan(scopeBranchEnd);
         blockedPublish.ShouldBeGreaterThan(blockedClear);
         // A parent that disposes the form during that clear stops the blocked presentation.

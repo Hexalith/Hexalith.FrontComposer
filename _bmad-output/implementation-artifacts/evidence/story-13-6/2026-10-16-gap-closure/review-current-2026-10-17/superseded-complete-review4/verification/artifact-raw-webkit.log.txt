@@ -1,1 +1,0 @@
-Accessibility artifact root is unexpectedly large: /tmp/story-13-6-review4-final-browser/test-results, /tmp/story-13-6-review4-final-browser/html

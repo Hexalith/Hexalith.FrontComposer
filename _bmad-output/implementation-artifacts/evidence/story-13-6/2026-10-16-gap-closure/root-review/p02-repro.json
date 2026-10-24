@@ -1,7 +1,0 @@
-{
-  "fixture": "white 100x40 button; permanent 0 0 0 3px rgb(255 255 255 / .95); add 0 0 0 2px black on focus",
-  "observedContrastRatio": 21,
-  "observedGeometryFailures": [],
-  "defect": "Lower black layer is composited below translucent permanent white, so its isolated black-on-white ratio cannot establish actual focus contrast.",
-  "route": "G14: fail closed for unresolved overlapping translucent shadow composition"
-}

@@ -1,3 +1,0 @@
-⧗   --- input ---
-fix: reconcile runtime successor and approved dependency governance
-✔   found 0 problems, 0 warnings

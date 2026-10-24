@@ -62,8 +62,8 @@ const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.
 let report;
 try {
   report = JSON.parse(readFileSync(required[2], 'utf8'));
-  if (!isRecord(report)) throw new Error('expected a report object with a suites array');
-  const shapeErrors = reportStructureErrors(report);
+  // Shape errors carry the shared prefix for in-process callers; print it once with the path.
+  const shapeErrors = reportStructureErrors(report).map(error => error.replace(/^Invalid authoritative Playwright report: /u, ''));
   if (shapeErrors.length) throw new Error(shapeErrors.join('; '));
 } catch (error) {
   console.error(`Invalid authoritative Playwright report ${required[2]}: ${error instanceof Error ? error.message : String(error)}`);

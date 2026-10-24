@@ -4,6 +4,8 @@
 
 ## Candidate and result
 
+> **Evidence policy note (2026-10-23, PRD §7):** the linked `mcp-g7-candidate*.json` manifests and `mcp-g7-build-test*.txt` logs were removed from the repository with the other committed evidence; the hashes, commands, counts and the sign-off text below remain the record.
+
 - Base commit: `4dcf1c6f5c8b0577f437468cc09b23bb3a3a28c0`.
 - Exact v2 candidate (captured before commit `e5666650`): [`mcp-g7-candidate-v2-2026-09-26.json`](mcp-g7-candidate-v2-2026-09-26.json), SHA-256 `942847d17eee54061bb9b7f7bde254b361abf802dbdb70ce21c460136c5aa00b`. The manifest binds each changed source, test, PRD, and hosting-document byte sequence plus the test log. A later edit needs a new candidate and result.
 - Result: [`mcp-g7-build-test-v2-2026-09-26.txt`](mcp-g7-build-test-v2-2026-09-26.txt): Debug MCP test-project build succeeded with 0 warnings/errors; `Category=Governance` and named-class intersection 6/6 passed; complete MCP test project 429/429 passed; project-level Governance filter 15/15 passed. Exact commands: `dotnet build tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --no-restore -p:NuGetAudit=false -m:1 -v:q`; `dotnet tests/Hexalith.FrontComposer.Mcp.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Mcp.Tests.dll -trait Category=Governance -class Hexalith.FrontComposer.Mcp.Tests.Governance.McpSecurityGovernanceTests`; the same assembly command without filters; and `dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --no-build --filter-trait "Category=Governance"`.
