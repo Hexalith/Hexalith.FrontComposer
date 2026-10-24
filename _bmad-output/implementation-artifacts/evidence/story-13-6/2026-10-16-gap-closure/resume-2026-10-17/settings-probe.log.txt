@@ -1,8 +1,0 @@
-
-Running 1 test using 1 worker
-
-(node:84487) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-  ✓  1 [chromium] › ../../../../../tmp/story13-debug-source/story13-settings-debug.spec.ts:400:7 › active toolbar, tabs, palette and settings states in dark (13.6s)
-
-  1 passed (15.2s)

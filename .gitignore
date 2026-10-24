@@ -85,11 +85,6 @@ BenchmarkDotNet.Artifacts/
 project.lock.json
 project.fragment.lock.json
 artifacts/*
-!artifacts/ide-parity/
-!artifacts/ide-parity/**
-!artifacts/ide-parity/evidence/
-!artifacts/ide-parity/evidence/**/*.json
-!artifacts/ide-parity/revalidation-dry-run.md
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
@@ -122,10 +117,6 @@ StyleCopReport.xml
 *.tmp_proj
 *_wpftmp.csproj
 *.log
-# Preserve the hash-bound Story 13.6 gap-closure raw verification logs.
-!/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-gap-closure/raw/*.log
-# Preserve the current Story 13.6 field-layout verification logs and their links.
-!/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-field-layout/**/*.log
 *.tlog
 *.vspscc
 *.vssscc
@@ -458,6 +449,13 @@ TestResults/
 # BMAD scratch output (test redirects, intermediate artifacts)
 _bmad-output/**/_tmp/
 
+# Evidence is ignored local scratch: proof is the repository's tests plus CI, recorded in the
+# story or spec (commands, pass/fail counts, commit SHA, CI run link). eng/check-committed-files.sh
+# rejects any tracked path under an evidence/ folder, even when force-added.
+**/evidence/
+# Stray Playwright output from running the e2e configuration at the repository root.
+/test-results/
+
 # Story 9-5 DocFX and docs validation derived output
 docs/_site/
 docs/reference/api/*.yml
@@ -475,5 +473,3 @@ nr.db-shm
 .bmad-loop/cache/
 .bmad-loop/policy.toml
 _bmad/render/
-# Story 13.6 final gate packet includes hash-bound raw logs and received snapshots.
-!/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-18-gate-rerun/**

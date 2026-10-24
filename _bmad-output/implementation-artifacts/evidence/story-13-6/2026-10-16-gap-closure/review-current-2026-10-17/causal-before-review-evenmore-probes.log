@@ -1,5 +1,0 @@
-shadowcover [{"owner":0,"node":"p#text","paint":"Essential warning","foreground":[0,0,0,1],"background":[255,255,255,1],"ratio":21,"minimum":4.5}]
-transparentbordercue {"geom":{"target":"BUTTON#","requireIndicator":true,"box":{"left":8,"top":8,"right":108,"bottom":48},"ring":0,"failures":["focused target has no visible focus indicator"],"occluder":null,"shadowBounds":[]},"contrast":[]}
-focusedtargetborderoccluder {"target":"BUTTON#","requireIndicator":true,"box":{"left":38,"top":38,"right":142,"bottom":82},"ring":2,"failures":[],"occluder":null,"shadowBounds":[]}
-outlinedtarget {"target":"BUTTON#","requireIndicator":true,"box":{"left":38,"top":38,"right":142,"bottom":82},"ring":2,"failures":[],"occluder":null,"shadowBounds":[]}
-smallinputlargeshadowtarget {"inventory":[{"target":"button[inventory-index=\"0\"]","width":10,"height":10,"box":{"left":8,"top":8,"right":18,"bottom":18},"traits":{"runningText":false,"nativeUnmodified":false,"essentialIdentified":false},"equivalent":null,"conforming":false,"exception":null,"failure":"Undersized target lacks an evidenced exception"}],"unusedExceptions":[]}

@@ -1,3 +1,0 @@
-⧗   --- input ---
-test: complete story 13.3 command safety verification
-✔   found 0 problems, 0 warnings

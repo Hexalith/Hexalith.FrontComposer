@@ -1,3 +1,0 @@
-one grid { calls: 1, measures: 2 }
-two grids { calls: 1, measures: 21 }
-steady state { calls: 0, measures: 18 }

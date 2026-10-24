@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-10-21
+updated: 2026-10-23
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -304,7 +304,7 @@ authorized candidate-free incident-recovery stage preserves authenticated and qu
 an immutable reserved-namespace prerelease. Run artifacts are short-retention replay material, never
 durable authorization.
 
-**Qualification evidence storage (approved 2026-10-21).** Persisted proof may be stored outside the source checkout. A versioned manifest binds immutable artifact identity, exact retained bytes, source/producer identity, attempt disposition, and retention. A consumer that needs literal output must materialize and verify it before evaluation; a hash or excerpt alone cannot satisfy a content-dependent witness. Unit regressions use bounded fixtures; historical exact-byte verification uses an explicit materialization lane. Storage relocation preserves original subjects and approvals. New manifests describe the migration and never rewrite sealed receipts or confer release/readiness authority. Backlog Stories 15.6 and 15.7 implement the [approved storage amendment](sprint-change-proposal-2026-10-21.md). Diagnostics default to 30-day retention; enduring accepted proof requires durable retrieval and active holds retain required bytes. Producer → external artifact → hash/size-verified materializer → existing verifier is the evidence flow. Run artifacts do not become publisher authorization, and this change renews no historical approval or evidence binding.
+**Evidence storage (owner decision 2026-10-23).** PRD §7 owns the policy: proof is the repository's tests plus CI, recorded in the owning story or spec as commands, pass/fail counts, commit SHA and CI run link; every `evidence/` folder is ignored local scratch; `eng/check-committed-files.sh` (Husky `pre-commit`/`pre-merge-commit`, Quality `committed-files` job) rejects evidence paths and files over 1 MiB. This supersedes the 2026-10-21 qualification evidence storage amendment (external store, manifests, materialization lane) and Stories 15.6/15.7. Run artifacts remain short-retention CI material and never become publisher authorization.
 
 Ownership boundaries:
 
@@ -370,8 +370,8 @@ queue state; Story 11.32 enforces that invariant.
 
 ### EventStore Active-Identity Invariant
 
-Story 11.24 and `_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json`
-are immutable historical authorization for `bb94d93e… / 3.91.1 / a8a50859…`. The live 2026-09-08
+Story 11.24 (its committed identity record was removed with the evidence on 2026-10-23, PRD §7)
+is immutable historical authorization for `bb94d93e… / 3.91.1 / a8a50859…`. The live 2026-09-08
 provider/AppHost capture at `059f6a89… / 3.103.0 / 35c3d1e5…` is immutable prior compatibility
 evidence. Neither record is projected onto a different Builds revision.
 
@@ -382,17 +382,17 @@ approval receipts, and `migrationApprovalClaimed=false`. At the 2026-09-22 recon
 FrontComposer HEAD `b61e51e1…` instead selected EventStore `db1e9d73…`, catalog package `3.106.0`,
 and Builds `2fba3497…`. None of the older records is projected onto that later tuple.
 
-EVT-ID-1 therefore freezes the exact FrontComposer HEAD, EventStore gitlink, Builds gitlink, catalog
-package, provider verification, AppHost smoke, and artifact hashes current at its execution. EVT-APP-1
-is a separate approval task. It may claim migration approval only after the EventStore maintainer,
+EVT-ID-1 therefore records, in its story or spec, the exact FrontComposer commit SHA, EventStore
+gitlink, Builds gitlink, and catalog package current at its execution, with the CI run link of a passing
+Quality Gate 2c provider verification at that tuple (PRD §7). EVT-APP-1 is a separate approval task. It may claim migration approval only after the EventStore maintainer,
 FrontComposer maintainer, and Release Owner sign the exact EVT-ID-1 tuple, or after EVT-XFER-1/OI-18
 first transfers the EventStore approval role through a dated Product and Architecture decision. A
 semantic-compatibility exception and rollback remain unapproved.
 
-Governance resolves the active identity from the successor record and compares it with candidate
-gitlinks/catalog contents. It fails closed on a missing record, tuple mismatch, stale evidence
-provenance, missing artifact hash, or absent required signature; historical SHAs are not embedded as
-unexplained current compatibility constants.
+No committed identity record or identity validator exists. The release review compares the story's
+recorded tuple with the candidate gitlinks and catalog contents; a missing record, tuple mismatch,
+failing provider run, or absent required signature blocks the release (G-3). Historical SHAs are not
+embedded as unexplained current compatibility constants.
 
 ### Approved Residual Architecture Handoff
 

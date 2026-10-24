@@ -1,1 +1,0 @@
-Accessibility artifact root is unexpectedly large: /tmp/story-13-6-parent-configured-uzh72_bn/current-browser/results, /tmp/story-13-6-parent-configured-uzh72_bn/current-browser/report

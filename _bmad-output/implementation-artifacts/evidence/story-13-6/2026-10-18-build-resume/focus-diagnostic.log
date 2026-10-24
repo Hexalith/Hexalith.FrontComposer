@@ -1,8 +1,0 @@
-
-Running 1 test using 1 worker
-
-(node:29502) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-  ✓  1 [chromium] › specs/accessibility-state-matrix.spec.ts:510:3 › active toolbar, tabs, palette and settings states in light (12.3s)
-
-  1 passed (12.8s)
