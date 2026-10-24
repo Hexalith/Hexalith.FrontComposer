@@ -22,6 +22,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: quality-${{ github.ref }}
@@ -175,6 +176,7 @@ jobs:
           python3 -m unittest tests/eng/test_dependency_handoff.py
           python3 -m unittest tests/eng/test_release_contract.py
           python3 -m unittest tests/eng/test_release_evidence_v2.py
+          python3 -m unittest tests/eng/test_validate_contract_artifacts.py
 
       - name: 'Gate 2b: AppHost Memories dependency modes'
         run: python3 -m unittest discover -s tests/eng -p test_apphost_dependency_modes.py -v
@@ -224,7 +226,7 @@ jobs:
 
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh
-        run: ./eng/validate-contract-artifacts.ps1
+        run: ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification
 
       - name: 'Gate 2c: Fail on stale pact diff'
         shell: bash
@@ -257,7 +259,8 @@ jobs:
             artifacts/contracts/**
 
       - name: Upload contract artifacts
-        # Only a run whose pacts, provider verification and contract validation all passed.
+        # Only a run whose pacts, provider verification and contract validation (including the
+        # provider report redaction scan) all passed.
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -882,6 +885,56 @@ jobs:
           FC_EPIC9_REQUIRE_CLEAN: true
         run: ./eng/run-epic9-live-proof.sh
 
+      # The Epic 9 proof sends only valid credentials and stops its AppHost on exit. This step
+      # restarts the same prebuilt AppHost and checks that the composed EventStore rejects a bogus
+      # bearer (401/403) on command submit, command status, query and the projection hub
+      # negotiate endpoint. Results go to the job log only.
+      - name: AppHost rejects invalid bearer tokens
+        shell: bash
+        env:
+          HexalithFrontComposerFromSource: 'true'
+        run: |
+          set -euo pipefail
+          aspire_args=(--apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --nologo)
+          trap 'aspire stop "${aspire_args[@]}" >/dev/null 2>&1 || true' EXIT
+          aspire start "${aspire_args[@]}" --isolated --no-build
+          for resource in security eventstore; do
+            aspire wait "$resource" --status healthy --timeout 300 "${aspire_args[@]}"
+          done
+          # Aspire can list a proxy URL that accepts and then hangs, so every advertised
+          # non-management URL is a candidate and the first one that answers is used.
+          mapfile -t bases < <(aspire describe eventstore "${aspire_args[@]}" --format Json | jq -r '
+            [.resources[0].urls[]? | select(.name != "management") | .url | select(test("^https?://"))]
+            | (map(select(startswith("https://"))) + map(select(startswith("http://")))) | .[]')
+          if [[ ${#bases[@]} -eq 0 ]]; then
+            echo "::error::Aspire describe listed no HTTP endpoint for the eventstore resource."
+            exit 1
+          fi
+          failed=0
+          probe() {
+            local method="$1" path="$2" base code="000"
+            local request=(--request "$method" --header 'Authorization: Bearer invalid-ci-token')
+            if [[ "$method" == POST ]]; then
+              request+=(--header 'Content-Type: application/json' --data '{}')
+            fi
+            for base in "${bases[@]}"; do
+              code="$(curl --silent --insecure --max-time 10 --output /dev/null --write-out '%{http_code}' \
+                "${request[@]}" "${base%/}$path" || true)"
+              [[ "$code" != "000" ]] && break
+            done
+            if [[ "$code" == 401 || "$code" == 403 ]]; then
+              echo "$method $path rejected the invalid bearer with $code."
+            else
+              echo "::error::$method $path returned $code for an invalid bearer; expected 401 or 403."
+              failed=1
+            fi
+          }
+          probe POST /api/v1/commands
+          probe GET /api/v1/commands/status/01K8AAAAAAAAAAAAAAAAAAAAAA
+          probe POST /api/v1/queries
+          probe POST '/hubs/projection-changes/negotiate?negotiateVersion=1'
+          exit "$failed"
+
       - name: Upload Epic 9 acceptance artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -947,7 +1000,8 @@ jobs:
   # Proof is the repository's tests plus CI: a story or spec records the commands run,
   # pass/fail counts, commit SHA and CI run link, and every evidence/ folder is ignored local
   # scratch. The Husky pre-commit/pre-merge-commit hooks run the same guard on staged files;
-  # this job checks every tracked file so a hook bypass cannot land evidence or a large file.
+  # this job checks every tracked file on every push and pull request, so a commit that
+  # bypassed the hooks is detected.
   committed-files:
     runs-on: ubuntu-latest
     timeout-minutes: 5

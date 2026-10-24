@@ -382,7 +382,8 @@ public sealed class CiGovernanceTests {
 
         string artifactLane = ExtractNamedStep(quality, "Gate 2c: Validate contract artifacts");
         artifactLane.ShouldContain("shell: pwsh");
-        artifactLane.TrimEnd().ShouldEndWith("run: ./eng/validate-contract-artifacts.ps1");
+        // The switch makes the validator redaction-scan the provider report before it is uploaded.
+        artifactLane.TrimEnd().ShouldEndWith("run: ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification");
         artifactLane.ShouldNotContain("continue-on-error: true");
 
         string stalePactGuard = ExtractNamedStep(quality, "Gate 2c: Fail on stale pact diff");

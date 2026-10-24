@@ -304,7 +304,7 @@ authorized candidate-free incident-recovery stage preserves authenticated and qu
 an immutable reserved-namespace prerelease. Run artifacts are short-retention replay material, never
 durable authorization.
 
-**Evidence storage (owner decision 2026-10-23).** PRD §7 owns the policy: proof is the repository's tests plus CI, recorded in the owning story or spec as commands, pass/fail counts, commit SHA and CI run link; every `evidence/` folder is ignored local scratch; `eng/check-committed-files.sh` (Husky `pre-commit`/`pre-merge-commit`, Quality `committed-files` job) rejects evidence paths and files over 1 MiB. This supersedes the 2026-10-21 qualification evidence storage amendment (external store, manifests, materialization lane) and Stories 15.6/15.7. Run artifacts remain short-retention CI material and never become publisher authorization.
+**Evidence storage (owner decision 2026-10-23).** The evidence policy in PRD §7 applies here and supersedes the 2026-10-21 qualification evidence storage amendment and Stories 15.6/15.7.
 
 Ownership boundaries:
 
@@ -383,9 +383,10 @@ FrontComposer HEAD `b61e51e1…` instead selected EventStore `db1e9d73…`, cata
 and Builds `2fba3497…`. None of the older records is projected onto that later tuple.
 
 EVT-ID-1 therefore records, in its story or spec, the exact FrontComposer commit SHA, EventStore
-gitlink, Builds gitlink, and catalog package current at its execution, with the CI run link of a passing
-Quality Gate 2c provider verification at that tuple (PRD §7). EVT-APP-1 is a separate approval task. It may claim migration approval only after the EventStore maintainer,
-FrontComposer maintainer, and Release Owner sign the exact EVT-ID-1 tuple, or after EVT-XFER-1/OI-18
+gitlink, Builds gitlink, and catalog package current at its execution, with the link to a passing
+Quality workflow run at that tuple covering Gate 2c provider verification and `epic9-live-acceptance`
+(PRD §7). EVT-APP-1 is a separate approval task. It may claim migration approval only after the
+EventStore maintainer, FrontComposer maintainer, and Release Owner sign the exact EVT-ID-1 tuple, or after EVT-XFER-1/OI-18
 first transfers the EventStore approval role through a dated Product and Architecture decision. A
 semantic-compatibility exception and rollback remain unapproved.
 

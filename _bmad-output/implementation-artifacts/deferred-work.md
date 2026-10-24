@@ -10761,3 +10761,7 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 ## Deferred from: code review of spec-13-6-verify-responsive-and-assistive-accessibility.md (2026-10-23, pass 6)
 
 - `background()` in `tests/e2e/helpers/responsive-accessibility.ts` assumes every fill from an out-of-flow box's containing block upward is behind it; an absolute box placed outside its containing block (negative offsets, non-top-layer `top:100%` menus) is composited against that fill (pre-existing, medium). Settle with a non-top-layer menu fixture outside a filled containing block, then extend the inside/disjoint fill test beyond the containing block.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-evidence-storage-simplification.md`
+  summary: Quality build-and-test is red on main because `eng/dependency-graph-policy.json` pins `FsCheck.Xunit.v3` 3.5.0 while the Builds catalog has 3.6.0, and `CiGovernanceTests.ToolchainPins_MatchApprovedDotnetAndAspireVersions` expects `Aspire.AppHost.Sdk/13.6.1` while the AppHost uses 13.6.3.
+  evidence: Quality failed on main at 4a4051c2, 6f6eb898, 2d92bb1a and adc0dbe2 (2026-10-23); `InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds`, 8 `tests/eng/test_dependency_graph.py` cases and the ToolchainPins fact fail on inputs the evidence simplification did not change. Until fixed, no Quality run reaches a passing Gate 2c provider link for G-3.
