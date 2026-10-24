@@ -38,6 +38,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// emitted <c>&lt;EditForm&gt;</c> in <c>&lt;FcLifecycleWrapper&gt;</c> (Task 4.1).
 /// </summary>
 public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTestBase {
+    private static readonly string[] ServerTitledWarningBodies =
+        ["Restore the item first.", "Affected item", "Please review the warning and try again.", "Veuillez lire l’avertissement et réessayer."];
+
     [Theory]
     [InlineData("en", false, "Please review the warning and try again.", "Retry after 17 seconds.")]
     [InlineData("en", true, "Please review the warning and try again.", "Retry after 17 seconds.")]
@@ -98,7 +101,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             // never repeat the title.
             body.Markup.ShouldContain(expectedBody);
             body.Markup.ShouldNotContain("Item unavailable");
-            foreach (string other in new[] { "Restore the item first.", "Affected item", "Please review the warning and try again.", "Veuillez lire l’avertissement et réessayer." }.Where(candidate => candidate != expectedBody))
+            foreach (string other in ServerTitledWarningBodies.Where(candidate => candidate != expectedBody))
             {
                 body.Markup.ShouldNotContain(other);
             }
