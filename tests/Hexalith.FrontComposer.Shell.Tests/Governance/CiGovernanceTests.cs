@@ -1385,7 +1385,10 @@ public sealed class CiGovernanceTests {
                 "fail-closed SDK values must produce a deterministic dry-run revalidation artifact");
         }
         finally {
-            File.Delete(artifactPath);
+            // A passing SDK writes no artifact, and a fresh checkout has no artifacts/ide-parity folder.
+            if (File.Exists(artifactPath)) {
+                File.Delete(artifactPath);
+            }
         }
     }
 
