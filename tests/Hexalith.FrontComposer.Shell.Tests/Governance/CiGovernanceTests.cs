@@ -1241,7 +1241,7 @@ public sealed class CiGovernanceTests {
         const string expectedDotnetSdk = "10.0.402";
         const string sourceResourceCompatibilitySdk = "10.0.302";
         const string expectedAspire = "13.6.0";
-        const string expectedAspireHosting = "13.6.1";
+        const string expectedAspireHosting = "13.6.3";
         const string expectedDaprCli = "1.18.0";
         const string expectedDaprRuntime = "1.18.2";
         string root = RepositoryRoot();
