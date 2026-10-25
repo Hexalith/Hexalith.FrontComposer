@@ -77,11 +77,11 @@
       "selected_catalog_required_properties": {},
       "selected_catalog_required_packages": {
         "BenchmarkDotNet": "0.15.8",
-        "FsCheck.Xunit.v3": "3.5.0",
+        "FsCheck.Xunit.v3": "3.6.0",
         "Microsoft.CodeAnalysis.Workspaces.Common": "5.9.0",
         "Microsoft.Extensions.Localization": "10.0.13",
         "Microsoft.Extensions.TimeProvider.Testing": "10.11.0",
-        "ModelContextProtocol.AspNetCore": "2.2.0",
+        "ModelContextProtocol.AspNetCore": "2.3.0",
         "NUlid": "1.7.3",
         "PactNet": "5.0.1",
         "System.Collections.Immutable": "10.0.13",
