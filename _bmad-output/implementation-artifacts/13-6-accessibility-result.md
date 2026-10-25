@@ -1,5 +1,48 @@
 # Story 13.6 accessibility result and human checklist
 
+## Current committed-source verification — 2026-10-25
+
+**Story and sprint remain in-progress; accessibility acceptance remains blocked.** All implementation patches through Pass 8 are already committed. This continuation changes only this result and the owning spec. The starting root was `08a9a73f2fc8f8c4d5ae716d9a435760e5849a13`; an independent concurrent `/pushall` advanced it to `26d77f82bb3d721bc2b5165d1d77e6b3d6885ca8`, committing the prepared epic context and EventStore pointer. There is no `src`/`tests`/`samples`/`.github` difference between those roots, and all five raw source hashes in the [Pass 8 table](#pass-8-focused-verification--2026-10-25) match. The browser/helper outcomes below apply to that unchanged source; they establish no whole-runtime acceptance. CI run link: unavailable; no CI run was initiated.
+
+| Fresh verification | Result |
+| --- | --- |
+| R5/R6/R7 responsive helper fixtures, all three engines | 90 passed / 0 failed / 0 skipped / 0 flaky; zero retries |
+| WCAG scanner and impact-policy helper, all three engines | 9 passed / 0 failed / 0 skipped / 0 flaky; zero retries |
+| Node evidence suite, Linux | 29 passed / 0 failed / 0 skipped |
+| TypeScript | Passed |
+| Debug SourceTools.Tests and Shell.Tests builds | Both passed; zero warnings/errors |
+| CommandFormEmitterTests | 68 passed / 0 failed / 0 skipped/errors |
+| ZeroFieldFailureAccessibilityTests and CommandRendererWrapperIntegrationTests | 98 passed / 0 failed / 0 skipped/errors |
+| Story-artifact validator and diff check | Passed |
+
+The 90-case selection retains positive and negative controls for containing blocks, escaped paint, hidden ancestors, competing glyph paint, focus and clipping; the scanner cases prove the default `wcag22aa` target-size rule remains active. These are focused automated checks. They do not rerun every changed shell, Home, navigation, tab, toolbar, projection/detail, form, lifecycle, palette, dialog and abandonment journey. AE-01/03–09 retain the dated integrated evidence and its limitations below; AE-02 still requires actual browser zoom. The full Counter-host/browser, configured .NET, visual and artifact gates were not rerun. Prior failed/interrupted outcomes retain their original attribution and remain unresolved.
+
+Exact fresh commands from the repository root:
+
+```bash
+node --test tests/e2e/scripts/a11y-state-evidence.test.mjs
+npm --prefix tests/e2e run typecheck
+dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Debug -m:1
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class '*CommandFormEmitterTests' -parallel none
+dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug -m:1
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*ZeroFieldFailureAccessibilityTests' -class '*CommandRendererWrapperIntegrationTests' -parallel none
+python3 eng/validate-story-artifacts.py
+git diff --check
+```
+
+Browser commands ran from `tests/e2e`:
+
+```bash
+PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=/tmp/fc-story13-6-reconcile-waAjmM/browser FC_E2E_HTML_REPORT_DIR=/tmp/fc-story13-6-reconcile-waAjmM/browser-html npx playwright test specs/responsive-accessibility.spec.ts --grep 'R[567] ' --workers=3 --retries=0
+PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=/tmp/fc-story13-6-reconcile-waAjmM/axe-helper FC_E2E_HTML_REPORT_DIR=/tmp/fc-story13-6-reconcile-waAjmM/axe-helper-html npx playwright test specs/a11y-helper.spec.ts --workers=3 --retries=0
+```
+
+Raw browser reports/logs and focused build/test logs remain local scratch under `/tmp/fc-story13-6-reconcile-waAjmM/`. No new evidence packet, manifest, replay lane or runtime-identity record is created. The owner evidence policy below governs historical links.
+
+The required baseline command `aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json` exited **2** before startup: two NETSDK1004 errors for missing Commons.UniqueIds `project.assets.json`, Parties CS1061 for unavailable `RecoverNonExpiringPendingAsync`, and one Shell MSB3026 copy warning. The log is retained by Aspire as `cli_20261025T062814_9eeba522.log`. Exact-target `aspire stop` and `aspire describe --format Json`, both with the same `--apphost` and `--non-interactive`, report no running AppHost. The focused builds do not resolve that whole-runtime blocker.
+
+All eighteen human boxes and seven MAN-136 rows remain unperformed. Actual AT/heard speech, actual 400% zoom, physical devices, Windows, WebKit system-palette paint, visual/catalog/live-backend and named owner approvals remain open. R8-B1's WebKit pointer-activation fixture remains deferred; R7-A1's supplementary sweep classification remains the engineering disposition recorded below. No UX, Product, Architect, OI-16, G-4 or FLUENT-APP-1 approval is inferred. The original matrix/result and resumed Evidence tasks remain unchecked. No production source, tests, approved images, dependency declarations, gitlinks or frozen requirements were changed by this continuation; nothing was staged, committed or pushed by it.
+
 ## Pass 8 focused verification — 2026-10-25
 
 **Story and sprint remain in-progress; final accessibility classification is blocked.** The local candidate is root `c7f1666508e6582cfe168b12efb4a71638abc328` plus source/test patch `sha256:7f76211b44721767233f37fb0dadc869cd8aa88d14642b35f7f090f558de2871`, from `git diff --binary c7f1666508e6582cfe168b12efb4a71638abc328 -- src tests | sha256sum`. All eight Pass 8 patches are applied. This record supersedes earlier candidate attribution only for the focused checks below; earlier complete matrix, visual and .NET observations retain their dated source identities. No current whole-surface or hosted CI pass is inferred; CI run link: not available, no CI run initiated.
@@ -363,9 +406,13 @@ All gate rows above share task/story `13.6` and release branch `main`; human obs
 
 ## Remaining acceptance gates
 
-The summary in this section retains the 2026-10-18 reviewed candidate. The Pass 8 record above owns the current candidate and `in-progress` status; it supplies only focused verification.
+The summary in this section retains the 2026-10-18 reviewed candidate. The current committed-source verification above owns the latest candidate attribution and `in-progress` status; it supplies only focused verification.
 
 All 18 manual boxes stay open. NVDA/JAWS/VoiceOver, heard speech, actual browser zoom, physical tablet/phone and human reviewer observations remain unperformed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and live EventStore acceptance remain unresolved. The final reviewed browser run passes every executed nonvisual case and the unchanged per-root size limit; eighteen visual comparisons and four existing .NET snapshot/catalog tests remain failed. Complete capture/portability integrity passes, while the full artifact validators and accessibility classification remain blocked. Historical oversized and interrupted packets remain failed history, without changing the cap. Windows and actual WebKit forced-palette coverage stay open.
+
+### Historical machine-readable snapshot — 2026-10-18
+
+The following values describe the dated reviewed candidate only; they are not current-run results.
 
 ```yaml
 story: 13.6
