@@ -29,5 +29,14 @@
     <HexalithMemoriesFromSource>true</HexalithMemoriesFromSource>
     <HexalithCommonsFromSource>true</HexalithCommonsFromSource>
     <HexalithFrontComposerFromSource>true</HexalithFrontComposerFromSource>
+    <!-- One source selection for every path to shared restore/build outputs. -->
+    <_HexalithSourceReferenceProperties>HexalithFrontComposerRoot=$(HexalithFrontComposerRoot);HexalithEventStoreRoot=$(HexalithEventStoreRoot);HexalithTenantsRoot=$(HexalithTenantsRoot);HexalithPartiesRoot=$(HexalithPartiesRoot);HexalithMemoriesRoot=$(HexalithMemoriesRoot);HexalithCommonsRoot=$(HexalithCommonsRoot);HexalithFrontComposerFromSource=$(HexalithFrontComposerFromSource);HexalithEventStoreFromSource=$(HexalithEventStoreFromSource);HexalithTenantsFromSource=$(HexalithTenantsFromSource);HexalithPartiesFromSource=$(HexalithPartiesFromSource);HexalithMemoriesFromSource=$(HexalithMemoriesFromSource);HexalithCommonsFromSource=$(HexalithCommonsFromSource)</_HexalithSourceReferenceProperties>
   </PropertyGroup>
+  <!-- Internal FrontComposer edges also reach the modules through Shell and Counter.
+       Carry the same selection there before crossing a repository boundary. -->
+  <ItemDefinitionGroup>
+    <ProjectReference>
+      <AdditionalProperties>$(_HexalithSourceReferenceProperties)</AdditionalProperties>
+    </ProjectReference>
+  </ItemDefinitionGroup>
 </Project>

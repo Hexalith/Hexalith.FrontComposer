@@ -14,11 +14,9 @@
     <HexalithCommonsRoot Condition="'$(HexalithCommonsRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(_FrontComposerRepoRoot)', 'references', 'Hexalith.Commons'))</HexalithCommonsRoot>
     <HexalithFrontComposerRoot Condition="'$(HexalithFrontComposerRoot)' == ''">$(_FrontComposerRepoRoot)</HexalithFrontComposerRoot>
     <_FrontComposerDropPublishedTargets>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', 'DropPublishedFrontComposerAssemblies.targets'))</_FrontComposerDropPublishedTargets>
-    <!-- Parties defaults HexalithFrontComposerFromSource off unless UseHexalithProjectReferences
-         is already true. Do not forward UseHexalithProjectReferences: it CS1704s UniqueIds inside
-         EventStore.Contracts. CustomAfterMicrosoftCommonTargets drops published FrontComposer
-         assets that Tenants.Client still injects into nested AdminPortal/ConsumerPortal. -->
-    <_HexalithReferenceProperties>HexalithFrontComposerRoot=$(HexalithFrontComposerRoot);HexalithEventStoreRoot=$(HexalithEventStoreRoot);HexalithTenantsRoot=$(HexalithTenantsRoot);HexalithPartiesRoot=$(HexalithPartiesRoot);HexalithMemoriesRoot=$(HexalithMemoriesRoot);HexalithCommonsRoot=$(HexalithCommonsRoot);HexalithFrontComposerFromSource=true;HexalithEventStoreFromSource=true;HexalithTenantsFromSource=true;HexalithPartiesFromSource=true;HexalithMemoriesFromSource=$(HexalithMemoriesFromSource);HexalithCommonsFromSource=true;CustomAfterMicrosoftCommonTargets=$(_FrontComposerDropPublishedTargets)</_HexalithReferenceProperties>
+    <!-- Share the AppHost source selection; do not forward the broad project-reference
+         switch into modules that deliberately keep other dependencies packaged. -->
+    <_HexalithReferenceProperties>$(_HexalithSourceReferenceProperties);CustomAfterMicrosoftCommonTargets=$(_FrontComposerDropPublishedTargets)</_HexalithReferenceProperties>
     <FrontComposerUiUsePublishedModulePackages Condition="'$(FrontComposerUiUsePublishedModulePackages)' == ''">false</FrontComposerUiUsePublishedModulePackages>
   </PropertyGroup>
 

@@ -10776,3 +10776,10 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 ## Deferred from: code review of spec-13-6-verify-responsive-and-assistive-accessibility.md (2026-10-24, pass 8)
 
 - The generated zero-field form's scope-unavailable branch (`CommandFormEmitter.cs:567`) calls `focusAttemptedControl(_formDomId + "-submit")`; in the inline zero-field renderer that button is inside `<div style="display:none">` (`CommandRendererEmitter.cs:1005-1006`), so the call cannot focus anything, while every other blocked reason focuses the visible trigger (`AttemptedControlId = _triggerButtonId`, `:998`) per Decision 2 "keep trigger focus" (medium; R8-B1, R8-V2). Reason: pre-existing Story 13.3 behavior (`b3744b3e`); only Safari-style pointer activation is affected, so settle it with a WebKit pointer-activation fixture before changing the generated form contract. Settle with a browser fixture that activates a scope-unavailable zero-field trigger by pointer in WebKit and asserts the focused element; if the trigger is not focused, pass the host's attempted-control id into generated forms and assert `triggerId` in `ScopeUnavailableIsVisibleWithoutDispatchOrHiddenFocusAndEachAttemptSpeaksOnce`.
+
+
+## Deferred from: AppHost startup dependency graph review (2026-10-25)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-apphost-startup-dependency-graph.md`
+  summary: Align direct external solution entries with the source-property vector before claiming source-graph coherence for solution-wide restore and no-restore builds.
+  evidence: The independent review's isolated Debug `.slnx` restore exited 0 but selected packaged Commons.UniqueIds for EventStore.Contracts and packaged EventStore.Client/DomainService for Parties.Projections. External solution entry points bypassed FrontComposer's local properties before this repair, so this is a pre-existing limitation. The AppHost-entry restore and build are covered by the new regression; retain this separate solution-entry follow-up and add an isolated solution-restore/build regression when fixing it.

@@ -20,7 +20,7 @@ MEMORIES_IDS = {"Hexalith.Memories.Contracts", "Hexalith.Memories.Client.Rest"}
 def evaluate(project: Path, configuration: str | None, properties: dict[str, str] | None = None) -> dict:
     command = [
         "dotnet", "msbuild", str(project), "-nologo",
-        "-getProperty:HexalithMemoriesFromSource,ProjectAssetsFile",
+        "-getProperty:HexalithMemoriesFromSource,ProjectAssetsFile,RestoreUseStaticGraphEvaluation",
         "-getItem:ProjectReference,PackageReference",
     ]
     if configuration is not None:
@@ -47,6 +47,80 @@ def forwarded_properties(reference: dict) -> dict[str, str]:
 
 
 class AppHostDependencyModeTests(unittest.TestCase):
+    def test_debug_apphost_preserves_one_source_selection_on_every_external_edge(self) -> None:
+        host = evaluate(APPHOST, "Debug")
+        self.assertEqual(host["Properties"]["RestoreUseStaticGraphEvaluation"], "true")
+        expected = None
+        for parent in (host, evaluate(UI, "Debug")):
+            for reference in parent["Items"]["ProjectReference"]:
+                if not Path(reference["FullPath"]).is_relative_to(ROOT / "references"):
+                    continue
+                properties = forwarded_properties(reference)
+                selection = {key: value for key, value in properties.items() if key != "CustomAfterMicrosoftCommonTargets"}
+                self.assertNotIn("UseHexalithProjectReferences", selection)
+                self.assertEqual(selection.get("HexalithCommonsFromSource"), "true")
+                self.assertEqual(selection.get("HexalithEventStoreFromSource"), "true")
+                self.assertEqual(Path(selection["HexalithCommonsRoot"]), ROOT / "references/Hexalith.Commons")
+                if expected is None:
+                    expected = selection
+                self.assertEqual(selection, expected, reference["FullPath"])
+        self.assertIsNotNone(expected)
+        for properties in ({}, {"UseHexalithProjectReferences": "false"}):
+            configuration = "Release" if not properties else "Debug"
+            self.assertNotEqual(evaluate(APPHOST, configuration, properties)["Properties"]["RestoreUseStaticGraphEvaluation"], "true")
+
+    def test_debug_apphost_restore_uses_source_recovery_and_unique_ids(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="frontcomposer-apphost-restore-") as artifacts:
+            result = subprocess.run(
+                ["dotnet", "restore", str(APPHOST), "--artifacts-path", artifacts,
+                 "-p:Configuration=Debug", "-m:1", "--nologo"],
+                cwd=ROOT, capture_output=True, text=True, timeout=240,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            cases = {
+                ROOT / "references/Hexalith.Parties/src/Hexalith.Parties.Projections/Hexalith.Parties.Projections.csproj": {
+                    "Hexalith.EventStore.Client", "Hexalith.EventStore.DomainService", "Hexalith.Commons.UniqueIds",
+                },
+                ROOT / "references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj": {
+                    "Hexalith.Commons.UniqueIds",
+                },
+            }
+            host = evaluate(APPHOST, "Debug")
+            properties = forwarded_properties(module_reference(host)) | {"ArtifactsPath": artifacts}
+            for project, required in cases.items():
+                with self.subTest(project=project.name):
+                    assets_path = Path(evaluate(project, "Debug", properties)["Properties"]["ProjectAssetsFile"])
+                    libraries = json.loads(assets_path.read_text())["libraries"]
+                    selected = [(name.split("/")[0], item["type"]) for name, item in libraries.items()
+                                if name.split("/")[0] in required]
+                    self.assertCountEqual(selected, [(name, "project") for name in required])
+            unique_ids = ROOT / "references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj"
+            self.assertTrue(Path(evaluate(unique_ids, "Debug", properties)["Properties"]["ProjectAssetsFile"]).is_file())
+
+            build = subprocess.run(
+                ["dotnet", "build", str(APPHOST), "-c", "Debug", "-m:1", "--no-restore",
+                 "--artifacts-path", artifacts, "--nologo"],
+                cwd=ROOT, capture_output=True, text=True, timeout=300,
+            )
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+
+    def test_debug_apphost_restore_preserves_explicit_memories_packages(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="frontcomposer-apphost-packages-") as artifacts:
+            result = subprocess.run(
+                ["dotnet", "restore", str(APPHOST), "--artifacts-path", artifacts,
+                 "-p:Configuration=Debug", "-p:HexalithMemoriesFromSource=false", "-m:1", "--nologo"],
+                cwd=ROOT, capture_output=True, text=True, timeout=240,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            for project in (TENANTS_UI, UI):
+                with self.subTest(project=project.name):
+                    child = evaluate(project, "Debug", {"ArtifactsPath": artifacts,
+                                                       "HexalithMemoriesFromSource": "false"})
+                    libraries = json.loads(Path(child["Properties"]["ProjectAssetsFile"]).read_text())["libraries"]
+                    selected = [(name.split("/")[0], item["type"]) for name, item in libraries.items()
+                                if name.split("/")[0] in MEMORIES_IDS]
+                    self.assertCountEqual(selected, [(name, "package") for name in MEMORIES_IDS])
+
     def test_debug_ui_paths_select_the_same_memories_source_projects(self) -> None:
         expected = {
             str(ROOT / f"references/Hexalith.Memories/src/{name}/{name}.csproj")

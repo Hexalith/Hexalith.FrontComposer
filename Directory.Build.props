@@ -26,6 +26,9 @@
   <Import Project="deps.nuget.props" Condition="'$(UseHexalithProjectReferences)' != 'true' AND '$(FrontComposerRoot)' == 'true'" />
 
   <PropertyGroup>
+    <!-- Classic restore drops ProjectReference AdditionalProperties. Keep source-mode
+         restores consistent with the AppHost and every path through its hosted projects. -->
+    <RestoreUseStaticGraphEvaluation Condition="'$(UseHexalithProjectReferences)' == 'true'">true</RestoreUseStaticGraphEvaluation>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
