@@ -2,7 +2,9 @@
 
 ## Human-reported verification records — 2026-10-25
 
-**Overall human-reported result: Pass. Record-completion status: blocked pending execution details.** Jérôme Piquot, previously identified as Owner, instructed: “create all the records, everything is ok”. All seven requested manual records are created below, with the exact supplied statement retained as their common evidence source. The statement reports an overall positive result; it does not itemize the AT/browser combinations, devices or journeys actually exercised. No pairing-specific observation, version, device model, measured zoom geometry or spoken-message count has been invented.
+**Owner-reported result: Pass for all seven manual records.** Jérôme Piquot, previously identified as Owner, confirmed: “add all seven manual records, all is OK”. This follow-up explicitly applies the reported Pass to NVDA/Firefox, JAWS/Chrome, VoiceOver/Safari, actual 400% browser zoom, physical tablet, physical phone and zero-field feedback. Each existing stable record below now retains that confirmation individually.
+
+The earlier statement, “create all the records, everything is ok”, remains the initial overall report. The latest statement supplies an all-seven result confirmation. It does not supply execution dates/builds, tester identities, software versions, device models, measured geometry or itemized speech observations. Those fields remain explicitly not supplied. **Formal record qualification remains blocked by the missing execution details** under the existing manual log template; the reported results themselves are Pass.
 
 The following shared fields apply to every record below:
 
@@ -10,23 +12,23 @@ The following shared fields apply to every record below:
 | --- | --- |
 | Task / story | 13.6 |
 | Release branch | `main` |
-| Candidate reference | Checkout at report preparation: `76e063b56a9ef2a0d976926d3e8aac89b08364c2`; confirmation of the exact tested runtime/build remains pending |
-| Date | Human report received 2026-10-25; actual execution date not separately supplied |
+| Candidate reference | Checkout when recording the all-seven confirmation: `39cab9cb19f15e6d743db63708a1a137df348233`; exact tested runtime/build not supplied |
+| Date | Initial report and all-seven confirmation received 2026-10-25; actual execution date not supplied |
 | Reporting human / record owner | Jérôme Piquot, Owner |
 | Actual per-run tester | Not yet confirmed for each pairing/device; the reporter is human and the assistant is not entered as tester |
-| Reported result | Overall Pass, attributed solely to “everything is ok”; no detailed per-run result supplied |
-| Canonical status | `blocked` while required execution metadata and per-gate coverage are incomplete |
-| Reviewer / approval reference | Jérôme Piquot's [named Owner approval](#named-owner-approval--2026-10-25) and the direct report above; no additional role or per-run sign-off is inferred |
-| Evidence reference | Exact human conversation statement quoted in this section; no per-run notes, screenshots or recordings supplied |
+| Reported result | Pass for each of the seven named gates, attributed to “add all seven manual records, all is OK” |
+| Canonical status | `blocked` for formal qualification while required execution details are incomplete; Owner-reported result is Pass for all seven gates |
+| Reviewer / approval reference | Jérôme Piquot's [named Owner approval](#named-owner-approval--2026-10-25) and direct all-seven confirmation above; no additional approving role is inferred |
+| Evidence reference | Exact initial and follow-up human statements quoted in this section; no per-run notes, screenshots or recordings supplied |
 | Sanitization | This record contains the supplied name/role/report and test references; no raw AT transcript, tenant data, payload, secret or attachment is included |
 | Release impact | Required manual accessibility qualification and Story 13.6 completion remain blocked by missing execution details |
 | Blocker reference | [Required execution details](#required-execution-details), stable record blocker `MAN-136-REPORT-DETAILS-2026-10-25` |
-| Decision / next action | Supply the actual configurations and coverage listed for each record; identify any combination or journey not exercised |
+| Decision / next action | Retain the confirmed Pass for each gate; supplement with actual execution details when available |
 | Reopen / revalidation trigger | Human supplies matching build/date/tester, actual environment/device versions and observed journey coverage; reconcile each record separately |
 
 ### Required execution details
 
-To finalize a record under the existing [manual log template](../../docs/accessibility-verification/manual-log-template.md), supply the actual execution date/build/tester and that record's OS/browser/AT or physical-device details, plus the routes and journeys exercised. Identify unused combinations as not performed. The actual 400% zoom and missing-item/zero-field speech sequences need explicit coverage. A consolidated request for these facts was presented in this conversation. The existing eighteen detailed checkboxes remain open until they can be linked to confirmed coverage.
+The Owner has confirmed Pass for all seven records, including the actual-zoom and zero-field records. The existing [manual log template](../../docs/accessibility-verification/manual-log-template.md) still requires actual execution date/build/tester, OS/browser/AT or physical-device details and run-level observations for formal qualification. These were not supplied with the confirmation. The eighteen detailed evidence checkboxes remain open because the report does not itemize their measurements, exception inventories or speech observations.
 
 ### MAN-136-NVDA
 
@@ -35,12 +37,12 @@ To finalize a record under the existing [manual log template](../../docs/accessi
 | Stable gate id | `MAN-136-NVDA` |
 | Acceptance criteria | AE-01–AE-09 and the manual-evidence acceptance criterion |
 | Required pairing / mode | NVDA with Firefox on Windows |
-| Canonical status | `blocked` — common overall Pass report received, per-run execution details incomplete |
-| Operating system / browser / AT or device actually used | Not supplied for this record; required pairing above is a test requirement, not an asserted observation |
-| Specimen route / flow and responsive tier | Required scope: Common operator journey and the missing-item, command-failure and direct/silent/new-message speech sequences. Actual exercised routes/tier are not itemized in the report |
-| Observed result supplied | “everything is ok” — overall human-reported Pass; no specific speech/focus/geometry account supplied |
-| Missing execution details | Actual Windows, Firefox and NVDA versions; test date/tester; confirmation of the required keyboard, speech, spacing, theme and overlay journeys. |
-| Issue / resolution | No defect was reported; record completion is pending required details rather than a claimed test failure |
+| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
+| Specimen route / flow and responsive tier | Required scope: Common operator journey and the missing-item, command-failure and direct/silent/new-message speech sequences. Owner reports Pass for this record; actual routes/tier are not itemized |
+| Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
+| Missing execution details | Actual Windows, Firefox and NVDA versions; test date/tester; itemized keyboard, speech, spacing, theme and overlay observations. |
+| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
 | Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-JAWS
@@ -50,12 +52,12 @@ To finalize a record under the existing [manual log template](../../docs/accessi
 | Stable gate id | `MAN-136-JAWS` |
 | Acceptance criteria | AE-01–AE-09 and the manual-evidence acceptance criterion |
 | Required pairing / mode | JAWS with Chrome on Windows |
-| Canonical status | `blocked` — common overall Pass report received, per-run execution details incomplete |
-| Operating system / browser / AT or device actually used | Not supplied for this record; required pairing above is a test requirement, not an asserted observation |
-| Specimen route / flow and responsive tier | Required scope: Common operator journey and the missing-item, command-failure and direct/silent/new-message speech sequences. Actual exercised routes/tier are not itemized in the report |
-| Observed result supplied | “everything is ok” — overall human-reported Pass; no specific speech/focus/geometry account supplied |
-| Missing execution details | Actual Windows, Chrome and JAWS versions; test date/tester; confirmation of the required keyboard, speech, spacing, theme and overlay journeys. |
-| Issue / resolution | No defect was reported; record completion is pending required details rather than a claimed test failure |
+| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
+| Specimen route / flow and responsive tier | Required scope: Common operator journey and the missing-item, command-failure and direct/silent/new-message speech sequences. Owner reports Pass for this record; actual routes/tier are not itemized |
+| Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
+| Missing execution details | Actual Windows, Chrome and JAWS versions; test date/tester; itemized keyboard, speech, spacing, theme and overlay observations. |
+| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
 | Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-VO
@@ -65,12 +67,12 @@ To finalize a record under the existing [manual log template](../../docs/accessi
 | Stable gate id | `MAN-136-VO` |
 | Acceptance criteria | AE-01–AE-09 and the manual-evidence acceptance criterion |
 | Required pairing / mode | VoiceOver with Safari on macOS |
-| Canonical status | `blocked` — common overall Pass report received, per-run execution details incomplete |
-| Operating system / browser / AT or device actually used | Not supplied for this record; required pairing above is a test requirement, not an asserted observation |
-| Specimen route / flow and responsive tier | Required scope: Common operator journey and the missing-item, command-failure and direct/silent/new-message speech sequences. Actual exercised routes/tier are not itemized in the report |
-| Observed result supplied | “everything is ok” — overall human-reported Pass; no specific speech/focus/geometry account supplied |
-| Missing execution details | Actual macOS and Safari versions, VoiceOver version if separately reported; test date/tester; confirmation of the required reading, keyboard, speech and overlay journeys. |
-| Issue / resolution | No defect was reported; record completion is pending required details rather than a claimed test failure |
+| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
+| Specimen route / flow and responsive tier | Required scope: Common operator journey and the missing-item, command-failure and direct/silent/new-message speech sequences. Owner reports Pass for this record; actual routes/tier are not itemized |
+| Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
+| Missing execution details | Actual macOS and Safari versions, VoiceOver version if separately reported; test date/tester; itemized reading, keyboard, speech and overlay observations. |
+| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
 | Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-ZOOM
@@ -80,12 +82,12 @@ To finalize a record under the existing [manual log template](../../docs/accessi
 | Stable gate id | `MAN-136-ZOOM` |
 | Acceptance criteria | AE-02, with AE-01/03–09 journeys repeated as applicable |
 | Required pairing / mode | Actual 400% browser zoom from a measured 1280 CSS-pixel reference |
-| Canonical status | `blocked` — common overall Pass report received, per-run execution details incomplete |
-| Operating system / browser / AT or device actually used | Not supplied for this record; required pairing above is a test requirement, not an asserted observation |
-| Specimen route / flow and responsive tier | Required scope: Navigation, forms, grids/detail, palette and Settings at actual browser zoom, including complete target/focus visibility and bounded labelled scrolling. Actual exercised routes/tier are not itemized in the report |
-| Observed result supplied | “everything is ok” — overall human-reported Pass; no specific speech/focus/geometry account supplied |
-| Missing execution details | Actual OS/browser versions; test date/tester; measured 100% reference width and actual 400% browser-zoom confirmation; exercised routes/overlays. |
-| Issue / resolution | No defect was reported; record completion is pending required details rather than a claimed test failure |
+| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
+| Specimen route / flow and responsive tier | Required scope: Navigation, forms, grids/detail, palette and Settings at actual browser zoom, including complete target/focus visibility and bounded labelled scrolling. Owner reports Pass for this record; actual routes/tier are not itemized |
+| Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
+| Missing execution details | Actual OS/browser versions; test date/tester; measured 100% reference width and zoom geometry; exercised routes/overlays. |
+| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
 | Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-TABLET
@@ -95,12 +97,12 @@ To finalize a record under the existing [manual log template](../../docs/accessi
 | Stable gate id | `MAN-136-TABLET` |
 | Acceptance criteria | AE-01–AE-09 and the real-device/manual-evidence acceptance criterion |
 | Required pairing / mode | Physical tablet, touch-adapted tier |
-| Canonical status | `blocked` — common overall Pass report received, per-run execution details incomplete |
-| Operating system / browser / AT or device actually used | Not supplied for this record; required pairing above is a test requirement, not an asserted observation |
-| Specimen route / flow and responsive tier | Required scope: Touch navigation, target activation, fields, toolbar/popovers, grid/detail, palette/dialogs, lifecycle/recovery and rotation. Actual exercised routes/tier are not itemized in the report |
-| Observed result supplied | “everything is ok” — overall human-reported Pass; no specific speech/focus/geometry account supplied |
+| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
+| Specimen route / flow and responsive tier | Required scope: Touch navigation, target activation, fields, toolbar/popovers, grid/detail, palette/dialogs, lifecycle/recovery and rotation. Owner reports Pass for this record; actual routes/tier are not itemized |
+| Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
 | Missing execution details | Actual tablet model, OS/browser versions, orientations and viewport; test date/tester and exercised operations. |
-| Issue / resolution | No defect was reported; record completion is pending required details rather than a claimed test failure |
+| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
 | Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-PHONE
@@ -110,12 +112,12 @@ To finalize a record under the existing [manual log template](../../docs/accessi
 | Stable gate id | `MAN-136-PHONE` |
 | Acceptance criteria | AE-01–AE-09 and the real-device/manual-evidence acceptance criterion |
 | Required pairing / mode | Physical phone, functional-fallback tier |
-| Canonical status | `blocked` — common overall Pass report received, per-run execution details incomplete |
-| Operating system / browser / AT or device actually used | Not supplied for this record; required pairing above is a test requirement, not an asserted observation |
-| Specimen route / flow and responsive tier | Required scope: Essential operations, detail-exposed row actions, readable statuses and bounded two-dimensional scrolling; functional fallback rather than full daily-use support. Actual exercised routes/tier are not itemized in the report |
-| Observed result supplied | “everything is ok” — overall human-reported Pass; no specific speech/focus/geometry account supplied |
+| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
+| Specimen route / flow and responsive tier | Required scope: Essential operations, detail-exposed row actions, readable statuses and bounded two-dimensional scrolling; functional fallback rather than full daily-use support. Owner reports Pass for this record; actual routes/tier are not itemized |
+| Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
 | Missing execution details | Actual phone model, OS/browser versions, orientations and viewport; test date/tester and exercised operations. |
-| Issue / resolution | No defect was reported; record completion is pending required details rather than a claimed test failure |
+| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
 | Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-ZERO-FIELD
@@ -125,15 +127,15 @@ To finalize a record under the existing [manual log template](../../docs/accessi
 | Stable gate id | `MAN-136-ZERO-FIELD` |
 | Acceptance criteria | AE-09, Story 13.6 approved zero-field decision and manual-evidence acceptance |
 | Required pairing / mode | Generated zero-field command using an actually exercised supported AT/browser pairing |
-| Canonical status | `blocked` — common overall Pass report received, per-run execution details incomplete |
-| Operating system / browser / AT or device actually used | Not supplied for this record; required pairing above is a test requirement, not an asserted observation |
-| Specimen route / flow and responsive tier | Required scope: Validation, permission/unavailable/rate-limit/transport and unmapped failures, blank problem details, Retry-After, scope/policy denial, repeat/navigation/scope clearing and accepted-command lifecycle. Required outcome is readable feedback, retained trigger focus and one spoken message; actual itemized observations have not been supplied. Actual exercised routes/tier are not itemized in the report |
-| Observed result supplied | “everything is ok” — overall human-reported Pass; no specific speech/focus/geometry account supplied |
-| Missing execution details | Actual OS/browser/AT versions; test date/tester; confirmation of the failure/accepted-command cases, focus retention and heard-speech behavior. |
-| Issue / resolution | No defect was reported; record completion is pending required details rather than a claimed test failure |
+| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
+| Specimen route / flow and responsive tier | Required scope: Validation, permission/unavailable/rate-limit/transport and unmapped failures, blank problem details, Retry-After, scope/policy denial, repeat/navigation/scope clearing and accepted-command lifecycle. Required outcome is readable feedback, retained trigger focus and one spoken message; actual itemized observations have not been supplied. Owner reports Pass for this record; actual routes/tier are not itemized |
+| Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
+| Missing execution details | Actual OS/browser/AT versions; test date/tester; itemized failure/accepted-command, focus-retention and heard-speech observations. |
+| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
 | Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
-These records supersede the earlier absence of a human result report, while preserving all historical automated and failed attempts. They do not classify unconfirmed combinations as completed. The live canonical MAN-136 summary below now reflects `blocked` records with a received overall Pass report. All eighteen per-journey boxes remain unchecked pending coverage details; gate-specific acceptance, hosted-CI/platform/live-backend evidence and the frozen acceptance criteria remain unchanged. Story and sprint stay **in-progress**.
+All seven records now carry an explicit Owner-reported Pass. Their canonical qualification status remains `blocked` solely for the unsupplied execution details and detailed supporting observations. The live MAN-136 summary below matches these records. Earlier dated statements that manual results were absent or unperformed are historical and are superseded by this confirmation. The eighteen detailed evidence boxes and independent hosted-CI/platform/live-backend and gate-specific acceptance requirements remain open; story and sprint stay **in-progress**.
 
 ## Named Owner approval — 2026-10-25
 
@@ -719,18 +721,18 @@ Manual NVDA/JAWS/VoiceOver, actual 400% zoom, tablet/phone and heard-speech obse
 
 Use [the existing manual log template](../../docs/accessibility-verification/manual-log-template.md) for every run. Record full candidate identity, date, human tester, OS/version, browser/version, AT/version (or device/model/OS), route/flow, responsive tier, observed Pass/Fail, issue links for failures, reviewer/sign-off owner and approval reference, and sanitized attachment paths. Do not paste raw screen-reader transcripts or tenant/user values.
 
-| Gate | Canonical status | Owner / release impact / reason / next action / reopen trigger |
-| --- | --- | --- |
-| MAN-136-NVDA | `blocked` | Jérôme Piquot, Owner, reports overall Pass. Required per-run metadata/coverage remain incomplete; blocks manual qualification. See [record](#man-136-nvda) and [required details](#required-execution-details). Reopen when matching build/date/tester, actual versions/device and exercised journeys are supplied. |
-| MAN-136-JAWS | `blocked` | Jérôme Piquot, Owner, reports overall Pass. Required per-run metadata/coverage remain incomplete; blocks manual qualification. See [record](#man-136-jaws) and [required details](#required-execution-details). Reopen when matching build/date/tester, actual versions/device and exercised journeys are supplied. |
-| MAN-136-VO | `blocked` | Jérôme Piquot, Owner, reports overall Pass. Required per-run metadata/coverage remain incomplete; blocks manual qualification. See [record](#man-136-vo) and [required details](#required-execution-details). Reopen when matching build/date/tester, actual versions/device and exercised journeys are supplied. |
-| MAN-136-ZOOM | `blocked` | Jérôme Piquot, Owner, reports overall Pass. Required per-run metadata/coverage remain incomplete; blocks manual qualification. See [record](#man-136-zoom) and [required details](#required-execution-details). Reopen when matching build/date/tester, actual versions/device and exercised journeys are supplied. |
-| MAN-136-TABLET | `blocked` | Jérôme Piquot, Owner, reports overall Pass. Required per-run metadata/coverage remain incomplete; blocks manual qualification. See [record](#man-136-tablet) and [required details](#required-execution-details). Reopen when matching build/date/tester, actual versions/device and exercised journeys are supplied. |
-| MAN-136-PHONE | `blocked` | Jérôme Piquot, Owner, reports overall Pass. Required per-run metadata/coverage remain incomplete; blocks manual qualification. See [record](#man-136-phone) and [required details](#required-execution-details). Reopen when matching build/date/tester, actual versions/device and exercised journeys are supplied. |
-| MAN-136-ZERO-FIELD | `blocked` | Jérôme Piquot, Owner, reports overall Pass. Required per-run metadata/coverage remain incomplete; blocks manual qualification. See [record](#man-136-zero-field) and [required details](#required-execution-details). Reopen when matching build/date/tester, actual versions/device and exercised journeys are supplied. |
-| UX-136-REVIEW | `performed: scoped automated evidence review` | Both independent Build review passes and parent verification are retained in the prior complete-candidate report and current spec. Human UX/Product/Fluent sign-off remains open and is not inferred. |
+| Gate | Owner-reported result | Canonical qualification status | Owner / release impact / next action / reopen trigger |
+| --- | --- | --- | --- |
+| MAN-136-NVDA | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-nvda) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
+| MAN-136-JAWS | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-jaws) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
+| MAN-136-VO | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-vo) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
+| MAN-136-ZOOM | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-zoom) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
+| MAN-136-TABLET | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-tablet) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
+| MAN-136-PHONE | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-phone) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
+| MAN-136-ZERO-FIELD | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-zero-field) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
+| UX-136-REVIEW | Not a manual Pass record | `performed: scoped automated evidence review` | Both independent Build review passes and parent verification are retained in the prior complete-candidate report and current spec. Human UX/Product/Fluent sign-off remains open and is not inferred. |
 
-All gate rows above share task/story `13.6` and release branch `main`; human observations must name the candidate actually tested. Jérôme Piquot is the named Owner/reporting human and has supplied an overall Pass statement. The seven [human-reported records](#human-reported-verification-records--2026-10-25) retain that statement and identify the missing actual tester/environment/device and per-journey coverage; their canonical status is `blocked` pending those details. The eighteen checkboxes below remain open pending confirmed coverage. UX-136-REVIEW continues to record only its scoped automated review. The existing AE-01–AE-09/manual-evidence requirements, zoom AE-02 requirement and opt-in review scope are unchanged.
+All gate rows above share task/story `13.6` and release branch `main`; human observations must name the candidate actually tested. Jérôme Piquot is the named Owner/reporting human and has explicitly confirmed Pass for all seven records. The seven [human-reported records](#human-reported-verification-records--2026-10-25) retain his exact statement. Their canonical qualification status remains `blocked` for missing execution details; their reported result is Pass. The eighteen detailed evidence checkboxes below remain open pending itemized supporting observations. UX-136-REVIEW continues to record only its scoped automated review. The existing AE-01–AE-09/manual-evidence requirements, zoom AE-02 requirement and opt-in review scope are unchanged.
 
 ### Common operator journey on every supported AT/browser pairing
 
