@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 process.env.FC_A11Y_EVIDENCE_RUN_ID ??= randomUUID();
@@ -11,6 +12,11 @@ const OUTPUT_DIR = process.env.FC_E2E_OUTPUT_DIR ?? 'test-results';
 const HTML_REPORT_DIR = process.env.FC_E2E_HTML_REPORT_DIR ?? 'playwright-report';
 const JSON_PATH = process.env.FC_E2E_JSON_PATH ?? `${OUTPUT_DIR}/playwright.json`;
 const JUNIT_PATH = process.env.FC_E2E_JUNIT_PATH ?? `${OUTPUT_DIR}/junit.xml`;
+// The approved Firefox/WebKit Linux images use DejaVu fallbacks. Ubuntu 26.04
+// prefers Noto instead; keep the native engines' font environment reproducible.
+const nativeLinuxLaunchOptions = process.platform === 'linux'
+  ? { env: { ...process.env, FONTCONFIG_FILE: process.env.FONTCONFIG_FILE ?? resolve(import.meta.dirname, 'fonts/linux-fontconfig.conf') } }
+  : {};
 
 export default defineConfig({
   metadata: { a11yEvidenceRunId: process.env.FC_A11Y_EVIDENCE_RUN_ID, testHostOptions: { ProjectionReconnectedNoticeDurationMs: Number(PROJECTION_RECONNECTED_NOTICE_DURATION_MS) } },
@@ -47,11 +53,11 @@ export default defineConfig({
     },
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      use: { ...devices['Desktop Firefox'], launchOptions: nativeLinuxLaunchOptions },
     },
     {
       name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
+      use: { ...devices['Desktop Safari'], launchOptions: nativeLinuxLaunchOptions },
     },
   ],
   outputDir: OUTPUT_DIR,

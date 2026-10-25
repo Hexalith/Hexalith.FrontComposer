@@ -288,6 +288,15 @@ Factories live in `factories/` and follow the `build{Aggregate}` pattern. Each a
 
 ### Accessibility
 
+On Linux, the Firefox and WebKit projects launch with the Fontconfig fallbacks in
+`e2e/fonts/linux-fontconfig.conf`: DejaVu Sans and DejaVu Sans Mono match the approved
+hosted visual baselines. This keeps Ubuntu font-default changes from changing the
+measured typography. These fonts must be installed in the Linux environment;
+`fc-match 'DejaVu Sans'` and `fc-match 'DejaVu Sans Mono'` identify the selected files.
+Chromium and other platforms retain their normal font environment;
+an explicit `FONTCONFIG_FILE` overrides this test default. Product Fluent font tokens,
+approved images and comparison thresholds are unchanged.
+
 `helpers/a11y.ts` wraps `@axe-core/playwright`. Default tag set: `wcag2a, wcag2aa, wcag21a, wcag21aa`. Violations are asserted with `expect.soft` so one failure does not mask others in the same run.
 
 ### Artifacts

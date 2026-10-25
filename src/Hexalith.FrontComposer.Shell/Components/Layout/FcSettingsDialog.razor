@@ -2,6 +2,7 @@
 @using Hexalith.FrontComposer.Contracts.Rendering
 @using Hexalith.FrontComposer.Shell.Resources
 @using Hexalith.FrontComposer.Shell.State.Density
+@using Hexalith.FrontComposer.Shell.State.Navigation
 @using Microsoft.Extensions.Localization
 @using Microsoft.FluentUI.AspNetCore.Components
 @inherits Fluxor.Blazor.Web.Components.FluxorComponent
@@ -28,7 +29,10 @@
         <div class="fc-settings-body" data-testid="fc-settings-dialog">
             <FluentAccordion>
                 <FluentAccordionItem Header="@Localizer["DensitySectionLabel"].Value" Expanded="true">
+                    @* The existing narrow tiers give each complete density label its own row;
+                       the desktop arrangement remains horizontal. *@
                     <FluentRadioGroup Value="@SelectedDensity"
+                                      Orientation="@(NavState.Value.CurrentViewport is ViewportTier.Phone or ViewportTier.Tablet ? Orientation.Vertical : Orientation.Horizontal)"
                                       ValueChanged="@((DensityLevel v) => SelectedDensity = v)"
                                       TValue="DensityLevel"
                                       Name="fc-density-select"

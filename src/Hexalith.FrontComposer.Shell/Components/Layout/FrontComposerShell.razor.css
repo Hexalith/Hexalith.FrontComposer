@@ -39,8 +39,15 @@
 
 /* Fluent's mobile layout removes the end padding; keep space for the complete focus outline. */
 .fc-shell-root ::deep .fluent-layout[mobile] .fc-shell-content {
-    min-block-size: 0;
     padding-inline-end: 12px !important;
+}
+
+/* Mobile chrome must retain its natural height when browser zoom makes the
+   viewport short. Fluent owns the global scrollport; intrinsic track minimums
+   keep its header/footer and the complete content targets inside that flow. */
+.fc-shell-root ::deep .fluent-layout[global-scrollbar] {
+    grid-template-rows: max-content minmax(max-content, 1fr) max-content;
+    scroll-padding: 8px;
 }
 
 /* Native focus scrolling must leave room for the shell's complete focus outline. */
@@ -49,7 +56,8 @@
 
 /* Firefox makes an overflowing content scrollport a native Tab stop. Its own
    indicator must remain inside the viewport and neighboring shell chrome. */
-.fc-shell-root ::deep .fc-shell-content:focus-visible {
+.fc-shell-root ::deep .fc-shell-content:focus-visible,
+.fc-shell-root ::deep .fluent-layout[global-scrollbar]:focus-visible {
     outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
     outline-offset: calc(-1 * var(--strokeWidthThick));
 }

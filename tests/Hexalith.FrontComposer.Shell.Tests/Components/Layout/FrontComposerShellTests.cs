@@ -55,6 +55,25 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         cut.FindComponent<FcAccountMenu>().ShouldNotBeNull();
     }
 
+    /// <summary>
+    /// Keeps native global scrolling confined to the existing mobile viewport tiers.
+    /// </summary>
+    /// <param name="tier">The existing shell viewport tier.</param>
+    /// <param name="globalScrollbar">Whether that tier uses the Fluent global scrollport.</param>
+    [Theory]
+    [InlineData(ViewportTier.Desktop, false)]
+    [InlineData(ViewportTier.CompactDesktop, false)]
+    [InlineData(ViewportTier.Tablet, true)]
+    [InlineData(ViewportTier.Phone, true)]
+    public void ViewportTierSelectsTheNativeGlobalScrollMode(ViewportTier tier, bool globalScrollbar)
+    {
+        EnsureStoreInitialized();
+        Services.GetRequiredService<IDispatcher>().Dispatch(new ViewportTierChangedAction(tier));
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(parameters => parameters
+            .AddChildContent("<h1>Current page</h1>"));
+        cut.Find(".fluent-layout").HasAttribute("global-scrollbar").ShouldBe(globalScrollbar);
+    }
+
     [Fact]
     public async Task ShellLocationTrackingRetiresSupersededConfirmation()
     {

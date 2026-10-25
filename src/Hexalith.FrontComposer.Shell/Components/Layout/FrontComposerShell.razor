@@ -49,7 +49,7 @@
        aria-labelledby). IsFixed: the coordinator instance is stable; its values mutate and the shell
        re-renders via the Changed subscription. *@
     <CascadingValue Value="_contentLabelCoordinator" IsFixed="true">
-        <FluentLayout>
+        <FluentLayout GlobalScrollbar="@IsSubCompactDesktopViewport">
             <FluentLayoutItem Area="@LayoutArea.Header" Height="auto" Padding="@Padding.All0" role="banner">
                 <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center" Class="fc-shell-header"
                              HorizontalAlignment="HorizontalAlignment.SpaceBetween"

@@ -143,6 +143,32 @@ export async function inventoryTargets(page: Page, exceptions: TargetException[]
       }
       const x = [...xs].sort((a,b) => a-b), y = [...ys].sort((a,b) => a-b);
       const cells = y.slice(1).map((bottom, row) => x.slice(1).map((right, col) => { const target = hit((x[col] + right) / 2, (y[row] + bottom) / 2); return target !== null && containsComposed(element, target); }));
+      // Native radios have circular hit areas. For an already evidenced undersized
+      // Spacing exception, verify that complete circle instead of mistaking its
+      // transparent square corners for an occluding cover. The 24px-square
+      // conformity test and all other target shapes still use the rectangle below.
+      const native = element.getBoundingClientRect(), css = getComputedStyle(element);
+      const width = box.right - box.left, height = box.bottom - box.top;
+      const nativeCircle = element.matches('fluent-radio') && width < 24 && height < 24 && Math.abs(width - height) < .5
+        && records.some(record => record.kind === 'Spacing' && element.matches(record.selector))
+        && Math.abs(native.left - box.left) < .5 && Math.abs(native.top - box.top) < .5
+        && Math.abs(native.width - width) < .5 && Math.abs(native.height - height) < .5
+        && ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-left-radius', 'border-bottom-right-radius'].every(property => parseFloat(css.getPropertyValue(property)) >= width / 2);
+      if (nativeCircle) {
+        const cx = (box.left + box.right) / 2, cy = (box.top + box.bottom) / 2, radius = width / 2;
+        // Hit-testing rounds circular edges differently across engines. Use the
+        // existing half-pixel geometry tolerance at the perimeter, while partition
+        // probes below still verify covers reaching the circle's interior.
+        const probes = [[cx, cy], ...Array.from({ length: 32 }, (_, index) => [cx + Math.cos(index * Math.PI / 16) * (radius - .5), cy + Math.sin(index * Math.PI / 16) * (radius - .5)])];
+        // Every competing-paint partition intersecting the circle also needs an
+        // owned hit. A small cover between perimeter samples cannot disappear.
+        for (let row = 0; row < y.length - 1; row++) for (let col = 0; col < x.length - 1; col++) {
+          const dx = Math.min(.01, (x[col + 1] - x[col]) / 2), dy = Math.min(.01, (y[row + 1] - y[row]) / 2);
+          const px = Math.max(x[col] + dx, Math.min(cx, x[col + 1] - dx)), py = Math.max(y[row] + dy, Math.min(cy, y[row + 1] - dy));
+          if (Math.hypot(px - cx, py - cy) < radius - .05) probes.push([px, py]);
+        }
+        if (probes.every(([x, y]) => { const target = hit(x, y); return target !== null && containsComposed(element, target); })) return box;
+      }
       let best = { left: box.left, right: box.left, top: box.top, bottom: box.top }, score = -1;
       for (let first = 0; first < x.length - 1; first++) for (let last = first + 1; last < x.length; last++) {
         let start = 0;
@@ -190,7 +216,11 @@ export async function inventoryTargets(page: Page, exceptions: TargetException[]
       // pointer paint only while its measured rectangle is currently on screen.
       if (box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight
         && Math.abs(box.left - original.left) < .5 && Math.abs(box.top - original.top) < .5 && box.right > box.left && box.bottom > box.top) box = pointerArea(element, box, !probeScroll);
-      const outsideViewport = !fixed && (box.left < 0 || box.top < 0 || box.right > innerWidth || box.bottom > innerHeight);
+      // A scrollable ancestor may have clamped this provisional box into the
+      // viewport. Probe an actually offscreen control before comparing its target
+      // with others, including controls inside a fixed modal's inner scrollport.
+      const outsideViewport = original.left < 0 || original.top < 0 || original.right > innerWidth || original.bottom > innerHeight
+        || box.left < 0 || box.top < 0 || box.right > innerWidth || box.bottom > innerHeight;
       if (probeScroll && (box.right - box.left < 24 || box.bottom - box.top < 24 || outsideViewport)) {
         const offsets: { element: Element; left: number; top: number }[] = [];
         let scrollable = false;
@@ -560,7 +590,15 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
   return target.evaluate((element, requireIndicator) => {
     const audit = (window as typeof window & { __aePaintAudit: PaintAudit }).__aePaintAudit;
     const resting = audit.resting(element);
-    const rect = element.getBoundingClientRect();
+    // An expanded native accordion hosts a separately focusable heading button.
+    // Its panel is not part of that target; actual host/heading indicator paint
+    // remains in the visual inventory and is still measured in full below.
+    const active = element.shadowRoot?.activeElement;
+    const focusTarget = element.matches('fluent-accordion-item') && active instanceof HTMLButtonElement
+      && active.matches('[part="button"][aria-controls]')
+      && element.shadowRoot!.getElementById(active.getAttribute('aria-controls')!)?.matches('[part="content"][role="region"]')
+      ? active.closest('[part="heading"][role="heading"]') ?? active : element;
+    const rect = focusTarget.getBoundingClientRect();
     const composedParent = (node: Element): Element | null => node.assignedSlot ?? node.parentElement ?? (node.getRootNode() instanceof ShadowRoot ? (node.getRootNode() as ShadowRoot).host : null);
     const visuals: Element[] = [element];
     // Fluent paints focus on internal wrappers/pseudo-elements as well as its active input.
@@ -690,7 +728,7 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
     // Prove the complete sharp indicator independently of a coexisting blurred elevation.
     // A blur has no exact CSS paint boundary and cannot alone establish focus visibility.
     if (blurredShadow && !hardIndicator) geometryLimits.push('blurred focus shadow needs pixel evidence');
-    for (const owner of new Set([element, ...indicatorOwners])) for (let current: Element | null = owner; current; current = composedParent(current)) {
+    for (const owner of new Set([focusTarget, element, ...indicatorOwners])) for (let current: Element | null = owner; current; current = composedParent(current)) {
       const css = getComputedStyle(current), matrix = new DOMMatrixReadOnly(css.transform === 'none' ? undefined : css.transform);
       if (!matrix.is2D || matrix.a !== 1 || matrix.d !== 1 || matrix.b !== 0 || matrix.c !== 0
         || css.scale && !['none','1'].includes(css.scale) || css.rotate && css.rotate !== 'none'
@@ -701,12 +739,12 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
     let occluder: string | null = null;
     if (box.left < -.5 || box.top < -.5 || box.right > innerWidth + .5 || box.bottom > innerHeight + .5) failures.push('viewport clips target or focus ring');
     const parent = (node: Element): Element | null => node.assignedSlot ?? node.parentElement ?? (node.getRootNode() instanceof ShadowRoot ? (node.getRootNode() as ShadowRoot).host : null);
-    for (const owner of new Set([element, ...indicatorOwners])) for (let clipped: Element | null = owner; clipped; clipped = parent(clipped)) {
+    for (const owner of new Set([focusTarget, element, ...indicatorOwners])) for (let clipped: Element | null = owner; clipped; clipped = parent(clipped)) {
       const own = audit.clip(getComputedStyle(clipped), clipped.getBoundingClientRect());
       if (own.kind !== 'none') failures.push('focus clip-path/clip/mask needs pixel evidence');
       if (clipped.matches(':popover-open,:modal')) break;
     }
-    for (let ancestor = element.matches(':popover-open,:modal') ? null : parent(element); ancestor; ancestor = parent(ancestor)) {
+    for (let ancestor = focusTarget.matches(':popover-open,:modal') ? null : parent(focusTarget); ancestor; ancestor = parent(ancestor)) {
       const css = getComputedStyle(ancestor), clip = ancestor.getBoundingClientRect();
       const left = clip.left + ancestor.clientLeft, top = clip.top + ancestor.clientTop;
       // A wrapper clips its descendants, but its own outline is painted outside its overflow box.
@@ -734,7 +772,7 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
       return false;
     };
     const related = (candidate: Element) => {
-      if (contains(candidate, element) || ownsDropdownIndicator(candidate)) return true;
+      if (contains(candidate, focusTarget) || ownsDropdownIndicator(candidate)) return true;
       const menuIcon = candidate.closest('svg');
       const menuRoot = menuIcon?.getRootNode();
       // The menu button's built-in passive caret is part of its own control paint.
@@ -802,22 +840,43 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
       }
       return hit;
     };
-    const paintsAbove = (a: Element, b: Element) => {
-      // Compare the first divergent stacking contexts, never maxima from unrelated levels.
-      const context = (node: Element) => {
-        const style = getComputedStyle(node);
-        return node === document.documentElement || ['fixed','sticky'].includes(style.position) || style.zIndex !== 'auto' && (style.position !== 'static' || /flex|grid/u.test(getComputedStyle(parent(node) ?? document.documentElement).display)) || style.transform !== 'none' || Number(style.opacity) < 1 || style.isolation === 'isolate' || style.filter !== 'none' || style.perspective !== 'none' || /paint|layout|strict|content/u.test(style.contain) || style.mixBlendMode !== 'normal' || /transform|opacity|filter/u.test(style.willChange);
+    const paintsAbove = (a: Element, b: Element, pseudo: string | null = null) => {
+      // A positioned pseudo can create its own stacking context and escape a
+      // non-stacking owner; descendants remain trapped by an actual owner context.
+      type Layer = { node: Element; css: CSSStyleDeclaration; pseudo: boolean };
+      const stackingHints = ['transform', 'opacity', 'filter', 'backdrop-filter'];
+      const neutralHints = ['auto', 'contents', 'scroll-position'];
+      const hints = (css: CSSStyleDeclaration) => css.willChange.toLowerCase().split(',').map(hint => hint.trim()).filter(Boolean);
+      const recognizedHint = (hint: string) => stackingHints.includes(hint) || neutralHints.includes(hint) || hint === '-webkit-backdrop-filter';
+      const context = ({ node, css, pseudo }: Layer) => node === document.documentElement || ['fixed','sticky'].includes(css.position)
+        || css.zIndex !== 'auto' && (css.position !== 'static' || /flex|grid/u.test(getComputedStyle(pseudo ? node : parent(node) ?? document.documentElement).display))
+        || css.transform !== 'none' || Number(css.opacity) < 1 || css.isolation === 'isolate' || css.filter !== 'none' || css.perspective !== 'none'
+        || /paint|layout|strict|content/u.test(css.contain) || css.mixBlendMode !== 'normal' || hints(css).some(hint => stackingHints.includes(hint) || hint === '-webkit-backdrop-filter' && CSS.supports(hint, 'none'));
+      const layer = (node: Element, pseudo: string | null = null): Layer => ({ node, css: getComputedStyle(node, pseudo), pseudo: pseudo !== null });
+      let unknownHint = false;
+      const chain = (node: Element) => {
+        const nodes: Layer[] = [];
+        for (let current: Element | null = node; current; current = parent(current)) {
+          const item = layer(current);
+          if (pseudo && hints(item.css).some(hint => !recognizedHint(hint))) unknownHint = true;
+          if (context(item)) nodes.unshift(item);
+        }
+        return nodes;
       };
-      const chain = (node: Element) => { const nodes: Element[] = []; for (let current: Element | null = node; current; current = parent(current)) if (context(current)) nodes.unshift(current); return nodes; };
-      const left = chain(a), right = chain(b); let index = 0;
-      while (left[index] && left[index] === right[index]) index++;
-      const first = left[index] ?? a, second = right[index] ?? b;
-      const az = Number.parseInt(getComputedStyle(first).zIndex) || 0, bz = Number.parseInt(getComputedStyle(second).zIndex) || 0;
+      const painted = layer(a, pseudo), left = chain(a), right = chain(b);
+      // An unmodeled hint may create a context. Keep its pseudo paint in the
+      // obstruction inventory instead of claiming it is definitely behind.
+      if (pseudo && (unknownHint || hints(painted.css).some(hint => !recognizedHint(hint)))) return null;
+      if (pseudo && context(painted)) left.push(painted);
+      let index = 0;
+      while (left[index] && right[index] && left[index].node === right[index].node && left[index].pseudo === right[index].pseudo) index++;
+      const first = left[index] ?? painted, second = right[index] ?? layer(b);
+      const az = Number.parseInt(first.css.zIndex) || 0, bz = Number.parseInt(second.css.zIndex) || 0;
       if (az !== bz) return az > bz;
-      if (first.getRootNode() !== second.getRootNode()) return null;
-      const phase = (node: Element) => { const style = getComputedStyle(node); return context(node) || style.position !== 'static' ? 3 : /inline/u.test(style.display) ? 2 : style.cssFloat !== 'none' ? 1 : 0; };
+      if (first.node.getRootNode() !== second.node.getRootNode()) return null;
+      const phase = (item: Layer) => context(item) || item.css.position !== 'static' ? 3 : /inline/u.test(item.css.display) ? 2 : item.css.cssFloat !== 'none' ? 1 : 0;
       if (phase(first) !== phase(second)) return phase(first) > phase(second);
-      return Boolean(second.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return Boolean(second.node.compareDocumentPosition(first.node) & Node.DOCUMENT_POSITION_FOLLOWING);
     };
     for (const candidate of candidates) {
       if (related(candidate)) continue;
@@ -849,7 +908,7 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
       };
       // Outlines are painted outside hit boxes. Content behind the outline is not an
       // obstruction simply because elementFromPoint cannot hit that outline itself.
-      if (hit && !related(hit) && (!pointerOptOut || paintsAtPoint(hit)) && (insideTarget || paintsAtPoint(hit) && paintsAbove(hit, element) !== false)) { occluder = `${element.tagName}#${element.id} by ${hit.tagName}#${hit.id} at ${x},${y}`; failures.push('app content obscures target or focus ring'); break; }
+      if (hit && !related(hit) && (!pointerOptOut || paintsAtPoint(hit)) && (insideTarget || paintsAtPoint(hit) && paintsAbove(hit, focusTarget) !== false)) { occluder = `${element.tagName}#${element.id} by ${hit.tagName}#${hit.id} at ${x},${y}`; failures.push('app content obscures target or focus ring'); break; }
     }
     const plane = (node: Element) => { for (let current: Element | null = node; current; current = parent(current)) if (current.matches(':popover-open,:modal')) return current; return null; };
     const focusPlane=plane(element);
@@ -860,7 +919,7 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
       for (let owner: Element | null = candidate; owner; owner = parent(owner)) { const css = getComputedStyle(owner); if (css.display === 'none' || Number(css.opacity) === 0) hidden = true; }
       if (hidden) continue;
       for (const pseudo of [null, '::before', '::after']) {
-        if (!pseudo && paintsAbove(candidate,element) === false) continue;
+        if (paintsAbove(candidate, focusTarget, pseudo) === false) continue;
         const root=candidate.getRootNode();
         const popup=root instanceof ShadowRoot ? root.host : null;
         const css=getComputedStyle(candidate);

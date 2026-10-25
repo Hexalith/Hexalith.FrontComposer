@@ -1,5 +1,223 @@
 # Story 13.6 accessibility result and human checklist
 
+## Approved A3 technical completion — 2026-10-25
+
+**All A1–A6 technical tasks are complete; Story and sprint remain in-progress because mandatory human evidence and independent owner acceptance are missing.** The user's subsequent approval explicitly authorized the Parties historical-probe correction and the bounded local commits needed to validate later-base activation. It did not authorize pushing, publishing, committing the accessibility work, or closing any other owner gate. This section owns current A3 attribution; prior sections retain their original candidates, failures and commands.
+
+| Local revision | Exact scope |
+| --- | --- |
+| Parties `d915a5893715328ef5bdf6a740888b6d212257ca` | Remove the three historical executable probe files and update only their README, four approved paths |
+| FrontComposer `db4fdc50e17292305812e8192aa872f13abaf401` | Record only that corrected Parties gitlink |
+| FrontComposer `50d9a8b908a5cb5318e58c5bdef9b81d533c229a` | Commit only the two approved semantic policy expectations |
+| FrontComposer `29a5ac9401c95a68ebe679989b6bd9d343e10351` | Commit only the approved Aspire hosting expectation; final local activation revision |
+
+The current implementation is final local root `29a5ac9401c95a68ebe679989b6bd9d343e10351` plus remaining tracked `src tests eng` diff SHA-256 `7ab2ca566909d6ecd0f86ac214f429f91684c5cc1b8588db31de23c2e6a3dd9c` and the still-untracked font configuration raw SHA-256 `c9a0ab0b3d8a3cad57e1c86a408f9e76aceddb0464956b62cea4c3a79530f89b`. The original story baseline remains `3c8679628ebdb8995afc09f712a04fcde623695c`. The index is empty; every other accessibility source/test/configuration change and the evolving spec/result remain unstaged.
+
+All four original Parties probe files were copied byte-for-byte outside the checkout before removal; their raw hashes equal the original Git blobs. The retained README links the unchanged historical negative outcome and provides exact retrieval from Parties `1ef274ea0471643d83f924147e85ac8326cf6a47`. No production package declaration, renamed catalog or policy exemption replaces the removed override. Retrieval, absence of the three executable files, four-path scope and absence of other tracked `PackageVersion` overrides were checked. The committed README retains owner-requested CRLF, with the normal whitespace checks preserved through `git -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff HEAD^ HEAD --check`.
+
+Every exact full commit message was validated before use with **commitlint 21.2.2**, matching both owners' lockfiles and using each owning cwd/config. The already installed root CLI also served Parties; no dependency installation or update occurred. All four validations report zero problems/warnings. Root Husky staged-file and commit-message hooks remained active; no hook was bypassed. Successful validation and commit logs are external scratch.
+
+| Fresh A3 verification | Result |
+| --- | --- |
+| Final exact committed graph | Exit 0; 51 edges, seven semantic selectors |
+| Local push-model transition `50d9a8b9…`→`29a5ac94…` | Exit 0; committed base policy, seven selectors on both sides, no graph changes in activation |
+| Exact Parties standalone Release/NuGet restore and build | Both exit 0; build zero warnings/errors |
+| Shell.Tests Debug build | Zero warnings/errors |
+| Focused CiGovernance and InfrastructureGovernance classes | **106 passed / 0 failed / 0 skipped/errors** |
+| Configured individual Shell lane | **3,785 passed / 0 failed / 0 skipped/errors** |
+| Dependency graph / handoff engineering suites | 102 / 11 passed; no failures |
+| Story-artifact validation / diff check | Passed |
+
+Both formerly failing configured governance methods now pass. The final graph digest is `8b00fe9475a5c0a452dd6f99c7256afa6beee89e1492dab2b64b8921d46f4bfc`. The tested transition consumes policy from committed base `50d9a8b908a5cb5318e58c5bdef9b81d533c229a`, whose Git-blob SHA-256 is `0c5cf75b88a16f0cb9fec0a5bff4501f2808f1ea1dd72656ac4edd3313106d71`. No `--policy` substitution was used. Earlier gitlink/policy transition revisions are not claimed as green CI. The transition's `release_eligible` field describes only the local revision model; it is not release authorization.
+
+Parties was materialized at exact corrected revision `d915a589…` using the existing dependency-graph helpers. Its own Builds edge is **`857558036530a389ccb4ba16fa9777416af9b12e`**, not the root's `1783c0a3…`. The bounded regular-file contract contains 2,035 files/35,584,442 bytes and catalog SHA-256 `553796eef36f2789f60bb47bc8902b5fb9f1df5b3a942cde7f0523768bf1d2a1`. The closed registry restore/build argv ran from that isolated owning checkout with only this exact contract materialized. No nested submodule was initialized, and no fallback was needed because both commands pass. This validates the standalone build; it does not claim execution of all Parties test suites or live-backend acceptance.
+
+Exact fresh commands from FrontComposer root, except where stated:
+
+```bash
+python3 eng/dependency_graph.py --root . validate --commit 29a5ac9401c95a68ebe679989b6bd9d343e10351
+python3 eng/dependency_graph.py --root . diff --event push --event-base 50d9a8b908a5cb5318e58c5bdef9b81d533c229a --candidate 29a5ac9401c95a68ebe679989b6bd9d343e10351
+python3 -m unittest discover -s tests/eng -p test_dependency_graph.py -v
+python3 -m unittest discover -s tests/eng -p test_dependency_handoff.py -v
+dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug -m:1
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*CiGovernanceTests' -class '*InfrastructureGovernanceTests' -parallel none -result-xml /tmp/fc-story13-6-approved-a3-vra4y_n8/shell-governance.xml
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- Category=GovernanceBuild -trait- Category=Performance -trait- Category=e2e-palette -trait- Category=NightlyProperty -trait- Category=Quarantined -longRunning 30 -result-xml /tmp/fc-story13-6-approved-a3-vra4y_n8/shell-configured.xml
+# From /tmp/fc-story13-6-approved-a3-vra4y_n8/parties-standalone:
+dotnet restore Hexalith.Parties.Standalone.slnx -p:Configuration=Release -p:UseNuGetDeps=true
+dotnet build Hexalith.Parties.Standalone.slnx --configuration Release --no-restore -p:UseNuGetDeps=true
+# From each owning cwd; exact message files are retained beside the logs:
+node /home/administrator/projects/hexalith/frontcomposer/node_modules/@commitlint/cli/cli.js --config commitlint.config.mjs --edit /tmp/fc-story13-6-approved-a3-vra4y_n8/party-commit-message.txt --verbose
+node /home/administrator/projects/hexalith/frontcomposer/node_modules/@commitlint/cli/cli.js --config commitlint.config.mjs --edit /tmp/fc-story13-6-approved-a3-vra4y_n8/root-gitlink-message.txt --verbose
+node /home/administrator/projects/hexalith/frontcomposer/node_modules/@commitlint/cli/cli.js --config commitlint.config.mjs --edit /tmp/fc-story13-6-approved-a3-vra4y_n8/root-policy-message.txt --verbose
+node /home/administrator/projects/hexalith/frontcomposer/node_modules/@commitlint/cli/cli.js --config commitlint.config.mjs --edit /tmp/fc-story13-6-approved-a3-vra4y_n8/root-activation-message.txt --verbose
+python3 eng/validate-story-artifacts.py
+git diff --check
+```
+
+The earlier **1,061 browser passes/four capability skips**, eighteen Linux visual passes, **1,411 SourceTools passes**, fourteen automated native zoom cases and twenty-one mobile row-metric stages retain the exact original source attribution in the next section. They were not rerun on the new root. Parent byte audits confirm their UI/helper/font/threshold/image inputs are unchanged, but the current dependency graph has new provenance; no whole-runtime equivalence or new hosted acceptance is inferred. All 69 tracked PNG/Verify baselines remain unchanged. Only the Parties root gitlink changed; the other seven remain at their prior revisions.
+
+Raw archives, commitlint/commit logs, graph/transition JSON and .NET/engineering results remain under `/tmp/fc-story13-6-approved-a3-vra4y_n8/`. Independent parent checks are under `/tmp/fc-story13-6-approved-a3-parent-gi5e_796/`. Nothing was added as a committed evidence packet or runtime-identity record. The owned Aspire topology remains stopped; exact-target describe confirms no AppHost running.
+
+These are **local committed activation/model checks only**. `origin/main` remains at `80782afc7fc2fd33ee365d4601cb6b5e91d215fa`; the tested `50d9…`→`29a5…` transition does not qualify a single batch push from that unchanged origin base. No push, publication or hosted CI run occurred or is authorized here. The earlier [CI](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40179812149) and [Quality](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40179811928) links remain failed historical base-commit observations; there is no hosted result for these local commits.
+
+A3 and its four sub-tasks are complete because the remaining configured governance failure now passes through committed policy. All eighteen human boxes and seven MAN-136 rows remain unperformed. Human AT/heard speech/zoom/device observations, Windows, actual WebKit system-palette paint, live-backend acceptance, hosted publication/CI and OI-16/G-4/FLUENT-APP-1/UX/Product/Architect acceptance remain open. The limited governance approval does not approve Fluent Components/Icons 5.0.1. Original matrix/result/Evidence acceptance tasks stay unchecked; story/sprint remain **in-progress**.
+
+## Automated gap closure — 2026-10-25
+
+**Story and sprint remain in-progress; accessibility acceptance is incomplete.** This section owns current automated attribution and supersedes the earlier visual, prerequisite and complete-browser failures only for the candidate tested here. Historical sections and failed attempts remain unchanged. The canonical story baseline remains `3c8679628ebdb8995afc09f712a04fcde623695c`; the tested root is `80782afc7fc2fd33ee365d4601cb6b5e91d215fa`, plus tracked implementation/configuration patch `sha256:d9fd9618b5c42775320a7f42d673eca3a1f7e50230c392c45411871137cf7ef4` from `git diff --binary 80782afc7fc2fd33ee365d4601cb6b5e91d215fa -- src tests eng | sha256sum`. That command omits the new untracked `tests/e2e/fonts/linux-fontconfig.conf`, whose raw SHA-256 is `c9a0ab0b3d8a3cad57e1c86a408f9e76aceddb0464956b62cea4c3a79530f89b`. Together these identify the tested source. The approved working-tree policy's raw SHA-256 is `f20b5f0307420913d44ed0da6158093f82dc355f9b0a4024be871268dc9a95c9`.
+
+The twelve visual failures were caused by Linux font fallback. Local Ubuntu 26.04 selected Noto Sans where the approved hosted Firefox/WebKit captures match DejaVu Sans; WebKit's remaining code-sample difference disappeared with the matching monospace fallback. The maintained Playwright configuration now supplies the small source-owned Fontconfig file only to Linux Firefox/WebKit, honoring an explicit `FONTCONFIG_FILE`. Chromium, other platforms and Fluent's product font tokens retain their existing configuration. All eighteen Linux visual comparisons pass with the original image bytes and thresholds. Installed DejaVu fonts are an explicit test-environment prerequisite, documented in `tests/README.md`.
+
+The restored fonts exposed a real WebKit pointer defect in generated mobile grids. Fluent's inline fixed table layout squeezed four columns into 62px cells; unwrapped neighboring glyphs intercepted native hits, leaving 14.5px/16px reachable strips. In the existing Phone/Tablet global-scrollbar layout, generated tables now use natural column sizing inside their existing labelled horizontal scroll owner. Desktop retains fixed table layout. No target exception, helper exclusion or threshold was added. Both new themed regressions fail before the correction (six failures across three engines; WebKit fails actual target geometry), then pass with native reachability, text/page loss, labelled scrolling and desktop-restoration assertions. The affected thirty-case browser selection passes. A separate read-only three-engine mobile probe verifies twenty-one stages: Compact rows/ItemSize 32px, combined spacing 47px, Roomy 56px, removal/restoration back to Compact 32px; every physical row equals ItemSize, and desktop sizing restores.
+
+The original Firefox focus failure is retained. Its trace shows a late `pa-0` header class overriding the inline inset. Replaying that observed class reproduces the same −2px ring and four clipping failures with `scrollX` and ancestor `scrollLeft` all zero; restoring the existing inset gives a 10px envelope and no failures. The origin of that historical late class remains unconfirmed; no speculative header edit was made. The final **complete** Firefox selection, including the spaced module-navigation journey, passes on the current layout corrections; isolated repeats are not used as the gate result.
+
+| Final verification | Passed / failed / skipped / flaky |
+| --- | --- |
+| Complete Chromium accessibility selection | 355 / 0 / 0 / 0 |
+| Complete Firefox accessibility selection | 353 / 0 / 2 / 0 |
+| Complete WebKit accessibility selection | 353 / 0 / 2 / 0 |
+| Complete browser aggregate | **1,061 / 0 / 4 / 0**, 1,065 cases, zero retries |
+| Ordinary Linux visual comparisons, included above | 18 / 0 / 0 / 0; approved PNGs unchanged |
+| Automated native Chromium 400% browser zoom | 14 / 0 / 0 / 0; rerun after the mobile grid correction |
+| Configured Debug SourceTools | 1,411 / 0 / 0; zero runner errors |
+| Configured Debug Shell | 3,784 / 1 / 0; zero runner errors; only the committed-policy gate fails |
+| Focused packaging/deprecation consumers | 5 / 0 / 0, also included in SourceTools |
+| Linux Node evidence suite | 29 / 0 / 0 |
+| Dependency graph / handoff engineering suites | 102 / 0 / 0; 11 / 0 / 0 |
+| TypeScript; visual governance; story-artifact validator; diff check | Passed |
+
+All final individual Release prerequisite and Debug test-project builds pass with zero warnings/errors. Release was used only for the explicitly authorized packaging prerequisites: Contracts net10.0/netstandard2.0, Contracts.UI, Shell and SourceTools. Ordinary local test projects remain Debug with the tracked dependency modes. The final configured Shell lane confirms `ToolchainPins_MatchApprovedDotnetAndAspireVersions` passes.
+
+The fourteen native zoom cases ran after the mobile CSS correction and before the three approved governance edits. Product, helper and native-probe inputs have not changed since that run; this is scoped reused production evidence, rather than execution of the entire later `src tests eng` fingerprint. The final complete browser and configured .NET gates did execute on the final fingerprint above.
+
+Each engine has 116 required state files and its own run ID/report. All three unchanged artifact validators exit 0. The final results/HTML file bytes are Chromium **14,295,865 / 7,991,243**, Firefox **15,498,734 / 8,444,873**, WebKit **12,705,913 / 7,009,313**; every root stays below **52,428,800** bytes. The four skips retain their existing scope: Firefox bevel capability, WebKit overflow-clip-margin capability, and the two non-Chromium Story 11.5 scoped-style probes. WebKit's actual system-palette paint remains unsupported; capability-bound media-only evidence is not actual palette observation.
+
+The user explicitly approved exactly three governance expectation changes on 2026-10-25: FsCheck.Xunit.v3 3.5.0→3.6.0, ModelContextProtocol.AspNetCore 2.2.0→2.3.0, and expected Aspire hosting/AppHost SDK 13.6.1→13.6.3. Those changes are applied; selected dependencies, the independent Aspire CLI 13.6.0 pin and gitlinks are unchanged. This approval does not approve Fluent Components/Icons 5.0.1 or any other owner gate. The central configured test intentionally still reads committed HEAD policy and fails on FsCheck 3.5.0 versus 3.6.0. FC-DEP-1 requires later-base activation, so the working-tree policy cannot authorize itself. An explicit `--policy` diagnostic with the approved values reaches a separate prohibited `PackageVersion` in Parties commit `1ef274ea0471643d83f924147e85ac8326cf6a47`, at `_bmad-output/implementation-artifacts/tests/five-owner-config-and-recovery-deferred-items-2026-10-23/eventstore-3.127.0-probe/Directory.Packages.props`. That owner correction and later policy activation remain open; no exemption or bypass was added.
+
+Exact commands, from the repository root unless noted:
+
+```bash
+aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json
+dotnet build src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj -c Release -m:1
+dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj -c Release -f netstandard2.0 -m:1
+dotnet build src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj -c Release -m:1
+dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Debug -m:1
+dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug -m:1
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class '*QueryRequestDeprecationTests' -class '*PackagedAnalyzerConsumerTests' -parallel none -result-xml /tmp/fc-story13-6-automated-84ymyif2/final/packaging-focused.xml
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -trait- Category=GovernanceBuild -trait- Category=Performance -trait- Category=e2e-palette -trait- Category=NightlyProperty -trait- Category=Quarantined -longRunning 30 -result-xml /tmp/fc-story13-6-automated-84ymyif2/final/sourcetools-configured.xml
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- Category=GovernanceBuild -trait- Category=Performance -trait- Category=e2e-palette -trait- Category=NightlyProperty -trait- Category=Quarantined -longRunning 30 -result-xml /tmp/fc-story13-6-automated-84ymyif2/final/shell-configured.xml
+ASPIRE_ENVIRONMENT=Test aspire start --no-build --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json -- --environment Test
+aspire wait counter-web --status healthy --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive
+python3 /tmp/fc-story13-6-automated-84ymyif2/run-final-browser-gates.py
+xvfb-run -a -s '-screen 0 1600x1200x24' node /tmp/fc-story13-6-automated-84ymyif2/native-cell-fix/native-zoom.mjs https://localhost:7201
+node /tmp/fc-story13-6-automated-84ymyif2/mobile-density-probe.mjs
+node --test tests/e2e/scripts/a11y-state-evidence.test.mjs
+npm --prefix tests/e2e run typecheck
+npm --prefix tests/e2e run validate:visual-governance
+python3 -m unittest discover -s tests/eng -p test_dependency_graph.py -v
+python3 -m unittest discover -s tests/eng -p test_dependency_handoff.py -v
+python3 eng/dependency_graph.py --root . validate --commit 80782afc7fc2fd33ee365d4601cb6b5e91d215fa
+python3 eng/dependency_graph.py --root . --policy eng/dependency-graph-policy.json validate --commit 80782afc7fc2fd33ee365d4601cb6b5e91d215fa
+aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive
+aspire describe --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json
+python3 eng/validate-story-artifacts.py
+git diff --check
+```
+
+The browser script runs from `tests/e2e` and starts one complete invocation per engine concurrently, each with **two workers and zero retries**: `npx playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --project=<engine> --workers=2 --retries=0`. Each invocation sets `BASE_URL=https://localhost:7201`, `PLAYWRIGHT_SKIP_WEBSERVER=1`, `FC_E2E_BUILD_CONFIGURATION=Debug`, its own `FC_A11Y_EVIDENCE_ENGINE`/`FC_A11Y_EVIDENCE_RUN_ID`, and final per-engine results/HTML paths, then runs `node scripts/validate-a11y-artifacts.mjs` with that same environment. Its existing production-style route guards also pass. Native zoom again verifies 1280×900/DPR1→320×225/DPR4, unchanged outer width, CSS zoom1, visual scale1 and `tabs.setZoom(4)`/`getZoom` with viewport emulation disabled; it remains **automated Chromium evidence**.
+
+The initial exact-target AppHost start succeeds; Counter is Healthy. Explicit Test selection and all existing Test-only timings were inspected before the browser runs. Rebuilds followed exact-target stops, and the final owned topology is stopped; exact-target describe reports no running AppHost. This is specimen verification, not live-backend acceptance. Read-only `gh run view ... --json databaseId,headSha,status,conclusion,url,name` rechecked [CI 40179812149](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40179812149) and [Quality 40179811928](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40179811928): both completed failure at the exact base above. Neither validates the working-tree patch; no hosted run was triggered.
+
+Raw results remain external scratch under `/tmp/fc-story13-6-automated-84ymyif2/`, with final reports in `final/`. The original twelve visual failures, intermediate font probes, six red grid regressions and pre-cell-correction WebKit **287 passed / 64 failed / 2 skipped** run remain separate. The complete pre-cell sweep belongs to tracked source patch `sha256:f9907216d6754d77cdd6d70c4ee98a1f235476513cd0aaccfa3ef97f9c56a6aa` plus the same new Fontconfig file hash above, based on the same root; it supplies no current-pass attribution. That failed WebKit run also correctly fails the unchanged size gate at **138,348,523 results / 137,829,724 HTML bytes**; it is not relabelled as a pass. Engineering policy logs and both failed exact-policy diagnostics remain under `/tmp/fc-story13-6-parent-y_1aws1j/`. No committed evidence packet, manifest or replay lane was added.
+
+The parent preservation audit confirms all **69 tracked PNG/Verify files**, the frozen intent and all **eight root gitlinks** retain their initial bytes/identities. Existing accessibility corrections and the responsive helper are preserved without a new threshold change. A1, A2, A4, A5 and A6 are implemented/verified; A3 remains partially blocked as described above. All **eighteen human boxes and seven MAN-136 rows remain unperformed**. Human AT/heard speech/zoom/device observations, Windows, actual WebKit system-palette paint, live-backend acceptance, final-candidate hosted CI and OI-16/G-4/FLUENT-APP-1/UX/Product/Architect approvals remain open. No staging, commit or push occurred.
+
+## Native zoom correction and verification — 2026-10-25
+
+**Story and sprint remain in-progress; accessibility acceptance is incomplete.** The current candidate is root `80782afc7fc2fd33ee365d4601cb6b5e91d215fa` plus source/test patch `sha256:59987573c5037c6dd6f0aff57f5fbadb26f62b536de89d22348c84b463b250e2`, measured with `git diff --binary HEAD -- src tests | sha256sum`. This section owns current attribution; earlier dated sections retain their original candidates and outcomes. The user supplied no human logs and requested available checks. Actual native browser zoom was performed automatically; no human AT, heard-speech or physical-device observation is inferred.
+
+The native 400% probe exposed a real short-viewport trap: the wrapped mobile header and footer left only 32px of content height (24px with spacing), while the focused Home card was 88px/101px tall. The shell now selects Fluent's existing global scroll mode for the existing Phone/Tablet tiers and sizes its rows intrinsically, allowing focused controls and chrome to scroll together. Its implicit keyboard scroll stop uses the existing inset Fluent focus stroke. The existing labelled data-grid region remains a bounded scrollport, with maximum block size derived from the viewport and existing scroll insets; row sizing and virtualization remain intact. Desktop/CompactDesktop keep their existing layout mode.
+
+Settings had both measurement and product defects. Accordion geometry now measures its verified native shadow heading/button and retains all real indicator paint, rather than the expanded panel's entire host. Target inventory scrolls offscreen controls in fixed modal scrollports and returns them to a common coordinate frame. An already evidenced native circular radio Spacing exception verifies its full circular hit area, rather than treating transparent square corners as covers; the 24px square requirement, spacing thresholds and exception provenance are unchanged. Clipped/covered controls still fail. Settings density choices use Fluent's existing vertical orientation on Phone/Tablet: the complete native-zoom capture had revealed one-character wrapping, and all three labels now remain readable on one line with combined spacing. Desktop/CompactDesktop retain horizontal orientation.
+
+The focus obstruction inventory compares a pseudo-element's own stacking layer, preserving high-z paint escaping a non-stacking owner and paint trapped by a real owner. Hint matching is exact and case-normalized, retains standard backdrop-filter and only browser-supported prefixed behavior, and treats unrecognized hints as unknown for pseudo ordering. Unknown paint is retained rather than suppressed. Browser hit-test oracles cover mixed-case transform, invented `mytransform`, standard/prefixed backdrop-filter, unlisted real `transform-style`, and neutral hints. The new accordion controls explicitly retain/refocus the same native heading before every clipped/covered/restored measurement.
+
+| Verification on the final candidate | Result |
+| --- | --- |
+| Debug Shell.Tests build, including Counter.Web | Passed; 0 warnings / 0 errors |
+| FrontComposerShellTests and FcSettingsDialogTests | 68 passed / 0 failed / 0 skipped/errors |
+| Affected R5/R6/R7 geometry/paint negatives and new pseudo/modal/Settings controls, all three engines | 138 passed / 0 failed / 0 skipped / 0 flaky; zero retries |
+| Automated actual 400% browser zoom, headed Chromium 153.0.8010.12 | 14 passed / 0 failed; five page surfaces and palette/Settings, each default/spaced |
+| TypeScript; story-artifact validator; diff check | Passed |
+| Owned Test runtime cleanup | Exact-target stop succeeded; describe reports no running AppHost |
+
+Native zoom uses `chrome.tabs.setZoom(4)` in automatic per-tab mode, with Playwright viewport emulation disabled. Every case verifies 1280×900 CSS pixels/DPR 1 at 100%, then 320×225/DPR 4, unchanged outer width 1280, CSS zoom 1, visual viewport scale 1, and `tabs.getZoom` approximately 4. Page cases check text clipping, bounded horizontal scrolling, target inventory, keyboard focus and blocking WCAG 2.2 axe findings; overlays check bounded scrolling, targets and forward/reverse keyboard focus. Settings additionally checks each density label has one text line. Complete viewport captures use CDP `Page.captureScreenshot` and are 1280×900 pixels; the original red probe's partial Playwright captures are not whole-viewport evidence. This is automated Chromium evidence, not a manual zoom log or evidence of other browsers' native zoom.
+
+The final 138-case selection includes the existing affected negative controls, and the final native 14-case run uses the same final helper. Broader checks below were completed earlier in this continuation and are deliberately attributed separately:
+
+| Earlier observation | Source and result |
+| --- | --- |
+| Full responsive spec after shell/grid/helper corrections, before later hint-boundary and Settings-orientation edits | Source/test patch `sha256:769fab6408e7445c1d4045add11cff367d16b31028ac43d491722596d8b98cc0`: 638 passed / 0 failed / 1 Firefox capability skip / 0 flaky, 639 total; all three engines, zero retries |
+| Six ordinary Chromium specimen visual baselines after shell/grid correction | 6 passed; no image update. Before the Settings-only orientation and final conservative hint guard; does not clear Firefox/WebKit visual failures |
+| Readable Settings controls after orientation correction | 6 passed across three engines; final 138-case/native runs subsequently include these controls |
+| Initial complete three-spec gate on unchanged root `80782afc…` | 964 passed / 13 failed / 4 skipped / 0 flaky, 981 total; zero retries. Chromium 327/0/0, Firefox 318/7/2, WebKit 319/6/2 (passed/failed/skipped) |
+| Initial state evidence and artifact validation on that root | 116 state files per engine; Chromium validator exit 0, Firefox/WebKit exit 1 for failed outcomes. All six raw/HTML roots below unchanged 52,428,800-byte limit |
+| Initial configured Shell lane on that root | 3,775 passed / 2 failed / 0 skipped/errors; 3,777 total |
+| Initial configured SourceTools lane on that root | 1,408 passed / 3 failed / 0 skipped/errors; 1,411 total |
+| Initial scanner / Node / TypeScript | 9/9 across three engines; 29/29 on Linux; passed |
+| Initial serialized Debug AppHost, SourceTools.Tests and Shell.Tests builds | Passed; zero warnings/errors |
+
+The complete browser gate's failures remain open: six Firefox and six WebKit visual comparisons, plus Firefox's spaced 320px module-navigation/tab keyboard geometry failure (theme-button focus envelope left −2px). An unchanged isolated one-worker repeat passed 3/3, and an instrumented repeat passed 3/3; neither attributes or supersedes that canonical full-gate failure. The current affected responsive pass does not replace a new complete three-spec gate. The ordinary Chromium images passed again after the global grid height change, without updating approved images.
+
+Configured Shell failures are `ToolchainPins_MatchApprovedDotnetAndAspireVersions` (approved AppHost SDK 13.6.1 versus declared 13.6.3) and `CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` (pinned Builds `1783c0a377615063f3222c1d28f3ab513af4e72f`: FsCheck.Xunit.v3 3.5.0 versus 3.6.0). SourceTools' two `QueryRequestDeprecationTests.NetStandardConsumer_*` cases require the missing Release/netstandard2.0 Contracts DLL; `PackagedAnalyzer_ContractsOnlyPayload_GeneratedShellConsumerCompiles` fails NU5026 for missing Release/net10.0 Contracts DLL. These remain prerequisite/governance failures; no Release output was manufactured to turn the Debug lane green. The configured runs include passing CommandFormEmitter 68, CommandRendererEmitter 35, RazorEmitter 18, ZeroField 21, CommandRendererWrapper 77, hidden-banner 39 and analyzer-governance 5 cases. They predate the bounded layout patch; only the affected layout classes were rerun afterward.
+
+Initial normal `aspire start` exited 2 with MSB4018 `GetAssemblyAttributes`, reporting a Shell `obj` assembly in use by another process. Exact-target stop and the serialized AppHost build succeeded. The explicitly selected existing Test profile then started and `aspire wait counter-web --status healthy` passed. Every post-production-change rebuild was performed after stopping that owned runtime; the rebuilt Counter endpoint was rediscovered through Aspire and was `https://localhost:7201`. Test-only specimen options were verified, including the 30,000ms reconnect notice. This does not establish live-backend acceptance. The earlier startup dependency repair remains separately documented; this run does not retain its obsolete pre-repair startup errors as the current result.
+
+Existing hosted runs were inspected, not triggered. At exact base `80782afc…`, [CI 40179812149](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40179812149) completed failure at dependency-governance, and [Quality 40179811928](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40179811928) completed failure. These are base-commit observations, not CI validation of the uncommitted correction.
+
+Exact build, configured-lane and final-check commands from the repository root:
+
+```bash
+aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json
+dotnet build src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj -c Debug -m:1
+dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Debug -m:1
+dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug -m:1
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- Category=GovernanceBuild -trait- Category=Performance -trait- Category=e2e-palette -trait- Category=NightlyProperty -trait- Category=Quarantined -longRunning 30 -result-xml /tmp/fc-story13-6-current-mmlpok_m/shell-configured.xml
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -trait- Category=GovernanceBuild -trait- Category=Performance -trait- Category=e2e-palette -trait- Category=NightlyProperty -trait- Category=Quarantined -longRunning 30 -result-xml /tmp/fc-story13-6-current-mmlpok_m/sourcetools-configured.xml
+node --test tests/e2e/scripts/a11y-state-evidence.test.mjs
+npm --prefix tests/e2e run typecheck
+# Final production build and focused layout run:
+dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug --no-restore -m:1
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*FrontComposerShellTests' -class '*FcSettingsDialogTests' -parallel none -result-xml /tmp/fc-story13-6-current-mmlpok_m/density-label-layout.xml
+ASPIRE_ENVIRONMENT=Test aspire start --no-build --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json -- --environment Test
+aspire wait counter-web --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --status healthy --timeout 30 --non-interactive
+xvfb-run -a -s '-screen 0 1600x1200x24' node /tmp/fc-story13-6-native-final-ot40ny28/native-zoom.mjs https://localhost:7201
+aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive
+aspire describe --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json
+python3 eng/validate-story-artifacts.py
+git diff --check
+```
+
+Browser commands ran from `tests/e2e`:
+
+```bash
+PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=/tmp/fc-story13-6-current-mmlpok_m/axe-helper FC_E2E_HTML_REPORT_DIR=/tmp/fc-story13-6-current-mmlpok_m/axe-helper-html npx playwright test specs/a11y-helper.spec.ts --workers=3 --retries=0
+# Complete initial engine runs and artifact validation, with distinct engine/run IDs:
+python3 /tmp/fc-story13-6-current-mmlpok_m/run-browser-gates.py https://localhost:7201
+BASE_URL=https://localhost:7201 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=/tmp/fc-story13-6-current-mmlpok_m/zoom-responsive-final FC_E2E_HTML_REPORT_DIR=/tmp/fc-story13-6-current-mmlpok_m/zoom-responsive-final-html npx playwright test specs/responsive-accessibility.spec.ts --workers=3 --retries=0
+BASE_URL=https://localhost:7201 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_BUILD_CONFIGURATION=Debug FC_E2E_OUTPUT_DIR=/tmp/fc-story13-6-current-mmlpok_m/visual-chromium-final FC_E2E_HTML_REPORT_DIR=/tmp/fc-story13-6-current-mmlpok_m/visual-chromium-final-html npx playwright test specs/specimen-accessibility.spec.ts --project=chromium --grep 'visual baseline' --workers=1 --retries=0
+BASE_URL=https://localhost:7201 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=/tmp/fc-story13-6-current-mmlpok_m/fail-closed-final FC_E2E_HTML_REPORT_DIR=/tmp/fc-story13-6-current-mmlpok_m/fail-closed-final-html npx playwright test specs/responsive-accessibility.spec.ts --grep 'R[567] |pseudo stacking owner|pseudo owner hint|pseudo paint respects|fixed modal scroll probes|native accordion focus measures|short settings retains' --workers=3 --retries=0
+```
+
+The initial gate script runs `npx playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --project=<engine> --workers=4 --retries=0`, then `node scripts/validate-a11y-artifacts.mjs`, for Chromium/Firefox/WebKit sequentially with `BASE_URL`, `PLAYWRIGHT_SKIP_WEBSERVER=1`, `FC_E2E_BUILD_CONFIGURATION=Debug`, per-engine raw/HTML roots, `FC_A11Y_EVIDENCE_ENGINE` and distinct `FC_A11Y_EVIDENCE_RUN_ID` values. The raw reports retain those run IDs and outcomes.
+
+Red controls remain separate: unchanged production failed all six short-Home cases and all six Settings cases; all three engines reproduced one-character density-label wrapping before vertical orientation. Modal coordinates, lower/escaping pseudo paint, mixed-case/exact hints, backdrop-filter preservation and unlisted hints each retain their pre-fix failures and browser layout oracles. In particular, `transform-style` falsely suppressed a real cover in all three engines before the final unknown-hint guard; the final 138 cases retain that cover, preserve neutral hints and reject invented-token misclassification.
+
+Raw logs/reports remain external scratch under `/tmp/fc-story13-6-current-mmlpok_m/`; final native results/captures are under `/tmp/fc-story13-6-native-final-ot40ny28/`. Original native red results and complete diagnostic captures remain under `/tmp/fc-story13-6-native-zoom-kg7smrug/` and `/tmp/fc-story13-6-native-diagnostic-elsiqnff/`. The earlier geometry-green but unreadable Settings capture remains historical under `/tmp/fc-story13-6-native-green-ncnp_s6_/`; readable results are separately retained under `/tmp/fc-story13-6-native-readable-8wgwmdfw/`. No committed evidence packet, manifest or runtime-identity record was added; the tests, command/count/source record and CI links above follow the 2026-10-23 evidence policy. Raw scratch does not establish owner approval.
+
+All eighteen human boxes and seven MAN-136 rows remain unperformed. Missing human zoom/AT/heard-speech/device observations, Windows execution, actual WebKit system-palette paint, twelve Firefox/WebKit visual failures, the full-gate Firefox focus failure, catalog/governance/prerequisite failures, live-backend acceptance, final-candidate CI and named owner approvals remain open. OI-16, G-4, FLUENT-APP-1, UX, Product and Architect approval are not inferred. Z1–Z4 are implemented and verified; the original matrix/result and resumed Evidence acceptance tasks remain unchecked. All approved PNG/Verify baselines, frozen intent, dependencies, gitlinks and public product APIs are unchanged. Nothing was staged, committed or pushed.
+
 ## Current committed-source verification — 2026-10-25
 
 **Story and sprint remain in-progress; accessibility acceptance remains blocked.** All implementation patches through Pass 8 are already committed. This continuation changes only this result and the owning spec. The starting root was `08a9a73f2fc8f8c4d5ae716d9a435760e5849a13`; an independent concurrent `/pushall` advanced it to `26d77f82bb3d721bc2b5165d1d77e6b3d6885ca8`, committing the prepared epic context and EventStore pointer. There is no `src`/`tests`/`samples`/`.github` difference between those roots, and all five raw source hashes in the [Pass 8 table](#pass-8-focused-verification--2026-10-25) match. The browser/helper outcomes below apply to that unchanged source; they establish no whole-runtime acceptance. CI run link: unavailable; no CI run was initiated.
@@ -363,7 +581,7 @@ Use [the existing manual log template](../../docs/accessibility-verification/man
 | MAN-136-NVDA | `not performed` | Accessibility/Stakeholder role; individual unassigned. Blocks story/release accessibility completion. No dated human NVDA/Firefox observation supplied. Assign a tester and run the checklist; reopen on a matching candidate with exact versions and sanitized evidence. |
 | MAN-136-JAWS | `not performed` | Accessibility/Stakeholder role; individual unassigned. Blocks completion. No dated human JAWS/Chrome observation supplied. Assign a tester and run the checklist; same candidate/version/evidence trigger. |
 | MAN-136-VO | `not performed` | Accessibility/Stakeholder role; individual unassigned. Blocks completion. No dated human VoiceOver/Safari observation supplied. Assign a tester and run the checklist; same candidate/version/evidence trigger. |
-| MAN-136-ZOOM | `not performed` | Quality/Test role; individual unassigned. Blocks AE-02. Actual browser zoom has not been performed. Run at 400% from a measured 1280 CSS-pixel reference viewport; reopen with browser/version and real zoom evidence. |
+| MAN-136-ZOOM | `not performed` | Quality/Test role; individual unassigned. The automated native Chromium 400% run above passed; no dated human zoom observation exists. The human AE-02 gate remains open. Repeat the human checklist at 400% from a measured 1280 CSS-pixel reference viewport; reopen with exact versions, a matching candidate and dated observations. |
 | MAN-136-TABLET | `not performed` | Quality/Test role; individual unassigned. Blocks real-device gate. No actual tablet supplied. Exercise touch-adapted tier on a physical tablet; reopen with model, OS/browser, orientation, viewport and dated human results. |
 | MAN-136-PHONE | `not performed` | Quality/Test role; individual unassigned. Blocks real-device gate. No actual phone supplied. Exercise functional fallback on a physical phone; reopen with the same device/version evidence. |
 | MAN-136-ZERO-FIELD | `not performed` | Quality/Test and Accessibility/Stakeholder roles; individuals unassigned. Human AT/heard-speech observations remain open. The gated Test host now exposes the real generated renderer and its automated matrix has run. Execute the approved sequence with a supported AT/browser pairing; automation does not supply heard speech. |
@@ -406,7 +624,7 @@ All gate rows above share task/story `13.6` and release branch `main`; human obs
 
 ## Remaining acceptance gates
 
-The summary in this section retains the 2026-10-18 reviewed candidate. The current committed-source verification above owns the latest candidate attribution and `in-progress` status; it supplies only focused verification.
+The summary in this section retains the 2026-10-18 reviewed candidate. The approved A3 technical completion section above owns the latest local candidate attribution and `in-progress` status, with its stated current, reused and historical verification boundaries.
 
 All 18 manual boxes stay open. NVDA/JAWS/VoiceOver, heard speech, actual browser zoom, physical tablet/phone and human reviewer observations remain unperformed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and live EventStore acceptance remain unresolved. The final reviewed browser run passes every executed nonvisual case and the unchanged per-root size limit; eighteen visual comparisons and four existing .NET snapshot/catalog tests remain failed. Complete capture/portability integrity passes, while the full artifact validators and accessibility classification remain blocked. Historical oversized and interrupted packets remain failed history, without changing the cap. Windows and actual WebKit forced-palette coverage stay open.
 

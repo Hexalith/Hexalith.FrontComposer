@@ -166,6 +166,9 @@
 [data-fc-datagrid] {
     min-inline-size: 0;
     max-inline-size: 100%;
+    /* Leave the shell and region's existing 8px scroll insets on both sides
+       of a keyboard-focused region, including a short zoomed viewport. */
+    max-block-size: calc(100dvh - 32px);
     overflow: auto;
     padding: 8px;
     scroll-padding: 8px;
@@ -186,6 +189,12 @@
 }
 
 .fc-projection-grid { max-inline-size: 100%; min-inline-size: max-content; }
+/* In the existing mobile layout, let the labelled grid scroll at its natural
+   column width. Fluent's inline fixed table layout otherwise lets unwrapped
+   glyphs cover neighboring cell targets (including WebKit's native hit area). */
+.fluent-layout[global-scrollbar] table.fc-projection-grid {
+    table-layout: auto !important;
+}
 .fc-projection-grid tr.fluent-data-grid-row > td, .fc-projection-grid th.column-header {
     overflow: visible;
     text-overflow: clip;

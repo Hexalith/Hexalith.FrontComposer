@@ -547,8 +547,8 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
   });
   for (const surface of surfaces) {
     for (const spacing of [false, true]) {
-      test(`${surface.name}: 320 CSS-pixel reflow${spacing ? ' with all text-spacing overrides' : ''}`, async ({ page }, testInfo) => {
-        await page.setViewportSize({ width: 320, height: 900 });
+      for (const height of [900, 225]) test(`${surface.name}: 320 CSS-pixel reflow${spacing ? ' with all text-spacing overrides' : ''}${height === 225 ? ' at 225 CSS-pixel height (not browser zoom)' : ''}`, async ({ page }, testInfo) => {
+        await page.setViewportSize({ width: 320, height });
         await page.goto(surface.path);
         await expect(page.locator(surface.ready).first()).toBeVisible();
         await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
@@ -566,6 +566,42 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
     }
   }
   for (const theme of ['light', 'dark']) {
+    test(`generated mobile grid columns retain native cell targets with combined spacing in ${theme}`, async ({ page }, info) => {
+      await page.setViewportSize({ width: 320, height: 900 });
+      await page.goto(`/__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true&density=compact&theme=${theme}`);
+      await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+      await page.getByTitle('Change theme').first().click();
+      await page.getByRole('menuitem', { name: theme === 'dark' ? 'Dark' : 'Light', exact: true }).click();
+      await applyTextSpacing(page);
+      await settlePaint(page);
+      const scenarios = page.getByTestId('fc-ae-scenarios');
+      await scenarios.getByTestId('fc-ae-select-validation').click();
+      const trigger = scenarios.getByRole('button', { name: 'Run accessibility specimen', exact: true });
+      await trigger.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Enter');
+      await scenarios.getByTestId('fc-zero-field-outcome').scrollIntoViewIfNeeded();
+      // Native WebKit assigns overflowing table glyph hits to their source cell.
+      // Measure the real remaining pointer area, including offscreen scroll probes.
+      await expectTargetSizes(page);
+      await expectNoPageOverflow(page);
+      await expectNoTextClipping(page);
+      const table = page.getByTestId('fc-badge-grid').locator('table.fc-projection-grid');
+      await expect(table).toHaveCSS('table-layout', 'auto');
+      const geometry = await table.evaluate(table => {
+        const region = table.closest('[data-fc-datagrid]')!;
+        return { tableWidth: table.getBoundingClientRect().width, regionWidth: region.clientWidth,
+          label: region.getAttribute('aria-label'), overflow: getComputedStyle(region).overflowX };
+      });
+      expect(geometry.tableWidth).toBeGreaterThan(geometry.regionWidth);
+      expect(geometry.label).toBeTruthy();
+      expect(geometry.overflow).toBe('auto');
+      await info.attach('native-cell-targets', { body: JSON.stringify(geometry), contentType: 'application/json' });
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await expect(table).toHaveCSS('table-layout', 'fixed');
+    });
+
     test(`type states retain contrast, system colors and immediate reduced-motion cues in ${theme}`, async ({ page }, testInfo) => {
       await page.goto(`/__frontcomposer/specimens/type?theme=${theme}&density=compact`);
       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
@@ -741,6 +777,165 @@ test('missing-detail recovery consumes only lost detail focus and cancels stale 
     return { recovered, focusedExplanation, visibleExplanation, shadowRecovered, preserved, cancelled };
   });
   expect(result).toEqual({ recovered: true, focusedExplanation: true, visibleExplanation: true, shadowRecovered: true, preserved: true, cancelled: true });
+});
+
+test('fixed modal scroll probes keep spacing targets in one frame and reject a partial cover', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 225 });
+  await page.setContent('<style>body{margin:0}dialog{position:fixed;inset:0;margin:0;padding:0;border:0;box-sizing:border-box;width:300px;height:225px;max-height:none;overflow:auto}button{display:block;border:0;padding:0}#small{margin-top:192px;width:16px;height:16px}#later{margin-top:192px;width:80px;height:32px}</style><dialog><button id="small">A</button><button id="later">B</button></dialog>');
+  await page.locator('dialog').evaluate(dialog => (dialog as HTMLDialogElement).showModal());
+  const exceptions: TargetException[] = [{ selector: '#small', kind: 'Spacing', rationale: 'The 16px native button is isolated from the later control in the same scrollable dialog.', keyboardPath: 'Tab from first to later button', evidence: 'Measured fixed-modal target inventory' }];
+  const targets = await expectTargetSizes(page, exceptions);
+  const small = targets.find(target => target.target === '#small')!, later = targets.find(target => target.target === '#later')!;
+  expect(later.box.top).toBeGreaterThan(small.box.bottom + 24);
+  await page.locator('dialog').evaluate(dialog => {
+    const cover = document.createElement('div'); cover.id = 'cover';
+    cover.style.cssText = 'position:absolute;left:0;top:192px;width:8px;height:16px;background:black';
+    dialog.append(cover);
+  });
+  const covered = (await inventoryTargets(page, exceptions)).inventory.find(target => target.target === '#small')!;
+  expect(covered.width).toBe(8);
+  expect(covered.failure).toContain('Clipping leaves the target without the required reachable area');
+  await page.locator('#cover').evaluate(cover => cover.remove());
+  await expectTargetSizes(page, exceptions);
+});
+
+test('pseudo paint respects its own stacking context without hiding an escaped high layer', async ({ page }) => {
+  await page.setContent('<style>body{margin:0;background:white}button{position:absolute;left:40px;top:40px;width:100px;height:40px;background:white;border:0;outline:none;z-index:10}button:focus{outline:2px solid black}#lower{position:relative;width:1px;height:1px}#lower::after{content:"";position:absolute;left:40px;top:40px;width:100px;height:40px;background:black;z-index:1}</style><button>Save</button><div id="lower"></div>');
+  const target = page.getByRole('button'); await target.focus();
+  expect((await focusGeometry(target)).failures).toEqual([]);
+  await page.addStyleTag({ content: '#lower::after{z-index:999}' });
+  expect((await focusGeometry(target)).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+  await page.locator('#lower').evaluate(lower => { lower.style.zIndex = '0'; });
+  expect((await focusGeometry(target)).failures).toEqual([]);
+  await page.locator('#lower').evaluate(lower => { lower.style.zIndex = '20'; });
+  expect((await focusGeometry(target)).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+});
+
+for (const hint of ['transform', 'TrAnSfOrM', 'backdrop-filter', '-webkit-backdrop-filter', 'transform-style', 'auto', 'contents', 'scroll-position']) test(`pseudo stacking owner ${hint} follows the native hit oracle`, async ({ page }) => {
+  await page.setContent('<style>body{margin:0;pointer-events:none;background:white}button{pointer-events:auto;position:absolute;left:40px;top:40px;width:100px;height:40px;background:white;border:0;outline:none;z-index:-1}button:focus{outline:2px solid black}#owner{pointer-events:auto;position:relative;width:1px;height:1px}#owner::after{content:"";position:absolute;left:40px;top:40px;width:100px;height:40px;background:black;z-index:-10}</style><button id="target">Save</button><div id="owner"></div>');
+  const target = page.getByRole('button'); await target.focus();
+  expect(await page.evaluate(() => document.elementFromPoint(80, 60)?.id)).toBe('target');
+  expect((await focusGeometry(target)).failures).toEqual([]);
+  await page.locator('#owner').evaluate((owner, hint) => { owner.style.willChange = hint; }, hint);
+  const trapped = !['auto', 'contents', 'scroll-position'].includes(hint) && (hint !== '-webkit-backdrop-filter' || await page.evaluate(() => CSS.supports('-webkit-backdrop-filter', 'none')));
+  expect(await page.evaluate(() => document.elementFromPoint(80, 60)?.id)).toBe(trapped ? 'owner' : 'target');
+  const geometry = await focusGeometry(target);
+  if (trapped) expect(geometry.failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+  else expect(geometry.failures).toEqual([]);
+});
+
+for (const hint of ['transform', 'mytransform', 'backdrop-filter', '-webkit-backdrop-filter']) test(`pseudo owner hint ${hint} follows the browser stacking oracle`, async ({ page }) => {
+  await page.setContent('<style>body{margin:0;background:white}button{position:absolute;left:40px;top:40px;width:100px;height:40px;background:white;border:0;outline:none;z-index:10}button:focus{outline:2px solid black}#owner{position:relative;width:1px;height:1px}#owner::after{content:"";position:absolute;left:40px;top:40px;width:100px;height:40px;background:black;z-index:999}</style><button id="target">Save</button><div id="owner"></div>');
+  const target = page.getByRole('button'); await target.focus();
+  await page.locator('#owner').evaluate((owner, hint) => { owner.style.willChange = hint; }, hint);
+  const trapped = hint === 'transform' || hint === 'backdrop-filter' || hint === '-webkit-backdrop-filter' && await page.evaluate(() => CSS.supports('-webkit-backdrop-filter', 'none'));
+  expect(await page.evaluate(() => document.elementFromPoint(80, 60)?.id)).toBe(trapped ? 'target' : 'owner');
+  const geometry = await focusGeometry(target);
+  if (trapped) expect(geometry.failures).toEqual([]);
+  else expect(geometry.failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+});
+
+async function openShortSettings(page: import('@playwright/test').Page, spacing = false) {
+  await page.setViewportSize({ width: 320, height: 225 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.getByTestId('fc-settings-button').click();
+  const root = page.getByTestId('fc-settings-dialog');
+  await expect(root).toBeVisible();
+  if (spacing) await applyTextSpacing(page);
+  await page.locator('#fc-settings-heading').focus();
+  await page.keyboard.press('Tab');
+  return root;
+}
+
+test('native accordion focus measures its heading and retains clipped and covered negatives', async ({ page }) => {
+  const root = await openShortSettings(page, true);
+  const accordion = root.locator('fluent-accordion-item').first();
+  await expect(accordion).toBeFocused();
+  const button = await accordion.evaluateHandle(host => host.shadowRoot!.activeElement as HTMLElement);
+  const proof = await accordion.evaluate(host => {
+    const control = host.shadowRoot!.activeElement!;
+    const panel = host.shadowRoot!.getElementById(control.getAttribute('aria-controls')!);
+    return { tag: control.tagName, panel: panel?.getAttribute('role'), hostHeight: host.getBoundingClientRect().height, controlHeight: control.getBoundingClientRect().height };
+  });
+  expect(proof.tag).toBe('BUTTON');
+  expect(proof.panel).toBe('region');
+  expect(proof.hostHeight).toBeGreaterThan(225);
+  expect(proof.controlHeight).toBeLessThan(225);
+  await expectFocusVisible(accordion);
+
+  await accordion.evaluate(host => {
+    const heading = host.shadowRoot!.querySelector('[part="heading"]')!;
+    const clip = document.createElement('div');
+    clip.dataset.aeHeadingClip = 'true';
+    clip.style.cssText = 'height:12px;overflow:hidden';
+    heading.replaceWith(clip); clip.append(heading);
+  });
+  await button.evaluate(control => control.focus({ preventScroll: true }));
+  expect(await button.evaluate(control => control.isConnected && (control.getRootNode() as ShadowRoot).activeElement === control)).toBe(true);
+  expect((await focusGeometry(accordion)).failures).toContain('vertical scrollport clips target or ring');
+  await accordion.evaluate(host => {
+    const clip = host.shadowRoot!.querySelector('[data-ae-heading-clip]')!;
+    clip.replaceWith(...clip.childNodes);
+  });
+  await button.evaluate(control => { control.scrollIntoView({ block: 'center', behavior: 'instant' }); control.focus(); });
+  expect(await button.evaluate(control => control.isConnected && (control.getRootNode() as ShadowRoot).activeElement === control)).toBe(true);
+  await expectFocusVisible(accordion);
+
+  await accordion.evaluate(host => {
+    const heading = host.shadowRoot!.querySelector<HTMLElement>('[part="heading"]')!;
+    heading.dataset.aeOldPosition = heading.style.position;
+    heading.style.position = 'relative';
+    const cover = document.createElement('span'); cover.dataset.aeHeadingCover = 'true';
+    cover.style.cssText = 'position:absolute;inset:0;background:black;z-index:9;pointer-events:none';
+    heading.append(cover);
+  });
+  expect(await button.evaluate(control => control.isConnected && (control.getRootNode() as ShadowRoot).activeElement === control)).toBe(true);
+  expect((await focusGeometry(accordion)).failures).toContain('app content obscures target or focus ring');
+  await accordion.evaluate(host => {
+    host.shadowRoot!.querySelector('[data-ae-heading-cover]')!.remove();
+    const heading = host.shadowRoot!.querySelector<HTMLElement>('[part="heading"]')!;
+    heading.style.position = heading.dataset.aeOldPosition!; delete heading.dataset.aeOldPosition;
+  });
+  await expectFocusVisible(accordion);
+  await button.dispose();
+});
+
+test('short settings retains complete spaced density targets with the existing spacing exceptions', async ({ page }) => {
+  const root = await openShortSettings(page, true);
+  await expect(root.locator('fluent-radio-group')).toHaveAttribute('orientation', 'vertical');
+  const labels = await root.locator('fluent-radio-group label[slot="label"]').evaluateAll(elements => elements.map(element => {
+    const range = document.createRange(); range.selectNodeContents(element);
+    return { text: element.textContent, lines: [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0).length };
+  }));
+  expect(labels).toHaveLength(3);
+  for (const label of labels) expect(label.lines, `${label.text} remains a readable complete word`).toBe(1);
+  const exceptions: TargetException[] = ['Compact', 'Comfortable', 'Roomy'].map(value => ({
+    selector: `fluent-radio[name="fc-density-select"][value="${value}"]`, kind: 'Spacing',
+    rationale: 'The native density radio retains a clear measured 24px spacing circle.',
+    keyboardPath: 'Settings → Density; Tab and arrows', evidence: 'Short spaced Settings target inventory',
+  }));
+  const targets = await expectTargetSizes(page, exceptions);
+  for (const target of targets.filter(target => target.exception)) {
+    expect(target.width).toBe(16); expect(target.height).toBe(16);
+  }
+  const radio = page.getByTestId('fc-settings-dialog').locator('fluent-radio').first();
+  await radio.scrollIntoViewIfNeeded();
+  await radio.evaluate(element => {
+    const box = element.getBoundingClientRect(), field = element.parentElement!;
+    field.dataset.aeOldPosition = field.style.position; field.style.position = 'relative';
+    const cover = document.createElement('div'); cover.id = 'ae-radio-cover';
+    cover.style.cssText = 'position:absolute;left:0;top:0;width:8px;height:16px;background:black;z-index:999';
+    field.shadowRoot!.append(cover);
+    const origin = cover.getBoundingClientRect();
+    cover.style.left = `${box.left - origin.left}px`; cover.style.top = `${box.top - origin.top}px`;
+  });
+  const id = await radio.getAttribute('id');
+  const covered = (await inventoryTargets(page, exceptions)).inventory.find(target => target.target === `#${id}`)!;
+  expect(covered.failure).toContain('Clipping leaves the target without the required reachable area');
+  await radio.evaluate(element => { const field = element.parentElement!; field.shadowRoot!.querySelector('#ae-radio-cover')!.remove(); field.style.position = field.dataset.aeOldPosition!; delete field.dataset.aeOldPosition; });
+  await expectTargetSizes(page, exceptions);
 });
 
 async function verifyKeyboardCycle(page: import('@playwright/test').Page, modal = false) {

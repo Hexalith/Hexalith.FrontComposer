@@ -32,6 +32,24 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 public sealed class FcSettingsDialogTests : LayoutComponentTestBase {
     public FcSettingsDialogTests() => EnsureStoreInitialized();
 
+    /// <summary>
+    /// Keeps density labels readable on narrow tiers while retaining desktop ordering.
+    /// </summary>
+    /// <param name="tier">The existing shell viewport tier.</param>
+    /// <param name="orientation">The native Fluent radio-group orientation for that tier.</param>
+    [Theory]
+    [InlineData(ViewportTier.Desktop, Orientation.Horizontal)]
+    [InlineData(ViewportTier.CompactDesktop, Orientation.Horizontal)]
+    [InlineData(ViewportTier.Tablet, Orientation.Vertical)]
+    [InlineData(ViewportTier.Phone, Orientation.Vertical)]
+    public void DensityChoiceOrientationFollowsTheExistingViewportTiers(ViewportTier tier, Orientation orientation)
+    {
+        Services.GetRequiredService<IDispatcher>().Dispatch(new ViewportTierChangedAction(tier));
+        IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
+        (cut.FindComponent<FluentRadioGroup<DensityLevel>>().Instance.Orientation ?? Orientation.Horizontal)
+            .ShouldBe(orientation);
+    }
+
     [Theory]
     [InlineData("/home", true)]
     [InlineData("/counter?search=changed", false)]
