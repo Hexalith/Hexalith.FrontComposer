@@ -318,8 +318,9 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
         cut.Find("fluent-button").Click();
         cut.WaitForAssertion(() => cut.Find("[data-testid='fc-zero-field-outcome']").TextContent.ShouldContain("workspace identity"));
         cut.WaitForAssertion(() => speech.Count(message => message.Contains("workspace identity", StringComparison.Ordinal)).ShouldBe(1));
-        // The live form still applies the attempted-control rule once per attempt: the positive control
-        // for the disposed exit that skips it.
+        // The current scope-unavailable path invokes the hidden form's submit target once per attempt.
+        // That target is not focusable here (deferred R8-B1); this pins the known limitation and the
+        // positive control for the disposed exit, without proving the AM-20 visible-trigger contract.
         cut.WaitForAssertion(() => AttemptedControlFocus().ShouldHaveSingleItem());
         cut.Render();
         speech.Count(message => message.Contains("workspace identity", StringComparison.Ordinal)).ShouldBe(1);

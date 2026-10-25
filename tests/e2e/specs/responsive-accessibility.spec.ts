@@ -621,7 +621,7 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
         expect(motion.animation, `${selector} animation`).toBe('none');
       }
       // The supplementary reconciliation marker remains static and paints in both palettes. It briefly
-      // marks changed rows whose refreshed values carry the content; partial reconnects show it without
+      // marks a refreshed grid whose values carry the content; partial reconnects show it without
       // the Reconnected notice, so it depends on no notice. This checks no contrast claim.
       expect((await motionOf('.fc-reconciliation-sweep')).outline, 'reduced-motion sweep outline').toMatch(/^solid [1-9]/u);
       await page.emulateMedia({ forcedColors: 'none', reducedMotion: 'reduce' });
@@ -2225,11 +2225,12 @@ for (const property of [
   'will-change:translate', 'will-change:scale', 'will-change:rotate', 'will-change:contain',
   'will-change:backdrop-filter', 'will-change:transform-style', 'will-change:offset-path', 'will-change:-webkit-backdrop-filter',
   'content-visibility:auto', 'content-visibility:hidden', 'transform-style:preserve-3d',
-]) test(`R6 containing block ${property} retains its overflow clip`, async ({ page }) => {
+  'offset-path:ray(0deg)', 'will-change:TrAnSfOrM',
+]) test(`R6 containing block ${property} retains its overflow clip`, async ({ page, browserName }) => {
   await page.setContent(`<style>body{margin:0;background:white}span{color:#bbb;font:16px sans-serif}</style><div id="root"><p>Visible control</p><div id="block" style="${property};overflow:hidden;width:50px;height:30px"><span style="position:fixed;left:120px;top:100px">Clipped fixed label</span></div></div>`);
   // Layout is the oracle: a contained label moves with the block. Only WebKit honors the prefixed hint.
   const contained = await page.locator('span').evaluate(element => Math.abs(element.getBoundingClientRect().top - 100) > .5);
-  if (!property.includes('-webkit-')) expect(contained, `${property} creates a containing block`).toBe(true);
+  expect(contained, `${property} creates a containing block`).toBe(property.includes('-webkit-') ? browserName === 'webkit' : true);
   const samples = await measureSurfaceContrast(page.locator('#root'));
   expect(samples.some(sample => sample.paint === 'Visible control')).toBe(true);
   expect(samples.some(sample => sample.paint === 'Clipped fixed label')).toBe(!contained);
@@ -2238,11 +2239,12 @@ for (const property of [
   expect(escaped.find(sample => sample.paint === 'Clipped fixed label')?.ratio).toBeLessThan(4.5);
 });
 
-// A backdrop-filter block contains the label, and its backdrop paint fails closed in every engine.
-for (const property of ['backdrop-filter:blur(1px)', '-webkit-backdrop-filter:blur(1px)']) test(`R7 containing block ${property} needs pixel evidence`, async ({ page }) => {
+// Supported backdrop-filter paint fails closed before helper containment is evaluated.
+// Chromium and Firefox ignore the prefixed spelling, leaving its label escaped.
+for (const property of ['backdrop-filter:blur(1px)', '-webkit-backdrop-filter:blur(1px)']) test(`R7 filtered paint ${property} needs pixel evidence when supported`, async ({ page, browserName }) => {
   await page.setContent(`<style>body{margin:0;background:white}span{color:#bbb;font:16px sans-serif}</style><div id="root"><p>Visible control</p><div style="${property};overflow:hidden;width:50px;height:30px"><span style="position:fixed;left:120px;top:100px">Clipped fixed label</span></div></div>`);
   const contained = await page.locator('span').evaluate(element => Math.abs(element.getBoundingClientRect().top - 100) > .5);
-  if (!property.startsWith('-webkit-')) expect(contained, `${property} creates a containing block`).toBe(true);
+  expect(contained, `${property} creates a containing block`).toBe(property.startsWith('-webkit-') ? browserName === 'webkit' : true);
   if (contained) await expect(measureSurfaceContrast(page.locator('#root'))).rejects.toThrow(/Filtered or blended paint needs pixel evidence/);
   else expect((await measureSurfaceContrast(page.locator('#root'))).find(sample => sample.paint === 'Clipped fixed label')?.ratio).toBeLessThan(4.5);
 });

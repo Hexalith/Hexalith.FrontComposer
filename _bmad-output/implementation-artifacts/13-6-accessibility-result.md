@@ -1,5 +1,60 @@
 # Story 13.6 accessibility result and human checklist
 
+## Pass 8 focused verification — 2026-10-25
+
+**Story and sprint remain in-progress; final accessibility classification is blocked.** The local candidate is root `c7f1666508e6582cfe168b12efb4a71638abc328` plus source/test patch `sha256:7f76211b44721767233f37fb0dadc869cd8aa88d14642b35f7f090f558de2871`, from `git diff --binary c7f1666508e6582cfe168b12efb4a71638abc328 -- src tests | sha256sum`. All eight Pass 8 patches are applied. This record supersedes earlier candidate attribution only for the focused checks below; earlier complete matrix, visual and .NET observations retain their dated source identities. No current whole-surface or hosted CI pass is inferred; CI run link: not available, no CI run initiated.
+
+| Current focused lane | Result |
+| --- | --- |
+| New browser regressions against unchanged helper | 5 failed / 1 passed across three engines; Chromium/Firefox miss computed offset-path, all engines miss mixed-case will-change; WebKit already catches offset-path via computed transform |
+| R5/R6/R7 related fixtures after correction | 72 passed / 0 failed / 0 skipped across Chromium, Firefox and WebKit; zero retries |
+| Spaced temporary directory with original CLI regexes | 27 passed / 2 failed at the two targeted path assertions |
+| Node evidence suite after correction | 29 passed / 0 failed / 0 skipped on Linux |
+| TypeScript | Passed |
+| Debug SourceTools.Tests / Shell.Tests builds | Both passed; zero warnings/errors |
+| CommandFormEmitterTests / ZeroFieldFailureAccessibilityTests | 68 passed / 21 passed; zero failures/skips/errors |
+| Repository story-artifact / diff checks | Passed |
+
+The helper now recognizes a computed non-`none` `offset-path` and normalizes `will-change` tokens before exact matching. Filtered backdrop paint still fails closed before containment can be observed; the dead computed backdrop-filter predicate is removed. Both prefixed fixture loops require the browser layout oracle to be WebKit-only. The CLI assertions match the escaped exact report path and all their fixtures exercise a directory containing spaces. The emitter assertion names a missing method anchor before any dependent search or slice. The scope-unavailable assertion explicitly pins the current hidden-form target, with R8-B1's visible-trigger/WebKit pointer behavior still deferred.
+
+**Retained sweep disposition (R7-A1/R7-A2):** the transient 700ms reconciliation marker decorates a refreshed grid; its refreshed values carry the content. It can appear after a partial reconnect without the Reconnected notice, so the supplementary classification does not depend on that notice. The historical 35% brand reduced-motion outline is below 3:1 (about 1.6:1 on white); this engineering classification makes no essential non-text contrast or UX approval claim. UX may authorize a ≥3:1 Fluent stroke token as a Story 5.4 follow-up. The test now describes the grid host accurately.
+
+Exact successful commands, from the repository root unless a working directory is stated:
+
+```bash
+npm --prefix tests/e2e run typecheck
+node --test tests/e2e/scripts/a11y-state-evidence.test.mjs
+dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Debug -m:1
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class '*CommandFormEmitterTests' -parallel none
+dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug -m:1
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*ZeroFieldFailureAccessibilityTests' -parallel none
+python3 eng/validate-story-artifacts.py
+git diff --check
+```
+
+From `tests/e2e`, the final browser command was:
+
+```bash
+PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=/tmp/fc-story13-6-pass8-kiS6zN/browser-green FC_E2E_HTML_REPORT_DIR=/tmp/fc-story13-6-pass8-kiS6zN/browser-green-html npx playwright test specs/responsive-accessibility.spec.ts --grep 'R[567] (containing block|filtered paint|escaped|display contents|a nested|exterior|simple contrast)' --workers=3 --retries=0
+```
+
+The executed red browser command used the same working directory and flags, `--grep 'R6 containing block (offset-path:ray|will-change:TrAnSfOrM retains)'`, and separate `browser-red-installed` / `browser-red-installed-html` roots. Its final report records five expected failures and WebKit's passing offset-path case. An earlier nine-case attempt under `browser-red` failed before assertions because browser executables were absent; it supplies no regression evidence. `npx playwright install chromium firefox webkit` then installed the normal cached binaries selected by existing Playwright 1.63.0 without dependency-file changes. Node's spaced-path red control used its normal command before the two regex corrections.
+
+Raw logs/reports are local scratch under `/tmp/fc-story13-6-pass8-kiS6zN/`, outside the checkout, with passing and failed attempts retained separately. They are not durable immutable accepted proof. Current raw-byte source identities:
+
+| Input | SHA-256 |
+| --- | --- |
+| `tests/e2e/helpers/responsive-accessibility.ts` | `06b141a9d8a25ca3c3d6b10df47ec101d5bf3a9c848de72c61a3441464f238ec` |
+| `tests/e2e/specs/responsive-accessibility.spec.ts` | `7239f927ad101ea1ad7e09efe963545a18f0e141eae904af9339ec92aa078e34` |
+| `tests/e2e/scripts/a11y-state-evidence.test.mjs` | `38acd888b9a89a4f22ab9c8cb7a90c2cd54fc34b75fbbd21220369ac79537b06` |
+| `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs` | `f2ae3c8c571f545e16f8ce51489e44f8c67dd6919025a727aa4239ed10b2e82d` |
+| `tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs` | `477e9506cc86c6e8a0f9f16ec59e04a83bd9edf29cdc25243614eefd15d28336` |
+
+The pre-edit runtime command `aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json` exited 2 before startup. Its build reported two NETSDK1004 missing Commons.UniqueIds assets errors, Parties CS1061 for unavailable `RecoverNonExpiringPendingAsync`, and two MSB3026 copy warnings. Exact-target describe reported no running AppHost, and exact-target stop was issued. Successful focused Debug builds do not establish a healthy whole-runtime baseline.
+
+Full Counter-host/browser, configured Shell/SourceTools, visual and artifact gates were not rerun on this patch. Every historical failed/interrupted packet retains its failure attribution. All eighteen human checklist boxes below remain open; actual AT/heard speech, 400% browser zoom, physical tablet/phone, Windows and actual WebKit forced-palette paint remain unperformed. OI-16, G-4, FLUENT-APP-1, visual/catalog/live-backend and Product/Architect approval remain unresolved. The original matrix/result and Evidence tasks stay unchecked. No approved image bytes, frozen requirements, dependency declarations, gitlinks or public product APIs changed; nothing was staged, committed or pushed.
+
+
 ## Current committed-source reconciliation — 2026-10-23
 
 **Story and sprint remain in-progress; accessibility acceptance is incomplete.** The final observed root is `637ecb8ba7cf9e21831ee3f3bb32eb2cceaf9990`, retaining the frontend source from initial root `6f6eb8982ca1e97e28586de1d4ffc540467058af`. The [current reconciliation receipt](tests/story-13-6-committed-reconciliation-2026-10-23.json) verifies all fourteen Pass 6 source inputs and twenty-four approved PNGs against the [prior bounded receipt](tests/story-13-6-pass6-2026-10-23.json). The frozen intent also matches the pre-Pass-6 version after Git line-ending normalization. The prior receipt and every dated section below retain their historical attribution.
@@ -307,6 +362,8 @@ All gate rows above share task/story `13.6` and release branch `main`; human obs
 - [ ] On a phone, establish functional fallback for the same essential operations, including row actions exposed through detail and bounded two-dimensional scrolling. Record constraints honestly; do not claim full daily-use phone support.
 
 ## Remaining acceptance gates
+
+The summary in this section retains the 2026-10-18 reviewed candidate. The Pass 8 record above owns the current candidate and `in-progress` status; it supplies only focused verification.
 
 All 18 manual boxes stay open. NVDA/JAWS/VoiceOver, heard speech, actual browser zoom, physical tablet/phone and human reviewer observations remain unperformed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and live EventStore acceptance remain unresolved. The final reviewed browser run passes every executed nonvisual case and the unchanged per-root size limit; eighteen visual comparisons and four existing .NET snapshot/catalog tests remain failed. Complete capture/portability integrity passes, while the full artifact validators and accessibility classification remain blocked. Historical oversized and interrupted packets remain failed history, without changing the cap. Windows and actual WebKit forced-palette coverage stay open.
 

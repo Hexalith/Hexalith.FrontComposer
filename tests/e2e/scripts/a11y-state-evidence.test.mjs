@@ -42,7 +42,8 @@ function runValidator(root, report, engine) {
 }
 
 function matrix(run) {
-  const root = mkdtempSync(join(tmpdir(), 'ae-evidence-test-'));
+  // Every CLI fixture must also work beneath a path containing spaces.
+  const root = mkdtempSync(join(tmpdir(), 'ae evidence-test-'));
   try {
     const files = [], snapshots = [];
     const attached = join(root, 'attachments'); mkdirSync(attached);
@@ -437,7 +438,7 @@ test('CLI reports an unreadable report and ambiguous capability attachments expl
 test('CLI rejects non-object report, state and capability JSON by name', () => matrix(({ report, root, files }) => {
   let result = runValidator(root, 'null', 'chromium');
   assert.equal(result.status, 1, result.stdout + result.stderr);
-  assert.match(result.stderr, /Invalid authoritative Playwright report \S+: report must be an object/);
+  assert.match(result.stderr, new RegExp(`Invalid authoritative Playwright report ${RegExp.escape(join(root, 'playwright.json'))}: report must be an object`));
   assert.doesNotMatch(result.stderr, /Invalid authoritative Playwright report.*Invalid authoritative Playwright report/);
   assert.doesNotMatch(result.stderr, /TypeError/);
   writeFileSync(files[0], 'null');
@@ -484,7 +485,7 @@ test('CLI rejects malformed nested reporter shapes without a traversal exception
     assert.match(validateStateEvidence(all, { report: malformed }).join('\n'), /Invalid authoritative Playwright report/, label);
     const result = runValidator(root, malformed, 'chromium');
     assert.equal(result.status, 1, label + ': ' + result.stdout + result.stderr);
-    assert.match(result.stderr, /Invalid authoritative Playwright report \S+: report\.\S+ must be an (array|object)/, label);
+    assert.match(result.stderr, new RegExp(`Invalid authoritative Playwright report ${RegExp.escape(join(root, 'playwright.json'))}: report\\.\\S+ must be an (array|object)`), label);
     assert.doesNotMatch(result.stderr, /TypeError|at visit|at Array\./, label);
   }
 }));

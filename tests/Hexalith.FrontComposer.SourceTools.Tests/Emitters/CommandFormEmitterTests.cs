@@ -1312,8 +1312,11 @@ public class CommandFormEmitterTests {
         source.ShouldContain("await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(true));");
         source.ShouldContain("await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(false));");
         masked.ShouldContain("if (!ExternalStatusOwner && !OnBlockedSubmission.HasDelegate)");
+        // Assert every anchor before it bounds a slice, search or ordering comparison.
         int present = source.IndexOf("private async Task PresentBlockedSubmissionAsync(", StringComparison.Ordinal);
+        present.ShouldBeGreaterThanOrEqualTo(0);
         int presentEnd = source.IndexOf("private async Task FocusElementAsync(", present, StringComparison.Ordinal);
+        presentEnd.ShouldBeGreaterThan(present);
         string presentBody = source[present..presentEnd];
         presentBody.ShouldContain("!OnBlockedSubmission.HasDelegate");
         presentBody.ShouldNotContain("Validate()");
@@ -1325,7 +1328,6 @@ public class CommandFormEmitterTests {
         int blockedClear = presentBody.IndexOf("await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);", StringComparison.Ordinal);
         int blockedPublish = presentBody.IndexOf("CommandFeedbackPublisher.PublishWarning(CreateCommandBlockedWarning(reason));", StringComparison.Ordinal);
         int scopePresentation = presentBody.IndexOf("await PresentScopeUnavailableAsync().ConfigureAwait(false);", StringComparison.Ordinal);
-        // Both scope anchors must exist before any search starts from them, so a missing line fails by name.
         scopePresentation.ShouldBeGreaterThanOrEqualTo(0);
         scopeBranchEnd.ShouldBeGreaterThan(0);
         int scopeDisposedGuard = presentBody.IndexOf("if (_disposed) return;", scopePresentation, StringComparison.Ordinal);

@@ -1175,10 +1175,10 @@ export async function measureSurfaceContrast(root: Locator, kind: ContrastKind =
         // display:contents generates no box, so it cannot contain anything.
         if (style.display === 'contents') continue;
         if (style.transform !== 'none' || style.perspective !== 'none' || style.filter !== 'none' || style.transformStyle === 'preserve-3d'
-          || style.getPropertyValue('backdrop-filter') && style.getPropertyValue('backdrop-filter') !== 'none'
+          || style.getPropertyValue('offset-path') && style.getPropertyValue('offset-path') !== 'none'
           || [style.translate, style.scale, style.rotate].some(value => value && value !== 'none')
           || style.contentVisibility && style.contentVisibility !== 'visible'
-          || /\b(paint|layout|strict|content)\b/u.test(style.contain) || style.willChange.split(',').some(value => containingHints.includes(value.trim()))
+          || /\b(paint|layout|strict|content)\b/u.test(style.contain) || style.willChange.split(',').some(value => containingHints.includes(value.trim().toLowerCase()))
           || position === 'absolute' && style.position !== 'static') return ancestor;
       }
       return null;
