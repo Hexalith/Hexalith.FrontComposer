@@ -1,5 +1,148 @@
 # Story 13.6 accessibility result and human checklist
 
+## Hosted dependency publication and verification — 2026-10-25
+
+**The selected Parties revision is published and hosted submodule checkout now passes. Story 13.6 remains in-progress.** The approved “apply recommended” decision authorizes only the existing Parties commit publication and failed-job reruns on FrontComposer `cfa9febc2942666265f23f87b26112c846f625ad`. That exact root selects Parties `d915a5893715328ef5bdf6a740888b6d212257ca`; no dependency selection, source, workflow, test or baseline changed. This documentation reconciliation is local and is not part of the hosted candidate. The original story baseline remains `3c8679628ebdb8995afc09f712a04fcde623695c`.
+
+Before publication, the target branch was absent. A nonrecursive fetch confirmed Parties remote main at `986a369ec26f6c5194593eb7bce12955eda54149`, with one selected local commit versus ten main commits since common parent `1ef274ea0471643d83f924147e85ac8326cf6a47`. The existing commit's exact full message passed the owning pinned commitlint 21.2.2 with zero problems/warnings. The explicit, non-forced refspec created only `refs/heads/fix/story-13-6-probe-archive` on its existing origin. A post-push `ls-remote` and a fresh isolated bare-store fetch both resolve exactly to `d915a5893715328ef5bdf6a740888b6d212257ca`. Both main branches and all root gitlinks remain unchanged.
+
+### Hosted attempts on the exact candidate
+
+The original [CI attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145439/attempts/1) and [Quality attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/attempts/1) remain failed history. CI build, Quality build-and-test and Epic 9 stopped before tests with `upload-pack: not our ref d915a5893715328ef5bdf6a740888b6d212257ca` and submodule initialization exit 128. CI dependency-governance was skipped. Quality's other outcomes are preserved below, all on root `cfa9febc2942666265f23f87b26112c846f625ad`.
+
+| Quality attempt 1 job | Actual outcome |
+| --- | --- |
+| [Windows accessibility-visual](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/job/121219420497) | Success: `npm run test:a11y` 355 passed, no failures/skips/flaky cases; accessibility evidence Node suite 29 passed; artifact validation passed |
+| [Linux WebKit](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/job/121219420590) | Success: 505 passed / 0 failed / 22 skipped / 0 flaky; artifact validation passed |
+| [Debug-gated tests](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/job/121219420559) | Success: 103 passed / 0 failed / 0 skipped |
+| [Committed-files guard](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/job/121219420566) | Success |
+| [Linux Chromium](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/job/121219420576) | Failure: 525 passed / 1 failed / 1 skipped / 0 flaky; migration-document wording assertion, including two failed retries; artifact validation also fails on the unsuccessful test outcome |
+| [Linux Firefox](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/job/121219420634) | Cancelled during browser installation before tests; downstream artifact checks fail without reports. No passing test lane is claimed |
+
+`gh run rerun --failed` succeeded for both runs. [CI attempt 2](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145439/attempts/2) is **successful** on the exact candidate: [build-and-test](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145439/job/121238731951) reports **157 Cli.Tests passed / 0 failed / 0 skipped**, and [dependency-governance](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145439/job/121239807438) passes with zero graph changes and zero affected modules. Its optional performance and Aspire jobs are **skipped**, not passed. The build log explicitly records checkout of Parties `d915a5893715328ef5bdf6a740888b6d212257ca`. The shared step receives four project paths, but the execution log and [blocking-test-results artifact](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145439/artifacts/12608301299) contain only the Cli.Tests run and its single 157-test TRX. Execution of the configured Contracts.Tests, Contracts.UI.Tests and Testing.Tests projects is not evidenced by this CI attempt; workflow success does not establish those missing runs.
+
+[Quality attempt 2](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/attempts/2) completes **failure** on the same candidate, with five successful jobs and three failed jobs. Root submodule initialization passes in build-and-test and Epic 9. [Firefox](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/job/121238739143) succeeds with **505 passed / 0 failed / 22 skipped / 0 flaky**, and accessibility artifact validation passes. Build-and-test, Epic 9 and Chromium fail independently as detailed below. GitHub carries the four original successful Quality jobs into the rerun with their original execution timestamps; those passes remain attempt-1 execution evidence and are not claimed as fresh executions.
+
+The first [Quality build failure](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/job/121238739036) is Gate 2b, **537 passed / 1 failed / 0 skipped**. `DocsSiteValidationTests.FluentContingencyPublicationCoversReviewRegressionsAsync("UnrelatedDocfxExclusion")` expects validator exit 0 but receives 1 with `docs/docfx.json: must publish the Fluent contingency page at its documentation path.` The test adds only `reference/**/*.md` to exclusions; the page is at the documentation root. `Test-DocFxExclusion` loads pinned DocFX 2.78.5's `Docfx.Glob.dll`, while the workflow restores tools only in the later Gate 2d. An isolated execution of that unchanged function returns False/exit 0 with the installed matcher and fails on the missing `docfx/2.78.5/tools` path with an empty package cache. This supports a missing-prerequisite/order explanation; the hosted validator's generic catch suppresses the original exception, so the actual runner cache state is not proven. No source or workflow correction is included. The subsequent quarantine summary fails without its skipped lane's TRX evidence, and coverage summary reports `No coverage files found`; those are consequences of the earlier gate failure. Gate 3a/default bUnit and later sequential gates are skipped and remain unqualified.
+
+The [Epic 9 attempt-2 job](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/job/121238738882) also fails independently, after successful `npm run test:epic-9-evidence` (**138 passed / 0 failed / 0 skipped**) and `./eng/run-epic9-live-proof.sh` (**1 browser test passed**, exact-candidate artifact validation passed). The later `AppHost rejects invalid bearer tokens` step restarts the AppHost, observes healthy security/eventstore resources, then receives curl status `000` for all four checks: command submit, command status, query and projection-hub negotiation. The required 401/403 rejection responses were not observed; the silent request loop does not expose the underlying endpoint/transport cause. This is an unresolved security-verification failure, not evidence that invalid credentials were accepted. Artifact upload succeeds. The successful live proof does not turn this job green or supply independent owner acceptance.
+
+The [Chromium attempt-2 job](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/job/121238739153) repeats the original **525 passed / 1 failed / 1 skipped / 0 flaky** outcome, including two failed retries of the same assertion; the artifact validator again rejects the unsuccessful outcome. The Chromium blocker is independent of Parties publication: `tests/e2e/specs/adopter-historical-label-cleanup.spec.ts:70` requires the literal `migration stubs` in `docs/how-to/migration-guides.md`, whose current body does not contain it. A focused browserless local reproduction on unchanged candidate inputs reports **0 passed / 1 failed / 0 skipped / 0 flaky**, zero retries, with the same error. This task records the demonstrated documentation-contract mismatch; it does not modify the test or migration guidance. R8-B1 remains deferred.
+
+### Follow-up handoff and dependency retention
+
+These stable local references remain open. Required maintainer roles below are **unassigned**; no person or approval is inferred. Closure requires recorded evidence for the actual follow-up candidate/run and does not close manual or independent acceptance gates.
+
+| Reference | Required maintainer role (unassigned) | Next action and closure condition |
+| --- | --- | --- |
+| `HOST-136-CI-PROJECTS` | Shared CI workflow maintainer | Diagnose why only Cli.Tests executed from the four-project input. Close when an authorized hosted run records nonzero execution and passing TRX/counts for Cli.Tests, Contracts.Tests, Contracts.UI.Tests and Testing.Tests individually. |
+| `HOST-136-QUALITY-GOVERNANCE` | FrontComposer docs/CI maintainer | Check DocFX prerequisite availability before Gate 2b and expose the underlying validator failure; retain the current inference limit. Close when the unchanged publication regression contract, including `UnrelatedDocfxExclusion` and exclusion negatives, passes and Quality build-and-test completes its required later gates. |
+| `HOST-136-CHROMIUM-DOCS` | FrontComposer docs/test maintainer | Reconcile migration guidance with its required contract wording. Close when the named historical-label assertion and complete Chromium job/artifact validator pass without weakening the assertion. |
+| `HOST-136-EPIC9-REJECTION` | AppHost/security CI maintainer | Diagnose endpoint reachability after restart and capture actual HTTP responses. Close when all four existing invalid-bearer probes return 401/403 and the complete Epic 9 job passes while retaining the live-proof checks. Status 000 is not an authentication acceptance result. |
+| `DEP-136-PARTIES-RETENTION` | Parties repository maintainer, coordinated with FrontComposer maintainer | Keep `refs/heads/fix/story-13-6-probe-archive` and selected object `d915a5893715328ef5bdf6a740888b6d212257ca` reachable while published FrontComposer revisions select it. Do not prune or move that branch while this retention condition applies. This continuing obligation closes only when no published revision depends on this object's availability; no retention assignment or additional remote action is claimed here. |
+
+### Firefox/WebKit skip scope
+
+The exact Firefox attempt-2 job `121238739143` and WebKit attempt-1 job `121219420590` logs each contain **22 skipped test identities**: 20 restricted to Chromium, one reserved for the live-proof host, and one unsupported engine capability. The inventory below comes from those archived job logs; reasons come from the matching tracked skip conditions at `cfa9febc2942666265f23f87b26112c846f625ad`. Paths are under `tests/e2e/specs/`; line numbers identify each source test, not a newly executed check.
+
+| Count per engine | Source test identities / scope | Existing skip reason |
+| --- | --- | --- |
+| 3 | `adopter-historical-label-cleanup.spec.ts:70,88,113` — wording, version/API facts, internal provenance | Documentation coverage runs once in Chromium. Firefox/WebKit success cannot clear the Chromium wording failure. |
+| 5 | `cli-text-output-parity.spec.ts:22,140` — inspect/migrate parity; `diagnostic-catalog-inspect.spec.ts:19,66,90` — severity, invalid input, malformed-sidecar redaction | CLI coverage runs once in Chromium. |
+| 4 | `hfcm9002-production-emission-decision.spec.ts:36,48,67,116` — decision, normal-build claims, synthetic input and hostile-path redaction | Repository-governance coverage runs once in Chromium. |
+| 6 | `level-3-field-slot-overrides.spec.ts:69`; `level-4-full-view-overrides.spec.ts:69`; `override-accessibility-safety-diagnostics.spec.ts:33,56`; `policy-gated-command-authorization.spec.ts:293,325` | Dedicated override/diagnostic/rejection-host coverage runs once in Chromium; these skips provide no equivalent Firefox/WebKit behavior proof. |
+| 1 | `command-form-generation.spec.ts:104` — invalid editors expose state/error on the focusable control | Chromium accessibility-tree evidence, Story 13.3 BH3-08. |
+| 1 | `specimen-accessibility.spec.ts:362` — Story 11.5 scoped visual hooks under normal/reduced motion | Computed-style pins and reduced-motion emulation are Chromium-serialized. |
+| 1 | `epic-9-fresh-row-acceptance.spec.ts:13` — generated create/update convergence | Exact AM-21 counts require Aspire live-proof timing; the general stub-server lane lacks `PLAYWRIGHT_SKIP_WEBSERVER`. The separate Chromium live proof passes; this supplies no Firefox/WebKit live proof. |
+| 1 | Firefox: `responsive-accessibility.spec.ts:91`, supported bevel paint; WebKit: `accessibility-state-matrix.spec.ts:448`, `overflow clip margin` case | Firefox cannot paint `corner-shape:bevel`; WebKit lacks expanded `overflow-clip-margin`. Their skipped negative controls are not passes; independently executed controls retain only their own scope. |
+
+Raw inventories remain in `attempt-2-job-121238739143.log` and `attempt-1-job-121219420590.log` under the scratch directory below. These 22 skips per engine are separate from the historical four skips in the narrower 1,065-case accessibility selection; they do not establish manual, native-zoom or actual WebKit system-palette observations.
+
+The Windows hosted result supplies automated execution for its stated Chromium and Node scope. It does not supply manual Windows AT observations or other unexecuted platform combinations. WebKit's actual system-palette paint, live-backend acceptance, manual qualification and OI-16/G-4/FLUENT-APP-1/UX/Product/Architect decisions remain independently open. All seven existing MAN-136 records retain **Owner-reported Pass** with canonical qualification `blocked`; no additional date/build/tester/version/device/measurement/speech facts were supplied. All eighteen detailed observation boxes and the original matrix/result/Evidence acceptance tasks remain unchecked. The prior 1,061 browser passes/four skips, 1,411 SourceTools passes and 3,785 Shell passes keep their original candidate attribution; this continuation does not relabel them as new hosted results.
+
+### Publication and diagnostic commands
+
+Hosted commands retain their checked-in scope. The shared CI step uses `dotnet test "$proj" --no-build --configuration Release --results-directory "TestResults/${name}" --report-xunit-trx --report-xunit-trx-filename "${name}.trx"`; the single observed project is `tests/Hexalith.FrontComposer.Cli.Tests`. Quality Gate 2b executes `dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-trait "Category=Governance" --filter-not-trait "Category=GovernanceBuild" --ignore-exit-code 8 --results-directory ./TestResults/governance --report-xunit-trx`. Its Linux browser command from `tests/e2e` is `npx playwright test --project=<engine> --workers 2`; the configured CI retries remain two. These are hosted commands, not additional local executions.
+
+From Parties, after inspecting its clean working tree, branch, remotes, history and tracked guidance:
+
+```bash
+git -c submodule.recurse=false fetch --no-tags --no-recurse-submodules origin main
+git rev-list --left-right --count d915a5893715328ef5bdf6a740888b6d212257ca...FETCH_HEAD
+git ls-remote origin refs/heads/fix/story-13-6-probe-archive
+git -c push.followTags=false -c submodule.recurse=false push --porcelain origin d915a5893715328ef5bdf6a740888b6d212257ca:refs/heads/fix/story-13-6-probe-archive
+git ls-remote origin refs/heads/fix/story-13-6-probe-archive
+```
+
+The commit-message check ran from `/home/administrator/projects/hexalith/frontcomposer/references/Hexalith.Parties`. The following reproduces the actual Git/CLI argv and byte-preserving message capture; all commands exited 0, `--version` returned `@commitlint/cli@21.2.2`, and validation reported zero problems/warnings (`existing-message.txt`, `commitlint.log` in scratch). No message or commit was changed.
+
+```bash
+git show -s --format=%B d915a5893715328ef5bdf6a740888b6d212257ca > /tmp/fc-13-6-hosted-9cc_j2d7/existing-message.txt
+/home/administrator/projects/hexalith/frontcomposer/node_modules/.bin/commitlint --version
+/home/administrator/projects/hexalith/frontcomposer/node_modules/.bin/commitlint --edit /tmp/fc-13-6-hosted-9cc_j2d7/existing-message.txt --verbose
+```
+
+The isolated availability check ran from `/home/administrator/projects/hexalith/frontcomposer`; each exact command below exited 0, and the last printed the selected full SHA. Output is retained in `parties-fetch-verification.log`. For a fresh reproduction, substitute a newly created directory from `mktemp -d /tmp/fc-13-6-availability.XXXXXX` for the recorded bare-store path throughout; reusing an existing store would not prove fresh acquisition. This is a fetch recipe, not another publication.
+
+```bash
+git init --bare /tmp/fc-13-6-hosted-9cc_j2d7/parties-availability.git
+git -C /tmp/fc-13-6-hosted-9cc_j2d7/parties-availability.git -c submodule.recurse=false fetch --no-tags --no-recurse-submodules --depth=1 https://github.com/Hexalith/Hexalith.Parties.git d915a5893715328ef5bdf6a740888b6d212257ca
+git -C /tmp/fc-13-6-hosted-9cc_j2d7/parties-availability.git rev-parse FETCH_HEAD
+```
+
+From FrontComposer:
+
+```bash
+gh run rerun 40210145439 --failed --repo Hexalith/Hexalith.FrontComposer
+gh run rerun 40210145120 --failed --repo Hexalith/Hexalith.FrontComposer
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/40210145439
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120
+python3 eng/dependency_graph.py --root . validate --commit cfa9febc2942666265f23f87b26112c846f625ad
+```
+
+The general run API commands above are preserved as execution history; they can return a later attempt in future. Attempt-specific job inspection also executed from the FrontComposer cwd with exit 0:
+
+```bash
+gh api 'repos/Hexalith/Hexalith.FrontComposer/actions/runs/40210145439/attempts/2/jobs?per_page=100'
+gh api 'repos/Hexalith/Hexalith.FrontComposer/actions/runs/40210145120/attempts/2/jobs?per_page=100'
+```
+
+Their exact replies are archived as `40210145439-attempt-2-jobs.json` and `40210145120-attempt-2-jobs.json` in `/tmp/fc-13-6-hosted-9cc_j2d7/`. The terminal general-run replies were preserved byte-for-byte as `40210145439-attempt-2-run.json` (SHA-256 `e3142076e5964b4efef43fd0b6ae7642fadf7414cc6a719585a999f9e8309ef0`) and `40210145120-attempt-2-run.json` (SHA-256 `90e3140a2bfb4d3b16b9f35ca14824993e55b6a8df0dd569ab905479a553036a`). Both state `run_attempt: 2`, the exact candidate above and `status: completed`, with CI `success` and Quality `failure`. These archived replies, fixed job IDs and attempt links own this record; later reruns cannot replace its attribution. No workflow was rerun for this review correction.
+
+The committed graph command exits 0: **51 edges and seven semantic selectors**, without a policy override. From `tests/e2e`, the diagnostic command is:
+
+```bash
+PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=/tmp/fc-13-6-hosted-9cc_j2d7/docs-reproduction/results FC_E2E_HTML_REPORT_DIR=/tmp/fc-13-6-hosted-9cc_j2d7/docs-reproduction/html npx playwright test specs/adopter-historical-label-cleanup.spec.ts --project=chromium --workers=1 --retries=0 --grep 'keeps current adopter-facing docs'
+```
+
+Final documentation checks: `python3 eng/validate-story-artifacts.py` and `git diff --check` pass. Both frozen intent blocks, all seven existing manual records and eighteen boxes, all 69 tracked PNG/Verify files, and all eight root gitlinks retain their original contents/identities. R8-B1 remains deferred. The DocFX diagnostic below is causal evidence, not a fresh SourceTools suite run.
+
+The DocFX probe originally copied the unchanged tracked `Test-DocFxExclusion` function from `eng/validate-docs.ps1`, with `$ErrorActionPreference = 'Stop'` and `$RepoRoot = $args[0]`. This recipe reconstructs the same probe from the exact commit, using the matching checkout/`.config/dotnet-tools.json` (DocFX 2.78.5). Both original invocations ran from `/home/administrator/projects/hexalith/frontcomposer`; `dotnet nuget locals global-packages --list --force-english-output` returned `/home/administrator/.nuget/packages/`. No package installation or update was performed.
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+import subprocess
+scratch = Path('/tmp/fc-13-6-hosted-9cc_j2d7')
+scratch.mkdir(parents=True, exist_ok=True)
+source = subprocess.check_output(['git', 'show', 'cfa9febc2942666265f23f87b26112c846f625ad:eng/validate-docs.ps1'], text=True)
+newline = chr(10)
+function = source[source.index('function Test-DocFxExclusion('):source.index(newline + 'function Assert-FluentContingencyPublication(')]
+(scratch / 'docfx-exclusion-probe.ps1').write_text(newline.join([
+    "$ErrorActionPreference = 'Stop'", '$RepoRoot = $args[0]', function,
+    "Test-DocFxExclusion 'fluent-ui-v5-contingency.md' @('reference/**/*.md')", '']))
+empty = scratch / 'empty-nuget-cache'
+empty.mkdir(exist_ok=True)
+assert not any(empty.iterdir()), 'The negative case requires an empty cache.'
+PY
+NUGET_PACKAGES=/home/administrator/.nuget/packages/ pwsh -NoProfile -File /tmp/fc-13-6-hosted-9cc_j2d7/docfx-exclusion-probe.ps1 /home/administrator/projects/hexalith/frontcomposer
+NUGET_PACKAGES=/tmp/fc-13-6-hosted-9cc_j2d7/empty-nuget-cache pwsh -NoProfile -File /tmp/fc-13-6-hosted-9cc_j2d7/docfx-exclusion-probe.ps1 /home/administrator/projects/hexalith/frontcomposer
+```
+
+The tested page was exactly `fluent-ui-v5-contingency.md`, with the sole exclusion `reference/**/*.md`. The installed pinned matcher returned **False, exit 0**; the empty-cache invocation returned **exit 1**, unable to find `empty-nuget-cache/docfx/2.78.5/tools`. Explicit `NUGET_PACKAGES` makes the extracted function's `Invoke-Process` fallback unnecessary in both cases. Raw script/output remain in scratch (`docfx-exclusion-probe.ps1`, `docfx-installed-probe.log`, `docfx-empty-probe.log`). The hosted catch still hides its underlying exception: these controlled outcomes support the missing-prerequisite/order explanation but do not prove the hosted runner cache state.
+
+Raw publication, commitlint, remote-fetch, graph, hosted API/job logs and the failed local diagnostic remain external scratch under `/tmp/fc-13-6-hosted-9cc_j2d7/` or the linked CI runs. No new commit, main update, documentation publication, dependency update or nested-submodule initialization occurred.
+
 ## Human-reported verification records — 2026-10-25
 
 **Owner-reported result: Pass for all seven manual records.** Jérôme Piquot, previously identified as Owner, confirmed: “add all seven manual records, all is OK”. This follow-up explicitly applies the reported Pass to NVDA/Firefox, JAWS/Chrome, VoiceOver/Safari, actual 400% browser zoom, physical tablet, physical phone and zero-field feedback. Each existing stable record below now retains that confirmation individually.
