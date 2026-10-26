@@ -30,6 +30,8 @@ function Add-Failure([System.Collections.Generic.List[string]]$Failures, [string
 
 function Get-FrontMatter([string]$Path) {
     $text = Get-Content -LiteralPath $Path -Raw
+    # An empty file returns $null from Get-Content -Raw and would throw on StartsWith.
+    if ([string]::IsNullOrEmpty($text)) { $text = '' }
     $metadata = @{}
     if (-not $text.StartsWith("---`n") -and -not $text.StartsWith("---`r`n")) {
         return [pscustomobject]@{ Metadata = $metadata; Body = $text; HasFrontMatter = $false }
@@ -428,10 +430,23 @@ function Get-FluentCatalogVersions([string]$Root, [System.Collections.Generic.Li
         }
         $entry = $entries[0]
         $version = $entry.GetAttribute('Version')
+        # MSBuild attribute names are case-insensitive. System.Xml HasAttribute and @Condition are not.
+        $hasControllingAttribute = $false
+        foreach ($attribute in $entry.Attributes) {
+            if ($attribute.LocalName.Equals('Update', [System.StringComparison]::OrdinalIgnoreCase) -or
+                $attribute.LocalName.Equals('Remove', [System.StringComparison]::OrdinalIgnoreCase) -or
+                $attribute.LocalName.Equals('Exclude', [System.StringComparison]::OrdinalIgnoreCase)) {
+                $hasControllingAttribute = $true
+            }
+        }
+        $conditional = $false
+        for ($node = $entry; -not $conditional -and $null -ne $node -and $node.NodeType -eq [System.Xml.XmlNodeType]::Element; $node = $node.ParentNode) {
+            foreach ($attribute in $node.Attributes) {
+                if ($attribute.LocalName.Equals('Condition', [System.StringComparison]::OrdinalIgnoreCase)) { $conditional = $true }
+            }
+        }
         # No MSBuild evaluation or checkout fallback: exclusions and conditional/property/range/floating versions are unresolved authority.
-        if ($entry.GetAttribute('Include') -cne $package -or $entry.HasAttribute('Update') -or $entry.HasAttribute('Remove') -or
-            $entry.HasAttribute('Exclude') -or
-            $entry.SelectNodes('ancestor-or-self::*[@Condition]').Count -gt 0 -or $entry.HasChildNodes -or
+        if ($entry.GetAttribute('Include') -cne $package -or $hasControllingAttribute -or $conditional -or $entry.HasChildNodes -or
             $entry.ParentNode.LocalName -cne 'ItemGroup' -or $entry.ParentNode.ParentNode.LocalName -cne 'Project' -or
             $version -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$') {
             Add-Failure $Failures "${authority}: selected catalog requires an unconditional literal version without Exclude for $package."

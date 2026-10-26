@@ -10783,3 +10783,8 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 - source_spec: `_bmad-output/implementation-artifacts/spec-fix-apphost-startup-dependency-graph.md`
   summary: Align direct external solution entries with the source-property vector before claiming source-graph coherence for solution-wide restore and no-restore builds.
   evidence: The independent review's isolated Debug `.slnx` restore exited 0 but selected packaged Commons.UniqueIds for EventStore.Contracts and packaged EventStore.Client/DomainService for Parties.Projections. External solution entry points bypassed FrontComposer's local properties before this repair, so this is a pre-existing limitation. The AppHost-entry restore and build are covered by the new regression; retain this separate solution-entry follow-up and add an isolated solution-restore/build regression when fixing it.
+
+## Deferred from: code review of spec-15-4-correct-the-fluent-ui-v5-contingency-identity.md (2026-10-25)
+
+- Git catalog reads in `eng/validate-docs.ps1:358` call `WaitForExit()` with no timeout. Unverified medium: the local `rev-parse`, `ls-tree`, and `show` commands were not shown to block. Settle by showing one of those commands waits on a prompt or lock while stdout and stderr are redirected.
+- `Test-DocFxExclusion` calls `dotnet nuget locals` through `Invoke-Process` (`eng/validate-docs.ps1:503`) with no timeout when `NUGET_PACKAGES` is unset. Unverified medium: that command was not shown to hang. Settle by showing `dotnet nuget locals global-packages --list --force-english-output` does not return when that variable is unset.

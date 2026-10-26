@@ -338,6 +338,7 @@ public sealed partial class DocsSiteValidationTests {
     [InlineData("MissingObject", false)]
     [InlineData("MissingBuildsRepository", false)]
     [InlineData("MissingPage", false)]
+    [InlineData("EmptyPage", false)]
     [InlineData("FencedTable", false)]
     [InlineData("SplitTables", false)]
     [InlineData("AdvancedCheckout", true)]
@@ -370,6 +371,8 @@ public sealed partial class DocsSiteValidationTests {
     [InlineData("UnresolvedExclude", false)]
     [InlineData("EmptyExclude", false)]
     [InlineData("UnrelatedExclude", false)]
+    [InlineData("LowercaseExclude", false)]
+    [InlineData("LowercaseCondition", false)]
     [InlineData("UnrelatedExcludedPackage", true)]
     public async Task FluentCatalogParityHandlesExcludedItemsAsync(string scenario, bool passes)
     {
@@ -400,10 +403,19 @@ public sealed partial class DocsSiteValidationTests {
                 case "MissingIconsCatalog": catalog = catalog.Replace($"<PackageVersion Include=\"{icons}\" Version=\"8.9.0\" />", "", StringComparison.Ordinal); break;
                 case "DuplicateComponentsCatalog": catalog = catalog.Replace("</ItemGroup>", $"<PackageVersion Include=\"{components}\" Version=\"7.8.9\" /></ItemGroup>", StringComparison.Ordinal); break;
                 case "DuplicateIconsCatalog": catalog = catalog.Replace("</ItemGroup>", $"<PackageVersion Include=\"{icons}\" Version=\"8.9.0\" /></ItemGroup>", StringComparison.Ordinal); break;
-                case "UnresolvedComponentsVersion": catalog = catalog.Replace("7.8.9", "$(FluentVersion)", StringComparison.Ordinal); break;
-                case "UnresolvedIconsVersion": catalog = catalog.Replace("8.9.0", "$(FluentVersion)", StringComparison.Ordinal); break;
+                case "UnresolvedComponentsVersion":
+                    catalog = catalog.Replace("7.8.9", "$(FluentVersion)", StringComparison.Ordinal);
+                    page = page.Replace("`7.8.9`", "`$(FluentVersion)`", StringComparison.Ordinal);
+                    break;
+                case "UnresolvedIconsVersion":
+                    catalog = catalog.Replace("8.9.0", "$(FluentVersion)", StringComparison.Ordinal);
+                    page = page.Replace("`8.9.0`", "`$(FluentVersion)`", StringComparison.Ordinal);
+                    break;
                 case "UnresolvedDocumentVersion": page = page.Replace("7.8.9", "$(FluentVersion)", StringComparison.Ordinal); break;
-                case "FloatingVersion": catalog = catalog.Replace("7.8.9", "7.*", StringComparison.Ordinal); break;
+                case "FloatingVersion":
+                    catalog = catalog.Replace("7.8.9", "7.*", StringComparison.Ordinal);
+                    page = page.Replace("`7.8.9`", "`7.*`", StringComparison.Ordinal);
+                    break;
                 case "ConditionalVersion": catalog = catalog.Replace("<ItemGroup>", "<ItemGroup Condition=\"'$(TargetFramework)' == 'net10.0'\">", StringComparison.Ordinal); break;
                 case "AmbiguousItemUpdate": catalog = catalog.Replace("</ItemGroup>", "<PackageVersion Update=\"@(PackageVersion)\" Version=\"99.0.0\" /></ItemGroup>", StringComparison.Ordinal); break;
                 case "UnrelatedLiteralEntries": catalog = catalog.Replace("</ItemGroup>", "<PackageVersion Include=\"Unrelated.Package\" Version=\"$(OtherVersion)\" /><PackageVersion Update=\"Unrelated.Package\" Version=\"99.0.0\" /></ItemGroup>", StringComparison.Ordinal); break;
@@ -412,7 +424,10 @@ public sealed partial class DocsSiteValidationTests {
                 case "UnresolvedExclude": catalog = catalog.Replace($"Include=\"{components}\"", $"Include=\"{components}\" Exclude=\"$(ExcludedPackages)\"", StringComparison.Ordinal); break;
                 case "EmptyExclude": catalog = catalog.Replace($"Include=\"{components}\"", $"Include=\"{components}\" Exclude=\"\"", StringComparison.Ordinal); break;
                 case "UnrelatedExclude": catalog = catalog.Replace($"Include=\"{components}\"", $"Include=\"{components}\" Exclude=\"Unrelated.Package\"", StringComparison.Ordinal); break;
+                case "LowercaseExclude": catalog = catalog.Replace($"Include=\"{components}\"", $"Include=\"{components}\" exclude=\"{components}\"", StringComparison.Ordinal); break;
+                case "LowercaseCondition": catalog = catalog.Replace($"<PackageVersion Include=\"{components}\"", $"<PackageVersion condition=\"'$(Configuration)' == 'Release'\" Include=\"{components}\"", StringComparison.Ordinal); break;
                 case "UnrelatedExcludedPackage": catalog = catalog.Replace("</ItemGroup>", "<PackageVersion Include=\"Unrelated.Package\" Exclude=\"Unrelated.Package\" Version=\"99.0.0\" /></ItemGroup>", StringComparison.Ordinal); break;
+                case "EmptyPage": page = ""; break;
                 case "MalformedXml": catalog = "<Project>"; break;
                 case "FencedTable": page = "```markdown\n" + page + "```\n"; break;
                 case "HtmlPreTable": page = "<pre>\n" + page + "</pre>\n"; break;
@@ -437,6 +452,19 @@ public sealed partial class DocsSiteValidationTests {
 
             if (passes) { failures.ShouldBeEmpty(); }
             else { failures.ShouldNotBeEmpty(scenario); }
+            string literalFailure = scenario switch
+            {
+                "UnresolvedComponentsVersion" or "FloatingVersion" or "LowercaseExclude" or "LowercaseCondition" =>
+                    "references/Hexalith.Builds/Props/Directory.Packages.props: selected catalog requires an unconditional literal version without Exclude for " + components + ".",
+                "UnresolvedIconsVersion" =>
+                    "references/Hexalith.Builds/Props/Directory.Packages.props: selected catalog requires an unconditional literal version without Exclude for " + icons + ".",
+                _ => "",
+            };
+            if (literalFailure.Length > 0)
+            {
+                failures.Length.ShouldBe(1, scenario);
+                failures[0].ShouldBe(literalFailure);
+            }
             failures.ShouldAllBe(failure => failure.StartsWith("docs/fluent-ui-v5-contingency.md:", StringComparison.Ordinal) || failure.StartsWith("references/Hexalith.Builds", StringComparison.Ordinal));
             failures.ShouldAllBe(failure => failure.Length < 260);
             string.Join('\n', failures).ShouldNotContain(root);

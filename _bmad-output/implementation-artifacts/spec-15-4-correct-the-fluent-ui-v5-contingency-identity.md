@@ -59,6 +59,31 @@ context:
 - Given the receipt, when reading the published page, then API/token and upgrade guidance agrees, with explicit dated not-approved posture and unchanged approval gates.
 - Given final changes, when publication/regression checks run, then the page is validated, reachable and published; migration probes retain their intended failures.
 
+### Review Findings
+
+- [x] [Review][Patch] Case-sensitive Exclude and Condition checks accept an MSBuild-effective exclusion [eng/validate-docs.ps1:432]
+- [x] [Review][Patch] An empty contingency page crashes validation instead of recording a failure [eng/validate-docs.ps1:454]
+- [x] [Review][Patch] Non-literal version fixtures stay green when the table repeats the non-literal token [tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs:403]
+- [x] [Review][Defer] Git catalog reads have no timeout [eng/validate-docs.ps1:358] — deferred: maybe-false, unverified medium. Settle by showing `rev-parse`, `ls-tree`, or `show` blocks on a prompt or lock while stdout and stderr are redirected.
+- [x] [Review][Defer] Package-cache lookup has no timeout when NUGET_PACKAGES is unset [eng/validate-docs.ps1:503] — deferred: maybe-false, unverified medium. Settle by showing `dotnet nuget locals global-packages --list --force-english-output` does not return when that variable is unset.
+
+#### Rejected
+
+- Story 15.4 commit `73768df6` did move Story 13.6 from `review` to `in-progress`. Commit `9c4166e4` (Story 13.6, 2026-10-25) kept `in-progress` and recorded that Quality gates remain blocked. The live row stays `in-progress`.
+- Choose/Otherwise pins are not recorded as selected identity. The item group's parent must be `Project`, so an Otherwise-nested entry fails closed (`eng/validate-docs.ps1:435`).
+- A four-part literal such as `5.0.1.0` fails closed. The governed packages use three-part versions, and widening the version grammar is extra surface.
+- A `PackageVersion` document element throws on a null parent. That shape is not the selected catalog, and the fix is a null guard on a path validation does not meet.
+- Git path, `GIT_DIR`, and symlink mismatches fail closed as unavailable authority. A hang was not shown for these local read commands.
+- A missing Builds checkout and a missing catalog blob share one unavailable-object diagnostic. Both already fail, and splitting the message adds a branch for a healthy-checkout case maintainers do not hit.
+- Exclusion fixtures do fail when the Exclude guard is removed. The table still matches `7.8.9`, so an empty failure list fails `ShouldNotBeEmpty`.
+- Prose and HTML tables sit outside the one markdown identity table. A missing markdown table already fails, and the `5.0.1` token sentence is a statement about that version.
+- A DocFX matcher load failure is reported as a publication miss. The pinned matcher loads in the normal docs run, and a more specific catch is extra branching.
+- `Get-ContentFiles` includes the page through the allowlist, and the metadata test asserts that inclusion. The unused pattern is a future-edit hazard, not a missed page.
+- `status: authored` is the value the story test locks. The page is in the How-to TOC. `how-to/index.md` lists guides that live in that folder. The receipt URL is the tested repository link.
+- A catalog Import is absent from the selected object. The story forbids MSBuild evaluation, and rejecting every Import is a new policy.
+- `git ls-tree` with no gitlink throws in the documentation publication fixture. The superproject has the gitlink, and the throw is a loud stop when that input is absent.
+- `git ls-tree` with no gitlink throws in the migration publication fixture for the same reason.
+
 ## Implementation Notes
 
 No intent gaps or irreversible actions. Dispatch covers publication wiring, Git-object authority and isolated consumers. Preserve Story 15.3's gates, diagnostics and ownership conventions.
