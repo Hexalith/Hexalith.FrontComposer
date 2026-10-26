@@ -2,7 +2,7 @@
 title: 'Story 13.6: Repair hosted verification blockers'
 type: 'bugfix'
 created: '2026-10-25'
-status: 'draft'
+status: 'in-progress'
 route: 'dispatch'
 story_id: '13.6'
 story_key: '13-6-i-ux-e-verify-responsive-and-assistive-accessibility'
@@ -62,6 +62,8 @@ context:
 - Given unmet acceptance, when tracking is reconciled, then parent story/sprint remain in-progress.
 
 ## Implementation Notes
+
+- Approved to continue on 2026-10-26. Implementation starts at `0f40ab06304e22c30c467ffb2279333897a79572`; the original baseline remains unchanged. Since planning, Story 15.4 independently updated `eng/validate-docs.ps1` and `DocsSiteValidationTests.cs`. Read and preserve those changes when implementing; they are not owned by this continuation. The spec itself was committed at `4f5ce9e67d0c07cc2ed049a4e8c644c8a448bb8a`. Parent story/sprint already remain in-progress.
 
 ## Spec Change Log
 
