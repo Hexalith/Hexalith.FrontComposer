@@ -21,7 +21,19 @@ string emptyDaprResourcesPath = ResolveEmptyDaprResourcesPath();
 // Enabled by default for local development with real OIDC token testing.
 // Set EnableKeycloak=false in environment or appsettings to run without Keycloak
 // (falls back to symmetric key auth via Authentication:JwtBearer:SigningKey).
-HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSecurity();
+bool localKeycloak = builder.ExecutionContext.IsRunMode
+    && !string.Equals(builder.Configuration["EnableKeycloak"], "false", StringComparison.OrdinalIgnoreCase);
+using LocalWorkloadRealm? workloadRealm = localKeycloak
+    ? LocalWorkloadRealm.Create(
+        Path.Combine(builder.AppHostDirectory, "KeycloakRealms"),
+        bool.TryParse(builder.Configuration["KeycloakPersistent"], out bool persistentKeycloak) && persistentKeycloak,
+        builder.Configuration["Parameters:" + LocalWorkloadRealm.SecretParameterName])
+    : null;
+HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSecurity(
+    new HexalithEventStoreSecurityOptions
+    {
+        RealmImportPath = workloadRealm?.ImportDirectory ?? Path.Combine(builder.AppHostDirectory, "KeycloakRealms"),
+    });
 
 // Add EventStore (command gateway), Admin Server, and Admin UI projects.
 // Project paths are resolved cross-repo via the IProjectMetadata classes in this AppHost.
@@ -181,6 +193,15 @@ if (builder.ExecutionContext.IsRunMode && builder.Environment.IsEnvironment("Tes
 // Wire Keycloak auth to EventStore, Tenants, Admin.Server, Admin.UI, and Tenants.UI if enabled.
 if (security is not null) {
     _ = eventStore.WithJwtBearerSecurity(security);
+    if (workloadRealm is not null)
+    {
+        IResourceBuilder<ParameterResource> workloadSecret = builder.AddParameter(
+            LocalWorkloadRealm.SecretParameterName,
+            () => workloadRealm.ClientSecret,
+            secret: true,
+            publishValueAsDefault: false);
+        _ = eventStore.WithEventStoreWorkloadClientCredentials(LocalWorkloadRealm.ClientId, workloadSecret);
+    }
 
     _ = tenants.WithJwtBearerSecurity(security);
 

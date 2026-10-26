@@ -25,7 +25,11 @@ context:
 
 **Always:** Preserve Story 15.3 semantics, publication exclusions, authentication checks, test inventory and evidence attribution. Approval includes the two Builds files below; publication/pin adoption needs separate review.
 
-**Never:** Weaken gates, duplicate CI, change authentication/dependencies, invent manual facts, initialize nested submodules, commit/push or advance pins under this approval.
+**Never:** Weaken gates, duplicate CI, change dependencies or authentication outside the approved local workload-identity amendment, invent manual facts, initialize nested submodules, commit/push or advance pins under this approval.
+
+## Approved local workload-identity amendment — 2026-10-26
+
+The user approved the proposed prerequisite amendment. Configure only the local FrontComposer AppHost/Keycloak workload identity required by the selected EventStore, through the existing platform API and a secret parameter. Provision matching private generated credentials for a confidential service-account client; preserve authentication enforcement, existing user clients and any existing user realm. Minimal host-owned credential/template support and focused regressions are included. Validate a fresh isolated realm, healthy EventStore, all four real 401/403 responses and the existing Epic 9 live proof. Dependency changes, publication and workflow-pin adoption remain outside this approval.
 
 ## I/O & Edge-Case Matrix
 
@@ -34,6 +38,7 @@ context:
 | Unrelated versus matching DocFX exclusion | Unrelated passes; exact/recursive exclusions fail; missing matcher reports a bounded prerequisite error |
 | Four projects; child consumes stdin | All four execute; missing, stale, malformed or zero-test TRX fails |
 | Current migration guidance | Positive assertions match executable/manual classification; stale ownership and version/API guards remain |
+| Fresh isolated local realm | Matching private workload credentials start healthy EventStore; existing user clients remain unchanged |
 | Invalid bearer on four endpoints | Actual 401/403 passes; transport failure, redirects and other HTTP outcomes fail with sanitized diagnostics |
 
 </frozen-after-approval>
@@ -51,6 +56,7 @@ context:
 - [x] `.github/workflows/quality.yml`, `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — restore tools before governance; assert order and retain blocking docs validation.
 - [x] `eng/validate-docs.ps1`, `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs` — report missing matcher without exposing paths; cover empty cache and existing exclusion cases.
 - [x] `tests/e2e/specs/adopter-historical-label-cleanup.spec.ts` — replace three stale phrases with executable/versioned migration guides and explicit `--dry-run`/`--apply`; preserve ownership, metadata, API and version guards.
+- [ ] `src/Hexalith.FrontComposer.AppHost/Program.cs`, `src/Hexalith.FrontComposer.AppHost/KeycloakRealms/hexalith-realm.json`, minimal host-owned credential/template helpers, and `tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs` with relevant fixtures — implement the approved local workload-identity amendment; verify secret handling, client/wiring consistency and unchanged existing client contracts.
 - [ ] `eng/verify-apphost-invalid-bearer.sh` (new), `tests/e2e/scripts/verify-apphost-invalid-bearer.test.mjs` (new), `tests/e2e/package.json`, `.github/workflows/quality.yml` — extract rejection; diagnose/correct transport failure. Retain Aspire readiness, owned-process cleanup and four paths. Test transport-only fallback, all-unreachable, wrong HTTP status, discovery failure and cleanup; verify live.
 - [x] `references/Hexalith.Builds/.github/workflows/domain-ci.yml`, `references/Hexalith.Builds/Tools/test-domain-workflow-test-platforms.ps1` — isolate child stdin; require fresh nonzero reports per project. Test consuming children and missing/stale/malformed/zero-result reports. Prepare active-base-policy/pin adoption for separate publication review.
 - [x] `_bmad-output/implementation-artifacts/13-6-accessibility-result.md`, primary `spec-13-6-verify-responsive-and-assistive-accessibility.md` — record commands/counts/revisions/CI links and blockers; retain seven Owner-reported Pass records and qualification gaps.
@@ -98,3 +104,10 @@ The parent inspected the complete baseline diff, including untracked files and t
 - Validate a fresh isolated local realm, healthy EventStore, all four real 401/403 responses, and the existing Epic 9 live proof; then resume final review. Dependency changes, publication and workflow-pin adoption remain outside this amendment.
 
 No authentication amendment has been applied or approved. The existing frozen block remains verbatim.
+
+
+### Amendment approval and resumed implementation — 2026-10-26
+
+The user approved the prerequisite amendment. The frozen block now records that exception; its other restrictions remain. The earlier proposal and missing-credential results are historical. Resume at root `3668b603bf9cd176da86a2f3e020fd8fab2b58af`; external commit `29dcbfdeff32b964c581aa96a1b18d7dab20a71b` recorded the preceding implementation, and the selected Builds checkout is now `09af6ef818beb27490c87c00ed83dd581a7e6d8d`, containing the shared repair. Preserve the original frontmatter baseline and all external changes. The consumed shared-CI pin remains `4eb33928a1d8c7775f97221cf9edc171db0cb5f8`; a changed gitlink does not adopt that workflow.
+
+Reuse `HexalithEventStoreTrustedEffectExtensions.WithEventStoreWorkloadClientCredentials` from the selected EventStore Aspire project. Its AppHost's `KeycloakRealmTemplate` and `LocalAuthenticationCredentials` supply a reference pattern, not permission to modify the dependency. Finish the existing live task and new host task, then the remaining Build review. Do not rerun completed unchanged lanes without a new concern; rerun affected host, live and tooling checks.

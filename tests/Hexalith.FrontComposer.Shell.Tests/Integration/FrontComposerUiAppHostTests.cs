@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
 
+using Hexalith.FrontComposer.AppHost;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Integration;
@@ -152,6 +154,165 @@ public sealed class FrontComposerUiAppHostTests {
 
         hasEventStoreAudience.ShouldBeTrue(
             "the FrontComposer UI client must stamp the EventStore audience into access tokens for downstream calls.");
+    }
+
+    [Fact]
+    public void LocalWorkloadRealmPreservesUserRealmAndGeneratesPrivateMatchingCredentials()
+    {
+        string sourceDirectory = Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost", "KeycloakRealms");
+        string source = Path.Combine(sourceDirectory, "hexalith-realm.json");
+        byte[] original = File.ReadAllBytes(source);
+        string importDirectory;
+        using (LocalWorkloadRealm realm = LocalWorkloadRealm.Create(sourceDirectory, false, null))
+        {
+            importDirectory = realm.ImportDirectory;
+            string renderedPath = Path.Combine(importDirectory, "hexalith-realm.json");
+            using JsonDocument before = JsonDocument.Parse(original);
+            using JsonDocument after = JsonDocument.Parse(File.ReadAllText(renderedPath));
+            JsonElement[] originalClients = before.RootElement.GetProperty("clients").EnumerateArray().ToArray();
+            JsonElement[] renderedClients = after.RootElement.GetProperty("clients").EnumerateArray().ToArray();
+            renderedClients.Length.ShouldBe(originalClients.Length + 1);
+            foreach (JsonElement client in originalClients)
+            {
+                JsonElement preserved = renderedClients.Single(candidate => candidate.GetProperty("clientId").GetString() == client.GetProperty("clientId").GetString());
+                JsonElement.DeepEquals(client, preserved).ShouldBeTrue("existing user clients must retain their exact contracts");
+            }
+            foreach (JsonProperty property in before.RootElement.EnumerateObject().Where(property => property.Name is not "clients" and not "clientScopes"))
+            {
+                JsonElement.DeepEquals(property.Value, after.RootElement.GetProperty(property.Name)).ShouldBeTrue(property.Name);
+            }
+            JsonElement workload = renderedClients.Single(client => client.GetProperty("clientId").GetString() == LocalWorkloadRealm.ClientId);
+            string.Equals(workload.GetProperty("secret").GetString(), realm.ClientSecret, StringComparison.Ordinal).ShouldBeTrue("the rendered secret must match the parameter without printing credentials");
+            realm.ClientSecret.Length.ShouldBe(64);
+            Convert.FromHexString(realm.ClientSecret).Length.ShouldBe(32);
+            workload.GetProperty("publicClient").GetBoolean().ShouldBeFalse();
+            workload.GetProperty("serviceAccountsEnabled").GetBoolean().ShouldBeTrue();
+            workload.GetProperty("fullScopeAllowed").GetBoolean().ShouldBeFalse();
+            workload.GetProperty("directAccessGrantsEnabled").GetBoolean().ShouldBeFalse();
+            workload.GetProperty("standardFlowEnabled").GetBoolean().ShouldBeFalse();
+            workload.GetProperty("implicitFlowEnabled").GetBoolean().ShouldBeFalse();
+            workload.GetProperty("defaultClientScopes").GetArrayLength().ShouldBe(0);
+            workload.GetProperty("attributes").GetProperty("access.token.lifespan").GetString().ShouldBe("300");
+            if (!OperatingSystem.IsWindows())
+            {
+                File.GetUnixFileMode(importDirectory).ShouldBe(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                File.GetUnixFileMode(renderedPath).ShouldBe(UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            }
+            File.ReadAllBytes(source).ShouldBe(original);
+        }
+        Directory.Exists(importDirectory).ShouldBeFalse();
+        File.ReadAllBytes(source).ShouldBe(original);
+    }
+
+    [Fact]
+    public void LocalWorkloadRealmUsesDistinctCredentialsForIndependentRuns()
+    {
+        string sourceDirectory = Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost", "KeycloakRealms");
+        using LocalWorkloadRealm first = LocalWorkloadRealm.Create(sourceDirectory, false, null);
+        using LocalWorkloadRealm second = LocalWorkloadRealm.Create(sourceDirectory, false, null);
+        string.Equals(first.ClientSecret, second.ClientSecret, StringComparison.Ordinal).ShouldBeFalse("independent local runs must not share credentials");
+        first.ImportDirectory.ShouldNotBe(second.ImportDirectory);
+    }
+
+    [Fact]
+    public void LocalWorkloadRealmGrantsOnlyExplicitPlatformAudienceAndOperationScopes()
+    {
+        string sourceDirectory = Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost", "KeycloakRealms");
+        using LocalWorkloadRealm realm = LocalWorkloadRealm.Create(sourceDirectory, false, null);
+        using JsonDocument rendered = JsonDocument.Parse(File.ReadAllText(Path.Combine(realm.ImportDirectory, "hexalith-realm.json")));
+        JsonElement[] scopes = rendered.RootElement.GetProperty("clientScopes").EnumerateArray().ToArray();
+        JsonElement workload = rendered.RootElement.GetProperty("clients").EnumerateArray().Single(client => client.GetProperty("clientId").GetString() == LocalWorkloadRealm.ClientId);
+        string[] optional = workload.GetProperty("optionalClientScopes").EnumerateArray().Select(scope => scope.GetString()!).ToArray();
+        optional.Length.ShouldBe(9);
+        scopes.Select(scope => scope.GetProperty("name").GetString()).Order().ShouldBe(optional.Order());
+        foreach (string audience in new[] { "sample", "tenants", "parties", "counter-scope-fixture" })
+        {
+            JsonElement mapper = scopes.Single(scope => scope.GetProperty("name").GetString() == "eventstore-audience." + audience).GetProperty("protocolMappers")[0];
+            mapper.GetProperty("protocolMapper").GetString().ShouldBe("oidc-audience-mapper");
+            mapper.GetProperty("config").GetProperty("included.custom.audience").GetString().ShouldBe(audience);
+        }
+        foreach (string operation in new[] { "process", "replay-state", "query", "project", "metadata" })
+        {
+            JsonElement mapper = scopes.Single(scope => scope.GetProperty("name").GetString() == "eventstore-operation.domain-service." + operation).GetProperty("protocolMappers")[0];
+            mapper.GetProperty("protocolMapper").GetString().ShouldBe("oidc-hardcoded-claim-mapper");
+            mapper.GetProperty("config").GetProperty("claim.name").GetString().ShouldBe("eventstore:operation");
+            mapper.GetProperty("config").GetProperty("claim.value").GetString().ShouldBe("domain-service:" + operation);
+        }
+    }
+
+    [Theory]
+    [InlineData(true, null)]
+    [InlineData(false, "configured-private-value")]
+    [InlineData(false, "")]
+    public void LocalWorkloadRealmRefusesPersistentReuseAndSecretOverrides(bool persistent, string? configuredSecret)
+    {
+        string sourceDirectory = Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost", "KeycloakRealms");
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() => LocalWorkloadRealm.Create(sourceDirectory, persistent, configuredSecret));
+        exception.Message.ShouldNotContain("configured-private-value");
+        exception.Message.ShouldNotContain(sourceDirectory);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void LocalWorkloadRealmRefusesToReplaceExistingClientOrScope(bool clientConflict)
+    {
+        string fixture = Directory.CreateTempSubdirectory("fc-workload-fixture-").FullName;
+        try
+        {
+            string source = Path.Combine(fixture, "hexalith-realm.json");
+            string json = clientConflict
+                ? "{\"clients\":[{\"clientId\":\"eventstore\",\"secret\":\"existing-private-value\"}]}"
+                : "{\"clients\":[],\"clientScopes\":[{\"name\":\"eventstore-audience.sample\"}]}";
+            File.WriteAllText(source, json);
+            InvalidOperationException exception = Should.Throw<InvalidOperationException>(() => LocalWorkloadRealm.Create(fixture, false, null));
+            exception.Message.ShouldNotContain("existing-private-value");
+            File.ReadAllText(source).ShouldBe(json);
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void LocalWorkloadRealmCleanupPreservesUnownedFiles()
+    {
+        string sourceDirectory = Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost", "KeycloakRealms");
+        LocalWorkloadRealm realm = LocalWorkloadRealm.Create(sourceDirectory, false, null);
+        string sentinel = Path.Combine(realm.ImportDirectory, "user-owned.txt");
+        try
+        {
+            File.WriteAllText(sentinel, "preserve");
+            Should.Throw<IOException>(realm.Dispose);
+            File.ReadAllText(sentinel).ShouldBe("preserve");
+            File.Exists(Path.Combine(realm.ImportDirectory, "hexalith-realm.json")).ShouldBeTrue();
+        }
+        finally
+        {
+            File.Delete(sentinel);
+            realm.Dispose();
+        }
+        Directory.Exists(realm.ImportDirectory).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void AppHostWorkloadWiringIsLocalAndUsesTheRenderedSecretParameter()
+    {
+        string program = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost", "Program.cs"));
+        program.ShouldContain("bool localKeycloak = builder.ExecutionContext.IsRunMode");
+        program.ShouldContain("builder.Configuration[\"EnableKeycloak\"]");
+        program.ShouldContain("using LocalWorkloadRealm? workloadRealm = localKeycloak");
+        program.ShouldContain("builder.Configuration[\"KeycloakPersistent\"]");
+        program.ShouldContain("builder.Configuration[\"Parameters:\" + LocalWorkloadRealm.SecretParameterName]");
+        program.ShouldContain("RealmImportPath = workloadRealm?.ImportDirectory");
+        int binding = program.IndexOf("IResourceBuilder<ParameterResource> workloadSecret", StringComparison.Ordinal);
+        int end = program.IndexOf("_ = tenants.WithJwtBearerSecurity", binding, StringComparison.Ordinal);
+        string wiring = program[binding..end];
+        wiring.ShouldContain("() => workloadRealm.ClientSecret");
+        wiring.ShouldContain("secret: true");
+        wiring.ShouldContain("publishValueAsDefault: false");
+        wiring.ShouldContain("eventStore.WithEventStoreWorkloadClientCredentials(LocalWorkloadRealm.ClientId, workloadSecret)");
     }
 
     private static JsonElement FindRealmClient(string clientId) {

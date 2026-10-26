@@ -4,6 +4,10 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Exercise the host-owned realm renderer directly without starting an Aspire topology. -->
+    <Compile Include="..\..\src\Hexalith.FrontComposer.AppHost\LocalWorkloadRealm.cs" Link="Integration\LocalWorkloadRealm.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\samples\Counter\Counter.Domain\Counter.Domain.csproj" />
     <ProjectReference Include="..\..\samples\Counter\Counter.Web\Counter.Web.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
