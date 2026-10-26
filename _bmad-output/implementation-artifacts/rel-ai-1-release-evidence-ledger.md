@@ -600,3 +600,83 @@ hashes and sign-off of this ledger entry. The developer agent cannot authorize t
 sign-off. Further production publication remains unauthorized until that sign-off. Current
 `main` (`f5e442c691fa8e77a155d5885622c6d65170d852` on 2026-08-14) has no successful
 completed push CI, so a further dispatch from the exact current SHA is not eligible.
+
+
+## Story 15.5 Compatibility Baseline Reconciliation (2026-10-26)
+
+**Technical baseline: published `4.7.0`; no temporary lag.** Story 15.5's expected
+`4.5.0` was a planning-time coordinate. Subsequent release work already advanced
+all active ApiCompat sites to `4.7.0` in commit
+`ee9762e6c74914ccd33ec1d2caf322bdc21a10b4`. Retain that baseline; a tag or the
+planned `currentRelease` value alone is not publication evidence.
+
+### Publication authority
+
+- [Immutable GitHub Release v4.7.0](https://github.com/Hexalith/Hexalith.FrontComposer/releases/tag/v4.7.0),
+  release ID `416759469`, published `2026-10-18T22:57:16Z`, resolves to exact
+  source/tag commit `cf5fe8da100bd5224a0d7f597fc92e1ebb98a5f4`.
+- [Release run 39173030800, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/39173030800/attempts/1)
+  and independent [Release Evidence run 39174645465, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/39174645465/attempts/1)
+  both succeeded for that source. Both API records report `run_attempt=1`. The latter's immutable-release, sealed-manifest,
+  downloaded NuGet byte and repository-signature verification steps succeeded.
+- The published [sealed manifest](https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.7.0/sealed-manifest.json)
+  uses `hexalith.release-evidence.v3` and binds the same source, tag and release
+  run. Its SHA-256 is
+  `2aa2d01e8cc6b8b489b016c2828af478192dcf68850ea9c1978d14b7d19f24ba`.
+  Published [readiness](https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.7.0/release-readiness.json)
+  is `fallback-approved` with `publish_authorized=true`; the existing attestation
+  fallback expires `2026-11-04T13:31:17Z`. That expiry bounds use of the
+  fallback to authorize publication; it does not retroactively invalidate this
+  historical release or its use as the ApiCompat baseline. Future publication
+  must meet its own then-current readiness and approval requirements. Published
+  [consumer validation](https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.7.0/consumer-validation.json)
+  and [package inventory](https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.7.0/package-inventory.json)
+  report `valid`.
+- The [October 18 publication record](spec-ci-release-publication-2026-10-18.md)
+  records independent verification of all eight package contents against the
+  sealed candidate, eight valid NuGet.org repository signatures, and no partial
+  publication incident. Live verification-step results corroborate that record;
+  this reconciliation does not claim to have repeated downloaded-byte verification.
+
+Read-only NuGet checks on 2026-10-26 used the eight packable IDs from
+`eng/release-package-inventory.json`. Every version index identified `4.7.0` as
+latest stable and every `4.7.0` package endpoint returned HTTP 200:
+
+| Package ID | Latest stable | Package endpoint |
+| --- | --- | --- |
+| Hexalith.FrontComposer.Cli | 4.7.0 | HTTP 200 |
+| Hexalith.FrontComposer.Contracts | 4.7.0 | HTTP 200 |
+| Hexalith.FrontComposer.Contracts.UI | 4.7.0 | HTTP 200 |
+| Hexalith.FrontComposer.Mcp | 4.7.0 | HTTP 200 |
+| Hexalith.FrontComposer.Schema | 4.7.0 | HTTP 200 |
+| Hexalith.FrontComposer.Shell | 4.7.0 | HTTP 200 |
+| Hexalith.FrontComposer.SourceTools | 4.7.0 | HTTP 200 |
+| Hexalith.FrontComposer.Testing | 4.7.0 | HTTP 200 |
+
+These metadata/availability checks support the existing publication record; they
+are not a new package-signature or byte-equality audit. No published package was
+reconstructed and no replacement evidence bundle was created.
+
+### Compatibility and approval boundaries
+
+`PUBLISHED_BASELINE_VERSION`, the shared `Directory.Build.targets` default,
+Contracts.UI's explicit override, Quality's ApiCompat gate and existing governance
+assertions already agree on `4.7.0`. The suppression ledger remains `v4.7` with no
+rows. Existing ApiCompat validates seven packable libraries; the SDK excludes the
+CLI's `PackAsTool` layout, whose inventory, symbols, installation and command-output
+checks remain required. PublicAPI, schema/fingerprint, diagnostic, CLI JSON,
+generated-output, analyzer-policy, Contracts-boundary, drift, snapshot and migration
+contracts retain their existing authorities. Intentional API differences still need
+the existing baseline, documentation and migration/deprecation process.
+
+This technical baseline observation neither closes REL-AI-1 nor changes any
+historical disposition, pending Release Owner FR24 sign-off, or publication
+permission. Earlier "current" and "no newer version" statements above describe
+their dated historical observations. No Release Owner lag decision is needed
+because the selected baseline equals the latest evidence-backed stable release.
+If evidence later prevents advancement, a temporary lag requires a dated owner
+decision naming the reason, owner, expiry and blocking evidence; otherwise the
+reconciliation stays open.
+
+Focused commands, results and final story ownership are recorded in
+[Story 15.5](spec-15-5-reconcile-the-published-compatibility-baseline.md).

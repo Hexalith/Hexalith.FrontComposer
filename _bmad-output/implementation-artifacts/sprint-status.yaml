@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-10-24
+# last_updated: 2026-10-26
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 10-26-2026 07:05
+last_updated: 2026-10-26
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -225,7 +225,7 @@ development_status:
   15-2-i-doc-a-reconcile-component-and-page-pattern-documentation: done
   15-3-i-doc-b-align-migration-and-classification-guidance: done
   15-4-i-doc-c-correct-the-fluent-ui-v5-contingency-identity: done
-  15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: backlog
+  15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: review
   # superseded 2026-10-23 by spec-evidence-storage-simplification.md (PRD §7 evidence policy):
   # committed evidence and its machinery were removed instead of externalized; closed as done.
   15-6-external-browser-artifacts-and-bounded-accessibility-receipts: done
@@ -1088,7 +1088,7 @@ approved_change_backlog:
       items:
         - {id: "REL-LEDGER-1", kind: "approval-evidence", status: "open"}
         - {id: "REL-LEDGER-2", kind: "implementation-evidence", status: "proposed"}
-        - {id: "REL-BASE-1", kind: "implementation", status: "proposed"}
+        - {id: "REL-BASE-1", kind: "implementation", status: "review", reconciled: "2026-10-26", evidence: "_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md#verification"}
         - {id: "REL-A3-APP-1", kind: "approval", status: "open"}
         - {id: "E9-APP-1", kind: "approval", status: "done", closed: "2026-10-20",
           ref: "_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt"}

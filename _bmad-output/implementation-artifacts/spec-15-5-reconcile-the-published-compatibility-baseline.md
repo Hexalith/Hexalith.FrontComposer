@@ -1,0 +1,124 @@
+---
+title: 'Story 15.5: Reconcile the Published Compatibility Baseline'
+type: 'chore'
+created: '2026-10-26'
+status: 'done'
+route: 'oneshot'
+story_id: '15.5'
+story_key: '15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline'
+baseline_commit: '2c8e204c9f1ca5c2c44d70005d481dd70f89f3fb'
+review_loop_iteration: 0
+context: []
+---
+
+<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
+
+## Intent
+
+**Problem:** Story 15.5 expects advancement from 4.4.0 to an evidence-backed release. Subsequent work already selected 4.7.0 consistently, but the formal release ledger ends at 4.1.1 and does not connect that baseline to the published packages and independent verification.
+
+**Approach:** Retain the verified 4.7.0 baseline, append a dated compatibility reconciliation to the existing release ledger, and link it from diagnostic governance documentation. Record the exact published source, Release and Release Evidence runs, inventory, evidence limits and existing compatibility checks. Preserve historical dispositions and independent owner approvals. Reuse existing ApiCompat, policy, public-surface and documentation lanes; add no scanner, reconstructed published packages or evidence bundle.
+
+</frozen-after-approval>
+
+## Implementation Notes
+
+- No intent gaps, irreversible actions or new APIs. Small documentation change: existing release ledger, diagnostic README, refreshed Epic 15 context, this spec and sprint status. The already correct baseline/configuration and all public contracts remain unchanged.
+- Verified latest stable release: v4.7.0, immutable release 416759469, published 2026-10-18T22:57:16Z; exact source/tag commit cf5fe8da100bd5224a0d7f597fc92e1ebb98a5f4. Release 39173030800 and independent Release Evidence 39174645465 succeeded for that source. All eight NuGet version indexes select 4.7.0 as latest stable and their package endpoints return HTTP 200 on 2026-10-26. Metadata queries download no package bytes.
+- Reuse eng/release_compatibility.py, Directory.Build.targets, Contracts.UI's explicit baseline, quality.yml Gate 4 and existing governance tests, all already pinned to 4.7.0. docs/diagnostics/compatibility-suppressions.json remains v4.7 with no suppressions. Do not derive publication from that planned-release ledger.
+- Previous Story 15.4 is done: preserve catalog-owned identity, publication validation, complete File Lists and separately owned approval gates. Cache was stale and regenerated from current planning artifacts. Concurrent commit 2c8e204c arrived during investigation; no initial user edits existed and its accessibility changes are outside this story.
+- Baseline policy command: python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py — exit 0, 60 tests passed in 5.642s.
+
+- Implemented the append-only ledger reconciliation and repository-safe diagnostic README link. The record distinguishes fresh metadata/availability checks from the existing independent downloaded-byte verification and grants no owner sign-off or publication permission. No runtime/configuration files changed.
+- All seven actual Release ApiCompat packs passed against published 4.7.0 with package validation enabled, baseline skipping disabled and isolated output per project; no suppression changes were needed. Packages are temporary validation output, not reconstructed historical evidence.
+- The documentation-only footprint does not require an AppHost startup; no runtime code or AppHost model changed. Focused publication validation skips unchanged snippet compilation and DocFX generation. Normal CI keeps its existing gates and performs no new live feed query.
+
+## Verification
+
+- `python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py` — exit 0; 60 passed. Includes production/synthetic pack plans, baseline agreement, suppression lifecycle and failure paths.
+- For each of the seven projects returned by `eng/release_compatibility.py:packable_library_projects`, ran `dotnet pack <project> --configuration Release --output /tmp/frontcomposer-15-5-apicompat-_uwokzr9/packages -p:Version=4.7.0-ci -p:PackageVersion=4.7.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=4.7.0 -p:FrontComposerPackageValidationSkipBaseline=false -p:BaseOutputPath=/tmp/frontcomposer-15-5-apicompat-_uwokzr9/<project-name>/bin/ --nologo -v:minimal` — all seven exited 0. Exact expanded commands and logs remain local at that scratch path. Inventory: Contracts (net10.0/netstandard2.0), Contracts.UI, Mcp, Schema, Shell, SourceTools (netstandard2.0), Testing. This reuses Quality Gate 4's actual package-validation mechanism.
+- `dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Debug --no-restore --nologo -v:minimal` — exit 0; zero warnings/errors. Local log `/tmp/frontcomposer-15-5-source-build.log`.
+- `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class Hexalith.FrontComposer.SourceTools.Tests.Diagnostics.DiagnosticRegistryTests -class '*SchemaFingerprint*' -class '*Drift*'` — exit 0; 289 passed, zero failed/skipped/errors/unrun. Includes real baseline/public-surface parity, diagnostic bands, canonical fingerprints and drift. Local log `/tmp/frontcomposer-15-5-contract-tests.log`.
+- `dotnet build tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj --configuration Debug --no-restore --nologo -v:minimal` initially failed NETSDK1004 before compilation because the test assets file was absent. Repeating without `--no-restore` restored the project and exited 0 with zero warnings/errors. Logs `/tmp/frontcomposer-15-5-contracts-build.log` and `/tmp/frontcomposer-15-5-contracts-build-restored.log`.
+- `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Contracts.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.Tests.dll -class Hexalith.FrontComposer.Contracts.Tests.Architecture.ContractsPackageBoundaryTests -class Hexalith.FrontComposer.Contracts.Tests.Schema.CanonicalSchemaMaterialFingerprintVectorTests -class Hexalith.FrontComposer.Contracts.Tests.Schema.SchemaFingerprintContractsTests` — exit 0; 11 passed, zero failed/skipped/errors/unrun. Local log `/tmp/frontcomposer-15-5-public-contracts.log`.
+- `pwsh -NoProfile -File eng/validate-docs.ps1 -SkipDocFx -SkipSnippetBuild` — exit 0; documentation validation passed, no blocking failures. Local log `/tmp/frontcomposer-15-5-docs.log`. No publication input/configuration or snippet changed, so full site regeneration is unnecessary here.
+- `python3 eng/validate-story-artifacts.py` and `git diff --check` — exit 0 before review; final story-scoped ownership check follows review.
+- Reuse [Story 15.4's verification](spec-15-4-correct-the-fluent-ui-v5-contingency-identity.md#verification), including 127 passing MigrationCommandTests and full DocFX/snippet publication proof, plus [its follow-up's verification](spec-15-4-correct-the-fluent-ui-v5-contingency-identity-2.md#verification), covering 59 passing documentation cases, for unchanged migration/publication behavior. Those are historical focused results, not claims of fresh execution in this story. All public API, generated-output and migration authorities remain unchanged by the five owned documentation/tracking files.
+
+### Repeatable ApiCompat command
+
+The following reruns the actual seven-library gate using the existing inventory authority and a fresh disposable output directory. It intentionally builds current packages for ApiCompat; it does not reconstruct previously published bytes.
+
+```bash
+python3 - <<'PYCOMPAT'
+import pathlib, subprocess, sys, tempfile
+root = pathlib.Path.cwd()
+sys.path.insert(0, str(root / 'eng'))
+from release_compatibility import PUBLISHED_BASELINE_VERSION, packable_library_projects
+output = pathlib.Path(tempfile.mkdtemp(prefix='frontcomposer-apicompat-'))
+projects = packable_library_projects(root)
+assert len(projects) == 7
+for project in projects:
+    subprocess.run([
+        'dotnet', 'pack', str(project), '--configuration', 'Release',
+        '--output', str(output / 'packages'),
+        '-p:Version=' + PUBLISHED_BASELINE_VERSION + '-ci',
+        '-p:PackageVersion=' + PUBLISHED_BASELINE_VERSION + '-ci',
+        '-p:EnableFrontComposerPackageValidation=true',
+        '-p:FrontComposerPackageValidationBaselineVersion=' + PUBLISHED_BASELINE_VERSION,
+        '-p:FrontComposerPackageValidationSkipBaseline=false',
+        '-p:BaseOutputPath=' + str(output / project.stem / 'bin') + '/',
+        '--nologo', '-v:minimal',
+    ], check=True)
+PYCOMPAT
+```
+
+### Read-only publication queries
+
+- `gh release list --repo Hexalith/Hexalith.FrontComposer --limit 8` — latest stable v4.7.0.
+- `gh api repos/Hexalith/Hexalith.FrontComposer/git/ref/tags/v4.7.0 --jq .object` — exact commit cf5fe8da100bd5224a0d7f597fc92e1ebb98a5f4.
+- `gh api repos/Hexalith/Hexalith.FrontComposer/releases/tags/v4.7.0` — immutable release 416759469; small JSON asset IDs: manifest 654681307, readiness 654681225, consumer validation 654681092. Read their original published JSON with `gh api repos/Hexalith/Hexalith.FrontComposer/releases/assets/<id> -H 'Accept: application/octet-stream'`.
+- `gh run view 39173030800 --repo Hexalith/Hexalith.FrontComposer --json conclusion,headSha,url` and `gh run view 39174645465 --repo Hexalith/Hexalith.FrontComposer --json conclusion,headSha,url,jobs` — both success for the exact source; independent verification steps succeeded.
+- `gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/39174645465/artifacts` — unexpired original artifact 12154181217, `release-verification-39174645465-1`; not downloaded. `gh run view --log` returned empty stdout with exit 0. Therefore exact historical independent ledger booleans are attributed to the tracked October 18 record, corroborated by live verification-step results.
+- For each packable package ID, queried `https://api.nuget.org/v3-flatcontainer/<lowercase-id>/index.json`, selected the last version without a prerelease suffix, and sent HTTP HEAD to `https://api.nuget.org/v3-flatcontainer/<lowercase-id>/4.7.0/<lowercase-id>.4.7.0.nupkg`. All eight selected 4.7.0 and returned 200 on 2026-10-26. Live queries were investigation only; normal tests remain offline.
+
+## Documented Unrelated Changes
+
+- `references/Hexalith.Builds` — concurrent dirty submodule content appeared during verification; not edited or staged by Story 15.5.
+- `eng/verify-apphost-invalid-bearer.sh` — concurrent bearer-verification work appeared during final checks; preserved and outside Story 15.5.
+- `tests/e2e/package.json` — concurrent browser test wiring; preserved and outside Story 15.5.
+- `tests/e2e/scripts/verify-apphost-invalid-bearer.test.mjs` — concurrent bearer-verification tests; preserved and outside Story 15.5.
+- `.github/workflows/quality.yml` — concurrent CI/browser work appeared after investigation; preserved and outside Story 15.5.
+- `eng/validate-docs.ps1` — concurrent documentation validator hardening; preserved and outside Story 15.5.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — concurrent CI/browser governance; preserved and outside Story 15.5.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs` — concurrent documentation validator tests; preserved and outside Story 15.5.
+- `tests/e2e/specs/adopter-historical-label-cleanup.spec.ts` — concurrent browser/adopter work; preserved and outside Story 15.5.
+
+## File List
+
+- `_bmad-output/implementation-artifacts/epic-15-context.md`
+- `_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md`
+- `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/diagnostics/README.md`
+
+
+## Review Triage Log
+
+Blind Hunter reviewed the five owned files at the parent model capability. Edge Case Hunter and Verification Gap were skipped by the oneshot route. All six findings were verified and patched; nothing was deferred.
+
+- BH-1 — low / patch: the source/run IDs were correct, but attempt identity was implicit. Fresh `gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/<id> --jq '{id,run_attempt,head_sha,conclusion}'` checks confirm attempt 1 and success for both runs at cf5fe8da100bd5224a0d7f597fc92e1ebb98a5f4. The ledger now names and links each exact attempt.
+- BH-2 — low / patch: parameterized commands plus temporary exact-command logs were harder to reproduce after cleanup. Added the runnable inventory-driven command above, reusing the existing policy and the same arguments that passed all seven projects.
+- BH-3 — low / patch: historical results were correctly attributed but lacked direct navigation. Added explicit links to the original Story 15.4 and separate follow-up verification sections; those results remain clearly distinguished from fresh execution.
+- BH-4 — medium / patch: the tracked REL-BASE-1 alias still said proposed. It now agrees with the numbered story at review and points to this spec. Epic 15 and unrelated approval rows remain unchanged.
+- BH-5 — low / patch: the fallback expiry was stated accurately without explaining its temporal scope. Clarified that expiry affects publication authorization and does not retroactively invalidate the published release or its use as an ApiCompat baseline.
+- BH-6 — low / patch: confirmed that Get-ContentFiles excludes docs/diagnostics/README.md; its generic docs pass cannot prove the new link. Added a focused local check of the exact repository URL, existing ledger path and heading-derived anchor, recorded below. No new validator or test lane was added.
+
+
+### Final checks after review
+
+- The focused README link check derived the GitHub anchor from the actual ledger heading, constructed the exact repository URL from its tracked path, and asserted the README link matches. Exit 0; anchor `story-155-compatibility-baseline-reconciliation-2026-10-26`. Local log `/tmp/frontcomposer-15-5-ledger-link.log`. The newly added target is verified locally before publication; no remote-main availability is claimed before push.
+- Both original successful workflow attempts were queried directly: `run_attempt=1`, `conclusion=success`, and the same exact published source SHA for each. The ledger links `/attempts/1` explicitly.
+- Review changed documentation and tracking only; the previously green seven ApiCompat packs and 360 focused tests remain applicable. The complete spec is done; the numbered sprint row and REL-BASE-1 alias are review, while Epic 15 remains in-progress for maintainer acceptance.
+- Pinned commit-message validation: `node node_modules/@commitlint/cli/cli.js --edit /tmp/frontcomposer-15-5-commit-message.txt --verbose` — exit 0, zero problems/warnings; evidence `/tmp/frontcomposer-15-5-commitlint.log`.
+- Final `python3 eng/validate-story-artifacts.py` and story-scoped `--story _bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md` checks passed, as did `git diff --check`. Concurrent dirty paths are explicitly classified above and excluded from the five-file commit.
