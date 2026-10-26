@@ -2,7 +2,7 @@
 title: 'Story 15.5: Reconcile the Published Compatibility Baseline'
 type: 'chore'
 created: '2026-10-26'
-status: 'done'
+status: 'in-progress'
 route: 'oneshot'
 story_id: '15.5'
 story_key: '15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline'
@@ -96,6 +96,7 @@ PYCOMPAT
 
 ## File List
 
+- `_bmad-output/implementation-artifacts/deferred-work.md`
 - `_bmad-output/implementation-artifacts/epic-15-context.md`
 - `_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md`
 - `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
@@ -122,3 +123,39 @@ Blind Hunter reviewed the five owned files at the parent model capability. Edge 
 - Review changed documentation and tracking only; the previously green seven ApiCompat packs and 360 focused tests remain applicable. The complete spec is done; the numbered sprint row and REL-BASE-1 alias are review, while Epic 15 remains in-progress for maintainer acceptance.
 - Pinned commit-message validation: `node node_modules/@commitlint/cli/cli.js --edit /tmp/frontcomposer-15-5-commit-message.txt --verbose` — exit 0, zero problems/warnings; evidence `/tmp/frontcomposer-15-5-commitlint.log`.
 - Final `python3 eng/validate-story-artifacts.py` and story-scoped `--story _bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md` checks passed, as did `git diff --check`. Concurrent dirty paths are explicitly classified above and excluded from the five-file commit.
+
+### Review Findings
+
+Code review pass 2 (`bmad-code-review`, 2026-10-26) covered `2c8e204c..62e3664c` over the five File List paths, which is byte-identical to `2f1dd0e1`. Blind Hunter (BH), Edge Case Hunter (EC), Verification Gap (VG) and Acceptance Auditor (AA) all completed. Result: 2 decision-needed (both resolved 2026-10-26 to patch, option 1), 6 patch, 5 defer, 15 rejected.
+
+- [ ] [Review][Patch] Record the unmapped delivery commit as an accepted history defect [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Commit-Scope Reconciliation] — resolved from decision 2026-10-26, option 1 (record and accept; no history rewrite, no `shared` declaration): `2f1dd0e128273706634374d7d66a0878662bd62f` is the delivery commit but its subject carries no story ID, so strict mode reports it `unmapped` and its five paths `listed-unowned`. Review patches commit as `fix(15.5): …` so they classify `owned`. (VG, AA; medium)
+- [ ] [Review][Patch] Record the mislabelled 13.6 auto-commit and declare its committed 13-6 artifacts [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Documented Unrelated Changes] — resolved from decision 2026-10-26, option 1: `62e3664c51c7cb7b9475728f3bf02a266d098fa7` (`fix: story 15.5`) holds only concurrent Story 13.6 work, so strict mode's `interleaved` failure is recorded as unrepairable without a history rewrite, and the three committed 13-6 artifacts are declared so legacy `--story` passes. (VG, EC, AA; medium)
+- [ ] [Review][Patch] Record the delivery SHA and CI run link that the PRD §7 evidence policy requires [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Verification] — Verification cites only `/tmp` logs. `2f1dd0e1` received no workflow runs, CI/Quality for `62e3664c` were cancelled, and the first runs that include it are on `29dcbfde` (CI 40287567822, Quality 40287567326; in progress at review). Record their conclusions and whether Gate 4 ran. (BH, EC, AA; medium)
+- [ ] [Review][Patch] Ledger attributes the whole 4.7.0 advance to `ee9762e6` [_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md:609] — `ee9762e6` (2026-10-19) moved the policy constant, the shared default and Contracts.UI; Quality's package-validation gates moved from 4.6.0 to 4.7.0 in `a258b992` (2026-10-21), and the `v4.7` suppression ledger came from `15577f42`. (AA; medium)
+- [ ] [Review][Patch] State that v4.7.0 has no FR24 disposition in this ledger [_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md:613] — a "Publication authority" heading over `publish_authorized=true`, "succeeded" and "valid" inside a compliance ledger whose Summary ends at v4.1.1 reads as a disposition. Name the independent verifier's `compliant-candidate` classification and that v4.2.0+ rows remain REL-LEDGER-2 (Story 17.14) backfill. (BH, AA; low)
+- [ ] [Review][Patch] Ledger front matter still says `updated: 2026-08-14` [_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md:5] (BH; low)
+- [ ] [Review][Patch] Record how package inventory and the manifest hash were read [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Read-only publication queries] — the ledger states package-inventory `valid` and the sealed-manifest SHA-256, but asset `654681115` and the hash computation are not listed. (AA; low)
+- [x] [Review][Patch] Restore the canonical sprint-status `last_updated` format [_bmad-output/implementation-artifacts/sprint-status.yaml:51] — `2026-10-26` replaced the `MM-DD-YYYY HH:MM` form (`DATE_FORMAT` in `sprint_plan.py`); the fallback parser accepts it, so this is cosmetic. (BH, AA; low) Resolved 2026-10-26 by the review status sync, which wrote `10-26-2026 15:59`.
+- [x] [Review][Defer] HFC2122 still targets removal in 4.7.0 although 4.7.0 shipped the member [docs/diagnostics/diagnostic-registry.json:2512] — deferred: pre-existing (Story 9-4 lifecycle; baseline advanced in `ee9762e6`), medium. `removedIn`, the `[Obsolete]` text at `FrontComposerShortcutRegistrar.cs:259`, `HFC2122.md` and the message template all promise v4.7 removal, and any removal is now a CP0002 break against the 4.7.0 baseline.
+- [x] [Review][Defer] PRD OI-11/G-1 and the epics.md 15.5 AC still read "4.4.0 → currently v4.5.0" with OI-11 Open [_bmad-output/planning-artifacts/prd.md:731] — deferred: the fix edits PM/Release Owner planning artifacts, medium; also `prd.md:490`, `prd.md:621`, `epics.md:3990`.
+- [x] [Review][Defer] `phase_build` docstring says the baseline is "currently 4.5.0" [eng/release_prepublish.py:193] — deferred: pre-existing, low; check `eng/workflow_source_closure.py` coverage before editing a release-chain script.
+- [x] [Review][Defer] PLAN-INT-2 and DOC-A/B/C aliases stay `proposed` although Stories 15.1–15.4 are done [_bmad-output/implementation-artifacts/sprint-status.yaml:1044] — deferred: pre-existing since 2026-09-23, low. The 15.6/15.7 part is false: sprint-status records them as superseded and closed as done.
+- [x] [Review][Defer] Regenerated Epic 15 context dropped still-applicable details [_bmad-output/implementation-artifacts/epic-15-context.md:40] — deferred: agent-context file, low. It lost "tenant/user values" (`epics.md:3912`, `epics.md:3917`), the Story 13.9 decision reference and the PRD §7 "Components + Icons 5.0.1 GA not approved" posture.
+
+#### Rejected
+
+- BH/EC NuGet check ignores `listed` and `.snupkg` — false: on 2026-10-26 the registration reports `listed=true` for all eight 4.7.0 entries and 4.7.0 is the highest stable version; symbol packages are served by the symbol server, not the flat container.
+- BH nothing prevents future baseline lag — false: the release policy fails closed two or more lines behind, including the static check against the ledger's `currentRelease`; the fallback expiry is recorded and owned by publication governance.
+- BH Epic 15 context removed retention rules and added the 15.6/15.7 supersession — false: both follow the PRD §7 owner decision of 2026-10-23, which supersedes those stories and their retention protocol.
+- EC Epic 15 context dropped EventStore packet ownership and the cross-repository cleanup ban — false: PRD §7 scopes `evidence/` scratch to this repository, and its repository policy separately forbids modifying submodule files.
+- EC repeatable command checks a different baseline after advancement — false: rerunning against the current policy constant is intended.
+- BH repeatable command skips Gate 4's restore — false: `dotnet pack` restores implicitly with the same global properties.
+- EC repeatable command assumes the repository root as working directory — low: every command in this spec is repository-root relative.
+- EC `assert` is stripped under `python3 -O` — low: not an everyday invocation, and a guard adds code.
+- EC no `-nodeReuse:false` or timeout — low: a workspace-specific MSBuild wedge; Gate 4 runs the same flags.
+- EC `mkdtemp` output is never removed — low: a deliberately disposable directory.
+- AA repeatable command copies Gate 4 flags by hand — low: a dated record of the exact passing command, not a scanner.
+- BH README link uses a mutable `blob/main` anchor — low: verified locally; append-only ledger headings are not renamed.
+- EC same `blob/main` anchor concern — low: duplicate of the BH entry above.
+- BH spec front matter has `context: []` — low: the fix edits the spec front matter, and Implementation Notes already name the regenerated context.
+- EC duplicate of the NuGet flat-container ordering concern — false: see the first rejected entry.
