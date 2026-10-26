@@ -17,7 +17,9 @@ const ADOPTER_PAGES: AdopterPage[] = [
     expectedTerms: [
       'CLI migration contract',
       'HFC diagnostic governance contract',
-      'migration stubs',
+      'executable migration guide',
+      '`cli-supported`',
+      '`manual-only`',
     ],
   },
   {
@@ -31,8 +33,10 @@ const ADOPTER_PAGES: AdopterPage[] = [
   {
     relativePath: 'docs/reference/cli.md',
     expectedTerms: [
-      'dry-run and apply modes',
-      'versioned migration stubs',
+      '--dry-run',
+      '--apply',
+      'executable CLI-supported edges and manual-only upgrades',
+      'versioned migration guides',
       'docs/migrations',
     ],
   },

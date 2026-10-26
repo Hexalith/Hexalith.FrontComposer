@@ -929,6 +929,15 @@ public sealed class CiGovernanceTests {
         string docsGate = ExtractNamedStep(quality, "Gate 2d: Docs Validation");
         docsGate.ShouldContain("./eng/validate-docs.ps1");
         docsGate.ShouldNotContain("continue-on-error: true");
+        docsGate.ShouldNotContain("-SkipDocFx");
+        docsGate.ShouldNotContain("if:");
+
+        string tools = ExtractNamedStep(quality, "Restore local .NET tools");
+        tools.ShouldContain("run: dotnet tool restore");
+        tools.ShouldNotContain("continue-on-error:");
+        tools.ShouldNotContain("if:");
+        quality.IndexOf("- name: Restore local .NET tools", StringComparison.Ordinal)
+            .ShouldBeLessThan(quality.IndexOf("- name: 'Gate 2b: Infrastructure governance and telemetry contracts'", StringComparison.Ordinal));
     }
 
     [Fact]

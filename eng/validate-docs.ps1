@@ -510,20 +510,28 @@ function Assert-FluentContingencyParity([string]$Root, [System.Collections.Gener
 
 function Test-DocFxExclusion([string]$Page, [array]$Patterns) {
     # Reuse the pinned DocFX matcher: **/ includes zero directories, unlike PowerShell -like.
-    $toolManifest = Get-Content -LiteralPath (Join-Path $RepoRoot '.config/dotnet-tools.json') -Raw | ConvertFrom-Json
-    $version = [string]$toolManifest.tools.docfx.version
-    if ($version -cnotmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$') { throw 'Unresolved DocFX tool version.' }
-    $packageRoot = $env:NUGET_PACKAGES
-    if ([string]::IsNullOrWhiteSpace($packageRoot)) {
-        $location = Invoke-Process 'dotnet' @('nuget', 'locals', 'global-packages', '--list', '--force-english-output') $RepoRoot
-        $packageRoot = [regex]::Match($location, '(?m)^global-packages: (.+?)\r?$').Groups[1].Value
+    try {
+        $toolManifest = Get-Content -LiteralPath (Join-Path $RepoRoot '.config/dotnet-tools.json') -Raw | ConvertFrom-Json
+        $version = [string]$toolManifest.tools.docfx.version
+        if ($version -cnotmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$') { throw 'Unresolved DocFX tool version.' }
+        $packageRoot = $env:NUGET_PACKAGES
+        if ([string]::IsNullOrWhiteSpace($packageRoot)) {
+            $location = Invoke-Process 'dotnet' @('nuget', 'locals', 'global-packages', '--list', '--force-english-output') $RepoRoot
+            $packageRoot = [regex]::Match($location, '(?m)^global-packages: (.+?)\r?$').Groups[1].Value
+        }
+        if ([string]::IsNullOrWhiteSpace($packageRoot)) { throw 'DocFX package cache is unavailable.' }
+        $toolsPath = Join-Path $packageRoot "docfx/$version/tools"
+        if (-not (Test-Path -LiteralPath $toolsPath -PathType Container)) { throw 'Pinned DocFX tools are unavailable.' }
+        $assemblies = @(Get-ChildItem -LiteralPath $toolsPath -Filter 'Docfx.Glob.dll' -Recurse -File -ErrorAction Stop |
+            Where-Object { $_.Directory.Name -eq 'any' -and $_.Directory.Parent.Name -match '^net[0-9]+\.[0-9]+$' -and [version]$_.Directory.Parent.Name.Substring(3) -le [System.Environment]::Version } |
+            Sort-Object { [version]$_.Directory.Parent.Name.Substring(3) } -Descending)
+        if ($assemblies.Count -eq 0) { throw 'Pinned DocFX glob matcher is unavailable.' }
+        [System.Reflection.Assembly]::LoadFrom($assemblies[0].FullName) | Out-Null
     }
-    if ([string]::IsNullOrWhiteSpace($packageRoot)) { throw 'DocFX package cache is unavailable.' }
-    $assemblies = @(Get-ChildItem -LiteralPath (Join-Path $packageRoot "docfx/$version/tools") -Filter 'Docfx.Glob.dll' -Recurse -File |
-        Where-Object { $_.Directory.Name -eq 'any' -and $_.Directory.Parent.Name -match '^net[0-9]+\.[0-9]+$' -and [version]$_.Directory.Parent.Name.Substring(3) -le [System.Environment]::Version } |
-        Sort-Object { [version]$_.Directory.Parent.Name.Substring(3) } -Descending)
-    if ($assemblies.Count -eq 0) { throw 'Pinned DocFX glob matcher is unavailable.' }
-    [System.Reflection.Assembly]::LoadFrom($assemblies[0].FullName) | Out-Null
+    catch {
+        # Never expose a runner/cache path or the loader's raw exception in publication diagnostics.
+        throw [System.InvalidOperationException]::new('Pinned DocFX glob matcher is unavailable; run dotnet tool restore before documentation validation (including -SkipDocFx).')
+    }
     foreach ($pattern in $Patterns) {
         $matcher = [Docfx.Glob.GlobMatcher]::new([string]$pattern, [Docfx.Glob.GlobMatcher]::DefaultOptions)
         if ($matcher.Match($Page)) { return $true }
@@ -554,7 +562,11 @@ function Assert-FluentContingencyPublication([System.Collections.Generic.List[st
         })
         if ($entries.Count -ne 1) { throw 'Missing publication mapping.' }
     }
-    catch { Add-Failure $Failures 'docs/docfx.json: must publish the Fluent contingency page at its documentation path.' }
+    catch {
+        $prerequisite = 'Pinned DocFX glob matcher is unavailable; run dotnet tool restore before documentation validation (including -SkipDocFx).'
+        if ($_.Exception.Message -ceq $prerequisite) { Add-Failure $Failures $prerequisite }
+        else { Add-Failure $Failures 'docs/docfx.json: must publish the Fluent contingency page at its documentation path.' }
+    }
 }
 
 function Get-ComponentSection([string]$Text, [string]$Heading) {
@@ -1309,7 +1321,8 @@ Set-Content -LiteralPath $ManifestPath -Value $json
 
 if ($failures.Count -gt 0) {
     $message = "Docs validation failed with $($failures.Count) issue(s):`n - " + ($failures -join "`n - ")
-    throw $message
+    [Console]::Error.WriteLine($message)
+    exit 1
 }
 
 Write-Host "Docs validation passed. Evidence manifest: $(ConvertTo-RepoPath $ManifestPath)"

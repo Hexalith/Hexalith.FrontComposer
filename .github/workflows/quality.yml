@@ -125,6 +125,10 @@ jobs:
             dotnet tool run frontcomposer migrate --project "$fixture/Acme.App/Acme.App.csproj" --from 9.1.0 --to 9.2.0 --apply --format json
           )
 
+      # Governance publication tests use the pinned DocFX glob matcher, even with -SkipDocFx.
+      - name: Restore local .NET tools
+        run: dotnet tool restore
+
       # Gate 2b: Infrastructure governance and telemetry contracts
       - name: 'Gate 2b: Infrastructure governance and telemetry contracts'
         env:
@@ -275,9 +279,7 @@ jobs:
       # Gate 2d: DocFX documentation publication and validation
       - name: 'Gate 2d: Docs Validation'
         shell: pwsh
-        run: |
-          dotnet tool restore
-          ./eng/validate-docs.ps1
+        run: ./eng/validate-docs.ps1
 
       # Gate 3: All tests pass
       # DIVERGENCE 4: Solution-level testing -- FrontComposer runs a single `dotnet test` on the
@@ -893,47 +895,7 @@ jobs:
         shell: bash
         env:
           HexalithFrontComposerFromSource: 'true'
-        run: |
-          set -euo pipefail
-          aspire_args=(--apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --nologo)
-          trap 'aspire stop "${aspire_args[@]}" >/dev/null 2>&1 || true' EXIT
-          aspire start "${aspire_args[@]}" --isolated --no-build
-          for resource in security eventstore; do
-            aspire wait "$resource" --status healthy --timeout 300 "${aspire_args[@]}"
-          done
-          # Aspire can list a proxy URL that accepts and then hangs, so every advertised
-          # non-management URL is a candidate and the first one that answers is used.
-          mapfile -t bases < <(aspire describe eventstore "${aspire_args[@]}" --format Json | jq -r '
-            [.resources[0].urls[]? | select(.name != "management") | .url | select(test("^https?://"))]
-            | (map(select(startswith("https://"))) + map(select(startswith("http://")))) | .[]')
-          if [[ ${#bases[@]} -eq 0 ]]; then
-            echo "::error::Aspire describe listed no HTTP endpoint for the eventstore resource."
-            exit 1
-          fi
-          failed=0
-          probe() {
-            local method="$1" path="$2" base code="000"
-            local request=(--request "$method" --header 'Authorization: Bearer invalid-ci-token')
-            if [[ "$method" == POST ]]; then
-              request+=(--header 'Content-Type: application/json' --data '{}')
-            fi
-            for base in "${bases[@]}"; do
-              code="$(curl --silent --insecure --max-time 10 --output /dev/null --write-out '%{http_code}' \
-                "${request[@]}" "${base%/}$path" || true)"
-              [[ "$code" != "000" ]] && break
-            done
-            if [[ "$code" == 401 || "$code" == 403 ]]; then
-              echo "$method $path rejected the invalid bearer with $code."
-            else
-              echo "::error::$method $path returned $code for an invalid bearer; expected 401 or 403."
-              failed=1
-            fi
-          }
-          probe POST /api/v1/commands
-          probe GET /api/v1/commands/status/01K8AAAAAAAAAAAAAAAAAAAAAA
-          probe POST /api/v1/queries
-          probe POST '/hubs/projection-changes/negotiate?negotiateVersion=1'
-          exit "$failed"
+        run: ./eng/verify-apphost-invalid-bearer.sh
 
       - name: Upload Epic 9 acceptance artifacts
         if: always()

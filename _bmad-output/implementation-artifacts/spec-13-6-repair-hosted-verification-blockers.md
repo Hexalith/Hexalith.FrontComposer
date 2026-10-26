@@ -48,12 +48,12 @@ context:
 
 **Execution:**
 
-- [ ] `.github/workflows/quality.yml`, `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — restore tools before governance; assert order and retain blocking docs validation.
-- [ ] `eng/validate-docs.ps1`, `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs` — report missing matcher without exposing paths; cover empty cache and existing exclusion cases.
-- [ ] `tests/e2e/specs/adopter-historical-label-cleanup.spec.ts` — replace three stale phrases with executable/versioned migration guides and explicit `--dry-run`/`--apply`; preserve ownership, metadata, API and version guards.
+- [x] `.github/workflows/quality.yml`, `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — restore tools before governance; assert order and retain blocking docs validation.
+- [x] `eng/validate-docs.ps1`, `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs` — report missing matcher without exposing paths; cover empty cache and existing exclusion cases.
+- [x] `tests/e2e/specs/adopter-historical-label-cleanup.spec.ts` — replace three stale phrases with executable/versioned migration guides and explicit `--dry-run`/`--apply`; preserve ownership, metadata, API and version guards.
 - [ ] `eng/verify-apphost-invalid-bearer.sh` (new), `tests/e2e/scripts/verify-apphost-invalid-bearer.test.mjs` (new), `tests/e2e/package.json`, `.github/workflows/quality.yml` — extract rejection; diagnose/correct transport failure. Retain Aspire readiness, owned-process cleanup and four paths. Test transport-only fallback, all-unreachable, wrong HTTP status, discovery failure and cleanup; verify live.
-- [ ] `references/Hexalith.Builds/.github/workflows/domain-ci.yml`, `references/Hexalith.Builds/Tools/test-domain-workflow-test-platforms.ps1` — isolate child stdin; require fresh nonzero reports per project. Test consuming children and missing/stale/malformed/zero-result reports. Prepare active-base-policy/pin adoption for separate publication review.
-- [ ] `_bmad-output/implementation-artifacts/13-6-accessibility-result.md`, primary `spec-13-6-verify-responsive-and-assistive-accessibility.md` — record commands/counts/revisions/CI links and blockers; retain seven Owner-reported Pass records and qualification gaps.
+- [x] `references/Hexalith.Builds/.github/workflows/domain-ci.yml`, `references/Hexalith.Builds/Tools/test-domain-workflow-test-platforms.ps1` — isolate child stdin; require fresh nonzero reports per project. Test consuming children and missing/stale/malformed/zero-result reports. Prepare active-base-policy/pin adoption for separate publication review.
+- [x] `_bmad-output/implementation-artifacts/13-6-accessibility-result.md`, primary `spec-13-6-verify-responsive-and-assistive-accessibility.md` — record commands/counts/revisions/CI links and blockers; retain seven Owner-reported Pass records and qualification gaps.
 
 **Acceptance Criteria:**
 
@@ -78,3 +78,23 @@ context:
 - `python3 eng/validate-story-artifacts.py`; `git diff --check` in each changed repository.
 - Investigation: wording 0 passed/1 failed; matcher fails without installed tools; synthetic child executes 1/4 versus 4/4 with isolated stdin. Actual hosted consumer/transport cause remains unproven; diagnostics in `/tmp`.
 - Current-HEAD [CI](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40231562358) and [Quality](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40231562097) were running at inspection; no rerun requested.
+
+### Local implementation verification — 2026-10-26
+
+The [current result](13-6-accessibility-result.md#hosted-verification-repair--local-implementation-2026-10-26) owns commands, counts, local revision attribution, historical CI links and the publication/adoption handoff. Focused checks pass: DocsSiteValidationTests 64, CiGovernanceTests 86, migration tests 3, Epic 9 tooling tests 161 (23 rejection-helper checks), and Builds workflow assertions 287. Focused Debug builds and the source AppHost build have zero warnings/errors. Story artifact, shell syntax and both repository diff checks pass.
+
+The rejection helper and regressions are implemented, but its task remains unchecked because live acceptance fails: four paths, eight curl exit-28/HTTP-000 attempts, zero 401/403 responses. Freshly built EventStore exits on missing workload-issuer ClientId/ClientSecret with JWT Authority configured; the current host and local realm provide no workload service account. Owned cleanup passes. The no-authentication-change boundary prevents repairing that prerequisite under this approval. Historical hosted transport cause is not proven. No commit/push, pin adoption or hosted rerun was performed; hosted acceptance and parent story/sprint remain in-progress. The frozen intent and all seven Owner-reported manual Pass records with their qualification gaps are unchanged.
+
+
+### Parent audit and proposed prerequisite amendment — 2026-10-26
+
+The parent inspected the complete baseline diff, including untracked files and the two Builds changes, and checked the actual verification outputs. The documentation, project-execution and migration matrix rows have passing coverage. Bearer handling has 23 passing harness tests, but the required live 401/403 observations are absent. Keep the live task unchecked and this spec in-progress; the workflow's final review follows completion of that task. Unrelated externally committed Story 15.4/15.5 changes are preserved. Parent whitespace normalization only restores required CRLF in the two JavaScript/TypeScript files; shell files retain LF.
+
+**Proposed amendment, awaiting approval:** permit the minimum local AppHost/Keycloak workload-identity wiring needed by the selected EventStore, while keeping authentication enforcement and existing user clients intact:
+
+- `src/Hexalith.FrontComposer.AppHost/Program.cs`: bind the local workload client through the existing platform `WithEventStoreWorkloadClientCredentials` API using a secret parameter.
+- `src/Hexalith.FrontComposer.AppHost/KeycloakRealms/hexalith-realm.json` and minimal host-owned credential/template support if needed: provision the matching confidential service-account client with private generated credentials, reusing the platform's established pattern. Do not copy secrets into tracked files or reset an existing user realm.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs` and relevant host fixtures: verify client/wiring consistency, secret handling and unchanged existing client contracts.
+- Validate a fresh isolated local realm, healthy EventStore, all four real 401/403 responses, and the existing Epic 9 live proof; then resume final review. Dependency changes, publication and workflow-pin adoption remain outside this amendment.
+
+No authentication amendment has been applied or approved. The existing frozen block remains verbatim.

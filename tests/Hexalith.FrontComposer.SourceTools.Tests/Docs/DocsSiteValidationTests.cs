@@ -488,6 +488,8 @@ public sealed partial class DocsSiteValidationTests {
 
     [Theory]
     [InlineData("RecursiveMarkdownExclusion")]
+    [InlineData("ExactDocfxExclusion")]
+    [InlineData("EmptyDocfxCache")]
     [InlineData("UnrelatedDocfxExclusion")]
     [InlineData("TocDescriptionScalar")]
     [InlineData("TocItemNameScalar")]
@@ -547,11 +549,11 @@ public sealed partial class DocsSiteValidationTests {
                 }
                 File.WriteAllText(toc, text);
             }
-            if (scenario is "RecursiveMarkdownExclusion" or "UnrelatedDocfxExclusion")
+            if (scenario is "RecursiveMarkdownExclusion" or "UnrelatedDocfxExclusion" or "ExactDocfxExclusion" or "EmptyDocfxCache")
             {
                 string config = Path.Combine(root, "docs", "docfx.json");
                 System.Text.Json.Nodes.JsonNode json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(config))!;
-                json["build"]!["content"]![0]!["exclude"] = JsonSerializer.SerializeToNode(new[] { scenario == "RecursiveMarkdownExclusion" ? "**/*.md" : "reference/**/*.md" });
+                json["build"]!["content"]![0]!["exclude"] = JsonSerializer.SerializeToNode(new[] { scenario == "RecursiveMarkdownExclusion" ? "**/*.md" : scenario == "ExactDocfxExclusion" ? "fluent-ui-v5-contingency.md" : "reference/**/*.md" });
                 File.WriteAllText(config, json.ToJsonString());
             }
             if (scenario == "MissingDocfx")
@@ -563,7 +565,14 @@ public sealed partial class DocsSiteValidationTests {
             {
                 File.WriteAllText(page, Regex.Replace(File.ReadAllText(page), @"(?m)^reviewed:[^\n]*\n", ""));
             }
-            (int exitCode, string output, string error) = await RunFluentProcessAsync(root, "pwsh", "-NoProfile", "-File", "eng/validate-docs.ps1", "-SkipDocFx", "-SkipSnippetBuild").ConfigureAwait(false);
+            IReadOnlyDictionary<string, string>? environment = null;
+            if (scenario == "EmptyDocfxCache")
+            {
+                string cache = Path.Combine(root, "empty-private-package-cache");
+                _ = Directory.CreateDirectory(cache);
+                environment = new Dictionary<string, string> { ["NUGET_PACKAGES"] = cache };
+            }
+            (int exitCode, string output, string error) = await RunFluentProcessWithEnvironmentAsync(root, "pwsh", environment, "-NoProfile", "-File", "eng/validate-docs.ps1", "-SkipDocFx", "-SkipSnippetBuild").ConfigureAwait(false);
             using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "artifacts", "docs", "validation-manifest.json")));
             manifest.RootElement.GetProperty("inputRoots").EnumerateArray().Select(value => value.GetString())
                 .ShouldContain("docs/fluent-ui-v5-contingency.md");
@@ -580,12 +589,19 @@ public sealed partial class DocsSiteValidationTests {
                 string expected = scenario switch
                 {
                     "MissingToc" or "TocDescriptionScalar" or "TocItemNameScalar" => "docs/toc.yml: missing Fluent contingency page under How-to.",
-                    "MissingDocfx" or "RecursiveMarkdownExclusion" => "docs/docfx.json: must publish the Fluent contingency page at its documentation path.",
+                    "EmptyDocfxCache" => "Pinned DocFX glob matcher is unavailable; run dotnet tool restore before documentation validation (including -SkipDocFx).",
+                    "MissingDocfx" or "RecursiveMarkdownExclusion" or "ExactDocfxExclusion" => "docs/docfx.json: must publish the Fluent contingency page at its documentation path.",
                     "MissingMetadata" => "docs/fluent-ui-v5-contingency.md is missing required front matter 'reviewed'.",
                     _ => "docs/fluent-ui-v5-contingency.md: version for Microsoft.FluentUI.AspNetCore.Components" + (scenario == "IconsDrift" ? ".Icons" : "") + " must match the root HEAD-selected catalog.",
                 };
                 failures[0].ShouldBe(expected);
                 failures[0].ShouldNotContain(root);
+                if (scenario == "EmptyDocfxCache")
+                {
+                    (output + error).ShouldNotContain(root);
+                    (output + error).ShouldNotContain("empty-private-package-cache");
+                    failures[0].Length.ShouldBeLessThan(200);
+                }
             }
         }
         finally { DeleteFluentFixture(root); }
@@ -657,7 +673,10 @@ public sealed partial class DocsSiteValidationTests {
         return output;
     }
 
-    private static async Task<(int ExitCode, string Output, string Error)> RunFluentProcessAsync(string root, string fileName, params string[] arguments)
+    private static Task<(int ExitCode, string Output, string Error)> RunFluentProcessAsync(string root, string fileName, params string[] arguments)
+        => RunFluentProcessWithEnvironmentAsync(root, fileName, null, arguments);
+
+    private static async Task<(int ExitCode, string Output, string Error)> RunFluentProcessWithEnvironmentAsync(string root, string fileName, IReadOnlyDictionary<string, string>? environment, params string[] arguments)
     {
         ProcessStartInfo start = new(fileName)
         {
@@ -666,6 +685,10 @@ public sealed partial class DocsSiteValidationTests {
             RedirectStandardError = true,
             UseShellExecute = false,
         };
+        if (environment is not null)
+        {
+            foreach (KeyValuePair<string, string> entry in environment) { start.Environment[entry.Key] = entry.Value; }
+        }
         foreach (string argument in arguments) { start.ArgumentList.Add(argument); }
         using Process process = Process.Start(start)!;
         Task<string> output = process.StandardOutput.ReadToEndAsync();
