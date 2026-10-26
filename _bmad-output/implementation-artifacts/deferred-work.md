@@ -10796,3 +10796,10 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 - The `phase_build` docstring in `eng/release_prepublish.py:193` says the baseline packages are "currently 4.5.0" (pre-existing, low). Check `eng/workflow_source_closure.py` coverage before editing this release-chain script.
 - `PLAN-INT-2` and `DOC-A`/`DOC-B`/`DOC-C` in `_bmad-output/implementation-artifacts/sprint-status.yaml:1044` and `:1067-1069` stay `proposed` although Stories 15.1–15.4 are done; only `REL-BASE-1` was reconciled (pre-existing since 2026-09-23, low).
 - The regenerated `_bmad-output/implementation-artifacts/epic-15-context.md` dropped still-applicable details: "tenant/user values" from the mismatch/render-fault privacy rule (`epics.md:3912`, `:3917`), the Story 13.9 decision reference and the PRD §7 "Components + Icons 5.0.1 GA not approved" posture (low; agent-context file). Restore on the next context regeneration.
+
+
+## Deferred from: Story 15.5 compatibility-baseline follow-up review (2026-10-26)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Verify existing-realm restart coverage when the concurrent Story 13.6 workload-identity amendment is complete.
+  evidence: BH-F5 is unverified, medium if confirmed. The amendment in `spec-13-6-repair-hosted-verification-blockers.md` requires preserving existing users and clients, while its review snapshot matrix named only a fresh isolated realm. Its helper/tests were still being authored during this review, so a runtime defect is not established. Settle by inspecting the completed implementation and testing an existing realm across restart, including differing generated credentials and the existing service-account client. Story 15.5 does not own that amendment.

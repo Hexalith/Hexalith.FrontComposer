@@ -2,7 +2,7 @@
 title: 'Story 15.5: Reconcile the Published Compatibility Baseline'
 type: 'chore'
 created: '2026-10-26'
-status: 'in-progress'
+status: 'done'
 route: 'oneshot'
 story_id: '15.5'
 story_key: '15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline'
@@ -33,6 +33,10 @@ context: []
 - All seven actual Release ApiCompat packs passed against published 4.7.0 with package validation enabled, baseline skipping disabled and isolated output per project; no suppression changes were needed. Packages are temporary validation output, not reconstructed historical evidence.
 - The documentation-only footprint does not require an AppHost startup; no runtime code or AppHost model changed. Focused publication validation skips unchanged snippet compilation and DocFX generation. Normal CI keeps its existing gates and performs no new live feed query.
 
+- Resumed on 2026-10-26 to close the seven remaining review patches. Corrected the ledger's three-commit baseline chronology and update date, separated technical publication evidence from FR24 disposition, and added reproducible inventory/hash queries and delivery/CI provenance below. Runtime code, package-validation configuration and historical owner decisions are unchanged.
+- The existing 2026-10-26 review decisions accept the two historical commit-scope defects without rewriting history or declaring delivery work shared. Their strict-validator failures remain explicit below; declaring concurrent Story 13.6 artifacts only completes unrelated-path accounting.
+- Concurrent edits to `spec-13-6-repair-hosted-verification-blockers.md` appeared after the initially clean worktree check. They are preserved and excluded from this follow-up's commit.
+
 ## Verification
 
 - `python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py` — exit 0; 60 passed. Includes production/synthetic pack plans, baseline agreement, suppression lifecycle and failure paths.
@@ -44,6 +48,55 @@ context: []
 - `pwsh -NoProfile -File eng/validate-docs.ps1 -SkipDocFx -SkipSnippetBuild` — exit 0; documentation validation passed, no blocking failures. Local log `/tmp/frontcomposer-15-5-docs.log`. No publication input/configuration or snippet changed, so full site regeneration is unnecessary here.
 - `python3 eng/validate-story-artifacts.py` and `git diff --check` — exit 0 before review; final story-scoped ownership check follows review.
 - Reuse [Story 15.4's verification](spec-15-4-correct-the-fluent-ui-v5-contingency-identity.md#verification), including 127 passing MigrationCommandTests and full DocFX/snippet publication proof, plus [its follow-up's verification](spec-15-4-correct-the-fluent-ui-v5-contingency-identity-2.md#verification), covering 59 passing documentation cases, for unchanged migration/publication behavior. Those are historical focused results, not claims of fresh execution in this story. All public API, generated-output and migration authorities remain unchanged by the five owned documentation/tracking files.
+
+### Delivery and CI provenance (review follow-up 2026-10-26)
+
+The original five-file delivery is commit `2f1dd0e128273706634374d7d66a0878662bd62f`.
+A fresh Actions API query for that exact SHA returned zero runs. The following
+commit `62e3664c51c7cb7b9475728f3bf02a266d098fa7` has cancelled
+[CI 40287030893](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40287030893/attempts/1)
+and [Quality 40287030293](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40287030293/attempts/1),
+so neither proves a passing delivery gate.
+
+The first completed, non-cancelled CI/Quality runs containing the delivery are push attempt 1 at descendant
+commit `29dcbfdeff32b964c581aa96a1b18d7dab20a71b`, queried again on 2026-10-26:
+
+| Lane | Durable run | Observed result |
+| --- | --- | --- |
+| CI | [40287567822, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40287567822/attempts/1) | Completed, success. |
+| Quality | [40287567326, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40287567326/attempts/1) | Completed, failure overall. The [build-and-test job](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40287567326/job/121455214432) succeeded, including `Gate 4: Library Package Validation (ApiCompat baseline)`. The separate [epic9-live-acceptance job](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40287567326/job/121455214625) failed at `AppHost rejects invalid bearer tokens`. |
+
+These runs corroborate the delivered compatibility checks. They do not establish
+an overall green Quality workflow, owner acceptance or publication eligibility,
+and they do not test this later documentation follow-up. The bearer-verification
+failure remains separately owned by [Story 13.6's repair](spec-13-6-repair-hosted-verification-blockers.md).
+Existing local test counts above are historical results from the original delivery.
+Fresh follow-up checks are recorded separately below.
+
+Re-query attempt 1 with `gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/<id>/attempts/1`
+for the exact `run_attempt`, `head_sha`, `event` and `conclusion`, and
+`gh run view <id> --attempt 1 --repo Hexalith/Hexalith.FrontComposer --json conclusion,status,headSha,url,jobs`
+for the job/step results. The absence/cancellation checks used
+`gh api 'repos/Hexalith/Hexalith.FrontComposer/actions/runs?head_sha=<full-SHA>&per_page=100'`
+for each delivery/following SHA above.
+
+### Fresh follow-up verification (2026-10-26)
+
+Executed from review baseline `3668b603bf9cd176da86a2f3e020fd8fab2b58af` with
+this documentation follow-up in the worktree:
+
+- `python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py` — exit 0; 60 tests passed in 2.569s. No package-validation code or configuration changed.
+- `pwsh -NoProfile -File eng/validate-docs.ps1 -SkipDocFx -SkipSnippetBuild` — exit 0; docs validation passed. DocFX and snippet compilation were skipped because neither publication configuration nor snippets changed.
+- `python3 eng/validate-story-artifacts.py` and `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md` — exit 0; artifact hygiene and unrelated-path accounting passed.
+- The strict `--candidate HEAD` command in Commit-Scope Reconciliation — exit 1, reporting exactly the historical `unmapped` delivery and `interleaved` Story 13.6 commit. No File List accounting failure remains. This is an accepted history limitation, not a passing gate.
+- The published-asset example below — exit 0; inventory `valid`, eight packable rows, both raw-byte hashes matching the recorded values. Exact-attempt CI/Quality API queries and `gh run view 40287567326 --attempt 1 --repo Hexalith/Hexalith.FrontComposer --json conclusion,status,headSha,url,jobs` confirmed the run/step results above.
+- Focused Python assertions passed: frozen intent equals the original tracked block; the README URL matches the actual ledger heading-derived anchor; all eight patch findings are checked; release-ledger observations before Story 15.5 are unchanged except the frontmatter update date.
+- `git diff --check` — exit 0.
+- `node node_modules/@commitlint/cli/cli.js --edit /tmp/frontcomposer-15-5-followup-jph4ekwt/commit-message.txt --verbose` — exit 0; zero problems/warnings. Successful local validation evidence: `/tmp/frontcomposer-15-5-followup-jph4ekwt/commitlint.log`.
+
+The original seven ApiCompat packs and focused .NET tests were not repeated for
+this documentation follow-up; their recorded results and the successful descendant
+Gate 4 remain the compatibility evidence. No overall green Quality run is claimed.
 
 ### Repeatable ApiCompat command
 
@@ -82,8 +135,63 @@ PYCOMPAT
 - `gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/39174645465/artifacts` — unexpired original artifact 12154181217, `release-verification-39174645465-1`; not downloaded. `gh run view --log` returned empty stdout with exit 0. Therefore exact historical independent ledger booleans are attributed to the tracked October 18 record, corroborated by live verification-step results.
 - For each packable package ID, queried `https://api.nuget.org/v3-flatcontainer/<lowercase-id>/index.json`, selected the last version without a prerelease suffix, and sent HTTP HEAD to `https://api.nuget.org/v3-flatcontainer/<lowercase-id>/4.7.0/<lowercase-id>.4.7.0.nupkg`. All eight selected 4.7.0 and returned 200 on 2026-10-26. Live queries were investigation only; normal tests remain offline.
 
+### Published inventory and raw manifest hash
+
+Read the original JSON assets through the GitHub release-assets API; hash the raw
+response bytes before JSON parsing or any reserialization:
+
+```bash
+python3 - <<'PYASSETS'
+import hashlib, json, subprocess
+for asset_id in (654681115, 654681307):
+    data = subprocess.check_output([
+        'gh', 'api', '-H', 'Accept: application/octet-stream',
+        f'repos/Hexalith/Hexalith.FrontComposer/releases/assets/{asset_id}',
+    ])
+    document = json.loads(data)
+    print(asset_id, hashlib.sha256(data).hexdigest())
+    if asset_id == 654681115:
+        print(document['status'], sum(row['packable'] for row in document['rows']))
+PYASSETS
+```
+
+Fresh execution on 2026-10-26 returned inventory asset `654681115` with
+`status=valid`, eight packable rows and raw SHA-256
+`c1e6662f6042c6ec72165a666a51935a626867a5c2e259382a822b2530d30f0a`.
+Manifest asset `654681307` returned raw SHA-256
+`2aa2d01e8cc6b8b489b016c2828af478192dcf68850ea9c1978d14b7d19f24ba`,
+matching both the ledger's value and the release API's `sha256:` digest.
+Only published JSON metadata was read; package bytes were not downloaded or rebuilt.
+
+## Commit-Scope Reconciliation
+
+The 2026-10-26 review decisions (option 1 for both findings) accept these history
+defects as recorded. They do not grant a strict-validation exemption:
+
+| Canonical commit | Actual contents | Strict classification and accepted defect |
+| --- | --- | --- |
+| `2f1dd0e128273706634374d7d66a0878662bd62f` | The original five-file Story 15.5 delivery. | `unmapped`: the subject lacks the story identity; its five paths are `listed-unowned` in this commit. This is delivery work, not `shared` work. |
+| `62e3664c51c7cb7b9475728f3bf02a266d098fa7` | Eleven concurrent Story 13.6 paths; no Story 15.5 delivery files. | `interleaved`: its subject incorrectly names Story 15.5 and all eleven paths are unowned by this story. Unrelated declarations below complete path accounting but cannot change that classification. |
+| `29dcbfdeff32b964c581aa96a1b18d7dab20a71b` | The `references/Hexalith.Builds` gitlink sync. | `unrelated`; outside Story 15.5. |
+| `3668b603bf9cd176da86a2f3e020fd8fab2b58af` | Story 15.5 review findings, deferred work and status reopening. | `owned`; its subject names Story 15.5 and its paths are in the File List. |
+
+`python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md --candidate HEAD`
+continues to exit 1 for the two immutable history defects above. No history is
+rewritten, baseline moved, validator weakened or non-owning disposition declared.
+The legacy `--story` check validates File List/unrelated-path accounting separately;
+its success must not be presented as a strict commit-scope pass. This follow-up must
+use a validated commit message with Story 15.5 identity; verify its full SHA and
+`owned` classification after committing. The historical strict failures remain.
+
 ## Documented Unrelated Changes
 
+- `tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs` — concurrent Story 13.6 AppHost regression coverage; appeared during final checks and is excluded from this commit.
+- `src/Hexalith.FrontComposer.AppHost/Program.cs` — concurrent Story 13.6 local workload-identity amendment; appeared during follow-up review and is excluded from this commit.
+- `src/Hexalith.FrontComposer.AppHost/LocalWorkloadRealm.cs` — concurrent Story 13.6 helper under construction; preserved and excluded from this commit.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj` — concurrent Story 13.6 test wiring; preserved and excluded from this commit.
+- `_bmad-output/implementation-artifacts/13-6-accessibility-result.md` — concurrent Story 13.6 result artifact committed in the mislabelled `62e3664c51c7cb7b9475728f3bf02a266d098fa7`; outside Story 15.5.
+- `_bmad-output/implementation-artifacts/spec-13-6-repair-hosted-verification-blockers.md` — concurrent Story 13.6 repair artifact committed in the same mislabelled commit; ongoing worktree edits are preserved and excluded from this follow-up.
+- `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md` — concurrent Story 13.6 verification artifact committed in the same mislabelled commit; outside Story 15.5.
 - `references/Hexalith.Builds` — concurrent dirty submodule content appeared during verification; not edited or staged by Story 15.5.
 - `eng/verify-apphost-invalid-bearer.sh` — concurrent bearer-verification work appeared during final checks; preserved and outside Story 15.5.
 - `tests/e2e/package.json` — concurrent browser test wiring; preserved and outside Story 15.5.
@@ -128,13 +236,13 @@ Blind Hunter reviewed the five owned files at the parent model capability. Edge 
 
 Code review pass 2 (`bmad-code-review`, 2026-10-26) covered `2c8e204c..62e3664c` over the five File List paths, which is byte-identical to `2f1dd0e1`. Blind Hunter (BH), Edge Case Hunter (EC), Verification Gap (VG) and Acceptance Auditor (AA) all completed. Result: 2 decision-needed (both resolved 2026-10-26 to patch, option 1), 6 patch, 5 defer, 15 rejected.
 
-- [ ] [Review][Patch] Record the unmapped delivery commit as an accepted history defect [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Commit-Scope Reconciliation] — resolved from decision 2026-10-26, option 1 (record and accept; no history rewrite, no `shared` declaration): `2f1dd0e128273706634374d7d66a0878662bd62f` is the delivery commit but its subject carries no story ID, so strict mode reports it `unmapped` and its five paths `listed-unowned`. Review patches commit as `fix(15.5): …` so they classify `owned`. (VG, AA; medium)
-- [ ] [Review][Patch] Record the mislabelled 13.6 auto-commit and declare its committed 13-6 artifacts [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Documented Unrelated Changes] — resolved from decision 2026-10-26, option 1: `62e3664c51c7cb7b9475728f3bf02a266d098fa7` (`fix: story 15.5`) holds only concurrent Story 13.6 work, so strict mode's `interleaved` failure is recorded as unrepairable without a history rewrite, and the three committed 13-6 artifacts are declared so legacy `--story` passes. (VG, EC, AA; medium)
-- [ ] [Review][Patch] Record the delivery SHA and CI run link that the PRD §7 evidence policy requires [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Verification] — Verification cites only `/tmp` logs. `2f1dd0e1` received no workflow runs, CI/Quality for `62e3664c` were cancelled, and the first runs that include it are on `29dcbfde` (CI 40287567822, Quality 40287567326; in progress at review). Record their conclusions and whether Gate 4 ran. (BH, EC, AA; medium)
-- [ ] [Review][Patch] Ledger attributes the whole 4.7.0 advance to `ee9762e6` [_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md:609] — `ee9762e6` (2026-10-19) moved the policy constant, the shared default and Contracts.UI; Quality's package-validation gates moved from 4.6.0 to 4.7.0 in `a258b992` (2026-10-21), and the `v4.7` suppression ledger came from `15577f42`. (AA; medium)
-- [ ] [Review][Patch] State that v4.7.0 has no FR24 disposition in this ledger [_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md:613] — a "Publication authority" heading over `publish_authorized=true`, "succeeded" and "valid" inside a compliance ledger whose Summary ends at v4.1.1 reads as a disposition. Name the independent verifier's `compliant-candidate` classification and that v4.2.0+ rows remain REL-LEDGER-2 (Story 17.14) backfill. (BH, AA; low)
-- [ ] [Review][Patch] Ledger front matter still says `updated: 2026-08-14` [_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md:5] (BH; low)
-- [ ] [Review][Patch] Record how package inventory and the manifest hash were read [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Read-only publication queries] — the ledger states package-inventory `valid` and the sealed-manifest SHA-256, but asset `654681115` and the hash computation are not listed. (AA; low)
+- [x] [Review][Patch] Record the unmapped delivery commit as an accepted history defect [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Commit-Scope Reconciliation] — resolved from decision 2026-10-26, option 1 (record and accept; no history rewrite, no `shared` declaration): `2f1dd0e128273706634374d7d66a0878662bd62f` is the delivery commit but its subject carries no story ID, so strict mode reports it `unmapped` and its five paths `listed-unowned`. Review patches commit as `fix(15.5): …` so they classify `owned`. (VG, AA; medium)
+- [x] [Review][Patch] Record the mislabelled 13.6 auto-commit and declare its committed 13-6 artifacts [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Documented Unrelated Changes] — resolved from decision 2026-10-26, option 1: `62e3664c51c7cb7b9475728f3bf02a266d098fa7` (`fix: story 15.5`) holds only concurrent Story 13.6 work, so strict mode's `interleaved` failure is recorded as unrepairable without a history rewrite, and the three committed 13-6 artifacts are declared so legacy `--story` passes. (VG, EC, AA; medium)
+- [x] [Review][Patch] Record the delivery SHA and CI run link that the PRD §7 evidence policy requires [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Verification] — Verification cites only `/tmp` logs. `2f1dd0e1` received no workflow runs, CI/Quality for `62e3664c` were cancelled, and the first runs that include it are on `29dcbfde` (CI 40287567822, Quality 40287567326; in progress at review). Record their conclusions and whether Gate 4 ran. (BH, EC, AA; medium)
+- [x] [Review][Patch] Ledger attributes the whole 4.7.0 advance to `ee9762e6` [_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md:609] — `ee9762e6` (2026-10-19) moved the policy constant, the shared default and Contracts.UI; Quality's package-validation gates moved from 4.6.0 to 4.7.0 in `a258b992` (2026-10-21), and the `v4.7` suppression ledger came from `15577f42`. (AA; medium)
+- [x] [Review][Patch] State that v4.7.0 has no FR24 disposition in this ledger [_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md:613] — a "Publication authority" heading over `publish_authorized=true`, "succeeded" and "valid" inside a compliance ledger whose Summary ends at v4.1.1 reads as a disposition. Name the independent verifier's `compliant-candidate` classification and that v4.2.0+ rows remain REL-LEDGER-2 (Story 17.14) backfill. (BH, AA; low)
+- [x] [Review][Patch] Ledger front matter still says `updated: 2026-08-14` [_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md:5] (BH; low)
+- [x] [Review][Patch] Record how package inventory and the manifest hash were read [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md:Read-only publication queries] — the ledger states package-inventory `valid` and the sealed-manifest SHA-256, but asset `654681115` and the hash computation are not listed. (AA; low)
 - [x] [Review][Patch] Restore the canonical sprint-status `last_updated` format [_bmad-output/implementation-artifacts/sprint-status.yaml:51] — `2026-10-26` replaced the `MM-DD-YYYY HH:MM` form (`DATE_FORMAT` in `sprint_plan.py`); the fallback parser accepts it, so this is cosmetic. (BH, AA; low) Resolved 2026-10-26 by the review status sync, which wrote `10-26-2026 15:59`.
 - [x] [Review][Defer] HFC2122 still targets removal in 4.7.0 although 4.7.0 shipped the member [docs/diagnostics/diagnostic-registry.json:2512] — deferred: pre-existing (Story 9-4 lifecycle; baseline advanced in `ee9762e6`), medium. `removedIn`, the `[Obsolete]` text at `FrontComposerShortcutRegistrar.cs:259`, `HFC2122.md` and the message template all promise v4.7 removal, and any removal is now a CP0002 break against the 4.7.0 baseline.
 - [x] [Review][Defer] PRD OI-11/G-1 and the epics.md 15.5 AC still read "4.4.0 → currently v4.5.0" with OI-11 Open [_bmad-output/planning-artifacts/prd.md:731] — deferred: the fix edits PM/Release Owner planning artifacts, medium; also `prd.md:490`, `prd.md:621`, `epics.md:3990`.
@@ -159,3 +267,17 @@ Code review pass 2 (`bmad-code-review`, 2026-10-26) covered `2c8e204c..62e3664c`
 - EC same `blob/main` anchor concern — low: duplicate of the BH entry above.
 - BH spec front matter has `context: []` — low: the fix edits the spec front matter, and Implementation Notes already name the regenerated context.
 - EC duplicate of the NuGet flat-container ordering concern — false: see the first rejected entry.
+
+
+### Follow-up Blind Hunter triage (2026-10-26)
+
+The oneshot route ran Blind Hunter and skipped Edge Case Hunter and Verification
+Gap. All five findings were checked. Four were patched; one question about the
+concurrent Story 13.6 amendment was deferred as unverified. The seven outstanding
+pass-2 patches above are complete; the eighth was already resolved by status sync.
+
+- BH-F1 — low / patch: the record promised fresh checks but only retained original-delivery results. Added Fresh follow-up verification with executed commands, counts and the strict failure limitation, separate from historical evidence.
+- BH-F2 — medium / patch: run-level queries select the latest attempt after a rerun. Changed reproduction to `/attempts/1` and `--attempt 1`; fresh exact-attempt queries confirm the recorded source, CI success, Quality failure and Gate 4 success.
+- BH-F3 — low / patch: cancelled preceding runs also contained the delivery. Corrected the description to first completed, non-cancelled CI/Quality runs.
+- BH-F4 — low / patch: wording asserted a committed follow-up before a commit existed. Changed it to a commit-message requirement and post-commit classification check; the exact candidate has passed pinned commitlint.
+- BH-F5 — maybe-false / defer, medium if confirmed: the concurrent Story 13.6 amendment requires existing realms and clients to be preserved, but its matrix currently names only fresh-realm verification. The implementation is still being authored, so missing preservation behavior is not established. Inspect its completed helper/tests and verify an existing-realm restart with differing generated credentials before judging the behavior. Recorded in deferred-work; no Story 13.6 intent or implementation was edited by this follow-up.

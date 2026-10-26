@@ -2,7 +2,7 @@
 title: REL-AI-1 Release Evidence Compliance Ledger
 project: frontcomposer
 created: 2026-07-15
-updated: 2026-08-14
+updated: 2026-10-26
 owner: Release Owner
 decisionContract: frontcomposer.release-compliance-ledger.v1
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md
@@ -605,12 +605,22 @@ completed push CI, so a further dispatch from the exact current SHA is not eligi
 ## Story 15.5 Compatibility Baseline Reconciliation (2026-10-26)
 
 **Technical baseline: published `4.7.0`; no temporary lag.** Story 15.5's expected
-`4.5.0` was a planning-time coordinate. Subsequent release work already advanced
-all active ApiCompat sites to `4.7.0` in commit
-`ee9762e6c74914ccd33ec1d2caf322bdc21a10b4`. Retain that baseline; a tag or the
-planned `currentRelease` value alone is not publication evidence.
+`4.5.0` was a planning-time coordinate. The advance to `4.7.0` spans three
+commits: `15577f42be42539b5e917cb7ae6716c2c11ac534` (2026-10-18) moved the
+suppression ledger to `v4.7`; `ee9762e6c74914ccd33ec1d2caf322bdc21a10b4`
+(2026-10-19) advanced the policy constant, shared default and Contracts.UI;
+`a258b992d08e73e2d3251c865ef01a982eba31ac` (2026-10-21) advanced Quality's
+package-validation gates from `4.6.0` to `4.7.0`. Retain that baseline; a tag or
+the planned `currentRelease` value alone is not publication evidence.
 
-### Publication authority
+### Technical publication evidence
+
+**No FR24 disposition for v4.7.0 is recorded in this ledger.** The October 18
+independent verifier classified the release as `compliant-candidate`; that
+machine classification and the readiness fields below do not supply Release
+Owner sign-off. The Summary ends at `v4.1.1`; attempt-keyed rows and dispositions
+for `v4.2.0` and later remain the REL-LEDGER-2 backfill (Story 17.14). This
+compatibility reconciliation does not perform that backfill or close REL-AI-1.
 
 - [Immutable GitHub Release v4.7.0](https://github.com/Hexalith/Hexalith.FrontComposer/releases/tag/v4.7.0),
   release ID `416759469`, published `2026-10-18T22:57:16Z`, resolves to exact
