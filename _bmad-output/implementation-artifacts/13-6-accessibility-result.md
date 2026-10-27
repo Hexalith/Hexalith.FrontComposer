@@ -1,5 +1,32 @@
 # Story 13.6 accessibility result and human checklist
 
+## Owner amendment and current-source verification — 2026-10-27
+
+**The seven manual records are qualified as completed with Owner-reported Pass under the dated amendment below. Story 13.6 and sprint remain in-progress for their separate acceptance gates.** All implementation tasks through the reviewed verification repair are already present at clean root `d1574a8f65f0927ee00b2a06ca1ad21d35f811ed`; this continuation changes only this result and the primary spec.
+
+### Story-specific manual acceptance amendment
+
+Jérôme Piquot, the previously identified Owner, replied to the supporting manual-details request: **“No need to complete. All Ok today”** on 2026-10-27. This renews his all-seven Pass confirmation and explicitly waives completing the requested supporting execution metadata for the existing `MAN-136-NVDA`, `MAN-136-JAWS`, `MAN-136-VO`, `MAN-136-ZOOM`, `MAN-136-TABLET`, `MAN-136-PHONE` and `MAN-136-ZERO-FIELD` records. Their current Story 13.6 canonical qualification is therefore **`completed` — Owner-reported Pass; supporting details waived by the Owner**. They are no longer blocked solely for those details. This narrow human amendment supersedes the earlier missing-details blocker and the manual template's supporting-field requirement for these seven existing reports; it does not change the template or authorize the same waiver for future runs.
+
+Actual execution date/build/tester, software versions, device models, measurements and itemized heard-speech/geometry observations remain **not supplied**. “Today” dates the confirmation and waiver; it is not substituted for an unreported execution date. The eighteen detailed observation boxes remain unchecked because no itemized observations were supplied; they remain an honest evidence inventory and do not reinstate the waived metadata blocker. Earlier dated `blocked`/`unperformed` statements are historical and superseded for these seven records. The Owner's report is human-supplied evidence; no automated run is represented as a manual observation.
+
+This amendment supplies no new hosted result, WebKit system-palette observation, ordinary full-topology qualification or separate OI-16/G-4/FLUENT-APP-1/UX/Product/Architect decision. Those independent requirements, the original matrix/result/Evidence acceptance tasks and R8-B1's existing deferral remain open. The [reviewed local repair](#independent-review-and-patched-local-completion--2026-10-26) retains its exact earlier candidate and reduced-topology scope.
+
+### Fresh bounded automated checks
+
+The full primary spec and both frontmatter context files were loaded before work. The following new checks ran against unchanged committed test/helper inputs at root `d1574a8f65f0927ee00b2a06ca1ad21d35f811ed` on Linux; documentation reconciliation followed them. Selected Builds is `cad925260713718895282c69bcbdb8bc72e7b6a2`, while shared CI still consumes `4eb33928a1d8c7775f97221cf9edc171db0cb5f8`. These browser/helper checks and the parent's selected-Builds contract run do not establish execution of the consumed shared workflow. The selected repair still needs separately authorized publication/source-closure and active-base policy/pin-adoption review, followed by hosted checks on the resulting exact candidate. The prepared caller-pin-only scratch patch is unapplied and is not approval, adoption or complete source-closure proof.
+
+| Command / scope | Result |
+| --- | --- |
+| `node --test tests/e2e/scripts/a11y-state-evidence.test.mjs` | **29 passed**, zero failed/skipped/cancelled |
+| `npm --prefix tests/e2e run typecheck` | Exit **0** |
+| `python3 eng/validate-story-artifacts.py`; `git diff --check` | Both passed after documentation reconciliation |
+| Parent: `python3 eng/dependency_graph.py --root . validate --commit d1574a8f65f0927ee00b2a06ca1ad21d35f811ed` | Exit **0**, `ok: true`; `/tmp/story13-6-ci-adoption-proposal-r15xkm2x/current-graph-validation.json` |
+| Parent, from selected Builds: `pwsh -NoProfile -File Tools/test-domain-workflow-test-platforms.ps1` | Exit **0**, **371 assertions passed**; `/tmp/story13-6-ci-adoption-proposal-r15xkm2x/builds-platform-contracts.log` |
+| From `tests/e2e`: `PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=/tmp/fc-story13-6-current-20261027-fx4huj/browser FC_E2E_HTML_REPORT_DIR=/tmp/fc-story13-6-current-20261027-fx4huj/html npx playwright test specs/a11y-helper.spec.ts specs/responsive-accessibility.spec.ts --grep 'a11y helper\|default scanner\|R4 \|R5 \|R6 \|R7 ' --workers=2 --retries=0` | **108 passed**: 36 each Chromium/Firefox/WebKit; zero failed/skipped/flaky, zero retries. Includes nine scanner/impact cases and 99 R4–R7 measurement regressions. |
+
+Raw output and reports remain local scratch at `/tmp/fc-story13-6-current-20261027-fx4huj/`; no packet, manifest, runtime-identity record or replay lane was added. No production source, threshold, approved baseline, dependency selection or workflow pin changed. No application runtime was started for these synthetic checks. Complete operator-surface, native-zoom, visual, configured .NET and live-readiness results retain their earlier exact source attribution; they were not rerun or promoted to this commit. Hosted CI was neither queried nor triggered. Existing [CI](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40231562358) and [Quality](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40231562097) links concern historical root `9c4166e4b7cb45e2512e2b6db887a071f35ce244`, not this candidate. No commit, push, publication or remote action occurred.
+
 ## Independent review and patched local completion — 2026-10-26
 
 **The approved verification repair is complete and independently reviewed. Parent Story 13.6 remains in-progress.** This entry supersedes the earlier local candidate for the files changed during review; all earlier results and failures remain historical evidence.
@@ -287,7 +314,7 @@ Raw publication, commitlint, remote-fetch, graph, hosted API/job logs and the fa
 
 **Owner-reported result: Pass for all seven manual records.** Jérôme Piquot, previously identified as Owner, confirmed: “add all seven manual records, all is OK”. This follow-up explicitly applies the reported Pass to NVDA/Firefox, JAWS/Chrome, VoiceOver/Safari, actual 400% browser zoom, physical tablet, physical phone and zero-field feedback. Each existing stable record below now retains that confirmation individually.
 
-The earlier statement, “create all the records, everything is ok”, remains the initial overall report. The latest statement supplies an all-seven result confirmation. It does not supply execution dates/builds, tester identities, software versions, device models, measured geometry or itemized speech observations. Those fields remain explicitly not supplied. **Formal record qualification remains blocked by the missing execution details** under the existing manual log template; the reported results themselves are Pass.
+The earlier statement, “create all the records, everything is ok”, remains the initial overall report. That 2026-10-25 follow-up supplies an all-seven result confirmation. It does not supply execution dates/builds, tester identities, software versions, device models, measured geometry or itemized speech observations. Those fields remain explicitly not supplied. The [2026-10-27 Owner amendment](#story-specific-manual-acceptance-amendment) renews the all-seven Pass confirmation and waives completion of those supporting details. **Current formal qualification is `completed` under that story-specific amendment; the reported results are Pass.** The earlier missing-details blocker is superseded.
 
 The following shared fields apply to every record below:
 
@@ -296,22 +323,22 @@ The following shared fields apply to every record below:
 | Task / story | 13.6 |
 | Release branch | `main` |
 | Candidate reference | Checkout when recording the all-seven confirmation: `39cab9cb19f15e6d743db63708a1a137df348233`; exact tested runtime/build not supplied |
-| Date | Initial report and all-seven confirmation received 2026-10-25; actual execution date not supplied |
+| Date | Initial report and all-seven confirmation received 2026-10-25; renewed confirmation and waiver received 2026-10-27; actual execution date not supplied |
 | Reporting human / record owner | Jérôme Piquot, Owner |
-| Actual per-run tester | Not yet confirmed for each pairing/device; the reporter is human and the assistant is not entered as tester |
-| Reported result | Pass for each of the seven named gates, attributed to “add all seven manual records, all is OK” |
-| Canonical status | `blocked` for formal qualification while required execution details are incomplete; Owner-reported result is Pass for all seven gates |
-| Reviewer / approval reference | Jérôme Piquot's [named Owner approval](#named-owner-approval--2026-10-25) and direct all-seven confirmation above; no additional approving role is inferred |
+| Actual per-run tester | Not supplied for each pairing/device; supporting detail waived by the Owner; the assistant is not entered as tester |
+| Reported result | Pass for each of the seven named gates, attributed to “add all seven manual records, all is OK” and renewed by “No need to complete. All Ok today” on 2026-10-27 |
+| Canonical status | `completed` — Owner-reported Pass; supporting execution details waived by the dated Story 13.6 amendment |
+| Reviewer / approval reference | Jérôme Piquot's [named Owner approval](#named-owner-approval--2026-10-25) and the direct all-seven confirmation plus [2026-10-27 amendment](#story-specific-manual-acceptance-amendment); no additional approving role is inferred |
 | Evidence reference | Exact initial and follow-up human statements quoted in this section; no per-run notes, screenshots or recordings supplied |
 | Sanitization | This record contains the supplied name/role/report and test references; no raw AT transcript, tenant data, payload, secret or attachment is included |
-| Release impact | Required manual accessibility qualification and Story 13.6 completion remain blocked by missing execution details |
-| Blocker reference | [Required execution details](#required-execution-details), stable record blocker `MAN-136-REPORT-DETAILS-2026-10-25` |
-| Decision / next action | Retain the confirmed Pass for each gate; supplement with actual execution details when available |
-| Reopen / revalidation trigger | Human supplies matching build/date/tester, actual environment/device versions and observed journey coverage; reconcile each record separately |
+| Release impact | These seven manual records are qualified under the Owner amendment; Story 13.6 remains in-progress for independent acceptance gates |
+| Former blocker reference | `MAN-136-REPORT-DETAILS-2026-10-25`, superseded by the [Owner amendment](#story-specific-manual-acceptance-amendment) |
+| Decision / next action | Retain each confirmed Pass and the supporting-details waiver; no further completion of those details is requested |
+| Reopen / revalidation trigger | A material implementation/candidate change requiring revalidation or a subsequent Owner decision; the waived supporting details alone do not reopen these reports |
 
 ### Required execution details
 
-The Owner has confirmed Pass for all seven records, including the actual-zoom and zero-field records. The existing [manual log template](../../docs/accessibility-verification/manual-log-template.md) still requires actual execution date/build/tester, OS/browser/AT or physical-device details and run-level observations for formal qualification. These were not supplied with the confirmation. The eighteen detailed evidence checkboxes remain open because the report does not itemize their measurements, exception inventories or speech observations.
+The Owner has confirmed Pass for all seven records, including actual zoom and zero-field feedback, and on 2026-10-27 waived completing the supporting execution details requested under the existing [manual log template](../../docs/accessibility-verification/manual-log-template.md). Those details remain not supplied and are no longer a qualification blocker for these seven existing reports. The eighteen detailed evidence checkboxes remain unchecked because no itemized measurements, exception inventories or speech observations were supplied; the story-specific waiver prevents that inventory from reinstating the same metadata blocker.
 
 ### MAN-136-NVDA
 
@@ -320,13 +347,13 @@ The Owner has confirmed Pass for all seven records, including the actual-zoom an
 | Stable gate id | `MAN-136-NVDA` |
 | Acceptance criteria | AE-01–AE-09 and the manual-evidence acceptance criterion |
 | Required pairing / mode | NVDA with Firefox on Windows |
-| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Canonical status | `completed` — Owner-reported Pass; supporting details waived by the [2026-10-27 amendment](#story-specific-manual-acceptance-amendment) |
 | Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
 | Specimen route / flow and responsive tier | Required scope: Common operator journey and the missing-item, command-failure and direct/silent/new-message speech sequences. Owner reports Pass for this record; actual routes/tier are not itemized |
 | Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
-| Missing execution details | Actual Windows, Firefox and NVDA versions; test date/tester; itemized keyboard, speech, spacing, theme and overlay observations. |
-| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
-| Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
+| Unreported details (waived for qualification) | Actual Windows, Firefox and NVDA versions; test date/tester; itemized keyboard, speech, spacing, theme and overlay observations. |
+| Issue / resolution | Owner reports Pass and no defect; record qualified under the dated supporting-details waiver |
+| Shared identity, owner, evidence and waiver fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-JAWS
 
@@ -335,13 +362,13 @@ The Owner has confirmed Pass for all seven records, including the actual-zoom an
 | Stable gate id | `MAN-136-JAWS` |
 | Acceptance criteria | AE-01–AE-09 and the manual-evidence acceptance criterion |
 | Required pairing / mode | JAWS with Chrome on Windows |
-| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Canonical status | `completed` — Owner-reported Pass; supporting details waived by the [2026-10-27 amendment](#story-specific-manual-acceptance-amendment) |
 | Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
 | Specimen route / flow and responsive tier | Required scope: Common operator journey and the missing-item, command-failure and direct/silent/new-message speech sequences. Owner reports Pass for this record; actual routes/tier are not itemized |
 | Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
-| Missing execution details | Actual Windows, Chrome and JAWS versions; test date/tester; itemized keyboard, speech, spacing, theme and overlay observations. |
-| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
-| Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
+| Unreported details (waived for qualification) | Actual Windows, Chrome and JAWS versions; test date/tester; itemized keyboard, speech, spacing, theme and overlay observations. |
+| Issue / resolution | Owner reports Pass and no defect; record qualified under the dated supporting-details waiver |
+| Shared identity, owner, evidence and waiver fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-VO
 
@@ -350,13 +377,13 @@ The Owner has confirmed Pass for all seven records, including the actual-zoom an
 | Stable gate id | `MAN-136-VO` |
 | Acceptance criteria | AE-01–AE-09 and the manual-evidence acceptance criterion |
 | Required pairing / mode | VoiceOver with Safari on macOS |
-| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Canonical status | `completed` — Owner-reported Pass; supporting details waived by the [2026-10-27 amendment](#story-specific-manual-acceptance-amendment) |
 | Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
 | Specimen route / flow and responsive tier | Required scope: Common operator journey and the missing-item, command-failure and direct/silent/new-message speech sequences. Owner reports Pass for this record; actual routes/tier are not itemized |
 | Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
-| Missing execution details | Actual macOS and Safari versions, VoiceOver version if separately reported; test date/tester; itemized reading, keyboard, speech and overlay observations. |
-| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
-| Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
+| Unreported details (waived for qualification) | Actual macOS and Safari versions, VoiceOver version if separately reported; test date/tester; itemized reading, keyboard, speech and overlay observations. |
+| Issue / resolution | Owner reports Pass and no defect; record qualified under the dated supporting-details waiver |
+| Shared identity, owner, evidence and waiver fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-ZOOM
 
@@ -365,13 +392,13 @@ The Owner has confirmed Pass for all seven records, including the actual-zoom an
 | Stable gate id | `MAN-136-ZOOM` |
 | Acceptance criteria | AE-02, with AE-01/03–09 journeys repeated as applicable |
 | Required pairing / mode | Actual 400% browser zoom from a measured 1280 CSS-pixel reference |
-| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Canonical status | `completed` — Owner-reported Pass; supporting details waived by the [2026-10-27 amendment](#story-specific-manual-acceptance-amendment) |
 | Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
 | Specimen route / flow and responsive tier | Required scope: Navigation, forms, grids/detail, palette and Settings at actual browser zoom, including complete target/focus visibility and bounded labelled scrolling. Owner reports Pass for this record; actual routes/tier are not itemized |
 | Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
-| Missing execution details | Actual OS/browser versions; test date/tester; measured 100% reference width and zoom geometry; exercised routes/overlays. |
-| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
-| Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
+| Unreported details (waived for qualification) | Actual OS/browser versions; test date/tester; measured 100% reference width and zoom geometry; exercised routes/overlays. |
+| Issue / resolution | Owner reports Pass and no defect; record qualified under the dated supporting-details waiver |
+| Shared identity, owner, evidence and waiver fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-TABLET
 
@@ -380,13 +407,13 @@ The Owner has confirmed Pass for all seven records, including the actual-zoom an
 | Stable gate id | `MAN-136-TABLET` |
 | Acceptance criteria | AE-01–AE-09 and the real-device/manual-evidence acceptance criterion |
 | Required pairing / mode | Physical tablet, touch-adapted tier |
-| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Canonical status | `completed` — Owner-reported Pass; supporting details waived by the [2026-10-27 amendment](#story-specific-manual-acceptance-amendment) |
 | Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
 | Specimen route / flow and responsive tier | Required scope: Touch navigation, target activation, fields, toolbar/popovers, grid/detail, palette/dialogs, lifecycle/recovery and rotation. Owner reports Pass for this record; actual routes/tier are not itemized |
 | Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
-| Missing execution details | Actual tablet model, OS/browser versions, orientations and viewport; test date/tester and exercised operations. |
-| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
-| Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
+| Unreported details (waived for qualification) | Actual tablet model, OS/browser versions, orientations and viewport; test date/tester and exercised operations. |
+| Issue / resolution | Owner reports Pass and no defect; record qualified under the dated supporting-details waiver |
+| Shared identity, owner, evidence and waiver fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-PHONE
 
@@ -395,13 +422,13 @@ The Owner has confirmed Pass for all seven records, including the actual-zoom an
 | Stable gate id | `MAN-136-PHONE` |
 | Acceptance criteria | AE-01–AE-09 and the real-device/manual-evidence acceptance criterion |
 | Required pairing / mode | Physical phone, functional-fallback tier |
-| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Canonical status | `completed` — Owner-reported Pass; supporting details waived by the [2026-10-27 amendment](#story-specific-manual-acceptance-amendment) |
 | Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
 | Specimen route / flow and responsive tier | Required scope: Essential operations, detail-exposed row actions, readable statuses and bounded two-dimensional scrolling; functional fallback rather than full daily-use support. Owner reports Pass for this record; actual routes/tier are not itemized |
 | Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
-| Missing execution details | Actual phone model, OS/browser versions, orientations and viewport; test date/tester and exercised operations. |
-| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
-| Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
+| Unreported details (waived for qualification) | Actual phone model, OS/browser versions, orientations and viewport; test date/tester and exercised operations. |
+| Issue / resolution | Owner reports Pass and no defect; record qualified under the dated supporting-details waiver |
+| Shared identity, owner, evidence and waiver fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
 ### MAN-136-ZERO-FIELD
 
@@ -410,15 +437,15 @@ The Owner has confirmed Pass for all seven records, including the actual-zoom an
 | Stable gate id | `MAN-136-ZERO-FIELD` |
 | Acceptance criteria | AE-09, Story 13.6 approved zero-field decision and manual-evidence acceptance |
 | Required pairing / mode | Generated zero-field command using an actually exercised supported AT/browser pairing |
-| Canonical status | `blocked` for formal qualification — Owner confirms this record as Pass; execution details incomplete |
+| Canonical status | `completed` — Owner-reported Pass; supporting details waived by the [2026-10-27 amendment](#story-specific-manual-acceptance-amendment) |
 | Operating system / browser / AT or device actually used | Exact versions/model not supplied; the record's required pairing or mode is covered by the Owner's all-seven Pass confirmation |
 | Specimen route / flow and responsive tier | Required scope: Validation, permission/unavailable/rate-limit/transport and unmapped failures, blank problem details, Retry-After, scope/policy denial, repeat/navigation/scope clearing and accepted-command lifecycle. Required outcome is readable feedback, retained trigger focus and one spoken message; actual itemized observations have not been supplied. Owner reports Pass for this record; actual routes/tier are not itemized |
 | Observed result supplied | **Pass — Owner-reported.** “add all seven manual records, all is OK” (2026-10-25); no itemized speech/focus/geometry account supplied |
-| Missing execution details | Actual OS/browser/AT versions; test date/tester; itemized failure/accepted-command, focus-retention and heard-speech observations. |
-| Issue / resolution | Owner reports Pass and no defect; formal record qualification awaits execution details |
-| Remaining identity, owner, evidence and blocker fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
+| Unreported details (waived for qualification) | Actual OS/browser/AT versions; test date/tester; itemized failure/accepted-command, focus-retention and heard-speech observations. |
+| Issue / resolution | Owner reports Pass and no defect; record qualified under the dated supporting-details waiver |
+| Shared identity, owner, evidence and waiver fields | Shared fields and `MAN-136-REPORT-DETAILS-2026-10-25` above apply to this record |
 
-All seven records now carry an explicit Owner-reported Pass. Their canonical qualification status remains `blocked` solely for the unsupplied execution details and detailed supporting observations. The live MAN-136 summary below matches these records. Earlier dated statements that manual results were absent or unperformed are historical and are superseded by this confirmation. The eighteen detailed evidence boxes and independent hosted-CI/platform/live-backend and gate-specific acceptance requirements remain open; story and sprint stay **in-progress**.
+All seven records carry an explicit Owner-reported Pass, renewed on 2026-10-27. Their current canonical qualification is `completed` under the Owner's supporting-details waiver. The live MAN-136 summary below matches these records. Earlier dated missing-details, absent-result and unperformed statements are historical and superseded for these seven reports. The eighteen detailed observation boxes remain an unchecked inventory, while separate hosted/platform/full-topology and gate-specific acceptance requirements remain open; story and sprint stay **in-progress**.
 
 ## Named Owner approval — 2026-10-25
 
@@ -1002,20 +1029,20 @@ Manual NVDA/JAWS/VoiceOver, actual 400% zoom, tablet/phone and heard-speech obse
 
 ## Human evidence checklist — leave each box open until observed
 
-Use [the existing manual log template](../../docs/accessibility-verification/manual-log-template.md) for every run. Record full candidate identity, date, human tester, OS/version, browser/version, AT/version (or device/model/OS), route/flow, responsive tier, observed Pass/Fail, issue links for failures, reviewer/sign-off owner and approval reference, and sanitized attachment paths. Do not paste raw screen-reader transcripts or tenant/user values.
+Use [the existing manual log template](../../docs/accessibility-verification/manual-log-template.md) for future runs, including candidate identity, human tester, environment, observed outcome and sanitized evidence. The [2026-10-27 amendment](#story-specific-manual-acceptance-amendment) waives completing the requested supporting details for the seven existing Owner-reported Pass records below. Unreported observations remain unreported; do not paste raw screen-reader transcripts or tenant/user values.
 
 | Gate | Owner-reported result | Canonical qualification status | Owner / release impact / next action / reopen trigger |
 | --- | --- | --- | --- |
-| MAN-136-NVDA | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-nvda) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
-| MAN-136-JAWS | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-jaws) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
-| MAN-136-VO | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-vo) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
-| MAN-136-ZOOM | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-zoom) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
-| MAN-136-TABLET | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-tablet) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
-| MAN-136-PHONE | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-phone) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
-| MAN-136-ZERO-FIELD | **Pass** | `blocked` | Jérôme Piquot, Owner, confirms this record in “add all seven manual records, all is OK”. Formal qualification needs execution details. See [record](#man-136-zero-field) and [required details](#required-execution-details). Reopen when actual build/date/tester, versions/device and run observations are supplied. |
+| MAN-136-NVDA | **Pass** | `completed` | Jérôme Piquot, Owner, renewed this Pass on 2026-10-27 and waived completing the requested supporting details. See [record](#man-136-nvda) and [amendment](#story-specific-manual-acceptance-amendment). Revalidation follows material implementation changes or a subsequent Owner decision. |
+| MAN-136-JAWS | **Pass** | `completed` | Jérôme Piquot, Owner, renewed this Pass on 2026-10-27 and waived completing the requested supporting details. See [record](#man-136-jaws) and [amendment](#story-specific-manual-acceptance-amendment). Revalidation follows material implementation changes or a subsequent Owner decision. |
+| MAN-136-VO | **Pass** | `completed` | Jérôme Piquot, Owner, renewed this Pass on 2026-10-27 and waived completing the requested supporting details. See [record](#man-136-vo) and [amendment](#story-specific-manual-acceptance-amendment). Revalidation follows material implementation changes or a subsequent Owner decision. |
+| MAN-136-ZOOM | **Pass** | `completed` | Jérôme Piquot, Owner, renewed this Pass on 2026-10-27 and waived completing the requested supporting details. See [record](#man-136-zoom) and [amendment](#story-specific-manual-acceptance-amendment). Revalidation follows material implementation changes or a subsequent Owner decision. |
+| MAN-136-TABLET | **Pass** | `completed` | Jérôme Piquot, Owner, renewed this Pass on 2026-10-27 and waived completing the requested supporting details. See [record](#man-136-tablet) and [amendment](#story-specific-manual-acceptance-amendment). Revalidation follows material implementation changes or a subsequent Owner decision. |
+| MAN-136-PHONE | **Pass** | `completed` | Jérôme Piquot, Owner, renewed this Pass on 2026-10-27 and waived completing the requested supporting details. See [record](#man-136-phone) and [amendment](#story-specific-manual-acceptance-amendment). Revalidation follows material implementation changes or a subsequent Owner decision. |
+| MAN-136-ZERO-FIELD | **Pass** | `completed` | Jérôme Piquot, Owner, renewed this Pass on 2026-10-27 and waived completing the requested supporting details. See [record](#man-136-zero-field) and [amendment](#story-specific-manual-acceptance-amendment). Revalidation follows material implementation changes or a subsequent Owner decision. |
 | UX-136-REVIEW | Not a manual Pass record | `performed: scoped automated evidence review` | Both independent Build review passes and parent verification are retained in the prior complete-candidate report and current spec. Human UX/Product/Fluent sign-off remains open and is not inferred. |
 
-All gate rows above share task/story `13.6` and release branch `main`; human observations must name the candidate actually tested. Jérôme Piquot is the named Owner/reporting human and has explicitly confirmed Pass for all seven records. The seven [human-reported records](#human-reported-verification-records--2026-10-25) retain his exact statement. Their canonical qualification status remains `blocked` for missing execution details; their reported result is Pass. The eighteen detailed evidence checkboxes below remain open pending itemized supporting observations. UX-136-REVIEW continues to record only its scoped automated review. The existing AE-01–AE-09/manual-evidence requirements, zoom AE-02 requirement and opt-in review scope are unchanged.
+All gate rows above share task/story `13.6` and release branch `main`; future manual runs name the candidate actually tested, while the seven existing reports retain the explicit supporting-details waiver. Jérôme Piquot is the named Owner/reporting human and has explicitly confirmed Pass for all seven records. The seven [human-reported records](#human-reported-verification-records--2026-10-25) retain his exact statement. Their canonical qualification is `completed` under the dated supporting-details waiver; their reported result is Pass. The eighteen detailed evidence checkboxes below remain unchecked as an inventory of observations not itemized in the reports, and do not reinstate the waived metadata blocker. UX-136-REVIEW continues to record only its scoped automated review. AE-01–AE-09 technical behavior, the actual-zoom scope and independent acceptance requirements remain unchanged.
 
 ### Common operator journey on every supported AT/browser pairing
 
@@ -1052,7 +1079,7 @@ All gate rows above share task/story `13.6` and release branch `main`; human obs
 
 ## Remaining acceptance gates
 
-The summary in this section retains the 2026-10-18 reviewed candidate. The approved A3 technical completion section above owns the latest local candidate attribution and `in-progress` status, with its stated current, reused and historical verification boundaries.
+The [2026-10-27 amendment and verification](#owner-amendment-and-current-source-verification--2026-10-27) owns current manual qualification and remaining independent requirements. The following paragraph and machine-readable snapshot retain only the historical 2026-10-18 reviewed candidate; their manual, visual and .NET failure statements are not current qualification claims.
 
 All 18 manual boxes stay open. NVDA/JAWS/VoiceOver, heard speech, actual browser zoom, physical tablet/phone and human reviewer observations remain unperformed. OI-16, G-4, FLUENT-APP-1, Product approval/reapproval and live EventStore acceptance remain unresolved. The final reviewed browser run passes every executed nonvisual case and the unchanged per-root size limit; eighteen visual comparisons and four existing .NET snapshot/catalog tests remain failed. Complete capture/portability integrity passes, while the full artifact validators and accessibility classification remain blocked. Historical oversized and interrupted packets remain failed history, without changing the cap. Windows and actual WebKit forced-palette coverage stay open.
 
