@@ -16,8 +16,9 @@
         </div>
         @if (RequiredName is not null)
         {
-            <div @onkeydown="HandleKeyDownAsync">
-                <FluentTextInput Immediate="true" ImmediateDelay="0"
+            <div id="fc-destructive-dialog-typed-name" @onkeydown="HandleKeyDownAsync">
+                <FluentTextInput Id="fc-destructive-dialog-name" Immediate="true" ImmediateDelay="0"
+                                 data-fc-validation-field data-fc-description-proxy
                                  Label="@ConfirmationInputLabel"
                                  Value="@_typedName" ValueChanged="OnTypedNameChangedAsync"
                                  aria-describedby="fc-destructive-dialog-description"
@@ -34,13 +35,13 @@
         }
     </ChildContent>
     <ActionTemplate>
-        <FluentButton OnClick="OnCancelAsync"
+        <FluentButton role="button" OnClick="OnCancelAsync"
                       @onkeydown="HandleKeyDownAsync"
                       Appearance="ButtonAppearance.Outline"
                       AutoFocus="true"
                       Class="fc-destructive-cancel"
                       data-testid="fc-destructive-cancel">@(CancelLabel ?? Localizer["DestructiveConfirmationCancel"])</FluentButton>
-        <FluentButton OnClick="OnConfirmAsync"
+        <FluentButton role="button" OnClick="OnConfirmAsync"
                       Disabled="@(!CanConfirm)"
                       aria-disabled="@(!CanConfirm ? "true" : "false")"
                       @onkeydown="HandleKeyDownAsync"

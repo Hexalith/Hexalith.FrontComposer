@@ -202,3 +202,19 @@ test.describe('Forward skip access after route announcement', () => {
       document.activeElement?.closest('fluent-dialog, dialog, [aria-modal="true"]') !== null)).toBe(true);
   });
 });
+
+
+test('landmark skip focus does not override a later programmatic focus move', async ({ page }) => {
+  await new CounterPage(page).goto();
+  await page.clock.install();
+  await page.evaluate(async () => {
+    const path: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js';
+    const keyboard = await import(path);
+    keyboard.focusElement(document.getElementById('fc-main-content'));
+    (document.querySelector('.fc-shell-root') as HTMLElement).focus();
+  });
+  await page.clock.runFor(200);
+  await expect(page.locator('.fc-shell-root')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Skip to content', exact: true })).toBeFocused();
+});

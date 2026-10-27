@@ -66,6 +66,7 @@ public sealed class FcDestructiveConfirmationDialogTests : BunitContext {
 
             // AutoFocus="true" emits the autofocus attribute, and the safe action is localized.
             AngleSharp.Dom.IElement cancel = cut.Find("[data-testid='fc-destructive-cancel']");
+            cancel.GetAttribute("role").ShouldBe("button");
             cancel.HasAttribute("autofocus").ShouldBeTrue("Cancel button must auto-focus so Enter does the safe thing (D11).");
             cancel.TextContent.Trim().ShouldBe("Annuler");
         }

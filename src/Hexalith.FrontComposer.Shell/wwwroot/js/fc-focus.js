@@ -468,7 +468,12 @@ export function syncFieldAccessibility(root) {
         }
 
         const description = host.id ? document.getElementById(`${host.id}-description`) : null;
-        const describedBy = [description, error].filter((element) => element instanceof HTMLElement);
+        // Explicit caller-owned descriptions (including typed-name warnings) need the
+        // same projection across a Fluent editor's shadow boundary as generated fields.
+        const explicitDescriptions = (host.getAttribute('aria-describedby') ?? '').split(/\s+/)
+            .filter(Boolean).map((id) => document.getElementById(id));
+        const describedBy = [...new Set([description, ...explicitDescriptions, error]
+            .filter((element) => element instanceof HTMLElement))];
         if (invalid) {
             control.setAttribute('aria-invalid', 'true');
         }
@@ -476,12 +481,32 @@ export function syncFieldAccessibility(root) {
             control.removeAttribute('aria-invalid');
         }
 
-        if ('ariaDescribedByElements' in control) {
+        const text = describedBy.map((element) => element.textContent?.trim()).filter(Boolean).join(' ');
+        const controlRoot = control.getRootNode();
+        if (host.hasAttribute('data-fc-description-proxy') && controlRoot instanceof ShadowRoot) {
+            // A native input's IDREF resolves within its own shadow root. Keep a text-only
+            // description there for callers requiring an explicit native aria-describedby.
+            const proxyId = `${host.id}-accessible-description`;
+            let proxy = controlRoot.getElementById(proxyId);
+            if (text) {
+                if (!(proxy instanceof HTMLElement)) {
+                    proxy = document.createElement('span');
+                    proxy.id = proxyId;
+                    proxy.hidden = true;
+                    controlRoot.appendChild(proxy);
+                }
+                if (proxy.textContent !== text) proxy.textContent = text;
+                control.setAttribute('aria-describedby', proxyId);
+            } else {
+                proxy?.remove();
+                control.removeAttribute('aria-describedby');
+            }
+        }
+        else if ('ariaDescribedByElements' in control) {
             control.ariaDescribedByElements = describedBy.length > 0 ? describedBy : null;
         }
         else {
             // Engines without ARIA element reflection still get the text relationship.
-            const text = describedBy.map((element) => element.textContent?.trim()).filter(Boolean).join(' ');
             if (text) control.setAttribute('aria-description', text);
             else control.removeAttribute('aria-description');
         }

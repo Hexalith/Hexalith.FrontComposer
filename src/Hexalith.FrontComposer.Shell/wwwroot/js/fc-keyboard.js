@@ -118,6 +118,12 @@ function registerFilter(element, marker, predicate) {
 }
 
 export function focusElement(element) {
+    // Mounted skip targets are ready immediately. A delayed retry could steal a
+    // later focus move after navigation or resize; only overlay editors need it.
+    if (element?.id === 'fc-main-content' || element?.id === 'fc-nav') {
+        if (element.isConnected && typeof element.focus === 'function') element.focus();
+        return;
+    }
     const isPaletteEntry = element?.getAttribute?.('data-testid') === 'fc-palette-search';
     const intent = isPaletteEntry ? window.__fcOverlayOpenIntent : null;
     if (isPaletteEntry) window.__fcOverlayOpenIntent = null;
