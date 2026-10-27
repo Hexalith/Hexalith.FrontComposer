@@ -149,37 +149,46 @@ fi
 mapfile -t bases < "$scratch/endpoints"
 failed=0
 probe() {
-  local method="$1" path="$2" base code curl_exit endpoint=0 reason
+  local method="$1" path="$2" base code curl_exit endpoint pass reason
   local request=(--request "$method" --header 'Authorization: Bearer invalid-ci-token')
   if [[ "$method" == POST ]]; then request+=(--header 'Content-Type: application/json' --data '{}'); fi
-  for base in "${bases[@]}"; do
-    endpoint=$((endpoint + 1))
-    curl_exit=0
-    # Disable inherited curl configuration/proxies for Aspire's local endpoints.
-    # Do not follow redirects: a redirect is an HTTP failure, never a fallback cue.
-    code="$(curl --disable --noproxy '*' --silent --show-error --insecure --connect-timeout 5 --max-time 10 \
-      --output /dev/null --write-out '%{http_code}' "${request[@]}" "${base%/}$path" 2> "$scratch/curl.err")" || curl_exit=$?
-    if [[ $curl_exit -eq 0 && ( "$code" == 401 || "$code" == 403 ) ]]; then
-      printf '%s %s rejected the invalid bearer with %s (endpoint %d).\n' "$method" "$path" "$code" "$endpoint"
+  # A cold gateway may exhaust both transports before it can respond. Only an
+  # entirely transport-only pass reaches the next iteration; any HTTP outcome or
+  # unrecognized curl error returns immediately through the existing failure path.
+  for pass in 1 2; do
+    endpoint=0
+    for base in "${bases[@]}"; do
+      endpoint=$((endpoint + 1))
+      curl_exit=0
+      # Disable inherited curl configuration/proxies for Aspire's local endpoints.
+      # Do not follow redirects: a redirect is an HTTP failure, never a fallback cue.
+      code="$(curl --disable --noproxy '*' --silent --show-error --insecure --connect-timeout 5 --max-time 10 \
+        --output /dev/null --write-out '%{http_code}' "${request[@]}" "${base%/}$path" 2> "$scratch/curl.err")" || curl_exit=$?
+      if [[ $curl_exit -eq 0 && ( "$code" == 401 || "$code" == 403 ) ]]; then
+        printf '%s %s rejected the invalid bearer with %s (endpoint %d).\n' "$method" "$path" "$code" "$endpoint"
+        return
+      fi
+      if [[ $curl_exit -ne 0 && "$code" == 000 ]]; then
+        case "$curl_exit" in
+          5|6) reason='name resolution failed' ;;
+          7) reason='connection failed' ;;
+          28) reason='request timed out' ;;
+          35|60) reason='TLS transport failed' ;;
+          52|55|56) reason='connection ended without a complete response' ;;
+          *) reason='curl execution failed' ;;
+        esac
+        printf '%s %s endpoint %d: curl exit %d (%s); no HTTP response.\n' "$method" "$path" "$endpoint" "$curl_exit" "$reason" >&2
+        case "$curl_exit" in 5|6|7|28|35|52|55|56|60) continue ;; esac
+      fi
+      # Fixed status vocabulary prevents arbitrary stdout from entering diagnostics.
+      [[ "$code" =~ ^[1-5][0-9][0-9]$ ]] || code='invalid'
+      fail "$method $path endpoint $endpoint returned HTTP $code with curl exit $curl_exit; expected completed 401 or 403."
+      failed=1
       return
+    done
+    if [[ $pass -eq 1 ]]; then
+      printf '%s %s: retrying advertised endpoints once after transport-only failures.\n' "$method" "$path" >&2
     fi
-    if [[ $curl_exit -ne 0 && "$code" == 000 ]]; then
-      case "$curl_exit" in
-        5|6) reason='name resolution failed' ;;
-        7) reason='connection failed' ;;
-        28) reason='request timed out' ;;
-        35|60) reason='TLS transport failed' ;;
-        52|55|56) reason='connection ended without a complete response' ;;
-        *) reason='curl execution failed' ;;
-      esac
-      printf '%s %s endpoint %d: curl exit %d (%s); no HTTP response.\n' "$method" "$path" "$endpoint" "$curl_exit" "$reason" >&2
-      case "$curl_exit" in 5|6|7|28|35|52|55|56|60) continue ;; esac
-    fi
-    # Fixed status vocabulary prevents arbitrary stdout from entering diagnostics.
-    [[ "$code" =~ ^[1-5][0-9][0-9]$ ]] || code='invalid'
-    fail "$method $path endpoint $endpoint returned HTTP $code with curl exit $curl_exit; expected completed 401 or 403."
-    failed=1
-    return
   done
   fail "$method $path: all advertised endpoints were unreachable; no authentication result."
   failed=1

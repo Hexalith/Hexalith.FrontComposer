@@ -173,9 +173,12 @@ if (args[0] !== '--disable' || args[args.indexOf('--noproxy') + 1] !== '*' || ar
 if (!args.includes('Authorization: Bearer invalid-ci-token')) process.exit(94);
 const url = args.at(-1);
 if (url.includes(':9990') || url.includes('example.invalid')) process.exit(95);
-const transportFailure = options.unreachable || (options.fallback && url.startsWith('https:'));
-if (transportFailure) { console.error(privateText); process.stdout.write('000'); process.exit(28); }
-process.stdout.write(String(options.httpStatus ?? 401));
+const commandSubmit = new URL(url).pathname === '/api/v1/commands';
+const attempts = state.calls.filter(call => call[0] === 'curl' && new URL(call.at(-1)).pathname === new URL(url).pathname).length;
+const transportFailure = options.unreachable || (options.fallback && url.startsWith('https:')) ||
+  (options.coldStart && commandSubmit && attempts <= 2);
+if (transportFailure) { console.error(privateText); process.stdout.write('000'); process.exit(options.transportExit ?? 28); }
+process.stdout.write(String(options.coldStart && commandSubmit ? options.coldStatus ?? 401 : options.httpStatus ?? 401));
 if (options.partialResponse) { console.error(privateText); process.exit(56); }
 `);
   await executable('python3', prelude + `
@@ -248,11 +251,47 @@ test('only transport failure permits trying the next advertised endpoint', async
   assert.equal(result.running, false);
 });
 
-test('all-unreachable endpoints fail every path without an authentication result', async t => {
+test('all-unreachable endpoints get exactly one additional transport-only pass and still fail every path', async t => {
   const result = await run(t, { unreachable: true });
   assert.equal(result.code, 1);
-  assert.equal(result.probes.length, 8);
+  assert.equal(result.probes.length, 16);
+  for (const path of paths) {
+    const probes = result.probes.filter(probe => new URL(probe.at(-1)).pathname + new URL(probe.at(-1)).search === path);
+    assert.deepEqual(probes.map(probe => new URL(probe.at(-1)).protocol), ['https:', 'http:', 'https:', 'http:']);
+  }
   assert.equal(result.output.match(/all advertised endpoints were unreachable/g)?.length, 4);
+  assert.equal(result.running, false);
+});
+
+for (const coldStatus of [401, 200]) {
+  test(`cold-start command submit retries both 28/000 endpoints once and requires completed rejection: HTTP ${coldStatus}`, async t => {
+    const result = await run(t, { coldStart: true, coldStatus });
+    assert.equal(result.code, coldStatus === 401 ? 0 : 1, result.output);
+    assert.equal(result.probes.length, 6);
+    const submits = result.probes.filter(probe => new URL(probe.at(-1)).pathname === '/api/v1/commands');
+    assert.deepEqual(submits.map(probe => new URL(probe.at(-1)).protocol), ['https:', 'http:', 'https:']);
+    assert.equal(result.output.match(/curl exit 28 \(request timed out\); no HTTP response/g)?.length, 2);
+    assert.equal(result.output.match(/rejected the invalid bearer with 401/g)?.length, coldStatus === 401 ? 4 : 3);
+    if (coldStatus === 200) assert.match(result.output, /returned HTTP 200 with curl exit 0/);
+    assert.equal(result.running, false);
+  });
+}
+
+for (const transportExit of [0, 9]) {
+  test(`HTTP 000 with unrecognized curl outcome ${transportExit} fails without endpoint fallback or retry`, async t => {
+    const result = await run(t, { unreachable: true, transportExit });
+    assert.equal(result.code, 1, result.output);
+    assert.equal(result.probes.length, 4);
+    assert.match(result.output, new RegExp(`returned HTTP invalid with curl exit ${transportExit}`));
+    assert.equal(result.running, false);
+  });
+}
+
+test('a transport fallback followed by HTTP 200 never permits another pass', async t => {
+  const result = await run(t, { fallback: true, httpStatus: 200 });
+  assert.equal(result.code, 1, result.output);
+  assert.equal(result.probes.length, 8);
+  assert.equal(result.output.match(/returned HTTP 200/g)?.length, 4);
   assert.equal(result.running, false);
 });
 
