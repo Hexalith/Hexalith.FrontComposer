@@ -1,0 +1,31 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Feedback
+@using Hexalith.FrontComposer.Contracts.Freshness
+
+<span role="status" aria-live="polite" data-fc-freshness="@State.ToString().ToLowerInvariant()">@Message</span>
+
+@code {
+    /// <summary>Gets or sets the normalized record snapshot; null is degraded.</summary>
+    [Microsoft.AspNetCore.Components.Parameter]
+    public FcRecordFreshness? Freshness { get; set; }
+
+    /// <summary>Gets or sets current-record copy.</summary>
+    [Microsoft.AspNetCore.Components.Parameter]
+    public string CurrentLabel { get; set; } = "Up to date";
+
+    /// <summary>Gets or sets stale-record copy, including any caller-formatted timestamp.</summary>
+    [Microsoft.AspNetCore.Components.Parameter]
+    public string StaleLabel { get; set; } = "Refreshing";
+
+    /// <summary>Gets or sets degraded-record copy.</summary>
+    [Microsoft.AspNetCore.Components.Parameter]
+    public string DegradedLabel { get; set; } = "Showing last known";
+
+    private FcFreshnessStatus State => Freshness?.Status ?? FcFreshnessStatus.Degraded;
+
+    private string Message => State switch
+    {
+        FcFreshnessStatus.Current => CurrentLabel,
+        FcFreshnessStatus.Stale => StaleLabel,
+        _ => DegradedLabel,
+    };
+}

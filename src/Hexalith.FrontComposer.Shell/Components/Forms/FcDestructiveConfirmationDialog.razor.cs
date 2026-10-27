@@ -65,6 +65,54 @@ public partial class FcDestructiveConfirmationDialog : ComponentBase {
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
+    /// <summary>Gets or sets the optional required name; null retains ordinary confirmation.</summary>
+    [Parameter]
+    public string? RequiredName { get; set; }
+
+    /// <summary>Gets or sets the accessible typed-name input label.</summary>
+    [Parameter]
+    public string ConfirmationInputLabel { get; set; } = "Type the name to confirm";
+
+    /// <summary>Gets or sets optional domain-specific typed-name help.</summary>
+    [Parameter]
+    public string? ConfirmationHelp { get; set; }
+
+    /// <summary>Gets or sets additional caller-owned confirmation gating.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Gets or sets the callback exposing typed-name edits to a guarded domain adapter.</summary>
+    [Parameter]
+    public EventCallback<string?> TypedNameChanged { get; set; }
+
+    /// <summary>Gets or sets optional polite feedback when exact-name confirmation becomes available.</summary>
+    [Parameter]
+    public string? ConfirmationReadyMessage { get; set; }
+
+    private async Task OnTypedNameChangedAsync(string? value) {
+        _typedName = value;
+        await TypedNameChanged.InvokeAsync(value);
+    }
+
+    /// <summary>Gets or sets optional caller-owned safe-cancel copy.</summary>
+    [Parameter]
+    public string? CancelLabel { get; set; }
+
+    private string? _typedName;
+    private string? _previousRequiredName;
+    private bool _completed;
+
+    private bool CanConfirm => !_completed && !Disabled && (RequiredName is null
+        || (!string.IsNullOrWhiteSpace(RequiredName) && string.Equals(_typedName, RequiredName, StringComparison.Ordinal)));
+
+    /// <inheritdoc />
+    protected override void OnParametersSet() {
+        if (!string.Equals(RequiredName, _previousRequiredName, StringComparison.Ordinal)) {
+            _typedName = null;
+            _previousRequiredName = RequiredName;
+        }
+    }
+
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender) {
@@ -124,6 +172,10 @@ public partial class FcDestructiveConfirmationDialog : ComponentBase {
     private Task OnCancelAsync() => InvokeCancelAsync();
 
     private async Task OnConfirmAsync() {
+        if (!CanConfirm) {
+            return;
+        }
+        _completed = true;
         try {
             if (OnConfirm.HasDelegate) {
                 await OnConfirm.InvokeAsync();
@@ -137,6 +189,11 @@ public partial class FcDestructiveConfirmationDialog : ComponentBase {
     }
 
     private async Task InvokeCancelAsync() {
+        if (_completed) {
+            return;
+        }
+        _completed = true;
+        _typedName = null;
         try {
             if (OnCancel.HasDelegate) {
                 await OnCancel.InvokeAsync();

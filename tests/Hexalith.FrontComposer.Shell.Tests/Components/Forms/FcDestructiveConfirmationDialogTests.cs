@@ -148,4 +148,52 @@ public sealed class FcDestructiveConfirmationDialogTests : BunitContext {
         AngleSharp.Dom.IElement confirm = cut.Find("[data-testid='fc-destructive-confirm']");
         confirm.ClassList.Contains("fc-destructive-confirm").ShouldBeTrue("Destructive button needs the red-palette CSS hook (D11).");
     }
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("exact name")]
+    [InlineData("Exact name ")]
+    public async Task TypedNameMismatchGuardsTheCallbackAsWellAsTheButton(string typed)
+    {
+        int count = 0;
+        var cut = Render<FcDestructiveConfirmationDialog>(p => p
+            .Add(c => c.RequiredName, "Exact name")
+            .Add(c => c.OnConfirm, () => count++));
+        await cut.InvokeAsync(() => cut.FindComponent<FluentTextInput>().Instance.ValueChanged.InvokeAsync(typed));
+        cut.Find("[data-testid='fc-destructive-confirm']").HasAttribute("disabled").ShouldBeTrue();
+        var button = cut.FindComponents<FluentButton>().Single(c => c.Instance.Class == "fc-destructive-confirm");
+        await cut.InvokeAsync(() => button.Instance.OnClick.InvokeAsync());
+        count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ExactNameSubmitsOnlyOnceAndChangedTargetClearsTheInput()
+    {
+        int count = 0;
+        var cut = Render<FcDestructiveConfirmationDialog>(p => p
+            .Add(c => c.RequiredName, "Exact name")
+            .Add(c => c.OnConfirm, () => count++));
+        await cut.InvokeAsync(() => cut.FindComponent<FluentTextInput>().Instance.ValueChanged.InvokeAsync("Exact name"));
+        cut.Find("[data-testid='fc-destructive-confirm']").HasAttribute("disabled").ShouldBeFalse();
+        var confirm = cut.FindComponents<FluentButton>().Single(c => c.Instance.Class == "fc-destructive-confirm");
+        await cut.InvokeAsync(() => confirm.Instance.OnClick.InvokeAsync());
+        await cut.InvokeAsync(() => confirm.Instance.OnClick.InvokeAsync());
+        count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task TypedNameEscapeCancelsAndTargetChangeDiscardsMatchingInput()
+    {
+        int cancelled = 0;
+        var cut = Render<FcDestructiveConfirmationDialog>(p => p
+            .Add(c => c.RequiredName, "First")
+            .Add(c => c.OnCancel, () => cancelled++));
+        await cut.InvokeAsync(() => cut.FindComponent<FluentTextInput>().Instance.ValueChanged.InvokeAsync("First"));
+        cut.Render(p => p.Add(c => c.RequiredName, "Second"));
+        cut.FindComponent<FluentTextInput>().Instance.Value.ShouldBeNull();
+        await cut.InvokeAsync(() => cut.Find("[data-testid='fc-destructive-dialog']").KeyDown(new KeyboardEventArgs { Key = "Escape" }));
+        cancelled.ShouldBe(1);
+        cut.Find("[data-testid='fc-destructive-cancel']").HasAttribute("autofocus").ShouldBeTrue();
+    }
+
 }

@@ -1,0 +1,22 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Feedback
+@using Hexalith.FrontComposer.Contracts.Freshness
+
+@if (Politeness is FcLiveRegionPoliteness.Polite or FcLiveRegionPoliteness.Assertive)
+{
+    <div role="@(Politeness == FcLiveRegionPoliteness.Assertive ? "alert" : "status")"
+         aria-live="@(Politeness == FcLiveRegionPoliteness.Assertive ? "assertive" : "polite")">@Message@ChildContent</div>
+}
+
+@code {
+    /// <summary>Gets or sets announcement urgency; None renders no element.</summary>
+    [Microsoft.AspNetCore.Components.Parameter]
+    public FcLiveRegionPoliteness Politeness { get; set; } = FcLiveRegionPoliteness.Polite;
+
+    /// <summary>Gets or sets caller-owned plain text.</summary>
+    [Microsoft.AspNetCore.Components.Parameter]
+    public string? Message { get; set; }
+
+    /// <summary>Gets or sets optional composed status content.</summary>
+    [Microsoft.AspNetCore.Components.Parameter]
+    public Microsoft.AspNetCore.Components.RenderFragment? ChildContent { get; set; }
+}

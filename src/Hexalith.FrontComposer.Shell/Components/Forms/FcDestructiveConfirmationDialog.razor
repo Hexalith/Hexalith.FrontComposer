@@ -14,6 +14,24 @@
              data-testid="fc-destructive-dialog">
             @(Body ?? string.Empty)
         </div>
+        @if (RequiredName is not null)
+        {
+            <div @onkeydown="HandleKeyDownAsync">
+                <FluentTextInput Immediate="true" ImmediateDelay="0"
+                                 Label="@ConfirmationInputLabel"
+                                 Value="@_typedName" ValueChanged="OnTypedNameChangedAsync"
+                                 aria-describedby="fc-destructive-dialog-description"
+                                 autocomplete="off" data-testid="fc-destructive-name" />
+                @if (CanConfirm && ConfirmationReadyMessage is not null)
+                {
+                    <p role="status" aria-live="polite">@ConfirmationReadyMessage</p>
+                }
+                @if (ConfirmationHelp is not null)
+                {
+                    <p>@ConfirmationHelp</p>
+                }
+            </div>
+        }
     </ChildContent>
     <ActionTemplate>
         <FluentButton OnClick="OnCancelAsync"
@@ -21,8 +39,10 @@
                       Appearance="ButtonAppearance.Outline"
                       AutoFocus="true"
                       Class="fc-destructive-cancel"
-                      data-testid="fc-destructive-cancel">@Localizer["DestructiveConfirmationCancel"]</FluentButton>
+                      data-testid="fc-destructive-cancel">@(CancelLabel ?? Localizer["DestructiveConfirmationCancel"])</FluentButton>
         <FluentButton OnClick="OnConfirmAsync"
+                      Disabled="@(!CanConfirm)"
+                      aria-disabled="@(!CanConfirm ? "true" : "false")"
                       @onkeydown="HandleKeyDownAsync"
                       Appearance="ButtonAppearance.Primary"
                       Class="fc-destructive-confirm"

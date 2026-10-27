@@ -38,6 +38,7 @@
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="PublicAPI.Feedback.Shipped.txt" Pack="true" PackagePath="build\Hexalith.FrontComposer.Shell.Feedback.PublicAPI.Shipped.txt" />
     <None Include="PublicAPI.FcTbl.Shipped.txt" Pack="true" PackagePath="build\Hexalith.FrontComposer.Shell.FcTbl.PublicAPI.Shipped.txt" />
   </ItemGroup>
 </Project>

@@ -22,7 +22,9 @@
     <UseNuGetDeps Condition="'$(UseNuGetDeps)' == ''">true</UseNuGetDeps>
   </PropertyGroup>
 
-  <Import Project="deps.local.props" Condition="'$(UseHexalithProjectReferences)' == 'true' AND '$(FrontComposerRoot)' == 'true'" />
+  <!-- The mapper imports its mode after Directory.Build.props; its process hash is
+       already present here. It owns selectors and edge properties for that process. -->
+  <Import Project="deps.local.props" Condition="'$(UseHexalithProjectReferences)' == 'true' AND '$(FrontComposerRoot)' == 'true' AND '$(HexalithSourceMappingMode)' != 'source' AND '$(HEXALITH_SOURCE_MAPPING_HASH)' == ''" />
   <Import Project="deps.nuget.props" Condition="'$(UseHexalithProjectReferences)' != 'true' AND '$(FrontComposerRoot)' == 'true'" />
 
   <PropertyGroup>
