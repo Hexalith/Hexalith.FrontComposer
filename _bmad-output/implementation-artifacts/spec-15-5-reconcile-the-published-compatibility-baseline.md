@@ -2,7 +2,7 @@
 title: 'Story 15.5: Reconcile the Published Compatibility Baseline'
 type: 'chore'
 created: '2026-10-26'
-status: 'done'
+status: 'in-progress'
 route: 'oneshot'
 story_id: '15.5'
 story_key: '15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline'
