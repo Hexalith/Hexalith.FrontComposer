@@ -18,6 +18,7 @@ scratch="$(mktemp -d)"
 started_pid=""
 start_attempted=0
 ownership_rejected=0
+proof_lock_held=0
 
 capture_processes() {
   aspire ps --format Json --non-interactive --nologo > "$scratch/processes.json" 2> "$scratch/processes.err" &&
@@ -56,6 +57,16 @@ cleanup() {
     fi
   fi
   rm -rf -- "$scratch"
+  if [[ $proof_lock_held -eq 1 ]]; then
+    # Detached children may retain the descriptor; release only our acquired flock
+    # after the owned AppHost cleanup, rather than relying on process exit.
+    if ! flock -u "$proof_lock_fd"; then
+      fail 'Could not release the owned AppHost lifecycle lock.'
+      result=1
+    fi
+    exec {proof_lock_fd}>&-
+    proof_lock_held=0
+  fi
   exit "$result"
 }
 trap cleanup EXIT
@@ -69,6 +80,7 @@ if ! flock -n "$proof_lock_fd"; then
   fail 'Another proof owns the AppHost lifecycle lock.'
   exit 2
 fi
+proof_lock_held=1
 if ! capture_processes; then
   fail 'Aspire process discovery failed before startup.'
   exit 2

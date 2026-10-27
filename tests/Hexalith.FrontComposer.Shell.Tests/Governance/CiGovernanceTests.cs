@@ -420,7 +420,7 @@ public sealed class CiGovernanceTests {
         steps.ShouldBeGreaterThan(0);
         string header = job[..steps];
         header.ShouldContain("runs-on: ubuntu-latest");
-        header.ShouldContain("timeout-minutes: 30");
+        header.ShouldContain("timeout-minutes: 45");
         Regex.IsMatch(header, @"^[ \t]*if[ \t]*:", RegexOptions.Multiline).ShouldBeFalse();
         Regex.Count(header, @"^    strategy:", RegexOptions.Multiline).ShouldBe(1);
         Match strategy = Regex.Match(header, @"^    strategy:\n(?<body>(?: {6,}[^\n]*\n)+)", RegexOptions.Multiline);

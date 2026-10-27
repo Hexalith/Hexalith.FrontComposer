@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { access, chmod, mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -23,6 +24,57 @@ const writeExecutable = async (path, content) => {
   await chmod(path, 0o755);
 };
 
+
+const bounded = async (promise, milliseconds, label) => {
+  let timer;
+  try {
+    return await Promise.race([promise, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out`)), milliseconds);
+    })]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const lockAvailable = async (path) => {
+  const child = spawn('flock', ['-n', path, 'true'], { stdio: 'ignore' });
+  try {
+    return await bounded(new Promise((resolveExit, reject) => {
+      child.once('error', reject);
+      child.once('close', code => resolveExit(code === 0));
+    }), 5_000, 'Lock availability probe');
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+  }
+};
+
+const holdLock = async (t, path) => {
+  // --no-fork leaves one owned process to terminate if readiness or teardown fails.
+  const child = spawn('flock', ['--no-fork', '-x', path, 'bash', '-c', 'printf ready; read -r -t 15 release'], {
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  child.stdin.on('error', () => {});
+  const exited = new Promise(resolveExit => child.once('close', resolveExit));
+  t.after(async () => {
+    child.stdin.end('release\n');
+    try {
+      await bounded(exited, 2_000, 'Lock holder teardown');
+    } catch (error) {
+      child.kill('SIGKILL');
+      await bounded(exited, 2_000, 'Lock holder termination');
+      throw error;
+    }
+  });
+  await bounded(new Promise((ready, reject) => {
+    child.once('error', reject);
+    child.stdout.once('data', chunk => {
+      if (chunk.toString() === 'ready') ready();
+      else reject(new Error('Unexpected lock holder readiness output'));
+    });
+    child.once('exit', code => reject(new Error(`Lock holder exited before release: ${code}`)));
+  }), 5_000, 'Lock holder readiness');
+};
+
 const createHarness = async (t, options = {}) => {
   const root = await mkdtemp(join(tmpdir(), 'fc-epic9-runner-'));
   const bin = join(root, 'bin');
@@ -31,6 +83,10 @@ const createHarness = async (t, options = {}) => {
   const npmLog = join(root, 'npm.log');
   const dotnetLog = join(root, 'dotnet.log');
   const stateFile = join(root, 'aspire-state');
+  const survivorPidFile = join(root, 'survivor.pid');
+  const flockLog = join(root, 'flock.log');
+  const cleanupLockLog = join(root, 'cleanup-lock.log');
+  const lockFile = join(root, `hexalith-epic9-${createHash('sha256').update(APPHOST).digest('hex')}.lock`);
   const socketDirectory = options.simulateSocketPermissions ? join(root, 'owned-cli', 'bch') : '';
   if (options.existingSocketDirectory) {
     await mkdir(socketDirectory, { recursive: true });
@@ -40,7 +96,20 @@ const createHarness = async (t, options = {}) => {
   await mkdir(bin, { recursive: true });
   await writeFile(stateFile, 'stopped\n');
   await writeFile(`${stateFile}.pid`, '4321\n');
-  t.after(() => rm(root, { recursive: true, force: true }));
+  t.after(async () => {
+    try {
+      process.kill(Number(await readFile(survivorPidFile, 'utf8')), 'SIGTERM');
+    } catch (error) {
+      if (!['ENOENT', 'ESRCH'].includes(error.code)) throw error;
+    }
+    await rm(root, { recursive: true, force: true });
+  });
+
+  await writeExecutable(join(bin, 'flock'), `#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "$FC_EPIC9_FAKE_FLOCK_LOG"
+if [[ "$1" == -u && "$FC_EPIC9_FAKE_REJECT_UNLOCK" == true ]]; then exit 77; fi
+PATH="$FC_EPIC9_FAKE_ORIGINAL_PATH" exec flock "$@"
+`);
 
   await writeExecutable(join(bin, 'git'), `#!/usr/bin/env bash
 set -euo pipefail
@@ -92,6 +161,12 @@ next_count() {
   printf '%s' "$count"
 }
 printf '%s\\n' "$*" >> "$FC_EPIC9_FAKE_ASPIRE_LOG"
+if [[ "$FC_EPIC9_FAKE_SURVIVING_CHILD" == true && ( "$1" == ps || "$1" == stop ) ]]; then
+  lock_result=0
+  PATH="$FC_EPIC9_FAKE_ORIGINAL_PATH" flock -n "$FC_EPIC9_FAKE_LOCK_FILE" true || lock_result=$?
+  printf '%s %s\\n' "$1" "$lock_result" >> "$FC_EPIC9_FAKE_CLEANUP_LOCK_LOG"
+  [[ "$lock_result" -eq 1 ]] || exit 97
+fi
 case "$1" in
   ps)
     if [[ -n "$FC_EPIC9_FAKE_SOCKET_DIRECTORY" ]]; then mkdir -p "$FC_EPIC9_FAKE_SOCKET_DIRECTORY"; fi
@@ -114,6 +189,10 @@ case "$1" in
     fi
     ;;
   start)
+    if [[ "$FC_EPIC9_FAKE_SURVIVING_CHILD" == "true" ]]; then
+      sleep 60 </dev/null >/dev/null 2>&1 &
+      printf '%s\\n' "$!" > "$FC_EPIC9_FAKE_SURVIVOR_PID_FILE"
+    fi
     parent_log=""
     previous=""
     for argument in "$@"; do
@@ -169,6 +248,7 @@ case "$1" in
     fi
     ;;
   wait)
+    if [[ -n "$FC_EPIC9_FAKE_SIGNAL" ]]; then kill -s "$FC_EPIC9_FAKE_SIGNAL" "$PPID"; fi
     printf 'counter-web is up\\n'
     ;;
   describe)
@@ -239,6 +319,14 @@ fi
     FC_EPIC9_EXPECTED_COMMIT: options.expectedCandidate ?? CANDIDATE,
     FC_EPIC9_REQUIRE_CLEAN: options.requireClean === false ? 'false' : 'true',
     FC_EPIC9_LOCK_ROOT: root,
+    FC_EPIC9_FAKE_FLOCK_LOG: flockLog,
+    FC_EPIC9_FAKE_CLEANUP_LOCK_LOG: cleanupLockLog,
+    FC_EPIC9_FAKE_LOCK_FILE: lockFile,
+    FC_EPIC9_FAKE_REJECT_UNLOCK: String(options.rejectUnlock ?? false),
+    FC_EPIC9_FAKE_SIGNAL: options.signal ?? '',
+    FC_EPIC9_FAKE_ORIGINAL_PATH: process.env.PATH,
+    FC_EPIC9_FAKE_SURVIVING_CHILD: String(options.survivingChild ?? false),
+    FC_EPIC9_FAKE_SURVIVOR_PID_FILE: survivorPidFile,
     FC_EPIC9_FAKE_REPOSITORY_ROOT: REPOSITORY_ROOT,
     FC_EPIC9_FAKE_APPHOST: APPHOST,
     FC_EPIC9_FAKE_INITIAL_HEAD: options.initialHead ?? CANDIDATE,
@@ -276,7 +364,7 @@ fi
     FC_EPIC9_FAKE_NPM_LOG: npmLog,
     FC_EPIC9_FAKE_RETRY_ARTIFACTS: String(options.retryArtifacts ?? false),
   };
-  return { artifactRoot, aspireLog, dotnetLog, environment, npmLog, socketDirectory };
+  return { artifactRoot, aspireLog, dotnetLog, environment, npmLog, socketDirectory, survivorPidFile, flockLog, lockFile, cleanupLockLog };
 };
 
 const runProof = async (environment) => new Promise((resolvePromise, rejectPromise) => {
@@ -292,8 +380,9 @@ const runProof = async (environment) => new Promise((resolvePromise, rejectPromi
   child.stderr.setEncoding('utf8');
   child.stdout.on('data', (chunk) => { stdout += chunk; });
   child.stderr.on('data', (chunk) => { stderr += chunk; });
-  child.once('error', rejectPromise);
-  child.once('close', (exitCode) => resolvePromise({ exitCode, stdout, stderr }));
+  const timer = setTimeout(() => child.kill('SIGKILL'), 20_000);
+  child.once('error', error => { clearTimeout(timer); rejectPromise(error); });
+  child.once('close', (exitCode) => { clearTimeout(timer); resolvePromise({ exitCode, stdout, stderr }); });
 });
 
 const readInvocations = async (path) => {
@@ -574,4 +663,66 @@ test('Epic 9 proof leaves an existing permissive shared socket directory untouch
   assert.deepEqual(await readInvocations(harness.npmLog), []);
   assert.equal((await readFile(harness.environment.FC_EPIC9_FAKE_STATE, 'utf8')).trim(), 'stopped');
   assert.match(await readFile(join(harness.artifactRoot, 'apphost-start.failed.json'), 'utf8'), /must have mode 0700/u);
+});
+
+
+test('Epic 9 proof releases its owned flock after cleanup while an inherited child survives', async t => {
+  const harness = await createHarness(t, { survivingChild: true });
+  const result = await runProof(harness.environment);
+  assert.equal(result.exitCode, 0, result.stderr);
+  process.kill(Number(await readFile(harness.survivorPidFile, 'utf8')), 0);
+  assert.equal((await readFile(harness.environment.FC_EPIC9_FAKE_STATE, 'utf8')).trim(), 'stopped');
+  const checks = await readInvocations(harness.cleanupLockLog);
+  assert.ok(checks.includes('stop 1'));
+  assert.ok(checks.every(check => check.endsWith(' 1')), checks.join('\n'));
+  assert.equal(await lockAvailable(harness.lockFile), true, 'a surviving child must not retain the completed lifecycle lock');
+  assert.equal((await readInvocations(harness.flockLog)).filter(call => call.startsWith('-u ')).length, 1);
+});
+
+test('Epic 9 proof never unlocks a flock it failed to acquire or starts lifecycle work under contention', async t => {
+  const harness = await createHarness(t);
+  await holdLock(t, harness.lockFile);
+  assert.equal(await lockAvailable(harness.lockFile), false);
+  const result = await runProof(harness.environment);
+  assert.equal(result.exitCode, 2, result.stderr);
+  assert.match(result.stderr, /refusing concurrent lifecycle work/);
+  assert.deepEqual(await readInvocations(harness.aspireLog), []);
+  assert.deepEqual(await readInvocations(harness.dotnetLog), []);
+  assert.deepEqual(await readInvocations(harness.npmLog), []);
+  assert.equal((await readInvocations(harness.flockLog)).filter(call => call.startsWith('-u ')).length, 0);
+  assert.equal(await lockAvailable(harness.lockFile), false, 'the active owner must retain its lock');
+});
+
+
+for (const [name, options, expectedExit] of [
+  ['candidate failure', { finalHead: OTHER_CANDIDATE }, 2],
+  ['SIGINT', { signal: 'INT' }, 130],
+  ['SIGTERM', { signal: 'TERM' }, 143],
+]) {
+  test(`Epic 9 ${name} retains flock through EXIT discovery and stop, then releases its surviving child descriptor`, async t => {
+    const harness = await createHarness(t, { survivingChild: true, ...options });
+    const result = await runProof(harness.environment);
+    assert.equal(result.exitCode, expectedExit, result.stderr);
+    process.kill(Number(await readFile(harness.survivorPidFile, 'utf8')), 0);
+    assert.equal((await readFile(harness.environment.FC_EPIC9_FAKE_STATE, 'utf8')).trim(), 'stopped');
+    const checks = await readInvocations(harness.cleanupLockLog);
+    assert.deepEqual(checks.slice(-2), ['ps 1', 'stop 1'], 'EXIT discovery and shutdown must each contend on a separate real flock');
+    assert.ok(checks.every(check => check.endsWith(' 1')), checks.join('\n'));
+    assert.equal(await lockAvailable(harness.lockFile), true);
+    assert.equal((await readInvocations(harness.flockLog)).filter(call => call.startsWith('-u ')).length, 1);
+  });
+}
+
+test('Epic 9 proof fails with a fixed diagnostic if its owned flock cannot be unlocked', async t => {
+  const harness = await createHarness(t, { survivingChild: true, rejectUnlock: true });
+  const result = await runProof(harness.environment);
+  assert.equal(result.exitCode, 1, result.stderr);
+  assert.match(result.stderr, /^Could not release the owned Epic 9 AppHost lifecycle lock\.$/m);
+  assert.equal((await readFile(harness.environment.FC_EPIC9_FAKE_STATE, 'utf8')).trim(), 'stopped');
+  process.kill(Number(await readFile(harness.survivorPidFile, 'utf8')), 0);
+  const checks = await readInvocations(harness.cleanupLockLog);
+  assert.ok(checks.includes('stop 1'));
+  assert.ok(checks.every(check => check.endsWith(' 1')), checks.join('\n'));
+  assert.equal(await lockAvailable(harness.lockFile), false, 'the rejected unlock leaves the inherited descriptor locked until owned fixture teardown');
+  assert.equal((await readInvocations(harness.flockLog)).filter(call => call.startsWith('-u ')).length, 1);
 });

@@ -173,6 +173,16 @@ cleanup() {
   fi
 
   remove_temporary_files
+  if [[ $proof_lock_held -eq 1 ]]; then
+    # Detached children can retain this open file description after the proof exits.
+    # Unlock only our acquired flock, after all owned lifecycle cleanup has finished.
+    if ! flock -u "$proof_lock_fd"; then
+      echo "Could not release the owned Epic 9 AppHost lifecycle lock." >&2
+      exit_code=1
+    fi
+    exec {proof_lock_fd}>&-
+    proof_lock_held=0
+  fi
   exit "$exit_code"
 }
 trap cleanup EXIT

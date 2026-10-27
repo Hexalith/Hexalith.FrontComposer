@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -16,9 +17,71 @@ const paths = [
   '/hubs/projection-changes/negotiate?negotiateVersion=1',
 ];
 
+
+const bounded = async (promise, milliseconds, label) => {
+  let timer;
+  try {
+    return await Promise.race([promise, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out`)), milliseconds);
+    })]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const lockAvailable = async (path) => {
+  const child = spawn('flock', ['-n', path, 'true'], { stdio: 'ignore' });
+  try {
+    return await bounded(new Promise((resolveExit, reject) => {
+      child.once('error', reject);
+      child.once('close', code => resolveExit(code === 0));
+    }), 5_000, 'Lock availability probe');
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+  }
+};
+
+const holdLock = async (t, path) => {
+  // --no-fork leaves one owned process to terminate if readiness or teardown fails.
+  const child = spawn('flock', ['--no-fork', '-x', path, 'bash', '-c', 'printf ready; read -r -t 15 release'], {
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  child.stdin.on('error', () => {});
+  const exited = new Promise(resolveExit => child.once('close', resolveExit));
+  t.after(async () => {
+    child.stdin.end('release\n');
+    try {
+      await bounded(exited, 2_000, 'Lock holder teardown');
+    } catch (error) {
+      child.kill('SIGKILL');
+      await bounded(exited, 2_000, 'Lock holder termination');
+      throw error;
+    }
+  });
+  await bounded(new Promise((ready, reject) => {
+    child.once('error', reject);
+    child.stdout.once('data', chunk => {
+      if (chunk.toString() === 'ready') ready();
+      else reject(new Error('Unexpected lock holder readiness output'));
+    });
+    child.once('exit', code => reject(new Error(`Lock holder exited before release: ${code}`)));
+  }), 5_000, 'Lock holder readiness');
+};
+
 async function run(t, options = {}) {
   const root = await mkdtemp(join(tmpdir(), 'fc-bearer-test-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
+  const survivorPidFile = join(root, 'survivor.pid');
+  const flockLog = join(root, 'flock.log');
+  const cleanupLockLog = join(root, 'cleanup-lock.log');
+  const lockFile = join(root, `hexalith-epic9-${createHash('sha256').update(apphost).digest('hex')}.lock`);
+  t.after(async () => {
+    try {
+      process.kill(Number(await readFile(survivorPidFile, 'utf8')), 'SIGTERM');
+    } catch (error) {
+      if (!['ENOENT', 'ESRCH'].includes(error.code)) throw error;
+    }
+    await rm(root, { recursive: true, force: true });
+  });
   const bin = join(root, 'bin');
   const scratch = join(root, 'scratch');
   await mkdir(bin);
@@ -27,11 +90,24 @@ async function run(t, options = {}) {
   await writeFile(state, JSON.stringify({ running: options.existing ?? false, pid: 4321, calls: [], ps: 0 }));
   const executable = async (name, source) => {
     await writeFile(join(bin, `${name}.mjs`), source);
-    await writeFile(join(bin, name), '#!/usr/bin/env bash\nexec node "${BASH_SOURCE[0]}.mjs" "$@"\n');
+    const survivor = name === 'aspire' && options.survivingChild ? `
+if [[ "$1" == start ]]; then
+  sleep 60 </dev/null >/dev/null 2>&1 &
+  printf '%s\\n' "$!" > "$BEARER_TEST_SURVIVOR_PID_FILE"
+fi
+` : '';
+    await writeFile(join(bin, name), '#!/usr/bin/env bash\n' + survivor + 'exec node "${BASH_SOURCE[0]}.mjs" "$@"\n');
     await chmod(join(bin, name), 0o755);
   };
+  await writeFile(join(bin, 'flock'), `#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "$BEARER_TEST_FLOCK_LOG"
+if [[ "$1" == -u && "$BEARER_TEST_REJECT_UNLOCK" == true ]]; then exit 77; fi
+PATH="$BEARER_TEST_ORIGINAL_PATH" exec flock "$@"
+`);
+  await chmod(join(bin, 'flock'), 0o755);
   const prelude = `
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 const options = JSON.parse(process.env.BEARER_TEST_OPTIONS);
 const statePath = process.env.BEARER_TEST_STATE;
 const state = JSON.parse(readFileSync(statePath, 'utf8'));
@@ -44,6 +120,13 @@ const privateText = 'authorization=private-bearer password=private-password http
 state.calls.push(['aspire', ...args]);
 if (process.env.HexalithFrontComposerFromSource !== 'true') process.exit(91);
 const identity = () => ({ appHostPath: apphost, appHostPid: state.pid });
+if (options.survivingChild && ['ps', 'stop'].includes(args[0])) {
+  const probe = spawnSync('flock', ['-n', process.env.BEARER_TEST_LOCK_FILE, 'true'], {
+    env: { ...process.env, PATH: process.env.BEARER_TEST_ORIGINAL_PATH }, stdio: 'ignore', timeout: 2_000,
+  });
+  appendFileSync(process.env.BEARER_TEST_CLEANUP_LOCK_LOG, args[0] + ' ' + probe.status + '\\n');
+  if (probe.status !== 1) { save(); process.exit(97); }
+}
 switch (args[0]) {
   case 'ps':
     state.ps++;
@@ -62,6 +145,7 @@ switch (args[0]) {
     break;
   case 'wait':
     save();
+    if (options.signal) process.kill(process.ppid, options.signal);
     if (options.waitFailure) { console.error(privateText); process.exit(7); }
     break;
   case 'describe':
@@ -99,6 +183,7 @@ state.calls.push(['python3', ...args]); save();
 if (args[1] !== 'check') process.exit(96);
 if (options.readinessFailure) { console.error(privateText); process.exit(1); }
 `);
+  await options.beforeRun?.(lockFile);
   const child = spawn('bash', [script], {
     cwd: repository,
     env: {
@@ -106,6 +191,12 @@ if (options.readinessFailure) { console.error(privateText); process.exit(1); }
       PATH: `${bin}:${process.env.PATH}`,
       TMPDIR: scratch,
       FC_EPIC9_LOCK_ROOT: root,
+      BEARER_TEST_FLOCK_LOG: flockLog,
+      BEARER_TEST_CLEANUP_LOCK_LOG: cleanupLockLog,
+      BEARER_TEST_LOCK_FILE: lockFile,
+      BEARER_TEST_REJECT_UNLOCK: String(options.rejectUnlock ?? false),
+      BEARER_TEST_ORIGINAL_PATH: process.env.PATH,
+      BEARER_TEST_SURVIVOR_PID_FILE: survivorPidFile,
       BEARER_TEST_STATE: state,
       BEARER_TEST_OPTIONS: JSON.stringify(options),
       BEARER_TEST_APPHOST: apphost,
@@ -121,7 +212,7 @@ if (options.readinessFailure) { console.error(privateText); process.exit(1); }
   let output = '';
   child.stdout.on('data', chunk => { output += chunk; });
   child.stderr.on('data', chunk => { output += chunk; });
-  const timer = setTimeout(() => child.kill('SIGTERM'), 20_000);
+  const timer = setTimeout(() => child.kill('SIGKILL'), 20_000);
   const code = await new Promise((resolveExit, reject) => {
     child.on('error', reject);
     child.on('close', resolveExit);
@@ -132,7 +223,7 @@ if (options.readinessFailure) { console.error(privateText); process.exit(1); }
   for (const secret of ['private-bearer', 'private-password', 'private-token', 'example.invalid']) {
     assert.ok(!output.includes(secret), `diagnostics leaked ${secret}`);
   }
-  return { code, output, ...final, probes: final.calls.filter(call => call[0] === 'curl') };
+  return { code, output, lockFile, flockLog, survivorPidFile, cleanupLockLog, ...final, probes: final.calls.filter(call => call[0] === 'curl') };
 }
 
 for (const httpStatus of [401, 403]) {
@@ -246,3 +337,63 @@ for (const readinessFailure of [false, true]) {
     if (readinessFailure) assert.match(result.output, /application health\/readiness verification failed/);
   });
 }
+
+
+test('invalid-bearer helper releases its owned flock after cleanup while an inherited child survives', async t => {
+  const result = await run(t, { survivingChild: true });
+  assert.equal(result.code, 0, result.output);
+  assert.equal(result.running, false);
+  assert.equal(result.probes.length, 4);
+  const checks = (await readFile(result.cleanupLockLog, 'utf8')).trim().split('\n');
+  assert.ok(checks.includes('stop 1'));
+  assert.ok(checks.every(check => check.endsWith(' 1')), checks.join('\n'));
+  process.kill(Number(await readFile(result.survivorPidFile, 'utf8')), 0);
+  assert.equal(await lockAvailable(result.lockFile), true, 'a surviving child must not retain the completed lifecycle lock');
+  assert.equal((await readFile(result.flockLog, 'utf8')).split('\n').filter(call => call.startsWith('-u ')).length, 1);
+});
+
+test('invalid-bearer helper never unlocks a flock it failed to acquire or starts lifecycle work under contention', async t => {
+  const result = await run(t, { beforeRun: async path => {
+    await holdLock(t, path);
+    assert.equal(await lockAvailable(path), false);
+  } });
+  assert.equal(result.code, 2, result.output);
+  assert.match(result.output, /Another proof owns the AppHost lifecycle lock/);
+  assert.deepEqual(result.calls, []);
+  assert.equal((await readFile(result.flockLog, 'utf8')).split('\n').filter(call => call.startsWith('-u ')).length, 0);
+  assert.equal(await lockAvailable(result.lockFile), false, 'the active owner must retain its lock');
+});
+
+
+for (const [name, options, expectedExit] of [
+  ['readiness failure', { waitFailure: true }, 2],
+  ['SIGINT', { signal: 'SIGINT' }, 130],
+  ['SIGTERM', { signal: 'SIGTERM' }, 143],
+]) {
+  test(`invalid-bearer ${name} retains flock through EXIT discovery and stop, then releases its surviving child descriptor`, async t => {
+    const result = await run(t, { survivingChild: true, ...options });
+    assert.equal(result.code, expectedExit, result.output);
+    assert.equal(result.running, false);
+    assert.equal(result.probes.length, 0);
+    process.kill(Number(await readFile(result.survivorPidFile, 'utf8')), 0);
+    const checks = (await readFile(result.cleanupLockLog, 'utf8')).trim().split('\n');
+    assert.deepEqual(checks.slice(-3), ['ps 1', 'stop 1', 'ps 1'], 'EXIT discovery, shutdown and postflight must each contend on a separate real flock');
+    assert.ok(checks.every(check => check.endsWith(' 1')), checks.join('\n'));
+    assert.equal(await lockAvailable(result.lockFile), true);
+    assert.equal((await readFile(result.flockLog, 'utf8')).split('\n').filter(call => call.startsWith('-u ')).length, 1);
+  });
+}
+
+test('invalid-bearer helper fails with a fixed diagnostic if its owned flock cannot be unlocked', async t => {
+  const result = await run(t, { survivingChild: true, rejectUnlock: true });
+  assert.equal(result.code, 1, result.output);
+  assert.match(result.output, /^::error::Could not release the owned AppHost lifecycle lock\.$/m);
+  assert.equal(result.running, false);
+  assert.equal(result.probes.length, 4);
+  process.kill(Number(await readFile(result.survivorPidFile, 'utf8')), 0);
+  const checks = (await readFile(result.cleanupLockLog, 'utf8')).trim().split('\n');
+  assert.ok(checks.includes('stop 1'));
+  assert.ok(checks.every(check => check.endsWith(' 1')), checks.join('\n'));
+  assert.equal(await lockAvailable(result.lockFile), false, 'the rejected unlock leaves the inherited descriptor locked until owned fixture teardown');
+  assert.equal((await readFile(result.flockLog, 'utf8')).split('\n').filter(call => call.startsWith('-u ')).length, 1);
+});
