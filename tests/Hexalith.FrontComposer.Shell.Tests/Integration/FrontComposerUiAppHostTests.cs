@@ -181,6 +181,8 @@ public sealed class FrontComposerUiAppHostTests {
             {
                 JsonElement.DeepEquals(property.Value, after.RootElement.GetProperty(property.Name)).ShouldBeTrue(property.Name);
             }
+            after.RootElement.GetProperty("attributes").GetProperty("CreateDefaultClientScopes").GetString().ShouldBe("true",
+                "adding workload scopes must preserve Keycloak's built-in profile/email scopes for existing user clients");
             JsonElement workload = renderedClients.Single(client => client.GetProperty("clientId").GetString() == LocalWorkloadRealm.ClientId);
             string.Equals(workload.GetProperty("secret").GetString(), realm.ClientSecret, StringComparison.Ordinal).ShouldBeTrue("the rendered secret must match the parameter without printing credentials");
             realm.ClientSecret.Length.ShouldBe(64);
@@ -202,6 +204,30 @@ public sealed class FrontComposerUiAppHostTests {
         }
         Directory.Exists(importDirectory).ShouldBeFalse();
         File.ReadAllBytes(source).ShouldBe(original);
+    }
+
+    [Theory]
+    [InlineData("false")]
+    [InlineData("true")]
+    public void LocalWorkloadRealmPreservesExplicitDefaultScopeConfiguration(string configuredValue)
+    {
+        string fixture = Directory.CreateTempSubdirectory("fc-workload-fixture-").FullName;
+        try
+        {
+            string source = Path.Combine(fixture, "hexalith-realm.json");
+            string json = "{\"clients\":[],\"attributes\":{\"CreateDefaultClientScopes\":\"" + configuredValue + "\",\"existing\":\"preserved\"}}";
+            File.WriteAllText(source, json);
+            using LocalWorkloadRealm realm = LocalWorkloadRealm.Create(fixture, false, null);
+            using JsonDocument rendered = JsonDocument.Parse(File.ReadAllText(Path.Combine(realm.ImportDirectory, "hexalith-realm.json")));
+            JsonElement attributes = rendered.RootElement.GetProperty("attributes");
+            attributes.GetProperty("CreateDefaultClientScopes").GetString().ShouldBe(configuredValue);
+            attributes.GetProperty("existing").GetString().ShouldBe("preserved");
+            File.ReadAllText(source).ShouldBe(json);
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
     }
 
     [Fact]
@@ -302,7 +328,11 @@ public sealed class FrontComposerUiAppHostTests {
         string program = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost", "Program.cs"));
         program.ShouldContain("bool localKeycloak = builder.ExecutionContext.IsRunMode");
         program.ShouldContain("builder.Configuration[\"EnableKeycloak\"]");
-        program.ShouldContain("using LocalWorkloadRealm? workloadRealm = localKeycloak");
+        program.ShouldContain("using LocalWorkloadRealm? workloadRealm = localKeycloak && !persistentKeycloak");
+        program.ShouldContain("if (disposableVerification && persistentKeycloak)");
+        program.IndexOf("if (disposableVerification && persistentKeycloak)", StringComparison.Ordinal)
+            .ShouldBeLessThan(program.IndexOf("LocalWorkloadRealm.Create(", StringComparison.Ordinal));
+        program.ShouldContain("if (workloadRealm is not null)");
         program.ShouldContain("builder.Configuration[\"KeycloakPersistent\"]");
         program.ShouldContain("builder.Configuration[\"Parameters:\" + LocalWorkloadRealm.SecretParameterName]");
         program.ShouldContain("RealmImportPath = workloadRealm?.ImportDirectory");
@@ -313,6 +343,142 @@ public sealed class FrontComposerUiAppHostTests {
         wiring.ShouldContain("secret: true");
         wiring.ShouldContain("publishValueAsDefault: false");
         wiring.ShouldContain("eventStore.WithEventStoreWorkloadClientCredentials(LocalWorkloadRealm.ClientId, workloadSecret)");
+    }
+
+    [Fact]
+    public async Task DisposableReadinessDoesNotFollowHealthRedirectsAsync()
+    {
+        using System.Net.Sockets.TcpListener reservation = new(System.Net.IPAddress.Loopback, 0);
+        reservation.Start();
+        int port = ((System.Net.IPEndPoint)reservation.LocalEndpoint).Port;
+        reservation.Stop();
+        using System.Net.HttpListener listener = new();
+        listener.Prefixes.Add($"http://localhost:{port}/");
+        listener.Start();
+        int requests = 0;
+        Task server = Task.Run(async () =>
+        {
+            while (listener.IsListening)
+            {
+                System.Net.HttpListenerContext request;
+                try { request = await listener.GetContextAsync().ConfigureAwait(true); }
+                catch (System.Net.HttpListenerException) { break; }
+                catch (ObjectDisposedException) { break; }
+                Interlocked.Increment(ref requests);
+                request.Response.StatusCode = 302;
+                request.Response.RedirectLocation = $"http://localhost:{port}/redirected";
+                request.Response.Close();
+            }
+        }, TestContext.Current.CancellationToken);
+        try
+        {
+            LocalReadinessHealthCheck check = new(() => $"http://localhost:{port}", maintenance: false);
+            Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult result = await check.CheckHealthAsync(new(), TestContext.Current.CancellationToken).ConfigureAwait(true);
+            result.Status.ShouldBe(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy);
+            requests.ShouldBe(1);
+        }
+        finally
+        {
+            listener.Stop();
+            await server.ConfigureAwait(true);
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DisposableReadinessRequiresEveryPlatformComponentAsync(bool maintenance)
+    {
+        string[] names = ["self", "dapr-sidecar", "dapr-actor-placement", "dapr-statestore", "dapr-pubsub", "dapr-configstore",
+            "dapr-app-channel-token", "projection-delivery-writer-protocol", "projection-delivery-unresolved-conflict"];
+        Dictionary<string, object> entries = names.ToDictionary(name => name,
+            name => (object)new { status = maintenance && name == "projection-delivery-writer-protocol" ? "Unhealthy" : "Healthy" });
+        entries["additional-component"] = new { status = "Healthy" };
+        int statusCode = maintenance ? 503 : 200;
+        string status = maintenance ? "Unhealthy" : "Healthy";
+        (await ObserveReadinessAsync(maintenance, statusCode, JsonSerializer.Serialize(new { status, results = entries })).ConfigureAwait(true))
+            .ShouldBe(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy);
+        foreach (string missing in names)
+        {
+            Dictionary<string, object> incomplete = new(entries);
+            _ = incomplete.Remove(missing);
+            (await ObserveReadinessAsync(maintenance, statusCode, JsonSerializer.Serialize(new { status, results = incomplete })).ConfigureAwait(true))
+                .ShouldBe(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy, missing);
+        }
+        entries["additional-component"] = new { status = "Degraded" };
+        (await ObserveReadinessAsync(maintenance, statusCode, JsonSerializer.Serialize(new { status, results = entries })).ConfigureAwait(true))
+            .ShouldBe(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy);
+    }
+
+    [Theory]
+    [InlineData(503, "{\"status\":\"Healthy\"}")]
+    [InlineData(200, "{\"status\":\"Unhealthy\"}")]
+    [InlineData(200, "[]")]
+    [InlineData(200, "not-json")]
+    public async Task DisposableReadinessRejectsInvalidReadyResponsesAsync(int readyStatus, string readyBody)
+    {
+        string[] names = ["self", "dapr-sidecar", "dapr-actor-placement", "dapr-statestore", "dapr-pubsub", "dapr-configstore",
+            "dapr-app-channel-token", "projection-delivery-writer-protocol", "projection-delivery-unresolved-conflict"];
+        string health = JsonSerializer.Serialize(new { status = "Healthy", results = names.ToDictionary(name => name, _ => new { status = "Healthy" }) });
+        (await ObserveReadinessAsync(false, 200, health, readyStatus, readyBody).ConfigureAwait(true))
+            .ShouldBe(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy);
+    }
+
+    private static async Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus> ObserveReadinessAsync(
+        bool maintenance, int healthStatus, string healthBody, int readyStatus = 200, string readyBody = "{\"status\":\"Healthy\"}")
+    {
+        using System.Net.Sockets.TcpListener reservation = new(System.Net.IPAddress.Loopback, 0);
+        reservation.Start();
+        int port = ((System.Net.IPEndPoint)reservation.LocalEndpoint).Port;
+        reservation.Stop();
+        using System.Net.HttpListener listener = new();
+        listener.Prefixes.Add($"http://localhost:{port}/");
+        listener.Start();
+        Task server = Task.Run(async () =>
+        {
+            while (listener.IsListening)
+            {
+                System.Net.HttpListenerContext request;
+                try { request = await listener.GetContextAsync().ConfigureAwait(true); }
+                catch (System.Net.HttpListenerException) { break; }
+                catch (ObjectDisposedException) { break; }
+                bool health = request.Request.Url?.AbsolutePath == "/health";
+                request.Response.StatusCode = health ? healthStatus : readyStatus;
+                byte[] body = System.Text.Encoding.UTF8.GetBytes(health ? healthBody : readyBody);
+                await request.Response.OutputStream.WriteAsync(body, TestContext.Current.CancellationToken).ConfigureAwait(true);
+                request.Response.Close();
+            }
+        }, TestContext.Current.CancellationToken);
+        try
+        {
+            LocalReadinessHealthCheck check = new(() => $"http://localhost:{port}", maintenance);
+            return (await check.CheckHealthAsync(new(), TestContext.Current.CancellationToken).ConfigureAwait(true)).Status;
+        }
+        finally
+        {
+            listener.Stop();
+            await server.ConfigureAwait(true);
+        }
+    }
+
+    [Theory]
+    [InlineData(6379, "1.18.7")]
+    [InlineData(41001, "untrusted:latest")]
+    public void DisposableReadinessRefusesSharedPortsOrUnknownRuntime(int redisPort, string version)
+    {
+        string directory = Directory.CreateTempSubdirectory("fc-readiness-test-").FullName;
+        try
+        {
+            string path = Path.Combine(directory, "configuration.json");
+            File.WriteAllText(path, JsonSerializer.Serialize(new
+            {
+                owner = new string('a', 32), daprVersion = version,
+                ports = new { redis = redisPort, placement = 41002, scheduler = 41003, daprHttp = 41004 },
+            }));
+            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            Should.Throw<InvalidOperationException>(() => LocalReadinessConfiguration.Load(directory));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
     }
 
     private static JsonElement FindRealmClient(string clientId) {

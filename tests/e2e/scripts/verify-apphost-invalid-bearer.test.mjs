@@ -94,6 +94,11 @@ if (transportFailure) { console.error(privateText); process.stdout.write('000');
 process.stdout.write(String(options.httpStatus ?? 401));
 if (options.partialResponse) { console.error(privateText); process.exit(56); }
 `);
+  await executable('python3', prelude + `
+state.calls.push(['python3', ...args]); save();
+if (args[1] !== 'check') process.exit(96);
+if (options.readinessFailure) { console.error(privateText); process.exit(1); }
+`);
   const child = spawn('bash', [script], {
     cwd: repository,
     env: {
@@ -107,6 +112,9 @@ if (options.partialResponse) { console.error(privateText); process.exit(56); }
       HTTPS_PROXY: 'http://proxy.invalid:8888',
       HTTP_PROXY: 'http://proxy.invalid:8888',
       NO_PROXY: '',
+      FrontComposerVerification__Enabled: options.verification ? 'true' : 'false',
+      FrontComposerVerification__Directory: options.verification ? root : '',
+
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -227,3 +235,14 @@ test('Quality executes the helper and its regression suite as blocking steps', a
   const packageJson = JSON.parse(await readFile(join(repository, 'tests/e2e/package.json'), 'utf8'));
   assert.ok(packageJson.scripts['test:epic-9-evidence'].includes('scripts/verify-apphost-invalid-bearer.test.mjs'));
 });
+
+for (const readinessFailure of [false, true]) {
+  test(`disposable health gate precedes probes and preserves cleanup: failure=${readinessFailure}`, async t => {
+    const result = await run(t, { verification: true, readinessFailure });
+    assert.equal(result.code, readinessFailure ? 2 : 0, result.output);
+    assert.equal(result.probes.length, readinessFailure ? 0 : 4);
+    assert.equal(result.calls.filter(call => call[0] === 'python3').length, 1);
+    assert.equal(result.running, false);
+    if (readinessFailure) assert.match(result.output, /application health\/readiness verification failed/);
+  });
+}

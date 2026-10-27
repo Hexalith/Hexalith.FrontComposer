@@ -110,6 +110,14 @@ for resource in security eventstore; do
     exit 2
   fi
 done
+if [[ "${FrontComposerVerification__Enabled:-}" == true ]]; then
+  if [[ -z "${FrontComposerVerification__Directory:-}" ]] ||
+    ! python3 "$repo_root/eng/verify-isolated-readiness.py" check "$FrontComposerVerification__Directory" > "$scratch/application-health.log" 2>&1; then
+    fail 'Disposable application health/readiness verification failed.'
+    exit 2
+  fi
+  printf 'Disposable application health/readiness and ordinary gateway workers verified.\n'
+fi
 if ! aspire describe eventstore "${aspire_args[@]}" --format Json > "$scratch/describe.json" 2> "$scratch/describe.err"; then
   fail 'Aspire endpoint discovery failed.'
   exit 2

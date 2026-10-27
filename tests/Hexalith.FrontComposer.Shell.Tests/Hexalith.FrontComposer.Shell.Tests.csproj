@@ -6,6 +6,8 @@
   <ItemGroup>
     <!-- Exercise the host-owned realm renderer directly without starting an Aspire topology. -->
     <Compile Include="..\..\src\Hexalith.FrontComposer.AppHost\LocalWorkloadRealm.cs" Link="Integration\LocalWorkloadRealm.cs" />
+    <Compile Include="..\..\src\Hexalith.FrontComposer.AppHost\LocalReadinessConfiguration.cs" Link="Integration\LocalReadinessConfiguration.cs" />
+    <Compile Include="..\..\src\Hexalith.FrontComposer.AppHost\LocalReadinessHealthCheck.cs" Link="Integration\LocalReadinessHealthCheck.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\samples\Counter\Counter.Domain\Counter.Domain.csproj" />

@@ -61,6 +61,14 @@ internal sealed class LocalWorkloadRealm : IDisposable
         {
             throw new InvalidOperationException("The user realm already declares the workload client; refusing to replace it.");
         }
+        // Keycloak creates its built-in scopes when the import omits clientScopes.
+        // Preserve that behavior after adding explicit workload scopes to this private copy.
+        if (realm["clientScopes"] is null)
+        {
+            JsonObject attributes = realm["attributes"]?.AsObject() ?? new JsonObject();
+            attributes["CreateDefaultClientScopes"] ??= "true";
+            realm["attributes"] = attributes;
+        }
         JsonArray scopes = realm["clientScopes"]?.AsArray() ?? new JsonArray();
         realm["clientScopes"] = scopes;
         JsonArray optionalScopes = [];

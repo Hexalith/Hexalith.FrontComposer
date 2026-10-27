@@ -23,10 +23,17 @@ string emptyDaprResourcesPath = ResolveEmptyDaprResourcesPath();
 // (falls back to symmetric key auth via Authentication:JwtBearer:SigningKey).
 bool localKeycloak = builder.ExecutionContext.IsRunMode
     && !string.Equals(builder.Configuration["EnableKeycloak"], "false", StringComparison.OrdinalIgnoreCase);
-using LocalWorkloadRealm? workloadRealm = localKeycloak
+bool persistentKeycloak = bool.TryParse(builder.Configuration["KeycloakPersistent"], out bool persistent) && persistent;
+bool disposableVerification = string.Equals(builder.Configuration[LocalReadinessConfiguration.Prefix + ":Enabled"], "true", StringComparison.OrdinalIgnoreCase);
+if (disposableVerification && persistentKeycloak)
+{
+    throw new InvalidOperationException("Disposable verification refuses persistent Keycloak reuse.");
+}
+// Existing persistent realms keep their operator-provisioned credentials and import path.
+using LocalWorkloadRealm? workloadRealm = localKeycloak && !persistentKeycloak
     ? LocalWorkloadRealm.Create(
         Path.Combine(builder.AppHostDirectory, "KeycloakRealms"),
-        bool.TryParse(builder.Configuration["KeycloakPersistent"], out bool persistentKeycloak) && persistentKeycloak,
+        persistentKeycloak,
         builder.Configuration["Parameters:" + LocalWorkloadRealm.SecretParameterName])
     : null;
 HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSecurity(
@@ -34,6 +41,24 @@ HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSec
     {
         RealmImportPath = workloadRealm?.ImportDirectory ?? Path.Combine(builder.AppHostDirectory, "KeycloakRealms"),
     });
+
+// Explicit verification uses a disposable gateway; the normal development topology below is unchanged.
+if (disposableVerification)
+{
+    if (!builder.ExecutionContext.IsRunMode || security is null || workloadRealm is null)
+    {
+        throw new InvalidOperationException("Disposable verification requires local Keycloak run mode.");
+    }
+    LocalReadinessConfiguration verification = LocalReadinessConfiguration.Load(
+        builder.Configuration[LocalReadinessConfiguration.Prefix + ":Directory"]);
+    bool maintenance = string.Equals(builder.Configuration[LocalReadinessConfiguration.Prefix + ":Maintenance"], "true", StringComparison.OrdinalIgnoreCase);
+    IResourceBuilder<ProjectResource> verificationGateway = LocalReadinessTopology.Add(builder, verification, security, workloadRealm, maintenance);
+    _ = builder.AddProject<Projects.Counter_Web>("counter-web")
+        .WaitFor(verificationGateway)
+        .WithExternalHttpEndpoints();
+    await builder.Build().RunAsync().ConfigureAwait(false);
+    return;
+}
 
 // Add EventStore (command gateway), Admin Server, and Admin UI projects.
 // Project paths are resolved cross-repo via the IProjectMetadata classes in this AppHost.
