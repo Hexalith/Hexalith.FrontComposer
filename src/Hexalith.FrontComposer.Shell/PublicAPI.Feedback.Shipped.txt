@@ -12,6 +12,7 @@ Hexalith.FrontComposer.Shell.Components.Feedback.FcLiveRegion.Politeness:Hexalit
 Hexalith.FrontComposer.Shell.Components.Forms.FcDestructiveConfirmationDialog
 Hexalith.FrontComposer.Shell.Components.Forms.FcDestructiveConfirmationDialog.#ctor()
 Hexalith.FrontComposer.Shell.Components.Forms.FcDestructiveConfirmationDialog.Body:System.String:get/set
+Hexalith.FrontComposer.Shell.Components.Forms.FcDestructiveConfirmationDialog.CancelLabel:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.Forms.FcDestructiveConfirmationDialog.ConfirmationHelp:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.Forms.FcDestructiveConfirmationDialog.ConfirmationInputLabel:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.Forms.FcDestructiveConfirmationDialog.ConfirmationReadyMessage:System.String:get/set
