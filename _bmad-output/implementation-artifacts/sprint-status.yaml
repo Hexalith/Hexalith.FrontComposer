@@ -205,7 +205,7 @@ development_status:
   13-5-i-ux-d-preserve-fresh-row-meaning-across-visual-and-data-cha: done
   # 2026-10-22: delivered history retained; required accessibility verification remains blocked.
   # 2026-10-25: exact Parties revision published; same-candidate CI attempt 2 passed; Quality gates remain blocked.
-  # Seven Owner-reported Pass results retain blocked formal qualification; independent gates remain open.
+  # 2026-10-27: seven Owner-reported Pass records completed; supporting details waived; independent gates remain open.
   13-6-i-ux-e-verify-responsive-and-assistive-accessibility: in-progress
   13-7-i-ux-f-provide-reusable-ux-assertions-for-adopters: done
   13-8-a-e9-app-1-accept-the-completed-fresh-row-live-prrevokwg: done

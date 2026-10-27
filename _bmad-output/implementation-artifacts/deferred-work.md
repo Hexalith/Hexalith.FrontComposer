@@ -10811,3 +10811,13 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 - Regenerated Epic 15 context dropped the tenant/user mismatch ban and the "Components + Icons 5.0.1 GA not approved" posture (`epic-15-context.md`). Deferred because the fix edits an agent-context file. Reconfirmed from the earlier deferral.
 - The committed invalid-bearer result is still exit 1 (`13-6-accessibility-result.md:24`). Unverified, medium if confirmed: that record describes the pre-wiring run. Settle by running `eng/verify-apphost-invalid-bearer.sh` against `5b8a8607` and observing four completed 401/403 responses.
 - Commit `62e3664c51c7cb7b9475728f3bf02a266d098fa7` is labelled Story 15.5 and contains only Story 13.6 paths. Already accepted on 2026-10-26. A repair would rewrite history, which that decision declined.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Require unique TRX ResultSummary and Counters elements in the Builds workflow report validators.
+  evidence: "Review B5: the actual selected-Builds verifier accepts a passing first summary followed by a contradictory failed second summary. Existing upstream defect; exact-candidate qualification independently rejects duplicate summaries."
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Reject nonterminal pending and inProgress counters in successful Builds TRX reports.
+  evidence: "Review B6: the actual selected-Builds verifier accepts pending=1/inProgress=1 alongside passing results. Existing upstream defect; exact-candidate qualification independently requires terminal counters."
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Pass an explicit end-of-options marker before optional Builds Aspire hook filenames.
+  evidence: "Review E1: a valid root filename -e is treated as a Bash option and its hook is skipped with exit 0. bash -- -e executes it. FrontComposer leaves the Aspire job disabled; the defect belongs to the upstream optional hook path."
