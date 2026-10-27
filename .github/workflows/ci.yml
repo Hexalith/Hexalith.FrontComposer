@@ -26,6 +26,7 @@ jobs:
     with:
       solution: Hexalith.FrontComposer.slnx
       test-platform: microsoft-testing-platform
+      build-timeout-minutes: 45
       # Enables scripts/pack-release-packages.py + validate-nuget-packages.py +
       # validate-consumer-package-references.py (FR24 AC1 + AC6): proves the 8-package
       # inventory and the Contracts-only vs Shell/UI consumer boundaries before release.
