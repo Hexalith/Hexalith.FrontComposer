@@ -904,6 +904,7 @@ jobs:
           name: epic-9-live-acceptance-artifacts
           retention-days: 14
           if-no-files-found: error
+          include-hidden-files: true
           path: artifacts/epic-9/**
 
   # Every other .NET test lane builds Release, which compiles out `#if DEBUG` diagnostic gates and
