@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   ci:
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@4eb33928a1d8c7775f97221cf9edc171db0cb5f8
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@cad925260713718895282c69bcbdb8bc72e7b6a2
     with:
       solution: Hexalith.FrontComposer.slnx
       test-platform: microsoft-testing-platform
