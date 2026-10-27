@@ -102,12 +102,20 @@ public partial class FcDestructiveConfirmationDialog : ComponentBase {
     private string? _previousRequiredName;
     private bool _completed;
     private bool _cancelled;
+    private bool _confirming;
+    private bool _previousDisabled;
 
-    private bool CanConfirm => !_completed && !Disabled && (RequiredName is null
+    private bool CanConfirm => !_completed && !_confirming && !Disabled && (RequiredName is null
         || (!string.IsNullOrWhiteSpace(RequiredName) && string.Equals(_typedName, RequiredName, StringComparison.Ordinal)));
 
     /// <inheritdoc />
     protected override void OnParametersSet() {
+        // A mounted typed-name caller can recover a transient failure by leaving its
+        // busy state. Default dialogs and completed/cancelled modal instances stay terminal.
+        if (_previousDisabled && !Disabled && RequiredName is not null && Dialog is null && !_cancelled) {
+            _completed = false;
+        }
+        _previousDisabled = Disabled;
         if (!string.Equals(RequiredName, _previousRequiredName, StringComparison.Ordinal)) {
             _typedName = null;
             _previousRequiredName = RequiredName;
@@ -180,12 +188,14 @@ public partial class FcDestructiveConfirmationDialog : ComponentBase {
             return;
         }
         _completed = true;
+        _confirming = true;
         try {
             if (OnConfirm.HasDelegate) {
                 await OnConfirm.InvokeAsync();
             }
         }
         finally {
+            _confirming = false;
             if (Dialog is not null) {
                 await Dialog.CloseAsync();
             }

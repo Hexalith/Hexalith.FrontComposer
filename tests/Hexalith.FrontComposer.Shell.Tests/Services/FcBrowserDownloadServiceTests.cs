@@ -8,6 +8,15 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services;
 public sealed class FcBrowserDownloadServiceTests : BunitContext
 {
     [Fact]
+    public async Task CleanupTimeoutStillDisposesTheModule()
+    {
+        var runtime = new TimeoutDownloadJsRuntime();
+        await Should.ThrowAsync<TaskCanceledException>(() => new FcBrowserDownloadService(runtime)
+            .DownloadJsonAsync(new byte[] { 123, 125 }, "safe.json", Xunit.TestContext.Current.CancellationToken));
+        runtime.Disposed.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task JsonPreservesBytesAndFilenameAcrossRepeatedDownloads()
     {
         var module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-download.js");

@@ -134,6 +134,75 @@ public sealed class FcOptimisticReconcilerTests
         handle.Received(1).Dispose();
     }
 
+    [Fact]
+    public async Task CommandFaultAfterCallerCancellationAbandonsWithoutFailureFeedback()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var command = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var states = new List<FcReconcileState>();
+        var request = NewRequest(states) with { IssueCommand = _ => command.Task };
+        Task run = new FcOptimisticReconciler().ExecuteAsync(request, cancellation.Token);
+        await cancellation.CancelAsync();
+        command.SetException(new InvalidOperationException("abandoned command"));
+        await run.WaitAsync(TestContext.Current.CancellationToken);
+        states.ShouldBe([FcReconcileState.Saving]);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RejectionCallbackFaultPropagatesWithoutSecondRollbackOrFailure(bool rollbackThrows)
+    {
+        int reverts = 0;
+        int failures = 0;
+        var fault = new InvalidOperationException("caller callback");
+        var request = NewRequest([]) with
+        {
+            IssueCommand = _ => Task.FromResult(false),
+            Revert = () => { reverts++; if (rollbackThrows) throw fault; },
+            Rejected = () => throw fault,
+            Failed = _ => failures++,
+        };
+        (await Should.ThrowAsync<InvalidOperationException>(() => new FcOptimisticReconciler()
+            .ExecuteAsync(request, TestContext.Current.CancellationToken))).ShouldBeSameAs(fault);
+        reverts.ShouldBe(1);
+        failures.ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData("reconciled", true)]
+    [InlineData("degraded", true)]
+    [InlineData("read-failed", true)]
+    [InlineData("reconciled", false)]
+    [InlineData("read-failed", false)]
+    public async Task ReconcileCallbackFaultTerminatesAndDisposes(string callback, bool connected)
+    {
+        Action? confirm = null;
+        var handle = Substitute.For<IDisposable>();
+        var fault = new InvalidOperationException("caller callback");
+        int reads = 0;
+        var request = NewRequest([]) with
+        {
+            IsConnected = () => connected,
+            Subscribe = action => { confirm = action; return handle; },
+            Reconcile = _ =>
+            {
+                reads++;
+                return callback == "read-failed" ? throw new IOException("retryable read")
+                    : Task.FromResult(callback == "degraded" ? FcFreshnessStatus.Stale : FcFreshnessStatus.Current);
+            },
+            ReadFailed = () => throw fault,
+            Announce = state => { if (state != FcReconcileState.Saving) throw fault; },
+        };
+        Task run = new FcOptimisticReconciler().ExecuteAsync(request, TestContext.Current.CancellationToken);
+        if (connected) confirm!();
+        (await Should.ThrowAsync<InvalidOperationException>(() => run.WaitAsync(
+            TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken))).ShouldBeSameAs(fault);
+        confirm!();
+        reads.ShouldBe(1);
+        handle.Received(1).Dispose();
+    }
+
     private static FcOptimisticReconcileRequest NewRequest(List<FcReconcileState> states) => new()
     {
         ApplyOptimistic = () => { },

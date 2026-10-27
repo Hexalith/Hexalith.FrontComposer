@@ -39,15 +39,21 @@ public sealed class FcBrowserDownloadService(IJSRuntime jsRuntime) : IFcBrowserD
         }
         finally
         {
-            // Also clean a beginDownload that completed as its caller cancelled.
-            await CleanupAsync(module, operationId).ConfigureAwait(false);
             try
             {
-                await module.DisposeAsync().ConfigureAwait(false);
+                // Also clean a beginDownload that completed as its caller cancelled.
+                await CleanupAsync(module, operationId).ConfigureAwait(false);
             }
-            catch (JSDisconnectedException)
+            finally
             {
-                // The circuit has already released its browser resources.
+                try
+                {
+                    await module.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (JSDisconnectedException)
+                {
+                    // The circuit has already released its browser resources.
+                }
             }
         }
     }

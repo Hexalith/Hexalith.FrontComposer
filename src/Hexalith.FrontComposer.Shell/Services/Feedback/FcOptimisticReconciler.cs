@@ -18,20 +18,10 @@ public sealed class FcOptimisticReconciler
 
         request.ApplyOptimistic();
         request.Announce(FcReconcileState.Saving);
+        bool accepted;
         try
         {
-            bool accepted = await request.IssueCommand(cancellationToken).ConfigureAwait(false);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
-            if (!accepted)
-            {
-                request.Revert();
-                request.Rejected();
-                return;
-            }
+            accepted = await request.IssueCommand(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -39,8 +29,23 @@ public sealed class FcOptimisticReconciler
         }
         catch (Exception exception)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
             request.Revert();
             request.Failed(exception);
+            return;
+        }
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        if (!accepted)
+        {
+            request.Revert();
+            request.Rejected();
             return;
         }
 
@@ -102,6 +107,13 @@ public sealed class FcOptimisticReconciler
                 {
                     request.Announce(FcReconcileState.Degraded);
                 }
+            }
+            catch (Exception exception)
+            {
+                // Subscription callbacks are fire-and-forget; deliver callback faults to
+                // the operation owner so it can terminate and dispose the subscription.
+                done = true;
+                completion.TrySetException(exception);
             }
             finally
             {

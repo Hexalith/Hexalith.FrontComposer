@@ -418,13 +418,18 @@ export function observeFieldAccessibility(rootId) {
             if (root.isConnected) syncFieldAccessibility(root);
         });
     };
+    const explicitDescriptions = Array.from(root.querySelectorAll('[data-fc-description-proxy]'))
+        .flatMap((host) => (host.getAttribute('aria-describedby') ?? '').split(/\s+/))
+        .filter(Boolean).map((id) => document.getElementById(id))
+        .filter((element) => element instanceof HTMLElement);
     const observer = new MutationObserver((records) => {
         if (!root.isConnected) {
             observer.disconnect();
             fieldAccessibilityObservers.delete(root);
             return;
         }
-        if (records.some((record) => record.target instanceof Node && root.contains(record.target))) {
+        if (records.some((record) => record.target instanceof Node
+            && (root.contains(record.target) || explicitDescriptions.some((description) => description.contains(record.target))))) {
             schedule();
         }
     });
@@ -437,6 +442,11 @@ export function observeFieldAccessibility(rootId) {
         attributes: true,
         attributeFilter: ['data-fc-invalid'],
     });
+    // Typed-name warning copy is a sibling of its field root. Only explicit proxy
+    // callers observe that referenced text; generated-field behavior stays local.
+    for (const description of explicitDescriptions) {
+        observer.observe(description, { subtree: true, childList: true, characterData: true });
+    }
     // Route removal can detach both the form and its parent. Observe removals at the document
     // boundary so that removing any ancestor releases the form and its accessibility observer.
     observer.observe(document, { childList: true, subtree: true });
@@ -470,8 +480,10 @@ export function syncFieldAccessibility(root) {
         const description = host.id ? document.getElementById(`${host.id}-description`) : null;
         // Explicit caller-owned descriptions (including typed-name warnings) need the
         // same projection across a Fluent editor's shadow boundary as generated fields.
-        const explicitDescriptions = (host.getAttribute('aria-describedby') ?? '').split(/\s+/)
-            .filter(Boolean).map((id) => document.getElementById(id));
+        const explicitDescriptions = host.hasAttribute('data-fc-description-proxy')
+            ? (host.getAttribute('aria-describedby') ?? '').split(/\s+/)
+                .filter(Boolean).map((id) => document.getElementById(id))
+            : [];
         const describedBy = [...new Set([description, ...explicitDescriptions, error]
             .filter((element) => element instanceof HTMLElement))];
         if (invalid) {

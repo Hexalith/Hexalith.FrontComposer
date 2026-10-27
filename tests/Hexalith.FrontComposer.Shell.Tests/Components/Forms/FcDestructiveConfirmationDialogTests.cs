@@ -210,4 +210,44 @@ public sealed class FcDestructiveConfirmationDialogTests : BunitContext {
         cancelled.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task TypedCallerBusyToReadyAllowsTransientRetryWithoutOverlappingSubmits()
+    {
+        int count = 0;
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cut = Render<FcDestructiveConfirmationDialog>(p => p
+            .Add(c => c.RequiredName, "Exact name")
+            .Add(c => c.OnConfirm, async () => { count++; await release.Task.ConfigureAwait(true); }));
+        await cut.InvokeAsync(() => cut.FindComponent<FluentTextInput>().Instance.ValueChanged.InvokeAsync("Exact name"));
+        var confirm = cut.FindComponents<FluentButton>().Single(c => c.Instance.Class == "fc-destructive-confirm");
+        Task first = cut.InvokeAsync(() => confirm.Instance.OnClick.InvokeAsync());
+        cut.Render(p => p.Add(c => c.Disabled, true));
+        cut.Render(p => p.Add(c => c.Disabled, false));
+        await cut.InvokeAsync(() => confirm.Instance.OnClick.InvokeAsync());
+        count.ShouldBe(1);
+        release.SetResult();
+        await first.ConfigureAwait(true);
+        await cut.InvokeAsync(() => confirm.Instance.OnClick.InvokeAsync());
+        count.ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BusyToReadyDoesNotRearmDefaultOrCancelledConfirmation(bool cancelled)
+    {
+        int count = 0;
+        var cut = Render<FcDestructiveConfirmationDialog>(p => p
+            .Add(c => c.RequiredName, cancelled ? "Exact name" : null)
+            .Add(c => c.OnConfirm, () => count++));
+        var confirm = cut.FindComponents<FluentButton>().Single(c => c.Instance.Class == "fc-destructive-confirm");
+        if (cancelled) await cut.InvokeAsync(() => cut.Find("[data-testid='fc-destructive-cancel']").Click());
+        else await cut.InvokeAsync(() => confirm.Instance.OnClick.InvokeAsync());
+        cut.Render(p => p.Add(c => c.Disabled, true));
+        cut.Render(p => p.Add(c => c.Disabled, false));
+        if (cancelled) await cut.InvokeAsync(() => cut.FindComponent<FluentTextInput>().Instance.ValueChanged.InvokeAsync("Exact name"));
+        await cut.InvokeAsync(() => confirm.Instance.OnClick.InvokeAsync());
+        count.ShouldBe(cancelled ? 0 : 1);
+    }
+
 }
