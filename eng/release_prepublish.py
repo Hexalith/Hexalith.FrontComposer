@@ -278,6 +278,8 @@ def phase_tests() -> None:
         "RELEASE_ATTESTATION_FALLBACK_APPROVED_AT": "",
         "RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT": "",
     }
+    # Documentation tests load the pinned DocFX glob matcher from the local tool manifest.
+    run("tests", ["dotnet", "tool", "restore"])
     for project in TEST_PROJECTS:
         name = pathlib.Path(project).stem
         run("tests", [
