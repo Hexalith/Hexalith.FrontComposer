@@ -263,14 +263,14 @@ test('all-unreachable endpoints get exactly one additional transport-only pass a
   assert.equal(result.running, false);
 });
 
-for (const coldStatus of [401, 200]) {
-  test(`cold-start command submit retries both 28/000 endpoints once and requires completed rejection: HTTP ${coldStatus}`, async t => {
-    const result = await run(t, { coldStart: true, coldStatus });
+for (const transportExit of [7, 28, 35, 56]) for (const coldStatus of [401, 200]) {
+  test(`cold-start command submit retries both ${transportExit}/000 endpoints once and requires completed rejection: HTTP ${coldStatus}`, async t => {
+    const result = await run(t, { coldStart: true, coldStatus, transportExit });
     assert.equal(result.code, coldStatus === 401 ? 0 : 1, result.output);
     assert.equal(result.probes.length, 6);
     const submits = result.probes.filter(probe => new URL(probe.at(-1)).pathname === '/api/v1/commands');
     assert.deepEqual(submits.map(probe => new URL(probe.at(-1)).protocol), ['https:', 'http:', 'https:']);
-    assert.equal(result.output.match(/curl exit 28 \(request timed out\); no HTTP response/g)?.length, 2);
+    assert.equal(result.output.split(`curl exit ${transportExit} (`).length - 1, 2);
     assert.equal(result.output.match(/rejected the invalid bearer with 401/g)?.length, coldStatus === 401 ? 4 : 3);
     if (coldStatus === 200) assert.match(result.output, /returned HTTP 200 with curl exit 0/);
     assert.equal(result.running, false);
