@@ -10821,3 +10821,83 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-adopt-reviewed-ci-workflow.md`
   summary: Pass an explicit end-of-options marker before optional Builds Aspire hook filenames.
   evidence: "Review E1: a valid root filename -e is treated as a Bash option and its hook is skipped with exit 0. bash -- -e executes it. FrontComposer leaves the Aspire job disabled; the defect belongs to the upstream optional hook path."
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Align the pre-existing optional Builds Aspire and performance restore graphs with their Release builds.
+  evidence: Reviewed immutable CAD and derived695 domain-ci workflows still restore those two optional lanes without Configuration=Release before Release --no-restore builds. The active FrontComposer caller disables both lanes; the blocking-lane695 correction does not introduce their mismatch or establish their execution.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Reconcile confirmations received before command acceptance in the independently introduced optimistic feedback helper.
+  evidence: R5-B1/E1: exact source subscribes after IssueCommand and has no initial connected read; a confirmation during the await leaves zero reads and a pending task. Introduced by external813b9c70 feature work, independently of CI adoption.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Keep presentation callback exceptions outside the optimistic helper command-failure boundary.
+  status: resolved
+  reconciled_at: c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4
+  reconciliation: "External c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4 moves Revert/Rejected outside the command catch; exact-source reproduction and committed tests show one rollback, zero Failed calls and original callback propagation."
+  evidence: R5-B2: a throwing Rejected callback is caught as a command exception, causing a second Revert and Failed callback; the copied-source reproduction reports two reverts and one command failure. External reconciler feature.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Suppress optimistic rollback and failure feedback when the command faults after caller cancellation.
+  status: resolved
+  reconciled_at: c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4
+  reconciliation: "External c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4 adds the cancellation check in the generic command catch; exact-source reproduction shows only Saving and zero rollback/failure calls."
+  evidence: R5-B3/E2: the generic exception path omits the cancellation guard and violates documented silent abandonment; independently reproduced against exact source. External reconciler feature.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Honor the fallback driver's per-read cancellation token in optimistic reconciliation.
+  evidence: R5-B4: TryReconcileAsync ignores its argument and always uses the operation token; an already-canceled read token still reaches Reconcile. External callback contract, not introduced by CI adoption.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Give optimistic reconciliation a terminal outcome when its Reconciled announcement callback throws.
+  status: resolved
+  reconciled_at: c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4
+  reconciliation: "External c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4 faults completion and tears down; exact-source reproduction propagates callback failure and disposes once. The separate fallback-predicate test gap is retained below."
+  evidence: R5-B5/E3: done is set before Announce while the subscription discards the Task; an announcement exception prevents completion and suppresses subsequent reads. Independently reproduced external feature defect.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Unverified medium: establish the optimistic helper's caller callback dispatcher contract.
+  evidence: R5-B6: ConfigureAwait(false) demonstrably loses the captured context, but no production consumer is present to establish renderer-affine callback behavior. Verify a real Blazor consumer after asynchronous IssueCommand or document/test dispatcher-wrapped adapters before choosing the owning feature fix.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Attempt browser-download module disposal even when operation cleanup times out.
+  status: partially-resolved
+  reconciled_at: c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4
+  reconciliation: "External c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4 guarantees disposal through nested finally. Remaining: cleanup TaskCanceledException still replaces an earlier transfer fault; exact-source reproduction verifies disposal once with original transfer failure lost."
+  evidence: R5-B7/E4: TaskCanceledException from cancelDownload bypasses the following DisposeAsync and can replace a transfer exception; copied-source reproduction records zero module disposals. External download implementation from813b9c70/b633c07e.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Initialize typed-name accessibility when RequiredName mounts the editor after the first render.
+  evidence: R5-B8/E6: the firstRender return guard prevents observeFieldAccessibility for a newly rendered editor; dynamic null-to-name is a valid parameter transition. External typed-name feature, not changed by CI adoption.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Associate caller-provided typed-name ConfirmationHelp with the native confirmation input.
+  evidence: R5-B9: help renders without an ID while aria-describedby names only the separate Body. Domain-specific typing guidance is absent from the input description. External typed-name feature.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Refresh native description proxies when explicit references or external description text change.
+  status: partially-resolved
+  reconciled_at: c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4
+  reconciliation: "External c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4 observes external description text present at registration. Remaining: aria-describedby changes and new/replaced referenced elements do not refresh synchronization/subscriptions; native browser proof remains absent."
+  evidence: R5-E5: the observer filters out aria-describedby and observes text only inside its root; external character-data changes are not covered by the document child-list observer. External fc-focus projection feature from5b6b55ca.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Verify actual optimistic state application and rejection rollback in feedback helper tests.
+  evidence: R5-V1 pre-verified regression gap: all ApplyOptimistic fixtures are no-ops, so removing the production call leaves every assertion unchanged. Add observable mutable state and inspect it inside IssueCommand and after rejection; owning external feedback feature.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Verify a browser download initiated through the public C# download service.
+  evidence: R5-V2 pre-verified integration gap: bUnit ignores operation IDs and browser tests call JS directly, so mismatched beginDownload/downloadStream IDs evade both layers. A service-triggered browser download must assert event, bytes and filename; owning external download feature.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Add real-browser proof of the typed-name shadow input's accessible description.
+  evidence: R5-V3 pre-verified regression gap: component tests mock JS and existing browser cases never enter data-fc-description-proxy. Removing the native input association leaves current assertions green; owning external typed-name feature.
+
+Aggregate Story13.6 review reproduction coordinates: reconciler command `dotnet run --project /tmp/fc-review-reconcile-sl70fu7_/repro.csproj --configuration Release --no-restore` and download command `dotnet run --project /tmp/fc-review-download-hticxexl/repro.csproj --configuration Release -p:NuGetAudit=false` each exit0 while printing the failing contract observations recorded in the adoption spec. Dispatcher-contract harm remains unverified; typed-name findings retain source-inspection/verification-gap attribution.
+
+- source_spec: `spec-13-6-adopt-reviewed-ci-workflow.md`
+  summary: Verify that fallback drivers observe terminal completion after reconciliation callback faults.
+  status: deferred
+  evidence: C2-V1, source-inspected verification gap in independent external feature work. New callback-fault tests use a one-shot RunFallback that ignores the documented completion predicate. A fallback fixture consuming the predicate must terminate after throwing ReadFailed or Degraded announcements. No mutant test execution or new production defect is claimed.
+
+Latest Story13.6 follow-up reconciliation at c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4: eighteen historical/current groups, three resolved, fifteen outstanding (including two partially resolved). R5-V3 additionally lacks browser assertions for c2's new external-description text observer. The exact-source feedback/download reproduction in `/tmp/fc-c2-feedback-reconcile-35_56cn9/` records source hashes, harness and successful-exit observations; hosted qualification remains separate.
