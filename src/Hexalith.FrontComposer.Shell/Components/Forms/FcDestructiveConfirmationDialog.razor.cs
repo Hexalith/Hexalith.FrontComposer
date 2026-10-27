@@ -101,6 +101,7 @@ public partial class FcDestructiveConfirmationDialog : ComponentBase {
     private string? _typedName;
     private string? _previousRequiredName;
     private bool _completed;
+    private bool _cancelled;
 
     private bool CanConfirm => !_completed && !Disabled && (RequiredName is null
         || (!string.IsNullOrWhiteSpace(RequiredName) && string.Equals(_typedName, RequiredName, StringComparison.Ordinal)));
@@ -189,9 +190,10 @@ public partial class FcDestructiveConfirmationDialog : ComponentBase {
     }
 
     private async Task InvokeCancelAsync() {
-        if (_completed) {
+        if (_cancelled) {
             return;
         }
+        _cancelled = true;
         _completed = true;
         _typedName = null;
         try {

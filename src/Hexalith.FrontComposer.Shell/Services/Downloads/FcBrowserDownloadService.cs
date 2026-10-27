@@ -32,6 +32,7 @@ public sealed class FcBrowserDownloadService(IJSRuntime jsRuntime) : IFcBrowserD
         {
             cancellationToken.ThrowIfCancellationRequested();
             await module.InvokeVoidAsync("beginDownload", cancellationToken, operationId).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
             using var reference = new DotNetStreamReference(stream, leaveOpen: true);
             await module.InvokeVoidAsync("downloadStream", cancellationToken, operationId, fileName, contentType, reference).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();

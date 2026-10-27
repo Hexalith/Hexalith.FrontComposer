@@ -196,4 +196,17 @@ public sealed class FcDestructiveConfirmationDialogTests : BunitContext {
         cut.Find("[data-testid='fc-destructive-cancel']").HasAttribute("autofocus").ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task FailedConfirmationStillAllowsSafeCancellation()
+    {
+        int cancelled = 0;
+        var cut = Render<FcDestructiveConfirmationDialog>(p => p
+            .Add(c => c.OnConfirm, () => throw new InvalidOperationException("synthetic"))
+            .Add(c => c.OnCancel, () => cancelled++));
+        var confirm = cut.FindComponents<FluentButton>().Single(c => c.Instance.Class == "fc-destructive-confirm");
+        await Should.ThrowAsync<InvalidOperationException>(() => cut.InvokeAsync(() => confirm.Instance.OnClick.InvokeAsync()));
+        await cut.InvokeAsync(() => cut.Find("[data-testid='fc-destructive-cancel']").Click());
+        cancelled.ShouldBe(1);
+    }
+
 }

@@ -75,4 +75,20 @@ public sealed class FcBrowserDownloadServiceTests : BunitContext
         module.Invocations["cancelDownload"].Count.ShouldBe(1);
         stream.CanRead.ShouldBeTrue();
     }
+    [Fact]
+    public async Task CancellationAtBrowserAdmissionCancelsTheAdmittedOperationBeforeTransfer()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-download.js");
+        module.Mode = JSRuntimeMode.Loose;
+        module.SetupVoid("beginDownload", _ => { cancellation.Cancel(); return true; }).SetVoidResult();
+        using var stream = new MemoryStream(new byte[] { 1, 2 });
+        await Should.ThrowAsync<OperationCanceledException>(() => new FcBrowserDownloadService(JSInterop.JSRuntime)
+            .DownloadStreamAsync(stream, "safe.bin", "application/octet-stream", cancellation.Token));
+        module.Invocations["beginDownload"].Count.ShouldBe(1);
+        module.Invocations["cancelDownload"].Count.ShouldBe(1);
+        module.Invocations.ShouldNotContain(invocation => invocation.Identifier == "downloadStream");
+        stream.CanRead.ShouldBeTrue();
+    }
+
 }
