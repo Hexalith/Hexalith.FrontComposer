@@ -182,12 +182,14 @@ This additive classification preserves the accepted scan above. Adopter rows res
 | `FcFilterResetButton` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
 | `FcFilterSummary` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
 | `FcFormAbandonmentGuard` | adopter | `docs/reference/components/command-lifecycle.md` | FrontComposer |
+| `FcFreshnessIndicator` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
 | `FcHamburgerToggle` | infrastructure | `docs/reference/components/front-composer-shell.md` | FrontComposer |
 | `FcHomeCard` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
 | `FcHomeDirectory` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
 | `FcHomeRouteView` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
 | `FcLayoutBreakpointWatcher` | infrastructure | `docs/reference/components/front-composer-shell.md` | FrontComposer |
 | `FcLifecycleWrapper` | adopter | `docs/reference/components/command-lifecycle.md` | FrontComposer |
+| `FcLiveRegion` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
 | `FcMaxItemsCapNotice` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
 | `FcModuleLandingPage` | adopter | `docs/reference/components/page-patterns.md` | FrontComposer |
 | `FcNewItemIndicator` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |

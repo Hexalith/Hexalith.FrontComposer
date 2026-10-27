@@ -86,6 +86,13 @@ Direct callers must open the component through `IDialogService` with the generat
 | `DestructiveLabel` | `string?` | Destructive action label. Generated forms use the command display label. Direct callers own localization; a null label displays the fixed English literal "Confirm". |
 | `OnConfirm` | `EventCallback` | Gets or sets the confirm callback invoked when the user clicks the destructive button. Optional in tests; in production the caller relies on `IDialogService`'s result. |
 | `OnCancel` | `EventCallback` | Gets or sets the cancel callback invoked when the user clicks Cancel or presses Escape. Optional in tests; in production the caller relies on `IDialogService`'s result. |
+| `RequiredName` | `string?` | Optional exact-name confirmation gate. `null` retains ordinary confirmation; otherwise the required name must be non-blank and typed exactly, with ordinal comparison. Changing this value clears the entered name. |
+| `ConfirmationInputLabel` | `string` | Accessible typed-name input label. Defaults to the English literal "Type the name to confirm"; direct callers own localization. |
+| `ConfirmationHelp` | `string?` | Optional caller-owned plain-text help rendered below the typed-name input. |
+| `Disabled` | `bool` | Additional caller-owned confirmation gate; disables confirmation even when the typed name matches. |
+| `TypedNameChanged` | `EventCallback<string?>` | Callback reporting typed-name edits so the caller can apply its domain guard. |
+| `ConfirmationReadyMessage` | `string?` | Optional caller-owned polite feedback rendered when exact-name confirmation becomes available. |
+| `CancelLabel` | `string?` | Optional caller-owned cancel label. `null` uses the shell-localized `DestructiveConfirmationCancel` resource. |
 
 ### `FcCommandBlockedOutcome`
 

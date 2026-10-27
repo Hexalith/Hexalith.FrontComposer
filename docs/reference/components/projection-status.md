@@ -24,6 +24,25 @@ Generated projections compose loading, empty, failure, stale and scope-blocked s
 
 This standalone skeleton keeps its own status semantics. Set `SharedStatusOwner="true"` only when a containing surface already mounts `FcSurfaceStatus` and its producer publishes the localized loading announcement to that same surface. A bare shared node without a producer does not announce loading. Direct callers rendering `FcProjectionFailure` must mount `FcSurfaceStatus` for the scoped surface, publish the localized failure announcement through `ISurfaceAnnouncementCoordinator.Announce` to that same surface with `terminal: true` and a new identity for each failure, and wire `OnRetry` to the actual scoped query. The coordinator treats an already-delivered identity as the same announcement and normally stays silent, so reusing one identity can leave a repeated failure unannounced. The failure component supplies neither its own live node nor an announcement producer. A generated operator-initiated load request is a request for adopter reload work; answer it with matching correlation and current scope provenance.
 
+A standalone record freshness indicator accepts a normalized presentation snapshot:
+
+```razor
+@using Hexalith.FrontComposer.Contracts.Freshness
+@using Hexalith.FrontComposer.Shell.Components.Feedback
+
+<FcFreshnessIndicator Freshness="@(new FcRecordFreshness(FcFreshnessStatus.Current))" />
+```
+
+For a separate caller-owned status message:
+
+```razor
+@using Hexalith.FrontComposer.Contracts.Freshness
+@using Hexalith.FrontComposer.Shell.Components.Feedback
+
+<FcLiveRegion Politeness="FcLiveRegionPoliteness.Polite"
+              Message="View preferences updated." />
+```
+
 ## Parameters / slots
 
 The tables describe the public component parameters. Injected services and internal Fluent composition are implementation details.
@@ -69,6 +88,23 @@ The tables describe the public component parameters. Injected services and inter
 | `FreshnessIdentity` | `string?` | Identifies genuine completed reads of the retained data, independently of connectivity. |
 | `QueryFailureGroup` | `string?` | Gets or sets the group of the current eligible query failure. |
 | `QueryFailureIdentity` | `string?` | Gets or sets the event identity of the current eligible query failure. |
+
+### `FcFreshnessIndicator`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `Freshness` | `FcRecordFreshness?` | Caller-supplied `FcRecordFreshness(FcFreshnessStatus Status, DateTimeOffset? AsOf = null)` snapshot. `Status` selects the Current, Stale or Degraded label; `null` displays the degraded label. The indicator reads only `Status`, ignores the optional caller-owned observation time `AsOf`, and does not fetch or establish freshness. Include any caller-formatted timestamp in `StaleLabel` or the other caller-owned labels. |
+| `CurrentLabel` | `string` | Caller-owned current-record copy; defaults to the English literal "Up to date". |
+| `StaleLabel` | `string` | Caller-owned stale-record copy, including any caller-formatted timestamp; defaults to the English literal "Refreshing". |
+| `DegradedLabel` | `string` | Caller-owned degraded-record copy; defaults to the English literal "Showing last known". |
+
+### `FcLiveRegion`
+
+| Parameter | Type | Contract |
+|---|---|---|
+| `Politeness` | `FcLiveRegionPoliteness` | `Polite` (default) renders `role="status"` with `aria-live="polite"`; `Assertive` renders `role="alert"` with `aria-live="assertive"`. `None` renders no element. |
+| `Message` | `string?` | Caller-owned plain text rendered before `ChildContent`. |
+| `ChildContent` | `Microsoft.AspNetCore.Components.RenderFragment?` | Optional caller-owned composed status content rendered after `Message`. |
 
 ### `FcSurfaceStatus`
 
@@ -167,6 +203,8 @@ Status icons retain a textual label and accessible name as well as color. Badge 
 ## Accessibility (FC-A11Y)
 
 The shared polite status owner prevents duplicate speech from nested loading, empty, stale and connection notices. `SharedStatusOwner` / `SuppressStandaloneStatus` indicate existing speech ownership. `FcProjectionFailure` supplies visible retry content while speech stays on the shared node. Scope blocking focuses its localized heading once per generation; do not duplicate its focus or expose scope values. Browser measurements are required for computed names and focus. Keep caller content named and keyboard reachable; see [HFC1050](../../diagnostics/HFC1050.md) and [HFC1051](../../diagnostics/HFC1051.md).
+
+`FcFreshnessIndicator` always owns a `role="status"` / `aria-live="polite"` region for its displayed label, including the degraded label when `Freshness` is `null`. Use one announcement owner for that freshness text: keep the indicator outside `FcLiveRegion` and other live regions, and do not also announce its label through `FcSurfaceStatus` or another coordinator. The indicator has no parameter for suppressing its live region.
 
 ## Localization (FC-L10N)
 
