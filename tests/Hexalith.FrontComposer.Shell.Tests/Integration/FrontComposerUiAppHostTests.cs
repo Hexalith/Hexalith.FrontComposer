@@ -481,6 +481,218 @@ public sealed class FrontComposerUiAppHostTests {
         finally { Directory.Delete(directory, recursive: true); }
     }
 
+    [Theory]
+    [InlineData(null, null, false)]
+    [InlineData("gateway", "gateway", false)]
+    [InlineData("full", "full", true)]
+    public void DisposableReadinessRequiresExplicitFullSelection(string? topology, string? selection, bool full)
+    {
+        string directory = CreateReadinessConfiguration(topology);
+        try
+        {
+            LocalReadinessConfiguration configuration = LocalReadinessConfiguration.Load(directory);
+            configuration.UseFullTopology(selection, maintenance: false).ShouldBe(full);
+            configuration.UseFullTopology(selection, maintenance: true).ShouldBeFalse("maintenance must never compose full writers");
+            Should.Throw<InvalidOperationException>(() => configuration.UseFullTopology(full ? null : "full", maintenance: false));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("other")]
+    [InlineData("FULL")]
+    [InlineData("")]
+    public void DisposableReadinessRefusesUnknownTopology(string topology)
+    {
+        string directory = CreateReadinessConfiguration(topology);
+        try { Should.Throw<InvalidOperationException>(() => LocalReadinessConfiguration.Load(directory)); }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DisposableFullTopologyRequiresOwnedActivationReadback(bool wrongOwner)
+    {
+        string directory = CreateReadinessConfiguration("full");
+        try
+        {
+            LocalReadinessConfiguration configuration = LocalReadinessConfiguration.Load(directory);
+            Should.Throw<FileNotFoundException>(configuration.RequireActivation);
+            string path = Path.Combine(directory, "activation.json");
+            File.WriteAllText(path, JsonSerializer.Serialize(new
+            {
+                owner = new string(wrongOwner ? 'b' : 'a', 32), freshStoreVerified = true, schemaVersion = 1,
+                writerProtocolVersion = 2, cutoverCommit = new string('c', 40), activatedAt = "2026-10-28T00:00:00Z",
+            }));
+            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            if (wrongOwner) Should.Throw<InvalidOperationException>(configuration.RequireActivation);
+            else configuration.RequireActivation();
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void DisposableFullTopologyRefusesEnabledMemoriesIndexing(bool enabled)
+    {
+        string directory = Directory.CreateTempSubdirectory("fc-memories-config-").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(directory, "appsettings.json"), "{\"Parties\":{\"MemoriesSearch\":{\"Enabled\":false}}}");
+            File.WriteAllText(Path.Combine(directory, "appsettings.Development.json"), JsonSerializer.Serialize(new { Parties = new { MemoriesSearch = new { Enabled = enabled } } }));
+            if (enabled) Should.Throw<InvalidOperationException>(() => LocalReadinessConfiguration.RequireDisabledMemories(directory));
+            else LocalReadinessConfiguration.RequireDisabledMemories(directory);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public void DisposableFullTopologyRefusesActivationWithoutFreshStateProof()
+    {
+        string directory = CreateReadinessConfiguration("full");
+        try
+        {
+            string path = Path.Combine(directory, "activation.json");
+            File.WriteAllText(path, JsonSerializer.Serialize(new { owner = new string('a', 32), freshStoreVerified = false,
+                schemaVersion = 1, writerProtocolVersion = 2, cutoverCommit = new string('c', 40), activatedAt = "2026-10-28T00:00:00Z" }));
+            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            Should.Throw<InvalidOperationException>(() => LocalReadinessConfiguration.Load(directory).RequireActivation());
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public void DisposableFullTopologyUsesTheOrdinaryGraphAfterItsActivationGuard()
+    {
+        string program = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost", "Program.cs"));
+        int activation = program.IndexOf("if (fullVerification) verification.RequireActivation();", StringComparison.Ordinal);
+        int realm = program.IndexOf("LocalWorkloadRealm.Create(", StringComparison.Ordinal);
+        int ordinary = program.IndexOf("IResourceBuilder<ProjectResource> eventStore =", StringComparison.Ordinal);
+        activation.ShouldBeGreaterThan(0);
+        activation.ShouldBeLessThan(realm, "activation and isolation must be checked before any realm/infrastructure mutation");
+        string gatewayBranch = program[program.IndexOf("if (disposableVerification && !fullVerification)", StringComparison.Ordinal)..ordinary];
+        gatewayBranch.ShouldContain("if (!maintenance || !verification!.FullTopology)");
+        gatewayBranch.ShouldContain("return;");
+        foreach (string application in new[] { "eventstore", "eventstore-admin", "eventstore-admin-ui", "tenants", "parties", "sample", "tenants-ui", "frontcomposer-ui", "counter-web" })
+        {
+            program[ordinary..].ShouldContain("(\"" + application + "\")");
+        }
+        program[ordinary..].ShouldContain("LocalReadinessTopology.IsolateSidecars(builder, verification)");
+        program[ordinary..].ShouldContain("pubSubComponentPath: verification?.FilePath(\"components/pubsub.yaml\")");
+        program[ordinary..].ShouldContain("TenantScopeFixture:Enabled");
+        program.ShouldContain("LocalReadinessConfiguration.RequireDisabledMemories(");
+        program[ordinary..].ShouldContain(".WithEnvironment(\"Parties__MemoriesSearch__Endpoint\", string.Empty)");
+        program[ordinary..].ShouldContain(".WithEnvironment(\"Parties__MemoriesSearch__Enabled\", \"false\")");
+        program.ShouldContain(".WithContainerName(\"fc-verify-\" + verification.Owner + \"-identity\")");
+        program.ShouldContain(".WithContainerRuntimeArgs(\"--label\", \"hexalith.frontcomposer.verification=\" + verification.Owner)");
+        program[ordinary..].ShouldContain(".WithHttpHealthCheck(\"/health\", endpointName: \"http\")");
+        program[ordinary..].ShouldContain("application.Name == \"sample\" ? \"/alive\" : \"/ready\"");
+    }
+
+    [Theory]
+    [InlineData("statestore", "redisHost", "localhost:6379")]
+    [InlineData("pubsub", "redisHost", "localhost:6379")]
+    [InlineData("configstore", "redisHost", "localhost:6379")]
+    [InlineData("statestore", "redisPassword", "shared")]
+    public void DisposableIsolationRefusesEverySharedComponentPath(string component, string metadataName, string value)
+    {
+        string directory = CreateReadinessConfiguration("full");
+        try
+        {
+            WriteReadinessIsolationFiles(directory);
+            string appHost = Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost");
+            LocalReadinessConfiguration configuration = LocalReadinessConfiguration.Load(directory);
+            configuration.ValidateIsolation(appHost);
+            string path = Path.Combine(directory, "components", component + ".yaml");
+            System.Text.Json.Nodes.JsonObject document = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+            System.Text.Json.Nodes.JsonNode entry = document["spec"]!["metadata"]!.AsArray().Single(item => item!["name"]!.GetValue<string>() == metadataName)!;
+            entry["value"] = value;
+            File.WriteAllText(path, document.ToJsonString());
+            Should.Throw<InvalidOperationException>(() => configuration.ValidateIsolation(appHost));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("accesscontrol.yaml")]
+    [InlineData("accesscontrol.eventstore-admin.yaml")]
+    [InlineData("accesscontrol.sample.yaml")]
+    public void DisposableIsolationRefusesEverySharedDiscoveryPath(string file)
+    {
+        string directory = CreateReadinessConfiguration("full");
+        try
+        {
+            WriteReadinessIsolationFiles(directory);
+            string appHost = Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost");
+            File.Copy(Path.Combine(appHost, "DaprComponents", file), Path.Combine(directory, file), overwrite: true);
+            Should.Throw<InvalidOperationException>(() => LocalReadinessConfiguration.Load(directory).ValidateIsolation(appHost));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public void DisposableIsolationRefusesRedisConfigurationEscapes()
+    {
+        string directory = CreateReadinessConfiguration("full");
+        try
+        {
+            WriteReadinessIsolationFiles(directory);
+            File.AppendAllText(Path.Combine(directory, "redis.conf"), "replicaof shared.invalid 6379\n");
+            Should.Throw<InvalidOperationException>(() => LocalReadinessConfiguration.Load(directory)
+                .ValidateIsolation(Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost")));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    private static string CreateReadinessConfiguration(string? topology)
+    {
+        string directory = Directory.CreateTempSubdirectory("fc-full-readiness-").FullName;
+        string path = Path.Combine(directory, "configuration.json");
+        Dictionary<string, object> configuration = new()
+        {
+            ["owner"] = new string('a', 32), ["daprVersion"] = "1.18.7", ["redisPassword"] = new string('d', 64),
+            ["ports"] = new { redis = 41001, placement = 41002, scheduler = 41003, daprHttp = 41004 },
+        };
+        if (topology is not null) configuration["topology"] = topology;
+        File.WriteAllText(path, JsonSerializer.Serialize(configuration));
+        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        return directory;
+    }
+
+    private static void WriteReadinessIsolationFiles(string directory)
+    {
+        string redisPath = Path.Combine(directory, "redis.conf");
+        File.WriteAllText(redisPath, $"bind 0.0.0.0\nprotected-mode yes\nrequirepass {new string('d', 64)}\nsave \"\"\ndir /data\ndbfilename dump.rdb\n");
+        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(redisPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        foreach (string name in new[] { "components", "runtime", "empty" })
+        {
+            string path = Path.Combine(directory, name);
+            Directory.CreateDirectory(path);
+            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+        foreach ((string name, string type, string[] scopes) in new (string, string, string[])[]
+        {
+            ("statestore", "state.redis", ["eventstore", "eventstore-admin", "tenants", "parties"]),
+            ("pubsub", "pubsub.redis", ["eventstore", "tenants", "parties"]), ("configstore", "configuration.redis", ["eventstore"]),
+        })
+        {
+            List<object> metadata = [new { name = "redisHost", value = "127.0.0.1:41001" }, new { name = "redisPassword", value = new string('d', 64) }];
+            if (name == "statestore") { metadata.Add(new { name = "actorStateStore", value = "true" }); metadata.Add(new { name = "keyPrefix", value = "none" }); }
+            string path = Path.Combine(directory, "components", name + ".yaml");
+            File.WriteAllText(path, JsonSerializer.Serialize(new { apiVersion = "dapr.io/v1alpha1", kind = "Component", metadata = new { name }, spec = new { type, version = "v1", metadata }, scopes }));
+            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+        foreach (string name in new[] { "accesscontrol.yaml", "accesscontrol.eventstore-admin.yaml", "accesscontrol.sample.yaml" })
+        {
+            string source = Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost", "DaprComponents", name);
+            string path = Path.Combine(directory, name);
+            File.WriteAllText(path, File.ReadAllText(source).Replace("connectionString: \"nr.db\"", "connectionString: " + JsonSerializer.Serialize(Path.Combine(directory, "runtime", "nr.db")), StringComparison.Ordinal));
+            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+    }
+
     private static JsonElement FindRealmClient(string clientId) {
         string root = FindRepoRoot();
         string realmPath = Path.Combine(root, "src", "Hexalith.FrontComposer.AppHost", "KeycloakRealms", "hexalith-realm.json");

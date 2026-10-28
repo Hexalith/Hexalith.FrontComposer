@@ -29,6 +29,18 @@ if (disposableVerification && persistentKeycloak)
 {
     throw new InvalidOperationException("Disposable verification refuses persistent Keycloak reuse.");
 }
+LocalReadinessConfiguration? verification = disposableVerification
+    ? LocalReadinessConfiguration.Load(builder.Configuration[LocalReadinessConfiguration.Prefix + ":Directory"])
+    : null;
+bool maintenance = string.Equals(builder.Configuration[LocalReadinessConfiguration.Prefix + ":Maintenance"], "true", StringComparison.OrdinalIgnoreCase);
+bool fullVerification = verification?.UseFullTopology(builder.Configuration[LocalReadinessConfiguration.Prefix + ":Topology"], maintenance) == true;
+if (verification is not null)
+{
+    verification.ValidateIsolation(builder.AppHostDirectory);
+    if (verification.FullTopology)
+        LocalReadinessConfiguration.RequireDisabledMemories(Path.GetDirectoryName(new HexalithParties().ProjectPath)!);
+    if (fullVerification) verification.RequireActivation();
+}
 // Existing persistent realms keep their operator-provisioned credentials and import path.
 using LocalWorkloadRealm? workloadRealm = localKeycloak && !persistentKeycloak
     ? LocalWorkloadRealm.Create(
@@ -42,22 +54,45 @@ HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSec
         RealmImportPath = workloadRealm?.ImportDirectory ?? Path.Combine(builder.AppHostDirectory, "KeycloakRealms"),
     });
 
+if (verification is not null && security is not null)
+{
+    _ = security.Keycloak
+        .WithContainerName("fc-verify-" + verification.Owner + "-identity")
+        .WithContainerRuntimeArgs("--label", "hexalith.frontcomposer.verification=" + verification.Owner);
+}
+
 // Explicit verification uses a disposable gateway; the normal development topology below is unchanged.
-if (disposableVerification)
+if (disposableVerification && !fullVerification)
 {
     if (!builder.ExecutionContext.IsRunMode || security is null || workloadRealm is null)
     {
         throw new InvalidOperationException("Disposable verification requires local Keycloak run mode.");
     }
-    LocalReadinessConfiguration verification = LocalReadinessConfiguration.Load(
-        builder.Configuration[LocalReadinessConfiguration.Prefix + ":Directory"]);
-    bool maintenance = string.Equals(builder.Configuration[LocalReadinessConfiguration.Prefix + ":Maintenance"], "true", StringComparison.OrdinalIgnoreCase);
-    IResourceBuilder<ProjectResource> verificationGateway = LocalReadinessTopology.Add(builder, verification, security, workloadRealm, maintenance);
-    _ = builder.AddProject<Projects.Counter_Web>("counter-web")
-        .WaitFor(verificationGateway)
-        .WithExternalHttpEndpoints();
+    IResourceBuilder<ProjectResource> verificationGateway = LocalReadinessTopology.Add(builder, verification!, security, workloadRealm, maintenance);
+    if (!maintenance || !verification!.FullTopology)
+    {
+        _ = builder.AddProject<Projects.Counter_Web>("counter-web")
+            .WaitFor(verificationGateway)
+            .WithExternalHttpEndpoints();
+    }
     await builder.Build().RunAsync().ConfigureAwait(false);
     return;
+}
+
+// Full verification flows through the ordinary composition below. Only its
+// infrastructure inputs and sidecar paths change; modules and security stay ordinary.
+if (verification is not null)
+{
+    if (!builder.ExecutionContext.IsRunMode || security is null || workloadRealm is null)
+        throw new InvalidOperationException("Disposable verification requires local Keycloak run mode.");
+    LocalReadinessTopology.AddInfrastructure(builder, verification);
+    accessControlConfigPath = verification.FilePath("accesscontrol.yaml");
+    adminServerAccessControlConfigPath = verification.FilePath("accesscontrol.eventstore-admin.yaml");
+    sampleAccessControlConfigPath = verification.FilePath("accesscontrol.sample.yaml");
+    stateStoreComponentPath = verification.FilePath("components/statestore.yaml");
+    emptyDaprResourcesPath = verification.FilePath("empty");
+    daprPlacementHostAddress = "127.0.0.1:" + verification.Port("placement");
+    daprSchedulerHostAddress = "127.0.0.1:" + verification.Port("scheduler");
 }
 
 // Add EventStore (command gateway), Admin Server, and Admin UI projects.
@@ -88,7 +123,9 @@ HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
     resiliencyConfigPath: resiliencyConfigPath,
     stateStoreComponentPath: stateStoreComponentPath,
     daprPlacementHostAddress: daprPlacementHostAddress,
-    daprSchedulerHostAddress: daprSchedulerHostAddress);
+    daprSchedulerHostAddress: daprSchedulerHostAddress,
+    eventStoreDaprHttpPort: verification?.Port("daprHttp") ?? 3501,
+    pubSubComponentPath: verification?.FilePath("components/pubsub.yaml"));
 
 // Add the Tenants domain service via the platform domain-module extension: its sidecar shares the
 // EventStore state store + pub/sub.
@@ -279,6 +316,29 @@ if (security is not null) {
 }
 else {
     _ = adminUI.WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
+}
+
+if (verification is not null)
+{
+    // Fresh owned state has no prior remote obligations. Keep the ordinary disabled
+    // indexing feature, but remove Development's dormant shared Memories route.
+    _ = parties.WithEnvironment("Parties__MemoriesSearch__Enabled", "false")
+        .WithEnvironment("Parties__MemoriesSearch__Endpoint", string.Empty)
+        .WithEnvironment("Parties__MemoriesSearch__ApiToken", string.Empty)
+        .WithEnvironment("Parties__MemoriesSearch__TenantId", string.Empty)
+        .WithEnvironment("Parties__MemoriesSearch__CaseId", string.Empty);
+    foreach (ProjectResource application in builder.Resources.OfType<ProjectResource>()
+        .Where(resource => resource.Name is "eventstore-admin" or "tenants" or "parties" or "sample"))
+    {
+        _ = builder.CreateResourceBuilder(application)
+            .WithHttpHealthCheck("/health", endpointName: "http")
+            .WithHttpHealthCheck(application.Name == "sample" ? "/alive" : "/ready", endpointName: "http");
+    }
+    LocalReadinessTopology.RequireAvailableApplicationPorts(builder);
+    LocalReadinessTopology.WaitForInfrastructure(builder, eventStore);
+    LocalReadinessTopology.AddConfigurationStore(builder, verification);
+    LocalReadinessTopology.IsolateSidecars(builder, verification);
+    _ = LocalReadinessTopology.WithGatewayHealth(builder, eventStore, maintenance: false);
 }
 
 await builder

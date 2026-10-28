@@ -37,6 +37,213 @@ class ReadinessSafetyTests(unittest.TestCase):
                 "Config": {"Labels": {readiness.LABEL: config["owner"]}},
                 "HostConfig": {"PortBindings": {"6379/tcp": [{"HostIp": "127.0.0.1", "HostPort": "41001"}]}}}
 
+    def test_navigation_diagnostics_redact_private_credentials(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "navigation.log"
+            with self.assertRaises(RuntimeError):
+                readiness.invoke([sys.executable, "-c", "import sys; print('private-test-secret'); sys.exit(1)"],
+                                 log=path, redactions=("private-test-secret",))
+            self.assertNotIn("private-test-secret", path.read_text())
+            self.assertIn("[redacted]", path.read_text())
+
+    def test_full_command_selection_is_explicit_and_default_command_is_gateway(self):
+        for arguments, expected in [([], ()), (["--topology", "gateway"], ()), (["--topology", "full"], ("full",))]:
+            with self.subTest(arguments=arguments), patch.object(sys, "argv", ["verify-isolated-readiness.py", *arguments]), \
+                    patch.object(readiness, "run") as run:
+                self.assertEqual(readiness.main(), 0)
+                run.assert_called_once_with(*expected)
+
+    def test_full_owned_start_preserves_fixed_callback_ports_and_cleans_on_failure(self):
+        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {"FC_EPIC9_LOCK_ROOT": root}):
+            host = {"appHostPath": str(readiness.APPHOST), "appHostPid": 123}
+            running = False
+            calls = []
+            def invoke(args, **kwargs):
+                nonlocal running
+                calls.append(args)
+                if args[1] == "start":
+                    running = True
+                    return json.dumps(host).encode()
+                if args[1] == "stop":
+                    running = False
+                return b""
+            with patch.object(readiness, "processes", side_effect=lambda env: [host] if running else []), \
+                    patch.object(readiness, "invoke", side_effect=invoke), self.assertRaises(readiness.VerificationCancelled):
+                with readiness.owned_apphost(Path(root), os.environ.copy(), applications=readiness.FULL_APPLICATIONS, isolated=False):
+                    raise readiness.VerificationCancelled("navigation cancelled")
+            self.assertNotIn("--isolated", calls[0])
+            waited = [call[2] for call in calls if call[1] == "wait"]
+            self.assertTrue(set(readiness.FULL_APPLICATIONS) <= set(waited))
+            self.assertFalse(running)
+            self.assertEqual(calls[-1][1], "stop")
+
+    def test_topology_selection_defaults_to_gateway_and_maintenance_never_starts_full_writers(self):
+        self.assertEqual(readiness.selected_applications({}, False), ("eventstore", "counter-web"))
+        self.assertEqual(readiness.selected_applications({"topology": "full"}, True), ("eventstore",))
+        self.assertEqual(readiness.selected_applications({"topology": "full"}, False), readiness.FULL_APPLICATIONS)
+        self.assertEqual(len(readiness.FULL_APPLICATIONS), 9)
+
+    def test_full_components_scope_only_the_ordinary_infrastructure_consumers(self):
+        def invoke(arguments, **kwargs):
+            return b"1.18.7" if arguments[0].endswith("daprd") else b'[{"Id":"sha256:test-image"}]'
+        with tempfile.TemporaryDirectory() as root, patch.object(readiness, "invoke", side_effect=invoke), \
+                patch.object(readiness, "container_present", return_value=False):
+            directory = Path(root)
+            config = readiness.create_configuration(directory, "full")
+            self.assertEqual(readiness.load_configuration(directory)["topology"], "full")
+            for name, expected in {"statestore": {"eventstore", "eventstore-admin", "tenants", "parties"},
+                                   "pubsub": {"eventstore", "tenants", "parties"}, "configstore": {"eventstore"}}.items():
+                component = json.loads((directory / "components" / (name + ".yaml")).read_text())
+                self.assertEqual(set(component["scopes"]), expected)
+                self.assertEqual(component["spec"]["metadata"][0]["value"], "127.0.0.1:" + str(config["ports"]["redis"]))
+            for name in ("accesscontrol.yaml", "accesscontrol.eventstore-admin.yaml", "accesscontrol.sample.yaml"):
+                access = (directory / name).read_text()
+                self.assertIn(str(directory / "runtime/nr.db"), access)
+                self.assertNotIn('connectionString: "nr.db"', access)
+            self.assertEqual(list((directory / "empty").iterdir()), [])
+
+    def test_inherited_shared_or_ambiguous_paths_are_refused_before_configuration(self):
+        for key in ("DAPR_RESOURCES_PATH", "Dapr:PlacementHostAddress", "ConnectionStrings__Redis", "services__tenants__http__0",
+                    "EventStore__Projections__WorkersEnabled", "Authentication__JwtBearer__Authority", "EnableKeycloak",
+                    "KeycloakPersistent", "FrontComposerUi__OpenIdConnect__Enabled", "FrontComposerVerification__Topology",
+                    "Memories__Endpoint", "MemoriesSearch__Enabled"):
+            with self.subTest(key=key), patch.dict(os.environ, {key: "private-test-secret"}), \
+                    patch.object(readiness, "create_configuration") as create, self.assertRaises(RuntimeError) as failure:
+                readiness.run("full")
+            create.assert_not_called()
+            self.assertNotIn("private-test-secret", str(failure.exception))
+
+    def test_full_application_requires_exact_membership_healthy_state_and_ordinary_workers(self):
+        healthy = {"displayName": "tenants", "state": "Running", "healthStatus": "Healthy", "environment": {},
+                   "urls": [{"url": "http://localhost:12345"}]}
+        self.assertEqual(readiness.validate_application(healthy, "tenants"), "http://localhost:12345")
+        for key, value in [("displayName", "other"), ("state", "Waiting"), ("healthStatus", "Unhealthy"),
+                           ("environment", {readiness.WORKERS: "false"})]:
+            with self.subTest(key=key), self.assertRaises(RuntimeError):
+                readiness.validate_application({**healthy, key: value}, "tenants")
+
+    def test_disposable_parties_refuses_enabled_or_dormant_external_memories_routes(self):
+        environment = {"Parties__MemoriesSearch__Enabled": "false", **{
+            "Parties__MemoriesSearch__" + key: "" for key in ("Endpoint", "TenantId", "CaseId", "ApiToken")}}
+        item = {"displayName": "parties", "state": "Running", "healthStatus": "Healthy", "environment": environment,
+                "urls": [{"url": "http://localhost:12345"}]}
+        readiness.validate_application(item, "parties")
+        for key, value in [("Enabled", "true"), ("Endpoint", "http://memories-server/"), ("TenantId", "shared"), ("CaseId", "shared")]:
+            with self.subTest(key=key), self.assertRaises(RuntimeError):
+                readiness.validate_application({**item, "environment": {**environment, "Parties__MemoriesSearch__" + key: value}}, "parties")
+        with self.assertRaises(RuntimeError):
+            readiness.validate_application({**item, "environment": {}}, "parties")
+
+    def test_full_topology_refuses_missing_or_unhealthy_application(self):
+        marker = {"schemaVersion": 1, "writerProtocolVersion": 2, "cutoverCommit": "b" * 40, "activatedAt": "now"}
+        for missing in readiness.FULL_APPLICATIONS:
+            current = [None]
+            def resource(name, env):
+                if name == missing:
+                    raise RuntimeError("Ambiguous Aspire resource identity.")
+                if name.endswith("-dapr-cli"):
+                    return {"displayName": name, "state": "Running", "properties": {"executable.path": "/bin/dapr"},
+                            "urls": [{"name": "http", "url": "http://localhost:12345"}, {"name": "grpc", "url": "http://localhost:12346"}]}
+                current[0] = name
+                environment = {"DAPR_HTTP_PORT": "12345", "DAPR_GRPC_PORT": "12346"}
+                if name == "parties":
+                    environment.update({"Parties__MemoriesSearch__Enabled": "false", **{
+                        "Parties__MemoriesSearch__" + key: "" for key in ("Endpoint", "TenantId", "CaseId", "ApiToken")}})
+                return {"displayName": name, "state": "Running", "healthStatus": "Healthy",
+                        "environment": environment,
+                        "urls": [{"url": "http://localhost:12345"}, {"url": "https://localhost:12347"}]}
+            def request(url):
+                if url.endswith("/v1.0/metadata"):
+                    name = last[0]
+                    return 200, {"id": name, "components": [{"name": item} for item in readiness.FULL_SIDECARS[name]]}
+                if current[0] == "sample":
+                    return 200, "alive" if url.endswith("/alive") else "healthy"
+                return 200, {"status": "Healthy", "results": {"self": {"status": "Healthy"}}}
+            last = [None]
+            def correlated(item, sidecar, name):
+                last[0] = name
+                return "http://localhost:12345"
+            with self.subTest(missing=missing), patch.object(readiness, "load_configuration", return_value={"topology": "full"}), \
+                    patch.object(readiness, "redis", return_value=json.dumps(marker)), patch.object(readiness, "verify_source_commit"), \
+                    patch.object(readiness, "verify_gateway"), patch.object(readiness, "resource", side_effect=resource), \
+                    patch.object(readiness, "correlate_sidecar", side_effect=correlated), patch.object(readiness, "request", side_effect=request), \
+                    patch.object(Path, "write_text"), self.assertRaises(RuntimeError):
+                readiness.verify_full_topology(Path("/private"), {"FrontComposerVerification__Maintenance": "false"}, "b" * 40)
+
+    def test_selected_sample_uses_its_documented_health_and_liveness_contract(self):
+        readiness.validate_application_health("sample", "/health", 200, "healthy")
+        readiness.validate_application_health("sample", "/alive", 200, "alive")
+        for path, code, body in [("/health", 503, "healthy"), ("/health", 200, "Healthy"),
+                                 ("/alive", 200, "healthy"), ("/alive", 404, {})]:
+            with self.subTest(path=path, code=code), self.assertRaises(RuntimeError):
+                readiness.validate_application_health("sample", path, code, body)
+        for name in ("eventstore-admin", "tenants", "parties"):
+            readiness.validate_application_health(name, "/ready", 200, {"status": "Healthy", "results": {}})
+            for body in ("healthy", {"status": "Degraded"}, {"status": "Healthy", "results": {"dependency": {"status": "Unhealthy"}}}):
+                with self.subTest(name=name, body=body), self.assertRaises(RuntimeError):
+                    readiness.validate_application_health(name, "/ready", 200, body)
+
+    def test_missing_api_or_bff_composition_refuses_navigation_before_credentials(self):
+        for missing in ("tenants-api", "tenants-api-dapr-cli", "tenants-ui-dapr-cli", "frontcomposer-ui-dapr-cli"):
+            resources = [{"displayName": name} for name in ("tenants-api", "tenants-api-dapr-cli", "tenants-ui-dapr-cli", "frontcomposer-ui-dapr-cli") if name != missing]
+            with self.subTest(missing=missing), patch.object(readiness, "invoke", return_value=json.dumps({"resources": resources}).encode()) as invoke, \
+                    patch.object(readiness, "read_owned_realm") as credentials:
+                with self.assertRaisesRegex(RuntimeError, "composition amendment; missing " + missing):
+                    readiness.verify_navigation(Path("/private"), {}, {})
+                credentials.assert_not_called()
+                self.assertEqual(invoke.call_count, 1)
+                self.assertEqual(invoke.call_args.args[0][:2], ["aspire", "describe"])
+
+    def test_bff_default_listener_is_not_accepted_as_an_owned_sidecar(self):
+        for changed in ({"DAPR_HTTP_PORT": "3500"}, {"DAPR_HTTP_ENDPOINT": "http://localhost:3500"}, {"DAPR_HTTP_ENDPOINT": ""}):
+            resources = []
+            for name in ("tenants-api", "tenants-ui", "frontcomposer-ui"):
+                environment = {"DAPR_HTTP_PORT": "12341", "DAPR_GRPC_PORT": "12342", "DAPR_HTTP_ENDPOINT": "http://localhost:12341"}
+                if name == "tenants-ui":
+                    environment.update(changed)
+                resources += [{"displayName": name, "state": "Running", "healthStatus": "Healthy", "environment": environment,
+                               "urls": [{"url": "http://localhost:12340"}]},
+                              {"displayName": name + "-dapr-cli", "state": "Running", "properties": {"executable.path": "/bin/dapr"},
+                               "urls": [{"name": "http", "url": "http://localhost:12341"}, {"name": "grpc", "url": "http://localhost:12342"}]}]
+            with self.subTest(changed=changed), patch.object(readiness, "invoke", return_value=json.dumps({"resources": resources}).encode()), \
+                    patch.object(readiness, "read_owned_realm") as credentials:
+                with self.assertRaises(RuntimeError):
+                    readiness.verify_navigation(Path("/private"), {}, {})
+                credentials.assert_not_called()
+
+    def test_full_phase_starts_only_after_persisted_activation_readback_and_maintenance_stop(self):
+        events = []
+        with tempfile.TemporaryDirectory() as root:
+            config = self.configuration()
+            config["topology"] = "full"
+            def create(directory, topology):
+                readiness.private_file(directory / "configuration.json", json.dumps(config))
+                return config
+            @contextlib.contextmanager
+            def owned(directory, env, **kwargs):
+                phase = "maintenance" if env["FrontComposerVerification__Maintenance"] == "true" else "full"
+                if phase == "full":
+                    self.assertEqual(events, ["maintenance-start", "activation-readback", "maintenance-stop"])
+                    self.assertEqual(kwargs["applications"], readiness.FULL_APPLICATIONS)
+                    self.assertFalse(kwargs["isolated"], "fixed OIDC callback contracts must be preserved")
+                events.append(phase + "-start")
+                try:
+                    yield
+                finally:
+                    events.append(phase + "-stop")
+            with patch.object(readiness.tempfile, "mkdtemp", return_value=root), \
+                    patch.object(readiness, "create_configuration", side_effect=create), patch.object(readiness, "owned_apphost", side_effect=owned), \
+                    patch.object(readiness, "invoke", side_effect=lambda args, **kwargs: b"b" * 40 if args[-1] == "HEAD" else b""), \
+                    patch.object(readiness, "inspect_container", return_value=self.container()), \
+                    patch.object(readiness, "activate", side_effect=lambda *args: events.append("activation-readback")), \
+                    patch.object(readiness, "verify_activated_source"), patch.object(readiness, "verify_full_topology", return_value={}), \
+                    patch.object(readiness, "verify_navigation", side_effect=readiness.VerificationCancelled("cancelled")), \
+                    patch.object(readiness, "processes", return_value=[]), patch.object(readiness, "container_present", return_value=False):
+                with self.assertRaises(readiness.VerificationCancelled):
+                    readiness.run("full")
+            self.assertEqual(events[-2:], ["full-start", "full-stop"])
+            self.assertFalse((Path(root) / "private").exists())
+
     def test_container_accepts_only_exact_owned_identity(self):
         self.assertEqual(readiness.validate_container(self.configuration(), "redis", self.container(), "owned-id"), "owned-id")
         for field, value in [("Id", "replaced"), ("Name", "/other"), ("Image", "other-image"), ("Config", {"Labels": {}})]:
@@ -118,27 +325,45 @@ class ReadinessSafetyTests(unittest.TestCase):
             readiness.create_configuration(directory)
             components = directory / "components"
             self.assertEqual({path.name for path in components.iterdir()}, {"statestore.yaml", "pubsub.yaml", "configstore.yaml"})
-            self.assertTrue(all("kind: Component" in path.read_text() for path in components.iterdir()))
+            self.assertTrue(all(json.loads(path.read_text())["kind"] == "Component" for path in components.iterdir()))
             configuration = (directory / "accesscontrol.yaml").read_text()
             self.assertIn(str(directory / "runtime" / "nr.db"), configuration)
             self.assertTrue((directory / "runtime").is_dir())
             self.assertNotIn(str(components / "nr.db"), configuration)
 
     def test_owned_realm_reads_copied_import_without_a_host_mount(self):
-        container = {"Id": "owned-keycloak", "Mounts": []}
+        container = {"Id": "owned-keycloak", "Mounts": [], "Name": "/fc-verify-" + self.configuration()["owner"] + "-identity",
+                     "Config": {"Labels": {readiness.LABEL: self.configuration()["owner"]}}}
         realm = {"realm": "Hexalith", "clients": [{"clientId": "eventstore", "secret": "private-test-secret"}]}
         with patch.object(readiness, "invoke", side_effect=[json.dumps([container]).encode(), json.dumps(realm).encode()]) as invoke:
-            self.assertEqual(readiness.read_owned_realm("owned-keycloak"), realm)
+            self.assertEqual(readiness.read_owned_realm("owned-keycloak", self.configuration()), realm)
             self.assertEqual(invoke.call_args_list[1].args[0], ["docker", "exec", "owned-keycloak", "cat",
                              "/opt/keycloak/data/import/hexalith-realm.json"])
             self.assertNotIn("log", invoke.call_args_list[1].kwargs)
+
+    def test_owned_realm_refuses_changed_name_or_label_before_reading_credentials(self):
+        valid = {"Id": "owned", "Name": "/fc-verify-" + self.configuration()["owner"] + "-identity",
+                 "Config": {"Labels": {readiness.LABEL: self.configuration()["owner"]}}}
+        for key, value in [("Name", "/security-unrelated"), ("Config", {"Labels": {}})]:
+            with self.subTest(key=key), patch.object(readiness, "invoke", return_value=json.dumps([{**valid, key: value}]).encode()) as invoke:
+                with self.assertRaises(RuntimeError):
+                    readiness.read_owned_realm("owned", self.configuration())
+                self.assertEqual(invoke.call_count, 1)
+
+    def test_diagnostics_remove_dashboard_and_bearer_tokens(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "start.log"
+            readiness.write_diagnostics(path, b'{"dashboardUrl":"https://localhost:12345/login?t=private-dashboard"} Authorization: Bearer private-bearer')
+            self.assertNotIn("private-dashboard", path.read_text())
+            self.assertNotIn("private-bearer", path.read_text())
+            self.assertIn("[redacted]", path.read_text())
 
     def test_owned_realm_refuses_changed_or_ambiguous_container_identity(self):
         for containers in [[], [{"Id": "other"}], [{"Id": "owned"}, {"Id": "owned"}]]:
             with self.subTest(containers=containers), \
                     patch.object(readiness, "invoke", return_value=json.dumps(containers).encode()) as invoke:
                 with self.assertRaises(RuntimeError):
-                    readiness.read_owned_realm("owned")
+                    readiness.read_owned_realm("owned", self.configuration())
                 self.assertEqual(invoke.call_count, 1)
 
     def test_actual_sidecar_listener_must_match_gateway_for_http_and_grpc(self):
@@ -223,7 +448,7 @@ class ReadinessSafetyTests(unittest.TestCase):
                 readiness.verify_pristine_store(self.configuration())
 
     def test_arbitrary_state_keys_and_existing_marker_are_refused(self):
-        for keys in [["arbitrary-state"], [readiness.MARKER], [readiness.INFRASTRUCTURE_STREAM, "arbitrary-state"]]:
+        for keys in [["arbitrary-state"], ["historical-remote-mapping"], [readiness.MARKER], [readiness.INFRASTRUCTURE_STREAM, "arbitrary-state"]]:
             with self.subTest(count=len(keys)), patch.object(readiness, "redis", side_effect=[str(len(keys)), json.dumps(keys)]), self.assertRaises(RuntimeError):
                 readiness.verify_pristine_store(self.configuration())
 
@@ -288,6 +513,17 @@ class ReadinessSafetyTests(unittest.TestCase):
                         self.fail("Contended lock yielded ownership")
                 invoke.assert_not_called()
 
+    def test_apphost_appearing_during_build_refuses_start_without_stopping_it(self):
+        other = {"appHostPath": "/other/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj", "appHostPid": 999}
+        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {"FC_EPIC9_LOCK_ROOT": root}), \
+                patch.object(readiness, "processes", side_effect=[[], [other]]), \
+                patch.object(readiness, "invoke", return_value=b"") as invoke:
+            with self.assertRaisesRegex(RuntimeError, "appeared during the build"):
+                with readiness.owned_apphost(Path(root), os.environ.copy(), build=True):
+                    self.fail("Competing AppHost must prevent startup")
+            self.assertEqual(invoke.call_count, 1)
+            self.assertEqual(invoke.call_args.args[0][:2], ["dotnet", "build"])
+
     def test_build_runs_under_the_same_lock_before_start(self):
         with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {"FC_EPIC9_LOCK_ROOT": root}), \
                 patch.object(readiness, "processes", return_value=[]):
@@ -325,7 +561,7 @@ class ReadinessSafetyTests(unittest.TestCase):
     def test_wrong_shaped_responses_are_sanitized_at_command_boundary(self):
         cases = [lambda: readiness.validate_health(200, ["private-test-secret"], False),
                  lambda: readiness.endpoint({"urls": [{"url": ["private-test-secret"]}]}),
-                 lambda: readiness.read_owned_realm("owned")]
+                 lambda: readiness.read_owned_realm("owned", self.configuration())]
         for callback in cases:
             output = io.StringIO()
             with self.subTest(callback=callback), patch.object(readiness, "run", side_effect=callback), \
@@ -338,7 +574,7 @@ class ReadinessSafetyTests(unittest.TestCase):
         with patch.object(readiness, "resource", return_value={"properties": {"container.id": "owned"}, "urls": [{"url": "http://localhost:12345"}]}), \
                 patch.object(readiness, "read_owned_realm", return_value={"realm": "Hexalith", "clients": [{"clientId": "eventstore", "secret": "private-test-secret"}]}), \
                 patch.object(readiness, "request", return_value=(200, {"access_token": "private-test-secret"})), \
-                patch.object(readiness, "run", side_effect=lambda: readiness.verify_workload_identity({})), \
+                patch.object(readiness, "run", side_effect=lambda: readiness.verify_workload_identity({}, self.configuration())), \
                 patch.object(sys, "argv", ["verify-isolated-readiness.py"]), contextlib.redirect_stderr(io.StringIO()) as output:
             self.assertEqual(readiness.main(), 1)
             self.assertIn("IndexError", output.getvalue())
@@ -411,6 +647,35 @@ class ReadinessSafetyTests(unittest.TestCase):
             self.assertLess(time.monotonic() - started, 2)
             with self.assertRaises(ProcessLookupError):
                 os.kill(int(pid_file.read_text()), 0)
+
+    def test_sigterm_during_popen_startup_runs_the_child_trap(self):
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root)
+            child = directory / "child.sh"
+            marker = directory / "child-cleaned"
+            ready = directory / "ready"
+            child.write_text('trap \'printf cleaned > "$1"\' EXIT\ntrap \'exit 143\' TERM\ntouch "$2"\nsleep 30 & wait\n')
+            original = subprocess.Popen
+            captured = []
+            def during_start(*args, **kwargs):
+                process = original(*args, **kwargs)
+                captured.append(process)
+                deadline = time.monotonic() + 5
+                while not ready.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(ready.exists())
+                signal.raise_signal(signal.SIGTERM)
+                return process
+            try:
+                with readiness.cancellation_handlers(), patch.object(readiness.subprocess, "Popen", side_effect=during_start):
+                    with self.assertRaises(readiness.VerificationCancelled):
+                        readiness.invoke(["bash", str(child), str(marker), str(ready)])
+                self.assertTrue(marker.exists(), "startup cancellation must clean the child before returning")
+                self.assertIsNotNone(captured[0].poll())
+            finally:
+                for process in captured:
+                    if process.poll() is None:
+                        readiness.terminate_child(process)
 
     def test_sigterm_runs_child_trap_and_owned_finally_cleanup(self):
         with tempfile.TemporaryDirectory() as root:

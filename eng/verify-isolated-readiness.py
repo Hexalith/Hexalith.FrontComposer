@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Owned disposable maintenance rehearsal; never accepts a caller-supplied datastore."""
+import argparse
 import base64
 import contextlib
 import fcntl
@@ -32,6 +33,33 @@ TARGETS = {"redis": 6379, "placement": 50005, "scheduler": 50006}
 REQUIRED_HEALTH = {"self", "dapr-sidecar", "dapr-actor-placement", "dapr-statestore", "dapr-pubsub",
                    "dapr-configstore", "dapr-app-channel-token", MARKER, "projection-delivery-unresolved-conflict"}
 TERMINATION_GRACE_SECONDS = 10
+_starting_child = False
+_pending_cancellation = False
+FULL_APPLICATIONS = ("eventstore", "eventstore-admin", "eventstore-admin-ui", "tenants", "parties",
+                     "sample", "tenants-ui", "frontcomposer-ui", "counter-web")
+FULL_SIDECARS = {"eventstore": {"statestore", "pubsub", "configstore"},
+                 "eventstore-admin": {"statestore"}, "eventstore-admin-ui": set(),
+                 "tenants": {"statestore", "pubsub"}, "parties": {"statestore", "pubsub"}, "sample": set()}
+
+
+def refuse_inherited_isolation_escapes(environment):
+    # Reject instead of silently dropping caller configuration. The run must be
+    # reproducible, and no inherited endpoint, component or authentication override
+    # may send an ordinary application outside this owned topology.
+    prefixes = ("frontcomposerverification:", "dapr", "eventstore:", "adminserver:",
+                "authentication:", "tenants:", "parties:", "connectionstrings:", "services:",
+                "parameters:", "keycloak", "frontcomposerui:", "tenantscopefixture:", "memories", "msbuild")
+    for key in environment:
+        normalized = key.replace("__", ":").lower()
+        require(normalized not in {"enablekeycloak", "usehexalithprojectreferences", "usenugetdeps", "configuration",
+                                   "eventstorepath", "tenantspath", "partiespath", "dotnet_environment", "aspnetcore_environment"}
+                and not (normalized.startswith("hexalith") and normalized.endswith(("root", "fromsource")))
+                and not normalized.startswith(prefixes),
+                "Inherited topology or isolation override refused; start with an unconfigured verification environment.")
+
+
+def selected_applications(config, maintenance):
+    return ("eventstore",) if maintenance else FULL_APPLICATIONS if config.get("topology", "gateway") == "full" else ("eventstore", "counter-web")
 
 
 def require(condition, message):
@@ -43,13 +71,28 @@ class VerificationCancelled(RuntimeError):
     pass
 
 
+def raise_cancellation():
+    # A second cancellation must not interrupt the owned finally cleanup.
+    for value in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(value, signal.SIG_IGN)
+    raise VerificationCancelled("Verification cancelled; owned cleanup requested.")
+
+
 @contextlib.contextmanager
 def cancellation_handlers():
+    global _pending_cancellation
+    pending_before = _pending_cancellation
+    _pending_cancellation = False
+
     def cancel(signum, frame):
-        # A second cancellation must not interrupt the owned finally cleanup.
-        for value in (signal.SIGINT, signal.SIGTERM):
-            signal.signal(value, signal.SIG_IGN)
-        raise VerificationCancelled("Verification cancelled; owned cleanup requested.")
+        global _pending_cancellation
+        if _starting_child:
+            # Popen can already have launched a child before returning its handle.
+            # Keep the caught signal disposition so the child can handle SIGTERM;
+            # raise only after invoke owns that handle inside its cleanup guard.
+            _pending_cancellation = True
+            return
+        raise_cancellation()
 
     previous = {value: signal.signal(value, cancel) for value in (signal.SIGINT, signal.SIGTERM)}
     try:
@@ -57,6 +100,7 @@ def cancellation_handlers():
     finally:
         for value, handler in previous.items():
             signal.signal(value, handler)
+        _pending_cancellation = pending_before
 
 
 def terminate_child(process):
@@ -74,22 +118,41 @@ def terminate_child(process):
         return process.communicate(timeout=5)
 
 
-def invoke(arguments, *, env=None, input=None, log=None, timeout=600):
-    with subprocess.Popen(arguments, cwd=ROOT, env=env, stdin=subprocess.PIPE,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True) as process:
-        try:
-            output, errors = process.communicate(input=input, timeout=timeout)
-        except BaseException:
-            # Give shell EXIT/TERM traps time to stop their exact owned AppHost.
-            output, errors = terminate_child(process)
+def write_diagnostics(path, output, redactions=()):
+    for value in redactions:
+        if value:
+            output = output.replace(value.encode(), b"[redacted]")
+    output = re.sub(rb'([?&](?:t|token|access_token|code)=)[^\s"&#]+', rb'\1[redacted]', output, flags=re.IGNORECASE)
+    output = re.sub(rb'(Bearer )[A-Za-z0-9._~-]+', rb'\1[redacted]', output, flags=re.IGNORECASE)
+    Path(path).write_bytes(output)
+
+
+def invoke(arguments, *, env=None, input=None, log=None, timeout=600, redactions=()):
+    global _starting_child, _pending_cancellation
+    _starting_child = True
+    try:
+        process = subprocess.Popen(arguments, cwd=ROOT, env=env, stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+        with process:
+            try:
+                _starting_child = False
+                if _pending_cancellation:
+                    _pending_cancellation = False
+                    raise_cancellation()
+                output, errors = process.communicate(input=input, timeout=timeout)
+            except BaseException:
+                # Give shell EXIT/TERM traps time to stop their exact owned AppHost.
+                output, errors = terminate_child(process)
+                if log:
+                    write_diagnostics(log, output + errors, redactions)
+                raise
             if log:
-                Path(log).write_bytes(output + errors)
-            raise
-        if log:
-            Path(log).write_bytes(output + errors)
-        suffix = "; private diagnostics retained." if log else "."
-        require(process.returncode == 0, f"{Path(arguments[0]).name} operation failed" + suffix)
-        return output
+                write_diagnostics(log, output + errors, redactions)
+            suffix = "; private diagnostics retained." if log else "."
+            require(process.returncode == 0, f"{Path(arguments[0]).name} operation failed" + suffix)
+            return output
+    finally:
+        _starting_child = False
 
 
 def container_present(name=None, identifier=None):
@@ -109,6 +172,8 @@ def private_file(path, content):
 
 def load_configuration(directory):
     directory = Path(directory)
+    require(directory.is_absolute(), "Verification configuration requires an absolute private directory.")
+    require(not any(path.is_symlink() for path in [directory, *directory.parents]), "Linked verification directory refused.")
     for entry in [directory, directory / "configuration.json"]:
         require(not entry.is_symlink() and entry.stat().st_uid == os.getuid()
                 and entry.stat().st_mode & 0o077 == 0, "Verification configuration is not privately owned.")
@@ -119,6 +184,7 @@ def load_configuration(directory):
     ports = list(config["ports"].values())
     require(len(set(ports)) == 4 and all(type(port) is int and 10000 <= port <= 65535 for port in ports),
             "Invalid verification port inventory.")
+    require(config.get("topology", "gateway") in {"gateway", "full"}, "Unsupported verification topology.")
     return config
 
 
@@ -206,9 +272,12 @@ def validate_marker(marker, source_commit):
             "Persisted writer marker does not identify the exact selected source.")
 
 
-def read_owned_realm(identifier):
+def read_owned_realm(identifier, config):
     containers = json.loads(invoke(["docker", "inspect", identifier]))
-    require(len(containers) == 1 and containers[0]["Id"] == identifier, "Keycloak container identity changed.")
+    require(len(containers) == 1 and containers[0]["Id"] == identifier
+            and containers[0].get("Name") == "/fc-verify-" + config["owner"] + "-identity"
+            and containers[0].get("Config", {}).get("Labels", {}).get(LABEL) == config["owner"],
+            "Keycloak container ownership changed; refusing private realm access.")
     # The selected Aspire Keycloak integration copies imports with WithContainerFiles;
     # it does not bind-mount the original private directory. Read only the known copy
     # in the exact container discovered from this owned AppHost; never log its body.
@@ -216,9 +285,9 @@ def read_owned_realm(identifier):
                               "/opt/keycloak/data/import/hexalith-realm.json"]))
 
 
-def verify_workload_identity(env):
+def verify_workload_identity(env, config):
     security = resource("security", env)
-    realm = read_owned_realm(security["properties"]["container.id"])
+    realm = read_owned_realm(security["properties"]["container.id"], config)
     client = next(item for item in realm["clients"] if item["clientId"] == "eventstore")
     code, result = request(endpoint(security) + "/realms/" + realm["realm"] + "/protocol/openid-connect/token", {
         "grant_type": "client_credentials", "client_id": "eventstore", "client_secret": client["secret"],
@@ -232,8 +301,8 @@ def verify_workload_identity(env):
     print("Fresh owned realm workload exchange: HTTP 200; expected client, audience and operation verified.", flush=True)
 
 
-def correlate_sidecar(gateway, sidecar):
-    require(sidecar.get("displayName") == "eventstore-dapr-cli" and sidecar.get("state") == "Running"
+def correlate_sidecar(gateway, sidecar, name="eventstore"):
+    require(sidecar.get("displayName") == name + "-dapr-cli" and sidecar.get("state") == "Running"
             and Path(sidecar.get("properties", {}).get("executable.path", "")).name == "dapr",
             "The gateway's owned sidecar is not running.")
     environment = gateway.get("environment", {})
@@ -268,8 +337,111 @@ def verify_gateway(directory, env, maintenance):
     require(code == 200 and metadata.get("id") == "eventstore", "Unknown Dapr application.")
     require({item["name"] for item in metadata.get("components", [])} == {"statestore", "pubsub", "configstore"},
             "Unexpected Dapr component inventory; refusing shared resources.")
-    verify_workload_identity(env)
+    verify_workload_identity(env, config)
     return base
+
+
+def validate_application(item, name):
+    require(item.get("displayName") == name and item.get("state") == "Running"
+            and item.get("healthStatus") == "Healthy", "A full-topology application is missing or unhealthy.")
+    environment = item.get("environment", {})
+    require(WORKERS not in environment, "Full topology refuses a projection-worker override.")
+    if name == "parties":
+        require(environment.get("Parties__MemoriesSearch__Enabled") == "false"
+                and all(environment.get("Parties__MemoriesSearch__" + key) == "" for key in ("Endpoint", "TenantId", "CaseId", "ApiToken")),
+                "Disposable Parties must retain disabled indexing with no external Memories route.")
+    return endpoint(item, "http")
+
+
+def verify_activated_source(directory, source_commit):
+    config = load_configuration(directory)
+    validate_marker(json.loads(redis(config, "HGET", MARKER, "data")), source_commit)
+    verify_source_commit(source_commit)
+
+
+def validate_application_health(name, path, code, result):
+    if name == "sample":
+        healthy = code == 200 and result == ("alive" if path == "/alive" else "healthy")
+    else:
+        healthy = (code == 200 and isinstance(result, dict) and result.get("status") == "Healthy"
+                   and all(entry.get("status") == "Healthy" for entry in result.get("results", {}).values()))
+    require(healthy, f"{name} {path} failed its application health contract (HTTP {code}).")
+
+
+def verify_full_topology(directory, env, source_commit):
+    config = load_configuration(directory)
+    require(config.get("topology") == "full" and env.get("FrontComposerVerification__Maintenance") == "false",
+            "Full topology requires completed maintenance and ordinary workers.")
+    # Recheck persisted state before accepting any full-graph result.
+    verify_activated_source(directory, source_commit)
+    verify_gateway(directory, env, False)
+    endpoints = {}
+    for name in FULL_APPLICATIONS:
+        item = resource(name, env)
+        base = validate_application(item, name)
+        endpoints[name] = endpoint(item, "https") if name in {"frontcomposer-ui", "tenants-ui", "eventstore-admin-ui"} else base
+        if name in {"eventstore-admin", "tenants", "parties", "sample"}:
+            for path in (("/health", "/alive") if name == "sample" else ("/health", "/ready")):
+                code, result = request(base + path)
+                summary = {"statusCode": code, "status": result.get("status") if isinstance(result, dict)
+                           else result if result in ("healthy", "alive") else "Unexpected response shape",
+                           "components": {key: entry.get("status") for key, entry in result.get("results", {}).items()}
+                           if isinstance(result, dict) else {}}
+                Path(directory).parent.joinpath(name + path.replace("/", "-") + ".json").write_text(json.dumps(summary))
+                validate_application_health(name, path, code, result)
+        if name in FULL_SIDECARS:
+            sidecar = correlate_sidecar(item, resource(name + "-dapr-cli", env), name)
+            code, metadata = request(sidecar + "/v1.0/metadata")
+            require(code == 200 and metadata.get("id") == name
+                    and {component["name"] for component in metadata.get("components", [])} == FULL_SIDECARS[name],
+                    "A full-topology sidecar has an unexpected app ID or component inventory.")
+    print("Full topology: all nine ordinary applications Running/Healthy; direct endpoints and six sidecars verified.", flush=True)
+    return endpoints
+
+
+def require_navigation_composition(env):
+    snapshot = json.loads(invoke(["aspire", "describe", "--apphost", str(APPHOST),
+                                  "--format", "Json", "--non-interactive", "--nologo"], env=env))
+    inventory = snapshot.get("resources", [])
+    required = ("tenants-api", "tenants-api-dapr-cli", "tenants-ui-dapr-cli", "frontcomposer-ui-dapr-cli")
+    missing = [name for name in required if len([item for item in inventory if item.get("displayName") == name]) != 1]
+    require(not missing, "Authenticated full navigation requires a composition amendment; missing " + ", ".join(missing) + ".")
+    for name in ("tenants-api", "tenants-ui", "frontcomposer-ui"):
+        applications = [item for item in inventory if item.get("displayName") == name]
+        require(len(applications) == 1, "Ambiguous BFF ownership; authenticated navigation refused.")
+        validate_application(applications[0], name)
+        sidecar = next(item for item in inventory if item.get("displayName") == name + "-dapr-cli")
+        # Never permit an SDK default such as localhost:3500 to stand in for this
+        # BFF's exact Aspire-owned sidecar listener.
+        owned = urllib.parse.urlparse(correlate_sidecar(applications[0], sidecar, name))
+        selected = urllib.parse.urlparse(applications[0].get("environment", {}).get("DAPR_HTTP_ENDPOINT", ""))
+        require(selected.scheme == "http" and selected.hostname in {"localhost", "127.0.0.1", "::1"}
+                and selected.port == owned.port and selected.path in {"", "/"}
+                and not selected.username and not selected.password and not selected.query and not selected.fragment,
+                "Missing or unowned SDK endpoint; authenticated navigation refused.")
+
+
+def verify_navigation(directory, env, endpoints):
+    require_navigation_composition(env)
+    realm = read_owned_realm(resource("security", env)["properties"]["container.id"], load_configuration(directory))
+    administrator = next(user for user in realm["users"] if user["username"] == "admin-user")
+    navigation_env = {**env, "PLAYWRIGHT_SKIP_WEBSERVER": "1", "FC_FULL_TOPOLOGY_LIVE": "true",
+                      "FC_FULL_TOPOLOGY_COMBINED_URL": endpoints["frontcomposer-ui"],
+                      "FC_FULL_TOPOLOGY_TENANTS_URL": endpoints["tenants-ui"],
+                      "FC_FULL_TOPOLOGY_ADMIN_URL": endpoints["eventstore-admin-ui"],
+                      "FC_FULL_TOPOLOGY_AUTHORITY": endpoint(resource("security", env)),
+                      "FC_FULL_TOPOLOGY_USERNAME": administrator["username"],
+                      "FC_FULL_TOPOLOGY_PASSWORD": administrator["credentials"][0]["value"],
+                      "FC_E2E_OUTPUT_DIR": str(Path(directory).parent / "navigation-results"),
+                      "FC_E2E_HTML_REPORT_DIR": str(Path(directory).parent / "navigation-report"),
+                      "FC_E2E_JSON_PATH": str(Path(directory).parent / "navigation-results/playwright.json"),
+                      "FC_E2E_JUNIT_PATH": str(Path(directory).parent / "navigation-results/junit.xml")}
+    invoke(["npm", "--prefix", str(ROOT / "tests/e2e"), "exec", "--", "playwright", "test",
+            "--config", str(ROOT / "tests/e2e/playwright.config.ts"), "full-topology-readiness.spec.ts",
+            "--project=chromium", "--workers=1", "--retries=0", "--reporter=line"], env=navigation_env,
+           log=Path(directory).parent / "navigation.log", timeout=300,
+           redactions=(navigation_env["FC_FULL_TOPOLOGY_PASSWORD"],))
+    print("Authenticated combined UI, Tenants and Admin navigation passed.", flush=True)
 
 
 def redis(config, *arguments):
@@ -365,6 +537,7 @@ def activate(directory, env, source_commit):
               "verifiedBackupKeyCount": backup_key_count, "neverPublishedInfrastructureStreams": 1,
               "workersDisabledDuringMaintenance": True,
               "marker": marker, "activationHttpStatus": code}
+    private_file(Path(directory) / "activation.json", json.dumps({"owner": config["owner"], "freshStoreVerified": True, **marker}))
     Path(directory).parent.joinpath("maintenance-result.json").write_text(json.dumps(report, indent=2))
     print("Native backup checksum/no domain or control state and writer quiescence verified; authenticated activation 200; persisted v2 marker verified.", flush=True)
 
@@ -374,7 +547,8 @@ def processes(env):
 
 
 @contextlib.contextmanager
-def owned_apphost(directory, env, *, build=False):
+def owned_apphost(directory, env, *, build=False, applications=None, isolated=True):
+    phase = "full" if applications == FULL_APPLICATIONS else "maintenance"
     lock_id = hashlib.sha256(str(APPHOST).encode()).hexdigest()
     with open(Path(os.environ.get("FC_EPIC9_LOCK_ROOT", "/tmp")) / ("hexalith-epic9-" + lock_id + ".lock"), "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -384,13 +558,15 @@ def owned_apphost(directory, env, *, build=False):
             invoke(["dotnet", "build", str(APPHOST), "--configuration", "Debug", "--disable-build-servers", "-m:1",
                     "-p:BuildInParallel=false", "-p:NuGetAudit=false", "-p:CentralPackageTransitivePinningEnabled=false"], env=env,
                    log=Path(directory).parent / "source-build.log", timeout=1200)
+            require(not any(item["appHostPath"].endswith("/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj") for item in processes(env)),
+                    "A FrontComposer AppHost appeared during the build; refusing startup.")
         pid = None
         attempted = False
         rejected = False
         try:
             attempted = True
-            raw = invoke(["aspire", "start", "--apphost", str(APPHOST), "--isolated", "--no-build", "--format", "Json", "--non-interactive", "--nologo"],
-                         env=env, log=Path(directory).parent / "maintenance-start.log").decode()
+            raw = invoke(["aspire", "start", "--apphost", str(APPHOST), *(["--isolated"] if isolated else []), "--no-build", "--format", "Json", "--non-interactive", "--nologo"],
+                         env=env, log=Path(directory).parent / (phase + "-start.log")).decode()
             try:
                 start = json.loads(raw[re.search(r"(?m)^\s*\{", raw).start():])
                 require(isinstance(start, dict), "Invalid start record.")
@@ -403,10 +579,10 @@ def owned_apphost(directory, env, *, build=False):
             matching = [item for item in processes(env) if item["appHostPath"] == str(APPHOST)]
             rejected = len(matching) != 1 or matching[0]["appHostPid"] != pid
             require(not rejected, "Started AppHost identity was not confirmed.")
-            for name in ["verification-redis", "verification-placement", "verification-scheduler", "security", "eventstore"]:
+            for name in ["verification-redis", "verification-placement", "verification-scheduler", "security", *(applications or ("eventstore",))]:
                 timeout = "90" if name.startswith("verification-") else "300"
                 invoke(["aspire", "wait", name, "--status", "healthy", "--timeout", timeout, "--apphost", str(APPHOST), "--non-interactive", "--nologo"],
-                       env=env, log=Path(directory).parent / ("maintenance-wait-" + name + ".log"))
+                       env=env, log=Path(directory).parent / (phase + "-wait-" + name + ".log"))
             matching = [item for item in processes(env) if item["appHostPath"] == str(APPHOST)]
             rejected = len(matching) != 1 or matching[0]["appHostPid"] != pid
             require(not rejected, "AppHost identity changed before maintenance.")
@@ -417,11 +593,11 @@ def owned_apphost(directory, env, *, build=False):
                 require(attempted and not rejected and len(matching) == 1 and (pid is None or matching[0]["appHostPid"] == pid),
                         "AppHost ownership changed; refusing cleanup.")
                 invoke(["aspire", "stop", "--apphost", str(APPHOST), "--non-interactive", "--nologo"], env=env,
-                       log=Path(directory).parent / "maintenance-stop.log")
+                       log=Path(directory).parent / (phase + "-stop.log"))
                 require(not any(item["appHostPath"] == str(APPHOST) for item in processes(env)), "Owned AppHost cleanup failed.")
 
 
-def create_configuration(directory):
+def create_configuration(directory, topology="gateway"):
     sockets = []
     try:
         for _ in range(4):
@@ -443,7 +619,8 @@ def create_configuration(directory):
             connection.close()
     version = invoke([str(Path.home() / ".dapr/bin/daprd"), "--version"]).decode().strip()
     require(re.fullmatch(r"1\.18\.\d+", version), "Installed Dapr runtime cannot be identified.")
-    config = {"owner": secrets.token_hex(16), "ports": ports, "daprVersion": version,
+    require(topology in {"gateway", "full"}, "Unsupported verification topology.")
+    config = {"owner": secrets.token_hex(16), "ports": ports, "daprVersion": version, "topology": topology,
               "redisPassword": secrets.token_hex(32), "images": {}}
     for name in TARGETS:
         image = "redis:7.4-alpine" if name == "redis" else "daprio/dapr:" + version
@@ -460,16 +637,28 @@ def create_configuration(directory):
     runtime = directory / "runtime"
     components.mkdir(mode=0o700)
     runtime.mkdir(mode=0o700)
+    (directory / "empty").mkdir(mode=0o700)
+    scopes = {"statestore": ["eventstore", "eventstore-admin", "tenants", "parties"],
+              "pubsub": ["eventstore", "tenants", "parties"], "configstore": ["eventstore"]}
     for name, component_type in {"statestore": "state.redis", "pubsub": "pubsub.redis", "configstore": "configuration.redis"}.items():
-        extra = "    - name: actorStateStore\n      value: \"true\"\n    - name: keyPrefix\n      value: none\n" if name == "statestore" else ""
-        private_file(components / (name + ".yaml"), f"apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: {name}\nspec:\n  type: {component_type}\n  version: v1\n  metadata:\n    - name: redisHost\n      value: 127.0.0.1:{ports['redis']}\n    - name: redisPassword\n      value: \"{config['redisPassword']}\"\n{extra}scopes:\n  - eventstore\n")
-    access = (ROOT / "src/Hexalith.FrontComposer.AppHost/DaprComponents/accesscontrol.yaml").read_text()
-    require(access.count('connectionString: "nr.db"') == 1, "Discovery isolation template changed.")
-    private_file(directory / "accesscontrol.yaml", access.replace('connectionString: "nr.db"', "connectionString: " + json.dumps(str(runtime / "nr.db"))))
+        metadata = [{"name": "redisHost", "value": "127.0.0.1:" + str(ports["redis"])},
+                    {"name": "redisPassword", "value": config["redisPassword"]}]
+        if name == "statestore":
+            metadata += [{"name": "actorStateStore", "value": "true"}, {"name": "keyPrefix", "value": "none"}]
+        # JSON is YAML-compatible and permits strict validation without a second parser.
+        component = {"apiVersion": "dapr.io/v1alpha1", "kind": "Component", "metadata": {"name": name},
+                     "spec": {"type": component_type, "version": "v1", "metadata": metadata},
+                     "scopes": scopes[name] if topology == "full" else ["eventstore"]}
+        private_file(components / (name + ".yaml"), json.dumps(component))
+    for filename in ("accesscontrol.yaml", "accesscontrol.eventstore-admin.yaml", "accesscontrol.sample.yaml"):
+        access = (ROOT / "src/Hexalith.FrontComposer.AppHost/DaprComponents" / filename).read_text()
+        require(access.count('connectionString: "nr.db"') == 1, "Discovery isolation template changed.")
+        private_file(directory / filename, access.replace('connectionString: "nr.db"', "connectionString: " + json.dumps(str(runtime / "nr.db"))))
     return config
 
 
-def run():
+def run(topology="gateway"):
+    refuse_inherited_isolation_escapes(os.environ)
     os.umask(0o077)
     require(os.name == "posix", "Disposable readiness runner requires a POSIX host.")
     artifacts = Path(tempfile.mkdtemp(prefix="story13-6-isolated-readiness-"))
@@ -478,18 +667,26 @@ def run():
     print("Disposable readiness diagnostics:", artifacts, flush=True)
     config = None
     topology_attempted = False
-    env = {**os.environ, "HexalithFrontComposerFromSource": "true", "FrontComposerVerification__Enabled": "true",
-           "FrontComposerVerification__Directory": str(directory), "FrontComposerVerification__Maintenance": "true"}
+    env = {**os.environ, "HexalithFrontComposerFromSource": "true", "UseHexalithProjectReferences": "true", "FrontComposerVerification__Enabled": "true",
+           "FrontComposerVerification__Directory": str(directory), "FrontComposerVerification__Maintenance": "true",
+           "FrontComposerVerification__Topology": topology}
     try:
-        config = create_configuration(directory)
+        config = create_configuration(directory) if topology == "gateway" else create_configuration(directory, topology)
         source_commit = invoke(["git", "-C", str(EVENTSTORE), "rev-parse", "HEAD"]).decode().strip()
         require(not invoke(["git", "-C", str(EVENTSTORE), "status", "--porcelain"]).strip(), "Selected EventStore source is dirty; exact cutover identity unavailable.")
         topology_attempted = True
-        with owned_apphost(directory, env, build=True):
+        with owned_apphost(directory, env, build=True, applications=selected_applications(config, maintenance=True)):
             config["containerIds"] = {name: inspect_container(config, name)["Id"] for name in TARGETS}
             (directory / "configuration.json").write_text(json.dumps(config))
             activate(directory, env, source_commit)
         env["FrontComposerVerification__Maintenance"] = "false"
+        if topology == "full":
+            verify_activated_source(directory, source_commit)
+            with owned_apphost(directory, env, applications=FULL_APPLICATIONS, isolated=False):
+                endpoints = verify_full_topology(directory, env, source_commit)
+                verify_navigation(directory, env, endpoints)
+        # Existing rejection and Epic 9 helpers retain their own lifecycle/identity
+        # checks and run unchanged against the explicitly selected composition.
         invoke([str(ROOT / "eng/verify-apphost-invalid-bearer.sh")], env=env, log=artifacts / "invalid-bearer.log")
         lock_id = hashlib.sha256(str(APPHOST).encode()).hexdigest()
         lock_path = Path(env.get("FC_EPIC9_LOCK_ROOT", "/tmp")) / ("hexalith-epic9-" + lock_id + ".lock")
@@ -517,10 +714,11 @@ def main():
         try:
             if len(sys.argv) == 3 and sys.argv[1] == "check":
                 verify_gateway(Path(sys.argv[2]), os.environ.copy(), False)
-            elif len(sys.argv) == 1:
-                run()
             else:
-                raise RuntimeError("Unsupported disposable verification invocation.")
+                parser = argparse.ArgumentParser(description=__doc__)
+                parser.add_argument("--topology", choices=("gateway", "full"), default="gateway")
+                arguments = parser.parse_args()
+                run() if arguments.topology == "gateway" else run(arguments.topology)
         except (RuntimeError, OSError, ValueError, KeyError, StopIteration, AttributeError, TypeError, IndexError,
                 subprocess.TimeoutExpired) as failure:
             # Shape errors may contain credentials in their exception text. Emit only
