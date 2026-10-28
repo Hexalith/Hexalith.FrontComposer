@@ -36,10 +36,13 @@ TERMINATION_GRACE_SECONDS = 10
 _starting_child = False
 _pending_cancellation = False
 FULL_APPLICATIONS = ("eventstore", "eventstore-admin", "eventstore-admin-ui", "tenants", "parties",
-                     "sample", "tenants-ui", "frontcomposer-ui", "counter-web")
+                     "sample", "tenants-api", "tenants-ui", "frontcomposer-ui", "counter-web")
 FULL_SIDECARS = {"eventstore": {"statestore", "pubsub", "configstore"},
                  "eventstore-admin": {"statestore"}, "eventstore-admin-ui": set(),
-                 "tenants": {"statestore", "pubsub"}, "parties": {"statestore", "pubsub"}, "sample": set()}
+                 "tenants": {"statestore", "pubsub"}, "parties": {"statestore", "pubsub"}, "sample": set(),
+                 "tenants-api": set(), "tenants-ui": set(), "frontcomposer-ui": set()}
+ACCESS_CONTROL_FILES = ("accesscontrol.yaml", "accesscontrol.eventstore-admin.yaml", "accesscontrol.sample.yaml",
+                        "accesscontrol.tenants-api.yaml", "accesscontrol.tenants-ui.yaml", "accesscontrol.frontcomposer-ui.yaml")
 
 
 def refuse_inherited_isolation_escapes(environment):
@@ -233,7 +236,7 @@ class RejectRedirects(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def request(url, data=None, token=None, form=False):
+def request(url, data=None, token=None, form=False, *, method=None, include_headers=False):
     parsed = urllib.parse.urlparse(url)
     require(parsed.hostname in {"localhost", "127.0.0.1", "::1"} and parsed.scheme in {"http", "https"},
             "Non-loopback verification request refused.")
@@ -246,15 +249,21 @@ def request(url, data=None, token=None, form=False):
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
         urllib.request.HTTPSHandler(context=ssl._create_unverified_context()), RejectRedirects())
     try:
-        with opener.open(urllib.request.Request(url, data=data, headers=headers), timeout=20) as response:
-            return response.status, json.load(response)
+        with opener.open(urllib.request.Request(url, data=data, headers=headers, method=method), timeout=20) as response:
+            body = response.read(1024 * 1024 + 1)
+            require(len(body) <= 1024 * 1024, "Verification response exceeded its bounded contract.")
+            try:
+                result = json.loads(body)
+            except json.JSONDecodeError:
+                result = body.decode()
+            return (response.status, result, response.headers) if include_headers else (response.status, result)
     except urllib.error.HTTPError as failure:
         try:
             payload = json.loads(failure.read())
         except json.JSONDecodeError:
             payload = {}
         failure.close()
-        return failure.code, payload
+        return (failure.code, payload, failure.headers) if include_headers else (failure.code, payload)
 
 
 def validate_health(code, health, maintenance):
@@ -379,12 +388,14 @@ def verify_full_topology(directory, env, source_commit):
     for name in FULL_APPLICATIONS:
         item = resource(name, env)
         base = validate_application(item, name)
-        endpoints[name] = endpoint(item, "https") if name in {"frontcomposer-ui", "tenants-ui", "eventstore-admin-ui"} else base
-        if name in {"eventstore-admin", "tenants", "parties", "sample"}:
+        endpoints[name] = endpoint(item, "https") if name in {"frontcomposer-ui", "tenants-ui", "eventstore-admin-ui", "tenants-api"} else base
+        if name == "tenants-api":
+            base = endpoints[name]
+        if name in {"eventstore-admin", "tenants", "parties", "sample", "tenants-api"}:
             for path in (("/health", "/alive") if name == "sample" else ("/health", "/ready")):
                 code, result = request(base + path)
                 summary = {"statusCode": code, "status": result.get("status") if isinstance(result, dict)
-                           else result if result in ("healthy", "alive") else "Unexpected response shape",
+                           else result if result in ("healthy", "alive", "Healthy") else "Unexpected response shape",
                            "components": {key: entry.get("status") for key, entry in result.get("results", {}).items()}
                            if isinstance(result, dict) else {}}
                 Path(directory).parent.joinpath(name + path.replace("/", "-") + ".json").write_text(json.dumps(summary))
@@ -395,7 +406,7 @@ def verify_full_topology(directory, env, source_commit):
             require(code == 200 and metadata.get("id") == name
                     and {component["name"] for component in metadata.get("components", [])} == FULL_SIDECARS[name],
                     "A full-topology sidecar has an unexpected app ID or component inventory.")
-    print("Full topology: all nine ordinary applications Running/Healthy; direct endpoints and six sidecars verified.", flush=True)
+    print("Full topology: all ten ordinary applications Running/Healthy; direct endpoints and nine sidecars verified.", flush=True)
     return endpoints
 
 
@@ -405,7 +416,7 @@ def require_navigation_composition(env):
     inventory = snapshot.get("resources", [])
     required = ("tenants-api", "tenants-api-dapr-cli", "tenants-ui-dapr-cli", "frontcomposer-ui-dapr-cli")
     missing = [name for name in required if len([item for item in inventory if item.get("displayName") == name]) != 1]
-    require(not missing, "Authenticated full navigation requires a composition amendment; missing " + ", ".join(missing) + ".")
+    require(not missing, "Authenticated full navigation requires its approved API/BFF composition; missing " + ", ".join(missing) + ".")
     for name in ("tenants-api", "tenants-ui", "frontcomposer-ui"):
         applications = [item for item in inventory if item.get("displayName") == name]
         require(len(applications) == 1, "Ambiguous BFF ownership; authenticated navigation refused.")
@@ -419,6 +430,68 @@ def require_navigation_composition(env):
                 and selected.port == owned.port and selected.path in {"", "/"}
                 and not selected.username and not selected.password and not selected.query and not selected.fragment,
                 "Missing or unowned SDK endpoint; authenticated navigation refused.")
+
+
+def authenticate_administrator(directory, env):
+    config = load_configuration(directory)
+    security = resource("security", env)
+    realm = read_owned_realm(security["properties"]["container.id"], config)
+    administrator = next(user for user in realm["users"] if user["username"] == "admin-user")
+    code, result = request(endpoint(security) + "/realms/" + realm["realm"] + "/protocol/openid-connect/token", {
+        "grant_type": "password", "client_id": "hexalith-eventstore", "username": administrator["username"],
+        "password": administrator["credentials"][0]["value"], "scope": "openid profile email"}, form=True)
+    require(code == 200 and "access_token" in result, "Private administrator credential exchange failed.")
+    return result["access_token"]
+
+
+def diagnose_admin_path(directory, env, endpoints):
+    # Admin owns a separate EventStore query path. API/BFF composition alone
+    # cannot qualify its bearer forwarding or turn failed envelopes into data.
+    require_navigation_composition(env)
+    token = authenticate_administrator(directory, env)
+    query = {"tenant": "system", "domain": "tenants", "aggregateId": "index",
+             "queryType": "list-tenants", "payload": {"cursor": None, "pageSize": 100}}
+    code, result = request(endpoints["eventstore"] + "/api/v1/queries", query, token=token)
+    query_result = {"httpStatus": code, "success": result.get("success") if isinstance(result, dict) else None}
+    if isinstance(result, dict):
+        error = result.get("errorMessage")
+        query_result["failureCategory"] = error if error in (None, "Forbidden", "Tenant not found") else "Other upstream failure"
+    admin = resource("eventstore-admin", env)
+    admin_code, admin_result = request(endpoint(admin, "https") + "/api/v1/admin/tenants", token=token)
+    membership_code, _ = request(endpoints["tenants-api"] + "/api/global-administrators?pageSize=100", token=token)
+    report = {"eventStoreQuery": query_result, "adminHttpStatus": admin_code,
+              "adminResultShape": "array" if isinstance(admin_result, list) else "object" if isinstance(admin_result, dict) else "unexpected",
+              "membershipHttpStatus": membership_code}
+    Path(directory).parent.joinpath("admin-path.json").write_text(json.dumps(report, indent=2))
+    print("Independent Admin path:", report, flush=True)
+
+
+def verify_api_boundaries(directory, env, endpoints):
+    require_navigation_composition(env)
+    token = authenticate_administrator(directory, env)
+    results = []
+    for name in ("tenants-ui", "frontcomposer-ui"):
+        sidecar = correlate_sidecar(resource(name, env), resource(name + "-dapr-cli", env), name)
+        invoke_api = sidecar + "/v1.0/invoke/tenants-api/method"
+        for label, path, method, bearer, expected in (
+                ("missing-bearer", "/api/tenants", "GET", None, 401),
+                ("invalid-bearer", "/api/tenants", "GET", "invalid.disposable.bearer", 401),
+                ("disallowed-verb", "/api/tenants", "POST", token, 403),
+                ("disallowed-path", "/health", "GET", token, 403)):
+            code, _ = request(invoke_api + path, token=bearer, method=method)
+            results.append({"caller": name, "check": label, "status": code})
+            require(code == expected, "API caller/route/verb/bearer rejection failed (" + name + "/" + label + ").")
+    outsider = correlate_sidecar(resource("sample", env), resource("sample-dapr-cli", env), "sample")
+    code, _ = request(outsider + "/v1.0/invoke/tenants-api/method/api/tenants", token=token)
+    results.append({"caller": "sample", "check": "unapproved-caller", "status": code})
+    require(code == 403, "An unapproved API caller was admitted.")
+    api_sidecar = correlate_sidecar(resource("tenants-api", env), resource("tenants-api-dapr-cli", env), "tenants-api")
+    for name in ("tenants-ui", "frontcomposer-ui"):
+        code, _ = request(api_sidecar + "/v1.0/invoke/" + name + "/method/", token=token)
+        results.append({"receiver": name, "check": "closed-bff", "status": code})
+        require(code == 403, "A BFF receiver exposed an invocation operation.")
+    Path(directory).parent.joinpath("api-boundaries.json").write_text(json.dumps(results, indent=2))
+    print("API/BFF boundaries: missing/invalid bearer, unapproved caller, verb/path and BFF invocation refused.", flush=True)
 
 
 def verify_navigation(directory, env, endpoints):
@@ -483,6 +556,26 @@ def verify_pristine_store(config):
     return 1
 
 
+def source_inputs():
+    sources = {}
+    for name in ("Hexalith.Builds", "Hexalith.Commons", "Hexalith.EventStore", "Hexalith.Tenants", "Hexalith.Parties", "Hexalith.Memories"):
+        path = ROOT / "references" / name
+        commit = invoke(["git", "-C", str(path), "rev-parse", "HEAD"]).decode().strip()
+        require(re.fullmatch(r"[0-9a-f]{40}", commit)
+                and not invoke(["git", "-C", str(path), "status", "--porcelain"]).strip(),
+                "A selected source is dirty; full qualification requires an exact input identity.")
+        sources[name] = commit
+    paths = [*APPHOST.parent.glob("*.cs"), APPHOST, *APPHOST.parent.joinpath("DaprComponents").glob("*.yaml"),
+             ROOT / "eng/verify-isolated-readiness.py", ROOT / "eng/verify-apphost-invalid-bearer.sh",
+             ROOT / "eng/run-epic9-live-proof.sh", ROOT / "tests/e2e/specs/full-topology-readiness.spec.ts"]
+    return {"root": invoke(["git", "rev-parse", "HEAD"]).decode().strip(), "sources": sources,
+            "inputSha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(paths)}}
+
+
+def verify_source_inputs(expected):
+    require(source_inputs() == expected, "Selected full-topology inputs changed during verification; qualification refused.")
+
+
 def verify_source_commit(source_commit):
     current = invoke(["git", "-C", str(EVENTSTORE), "rev-parse", "HEAD"]).decode().strip()
     require(re.fullmatch(r"[0-9a-f]{40}", source_commit) and current == source_commit
@@ -511,7 +604,7 @@ def activate(directory, env, source_commit):
     require(backup.read_bytes().startswith(b"REDIS") and digest == original_digest and verify_pristine_store(config) == backup_key_count,
             "Backup copy or writer quiescence could not be verified.")
     backup_reference = backup.as_uri() + "#sha256=" + digest
-    realm = json.loads((ROOT / "src/Hexalith.FrontComposer.AppHost/KeycloakRealms/hexalith-realm.json").read_text())
+    realm = read_owned_realm(resource("security", env)["properties"]["container.id"], config)
     administrator = next(user for user in realm["users"] if user["username"] == "admin-user")
     auth_base = endpoint(resource("security", env))
     code, authentication = request(auth_base + "/realms/" + realm["realm"] + "/protocol/openid-connect/token", {
@@ -650,7 +743,7 @@ def create_configuration(directory, topology="gateway"):
                      "spec": {"type": component_type, "version": "v1", "metadata": metadata},
                      "scopes": scopes[name] if topology == "full" else ["eventstore"]}
         private_file(components / (name + ".yaml"), json.dumps(component))
-    for filename in ("accesscontrol.yaml", "accesscontrol.eventstore-admin.yaml", "accesscontrol.sample.yaml"):
+    for filename in ACCESS_CONTROL_FILES:
         access = (ROOT / "src/Hexalith.FrontComposer.AppHost/DaprComponents" / filename).read_text()
         require(access.count('connectionString: "nr.db"') == 1, "Discovery isolation template changed.")
         private_file(directory / filename, access.replace('connectionString: "nr.db"', "connectionString: " + json.dumps(str(runtime / "nr.db"))))
@@ -672,19 +765,28 @@ def run(topology="gateway"):
            "FrontComposerVerification__Topology": topology}
     try:
         config = create_configuration(directory) if topology == "gateway" else create_configuration(directory, topology)
+        inputs = source_inputs() if topology == "full" else None
+        if inputs is not None:
+            (artifacts / "source-inputs.json").write_text(json.dumps(inputs, indent=2))
         source_commit = invoke(["git", "-C", str(EVENTSTORE), "rev-parse", "HEAD"]).decode().strip()
         require(not invoke(["git", "-C", str(EVENTSTORE), "status", "--porcelain"]).strip(), "Selected EventStore source is dirty; exact cutover identity unavailable.")
         topology_attempted = True
         with owned_apphost(directory, env, build=True, applications=selected_applications(config, maintenance=True)):
             config["containerIds"] = {name: inspect_container(config, name)["Id"] for name in TARGETS}
             (directory / "configuration.json").write_text(json.dumps(config))
+            if inputs is not None:
+                verify_source_inputs(inputs)
             activate(directory, env, source_commit)
         env["FrontComposerVerification__Maintenance"] = "false"
         if topology == "full":
+            verify_source_inputs(inputs)
             verify_activated_source(directory, source_commit)
             with owned_apphost(directory, env, applications=FULL_APPLICATIONS, isolated=False):
                 endpoints = verify_full_topology(directory, env, source_commit)
+                diagnose_admin_path(directory, env, endpoints)
+                verify_api_boundaries(directory, env, endpoints)
                 verify_navigation(directory, env, endpoints)
+                verify_source_inputs(inputs)
         # Existing rejection and Epic 9 helpers retain their own lifecycle/identity
         # checks and run unchanged against the explicitly selected composition.
         invoke([str(ROOT / "eng/verify-apphost-invalid-bearer.sh")], env=env, log=artifacts / "invalid-bearer.log")
@@ -694,6 +796,8 @@ def run(topology="gateway"):
         env["FC_EPIC9_ARTIFACT_ROOT"] = str(artifacts / "epic9")
         env["FC_EPIC9_REQUIRE_CLEAN"] = "false"
         invoke([str(ROOT / "eng/run-epic9-live-proof.sh")], env=env, log=artifacts / "epic9.log", timeout=1800)
+        if inputs is not None:
+            verify_source_inputs(inputs)
         print("Isolated readiness, four-route rejection and unchanged Epic 9 proof passed.", flush=True)
     finally:
         if topology_attempted:

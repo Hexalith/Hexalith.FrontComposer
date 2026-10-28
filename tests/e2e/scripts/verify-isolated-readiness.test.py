@@ -81,7 +81,7 @@ class ReadinessSafetyTests(unittest.TestCase):
         self.assertEqual(readiness.selected_applications({}, False), ("eventstore", "counter-web"))
         self.assertEqual(readiness.selected_applications({"topology": "full"}, True), ("eventstore",))
         self.assertEqual(readiness.selected_applications({"topology": "full"}, False), readiness.FULL_APPLICATIONS)
-        self.assertEqual(len(readiness.FULL_APPLICATIONS), 9)
+        self.assertEqual(len(readiness.FULL_APPLICATIONS), 10)
 
     def test_full_components_scope_only_the_ordinary_infrastructure_consumers(self):
         def invoke(arguments, **kwargs):
@@ -96,11 +96,59 @@ class ReadinessSafetyTests(unittest.TestCase):
                 component = json.loads((directory / "components" / (name + ".yaml")).read_text())
                 self.assertEqual(set(component["scopes"]), expected)
                 self.assertEqual(component["spec"]["metadata"][0]["value"], "127.0.0.1:" + str(config["ports"]["redis"]))
-            for name in ("accesscontrol.yaml", "accesscontrol.eventstore-admin.yaml", "accesscontrol.sample.yaml"):
+            for name in readiness.ACCESS_CONTROL_FILES:
                 access = (directory / name).read_text()
                 self.assertIn(str(directory / "runtime/nr.db"), access)
                 self.assertNotIn('connectionString: "nr.db"', access)
             self.assertEqual(list((directory / "empty").iterdir()), [])
+
+    def test_full_input_identity_refuses_any_selected_source_or_input_change(self):
+        expected = {"root": "a" * 40, "sources": {"Hexalith.EventStore": "b" * 40}, "inputSha256": {"Program.cs": "c" * 64}}
+        with patch.object(readiness, "source_inputs", return_value=expected):
+            readiness.verify_source_inputs(expected)
+        for changed in ({**expected, "root": "d" * 40}, {**expected, "sources": {}}, {**expected, "inputSha256": {}}):
+            with self.subTest(changed=changed), patch.object(readiness, "source_inputs", return_value=changed), self.assertRaises(RuntimeError):
+                readiness.verify_source_inputs(expected)
+
+    def test_api_and_bffs_have_no_state_or_pubsub_access(self):
+        self.assertEqual(len(readiness.FULL_SIDECARS), 9)
+        for name in ("tenants-api", "tenants-ui", "frontcomposer-ui"):
+            self.assertEqual(readiness.FULL_SIDECARS[name], set())
+
+    def test_api_receiver_admits_only_two_bff_callers_and_six_get_routes(self):
+        directory = readiness.ROOT / "src/Hexalith.FrontComposer.AppHost/DaprComponents"
+        access = (directory / "accesscontrol.tenants-api.yaml").read_text()
+        callers = access.split("      - appId: ")
+        self.assertEqual(len(callers), 3)
+        self.assertIn("defaultAction: deny", callers[0])
+        for section, caller in zip(callers[1:], ("tenants-ui", "frontcomposer-ui")):
+            self.assertTrue(section.startswith(caller + "\n"))
+            paths = [line.split("name: ", 1)[1] for line in section.splitlines() if "- name: " in line]
+            self.assertEqual(paths, ["/api/tenants", "/api/tenants/*", "/api/tenants/**/users", "/api/tenants/**/audit",
+                                     "/api/users/**/tenants", "/api/global-administrators"])
+            self.assertEqual(section.count("httpVerb: ['GET']"), 6)
+            self.assertEqual(section.count("action: allow"), 6)
+        for name in ("tenants-ui", "frontcomposer-ui"):
+            receiver = (directory / ("accesscontrol." + name + ".yaml")).read_text()
+            self.assertIn("defaultAction: deny", receiver)
+            self.assertNotIn("policies:", receiver)
+            self.assertNotIn("operations:", receiver)
+
+    def test_api_health_uses_observed_json_contract_without_accepting_degraded(self):
+        readiness.validate_application_health("tenants-api", "/ready", 200, {"status": "Healthy", "results": {"eventstore-gateway": {"status": "Healthy"}}})
+        for code, body in [(200, "Healthy"), (503, {"status": "Healthy"}), (200, {"status": "Degraded"}),
+                           (200, {"status": "Healthy", "results": {"eventstore-gateway": {"status": "Degraded"}}})]:
+            with self.subTest(code=code, body=body), self.assertRaises(RuntimeError):
+                readiness.validate_application_health("tenants-api", "/ready", code, body)
+
+    def test_api_boundary_failure_keeps_navigation_unreached(self):
+        with patch.object(readiness, "require_navigation_composition"), \
+                patch.object(readiness, "authenticate_administrator", return_value="private-test-token"), \
+                patch.object(readiness, "resource", return_value={}), \
+                patch.object(readiness, "correlate_sidecar", return_value="http://localhost:12345"), \
+                patch.object(readiness, "request", return_value=(200, {})):
+            with self.assertRaisesRegex(RuntimeError, "missing-bearer"):
+                readiness.verify_api_boundaries(Path("/private"), {}, {})
 
     def test_inherited_shared_or_ambiguous_paths_are_refused_before_configuration(self):
         for key in ("DAPR_RESOURCES_PATH", "Dapr:PlacementHostAddress", "ConnectionStrings__Redis", "services__tenants__http__0",
@@ -188,7 +236,7 @@ class ReadinessSafetyTests(unittest.TestCase):
             resources = [{"displayName": name} for name in ("tenants-api", "tenants-api-dapr-cli", "tenants-ui-dapr-cli", "frontcomposer-ui-dapr-cli") if name != missing]
             with self.subTest(missing=missing), patch.object(readiness, "invoke", return_value=json.dumps({"resources": resources}).encode()) as invoke, \
                     patch.object(readiness, "read_owned_realm") as credentials:
-                with self.assertRaisesRegex(RuntimeError, "composition amendment; missing " + missing):
+                with self.assertRaisesRegex(RuntimeError, "approved API/BFF composition; missing " + missing):
                     readiness.verify_navigation(Path("/private"), {}, {})
                 credentials.assert_not_called()
                 self.assertEqual(invoke.call_count, 1)
@@ -237,6 +285,8 @@ class ReadinessSafetyTests(unittest.TestCase):
                     patch.object(readiness, "inspect_container", return_value=self.container()), \
                     patch.object(readiness, "activate", side_effect=lambda *args: events.append("activation-readback")), \
                     patch.object(readiness, "verify_activated_source"), patch.object(readiness, "verify_full_topology", return_value={}), \
+                    patch.object(readiness, "diagnose_admin_path"), \
+                    patch.object(readiness, "verify_api_boundaries"), \
                     patch.object(readiness, "verify_navigation", side_effect=readiness.VerificationCancelled("cancelled")), \
                     patch.object(readiness, "processes", return_value=[]), patch.object(readiness, "container_present", return_value=False):
                 with self.assertRaises(readiness.VerificationCancelled):
@@ -603,7 +653,8 @@ class ReadinessSafetyTests(unittest.TestCase):
                         patch.object(readiness, "verify_pristine_store", return_value=1), \
                         patch.object(readiness, "inspect_container", return_value=self.container()), \
                         patch.object(readiness, "redis", side_effect=["OK", json.dumps(marker), "redis_version:7.4.11"]), \
-                        patch.object(readiness, "resource", return_value={"urls": [{"url": "http://localhost:12346"}]}), \
+                        patch.object(readiness, "resource", return_value={"properties": {"container.id": "owned-identity"}, "urls": [{"url": "http://localhost:12346"}]}), \
+                        patch.object(readiness, "read_owned_realm", return_value={"realm": "Hexalith", "users": [{"username": "admin-user", "credentials": [{"value": "private-test-password"}]}]}), \
                         patch.object(readiness, "request", side_effect=[(200, {"access_token": "private-test-token"}), (200, {"status": "Activated"})]), \
                         patch.object(readiness, "invoke", side_effect=invoke):
                     if marker == valid:

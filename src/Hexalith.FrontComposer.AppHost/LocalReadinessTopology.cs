@@ -82,7 +82,7 @@ internal static class LocalReadinessTopology
         foreach (IDaprSidecarResource sidecar in builder.Resources.OfType<IDaprSidecarResource>())
         {
             string name = sidecar.Name.EndsWith("-dapr", StringComparison.Ordinal) ? sidecar.Name[..^5] : throw new InvalidOperationException("Unknown disposable sidecar.");
-            if (name is not "eventstore" and not "eventstore-admin" and not "eventstore-admin-ui" and not "tenants" and not "parties" and not "sample" and not "counter-scope-fixture")
+            if (name is not "eventstore" and not "eventstore-admin" and not "eventstore-admin-ui" and not "tenants" and not "parties" and not "sample" and not "tenants-api" and not "tenants-ui" and not "frontcomposer-ui" and not "counter-scope-fixture")
                 throw new InvalidOperationException("Unknown disposable application identity.");
             DaprSidecarOptionsAnnotation annotation = sidecar.Annotations.OfType<DaprSidecarOptionsAnnotation>().Single();
             DaprSidecarOptions options = annotation.Options;
@@ -93,7 +93,8 @@ internal static class LocalReadinessTopology
             _ = builder.CreateResourceBuilder(sidecar).WithOptions(options with
             {
                 Config = configuration.FilePath(name == "eventstore-admin" ? "accesscontrol.eventstore-admin.yaml"
-                    : name is "sample" or "counter-scope-fixture" ? "accesscontrol.sample.yaml" : "accesscontrol.yaml"),
+                    : name is "sample" or "counter-scope-fixture" ? "accesscontrol.sample.yaml"
+                    : name is "tenants-api" or "tenants-ui" or "frontcomposer-ui" ? "accesscontrol." + name + ".yaml" : "accesscontrol.yaml"),
                 ResourcesPaths = ImmutableHashSet.Create(configuration.FilePath("empty")),
                 PlacementHostAddress = "127.0.0.1:" + configuration.Port("placement"),
                 SchedulerHostAddress = "127.0.0.1:" + configuration.Port("scheduler"),

@@ -1,0 +1,18 @@
+# Invocation-only BFF receiver: no inbound operations, state or pub/sub access.
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: accesscontrol-tenants-ui
+spec:
+  nameResolution:
+    component: "sqlite"
+    version: "v1"
+    configuration:
+      connectionString: "nr.db"
+      timeout: "5s"
+      updateInterval: "10s"
+      busyTimeout: "2s"
+      cleanupInterval: "168h"
+  accessControl:
+    defaultAction: deny
+    trustDomain: "public"

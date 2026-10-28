@@ -140,3 +140,19 @@ The working tree already contains the approved prior implementation and its reco
 - `137304d34c9b73fdf3ff0be5beafbe5b34279fc9` | shared | Separate external CI governance alignment; preserve unchanged.
 - `ccf69d6842b0d420d9e8a512819067f2c6c3a5ec` | shared | Separate external shared catalog alignment; preserve its commit and pre-existing working checkout mismatch.
 - `1ccb4afc47ec8f1bb5379fd98452242546bbd06c` | shared | Separate external dependency-governance correction and tests; preserve unchanged.
+
+
+### External publication/input reconciliation — 2026-10-28
+
+During the approved continuation, a separate workspace `/pushall` operation published `5f665c4d38afb2255a7dde4620330e09824a40a1`, capturing the prior candidate, approved spec amendment and dependency advances. The working tree was clean at discovery. This assistant did not invoke that operation, create its commit or authorize further publication; preserve it unchanged. Original baseline remains `5688c3eba98567133285b0f51843d9daa8f24f0b`. Review must retain all story-owned changes in the mixed external commit, without attributing unrelated dependency work to this implementation.
+
+The earlier Builds checkout mismatch is superseded. Observed clean selected sources now match root gitlinks: Builds `9f85d8e66e5c16675cee8c224f1fd88430d96007`, EventStore `903174461632e7bcabd6111092aa059f16e1b1c7`, Tenants `750bdc2e8de77595a55bf595c335094cce0d580c`, Parties `3e1dd7cac6ee4db1db48d1bfb478e1b5848f7b8e`. AppHost SDK remains 13.6.4; .NET SDK is 10.0.402. Record actual tested inputs and keep earlier 9/6 health, failed navigation, focused tests and hosted evidence at their original attribution. No dependency checkout/update is needed or authorized by this reconciliation.
+
+
+### Stable local verification checkout — 2026-10-28
+
+The second amended rehearsal passed maintenance activation/readback but refused full startup because EventStore changed from `903174461632e7bcabd6111092aa059f16e1b1c7` to `36c78f3435d2d492a73f1b0707cf865c8735d740` during the run. Other external source checkouts also advanced; the assistant made none of these dependency changes. Owned cleanup completed. Preserve this failed identity-change attempt.
+
+Use a detached local verification checkout of one captured root commit plus the current story-owned working patch. Materialize only root-declared submodules at that root's exact pinned locally available Git objects, using detached worktrees without network or nested initialization. Do not change main's checkouts, pointers, dependency selections or unrelated work. Perform implementation verification in the stable checkout; record exact root/patch/source attribution and keep the all-input mutation guard. Further story-owned fixes may be copied back only after comparing main's captured file bytes, preserving/merging intervening changes. This reversible isolation is within the approved implementation scope and does not authorize commit, push or publication.
+
+Main at coordination was `5f665c4d38afb2255a7dde4620330e09824a40a1`; its observed source checkouts (not a qualification claim) were Hexalith.Builds `abc0e1be8069d1c7a567515a13bb015adc407536`, Hexalith.EventStore `36c78f3435d2d492a73f1b0707cf865c8735d740`, Hexalith.Tenants `7ddb864cda5e942925b056391617eae4895c1253`, Hexalith.Parties `9239c531f3b0cbb4a998c419e537463b597ff14b`, Hexalith.Memories `72c36c7113c750c8b809f9d72b945a2a8c2d4555`, Hexalith.Commons `3edfbdafc7d4fa915286dce8a37dc4cc7c06085a`. Record the verification checkout's actual selected revisions separately. No further parent record edits will occur during its live proof.

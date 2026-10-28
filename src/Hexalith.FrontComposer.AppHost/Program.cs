@@ -1,3 +1,5 @@
+using CommunityToolkit.Aspire.Hosting.Dapr;
+
 using Microsoft.Extensions.Hosting;
 
 using Hexalith.EventStore.Aspire;
@@ -10,6 +12,9 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 string accessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "accesscontrol.yaml");
 string adminServerAccessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "accesscontrol.eventstore-admin.yaml");
 string sampleAccessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "accesscontrol.sample.yaml");
+string tenantsApiAccessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "accesscontrol.tenants-api.yaml");
+string tenantsUiAccessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "accesscontrol.tenants-ui.yaml");
+string frontComposerUiAccessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "accesscontrol.frontcomposer-ui.yaml");
 string resiliencyConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "resiliency.yaml");
 string stateStoreComponentPath = ResolveDaprConfigPath(builder.AppHostDirectory, "statestore.yaml");
 string emptyDaprResourcesPath = ResolveEmptyDaprResourcesPath();
@@ -89,6 +94,9 @@ if (verification is not null)
     accessControlConfigPath = verification.FilePath("accesscontrol.yaml");
     adminServerAccessControlConfigPath = verification.FilePath("accesscontrol.eventstore-admin.yaml");
     sampleAccessControlConfigPath = verification.FilePath("accesscontrol.sample.yaml");
+    tenantsApiAccessControlConfigPath = verification.FilePath("accesscontrol.tenants-api.yaml");
+    tenantsUiAccessControlConfigPath = verification.FilePath("accesscontrol.tenants-ui.yaml");
+    frontComposerUiAccessControlConfigPath = verification.FilePath("accesscontrol.frontcomposer-ui.yaml");
     stateStoreComponentPath = verification.FilePath("components/statestore.yaml");
     emptyDaprResourcesPath = verification.FilePath("empty");
     daprPlacementHostAddress = "127.0.0.1:" + verification.Port("placement");
@@ -190,7 +198,22 @@ if (string.Equals(builder.Configuration["TenantScopeFixture:Enabled"], "true", S
 // Wire Admin.UI to Admin.Server + EventStore SignalR (domain-agnostic composition kept in the AppHost).
 EndpointReference adminServerHttps = adminServer.GetEndpoint("https");
 EndpointReference eventStoreHttps = eventStore.GetEndpoint("https");
-EndpointReference tenantsHttps = tenants.GetEndpoint("https");
+// The generated API relays the original user bearer through its invocation-only sidecar.
+// The toolkit injects this exact sidecar's DAPR_HTTP/GRPC_ENDPOINT and matching ports.
+IResourceBuilder<ProjectResource> tenantsApi = builder.AddProject<HexalithTenantsApi>("tenants-api")
+    .WithReference(eventStore)
+    .WaitFor(eventStore)
+    .WithEnvironment("EventStore__GatewayReadiness__BaseAddress", eventStore.GetEndpoint("http"))
+    .WithExternalHttpEndpoints()
+    .WithDaprSidecar(sidecar => sidecar.WithOptions(new DaprSidecarOptions {
+        AppId = "tenants-api",
+        AppProtocol = "https",
+        Config = tenantsApiAccessControlConfigPath,
+        ResourcesPaths = [emptyDaprResourcesPath],
+        PlacementHostAddress = daprPlacementHostAddress,
+        SchedulerHostAddress = daprSchedulerHostAddress,
+    }));
+EndpointReference tenantsApiHttps = tenantsApi.GetEndpoint("https");
 _ = adminUI
     .WithReference(adminServer)
     .WaitFor(adminServer)
@@ -208,29 +231,45 @@ IResourceBuilder<ProjectResource> tenantsUI = builder.AddProject<HexalithTenants
     // blocks. Overridden here (not in the submodule's launchSettings) to keep the change repo-local.
     .WithEndpoint("https", e => e.Port = 7271, createIfNotExists: false)
     .WithEndpoint("http", e => e.Port = 7272, createIfNotExists: false)
-    .WithReference(tenants)
+    .WithReference(tenantsApi)
     .WithReference(eventStore)
-    .WaitFor(tenants)
+    .WaitFor(tenantsApi)
     .WaitFor(eventStore)
-    .WithEnvironment("Tenants__BaseAddress", tenantsHttps)
+    .WithEnvironment("Tenants__BaseAddress", tenantsApiHttps)
     .WithEnvironment("EventStore__BaseAddress", eventStoreHttps)
-    .WithExternalHttpEndpoints();
+    .WithExternalHttpEndpoints()
+    .WithDaprSidecar(sidecar => sidecar.WithOptions(new DaprSidecarOptions {
+        AppId = "tenants-ui",
+        AppProtocol = "https",
+        Config = tenantsUiAccessControlConfigPath,
+        ResourcesPaths = [emptyDaprResourcesPath],
+        PlacementHostAddress = daprPlacementHostAddress,
+        SchedulerHostAddress = daprSchedulerHostAddress,
+    }));
 
 IResourceBuilder<ProjectResource> frontComposerUI = builder.AddProject<Projects.Hexalith_FrontComposer_UI>("frontcomposer-ui")
     .WithEndpoint("https", e => e.Port = 7273, createIfNotExists: true)
     .WithEndpoint("http", e => e.Port = 7274, createIfNotExists: true)
-    .WithReference(tenants)
+    .WithReference(tenantsApi)
     .WithReference(parties)
     .WithReference(eventStore)
-    .WaitFor(tenants)
+    .WaitFor(tenantsApi)
     .WaitFor(parties)
     .WaitFor(eventStore)
-    .WithEnvironment("Tenants__BaseAddress", tenantsHttps)
+    .WithEnvironment("Tenants__BaseAddress", tenantsApiHttps)
     .WithEnvironment("EventStore__BaseAddress", eventStoreHttps)
     .WithEnvironment("EventStore__SignalR__HubUrl", ReferenceExpression.Create($"{eventStoreHttps}/hubs/projection-changes"))
     .WithEnvironment("Parties__BaseUrl", eventStoreHttps)
     .WithEnvironment("Parties__Tenant", builder.Configuration["FrontComposerUi:Parties:Tenant"] ?? "tenant-a")
-    .WithExternalHttpEndpoints();
+    .WithExternalHttpEndpoints()
+    .WithDaprSidecar(sidecar => sidecar.WithOptions(new DaprSidecarOptions {
+        AppId = "frontcomposer-ui",
+        AppProtocol = "https",
+        Config = frontComposerUiAccessControlConfigPath,
+        ResourcesPaths = [emptyDaprResourcesPath],
+        PlacementHostAddress = daprPlacementHostAddress,
+        SchedulerHostAddress = daprSchedulerHostAddress,
+    }));
 
 // Counter sample — the FrontComposer demo shell. Co-hosted in the single platform AppHost so the
 // whole stack (EventStore, Tenants, Tenants UI, Counter) runs from ONE orchestrator. It stays a
@@ -266,6 +305,7 @@ if (security is not null) {
     }
 
     _ = tenants.WithJwtBearerSecurity(security);
+    _ = tenantsApi.WithEventStoreAuthenticationValidation(security);
 
     _ = parties.WithJwtBearerSecurity(security);
 
@@ -334,6 +374,8 @@ if (verification is not null)
             .WithHttpHealthCheck("/health", endpointName: "http")
             .WithHttpHealthCheck(application.Name == "sample" ? "/alive" : "/ready", endpointName: "http");
     }
+    _ = tenantsApi.WithHttpHealthCheck("/health", endpointName: "https")
+        .WithHttpHealthCheck("/ready", endpointName: "https");
     LocalReadinessTopology.RequireAvailableApplicationPorts(builder);
     LocalReadinessTopology.WaitForInfrastructure(builder, eventStore);
     LocalReadinessTopology.AddConfigurationStore(builder, verification);

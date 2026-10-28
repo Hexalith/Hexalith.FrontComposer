@@ -124,7 +124,8 @@ internal sealed class LocalReadinessConfiguration
                 throw new InvalidOperationException("Disposable verification refuses a shared or altered component.");
             }
         }
-        foreach (string name in new[] { "accesscontrol.yaml", "accesscontrol.eventstore-admin.yaml", "accesscontrol.sample.yaml" })
+        foreach (string name in new[] { "accesscontrol.yaml", "accesscontrol.eventstore-admin.yaml", "accesscontrol.sample.yaml",
+            "accesscontrol.tenants-api.yaml", "accesscontrol.tenants-ui.yaml", "accesscontrol.frontcomposer-ui.yaml" })
         {
             string path = FilePath(name);
             RequirePrivate(path);

@@ -575,7 +575,7 @@ public sealed class FrontComposerUiAppHostTests {
         string gatewayBranch = program[program.IndexOf("if (disposableVerification && !fullVerification)", StringComparison.Ordinal)..ordinary];
         gatewayBranch.ShouldContain("if (!maintenance || !verification!.FullTopology)");
         gatewayBranch.ShouldContain("return;");
-        foreach (string application in new[] { "eventstore", "eventstore-admin", "eventstore-admin-ui", "tenants", "parties", "sample", "tenants-ui", "frontcomposer-ui", "counter-web" })
+        foreach (string application in new[] { "eventstore", "eventstore-admin", "eventstore-admin-ui", "tenants", "parties", "sample", "tenants-api", "tenants-ui", "frontcomposer-ui", "counter-web" })
         {
             program[ordinary..].ShouldContain("(\"" + application + "\")");
         }
@@ -589,6 +589,32 @@ public sealed class FrontComposerUiAppHostTests {
         program.ShouldContain(".WithContainerRuntimeArgs(\"--label\", \"hexalith.frontcomposer.verification=\" + verification.Owner)");
         program[ordinary..].ShouldContain(".WithHttpHealthCheck(\"/health\", endpointName: \"http\")");
         program[ordinary..].ShouldContain("application.Name == \"sample\" ? \"/alive\" : \"/ready\"");
+    }
+
+    [Fact]
+    public void TenantsApiAndBffsUseOwnedInvocationSidecarsAndValidatedUserBearer()
+    {
+        string directory = Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost");
+        string program = File.ReadAllText(Path.Combine(directory, "Program.cs"));
+        foreach (string name in new[] { "tenants-api", "tenants-ui", "frontcomposer-ui" })
+        {
+            program.ShouldContain("AppId = \"" + name + "\"");
+            program.ShouldContain("accesscontrol." + name + ".yaml");
+        }
+        program.ShouldContain("tenantsApi.WithEventStoreAuthenticationValidation(security)");
+        program.ShouldContain(".WithEnvironment(\"EventStore__GatewayReadiness__BaseAddress\", eventStore.GetEndpoint(\"http\"))");
+        program.ShouldContain(".WithEnvironment(\"Tenants__BaseAddress\", tenantsApiHttps)");
+        string project = File.ReadAllText(Path.Combine(directory, "Hexalith.FrontComposer.AppHost.csproj"));
+        project.ShouldContain("$(TenantsPath)/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj");
+        string metadata = File.ReadAllText(Path.Combine(directory, "HexalithTenantsApi.cs"));
+        metadata.ShouldContain("public bool SuppressBuild => true");
+        metadata.ShouldContain("Hexalith.Tenants.Api.csproj");
+        foreach (string name in new[] { "tenants-ui", "frontcomposer-ui" })
+        {
+            string receiver = File.ReadAllText(Path.Combine(directory, "DaprComponents", "accesscontrol." + name + ".yaml"));
+            receiver.ShouldContain("defaultAction: deny");
+            receiver.ShouldNotContain("operations:");
+        }
     }
 
     [Theory]
@@ -619,6 +645,9 @@ public sealed class FrontComposerUiAppHostTests {
     [InlineData("accesscontrol.yaml")]
     [InlineData("accesscontrol.eventstore-admin.yaml")]
     [InlineData("accesscontrol.sample.yaml")]
+    [InlineData("accesscontrol.tenants-api.yaml")]
+    [InlineData("accesscontrol.tenants-ui.yaml")]
+    [InlineData("accesscontrol.frontcomposer-ui.yaml")]
     public void DisposableIsolationRefusesEverySharedDiscoveryPath(string file)
     {
         string directory = CreateReadinessConfiguration("full");
@@ -684,7 +713,8 @@ public sealed class FrontComposerUiAppHostTests {
             File.WriteAllText(path, JsonSerializer.Serialize(new { apiVersion = "dapr.io/v1alpha1", kind = "Component", metadata = new { name }, spec = new { type, version = "v1", metadata }, scopes }));
             if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         }
-        foreach (string name in new[] { "accesscontrol.yaml", "accesscontrol.eventstore-admin.yaml", "accesscontrol.sample.yaml" })
+        foreach (string name in new[] { "accesscontrol.yaml", "accesscontrol.eventstore-admin.yaml", "accesscontrol.sample.yaml",
+            "accesscontrol.tenants-api.yaml", "accesscontrol.tenants-ui.yaml", "accesscontrol.frontcomposer-ui.yaml" })
         {
             string source = Path.Combine(FindRepoRoot(), "src", "Hexalith.FrontComposer.AppHost", "DaprComponents", name);
             string path = Path.Combine(directory, name);
