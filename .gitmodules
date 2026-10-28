@@ -30,3 +30,7 @@
 	path = references/Hexalith.Parties
 	url = https://github.com/Hexalith/Hexalith.Parties.git
 	branch = main
+
+[submodule "Hexalith.Platform"]
+	path = references/Hexalith.Platform
+	url = https://github.com/Hexalith/Hexalith.Platform.git
