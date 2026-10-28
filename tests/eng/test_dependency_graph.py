@@ -2018,8 +2018,7 @@ class PolicyShapeTests(unittest.TestCase):
         closing_start = catalog.index(f"</{property_name}>".encode("ascii"), opening_end)
         return catalog[:opening_end] + value.encode("ascii") + catalog[closing_start:]
 
-    def _evaluate_frontcomposer_profile(self, catalog: bytes) -> dict:
-        profile_name = "frontcomposer-catalog-v1"
+    def _evaluate_frontcomposer_profile(self, catalog: bytes, profile_name: str = "frontcomposer-catalog-v1") -> dict:
         with tempfile.TemporaryDirectory(dir=self.tmp_path) as fixture_directory:
             fx = GraphFixture(pathlib.Path(fixture_directory))
 
@@ -2078,6 +2077,108 @@ class PolicyShapeTests(unittest.TestCase):
         self.assertEqual(profile["selected_catalog_required_property_names"], property_names)
         self.assertEqual(profile["selected_catalog_required_properties"], {})
         dg.assert_profiles_well_formed({"profiles": {"frontcomposer-catalog-v1": profile}})
+
+    @staticmethod
+    def _catalog_xml_bytes(root: ET.Element) -> bytes:
+        return b"\xef\xbb\xbf" + ET.tostring(root, encoding="utf-8").replace(b"\n", b"\r\n")
+
+    def _eventstore_qualification_catalog(self) -> bytes:
+        # Preserve the temporary upstream shape as a regression fixture after its removal.
+        profile = self._frontcomposer_profile()
+        root = ET.Element("Project")
+        properties = ET.SubElement(root, "PropertyGroup")
+        for name in profile["selected_catalog_required_property_names"]:
+            ET.SubElement(properties, name, {"Condition": f"'$({name})' == ''"}).text = "1.2.3"
+        condition = (
+            "'$(CatalogCandidateTenantsVersion)' != '' and '$(UseHexalithProjectReferences)' != 'true' and ("
+            "'$(MSBuildProjectName)' == 'Hexalith.EventStore.CatalogConstruction' or "
+            "'$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.Tests' or "
+            "'$(MSBuildProjectName)' == 'Hexalith.EventStore.QueryRouting.Tests' or "
+            "'$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.LiveSidecar.Tests' or "
+            "'$(MSBuildProjectName)' == 'routing-catalog.cs')"
+        )
+        ET.SubElement(properties, "HexalithTenantsVersion", {"Condition": condition}).text = "$(CatalogCandidateTenantsVersion)"
+        packages = ET.SubElement(root, "ItemGroup")
+        for name, version in profile["selected_catalog_required_packages"].items():
+            ET.SubElement(packages, "PackageVersion", {"Include": name, "Version": version})
+        ET.indent(root)
+        return self._catalog_xml_bytes(root)
+
+    def test_frontcomposer_profile_accepts_exact_inactive_eventstore_qualification(self) -> None:
+        catalog = self._eventstore_qualification_catalog()
+        self.assertEqual(self._evaluate_frontcomposer_profile(catalog)["selectors_validated"], 1)
+        root = ET.fromstring(catalog)
+        default, qualification = list(root.iter("HexalithTenantsVersion"))
+        next(group for group in root if qualification in list(group)).remove(qualification)
+        self.assertEqual(self._evaluate_frontcomposer_profile(self._catalog_xml_bytes(root))["selectors_validated"], 1)
+
+    def test_eventstore_qualification_remains_strict_for_other_profiles(self) -> None:
+        catalog = self._eventstore_qualification_catalog()
+        with self.assertRaisesRegex(dg.GraphError, "must define exactly one version property"):
+            self._evaluate_frontcomposer_profile(catalog, profile_name="strict-catalog-v1")
+        with self.assertRaisesRegex(dg.GraphError, "must define exactly one version property"):
+            dg.assert_selected_catalog_property_shape(ET.fromstring(catalog), "HexalithTenantsVersion", "strict helper")
+
+    def test_frontcomposer_profile_rejects_changed_qualification_scope_or_value(self) -> None:
+        catalog = self._eventstore_qualification_catalog()
+        mutations = [
+            (b"'$(UseHexalithProjectReferences)' != 'true' and ", b""),
+            (b"'$(CatalogCandidateTenantsVersion)' != ''", b"'$(OtherCandidate)' != ''"),
+            (b"'routing-catalog.cs')", b"'routing-catalog.cs' or '$(MSBuildProjectName)' == 'Hexalith.FrontComposer.Shell')"),
+            (b">$(CatalogCandidateTenantsVersion)</HexalithTenantsVersion>", b">5.10.2</HexalithTenantsVersion>"),
+            (b">$(CatalogCandidateTenantsVersion)</HexalithTenantsVersion>", b">$(OtherVersion)</HexalithTenantsVersion>"),
+            (b">$(CatalogCandidateTenantsVersion)</HexalithTenantsVersion>", b">$(CatalogCandidateTenantsVersion)<Unexpected /></HexalithTenantsVersion>"),
+        ]
+        for original, replacement in mutations:
+            with self.subTest(mutation=replacement):
+                self.assertEqual(catalog.count(original), 1)
+                self._assert_frontcomposer_profile_failure(
+                    catalog.replace(original, replacement, 1),
+                    "HexalithTenantsVersion must define exactly one version property",
+                )
+
+    def test_frontcomposer_profile_rejects_scoped_or_duplicate_qualification(self) -> None:
+        catalog = self._eventstore_qualification_catalog()
+        for placement in ("conditional", "target", "choose", "duplicate"):
+            with self.subTest(placement=placement):
+                root = ET.fromstring(catalog)
+                default, qualification = list(root.iter("HexalithTenantsVersion"))
+                parent = next(group for group in root if qualification in list(group))
+                if placement == "duplicate":
+                    parent.append(copy.deepcopy(qualification))
+                else:
+                    parent.remove(qualification)
+                    if placement == "conditional":
+                        group = ET.SubElement(root, "PropertyGroup", {"Condition": "'$(Other)' == 'true'"})
+                    elif placement == "target":
+                        group = ET.SubElement(ET.SubElement(root, "Target", {"Name": "Later"}), "PropertyGroup")
+                    else:
+                        group = ET.SubElement(ET.SubElement(ET.SubElement(root, "Choose"), "When", {"Condition": "'$(Other)' == 'true'"}), "PropertyGroup")
+                    group.append(qualification)
+                self._assert_frontcomposer_profile_failure(
+                    self._catalog_xml_bytes(root),
+                    "HexalithTenantsVersion must define exactly one version property",
+                )
+
+    def test_frontcomposer_profile_qualification_retains_literal_default_validation(self) -> None:
+        catalog = self._eventstore_qualification_catalog()
+        self._assert_frontcomposer_profile_failure(
+            self._replace_catalog_property_value(catalog, "HexalithTenantsVersion", "$(OtherVersion)"),
+            "HexalithTenantsVersion must contain a literal NuGet version",
+        )
+        for duplicate in (True, False):
+            with self.subTest(duplicate=duplicate):
+                root = ET.fromstring(catalog)
+                default, qualification = list(root.iter("HexalithTenantsVersion"))
+                parent = next(group for group in root if default in list(group))
+                if duplicate:
+                    parent.append(copy.deepcopy(default))
+                else:
+                    parent.remove(default)
+                self._assert_frontcomposer_profile_failure(
+                    self._catalog_xml_bytes(root),
+                    "HexalithTenantsVersion must define exactly one version property",
+                )
 
     def test_frontcomposer_profile_cross_module_versions_change_semantic_validation_passes(self) -> None:
         property_names = (

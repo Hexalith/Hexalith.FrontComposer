@@ -1136,9 +1136,43 @@ def assert_selected_catalog_property(root: ET.Element, prop_name: str, expected_
         raise GraphError(f"{context}: {prop_name} expected {expected_value!r}, found {observed_text!r}")
 
 
-def assert_selected_catalog_property_shape(root: ET.Element, prop_name: str, context: str) -> None:
-    """Assert a shared version property is global, unique, canonical, and a literal NuGet version."""
+def assert_selected_catalog_property_shape(
+    root: ET.Element,
+    prop_name: str,
+    context: str,
+    *,
+    allow_eventstore_qualification: bool = False,
+) -> None:
+    """Validate the unique literal default, excluding only a known inactive qualification override.
+
+    The FrontComposer profile may exclude the exact Story 5.12 package-only
+    Tenants override for five EventStore qualification projects. Other profiles,
+    properties, conditions and shapes retain the strict unique-property rule.
+    """
     matches = list(root.iter(prop_name))
+    parents = _parent_map(root)
+    if allow_eventstore_qualification and prop_name == "HexalithTenantsVersion":
+        qualification_condition = (
+            "'$(CatalogCandidateTenantsVersion)' != '' and '$(UseHexalithProjectReferences)' != 'true' and ("
+            "'$(MSBuildProjectName)' == 'Hexalith.EventStore.CatalogConstruction' or "
+            "'$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.Tests' or "
+            "'$(MSBuildProjectName)' == 'Hexalith.EventStore.QueryRouting.Tests' or "
+            "'$(MSBuildProjectName)' == 'Hexalith.EventStore.Server.LiveSidecar.Tests' or "
+            "'$(MSBuildProjectName)' == 'routing-catalog.cs')"
+        )
+        qualification_overrides = [
+            element for element in matches
+            if element.attrib == {"Condition": qualification_condition}
+            and element.text == "$(CatalogCandidateTenantsVersion)"
+            and not list(element)
+            and (group := parents.get(element)) is not None
+            and group.tag == "PropertyGroup"
+            and parents.get(group) is root
+            and group.get("Condition") is None
+            and root.get("Condition") is None
+        ]
+        if len(qualification_overrides) == 1:
+            matches.remove(qualification_overrides[0])
     if len(matches) != 1:
         observed_values = [match.text or "" for match in matches]
         observed = "<missing>" if not observed_values else repr(observed_values)
@@ -1148,7 +1182,6 @@ def assert_selected_catalog_property_shape(root: ET.Element, prop_name: str, con
         )
 
     element = matches[0]
-    parents = _parent_map(root)
     ancestors = _ancestors(element, parents)
     if any(node.tag in ("Choose", "When", "Otherwise") for node in ancestors):
         raise GraphError(f"{context}: {prop_name} must not be selected through an MSBuild Choose branch")
@@ -1436,7 +1469,12 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
                     )
 
                 for prop_name in required_property_names:
-                    assert_selected_catalog_property_shape(catalog_xml, prop_name, edge_context)
+                    assert_selected_catalog_property_shape(
+                        catalog_xml,
+                        prop_name,
+                        edge_context,
+                        allow_eventstore_qualification=profile_name == "frontcomposer-catalog-v1",
+                    )
 
                 for prop_name, expected_value in required_props.items():
                     assert_selected_catalog_property(catalog_xml, prop_name, expected_value, edge_context)
