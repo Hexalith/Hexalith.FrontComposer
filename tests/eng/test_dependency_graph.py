@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -539,6 +540,27 @@ class SemanticEvaluationTests(unittest.TestCase):
         fx.policy["semantic_profiles"][fx.identity(owner_name)] = profile_name
         fx.policy["profiles"][profile_name] = profile
         return owner, owner_commit
+
+    def test_canonical_source_digest_rejects_changed_or_missing_platform_helper(self) -> None:
+        for content in ("approved canonical source\n", "changed source\n", None):
+            with self.subTest(content=content), tempfile.TemporaryDirectory() as temp:
+                fx = GraphFixture(pathlib.Path(temp))
+                root = fx.add_repo("Root")
+                root.write_text("Directory.Packages.props", OWNER_SHIM)
+                profile = copy.deepcopy(BASELINE_PROFILE)
+                profile["owner_checks"]["canonical_source_files"] = {"DaprSelfHostedMtls.cs": hashlib.sha256(b"approved canonical source\n").hexdigest()}
+                owner, _ = self._build(fx, "Owner", self._catalog_at("1.0.0"), "canonical-source-profile", profile)
+                if content is not None:
+                    owner.write_text("DaprSelfHostedMtls.cs", content)
+                    owner.commit()
+                fx.link("Root", "references/Owner", "Owner", owner.head())
+                commit = root.commit()
+                envelope = dg.collect_graph(root.root, fx.identity("Root"), commit, fx.policy)
+                if content == "approved canonical source\n":
+                    self.assertEqual(dg.evaluate_semantics(root.root, fx.policy, envelope)["selectors_validated"], 1)
+                else:
+                    with self.assertRaisesRegex(dg.GraphError, "canonical source.*missing or differs"):
+                        dg.evaluate_semantics(root.root, fx.policy, envelope)
 
     def test_compatible_pointer_advance_passes_under_same_profile(self) -> None:
         fx = GraphFixture(self.tmp_path)
@@ -1903,6 +1925,11 @@ class PolicyShapeTests(unittest.TestCase):
             self._load({"selected_catalog_required_properties": {"SomeVersion": 1.0}})
         self.assertIn("must be a string", str(ctx.exception))
 
+    def test_canonical_source_rule_rejects_unbounded_or_malformed_enrollment(self) -> None:
+        for files in ({}, {"../escape.cs": "a" * 64}, {"DaprSelfHostedMtls.cs": "not-a-digest"}, True):
+            with self.subTest(files=files), self.assertRaises(dg.GraphError):
+                self._load({"owner_checks": {"canonical_source_files": files}})
+
     def test_unknown_owner_checks_key_fails_closed(self) -> None:
         with self.assertRaises(dg.GraphError) as ctx:
             self._load({
@@ -2017,6 +2044,19 @@ class PolicyShapeTests(unittest.TestCase):
         opening_end = catalog.index(b">", start) + 1
         closing_start = catalog.index(f"</{property_name}>".encode("ascii"), opening_end)
         return catalog[:opening_end] + value.encode("ascii") + catalog[closing_start:]
+
+    @classmethod
+    def _frontcomposer_catalog(cls) -> bytes:
+        # These synthetic tests isolate the unchanged owner policy from external
+        # catalog version drift before mutating each intended check. They do not
+        # assert that the actually selected catalog passes owner governance.
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        for package_id, expected in cls._frontcomposer_profile()["selected_catalog_required_packages"].items():
+            pattern = rb'(<PackageVersion Include="' + re.escape(package_id.encode()) + rb'" Version=")[^"]+(" />)'
+            catalog, count = re.subn(pattern, lambda match: match[1] + expected.encode() + match[2], catalog)
+            if count != 1:
+                raise AssertionError(f"Fixture requires one unconditional package row for {package_id}")
+        return catalog
 
     def _evaluate_frontcomposer_profile(self, catalog: bytes, profile_name: str = "frontcomposer-catalog-v1") -> dict:
         with tempfile.TemporaryDirectory(dir=self.tmp_path) as fixture_directory:
@@ -2190,7 +2230,7 @@ class PolicyShapeTests(unittest.TestCase):
             "HexalithTenantsVersion",
         )
         catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
-        catalog = catalog_path.read_bytes()
+        catalog = self._frontcomposer_catalog()
         for index, name in enumerate(property_names, start=1):
             with self.subTest(property_name=name):
                 mutated_catalog = self._replace_catalog_property_value(
@@ -2202,7 +2242,7 @@ class PolicyShapeTests(unittest.TestCase):
                 self.assertEqual(semantics["selectors_validated"], 1)
 
     def test_frontcomposer_profile_missing_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        catalog = self._frontcomposer_catalog()
         property_names = self._frontcomposer_profile()["selected_catalog_required_property_names"]
         self.assertEqual(len(property_names), 6)
         for property_name in property_names:
@@ -2214,7 +2254,7 @@ class PolicyShapeTests(unittest.TestCase):
                 )
 
     def test_frontcomposer_profile_duplicate_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        catalog = self._frontcomposer_catalog()
         property_name = "HexalithMemoriesVersion"
         start = catalog.index(f"<{property_name}".encode("ascii"))
         closing = f"</{property_name}>".encode("ascii")
@@ -2232,7 +2272,7 @@ class PolicyShapeTests(unittest.TestCase):
         self.assertIn("found 2 values", message)
 
     def test_frontcomposer_profile_empty_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        catalog = self._frontcomposer_catalog()
         property_name = "HexalithMemoriesVersion"
         mutated_catalog = self._replace_catalog_property_value(catalog, property_name, "")
         self._assert_frontcomposer_profile_failure(
@@ -2241,7 +2281,7 @@ class PolicyShapeTests(unittest.TestCase):
         )
 
     def test_frontcomposer_profile_malformed_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        catalog = self._frontcomposer_catalog()
         property_name = "HexalithMemoriesVersion"
         mutated_catalog = self._replace_catalog_property_value(catalog, property_name, "$(OtherVersion)")
         self._assert_frontcomposer_profile_failure(
@@ -2250,7 +2290,7 @@ class PolicyShapeTests(unittest.TestCase):
         )
 
     def test_frontcomposer_profile_nested_module_property_value_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        catalog = self._frontcomposer_catalog()
         property_name = "HexalithMemoriesVersion"
         start = catalog.index(f"<{property_name}".encode("ascii"))
         opening_end = catalog.index(b">", start) + 1
@@ -2263,7 +2303,7 @@ class PolicyShapeTests(unittest.TestCase):
         )
 
     def test_frontcomposer_profile_noncanonical_condition_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        catalog = self._frontcomposer_catalog()
         property_name = "HexalithMemoriesVersion"
         canonical = f"Condition=\"'$({property_name})' == ''\"".encode("ascii")
         noncanonical = b"Condition=\"'$(OtherVersion)' == ''\""
@@ -2272,7 +2312,7 @@ class PolicyShapeTests(unittest.TestCase):
         self._assert_frontcomposer_profile_failure(mutated_catalog, "canonical self-default condition")
 
     def test_frontcomposer_profile_unconditional_module_property_passes(self) -> None:
-        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        catalog = self._frontcomposer_catalog()
         property_name = "HexalithMemoriesVersion"
         canonical = f" Condition=\"'$({property_name})' == ''\"".encode("ascii")
         self.assertEqual(catalog.count(canonical), 1)
@@ -2281,7 +2321,7 @@ class PolicyShapeTests(unittest.TestCase):
         self.assertEqual(semantics["selectors_validated"], 1)
 
     def test_frontcomposer_profile_conditional_ancestor_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        catalog = self._frontcomposer_catalog()
         property_name = "HexalithMemoriesVersion"
         start = catalog.index(f"<{property_name}".encode("ascii"))
         closing = f"</{property_name}>".encode("ascii")
@@ -2297,7 +2337,7 @@ class PolicyShapeTests(unittest.TestCase):
         self._assert_frontcomposer_profile_failure(mutated_catalog, "conditional group")
 
     def test_frontcomposer_profile_choose_selected_property_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        catalog = self._frontcomposer_catalog()
         property_name = "HexalithMemoriesVersion"
         start = catalog.index(f"<{property_name}".encode("ascii"))
         closing = f"</{property_name}>".encode("ascii")
@@ -2317,7 +2357,7 @@ class PolicyShapeTests(unittest.TestCase):
         self._assert_frontcomposer_profile_failure(mutated_catalog, "Choose branch")
 
     def test_frontcomposer_profile_target_scoped_property_fails_as_nonglobal(self) -> None:
-        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        catalog = self._frontcomposer_catalog()
         property_name = "HexalithMemoriesVersion"
         start = catalog.index(f"<{property_name}".encode("ascii"))
         closing = f"</{property_name}>".encode("ascii")
@@ -2342,7 +2382,7 @@ class PolicyShapeTests(unittest.TestCase):
         package_id = "ModelContextProtocol.AspNetCore"
         expected_version = profile["selected_catalog_required_packages"][package_id]
         catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
-        catalog = catalog_path.read_bytes()
+        catalog = self._frontcomposer_catalog()
         expected_row = f'<PackageVersion Include="{package_id}" Version="{expected_version}" />'.encode("utf-8")
         changed_row = f'<PackageVersion Include="{package_id}" Version="999.0.0" />'.encode("utf-8")
         self.assertEqual(catalog.count(expected_row), 1)
@@ -2415,7 +2455,7 @@ class PolicyShapeTests(unittest.TestCase):
 
     def test_eventstore_profile_system_commandline_version_may_move(self) -> None:
         catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
-        catalog = catalog_path.read_bytes()
+        catalog = self._frontcomposer_catalog()
         current_version = self._catalog_package_version(catalog, "System.CommandLine")
         current_row = f'<PackageVersion Include="System.CommandLine" Version="{current_version}" />'.encode("ascii")
         moved_row = b'<PackageVersion Include="System.CommandLine" Version="999.0.0" />'
@@ -2425,7 +2465,7 @@ class PolicyShapeTests(unittest.TestCase):
 
     def test_eventstore_profile_missing_system_commandline_fails_with_coordinates(self) -> None:
         catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
-        catalog = catalog_path.read_bytes()
+        catalog = self._frontcomposer_catalog()
         current_version = self._catalog_package_version(catalog, "System.CommandLine")
         current_row = f'<PackageVersion Include="System.CommandLine" Version="{current_version}" />'.encode("ascii")
         self.assertEqual(catalog.count(current_row), 1)
@@ -2448,6 +2488,448 @@ class PolicyShapeTests(unittest.TestCase):
         ]
         self.assertEqual(len(versions), 1, f"{package_id} PackageVersion row missing or duplicated in selected catalog fixture")
         return versions[0]
+
+
+class ConsumerProjectionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.fixture = GraphFixture(pathlib.Path(self.temp.name))
+        fx = self.fixture
+        identities = {"Root": "github.com/hexalith/hexalith.frontcomposer",
+                      "Builds": "github.com/hexalith/hexalith.builds",
+                      "Source": "github.com/hexalith/hexalith.platform"}
+        fx.identity = lambda name: identities[name]
+        fx.url = lambda name: "https://" + identities[name] + ".git"
+        fx.policy["builds_identity"] = identities["Builds"]
+        self.root = fx.add_repo("Root")
+        fx.policy["trusted_identities"][0]["local_path"] = "."
+        self.root.write_text(".gitignore", "references/\n")
+        for name in ("Builds", "Source"):
+            repo = TempGitRepo(self.root.root / "references" / name)
+            fx.repos[name] = repo
+            fx.policy["trusted_identities"].append({"identity": fx.identity(name), "local_path": "references/" + name})
+        self.builds = fx.repos["Builds"]
+        self.builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
+        self.builds.write_text("src/Tooling.csproj", "<Project />\n")
+        self.nested_builds = self.builds.commit()
+        self.builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG.replace(b'1.0.0', b'2.0.0'))
+        self.root_builds = self.builds.commit()
+        self.source = fx.repos["Source"]
+        self.source.write_text("Directory.Packages.props", OWNER_SHIM)
+        for name in ("One.cs", "Two.cs"):
+            self.source.write_text(name, "// unchanged canonical " + name + "\n")
+        fx.link("Source", "references/Builds", "Builds", self.nested_builds)
+        self.untrusted = []
+        for number in range(7):
+            identity = f"github.com/untrusted/inventory{number}"
+            self.untrusted.append(identity)
+            self.source.add_submodule("Inventory" + str(number), "references/Inventory" + str(number),
+                                      "https://" + identity + ".git", f"{number + 1:040x}")
+        self.owner = self.source.commit()
+        self.root.write_text("Directory.Packages.props", OWNER_SHIM)
+        self.root.write_text("Root.slnx", "<Solution />\n")
+        self.root.write_text("global.json", '{"sdk":{"version":"10.0.402"}}\n')
+        self.root.write_text("nuget.config", "<configuration />\n")
+        self.project = "src/AppHost.csproj"
+        self.project_xml = ('<Project><ItemGroup>'
+            '<Compile Include="$(CanonicalSourceRoot)/One.cs" Link="Canonical/One.cs" />'
+            '<Compile Include="$(CanonicalSourceRoot)/Two.cs" Link="Canonical/Two.cs" />'
+            '<ProjectReference Include="$(HexalithBuildsRoot)/src/Tooling.csproj" IsAspireProjectResource="false" />'
+            '</ItemGroup></Project>\n')
+        self.root.write_text(self.project, self.project_xml)
+        fx.link("Root", "references/Source", "Source", self.owner)
+        fx.link("Root", "references/Builds", "Builds", self.root_builds)
+        self.commit = self.root.commit()
+        for name in ("Root", "Builds", "Source"):
+            fx.policy["semantic_profiles"][fx.identity(name)] = "fixture"
+            fx.register_module(name, evidence_only=name == "Source")
+        fx.policy["profiles"]["fixture"] = {"owner_checks": {}, "selected_catalog_required_properties": {},
+                                               "selected_catalog_required_packages": {}}
+        raw = dg.read_gitmodules(self.source.root, self.owner, 1048576)
+        links = dg.list_gitlinks(self.source.root, self.owner, 67108864)
+        by_path = {entry["path"]: dg.normalize_identity(entry["url"], "fixture") for entry in raw.values()}
+        inventory = [{"owner_repository": fx.identity("Source"), "owner_commit": self.owner,
+                      "path": path, "repository": by_path[path], "commit": sha, "depth": 2}
+                     for path, sha in sorted(links.items())]
+        direct = dg._owner_edges(self.root.root, self.commit, fx.identity("Root"), 1, fx.policy, self.root.root)
+        row = {"owner_commit": self.owner,
+               "gitmodules_sha256": hashlib.sha256(dg.read_blob(self.source.root, self.owner, ".gitmodules", 1048576, "fixture")).hexdigest(),
+               "inventory_sha256": dg.canonical_digest(inventory),
+               "inventory_only_identities": self.untrusted,
+               "source_files": {name: hashlib.sha256(dg.read_blob(self.source.root, self.owner, name, 1048576, "fixture")).hexdigest()
+                                for name in ("One.cs", "Two.cs")},
+               "consumer_repository": fx.identity("Root"), "consumer_project": self.project,
+               "source_root_property": "CanonicalSourceRoot",
+               "compile_links": {name: "Canonical/" + name for name in ("One.cs", "Two.cs")},
+               "builds_commit": self.root_builds, "builds_project": "src/Tooling.csproj",
+               "root_selectors_sha256": dg.canonical_digest([{key: edge[key] for key in ("path", "repository", "commit")} for edge in direct]),
+               "consumer_configuration_sha256": dg.canonical_digest(dg.consumer_configuration(self.root.root, self.commit, fx.policy))}
+        fx.policy["consumer_source_projections"] = {fx.identity("Source"): row}
+        self.row = row
+        dg.assert_policy_well_formed(fx.policy)
+
+    def graph(self, commit: str | None = None) -> dict:
+        return dg.collect_graph(self.root.root, self.fixture.identity("Root"), commit or self.commit, self.fixture.policy)
+
+    @staticmethod
+    def resign(graph: dict) -> None:
+        graph["edge_count"] = len(graph["edges"])
+        graph["edges"].sort(key=lambda edge: tuple(edge[key] for key in ("depth", "owner_repository", "owner_commit", "path", "repository", "commit")))
+        graph["graph_digest"] = dg.canonical_digest({key: graph[key] for key in ("schema", "root", "edge_count", "edges")})
+
+    def test_raw_inventory_and_historical_catalog_stay_visible_without_global_trust(self) -> None:
+        graph = self.graph()
+        self.assertEqual(graph["edge_count"], 10)
+        self.assertEqual(dg.validate_graph_envelope(graph), graph)
+        self.assertEqual(sum(edge["repository"] in self.untrusted for edge in graph["edges"]), 7)
+        nested = next(edge for edge in graph["edges"] if edge["depth"] == 2 and edge["repository"] == self.fixture.identity("Builds"))
+        self.assertEqual(nested["commit"], self.nested_builds)
+        self.assertEqual(nested["catalog_sha256"], hashlib.sha256(BASELINE_CATALOG).hexdigest())
+        report = dg.evaluate_semantics(self.root.root, self.fixture.policy, graph)["consumer_source_projections"][self.fixture.identity("Source")]
+        self.assertEqual(report["root_builds_commit"], self.root_builds)
+        self.assertNotEqual(report["root_builds_commit"], nested["commit"])
+        for identity in self.untrusted:
+            with self.assertRaisesRegex(dg.GraphError, "unknown/untrusted"):
+                dg.resolve_local_path(self.fixture.policy, identity, self.root.root)
+
+    def test_projection_policy_has_closed_shapes_and_cannot_promote_global_trust(self) -> None:
+        for field, value in (("inventory_sha256", "bad"), ("inventory_only_identities", [True]),
+                             ("inventory_only_identities", [self.fixture.identity("Builds")]),
+                             ("source_files", {"../outside.cs": "0" * 64, "Two.cs": "0" * 64}),
+                             ("unexpected", True)):
+            policy = copy.deepcopy(self.fixture.policy)
+            policy["consumer_source_projections"][self.fixture.identity("Source")][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(dg.GraphError):
+                dg.assert_policy_well_formed(policy)
+
+    def test_seal_changes_and_unknown_root_identity_refuse(self) -> None:
+        for field in ("gitmodules_sha256", "inventory_sha256"):
+            with self.subTest(field=field), mock.patch.dict(self.row, {field: "0" * 64}):
+                with self.assertRaises(dg.GraphError): self.graph()
+        with mock.patch.dict(self.row["source_files"], {"One.cs": "0" * 64}):
+            with self.assertRaisesRegex(dg.GraphError, "canonical source"):
+                self.graph()
+        self.root.add_submodule("Untrusted", "references/Outside", "https://" + self.untrusted[0] + ".git", "1" * 40)
+        changed = self.root.commit()
+        with self.assertRaisesRegex(dg.GraphError, "unknown/untrusted"):
+            self.graph(changed)
+
+    def test_projection_owner_cannot_become_a_buildable_umbrella(self) -> None:
+        registry = self.fixture.policy["module_build_registry"][self.fixture.identity("Source")]
+        with mock.patch.dict(registry, {"disposition": "build"}), self.assertRaisesRegex(dg.GraphError, "whole-owner execution"):
+            dg.assert_policy_well_formed(self.fixture.policy)
+        with mock.patch.dict(registry, {"disposition": "build"}), self.assertRaisesRegex(dg.GraphError, "whole-owner execution"):
+            self.graph()
+
+    def test_materialization_contains_exactly_the_two_canonical_compile_files(self) -> None:
+        destination = pathlib.Path(self.temp.name) / "consumer"
+        destination.mkdir()
+        files = dg.materialize_consumer_sources(self.root.root, self.fixture.policy, self.graph(), destination,
+                                               self.fixture.identity("Root"), self.commit)
+        self.assertEqual(files, ["references/Source/One.cs", "references/Source/Two.cs"])
+        self.assertEqual(sorted(str(path.relative_to(destination)) for path in destination.rglob("*") if path.is_file()), files)
+        self.assertFalse((destination / "references/Source/references").exists())
+
+    def test_changed_owner_pin_refuses_before_source_consumption(self) -> None:
+        self.source.write_text("README.md", "different owner tree\n")
+        changed_owner = self.source.commit()
+        self.root.link_gitlink("references/Source", changed_owner)
+        changed = self.root.commit()
+        with self.assertRaisesRegex(dg.GraphError, "owner pin changed"):
+            self.graph(changed)
+
+    def test_added_or_indirect_compile_and_project_reference_consumption_refuse(self) -> None:
+        for item in ('<Compile Include="$(CanonicalSourceRoot)/Other.cs" />',
+                     '<ProjectReference Include="$(CanonicalSourceRoot)/Other.csproj" />'):
+            with self.subTest(item=item):
+                self.root.write_text(self.project, self.project_xml.replace('</ItemGroup>', item + '</ItemGroup>'))
+                changed = self.root.commit()
+                with self.assertRaisesRegex(dg.GraphError, "Compile/ProjectReference configuration changed"):
+                    dg.evaluate_consumer_projections(self.root.root, self.fixture.policy, self.graph(changed))
+        self.root.write_text(self.project, self.project_xml)
+        restored = self.root.commit()
+        dg.evaluate_consumer_projections(self.root.root, self.fixture.policy, self.graph(restored))
+        self.root.write_text("another.csproj", '<Project><ItemGroup><Compile Include="$(Alias)/**/*.cs" /></ItemGroup></Project>')
+        changed = self.root.commit()
+        with self.assertRaisesRegex(dg.GraphError, "Compile/ProjectReference configuration changed"):
+            dg.evaluate_consumer_projections(self.root.root, self.fixture.policy, self.graph(changed))
+
+    def test_automatic_user_imports_and_response_inputs_refuse_before_execution(self) -> None:
+        # Microsoft.Common.CurrentVersion.targets imports $(MSBuildProjectFullPath).user;
+        # MSBuild also consumes automatic directory/tool response files. None of these
+        # requires a change to the already sealed consumer project.
+        inputs = {
+            self.project + ".user": '<Project><ItemGroup><Compile Include="$(CanonicalSourceRoot)/Other.cs" /></ItemGroup></Project>\n',
+            "Directory.Build.rsp": '-p:CustomAfterMicrosoftCommonTargets=references/Source/Other.targets\n',
+            "MSBuild.rsp": '-p:CustomAfterMicrosoftCommonTargets=references/Source/Other.targets\n',
+            "src/Directory.Build.rsp": '-p:CustomAfterMicrosoftCommonTargets=references/Source/Other.targets\n',
+        }
+        original_project = dg.read_blob(self.root.root, self.commit, self.project, 1048576, "fixture")
+        for path, content in inputs.items():
+            with self.subTest(path=path):
+                self.root.write_text(path, content)
+                changed = self.root.commit()
+                self.assertEqual(dg.read_blob(self.root.root, changed, self.project, 1048576, "fixture"), original_project)
+                self.assertIn(path, dg.consumer_configuration(self.root.root, changed, self.fixture.policy))
+                with mock.patch.object(dg.subprocess, "run", wraps=dg.subprocess.run) as invoked:
+                    with self.assertRaisesRegex(dg.GraphError, "Compile/ProjectReference configuration changed"):
+                        self.graph(changed)
+                    self.assertTrue(all(call.args[0][0] == "git" for call in invoked.call_args_list))
+                _run(["rm", "--", path], self.root.root)
+                restored = self.root.commit()
+                self.graph(restored)
+
+    def test_committed_sdk_and_restore_configuration_changes_refuse(self) -> None:
+        cases = {"global.json": '{"sdk":{"version":"10.0.999"}}\n',
+                 "nuget.config": '<configuration><packageSources><clear /></packageSources></configuration>\n',
+                 "NuGet.Config": '<configuration />\n', "src/NuGet.config": '<configuration />\n'}
+        for path, content in cases.items():
+            with self.subTest(path=path):
+                original = dg.read_blob(self.root.root, self.commit, path, 1048576, "fixture")
+                self.root.write_text(path, content)
+                changed = self.root.commit()
+                with self.assertRaisesRegex(dg.GraphError, "configuration changed"):
+                    self.graph(changed)
+                if original is None: _run(["rm", "--", path], self.root.root)
+                else: self.root.write_bytes(path, original)
+                restored = self.root.commit()
+                self.graph(restored)
+        for path in ("global.json", "nuget.config"):
+            with self.subTest(removed=path):
+                original = dg.read_blob(self.root.root, self.commit, path, 1048576, "fixture")
+                _run(["rm", "--", path], self.root.root)
+                removed = self.root.commit()
+                with self.assertRaisesRegex(dg.GraphError, "configuration changed"):
+                    self.graph(removed)
+                self.root.write_bytes(path, original)
+                self.graph(self.root.commit())
+
+    def test_affected_build_commands_require_both_materialized_canonical_sources(self) -> None:
+        # Execute the actual orchestration/materialization path; only the final
+        # statically authorized command is simulated, after inspecting its files.
+        self.fixture.register_module("Builds", evidence_only=True)
+        commit = self.write_policy()
+        graph = self.graph(commit)
+        semantics = dg.evaluate_semantics(self.root.root, self.fixture.policy, graph)
+        evidence = dg.diff_graphs(graph, graph, self.fixture.policy, event="push", event_base=commit,
+                                  candidate=commit, merge_base=None, release_eligible=False, full_affected=True)
+        _, _, coordinate = dg.load_policy_at_commit(self.root.root, commit)
+        evidence.update({"dependency_policy": coordinate, "base_semantics": semantics, "candidate_semantics": semantics,
+                         "diagnostic": "owned synthetic full-affected materialization regression"})
+        evidence["evidence_digest"] = dg.canonical_digest({key: value for key, value in evidence.items() if key != "evidence_digest"})
+        expected = {path: dg.read_blob(self.source.root, self.owner, path, 1048576, "fixture") for path in self.row["source_files"]}
+        actual_run = dg.subprocess.run
+        commands = []
+        def execute(argv, **kwargs):
+            if argv[0] == "git": return actual_run(argv, **kwargs)
+            self.assertEqual(argv[0], "dotnet")
+            source = pathlib.Path(kwargs["cwd"]) / "references/Source"
+            self.assertEqual(sorted(path.name for path in source.iterdir()), sorted(expected))
+            for path, content in expected.items(): self.assertEqual((source / path).read_bytes(), content)
+            commands.append(argv)
+            return subprocess.CompletedProcess(argv, 0, stdout="fixture verified canonical sources", stderr="")
+        with mock.patch.object(dg.subprocess, "run", side_effect=execute):
+            result = dg.run_affected_builds(self.root.root, evidence, self.root.root / "positive-output")
+        self.assertEqual(len(commands), 2)
+        self.assertEqual([argv[1] for argv in commands], ["restore", "build"])
+        self.assertTrue(any(module["repository"] == self.fixture.identity("Root") and module["disposition"] == "build" for module in result["modules"]))
+
+    def test_worktree_changes_never_replace_committed_consumer_configuration(self) -> None:
+        graph = self.graph()
+        self.root.write_text(self.project, self.project_xml.replace('One.cs', 'Unapproved.cs'))
+        self.source.write_text("One.cs", "uncommitted foreign content\n")
+        dg.evaluate_consumer_projections(self.root.root, self.fixture.policy, graph)
+
+    def test_rehashed_forged_depth2_inventory_and_catalog_cannot_authenticate(self) -> None:
+        for kind in ("target", "omitted", "extra", "catalog"):
+            graph = copy.deepcopy(self.graph())
+            edge = next(edge for edge in graph["edges"] if edge["depth"] == 2 and
+                        (edge["repository"] == self.fixture.identity("Builds") if kind == "catalog" else edge["repository"] in self.untrusted))
+            if kind == "target": edge["commit"] = "f" * 40
+            elif kind == "omitted": graph["edges"].remove(edge)
+            elif kind == "extra": graph["edges"].append({**edge, "path": "references/Extra"})
+            else: edge["catalog_sha256"] = "0" * 64
+            self.resign(graph)
+            dg.validate_graph_envelope(graph)
+            with self.subTest(kind=kind), self.assertRaises(dg.GraphError):
+                dg.evaluate_consumer_projections(self.root.root, self.fixture.policy, graph)
+
+    def test_rehashed_root_inventory_and_catalog_forgery_refuse_before_materialization(self) -> None:
+        base = self.write_policy()
+        graph = self.graph(base)
+        semantics = dg.evaluate_semantics(self.root.root, self.fixture.policy, graph)
+        _, _, coordinate = dg.load_policy_at_commit(self.root.root, base)
+        for kind in ("omitted-owner", "root-catalog", "actual-root-target", "actual-root-mapping"):
+            with self.subTest(kind=kind):
+                forged = copy.deepcopy(graph)
+                candidate = base
+                if kind == "omitted-owner":
+                    forged["edges"] = [edge for edge in forged["edges"] if edge["repository"] != self.fixture.identity("Source")
+                                       and edge["owner_repository"] != self.fixture.identity("Source")]
+                elif kind == "root-catalog":
+                    next(edge for edge in forged["edges"] if edge["depth"] == 1 and
+                         edge["repository"] == self.fixture.identity("Builds"))["catalog_sha256"] = "0" * 64
+                else:
+                    if kind == "actual-root-target":
+                        self.root.link_gitlink("references/Builds", self.nested_builds)
+                    else:
+                        self.root.link_gitlink("references/Builds", self.root_builds)
+                        modules = dg.read_blob(self.root.root, base, ".gitmodules", 1048576, "fixture").decode()
+                        self.root.write_text(".gitmodules", modules.replace(self.fixture.url("Builds"), self.fixture.url("Root")))
+                    candidate = self.root.commit()
+                    forged["root"]["commit"] = candidate
+                    for edge in forged["edges"]:
+                        if edge["depth"] == 1: edge["owner_commit"] = candidate
+                self.resign(forged)
+                dg.validate_graph_envelope(forged)
+                evidence = dg.diff_graphs(graph, forged, self.fixture.policy, event="push", event_base=base,
+                                          candidate=candidate, merge_base=None, release_eligible=True)
+                claimed = copy.deepcopy(semantics)
+                if kind == "omitted-owner":
+                    claimed["consumer_source_projections"] = {}
+                else:
+                    projection = claimed["consumer_source_projections"][self.fixture.identity("Source")]
+                    projection["consumer_commit"] = candidate
+                    projection["projection_digest"] = dg.canonical_digest({key: value for key, value in projection.items() if key != "projection_digest"})
+                evidence.update({"dependency_policy": coordinate, "base_semantics": semantics, "candidate_semantics": claimed})
+                evidence["evidence_digest"] = dg.canonical_digest({key: value for key, value in evidence.items() if key != "evidence_digest"})
+                non_git_calls = []
+                actual_run = dg.subprocess.run
+                def inspect_or_record(argv, **kwargs):
+                    if argv[0] == "git": return actual_run(argv, **kwargs)
+                    non_git_calls.append(argv)
+                    return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+                with mock.patch.object(dg.subprocess, "run", side_effect=inspect_or_record), \
+                        mock.patch.object(dg, "materialize_repository_tree") as materialize, \
+                        mock.patch.object(dg, "materialize_contract_tree") as contract, \
+                        mock.patch.object(dg, "materialize_consumer_sources") as sources, \
+                        self.assertRaisesRegex(dg.GraphError, "committed root edges|root Builds catalog"):
+                    dg.run_affected_builds(self.root.root, evidence, self.root.root / "output")
+                materialize.assert_not_called()
+                contract.assert_not_called()
+                sources.assert_not_called()
+                self.assertEqual(non_git_calls, [])
+
+    def test_committed_older_root_without_projection_owner_receives_no_projection_authority(self) -> None:
+        self.root.write_text(".gitmodules", '[submodule "Builds"]\n\tpath = references/Builds\n\turl = ' + self.fixture.url("Builds") + '\n')
+        self.root.write_text(self.project, '<Project />\n')
+        _run(["update-index", "--force-remove", "references/Source"], self.root.root)
+        earlier = self.root.commit()
+        graph = self.graph(earlier)
+        self.assertEqual(dg.evaluate_consumer_projections(self.root.root, self.fixture.policy, graph), {})
+        self.assertFalse(any(edge["repository"] == self.fixture.identity("Source") for edge in graph["edges"]))
+
+    def test_missing_trusted_historical_catalog_is_not_a_projection_skip(self) -> None:
+        original = dg.read_blob
+        def read(local, commit, path, *args):
+            if commit == self.nested_builds and path == "Props/Directory.Packages.props": return None
+            return original(local, commit, path, *args)
+        with mock.patch.object(dg, "read_blob", side_effect=read), self.assertRaisesRegex(dg.GraphError, "missing Props/Directory.Packages.props"):
+            self.graph()
+
+    def write_policy(self) -> str:
+        self.root.write_text(dg.POLICY_PATH, json.dumps(self.fixture.policy, indent=2) + "\n")
+        return self.root.commit()
+
+    def test_candidate_cannot_authorize_its_own_projection_or_expectations(self) -> None:
+        row = self.fixture.policy.pop("consumer_source_projections")
+        base = self.write_policy()
+        self.fixture.policy["consumer_source_projections"] = row
+        active = self.write_policy()
+        with mock.patch("sys.stdout"):
+            self.assertEqual(dg.main(["--root", str(self.root.root), "diff", "--event", "push", "--event-base", base, "--candidate", active]), 1)
+        self.root.write_text("README.md", "after delayed activation\n")
+        candidate = self.root.commit()
+        with mock.patch("sys.stdout"):
+            self.assertEqual(dg.main(["--root", str(self.root.root), "diff", "--event", "push", "--event-base", active, "--candidate", candidate]), 0)
+
+    def test_forged_affected_evidence_refuses_before_materialization_or_execution(self) -> None:
+        commit = self.write_policy()
+        graph = self.graph(commit)
+        semantics = dg.evaluate_semantics(self.root.root, self.fixture.policy, graph)
+        forged = copy.deepcopy(graph)
+        next(edge for edge in forged["edges"] if edge["repository"] in self.untrusted)["commit"] = "f" * 40
+        self.resign(forged)
+        evidence = dg.diff_graphs(graph, forged, self.fixture.policy, event="push", event_base=commit,
+                                  candidate=commit, merge_base=None, release_eligible=True)
+        _, _, coordinate = dg.load_policy_at_commit(self.root.root, commit)
+        evidence.update({"dependency_policy": coordinate, "base_semantics": semantics, "candidate_semantics": semantics})
+        evidence["evidence_digest"] = dg.canonical_digest({key: value for key, value in evidence.items() if key != "evidence_digest"})
+        with mock.patch.object(dg, "materialize_repository_tree") as materialize, \
+                mock.patch.object(dg, "materialize_contract_tree") as contract, self.assertRaisesRegex(dg.GraphError, "raw inventory"):
+            dg.run_affected_builds(self.root.root, evidence, self.root.root / "output")
+        materialize.assert_not_called()
+        contract.assert_not_called()
+
+    def test_live_source_handoff_and_release_consumer_recheck_the_projection(self) -> None:
+        import dependency_handoff as handoff
+        import release_evidence as release
+        base = self.write_policy()
+        graph = self.graph(base)
+        _, _, coordinate = dg.load_policy_at_commit(self.root.root, base)
+        evidence = {"revisions": {"event": "push", "release_eligible": True, "event_base": base, "candidate": base},
+                    "dependency_policy": coordinate, "candidate_graph": graph}
+        proof = handoff.create_source_proof(run_id=7, run_attempt=1, evidence=evidence)
+        handoff.validate_source_proof(proof, root=self.root.root)
+        self.root.write_text(self.project, self.project_xml.replace('</ItemGroup>', '<Compile Include="$(CanonicalSourceRoot)/Other.cs" /></ItemGroup>'))
+        changed = self.root.commit()
+        raw = dg._collect_raw_graph(self.root.root, self.fixture.identity("Root"), changed, self.fixture.policy)
+        evidence["revisions"]["candidate"] = changed
+        evidence["candidate_graph"] = raw
+        proof = handoff.create_source_proof(run_id=8, run_attempt=1, evidence=evidence)
+        with self.assertRaisesRegex(dg.GraphError, "Compile/ProjectReference configuration changed"):
+            handoff.validate_source_proof(proof, root=self.root.root)
+        manifest = {"dependency_graph": raw, "dependency_policy": coordinate, "workflow_provenance": {}, "commit_sha": changed}
+        with mock.patch.object(release, "_load_dependency_graph_engine", return_value=dg):
+            diagnostics = release._live_manifest_v2_diagnostics(manifest, self.root.root)
+        self.assertTrue(any("Compile/ProjectReference configuration changed" in value for value in diagnostics), diagnostics)
+
+    def test_zero_base_projection_diagnostics_cannot_acquire_or_execute_sources(self) -> None:
+        commit = self.write_policy()
+        destination = pathlib.Path(self.temp.name) / "unavailable-base"
+        with mock.patch.object(dg, "_run_git_network") as network, self.assertRaisesRegex(dg.GraphError, "active base"):
+            dg.acquire_object_stores(self.root.root, destination, "0" * 40, commit)
+        network.assert_not_called()
+        self.assertFalse(destination.exists())
+
+    def test_acquisition_uses_only_trusted_metadata_and_never_the_seven_inventory_sources(self) -> None:
+        commit = self.write_policy()
+        original = dg._ensure_commit_available
+        calls = []
+        def ensure(local, sha):
+            calls.append(sha)
+            return original(local, sha)
+        by_identity = {self.fixture.identity(name): repo.root for name, repo in self.fixture.repos.items()}
+        def clone(args, **kwargs):
+            identity = dg.normalize_identity(args[-2], "fixture remote")
+            self.assertNotIn(identity, self.untrusted)
+            result = subprocess.run(["git", "clone", "--quiet", "--no-checkout", str(by_identity[identity]), args[-1]], capture_output=True)
+            return result, 1
+        destination = pathlib.Path(self.temp.name) / "acquired"
+        with mock.patch.object(dg, "_run_git_network", side_effect=clone), mock.patch.object(dg, "_ensure_commit_available", side_effect=ensure):
+            result = dg.acquire_object_stores(self.root.root, destination, commit, commit)
+        self.assertEqual(result["direct_edges"], 16)
+        self.assertTrue(all(f"{number + 1:040x}" not in calls for number in range(7)))
+        self.assertIn(self.nested_builds, calls)
+        self.assertTrue(all(not (destination / "references" / ("Inventory" + str(number))).exists() for number in range(7)))
+
+
+class ApprovedProjectionExpectationTests(unittest.TestCase):
+    def test_exact_two_policy_expectations_and_older_wrong_missing_catalog_negatives(self) -> None:
+        policy = dg.load_policy(ROOT / "eng/dependency-graph-policy.json")
+        requirements = policy["profiles"]["frontcomposer-catalog-v1"]["selected_catalog_required_packages"]
+        for name in ("Microsoft.Extensions.Localization", "System.Collections.Immutable"):
+            self.assertEqual(requirements[name], "10.0.14")
+            for version in ("10.0.14", "10.0.13", "10.0.15", None):
+                catalog = ET.fromstring('<Project><ItemGroup>' + (
+                    f'<PackageVersion Include="{name}" Version="{version}" />' if version else '') + '</ItemGroup></Project>')
+                with self.subTest(package=name, version=version):
+                    if version == "10.0.14":
+                        dg.assert_authoritative_package_version(catalog, name, requirements[name], "approved expectation")
+                    else:
+                        with self.assertRaises(dg.GraphError):
+                            dg.assert_authoritative_package_version(catalog, name, requirements[name], "approved expectation")
 
 
 if __name__ == "__main__":

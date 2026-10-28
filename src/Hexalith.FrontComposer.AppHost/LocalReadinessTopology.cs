@@ -55,12 +55,13 @@ internal static class LocalReadinessTopology
     }
 
     /// <summary>Creates the same owned infrastructure for gateway-only and ordinary full composition.</summary>
-    internal static void AddInfrastructure(IDistributedApplicationBuilder builder, LocalReadinessConfiguration configuration)
+    internal static void AddInfrastructure(IDistributedApplicationBuilder builder, LocalReadinessConfiguration configuration, bool includeControlPlane = true)
     {
         _ = Container(builder, configuration, "redis", "redis", "7.4-alpine", 6379)
             .WithBindMount(configuration.FilePath("redis.conf"), "/usr/local/etc/redis/verification.conf", isReadOnly: true)
             .WithEntrypoint("redis-server")
             .WithArgs("/usr/local/etc/redis/verification.conf");
+        if (!includeControlPlane) return;
         _ = Container(builder, configuration, "placement", "daprio/dapr", configuration.DaprVersion, 50005)
             .WithEntrypoint("./placement");
         _ = Container(builder, configuration, "scheduler", "daprio/dapr", configuration.DaprVersion, 50006)

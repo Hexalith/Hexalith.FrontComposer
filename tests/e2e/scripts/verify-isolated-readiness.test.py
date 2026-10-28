@@ -1,6 +1,7 @@
 import importlib.util
 import contextlib
 import hashlib
+from email.message import Message
 import io
 import signal
 import subprocess
@@ -21,6 +22,15 @@ spec.loader.exec_module(readiness)
 
 
 class ReadinessSafetyTests(unittest.TestCase):
+    def setUp(self):
+        # Synthetic orchestration starts from an explicit shell-independent baseline.
+        # Individual refusal tests still add each inherited override deliberately.
+        environment = {key: os.environ[key] for key in ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "LC_ALL", "USER", "LOGNAME")
+                       if key in os.environ}
+        baseline = patch.dict(os.environ, environment, clear=True)
+        baseline.start()
+        self.addCleanup(baseline.stop)
+
     def health(self, maintenance):
         names = ["self", "dapr-sidecar", "dapr-actor-placement", "dapr-statestore", "dapr-pubsub", "dapr-configstore",
                  "dapr-app-channel-token", "projection-delivery-writer-protocol", "projection-delivery-unresolved-conflict"]
@@ -28,7 +38,7 @@ class ReadinessSafetyTests(unittest.TestCase):
             name: {"status": "Unhealthy" if maintenance and name == readiness.MARKER else "Healthy"} for name in names}}
 
     def configuration(self):
-        return {"owner": "a" * 32, "daprVersion": "1.18.7", "ports": {"redis": 41001, "placement": 41002, "scheduler": 41003, "daprHttp": 41004},
+        return {"owner": "a" * 32, "instance": "c" * 32, "daprVersion": "1.18.7", "ports": {"redis": 41001, "placement": 41002, "scheduler": 41003, "daprHttp": 41004},
                 "images": {"redis": "sha256:expected"}}
 
     def container(self):
@@ -68,7 +78,8 @@ class ReadinessSafetyTests(unittest.TestCase):
                     running = False
                 return b""
             with patch.object(readiness, "processes", side_effect=lambda env: [host] if running else []), \
-                    patch.object(readiness, "invoke", side_effect=invoke), self.assertRaises(readiness.VerificationCancelled):
+                    patch.object(readiness, "invoke", side_effect=invoke), patch.object(readiness, "prepare_instance"), \
+                    patch.object(readiness, "cleanup_runtime_phase"), self.assertRaises(readiness.VerificationCancelled):
                 with readiness.owned_apphost(Path(root), os.environ.copy(), applications=readiness.FULL_APPLICATIONS, isolated=False):
                     raise readiness.VerificationCancelled("navigation cancelled")
             self.assertNotIn("--isolated", calls[0])
@@ -101,6 +112,478 @@ class ReadinessSafetyTests(unittest.TestCase):
                 self.assertIn(str(directory / "runtime/nr.db"), access)
                 self.assertNotIn('connectionString: "nr.db"', access)
             self.assertEqual(list((directory / "empty").iterdir()), [])
+
+    def test_full_identity_name_changes_per_launch_without_default_gateway_change(self):
+        config = {**self.configuration(), "topology": "full"}
+        first = readiness.identity_name(config)
+        self.assertNotEqual(first, readiness.identity_name({**config, "instance": "d" * 32}))
+        self.assertEqual(readiness.identity_name(self.configuration()), "fc-verify-" + config["owner"] + "-identity")
+
+    def test_native_orphan_keeps_owned_recovery_configuration(self):
+        for option in ("separate", "equals"):
+            with self.subTest(option=option), tempfile.TemporaryDirectory() as root:
+                proc = Path(root) / "proc"
+                entry = proc / "12345"
+                entry.mkdir(parents=True)
+                entry.joinpath("exe").symlink_to(readiness.NATIVE_RUNTIME)
+                entry.joinpath("comm").write_text("daprd\n")
+                private = Path(root) / "private"
+                private.mkdir()
+                arguments = [str(readiness.NATIVE_RUNTIME), "--app-id", "tenants"]
+                arguments += ["--config", str(private / "accesscontrol.yaml")] if option == "separate" else ["--config=" + str(private / "accesscontrol.yaml")]
+                entry.joinpath("cmdline").write_bytes("\0".join(arguments).encode())
+                with self.assertRaisesRegex(RuntimeError, "native sidecar still references"):
+                    readiness.require_native_process_absence(private, proc)
+                entry.joinpath("cmdline").write_bytes((str(readiness.NATIVE_RUNTIME) + "\0--config\0/unrelated/accesscontrol.yaml").encode())
+                readiness.require_native_process_absence(private, proc)
+
+    def test_native_cleanup_waits_for_owned_child_exit_before_proving_absence(self):
+        with tempfile.TemporaryDirectory() as root:
+            proc = Path(root) / "proc"
+            entry = proc / "12345"
+            entry.mkdir(parents=True)
+            entry.joinpath("exe").symlink_to(readiness.NATIVE_RUNTIME)
+            entry.joinpath("comm").write_text("daprd\n")
+            private = Path(root) / "private"
+            entry.joinpath("cmdline").write_bytes((str(readiness.NATIVE_RUNTIME) + "\0--resources-path=" + str(private / "components")).encode())
+            with patch.object(readiness.time, "sleep", side_effect=lambda delay: entry.joinpath("cmdline").write_bytes(b"")) as sleep:
+                readiness.require_native_process_absence(private, proc, wait_seconds=1)
+            sleep.assert_called_once()
+
+    def test_native_inventory_failure_cannot_prove_cleanup(self):
+        with tempfile.TemporaryDirectory() as root:
+            with self.assertRaisesRegex(RuntimeError, "absence cannot be verified"):
+                readiness.require_native_process_absence(Path(root), Path(root) / "missing-proc")
+
+    def test_native_inventory_ignores_unrelated_hidden_executables_but_refuses_hidden_daprd(self):
+        with tempfile.TemporaryDirectory() as root:
+            proc = Path(root) / "proc"
+            entry = proc / "12345"
+            entry.mkdir(parents=True)
+            entry.joinpath("comm").write_text("systemd\n")
+            entry.joinpath("cmdline").write_bytes(b"/usr/lib/systemd/systemd\0--user")
+            with patch.object(Path, "readlink", side_effect=PermissionError("hidden")):
+                readiness.require_native_process_absence(Path(root) / "private", proc)
+                entry.joinpath("comm").write_text("daprd\n")
+                entry.joinpath("cmdline").write_bytes((str(readiness.NATIVE_RUNTIME) + "\0--config\0" + root + "/private/accesscontrol.yaml").encode())
+                with self.assertRaisesRegex(RuntimeError, "ownership could not be checked"):
+                    readiness.require_native_process_absence(Path(root) / "private", proc)
+
+    def test_identity_cleanup_refuses_changed_owner_or_persistent_realm_storage(self):
+        config = {**self.configuration(), "topology": "full"}
+        base = {"Id": "owned-identity", "Name": "/" + readiness.identity_name(config),
+                "Config": {"Labels": {readiness.LABEL: config["owner"], readiness.INSTANCE_LABEL: config["instance"]}}, "Mounts": []}
+        for changed in ({**base, "Config": {"Labels": {readiness.LABEL: config["owner"], readiness.INSTANCE_LABEL: "different"}}},
+                        {**base, "Mounts": [{"Destination": "/opt/keycloak/data", "Type": "volume"}]}):
+            with self.subTest(changed=changed), patch.object(readiness, "load_configuration", return_value=config), \
+                    patch.object(readiness, "processes", return_value=[]), patch.object(readiness, "container_present", return_value=True), \
+                    patch.object(readiness, "invoke", return_value=json.dumps([changed]).encode()) as invoke, self.assertRaises(RuntimeError):
+                readiness.cleanup_runtime_phase(Path("/private"), {})
+            self.assertFalse(any(call.args[0][1] == "rm" for call in invoke.call_args_list))
+
+    def test_cleanup_observes_only_owned_session_container_drain_before_native_absence(self):
+        config = {**self.configuration(), "topology": "full"}
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root)
+            (directory / "mtls").mkdir()
+            with patch.object(readiness, "load_configuration", return_value=config), \
+                    patch.object(readiness, "processes", return_value=[]), \
+                    patch.object(readiness, "container_present", return_value=False), \
+                    patch.object(readiness, "invoke", side_effect=[b"owned-draining-container", b""]) as invoke, \
+                    patch.object(readiness.time, "sleep") as sleep, \
+                    patch.object(readiness, "require_native_process_absence") as native:
+                readiness.cleanup_runtime_phase(directory, {})
+                sleep.assert_called_once()
+                native.assert_called_once_with(directory, wait_seconds=15)
+                for call in invoke.call_args_list:
+                    self.assertIn("label=" + readiness.LABEL + "=" + config["owner"], call.args[0])
+                    self.assertIn("label=" + readiness.INSTANCE_LABEL + "=" + config["instance"], call.args[0])
+                    self.assertNotIn("rm", call.args[0])
+
+    def test_mtls_paths_refuse_substitution_before_deleting_issuer_files(self):
+        config = {**self.configuration(), "topology": "full"}
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root)
+            readiness.private_file(directory / "mtls-plane.json", json.dumps({"owner": config["owner"], "instance": config["instance"],
+                "runDirectory": str(directory / "not-the-canonical-run"), "certificateDirectory": str(directory / "outside")}))
+            with self.assertRaisesRegex(RuntimeError, "cleanup paths changed"):
+                readiness.read_mtls_paths(directory, config)
+            self.assertTrue((directory / "mtls-plane.json").exists())
+
+    def test_cleanup_retains_issuer_and_run_files_until_native_absence_is_proven(self):
+        for orphan in (True, False):
+            with self.subTest(orphan=orphan), tempfile.TemporaryDirectory() as root:
+                directory = Path(root) / "private"
+                directory.mkdir(mode=0o700)
+                (directory / "mtls").mkdir(mode=0o700)
+                run = Path(root) / "hexalith-dapr" / ("d" * 32)
+                run.mkdir(parents=True, mode=0o700)
+                issuer = directory / "mtls" / ("dapr-credentials-" + hashlib.sha256(str(run).encode()).hexdigest().upper()[:32])
+                issuer.mkdir(mode=0o700)
+                key = issuer / "issuer.key"
+                key.write_text("private-test-key")
+                (run / "scheduler").mkdir()
+                sibling = run.parent / ("e" * 32)
+                sibling.mkdir()
+                (sibling / "unrelated").touch()
+                config = {**self.configuration(), "topology": "full"}
+                state = directory / "mtls-plane.json"
+                readiness.private_file(state, json.dumps({"owner": config["owner"], "instance": config["instance"],
+                    "runDirectory": str(run), "certificateDirectory": str(issuer)}))
+                with patch.object(readiness, "load_configuration", return_value=config), \
+                        patch.object(readiness, "processes", return_value=[]), \
+                        patch.object(readiness, "container_present", return_value=False), \
+                        patch.object(readiness, "invoke", return_value=b""), \
+                        patch.object(readiness.tempfile, "gettempdir", return_value=root), \
+                        patch.object(readiness, "require_native_process_absence", side_effect=RuntimeError("native orphan") if orphan else None) as native:
+                    if orphan:
+                        with self.assertRaisesRegex(RuntimeError, "native orphan"):
+                            readiness.cleanup_runtime_phase(directory, {})
+                        self.assertTrue(key.exists())
+                        self.assertTrue(run.exists())
+                        self.assertTrue(state.exists())
+                    else:
+                        readiness.cleanup_runtime_phase(directory, {})
+                        self.assertFalse(issuer.exists())
+                        self.assertFalse(run.exists())
+                        self.assertFalse(state.exists())
+                    native.assert_called_once_with(directory, wait_seconds=15)
+                    self.assertTrue((sibling / "unrelated").exists())
+
+    def test_native_sidecar_requires_exact_runtime_issuer_and_both_sdk_listeners(self):
+        gateway = {"environment": {"DAPR_HTTP_PORT": "42001", "DAPR_GRPC_PORT": "42002"}}
+        peer = {"DAPR_TRUST_ANCHORS": "test-ca", "DAPR_CERT_CHAIN": "test-chain", "DAPR_CERT_KEY": "test-key",
+                "NAMESPACE": "default", "DAPR_CONTROLPLANE_NAMESPACE": "default", "DAPR_CONTROLPLANE_TRUST_DOMAIN": "localhost"}
+        sidecar = {"displayName": "eventstore-dapr-cli", "state": "Running", "properties": {"executable.path": str(readiness.NATIVE_RUNTIME)},
+                   "environment": peer, "urls": [{"name": "http", "url": "http://localhost:42001"}, {"name": "grpc", "url": "http://localhost:42002"}]}
+        self.assertEqual(readiness.correlate_sidecar(gateway, sidecar, native=True), "http://localhost:42001")
+        for key in peer:
+            with self.subTest(key=key), self.assertRaises(RuntimeError):
+                readiness.correlate_sidecar(gateway, {**sidecar, "environment": {**peer, key: ""}}, native=True)
+        for variable in gateway["environment"]:
+            with self.subTest(variable=variable), self.assertRaises(RuntimeError):
+                readiness.correlate_sidecar({"environment": {**gateway["environment"], variable: "3500"}}, sidecar, native=True)
+        with self.assertRaises(RuntimeError):
+            readiness.correlate_sidecar(gateway, {**sidecar, "properties": {"executable.path": "/unowned/daprd"}}, native=True)
+
+    def test_native_channel_uses_owned_processes_and_rejects_missing_mismatched_or_ambiguous_secrets(self):
+        for fault in (None, "missing-application", "missing-sidecar", "mismatch", "wrong-config", "duplicate"):
+            with self.subTest(fault=fault), tempfile.TemporaryDirectory() as root:
+                private = Path(root) / "private"
+                private.mkdir(mode=0o700)
+                proc = Path(root) / "proc"
+                binary = readiness.ROOT / "references/Hexalith.Tenants/src/Hexalith.Tenants/bin/Debug/net10.0/Hexalith.Tenants"
+                app = proc / "12345"
+                peer = proc / "12346"
+                for entry, executable in ((app, binary), (peer, readiness.NATIVE_RUNTIME)):
+                    entry.mkdir(parents=True)
+                    entry.joinpath("exe").symlink_to(executable)
+                app.joinpath("cmdline").write_bytes(str(binary).encode())
+                app.joinpath("environ").write_bytes(b"DAPR_HTTP_PORT=42001\0" + (b"" if fault == "missing-application" else b"APP_API_TOKEN=private-test-channel"))
+                config = str(private / "accesscontrol.yaml") if fault != "wrong-config" else "/unrelated/accesscontrol.yaml"
+                peer.joinpath("cmdline").write_bytes("\0".join([str(readiness.NATIVE_RUNTIME), "--app-id", "tenants", "--dapr-http-port", "42001", "--config", config]).encode())
+                peer.joinpath("environ").write_bytes(b"" if fault == "missing-sidecar" else b"APP_API_TOKEN=" + (b"different" if fault == "mismatch" else b"private-test-channel"))
+                if fault == "duplicate":
+                    duplicate = proc / "12347"
+                    duplicate.mkdir()
+                    duplicate.joinpath("exe").symlink_to(binary)
+                    duplicate.joinpath("cmdline").write_bytes(app.joinpath("cmdline").read_bytes())
+                    duplicate.joinpath("environ").write_bytes(app.joinpath("environ").read_bytes())
+                application = {"environment": {"DAPR_HTTP_PORT": "42001", "APP_API_TOKEN": "<secret-reference>"}}
+                if fault is None:
+                    readiness.require_native_channel(private, application, "tenants", proc)
+                else:
+                    with self.assertRaises(RuntimeError) as failure:
+                        readiness.require_native_channel(private, application, "tenants", proc)
+                    self.assertNotIn("private-test-channel", str(failure.exception))
+
+    def test_catalog_gate_observes_normal_derived_registration_without_seeding_state(self):
+        with tempfile.TemporaryDirectory() as root, patch.object(readiness, "resource", return_value={}), \
+                patch.object(readiness, "correlate_sidecar", return_value="http://localhost:12345"), \
+                patch.object(readiness.time, "sleep") as sleep, patch.object(readiness, "request", side_effect=[
+                    (204, None), (204, None), (200, ["list-tenants"]), (200, ["get-global-administrators"])]) as request:
+            readiness.wait_for_query_catalog(Path(root) / "private", {})
+            sleep.assert_called_once()
+            self.assertEqual(len(json.loads((Path(root) / "query-catalog-readiness.json").read_text())), 2)
+            self.assertTrue(all(len(call.args) == 1 and call.kwargs.get("method") is None for call in request.call_args_list))
+
+    def projection_headers(self, version="s:1", **changes):
+        values = {"X-Hexalith-Query-Provenance": "ProjectionBacked", "X-Hexalith-Projection-Lifecycle": "Current",
+                  "X-Hexalith-Is-Stale": "false", "X-Hexalith-Projection-Version": version}
+        values.update(changes)
+        headers = Message()
+        for key, value in values.items():
+            if value is not None: headers[key] = value
+        return headers
+
+    def test_membership_rejects_stale_degraded_ambiguous_and_mixed_version_pages(self):
+        self.assertEqual(readiness.projection_version(self.projection_headers()), "s:1")
+        for change in ({"X-Hexalith-Is-Stale": "true"}, {"X-Hexalith-Is-Degraded": "true"},
+                       {"X-Hexalith-Projection-Lifecycle": "Unknown"}, {"X-Hexalith-Projection-Version": ""},
+                       {"X-Hexalith-Query-Provenance": "HandlerComputed"}):
+            with self.subTest(change=change), self.assertRaises(RuntimeError):
+                readiness.projection_version(self.projection_headers(**change))
+        duplicate = self.projection_headers()
+        duplicate["X-Hexalith-Projection-Version"] = "s:1"
+        with self.assertRaises(RuntimeError): readiness.projection_version(duplicate)
+        with patch.object(readiness, "request", side_effect=[
+                (200, {"items": [{"userId": "subject"}], "hasMore": True, "cursor": "next"}, self.projection_headers()),
+                (200, {"items": [], "hasMore": False}, self.projection_headers("s:2"))]), self.assertRaises(RuntimeError):
+            readiness.administrator_membership("http://localhost:12345", "test-token", "subject", time.monotonic() + 5)
+
+    @contextlib.contextmanager
+    def bootstrap_fixture(self, root, *, keys=None, projection_status=204, dispatch_failure=False, status="Completed"):
+        directory = Path(root) / "private"
+        directory.mkdir()
+        config = {**self.configuration(), "topology": "full"}
+        (Path(root) / "maintenance-result.json").write_text(json.dumps({"owner": config["owner"],
+            "backupVerifiedNoDomainOrControlData": True, "verifiedBackupKeyCount": 1}))
+        subject = "private-test-subject"
+        token = "header." + readiness.base64.urlsafe_b64encode(json.dumps({"sub": subject}).encode()).decode().rstrip("=") + ".signature"
+        message = "01M00000000000000000000001"
+        correlation = "01M00000000000000000000002"
+        responses = [(projection_status, None), RuntimeError("ambiguous delivery") if dispatch_failure else (202, {"correlationId": correlation}), (200, {"status": status})]
+        application = {"displayName": "tenants", "state": "Running", "healthStatus": "Healthy",
+                       "environment": {"Tenants__BootstrapGlobalAdminEnabled": "false"}, "urls": [{"url": "http://localhost:12345"}]}
+        with contextlib.ExitStack() as stack:
+            for name, value in (("load_configuration", config), ("resource", application), ("authenticate_administrator", token),
+                                ("invoke", b"b" * 40), ("redis", json.dumps(keys or [])), ("correlate_sidecar", "http://localhost:12345")):
+                stack.enter_context(patch.object(readiness, name, return_value=value))
+            stack.enter_context(patch.object(readiness, "verify_activated_source"))
+            stack.enter_context(patch.object(readiness, "new_ulid", side_effect=[message, correlation]))
+            requests = stack.enter_context(patch.object(readiness, "request", side_effect=responses))
+            membership = stack.enter_context(patch.object(readiness, "administrator_membership", side_effect=[(False, None), (True, "s:1")]))
+            yield directory, {"eventstore": "http://localhost:12345", "tenants-api": "https://localhost:12346"}, requests, membership, subject
+
+    def test_bootstrap_refuses_history_existing_projection_and_retained_attempts(self):
+        for fault in ("history", "projection", "retained"):
+            with self.subTest(fault=fault), tempfile.TemporaryDirectory() as root, self.bootstrap_fixture(root,
+                    keys=["native-history"] if fault == "history" else [], projection_status=200 if fault == "projection" else 204) as fixture:
+                directory, endpoints, requests, _, _ = fixture
+                if fault == "retained": (Path(root) / "bootstrap-result.json").write_text('{"messageId":"retained"}')
+                with self.assertRaises(RuntimeError): readiness.ensure_administrator_membership(directory, {}, endpoints)
+                self.assertFalse(any(call.args[0].endswith("/api/v1/commands") for call in requests.call_args_list))
+
+    def test_bootstrap_binds_actual_subject_once_and_requires_completed_fresh_membership(self):
+        with tempfile.TemporaryDirectory() as root, self.bootstrap_fixture(root) as fixture:
+            directory, endpoints, requests, membership, subject = fixture
+            readiness.ensure_administrator_membership(directory, {}, endpoints)
+            dispatches = [call for call in requests.call_args_list if call.args[0].endswith("/api/v1/commands")]
+            self.assertEqual(len(dispatches), 1)
+            self.assertEqual(dispatches[0].args[1]["payload"], {"UserId": subject})
+            record = json.loads((Path(root) / "bootstrap-result.json").read_text())
+            self.assertEqual(record["terminalStatus"], "Completed")
+            self.assertTrue(record["membershipVerified"])
+            self.assertEqual(record["projectionVersion"], "s:1")
+            self.assertEqual(membership.call_count, 2)
+            self.assertNotIn(subject, json.dumps(record))
+            self.assertNotIn("signature", json.dumps(record))
+
+    def test_bootstrap_preserves_ambiguous_or_failed_handles_and_never_redispatches(self):
+        for failure in ("delivery", "status"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as root, self.bootstrap_fixture(root,
+                    dispatch_failure=failure == "delivery", status="PublishFailed") as fixture:
+                directory, endpoints, requests, _, _ = fixture
+                with self.assertRaises(RuntimeError): readiness.ensure_administrator_membership(directory, {}, endpoints)
+                record = json.loads((Path(root) / "bootstrap-result.json").read_text())
+                self.assertTrue(record["messageId"])
+                self.assertTrue(record["correlationId"])
+                with self.assertRaisesRegex(RuntimeError, "prohibit automatic redispatch"):
+                    readiness.ensure_administrator_membership(directory, {}, endpoints)
+                self.assertEqual(sum(call.args[0].endswith("/api/v1/commands") for call in requests.call_args_list), 1)
+
+    def test_retained_bootstrap_status_and_membership_failures_capture_bounded_diagnostics(self):
+        for phase in ("status-rejected", "status-transport", "status-timeout", "membership-failure", "membership-timeout"):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as root, self.bootstrap_fixture(root) as fixture:
+                directory, endpoints, requests, membership, subject = fixture
+                correlation = "01M00000000000000000000002"
+                token = readiness.authenticate_administrator(directory, {})
+                status = RuntimeError("transport failure") if phase == "status-transport" else (
+                    200, {"status": "Rejected" if phase == "status-rejected" else "Processing" if phase == "status-timeout" else "Completed"})
+                requests.side_effect = [(204, None), (202, {"correlationId": correlation}), status,
+                                        (500, {"detail": token + " " + subject})]
+                if phase == "membership-failure": membership.side_effect = [(False, None), RuntimeError("membership failure")]
+                elif phase == "membership-timeout": membership.side_effect = [(False, None), (False, None)]
+                logs = []
+                def capture(arguments, **kwargs):
+                    if arguments[:2] == ["aspire", "logs"]:
+                        self.assertEqual(arguments[arguments.index("--tail") + 1], "150")
+                        self.assertEqual(kwargs["timeout"], 10)
+                        readiness.write_diagnostics(kwargs["log"], (token + " " + subject).encode(), kwargs["redactions"])
+                        logs.append(arguments[2])
+                    return b"b" * 40
+                clock = patch.object(readiness.time, "monotonic", side_effect=[0, 0, 0, 0, 61]) if phase.endswith("timeout") else contextlib.nullcontext()
+                with patch.object(readiness, "invoke", side_effect=capture), patch.object(readiness.time, "sleep"), clock:
+                    with self.assertRaises(RuntimeError): readiness.ensure_administrator_membership(directory, {}, endpoints)
+                record = json.loads((Path(root) / "bootstrap-result.json").read_text())
+                self.assertEqual(record["messageId"], "01M00000000000000000000001")
+                self.assertEqual(record["correlationId"], correlation)
+                self.assertEqual(record["phase"], "membership-verification" if phase.startswith("membership") else "status-verification")
+                self.assertEqual(len(logs), 5)
+                for path in Path(root).glob("bootstrap-*"):
+                    content = path.read_text()
+                    self.assertNotIn(token, content)
+                    self.assertNotIn(subject, content)
+                with self.assertRaisesRegex(RuntimeError, "prohibit automatic redispatch"):
+                    readiness.ensure_administrator_membership(directory, {}, endpoints)
+                self.assertEqual(sum(call.args[0].endswith("/api/v1/commands") for call in requests.call_args_list), 1)
+
+    def test_retained_bootstrap_cancellation_during_status_or_membership_does_not_capture_or_redispatch(self):
+        for phase in ("status", "membership"):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as root, self.bootstrap_fixture(root) as fixture:
+                directory, endpoints, requests, membership, _ = fixture
+                correlation = "01M00000000000000000000002"
+                requests.side_effect = [(204, None), (202, {"correlationId": correlation}),
+                                        readiness.VerificationCancelled("cancelled") if phase == "status" else (200, {"status": "Completed"})]
+                if phase == "membership": membership.side_effect = [(False, None), readiness.VerificationCancelled("cancelled")]
+                with patch.object(readiness, "capture_bootstrap_failure") as capture:
+                    with self.assertRaises(readiness.VerificationCancelled): readiness.ensure_administrator_membership(directory, {}, endpoints)
+                    capture.assert_not_called()
+                record = json.loads((Path(root) / "bootstrap-result.json").read_text())
+                self.assertEqual(record["correlationId"], correlation)
+                with self.assertRaisesRegex(RuntimeError, "prohibit automatic redispatch"):
+                    readiness.ensure_administrator_membership(directory, {}, endpoints)
+                self.assertEqual(sum(call.args[0].endswith("/api/v1/commands") for call in requests.call_args_list), 1)
+
+    def test_input_identity_includes_and_refuses_dirty_transitive_polymorphic_source(self):
+        dirty = False
+        def invoke(arguments, **kwargs):
+            if arguments[-1] == "HEAD":
+                return (b"b742b1b7a496ac72d6961ca6db5213d3df42d234" if "Hexalith.Platform" in arguments[2] else b"b" * 40)
+            if arguments[-1] == "--porcelain":
+                return b" M source.cs" if dirty and "Hexalith.PolymorphicSerializations" in arguments[2] else b""
+            return b""
+        with tempfile.TemporaryDirectory() as root, patch.object(readiness, "NATIVE_RUNTIME", Path(root) / "daprd"), \
+                patch.object(readiness, "invoke", side_effect=invoke):
+            readiness.NATIVE_RUNTIME.write_bytes(b"synthetic-native-runtime")
+            inputs = readiness.source_inputs()
+            self.assertIn("Hexalith.PolymorphicSerializations", inputs["sources"])
+            self.assertIn("Hexalith.AI.Tools", inputs["sources"])
+            self.assertIn("references/Hexalith.AI.Tools/hexalith-state-instructions.md", inputs["inputSha256"])
+            self.assertFalse(any("SKILL.md" in path for path in inputs["inputSha256"]))
+            dirty = True
+            with self.assertRaisesRegex(RuntimeError, "selected source is dirty"):
+                readiness.source_inputs()
+
+    @contextlib.contextmanager
+    def source_input_git_fixture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "root"
+            root.mkdir()
+            subprocess.run(["git", "init", "--quiet", str(root)], check=True)
+            (root / ".gitignore").write_text("*.user\n*.rsp\n**/obj/\n**/bin/\n*.scratch\n")
+            host = root / "src/AppHost/AppHost.csproj"
+            for path in (host, root / "src/Shell/Shell.csproj", root / "eng/verify-isolated-readiness.py",
+                         root / "eng/FrontComposer.SourceReferences.targets", root / "eng/verify-apphost-invalid-bearer.sh",
+                         root / "eng/run-epic9-live-proof.sh", root / "tests/e2e/specs/full-topology-readiness.spec.ts",
+                         *[root / "references/Hexalith.AI.Tools" / name for name in
+                           ("hexalith-llm-instructions.md", "hexalith-state-instructions.md", "hexalith-git-instructions.md")]):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("fixture input\n")
+            for name in ("Builds", "Commons", "EventStore", "Tenants", "Parties", "Memories", "Platform", "PolymorphicSerializations", "AI.Tools"):
+                (root / "references" / ("Hexalith." + name)).mkdir(parents=True, exist_ok=True)
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "-c", "commit.gpgsign=false",
+                            "commit", "--quiet", "-m", "fixture"], cwd=root, check=True)
+            native = Path(directory) / "daprd"
+            native.write_bytes(b"fixture native")
+            def invoke(arguments, **kwargs):
+                if "ls-files" in arguments or arguments[:2] == ["git", "diff"]:
+                    return subprocess.run(arguments, cwd=root, capture_output=True, check=True).stdout
+                if arguments[-1] == "HEAD":
+                    return b"b742b1b7a496ac72d6961ca6db5213d3df42d234" if "Hexalith.Platform" in str(arguments) else b"b" * 40
+                return b""
+            with patch.object(readiness, "ROOT", root), patch.object(readiness, "APPHOST", host), \
+                    patch.object(readiness, "NATIVE_RUNTIME", native), patch.object(readiness, "invoke", side_effect=invoke):
+                yield root
+
+    def test_input_identity_covers_nonignored_untracked_source_and_configuration(self):
+        with self.source_input_git_fixture() as root:
+            baseline = readiness.source_inputs()
+            for relative in ("src/Shell/New.cs", "src/Shell/Extra.props", "samples/Extra.json"):
+                with self.subTest(path=relative):
+                    path = root / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text("new build input\n")
+                    self.assertNotEqual(readiness.source_inputs(), baseline)
+                    with self.assertRaisesRegex(RuntimeError, "inputs changed"):
+                        readiness.verify_source_inputs(baseline)
+                    added = readiness.source_inputs()
+                    path.write_text("edited build input\n")
+                    with self.assertRaisesRegex(RuntimeError, "inputs changed"):
+                        readiness.verify_source_inputs(added)
+                    path.unlink()
+                    with self.assertRaisesRegex(RuntimeError, "inputs changed"):
+                        readiness.verify_source_inputs(added)
+                    self.assertEqual(readiness.source_inputs(), baseline)
+            for relative in ("src/Shell/obj/generated.cs", "src/Shell/bin/temporary.json", "src/Shell/local.scratch"):
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("ignored generated/scratch input\n")
+            self.assertEqual(readiness.source_inputs(), baseline)
+
+    def test_restore_configuration_case_variants_and_tracked_changes_refuse_recheck(self):
+        for relative in ("nuget.config", "NuGet.Config", "NuGet.config"):
+            with self.subTest(path=relative), self.source_input_git_fixture() as root:
+                baseline = readiness.source_inputs()
+                path = root / relative
+                path.write_text("<configuration />\n")
+                self.assertIn(relative, readiness.source_inputs()["untrackedInputSha256"])
+                with self.assertRaisesRegex(RuntimeError, "inputs changed"): readiness.verify_source_inputs(baseline)
+                path.unlink()
+                self.assertEqual(readiness.source_inputs(), baseline)
+                path.write_text("<configuration />\n")
+                subprocess.run(["git", "add", "--", relative], cwd=root, check=True)
+                subprocess.run(["git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "-c", "commit.gpgsign=false",
+                                "commit", "--quiet", "-m", "fixture"], cwd=root, check=True)
+                tracked = readiness.source_inputs()
+                path.write_text('<configuration><packageSources><clear /></packageSources></configuration>\n')
+                with self.assertRaisesRegex(RuntimeError, "inputs changed"): readiness.verify_source_inputs(tracked)
+                path.unlink()
+                with self.assertRaisesRegex(RuntimeError, "inputs changed"): readiness.verify_source_inputs(tracked)
+
+    def test_full_mode_requires_procfs_before_artifacts_and_configuration(self):
+        with tempfile.TemporaryDirectory() as root, patch.object(readiness, "PROC_ROOT", Path(root) / "missing-proc"), \
+                patch.object(readiness.tempfile, "mkdtemp") as artifacts, patch.object(readiness, "create_configuration") as configure:
+            with self.assertRaisesRegex(RuntimeError, "procfs process metadata"): readiness.run("full")
+            artifacts.assert_not_called()
+            configure.assert_not_called()
+        with tempfile.TemporaryDirectory() as root, patch.object(readiness, "PROC_ROOT", Path(root) / "missing-proc"), \
+                patch.object(readiness.tempfile, "mkdtemp", return_value=root), \
+                patch.object(readiness, "create_configuration", side_effect=RuntimeError("gateway configuration reached")) as configure:
+            with self.assertRaisesRegex(RuntimeError, "gateway configuration reached"): readiness.run()
+            configure.assert_called_once()
+
+    def test_oversized_http_error_is_bounded_and_closed(self):
+        class Body(io.BytesIO):
+            def read(self, size=-1):
+                self.requested_size = size
+                return super().read(size)
+        body = Body(b"x" * (1024 * 1024 + 2))
+        failure = readiness.urllib.error.HTTPError("http://localhost:12345", 500, "failure", Message(), body)
+        with patch.object(readiness.urllib.request, "build_opener") as opener:
+            opener.return_value.open.side_effect = failure
+            with self.assertRaisesRegex(RuntimeError, "bounded contract"): readiness.request("http://localhost:12345")
+        self.assertEqual(body.requested_size, 1024 * 1024 + 1)
+        self.assertTrue(body.closed)
+
+    def test_input_identity_refuses_ignored_automatic_configuration(self):
+        for relative in ("src/Shell/Shell.csproj.user", "Directory.Build.rsp", "src/Shell/MSBuild.rsp",
+                         "references/Hexalith.Commons/Core.csproj.user"):
+            with self.subTest(path=relative), self.source_input_git_fixture() as root:
+                path = root / relative
+                path.write_text("automatic build input\n")
+                with self.assertRaisesRegex(RuntimeError, "ignored automatic"):
+                    readiness.source_inputs()
+                diagnostics = root / "diagnostics"
+                diagnostics.mkdir()
+                with patch.object(readiness.tempfile, "mkdtemp", return_value=str(diagnostics)), \
+                        patch.object(readiness, "create_configuration") as configure, patch.object(readiness, "owned_apphost") as start:
+                    with self.assertRaisesRegex(RuntimeError, "ignored automatic"):
+                        readiness.run("full")
+                    configure.assert_not_called()
+                    start.assert_not_called()
+                self.assertFalse((diagnostics / "private").exists())
 
     def test_full_input_identity_refuses_any_selected_source_or_input_change(self):
         expected = {"root": "a" * 40, "sources": {"Hexalith.EventStore": "b" * 40}, "inputSha256": {"Program.cs": "c" * 64}}
@@ -147,11 +630,11 @@ class ReadinessSafetyTests(unittest.TestCase):
                 patch.object(readiness, "authenticate_administrator", return_value="private-test-token"), \
                 patch.object(readiness, "resource", return_value={}), \
                 patch.object(readiness, "correlate_sidecar", return_value="http://localhost:12345"), \
-                patch.object(readiness, "request", return_value=(200, {})):
+                patch.object(readiness, "request", side_effect=[(200, {"items": [], "hasMore": False}), (200, {})]):
             with self.assertRaisesRegex(RuntimeError, "missing-bearer"):
                 readiness.verify_api_boundaries(Path(root) / "private", {}, {})
             evidence = json.loads((Path(root) / "api-boundaries.json").read_text())
-            self.assertEqual(evidence, [{"caller": "tenants-ui", "check": "missing-bearer", "status": 200, "expectedStatus": 401}])
+            self.assertEqual(evidence[-1], {"caller": "tenants-ui", "check": "missing-bearer", "status": 200, "expectedStatus": 401})
             self.assertNotIn("private-test-token", json.dumps(evidence))
 
     def test_owned_realm_loss_has_a_controlled_operation_diagnostic(self):
@@ -163,15 +646,21 @@ class ReadinessSafetyTests(unittest.TestCase):
         for key in ("DAPR_RESOURCES_PATH", "Dapr:PlacementHostAddress", "ConnectionStrings__Redis", "services__tenants__http__0",
                     "EventStore__Projections__WorkersEnabled", "Authentication__JwtBearer__Authority", "EnableKeycloak",
                     "KeycloakPersistent", "FrontComposerUi__OpenIdConnect__Enabled", "FrontComposerVerification__Topology",
-                    "Memories__Endpoint", "MemoriesSearch__Enabled"):
+                    "Memories__Endpoint", "MemoriesSearch__Enabled", "Tenants__BootstrapGlobalAdminUserId",
+                    "Version", "AssemblyVersion", "MinVerVersionOverride", "CustomAfterDirectoryBuildTargets",
+                    "CustomBeforeMicrosoftCommonTargets", "DirectoryBuildPropsPath", "HexalithSourceMappingMode",
+                    "HEXALITH_SOURCE_MAPPING_HASH", "FrontComposerSourceReferencesPreviousTargets", "DOTNET_STARTUP_HOOKS",
+                    "RestoreConfigFile", "RestoreSources", "ImportDirectoryBuildProps"):
             with self.subTest(key=key), patch.dict(os.environ, {key: "private-test-secret"}), \
+                    patch.object(readiness.tempfile, "mkdtemp") as artifacts, \
                     patch.object(readiness, "create_configuration") as create, self.assertRaises(RuntimeError) as failure:
                 readiness.run("full")
+            artifacts.assert_not_called()
             create.assert_not_called()
             self.assertNotIn("private-test-secret", str(failure.exception))
 
     def test_full_application_requires_exact_membership_healthy_state_and_ordinary_workers(self):
-        healthy = {"displayName": "tenants", "state": "Running", "healthStatus": "Healthy", "environment": {},
+        healthy = {"displayName": "tenants", "state": "Running", "healthStatus": "Healthy", "environment": {"Tenants__BootstrapGlobalAdminEnabled": "false"},
                    "urls": [{"url": "http://localhost:12345"}]}
         self.assertEqual(readiness.validate_application(healthy, "tenants"), "http://localhost:12345")
         for key, value in [("displayName", "other"), ("state", "Waiting"), ("healthStatus", "Unhealthy"),
@@ -203,6 +692,7 @@ class ReadinessSafetyTests(unittest.TestCase):
                             "urls": [{"name": "http", "url": "http://localhost:12345"}, {"name": "grpc", "url": "http://localhost:12346"}]}
                 current[0] = name
                 environment = {"DAPR_HTTP_PORT": "12345", "DAPR_GRPC_PORT": "12346"}
+                if name == "tenants": environment["Tenants__BootstrapGlobalAdminEnabled"] = "false"
                 if name == "parties":
                     environment.update({"Parties__MemoriesSearch__Enabled": "false", **{
                         "Parties__MemoriesSearch__" + key: "" for key in ("Endpoint", "TenantId", "CaseId", "ApiToken")}})
@@ -220,12 +710,12 @@ class ReadinessSafetyTests(unittest.TestCase):
                     entries["eventstore-gateway"] = {"status": "Healthy"}
                 return 200, {"status": "Healthy", "results": entries}
             last = [None]
-            def correlated(item, sidecar, name):
+            def correlated(item, sidecar, name, **kwargs):
                 last[0] = name
                 return "http://localhost:12345"
             with self.subTest(missing=missing), patch.object(readiness, "load_configuration", return_value={"topology": "full"}), \
                     patch.object(readiness, "redis", return_value=json.dumps(marker)), patch.object(readiness, "verify_source_commit"), \
-                    patch.object(readiness, "verify_gateway"), patch.object(readiness, "resource", side_effect=resource), \
+                    patch.object(readiness, "verify_gateway"), patch.object(readiness, "require_native_channel"), patch.object(readiness, "resource", side_effect=resource), \
                     patch.object(readiness, "correlate_sidecar", side_effect=correlated), patch.object(readiness, "request", side_effect=request), \
                     patch.object(Path, "write_text"), self.assertRaises(RuntimeError):
                 readiness.verify_full_topology(Path("/private"), {"FrontComposerVerification__Maintenance": "false"}, "b" * 40)
@@ -263,7 +753,9 @@ class ReadinessSafetyTests(unittest.TestCase):
                     environment.update(changed)
                 resources += [{"displayName": name, "state": "Running", "healthStatus": "Healthy", "environment": environment,
                                "urls": [{"url": "http://localhost:12340"}]},
-                              {"displayName": name + "-dapr-cli", "state": "Running", "properties": {"executable.path": "/bin/dapr"},
+                              {"displayName": name + "-dapr-cli", "state": "Running", "properties": {"executable.path": str(readiness.NATIVE_RUNTIME)},
+                               "environment": {"DAPR_TRUST_ANCHORS": "private-test-ca", "DAPR_CERT_CHAIN": "private-test-chain", "DAPR_CERT_KEY": "private-test-key",
+                                               "NAMESPACE": "default", "DAPR_CONTROLPLANE_NAMESPACE": "default", "DAPR_CONTROLPLANE_TRUST_DOMAIN": "localhost"},
                                "urls": [{"name": "http", "url": "http://localhost:12341"}, {"name": "grpc", "url": "http://localhost:12342"}]}]
             with self.subTest(changed=changed), patch.object(readiness, "invoke", return_value=json.dumps({"resources": resources}).encode()), \
                     patch.object(readiness, "read_owned_realm") as credentials:
@@ -296,8 +788,11 @@ class ReadinessSafetyTests(unittest.TestCase):
                     patch.object(readiness, "invoke", side_effect=lambda args, **kwargs: b"b" * 40 if args[-1] == "HEAD" else b""), \
                     patch.object(readiness, "inspect_container", return_value=self.container()), \
                     patch.object(readiness, "activate", side_effect=lambda *args: events.append("activation-readback")), \
-                    patch.object(readiness, "verify_activated_source"), patch.object(readiness, "verify_full_topology", return_value={}), \
-                    patch.object(readiness, "diagnose_admin_path"), \
+                    patch.object(readiness, "verify_activated_source"), patch.object(readiness, "source_inputs", return_value={}), \
+                    patch.object(readiness, "verify_source_inputs"), patch.object(readiness, "remove_plain_control_plane"), \
+                    patch.object(readiness, "cleanup_runtime_phase"), patch.object(readiness, "verify_full_topology", return_value={}), \
+                    patch.object(readiness, "diagnose_admin_path"), patch.object(readiness, "wait_for_query_catalog"), \
+                    patch.object(readiness, "ensure_administrator_membership"), \
                     patch.object(readiness, "verify_api_boundaries"), \
                     patch.object(readiness, "verify_navigation", side_effect=readiness.VerificationCancelled("cancelled")), \
                     patch.object(readiness, "processes", return_value=[]), patch.object(readiness, "container_present", return_value=False):

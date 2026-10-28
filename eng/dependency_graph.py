@@ -60,6 +60,7 @@ _PROFILE_KEYS = frozenset({
 # `no_package_version_row` would otherwise leave `.get(...)` returning None while
 # validate still reports ok: true — the same vacuous-check defect profile keys close.
 _OWNER_CHECK_KEYS = frozenset({
+    "canonical_source_files",
     "bom_crlf_on_selected_catalog",
     "guarded_imports",
     "no_inline_versions_in_tracked_files",
@@ -81,6 +82,7 @@ _OWNER_CHECK_BOOLEAN_KEYS = frozenset({
     "well_formed_project_root",
 })
 _OWNER_CHECK_OBJECT_KEYS = frozenset({
+    "canonical_source_files",
     "guarded_imports",
     "no_inline_versions_in_tracked_files",
 })
@@ -313,6 +315,166 @@ def resolve_local_path(policy: dict[str, Any], identity: str, root_dir: Path) ->
     raise GraphError(f"unknown/untrusted repository identity {identity!r}")
 
 
+# A consumer projection never promotes an inventory identity into global trust.
+# It seals one already-trusted owner tree and permits its raw, non-executable
+# inventory to remain visible without resolving those unconsumed repositories.
+def _consumer_projection(policy: dict[str, Any], identity: str, commit: str) -> dict[str, Any] | None:
+    row = policy.get("consumer_source_projections", {}).get(identity)
+    if row is not None and policy.get("module_build_registry", {}).get(identity, {}).get("disposition") != "evidence-only":
+        raise GraphError("consumer projection owner must remain evidence-only; whole-owner execution is forbidden")
+    if row is not None and row["owner_commit"] != commit:
+        raise GraphError(f"{identity}@{commit}: consumer source projection owner pin changed")
+    return row
+
+
+def _validate_projection_inventory(
+    local_path: Path, commit: str, owner_identity: str, edges: list[dict[str, Any]],
+    policy: dict[str, Any],
+) -> dict[str, Any] | None:
+    row = _consumer_projection(policy, owner_identity, commit)
+    if row is None:
+        return None
+    raw = read_blob(local_path, commit, ".gitmodules", policy["resource_limits"]["max_gitmodules_blob_bytes"], owner_identity)
+    if raw is None or hashlib.sha256(raw).hexdigest() != row["gitmodules_sha256"]:
+        raise GraphError(f"{owner_identity}@{commit}: sealed consumer inventory .gitmodules changed")
+    if canonical_digest(edges) != row["inventory_sha256"]:
+        raise GraphError(f"{owner_identity}@{commit}: sealed consumer raw inventory changed")
+    trusted = {entry["identity"] for entry in policy["trusted_identities"]}
+    untrusted = sorted({edge["repository"] for edge in edges} - trusted)
+    if untrusted != row["inventory_only_identities"]:
+        raise GraphError(f"{owner_identity}@{commit}: inventory-only identity set changed")
+    for path, digest in row["source_files"].items():
+        blob = read_blob(local_path, commit, path, policy["resource_limits"]["max_contract_tree_blob_bytes"], owner_identity)
+        if blob is None or hashlib.sha256(blob).hexdigest() != digest:
+            raise GraphError(f"{owner_identity}@{commit}: consumer canonical source {path!r} changed")
+    return row
+
+
+def consumer_configuration(root_dir: Path, commit: str, policy: dict[str, Any]) -> dict[str, str]:
+    """Seal committed MSBuild configuration, not an evaluated/mutable worktree.
+
+    Together with every root selector, this closes indirect/aliased/wildcard
+    Compile/ProjectReference changes without executing candidate MSBuild code.
+    Automatic project .user imports and directory/MSBuild .rsp inputs are sealed
+    too, even when the project itself has not changed.
+    """
+    limits = policy["resource_limits"]
+    paths = [path for path in list_tracked_files(root_dir, commit, [""], limits["max_ls_tree_bytes_per_owner_commit"])
+             if path.endswith((".csproj", ".props", ".targets", ".proj", ".slnx", ".user", ".rsp"))
+             or Path(path).name == "global.json" or Path(path).name.lower() == "nuget.config"]
+    if len(paths) > limits["max_contract_tree_files"]:
+        raise GraphError("consumer configuration exceeds the file ceiling")
+    result = {}
+    total_bytes = 0
+    for path in paths:
+        blob = read_blob(root_dir, commit, path, limits["max_contract_tree_blob_bytes"], "consumer configuration")
+        if blob is None:
+            raise GraphError(f"missing committed consumer configuration {path!r}")
+        total_bytes += len(blob)
+        if total_bytes > limits["max_contract_tree_total_bytes"]:
+            raise GraphError("consumer configuration exceeds the aggregate byte ceiling")
+        result[path] = hashlib.sha256(blob).hexdigest()
+    return result
+
+
+def evaluate_consumer_projections(
+    root_dir: Path, policy: dict[str, Any], envelope: dict[str, Any],
+) -> dict[str, Any]:
+    if not policy.get("consumer_source_projections"):
+        return {}
+    validate_graph_envelope(envelope)
+    reports = {}
+    root = envelope["root"]
+    direct = [edge for edge in envelope["edges"] if edge["depth"] == 1]
+    actual_direct = _owner_edges(root_dir, root["commit"], root["repository"], 1, policy, root_dir)
+    supplied_direct = [{key: edge[key] for key in ("owner_repository", "owner_commit", "path", "repository", "commit", "depth")}
+                       for edge in direct]
+    supplied_direct.sort(key=lambda edge: edge["path"])
+    if supplied_direct != actual_direct:
+        raise GraphError("consumer root selectors do not match committed root edges")
+    # Authenticate raw catalog evidence even when no projection owner is selected.
+    # A valid envelope/digest alone does not prove its root selectors or catalogs.
+    for edge in direct:
+        if edge["repository"] != policy["builds_identity"]:
+            continue
+        catalog = read_blob(resolve_local_path(policy, policy["builds_identity"], root_dir), edge["commit"],
+                            "Props/Directory.Packages.props", policy["resource_limits"]["max_catalog_blob_bytes"], "raw root Builds metadata")
+        if catalog is None or edge.get("catalog_sha256") != hashlib.sha256(catalog).hexdigest() or edge.get("catalog_contract_version") is not None:
+            raise GraphError("consumer raw root Builds catalog evidence changed or unavailable")
+    selector_projection = [{key: edge[key] for key in ("path", "repository", "commit")} for edge in direct]
+    for identity, row in policy.get("consumer_source_projections", {}).items():
+        selected = [edge for edge in direct if edge["repository"] == identity]
+        if not selected:
+            continue  # Earlier roots without this dependency gain no authority.
+        if len(selected) != 1 or selected[0]["commit"] != row["owner_commit"]:
+            raise GraphError("consumer projection requires one exact root-selected owner")
+        owner_local = resolve_local_path(policy, identity, root_dir)
+        actual_inventory = _owner_edges(owner_local, row["owner_commit"], identity, 2, policy, root_dir)
+        supplied_inventory = [{key: edge[key] for key in ("owner_repository", "owner_commit", "path", "repository", "commit", "depth")}
+                              for edge in envelope["edges"] if edge["depth"] == 2 and edge["owner_repository"] == identity]
+        supplied_inventory.sort(key=lambda edge: edge["path"])
+        if supplied_inventory != actual_inventory:
+            raise GraphError("consumer raw inventory does not match committed owner edges")
+        for edge in envelope["edges"]:
+            if edge["depth"] != 2 or edge["owner_repository"] != identity or edge["repository"] != policy["builds_identity"]:
+                continue
+            catalog = read_blob(resolve_local_path(policy, policy["builds_identity"], root_dir), edge["commit"],
+                                "Props/Directory.Packages.props", policy["resource_limits"]["max_catalog_blob_bytes"], "raw nested Builds metadata")
+            if catalog is None or edge.get("catalog_sha256") != hashlib.sha256(catalog).hexdigest() or edge.get("catalog_contract_version") is not None:
+                raise GraphError("consumer raw nested Builds catalog evidence changed or unavailable")
+        if root["repository"] != row["consumer_repository"]:
+            raise GraphError("consumer projection repository does not match explicit root")
+        if canonical_digest(selector_projection) != row["root_selectors_sha256"]:
+            raise GraphError("consumer projection root source selectors changed")
+        builds = [edge for edge in direct if edge["repository"] == policy["builds_identity"]]
+        if len(builds) != 1 or builds[0]["commit"] != row["builds_commit"]:
+            raise GraphError("consumer helper must use the exact approved root Builds source")
+        configuration = consumer_configuration(root_dir, root["commit"], policy)
+        configuration_hash = canonical_digest(configuration)
+        if configuration_hash != row["consumer_configuration_sha256"]:
+            raise GraphError("consumer Compile/ProjectReference configuration changed from its sealed source projection")
+        project_blob = read_blob(root_dir, root["commit"], row["consumer_project"],
+                                 policy["resource_limits"]["max_contract_tree_blob_bytes"], "consumer project")
+        if project_blob is None:
+            raise GraphError("consumer source project is missing")
+        project = parse_project_xml(project_blob, "consumer source project")
+        expected = {"$(" + row["source_root_property"] + ")/" + path: link
+                    for path, link in row["compile_links"].items()}
+        observed = {}
+        for item in project.iter("Compile"):
+            include = item.get("Include", "").replace("\\", "/")
+            if row["source_root_property"] not in include:
+                continue
+            if include not in expected or dict(item.attrib) != {"Include": include, "Link": expected[include]} or include in observed:
+                raise GraphError("consumer canonical Compile links are not the exact sealed pair")
+            observed[include] = expected[include]
+        if observed != expected:
+            raise GraphError("consumer canonical Compile pair is missing")
+        tooling = "$(HexalithBuildsRoot)/" + row["builds_project"]
+        references = [item for item in project.iter("ProjectReference") if item.get("Include", "").replace("\\", "/") == tooling]
+        if len(references) != 1 or references[0].get("IsAspireProjectResource") != "false":
+            raise GraphError("consumer helper requires the existing root Builds.Tooling source reference")
+        tooling_blob = read_blob(resolve_local_path(policy, policy["builds_identity"], root_dir), row["builds_commit"],
+                                 row["builds_project"], policy["resource_limits"]["max_contract_tree_blob_bytes"], "root Builds tooling")
+        if tooling_blob is None:
+            raise GraphError("approved root Builds.Tooling project object is missing")
+        report = {"schema": "hexalith.consumer-source-projection.v1", "owner_repository": identity,
+                  "owner_commit": row["owner_commit"], "consumer_repository": root["repository"],
+                  "consumer_commit": root["commit"], "consumer_project": row["consumer_project"],
+                  "source_files": row["source_files"], "root_builds_commit": row["builds_commit"],
+                  "inventory_sha256": row["inventory_sha256"], "root_selectors_sha256": row["root_selectors_sha256"],
+                  "consumer_configuration_sha256": configuration_hash}
+        report["projection_digest"] = canonical_digest(report)
+        reports[identity] = report
+    return reports
+
+
+def _inventory_only_edge(edge: dict[str, Any], policy: dict[str, Any]) -> bool:
+    row = policy.get("consumer_source_projections", {}).get(edge["owner_repository"])
+    return (row is not None and edge["depth"] == 2 and edge["owner_commit"] == row["owner_commit"]
+            and edge["repository"] in row["inventory_only_identities"])
+
+
 # ---------------------------------------------------------------------------
 # AD-4/AD-5 — edge collection, canonical envelope, and digest.
 # ---------------------------------------------------------------------------
@@ -344,8 +506,10 @@ def _owner_edges(
             raise GraphError(f"{owner_identity}@{commit}: .gitmodules entry {name!r} missing path/url")
         path = normalize_path(fields["path"], f"{owner_identity}@{commit} .gitmodules[{name}]")
         identity = normalize_identity(fields["url"], f"{owner_identity}@{commit} .gitmodules[{name}]")
-        # fail closed on any identity the policy does not already trust (AD-3/AD-12)
-        resolve_local_path(policy, identity, root_dir)
+        # Unknown identities remain unresolved. Only an exact sealed depth-two
+        # owner inventory can record them; root and every other context refuse.
+        if not (depth == 2 and _consumer_projection(policy, owner_identity, commit) is not None):
+            resolve_local_path(policy, identity, root_dir)
         if path in path_to_identity:
             raise GraphError(
                 f"{owner_identity}@{commit}: duplicate .gitmodules path {path!r} "
@@ -373,10 +537,15 @@ def _owner_edges(
                 "depth": depth,
             }
         )
+    if depth == 2:
+        row = _validate_projection_inventory(local_path, commit, owner_identity, edges, policy)
+        for edge in edges:
+            if row is None or edge["repository"] not in row["inventory_only_identities"]:
+                resolve_local_path(policy, edge["repository"], root_dir)
     return edges
 
 
-def collect_graph(root_dir: Path, root_identity: str, root_commit: str, policy: dict[str, Any]) -> dict[str, Any]:
+def _collect_raw_graph(root_dir: Path, root_identity: str, root_commit: str, policy: dict[str, Any]) -> dict[str, Any]:
     require_commit(root_commit, "root commit")
     limits = policy["resource_limits"]
     builds_identity = policy["builds_identity"]
@@ -422,6 +591,17 @@ def collect_graph(root_dir: Path, root_identity: str, root_commit: str, policy: 
     envelope["graph_digest"] = canonical_digest(
         {"schema": envelope["schema"], "root": envelope["root"], "edge_count": envelope["edge_count"], "edges": envelope["edges"]}
     )
+    return envelope
+
+
+def collect_graph(root_dir: Path, root_identity: str, root_commit: str, policy: dict[str, Any]) -> dict[str, Any]:
+    """Collect raw v1 provenance and enforce any active consumer projection.
+
+    Every live handoff/release consumer shares this gate. The private raw collector
+    is diagnostic metadata only and never authorizes materialization or execution.
+    """
+    envelope = _collect_raw_graph(root_dir, root_identity, root_commit, policy)
+    evaluate_consumer_projections(root_dir, policy, envelope)
     return envelope
 
 
@@ -830,6 +1010,8 @@ def acquire_object_stores(
     if destination.exists():
         raise GraphError(f"acquisition destination already exists: {destination}")
     policy, _raw, _projection = load_policy_at_commit(root_dir, candidate if zero_base else event_base)
+    if zero_base and policy.get("consumer_source_projections"):
+        raise GraphError("consumer source projection requires an active base; candidate diagnostics cannot authorize acquisition")
 
     # Validate both root mappings before any network operation.
     root_identity = "github.com/hexalith/hexalith.frontcomposer"
@@ -877,8 +1059,14 @@ def acquire_object_stores(
     if len(root_edges) + len(direct_edges) > policy["resource_limits"]["max_edges"] * 2:
         raise GraphError("base/candidate acquisition exceeds the doubled AD-7 graph-edge ceiling")
     for edge in direct_edges:
+        if _inventory_only_edge(edge, policy):
+            continue
         local = resolve_local_path(policy, edge["repository"], destination)
         _ensure_commit_available(local, edge["commit"])
+
+    if policy.get("consumer_source_projections"):
+        for revision in ([event_base] if not zero_base else []) + [candidate]:
+            collect_graph(destination, root_identity, revision, policy)
 
     candidate_builds = [edge for edge in candidate_root_edges if edge["repository"] == policy["builds_identity"]]
     if len(candidate_builds) != 1:
@@ -955,6 +1143,16 @@ def validate_diff_evidence(root_dir: Path, evidence: Any) -> tuple[dict[str, Any
             )
     if policy_commit != revisions["event_base"] and revisions["event_base"] != "0" * 40:
         raise GraphError("affected-module active policy commit does not match event base")
+    if policy.get("consumer_source_projections"):
+        for label, graph in (("base", base_graph), ("candidate", candidate_graph)):
+            actual_projection = evaluate_consumer_projections(root_dir, policy, graph)
+            semantic_document = evidence.get(label + "_semantics")
+            if not isinstance(semantic_document, dict):
+                raise GraphError("affected-module consumer source projection semantics are missing")
+            claimed = semantic_document.get("consumer_source_projections", {})
+            if actual_projection != claimed:
+                raise GraphError("affected-module consumer source projection does not match committed objects")
+
     expected = diff_graphs(
         evidence["base_graph"],
         evidence["candidate_graph"],
@@ -969,6 +1167,37 @@ def validate_diff_evidence(root_dir: Path, evidence: Any) -> tuple[dict[str, Any
     if expected["changes"] != evidence.get("changes") or expected["affected_modules"] != evidence.get("affected_modules"):
         raise GraphError("affected-module changes/proof do not match canonical AD-8 projection")
     return policy, evidence
+
+
+def materialize_consumer_sources(
+    root_dir: Path, policy: dict[str, Any], graph: dict[str, Any], destination: Path,
+    repository: str, commit: str,
+) -> list[str]:
+    """Materialize only the two approved Compile blobs, never the umbrella tree."""
+    reports = evaluate_consumer_projections(root_dir, policy, graph)
+    written = []
+    for identity, report in reports.items():
+        if report["consumer_repository"] != repository or report["consumer_commit"] != commit:
+            continue
+        row = policy["consumer_source_projections"][identity]
+        selected = next(edge for edge in graph["edges"] if edge["depth"] == 1 and edge["repository"] == identity)
+        target = destination / selected["path"]
+        if not target.resolve().is_relative_to(destination.resolve()):
+            raise GraphError("consumer source materialization path escapes its isolated module")
+        if target.is_symlink() or (target.exists() and (not target.is_dir() or any(target.iterdir()))):
+            raise GraphError("consumer source destination is unexpectedly populated")
+        target.mkdir(parents=True, exist_ok=True)
+        owner_local = resolve_local_path(policy, identity, root_dir)
+        for relative, digest in row["source_files"].items():
+            blob = read_blob(owner_local, row["owner_commit"], relative,
+                             policy["resource_limits"]["max_contract_tree_blob_bytes"], "consumer Compile source")
+            if blob is None or hashlib.sha256(blob).hexdigest() != digest:
+                raise GraphError("consumer source changed before materialization")
+            output = target / relative
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_bytes(blob)
+            written.append(str(output.relative_to(destination)))
+    return sorted(written)
 
 
 def run_affected_builds(root_dir: Path, evidence: dict[str, Any], output_root: Path) -> dict[str, Any]:
@@ -1027,6 +1256,7 @@ def run_affected_builds(root_dir: Path, evidence: dict[str, Any], output_root: P
         elif source != "self":
             raise GraphError(f"affected module {repository} has unsupported contract source {source!r}")
 
+        materialize_consumer_sources(root_dir, policy, graph, destination, repository, commit)
         command_results = []
         for name in ("restore_argv", "build_argv"):
             argv = row[name]
@@ -1420,6 +1650,11 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
         for owner_commit in sorted({edge["owner_commit"] for edge in owner_edges}):
             commit_edges = [edge for edge in owner_edges if edge["owner_commit"] == owner_commit]
 
+            for relative_path, expected_hash in owner_checks.get("canonical_source_files", {}).items():
+                source = read_blob(owner_local, owner_commit, relative_path, limits["max_catalog_blob_bytes"], f"{owner_identity}@{owner_commit}")
+                if source is None or hashlib.sha256(source).hexdigest() != expected_hash:
+                    raise GraphError(f"{owner_identity}@{owner_commit}: canonical source {relative_path!r} is missing or differs from its enrolled digest")
+
             own_blob = read_blob(owner_local, owner_commit, "Directory.Packages.props", limits["max_catalog_blob_bytes"], f"{owner_identity}@{owner_commit}")
             own_xml = parse_project_xml(own_blob, f"{owner_identity}@{owner_commit} Directory.Packages.props") if own_blob is not None else None
 
@@ -1502,7 +1737,11 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
         raise GraphError(
             "validate found no Builds-selector edges; semantic profiles were not exercised"
         )
-    return {"selectors_validated": selectors_validated, "diagnostics": diagnostics}
+    result = {"selectors_validated": selectors_validated, "diagnostics": diagnostics}
+    projections = evaluate_consumer_projections(root_dir, policy, envelope)
+    if projections:
+        result["consumer_source_projections"] = projections
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -1615,6 +1854,8 @@ def assert_policy_well_formed(policy: dict[str, Any], *, allow_migration_marker:
     }
     if allow_migration_marker and policy.get("__legacy_registry_migration__") is True:
         expected.add("__legacy_registry_migration__")
+    if "consumer_source_projections" in policy:
+        expected.add("consumer_source_projections")
     _require_closed_object(policy, expected, "dependency policy")
     assert_profiles_well_formed(policy)
 
@@ -1647,6 +1888,45 @@ def assert_policy_well_formed(policy: dict[str, Any], *, allow_migration_marker:
         if profile_name not in policy["profiles"]:
             raise GraphError(f"semantic profile {profile_name!r} for {identity} is undefined")
 
+    projections = policy.get("consumer_source_projections", {})
+    if not isinstance(projections, dict):
+        raise GraphError("consumer_source_projections must be an object")
+    projection_members = {"owner_commit", "gitmodules_sha256", "inventory_sha256", "inventory_only_identities",
+                          "source_files", "consumer_repository", "consumer_project", "source_root_property",
+                          "compile_links", "builds_commit", "builds_project", "root_selectors_sha256", "consumer_configuration_sha256"}
+    for identity, value in projections.items():
+        if identity not in identities or identity == policy["builds_identity"]:
+            raise GraphError("consumer projection owner must be an existing trusted non-Builds identity")
+        row = _require_closed_object(value, projection_members, f"consumer projection {identity}")
+        require_commit(row["owner_commit"], "consumer projection owner")
+        require_commit(row["builds_commit"], "consumer projection root Builds")
+        for field in ("gitmodules_sha256", "inventory_sha256", "root_selectors_sha256", "consumer_configuration_sha256"):
+            _require_sha256(row[field], f"consumer projection {field}")
+        if row["consumer_repository"] not in identities:
+            raise GraphError("consumer projection consumer must already be trusted")
+        for field in ("consumer_project", "builds_project"):
+            normalize_path(row[field], f"consumer projection {field}")
+        if not isinstance(row["source_root_property"], str) or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", row["source_root_property"]) is None:
+            raise GraphError("consumer projection source root property is invalid")
+        files = row["source_files"]
+        links = row["compile_links"]
+        if not isinstance(files, dict) or len(files) != 2 or not isinstance(links, dict) or set(links) != set(files):
+            raise GraphError("consumer projection must seal exactly two sources and their Compile links")
+        for path, digest in files.items():
+            normalize_path(path, "consumer canonical source")
+            if not path.endswith(".cs"):
+                raise GraphError("consumer canonical source must be C# Compile data")
+            _require_sha256(digest, "consumer canonical source hash")
+            normalize_path(links[path], "consumer Compile link")
+        inventory_only = row["inventory_only_identities"]
+        if (not isinstance(inventory_only, list) or not inventory_only
+                or not all(isinstance(item, str) for item in inventory_only)
+                or inventory_only != sorted(set(inventory_only))):
+            raise GraphError("consumer inventory-only identities must be unique and sorted")
+        for untrusted in inventory_only:
+            if not isinstance(untrusted, str) or normalize_identity("https://" + untrusted, "inventory-only identity") != untrusted or untrusted in identities:
+                raise GraphError("inventory-only identity must remain globally untrusted")
+
     registry = policy["module_build_registry"]
     if not isinstance(registry, dict) or set(registry) != identities:
         raise GraphError("policy module_build_registry must cover every trusted identity exactly")
@@ -1656,6 +1936,8 @@ def assert_policy_well_formed(policy: dict[str, Any], *, allow_migration_marker:
     for identity, row_value in registry.items():
         row = _require_closed_object(row_value, build_members, f"module registry[{identity}]")
         disposition = row["disposition"]
+        if identity in projections and disposition != "evidence-only":
+            raise GraphError("consumer projection owner must remain evidence-only; whole-owner execution is forbidden")
         if disposition not in ("build", "evidence-only"):
             raise GraphError(f"module registry[{identity}] has invalid disposition {disposition!r}")
         if disposition == "evidence-only":
@@ -1815,6 +2097,12 @@ def assert_profiles_well_formed(policy: dict[str, Any]) -> None:
                                 f"policy profile {profile_name!r}: owner_checks[{check_name!r}].extensions "
                                 f"must be a non-empty list of strings, found {extensions!r}"
                             )
+                    if check_name == "canonical_source_files":
+                        if not check_value:
+                            raise GraphError(f"policy profile {profile_name!r}: canonical_source_files must not be empty")
+                        for relative_path, digest in check_value.items():
+                            normalize_path(relative_path, f"policy profile {profile_name!r} canonical source path")
+                            _require_sha256(digest, f"policy profile {profile_name!r} canonical source digest")
                     if check_name == "guarded_imports" and not check_value:
                         raise GraphError(
                             f"policy profile {profile_name!r}: owner_checks[{check_name!r}] must be a non-empty object"

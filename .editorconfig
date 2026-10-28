@@ -89,3 +89,9 @@ dotnet_diagnostic.CS1591.severity = warning
 
 [src/Hexalith.FrontComposer.Contracts/Conformance/**.cs]
 dotnet_diagnostic.CS1591.severity = warning
+
+# The approved canonical Platform source is linked unchanged at its pinned revision.
+# These two adoption controls do not apply to FrontComposer-owned source.
+[references/Hexalith.Platform/DaprSelfHostedMtls.cs]
+dotnet_diagnostic.CA1050.severity = none
+dotnet_diagnostic.CA1859.severity = none

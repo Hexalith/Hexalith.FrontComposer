@@ -57,7 +57,7 @@
     "github.com/hexalith/hexalith.polymorphicserializations": "shared-catalog-baseline-v1",
     "github.com/hexalith/hexalith.tenants": "shared-catalog-baseline-v1",
     "github.com/hexalith/hexalith.ai.tools": "shared-catalog-baseline-v1",
-    "github.com/hexalith/hexalith.platform": "shared-catalog-baseline-v1",
+    "github.com/hexalith/hexalith.platform": "platform-mtls-source-v1",
     "github.com/hexalith/hexalith.mcpcli": "shared-catalog-baseline-v1"
   },
   "profiles": {
@@ -79,12 +79,12 @@
         "BenchmarkDotNet": "0.15.8",
         "FsCheck.Xunit.v3": "3.6.0",
         "Microsoft.CodeAnalysis.Workspaces.Common": "5.9.0",
-        "Microsoft.Extensions.Localization": "10.0.13",
+        "Microsoft.Extensions.Localization": "10.0.14",
         "Microsoft.Extensions.TimeProvider.Testing": "10.11.0",
         "ModelContextProtocol.AspNetCore": "2.3.0",
         "NUlid": "1.7.3",
         "PactNet": "5.0.1",
-        "System.Collections.Immutable": "10.0.13",
+        "System.Collections.Immutable": "10.0.14",
         "System.ComponentModel.Annotations": "5.0.0",
         "System.Reactive": "7.0.0",
         "System.Threading.Tasks.Extensions": "4.6.3",
@@ -158,6 +158,18 @@
       "owner_checks": {
         "well_formed_project_root": true,
         "override_not_enabled": true
+      },
+      "selected_catalog_required_properties": {},
+      "selected_catalog_required_packages": {}
+    },
+    "platform-mtls-source-v1": {
+      "owner_checks": {
+        "well_formed_project_root": true,
+        "override_not_enabled": true,
+        "canonical_source_files": {
+          "DaprSelfHostedMtls.cs": "703072feb8b609c2661a1c7eaa955fbd2c9d838402520b4fc425bda2000ba1a8",
+          "DaprSelfHostedMtlsSubscriber.cs": "55c280284d0a305b1d6b6667f31362b7c4e4a3cf39890b6175d913cd762bb9c6"
+        }
       },
       "selected_catalog_required_properties": {},
       "selected_catalog_required_packages": {}
@@ -2758,5 +2770,36 @@
         "closure_digest": "720c38a1b04cfe0f2a14138baaf9e5e9e9baebadd632c09b52c9f9514268bd28"
       }
     ]
+  },
+  "consumer_source_projections": {
+    "github.com/hexalith/hexalith.platform": {
+      "owner_commit": "b742b1b7a496ac72d6961ca6db5213d3df42d234",
+      "gitmodules_sha256": "6da4f5297d79bfa54afcb8daacda70670af11868ba1738cc185f584db8eb6ab7",
+      "inventory_sha256": "7f4753f5bd787b2948eafb6da1b28b103246f3022b57710129cc61b714a58a29",
+      "inventory_only_identities": [
+        "github.com/hexalith/hexalith.agents",
+        "github.com/hexalith/hexalith.chatbot",
+        "github.com/hexalith/hexalith.conversations",
+        "github.com/hexalith/hexalith.folders",
+        "github.com/hexalith/hexalith.projects",
+        "github.com/hexalith/hexalith.timesheets",
+        "github.com/hexalith/hexalith.works"
+      ],
+      "source_files": {
+        "DaprSelfHostedMtls.cs": "703072feb8b609c2661a1c7eaa955fbd2c9d838402520b4fc425bda2000ba1a8",
+        "DaprSelfHostedMtlsSubscriber.cs": "55c280284d0a305b1d6b6667f31362b7c4e4a3cf39890b6175d913cd762bb9c6"
+      },
+      "consumer_repository": "github.com/hexalith/hexalith.frontcomposer",
+      "consumer_project": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+      "source_root_property": "HexalithPlatformRoot",
+      "compile_links": {
+        "DaprSelfHostedMtls.cs": "Platform/DaprSelfHostedMtls.cs",
+        "DaprSelfHostedMtlsSubscriber.cs": "Platform/DaprSelfHostedMtlsSubscriber.cs"
+      },
+      "builds_commit": "81ab049208678bd6616828824729c0ddac02f7d1",
+      "builds_project": "src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj",
+      "root_selectors_sha256": "3bda30ee17afc853c07e416498ab1cde0b05bc5ad73d640680f6524415dc8ec6",
+      "consumer_configuration_sha256": "68386ed899cdef31131e081c321424fa18af8864b8d8efcd6f59eae99a870fca"
+    }
   }
 }

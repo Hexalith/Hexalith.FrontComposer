@@ -61,9 +61,22 @@ HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSec
 
 if (verification is not null && security is not null)
 {
-    _ = security.Keycloak
-        .WithContainerName("fc-verify-" + verification.Owner + "-identity")
-        .WithContainerRuntimeArgs("--label", "hexalith.frontcomposer.verification=" + verification.Owner);
+    if (verification.FullTopology)
+    {
+        // A fresh name/import per launch prevents realm reuse. Resource lifetime is
+        // controlled by the owned runner, which removes the exact container ID.
+        _ = security.Keycloak
+            .WithContainerName("fc-verify-" + verification.Owner + "-" + verification.Instance + "-identity")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerRuntimeArgs("--label", "hexalith.frontcomposer.verification=" + verification.Owner,
+                "--label", "hexalith.frontcomposer.verification.instance=" + verification.Instance);
+    }
+    else
+    {
+        _ = security.Keycloak
+            .WithContainerName("fc-verify-" + verification.Owner + "-identity")
+            .WithContainerRuntimeArgs("--label", "hexalith.frontcomposer.verification=" + verification.Owner);
+    }
 }
 
 // Explicit verification uses a disposable gateway; the normal development topology below is unchanged.
@@ -90,7 +103,7 @@ if (verification is not null)
 {
     if (!builder.ExecutionContext.IsRunMode || security is null || workloadRealm is null)
         throw new InvalidOperationException("Disposable verification requires local Keycloak run mode.");
-    LocalReadinessTopology.AddInfrastructure(builder, verification);
+    LocalReadinessTopology.AddInfrastructure(builder, verification, includeControlPlane: false);
     accessControlConfigPath = verification.FilePath("accesscontrol.yaml");
     adminServerAccessControlConfigPath = verification.FilePath("accesscontrol.eventstore-admin.yaml");
     sampleAccessControlConfigPath = verification.FilePath("accesscontrol.sample.yaml");
@@ -360,6 +373,8 @@ else {
 
 if (verification is not null)
 {
+    // The runner owns the one documented delegated-human bootstrap attempt and IDs.
+    _ = tenants.WithEnvironment("Tenants__BootstrapGlobalAdminEnabled", "false");
     // Fresh owned state has no prior remote obligations. Keep the ordinary disabled
     // indexing feature, but remove Development's dormant shared Memories route.
     _ = parties.WithEnvironment("Parties__MemoriesSearch__Enabled", "false")
@@ -383,10 +398,35 @@ if (verification is not null)
     _ = LocalReadinessTopology.WithGatewayHealth(builder, eventStore, maintenance: false);
 }
 
-await builder
-    .Build()
-    .RunAsync()
-    .ConfigureAwait(false);
+// Reuse the platform's existing per-resource channel credential; domain validation
+// remains enforced and no workload caller grant is added by this binding.
+if (builder.ExecutionContext.IsRunMode)
+{
+    foreach (ProjectResource application in builder.Resources.OfType<ProjectResource>()
+        .Where(resource => resource.Name is "tenants" or "parties" or "sample" or "counter-scope-fixture").ToArray())
+    {
+        _ = builder.CreateResourceBuilder(application).WithGeneratedEventStoreAppChannelToken();
+    }
+}
+
+// Receiver caller policies require a verified peer identity. The canonical helper
+// owns certificate issuance, the private actor plane and generated native sidecars.
+(string RunDirectory, string CertificateDirectory)? localDapr = builder.ExecutionContext.IsRunMode
+    ? LocalReadinessMtls.Add(builder, verification)
+    : null;
+try
+{
+    DistributedApplication application = builder.Build();
+    await using (application.ConfigureAwait(false))
+    {
+        await application.RunAsync().ConfigureAwait(false);
+    }
+}
+finally
+{
+    if (localDapr is { } owned)
+        await LocalReadinessMtls.CleanupAsync(owned, verification).ConfigureAwait(false);
+}
 
 static string ResolveDaprConfigPath(string appHostDirectory, string fileName) {
     // Primary: resolve relative to AppHost project directory (works for dotnet run and Aspire testing)

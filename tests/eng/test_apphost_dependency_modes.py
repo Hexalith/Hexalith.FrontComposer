@@ -20,8 +20,8 @@ MEMORIES_IDS = {"Hexalith.Memories.Contracts", "Hexalith.Memories.Client.Rest"}
 def evaluate(project: Path, configuration: str | None, properties: dict[str, str] | None = None) -> dict:
     command = [
         "dotnet", "msbuild", str(project), "-nologo",
-        "-getProperty:HexalithMemoriesFromSource,ProjectAssetsFile,RestoreUseStaticGraphEvaluation",
-        "-getItem:ProjectReference,PackageReference",
+        "-getProperty:HexalithMemoriesFromSource,ProjectAssetsFile,RestoreUseStaticGraphEvaluation,FrontComposerCallerHookObserved",
+        "-getItem:ProjectReference,PackageReference,Compile",
     ]
     if configuration is not None:
         command.append(f"-p:Configuration={configuration}")
@@ -69,6 +69,49 @@ class AppHostDependencyModeTests(unittest.TestCase):
             configuration = "Release" if not properties else "Debug"
             self.assertNotEqual(evaluate(APPHOST, configuration, properties)["Properties"]["RestoreUseStaticGraphEvaluation"], "true")
 
+    def test_canonical_mtls_source_is_linked_in_source_and_package_modes(self) -> None:
+        platform = ROOT / "references/Hexalith.Platform"
+        tooling = ROOT / "references/Hexalith.Builds/src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj"
+        for configuration, properties in (("Debug", {}), ("Release", {}), ("Debug", {"UseHexalithProjectReferences": "false"})):
+            with self.subTest(configuration=configuration, properties=properties):
+                host = evaluate(APPHOST, configuration, properties)
+                linked = {item["Link"]: Path(item["FullPath"]) for item in host["Items"]["Compile"] if item.get("Link", "").startswith("Platform/")}
+                self.assertEqual(linked, {"Platform/" + name: platform / name for name in ("DaprSelfHostedMtls.cs", "DaprSelfHostedMtlsSubscriber.cs")})
+                reference = module_reference(host, tooling)
+                self.assertEqual(reference["IsAspireProjectResource"], "false")
+                if configuration == "Debug" and not properties:
+                    forwarded = forwarded_properties(reference)
+                    self.assertEqual(Path(forwarded["HexalithPlatformRoot"]), platform)
+                    self.assertEqual(Path(forwarded["HexalithBuildsRoot"]), ROOT / "references/Hexalith.Builds")
+
+    def test_foreign_eventstore_version_stops_at_the_exact_debug_commons_boundary(self) -> None:
+        host = evaluate(APPHOST, "Debug")
+        properties = forwarded_properties(module_reference(host))
+        properties.pop("CustomAfterMicrosoftCommonTargets", None)
+        properties["Version"] = "3.128.3"
+        contracts = ROOT / "references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj"
+        commons = ROOT / "references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj"
+        source = module_reference(evaluate(contracts, "Debug", properties), commons)
+        self.assertIn("Version", source["GlobalPropertiesToRemove"].split(";"))
+        released = module_reference(evaluate(contracts, "Release", properties), commons)
+        self.assertNotIn("Version", released.get("GlobalPropertiesToRemove", "").split(";"))
+        external = ROOT / "unapproved-commons"
+        outside = evaluate(contracts, "Debug", properties | {"HexalithCommonsRoot": str(external)})
+        outside_edge = module_reference(outside, external / "src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj")
+        self.assertNotIn("Version", outside_edge.get("GlobalPropertiesToRemove", "").split(";"))
+
+    def test_source_boundary_preserves_the_existing_after_targets_import(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            marker = Path(root) / "caller.targets"
+            marker.write_text("<Project><PropertyGroup><FrontComposerCallerHookObserved>true</FrontComposerCallerHookObserved></PropertyGroup></Project>")
+            host = evaluate(APPHOST, "Debug", {"CustomAfterDirectoryBuildTargets": str(marker)})
+            properties = forwarded_properties(module_reference(host))
+            self.assertEqual(properties["FrontComposerSourceReferencesPreviousTargets"], str(marker))
+            properties.pop("CustomAfterMicrosoftCommonTargets", None)
+            contracts = ROOT / "references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj"
+            child = evaluate(contracts, "Debug", properties)
+            self.assertEqual(child["Properties"]["FrontComposerCallerHookObserved"], "true")
+
     def test_debug_apphost_restore_uses_source_recovery_and_unique_ids(self) -> None:
         with tempfile.TemporaryDirectory(prefix="frontcomposer-apphost-restore-") as artifacts:
             result = subprocess.run(
@@ -96,6 +139,19 @@ class AppHostDependencyModeTests(unittest.TestCase):
                     self.assertCountEqual(selected, [(name, "project") for name in required])
             unique_ids = ROOT / "references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj"
             self.assertTrue(Path(evaluate(unique_ids, "Debug", properties)["Properties"]["ProjectAssetsFile"]).is_file())
+
+            # The SDK materializes this transitive edge after project evaluation.
+            # Keep foreign EventStore Version out of that actual restored edge too.
+            late_project = ROOT / "references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj"
+            late_properties = properties | {"Version": "3.128.3"}
+            late = subprocess.run(
+                ["dotnet", "msbuild", str(late_project), "-nologo", "-p:Configuration=Debug",
+                 "-t:IncludeTransitiveProjectReferences", "-getItem:ProjectReference", *[
+                     f"-p:{key}={value}" for key, value in late_properties.items()]],
+                cwd=ROOT, capture_output=True, text=True, timeout=90,
+            )
+            self.assertEqual(late.returncode, 0, late.stdout + late.stderr)
+            self.assertIn("Version", module_reference(json.loads(late.stdout), unique_ids)["GlobalPropertiesToRemove"].split(";"))
 
             build = subprocess.run(
                 ["dotnet", "build", str(APPHOST), "-c", "Debug", "-m:1", "--no-restore",

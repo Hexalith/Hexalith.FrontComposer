@@ -17,6 +17,9 @@
     <CommonsPath Condition="'$(CommonsPath)' == '' and Exists('$(MSBuildThisFileDirectory)references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj')">$(MSBuildThisFileDirectory)references/Hexalith.Commons</CommonsPath>
     <CommonsPath Condition="'$(CommonsPath)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj')">$(MSBuildThisFileDirectory)../Hexalith.Commons</CommonsPath>
     <CommonsPath Condition="'$(CommonsPath)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.Commons</CommonsPath>
+    <!-- Canonical hosting source and tooling always resolve to root-declared dependencies. -->
+    <HexalithPlatformRoot Condition="'$(HexalithPlatformRoot)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.Platform</HexalithPlatformRoot>
+    <HexalithBuildsRoot Condition="'$(HexalithBuildsRoot)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.Builds</HexalithBuildsRoot>
     <HexalithEventStoreRoot>$(EventStorePath)</HexalithEventStoreRoot>
     <HexalithTenantsRoot>$(TenantsPath)</HexalithTenantsRoot>
     <HexalithPartiesRoot>$(PartiesPath)</HexalithPartiesRoot>
@@ -29,8 +32,12 @@
     <HexalithMemoriesFromSource>true</HexalithMemoriesFromSource>
     <HexalithCommonsFromSource>true</HexalithCommonsFromSource>
     <HexalithFrontComposerFromSource>true</HexalithFrontComposerFromSource>
+    <!-- Preserve a caller's existing after-targets import while normalizing only the
+         shared Commons source boundary across foreign Version project contexts. -->
+    <_FrontComposerSourceReferencesTargets>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', 'eng', 'FrontComposer.SourceReferences.targets'))</_FrontComposerSourceReferencesTargets>
+    <FrontComposerSourceReferencesPreviousTargets Condition="'$(CustomAfterDirectoryBuildTargets)' != '$(_FrontComposerSourceReferencesTargets)'">$(CustomAfterDirectoryBuildTargets)</FrontComposerSourceReferencesPreviousTargets>
     <!-- One source selection for every path to shared restore/build outputs. -->
-    <_HexalithSourceReferenceProperties>HexalithFrontComposerRoot=$(HexalithFrontComposerRoot);HexalithEventStoreRoot=$(HexalithEventStoreRoot);HexalithTenantsRoot=$(HexalithTenantsRoot);HexalithPartiesRoot=$(HexalithPartiesRoot);HexalithMemoriesRoot=$(HexalithMemoriesRoot);HexalithCommonsRoot=$(HexalithCommonsRoot);HexalithFrontComposerFromSource=$(HexalithFrontComposerFromSource);HexalithEventStoreFromSource=$(HexalithEventStoreFromSource);HexalithTenantsFromSource=$(HexalithTenantsFromSource);HexalithPartiesFromSource=$(HexalithPartiesFromSource);HexalithMemoriesFromSource=$(HexalithMemoriesFromSource);HexalithCommonsFromSource=$(HexalithCommonsFromSource)</_HexalithSourceReferenceProperties>
+    <_HexalithSourceReferenceProperties>CustomAfterDirectoryBuildTargets=$(_FrontComposerSourceReferencesTargets);FrontComposerSourceReferencesPreviousTargets=$(FrontComposerSourceReferencesPreviousTargets);HexalithPlatformRoot=$(HexalithPlatformRoot);HexalithBuildsRoot=$(HexalithBuildsRoot);HexalithFrontComposerRoot=$(HexalithFrontComposerRoot);HexalithEventStoreRoot=$(HexalithEventStoreRoot);HexalithTenantsRoot=$(HexalithTenantsRoot);HexalithPartiesRoot=$(HexalithPartiesRoot);HexalithMemoriesRoot=$(HexalithMemoriesRoot);HexalithCommonsRoot=$(HexalithCommonsRoot);HexalithFrontComposerFromSource=$(HexalithFrontComposerFromSource);HexalithEventStoreFromSource=$(HexalithEventStoreFromSource);HexalithTenantsFromSource=$(HexalithTenantsFromSource);HexalithPartiesFromSource=$(HexalithPartiesFromSource);HexalithMemoriesFromSource=$(HexalithMemoriesFromSource);HexalithCommonsFromSource=$(HexalithCommonsFromSource)</_HexalithSourceReferenceProperties>
   </PropertyGroup>
   <!-- Internal FrontComposer edges also reach the modules through Shell and Counter.
        Carry the same selection there before crossing a repository boundary. -->

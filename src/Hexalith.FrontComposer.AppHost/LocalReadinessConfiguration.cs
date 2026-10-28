@@ -22,6 +22,9 @@ internal sealed class LocalReadinessConfiguration
     /// <summary>Gets the unique ownership identifier.</summary>
     internal string Owner => _settings.GetProperty("owner").GetString()!;
 
+    /// <summary>Gets the fresh launch identity; full verification never reuses a private realm.</summary>
+    internal string Instance => _settings.GetProperty("instance").GetString()!;
+
     /// <summary>Gets whether the runner explicitly selected the ordinary full application graph.</summary>
     internal bool FullTopology => _settings.TryGetProperty("topology", out JsonElement topology) && topology.GetString() == "full";
 
@@ -92,6 +95,7 @@ internal sealed class LocalReadinessConfiguration
         if (File.ReadAllText(FilePath("redis.conf")).Replace("\r\n", "\n", StringComparison.Ordinal) != redisConfiguration)
             throw new InvalidOperationException("Disposable verification refuses altered Redis configuration.");
         foreach (string name in new[] { "components", "runtime", "empty" }) RequirePrivate(FilePath(name));
+        if (FullTopology) RequirePrivate(FilePath("mtls"));
         if (Directory.EnumerateFileSystemEntries(FilePath("empty")).Any()
             || !Directory.EnumerateFileSystemEntries(FilePath("components")).Select(Path.GetFileName).Order(StringComparer.Ordinal)
                 .SequenceEqual(_componentFiles, StringComparer.Ordinal))
@@ -139,6 +143,24 @@ internal sealed class LocalReadinessConfiguration
         foreach (string path in Directory.EnumerateFileSystemEntries(FilePath("runtime"))) RequirePrivate(path);
     }
 
+    /// <summary>Validates canonical issuer/run paths without reading or deleting credentials.</summary>
+    /// <param name="runDirectory">The canonical helper's fresh run directory.</param>
+    /// <param name="certificateDirectory">The issuer directory under this run's private parent.</param>
+    internal void ValidateMtlsDirectories(string runDirectory, string certificateDirectory)
+    {
+        string run = Path.GetFullPath(runDirectory);
+        string issuer = Path.GetFullPath(certificateDirectory);
+        string expectedParent = Path.Combine(Path.GetTempPath(), "hexalith-dapr");
+        string runName = Path.GetFileName(run);
+        string digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(run)))[..32];
+        if (Path.GetDirectoryName(run) != expectedParent || runName.Length != 32 || runName.Any(character => !char.IsAsciiHexDigit(character))
+            || issuer != FilePath("mtls/dapr-credentials-" + digest))
+            throw new InvalidOperationException("Canonical Dapr directories do not belong to the private verification run.");
+        RequirePrivate(run);
+        RequirePrivate(FilePath("mtls"));
+        RequirePrivate(issuer);
+    }
+
     /// <summary>Loads only a private real directory and strict generated configuration.</summary>
     internal static LocalReadinessConfiguration Load(string? directory)
     {
@@ -159,6 +181,8 @@ internal sealed class LocalReadinessConfiguration
         if (owner.Length != 32 || owner.Any(character => !char.IsAsciiHexDigit(character))
             || !System.Text.RegularExpressions.Regex.IsMatch(version, @"^1\.18\.[0-9]+$", System.Text.RegularExpressions.RegexOptions.CultureInvariant)
             || topology is not "gateway" and not "full"
+            || (topology == "full" && (!settings.TryGetProperty("instance", out JsonElement instance)
+                || !System.Text.RegularExpressions.Regex.IsMatch(instance.GetString() ?? string.Empty, "^[0-9a-f]{32}$", System.Text.RegularExpressions.RegexOptions.CultureInvariant)))
             || ports.Length != 4 || ports.Distinct().Count() != 4 || ports.Any(port => port < 10000 || port > 65535))
         {
             throw new InvalidOperationException("Disposable verification configuration is invalid.");

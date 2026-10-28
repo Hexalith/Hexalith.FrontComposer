@@ -7,7 +7,7 @@ paradigm: 'bounded committed-object graph'
 scope: 'GOV-1 shared-catalog compatibility and dependency provenance'
 status: final
 created: '2026-07-19'
-updated: '2026-09-09'
+updated: '2026-10-28'
 binds: ['GOV-1', 'parent:approved-gov-1-amendment', 'parent:semantic-catalog-compatibility', 'parent:fr-24-exact-artifact-pipeline', 'parent:pre-publication-authorizes-only', 'parent:ownership-boundaries', 'parent:build-rel-1-governed-reusable-mode', 'parent:no-runtime-or-ux-change']
 sources:
   - _bmad-output/planning-artifacts/architecture.md
@@ -119,6 +119,7 @@ compensating controls, and revocation trigger; it cannot be inferred from enviro
 - **Rule:** resolve only the explicit FrontComposer root identity and identities explicitly trusted
   by the active policy revision selected by AD-12. Approved depth-2 targets may be absent from the
   root `.gitmodules`; this does not promote them to depth-1 owners or permit nested initialization.
+  AD-12a permits only sealed inventory recording without resolving its inventory-only identities.
   Identity is the trust key; the gitlink path is graph evidence, not policy data, and the policy
   `local_path` is acquisition data only. Normalization is ordered: accept `https://github.com/<owner>/<repo>`,
   `git@github.com:<owner>/<repo>`, or `ssh://git@github.com/<owner>/<repo>` with scheme and host
@@ -354,7 +355,7 @@ compensating controls, and revocation trigger; it cannot be inferred from enviro
 - **Prevents:** candidate `.gitmodules`, C# tests, Python code, and workflows independently defining trust or compatibility.
 - **Rule:** FrontComposer-owned `eng/dependency-graph-policy.json` (`hexalith.dependency-graph-policy.v1`)
   is the sole declarative policy for trusted identities, owner semantic profiles, the module build
-  registry, `resource_limits`, `evaluator_authorizations`, `release_owner_logins`, and
+  registry, optional `consumer_source_projections`, `resource_limits`, `evaluator_authorizations`, `release_owner_logins`, and
   `attestation_capability`; candidate `.gitmodules`, workflows, and action metadata are untrusted data.
   Architecture defines schema, coverage invariants, activation, and trust boundary without mirroring
   policy rows.
@@ -427,6 +428,61 @@ compensating controls, and revocation trigger; it cannot be inferred from enviro
   the Release run in the AD-15 handoff and copied to the ledger record. Policy changes require
   Governance fixtures and review. Candidate-controlled evaluator/build code is confined to the
   secretless AD-19 builder; publication and ledger decisions execute only authorized owner code.
+
+### AD-12a — `[ADOPTED 2026-10-28]` bounded consumer source projections
+
+- **Authority and scope:** the user-approved Story 13.6 bounded provenance amendment permits one
+  closed consumer-source mechanism. Exact owner revisions, source hashes and semantic expectations
+  remain policy data. This does not close the independent GOV-1 publication/adoption gates.
+- **Raw inventory (AD-1/AD-4/AD-5):** retain every raw v1 depth-one/depth-two edge, including
+  self/back-references, its identity/order and canonical digest. The v1 envelope/member sets do not
+  change. A projection is additional consumer evidence, never an omitted edge or repository trust.
+- **Closed policy:** optional `consumer_source_projections` maps an already-trusted owner identity to
+  exactly `{owner_commit, gitmodules_sha256, inventory_sha256, inventory_only_identities, source_files,
+  consumer_repository, consumer_project, source_root_property, compile_links, builds_commit,
+  builds_project, root_selectors_sha256, consumer_configuration_sha256}`. Commits and SHA-256 values
+  follow AD-5. Exactly two normalized C# source paths/hashes and their Compile links are sealed.
+  Inventory-only identities are normalized, unique, sorted and disjoint from global trust. The owner
+  must remain `evidence-only` in `module_build_registry`; a buildable whole-owner row fails closed.
+- **Identity resolution (AD-3):** only the exact active-policy owner identity/commit, committed
+  `.gitmodules` hash, complete raw inventory digest and two canonical source hashes permit recording
+  its declared inventory-only identities. They remain globally untrusted: no local resolution,
+  acquisition, source materialization or execution. Unknown identities in every other context fail.
+  Paths identify graph/consumption data; they never grant repository identity authority.
+- **Objects and catalogs (AD-2/AD-6/AD-10):** collection is offline and reads exact Git objects.
+  Every raw Builds edge retains its real catalog digest, including a nested selector not consumed by
+  the helper. Missing trusted historical metadata still fails closed. Existing trusted exact-object
+  metadata acquisition remains allowed under AD-10; no inventory-only identity may be acquired.
+  Actual helper source binds the separately selected root Builds revision/project, never an umbrella's
+  historical nested Builds selector. No nested submodule initialization is introduced.
+- **Consumer closure:** bind the explicit root consumer identity/commit, every root source selector,
+  and committed root MSBuild configuration (`.csproj`, `.props`, `.targets`, `.proj`, `.slnx`, automatic `.user` imports, and `.rsp` response inputs), plus tracked SDK/restore configuration (`global.json` and NuGet configuration filename variants). Seal
+  canonical path-to-blob-SHA-256 configuration and `{path, repository, commit}` root selectors under
+  AD-5; root owner-commit metadata is excluded from the latter because the report binds that commit
+  separately. Configuration/selector drift, additional or indirect Compile/ProjectReference
+  consumption, missing/duplicate canonical Compile links or the root tooling reference fails closed.
+  Validation reads objects and never executes candidate MSBuild to discover authority. AD-7 file,
+  blob and aggregate limits apply. Only the exact two checked Compile blobs may be materialized into
+  the isolated consumer; no whole umbrella tree or nested source is materialized.
+- **Authenticated consumer evidence:** `hexalith.consumer-source-projection.v1` is exactly
+  `{schema, owner_repository, owner_commit, consumer_repository, consumer_commit, consumer_project,
+  source_files, root_builds_commit, inventory_sha256, root_selectors_sha256,
+  consumer_configuration_sha256, projection_digest}`. The digest covers AD-5 canonical bytes of all
+  other members. The semantic result includes these reports under `consumer_source_projections`
+  only when a projection is selected. Recompute supplied depth-two inventory and nested catalog
+  evidence against actual committed owner edges before accepting any report or executing an affected
+  build; a structurally valid rehashed envelope is insufficient. Every live CI handoff/release
+  consumer uses the same enforcing collector. Private raw collection is diagnostic data only.
+- **Delayed activation (AD-12):** the projection, both semantic expectation edits and all collection,
+  consumer-validation, acquisition and affected-build behavior use one active base/before policy.
+  Candidate-only rows cannot authorize themselves. A missing/zero base cannot authorize projection
+  acquisition or execution. Explicit local/working-policy diagnostics and pre-activation committed
+  roots remain non-authorizing; no commit, release eligibility or runtime equivalence is fabricated.
+
+  Before any selected-owner/older-root skip, authenticate supplied root depth-one rows against the
+  actual committed root `.gitmodules`/gitlinks and authenticate raw root Builds catalog bytes/digest.
+  A rehashed omitted owner or forged selector cannot suppress this gate. A legitimate older root
+  without the projection owner retains its authenticated raw inventory and receives no projection authority.
 
 ### AD-13 — `[ADOPTED]` release consumes the exact CI-tested revision
 

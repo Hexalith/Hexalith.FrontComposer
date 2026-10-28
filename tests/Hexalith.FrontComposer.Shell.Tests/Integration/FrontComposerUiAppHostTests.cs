@@ -675,13 +675,45 @@ public sealed class FrontComposerUiAppHostTests {
         finally { Directory.Delete(directory, recursive: true); }
     }
 
+    [Fact]
+    public void DisposableMtlsDirectoriesRejectSubstitutedOrSharedIssuerPaths()
+    {
+        string directory = CreateReadinessConfiguration("full");
+        string run = Path.Combine(Path.GetTempPath(), "hexalith-dapr", Guid.NewGuid().ToString("N"));
+        string parent = Path.Combine(directory, "mtls");
+        string identity = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(run)))[..32];
+        string issuer = Path.Combine(parent, "dapr-credentials-" + identity);
+        try
+        {
+            foreach (string path in new[] { run, parent, issuer })
+            {
+                Directory.CreateDirectory(path);
+                if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+            LocalReadinessConfiguration configuration = LocalReadinessConfiguration.Load(directory);
+            configuration.ValidateMtlsDirectories(run, issuer);
+            Should.Throw<InvalidOperationException>(() => configuration.ValidateMtlsDirectories(directory, issuer));
+            Should.Throw<InvalidOperationException>(() => configuration.ValidateMtlsDirectories(run, parent));
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(issuer, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead);
+                Should.Throw<InvalidOperationException>(() => configuration.ValidateMtlsDirectories(run, issuer));
+            }
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+            if (Directory.Exists(run)) Directory.Delete(run, recursive: true);
+        }
+    }
+
     private static string CreateReadinessConfiguration(string? topology)
     {
         string directory = Directory.CreateTempSubdirectory("fc-full-readiness-").FullName;
         string path = Path.Combine(directory, "configuration.json");
         Dictionary<string, object> configuration = new()
         {
-            ["owner"] = new string('a', 32), ["daprVersion"] = "1.18.7", ["redisPassword"] = new string('d', 64),
+            ["owner"] = new string('a', 32), ["instance"] = new string('b', 32), ["daprVersion"] = "1.18.7", ["redisPassword"] = new string('d', 64),
             ["ports"] = new { redis = 41001, placement = 41002, scheduler = 41003, daprHttp = 41004 },
         };
         if (topology is not null) configuration["topology"] = topology;
@@ -695,7 +727,7 @@ public sealed class FrontComposerUiAppHostTests {
         string redisPath = Path.Combine(directory, "redis.conf");
         File.WriteAllText(redisPath, $"bind 0.0.0.0\nprotected-mode yes\nrequirepass {new string('d', 64)}\nsave \"\"\ndir /data\ndbfilename dump.rdb\n");
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(redisPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
-        foreach (string name in new[] { "components", "runtime", "empty" })
+        foreach (string name in new[] { "components", "runtime", "empty", "mtls" })
         {
             string path = Path.Combine(directory, name);
             Directory.CreateDirectory(path);

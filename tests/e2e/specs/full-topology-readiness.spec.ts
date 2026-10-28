@@ -74,7 +74,8 @@ test('Admin UI navigates with its ordinary authenticated Admin API session', asy
   // A fresh owned store has no tenant rows. This terminal API-backed empty
   // state proves the normal Admin client credential path completed successfully.
   await expect(page.getByText('No tenants configured.', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Create tenant', exact: true })).toBeVisible();
+  // The ordinary read/refresh action supplies this explicit accessible label.
+  await expect(page.getByLabel('Refresh tenant list', { exact: true })).toBeVisible();
   await expect(page.getByText(/Unable to load tenant data|session expired|not authorized|stale/i)).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
 });

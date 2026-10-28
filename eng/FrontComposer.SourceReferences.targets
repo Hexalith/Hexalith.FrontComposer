@@ -1,0 +1,32 @@
+<Project>
+  <!-- Chain the pre-existing supported SDK import rather than replacing it. -->
+  <Import Project="$(FrontComposerSourceReferencesPreviousTargets)"
+          Condition="'$(FrontComposerSourceReferencesPreviousTargets)' != '' and '$(FrontComposerSourceReferencesPreviousTargets)' != '$(MSBuildThisFileFullPath)' and Exists('$(FrontComposerSourceReferencesPreviousTargets)')" />
+
+  <!-- Tenants supplies its selected EventStore Version on an EventStore edge. That
+       global property must stop before the self-contained Commons source project;
+       otherwise two identities overwrite the same bin/obj outputs in one build. -->
+  <PropertyGroup>
+    <_FrontComposerExpectedCommonsRoot>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', 'references', 'Hexalith.Commons'))</_FrontComposerExpectedCommonsRoot>
+    <_FrontComposerUniqueIdsProject>$([MSBuild]::NormalizePath('$(_FrontComposerExpectedCommonsRoot)', 'src', 'libraries', 'Hexalith.Commons.UniqueIds', 'Hexalith.Commons.UniqueIds.csproj'))</_FrontComposerUniqueIdsProject>
+    <_FrontComposerSelectedCommonsRoot Condition="'$(HexalithCommonsRoot)' != ''">$([MSBuild]::NormalizePath('$(HexalithCommonsRoot)'))</_FrontComposerSelectedCommonsRoot>
+    <_FrontComposerNormalizeUniqueIdsVersion Condition="'$(Configuration)' == 'Debug' and '$(HexalithFrontComposerFromSource)' == 'true' and '$(HexalithCommonsFromSource)' == 'true' and '$(HexalithSourceMappingMode)' != 'source' and '$(HEXALITH_SOURCE_MAPPING_HASH)' == '' and '$(_FrontComposerSelectedCommonsRoot)' == '$(_FrontComposerExpectedCommonsRoot)'">true</_FrontComposerNormalizeUniqueIdsVersion>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(_FrontComposerNormalizeUniqueIdsVersion)' == 'true'">
+    <ProjectReference Update="@(ProjectReference-&gt;WithMetadataValue('FullPath', '$(_FrontComposerUniqueIdsProject)'))">
+      <GlobalPropertiesToRemove>%(ProjectReference.GlobalPropertiesToRemove);Version</GlobalPropertiesToRemove>
+    </ProjectReference>
+  </ItemGroup>
+  <!-- The SDK adds transitive ProjectReference items from the restored assets at
+       execution time. Apply the same exact boundary before it copies those items
+       into the project-reference build lists. -->
+  <Target Name="NormalizeFrontComposerTransitiveUniqueIdsVersion"
+          AfterTargets="IncludeTransitiveProjectReferences"
+          Condition="'$(_FrontComposerNormalizeUniqueIdsVersion)' == 'true'">
+    <ItemGroup>
+      <ProjectReference Update="@(ProjectReference-&gt;WithMetadataValue('FullPath', '$(_FrontComposerUniqueIdsProject)'))">
+        <GlobalPropertiesToRemove>%(ProjectReference.GlobalPropertiesToRemove);Version</GlobalPropertiesToRemove>
+      </ProjectReference>
+    </ItemGroup>
+  </Target>
+</Project>

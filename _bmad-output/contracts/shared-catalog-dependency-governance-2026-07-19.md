@@ -3,7 +3,7 @@ id: FC-DEP-1
 title: Shared Catalog Compatibility and Dependency Provenance
 status: approved-base-with-open-adoption-gates
 date: 2026-07-19
-amended: 2026-09-09
+amended: 2026-10-28
 amendmentStatus: architecture-adopted-product-and-release-acceptance-pending
 previousStatus: approved
 previousApprovedBy: Administrator
@@ -255,3 +255,16 @@ does not, by itself, state whether a catalog satisfies a consumer contract.
   unavailable evidence, unprotected/direct-push history, or missing authenticated approval projection.
 - Pre- and post-publication verification bind the same sealed graph.
 - No recursive submodule initialization command is introduced.
+
+
+## User-approved bounded source-consumer amendment — 2026-10-28
+
+Story 13.6 explicitly approves the spine's AD-12a mechanism. Preserve raw v1 depth-one/depth-two inventory, every edge/order/digest and nested Builds catalog bytes. The active policy may seal an already-trusted owner identity/revision, .gitmodules/raw inventory/two C# hashes, exact root consumer/configuration/selectors and actual root Builds source. Only that recording context may retain its inventory-only identities; they remain globally untrusted and are never resolved, acquired, initialized, materialized or executed. Unknown identities elsewhere still fail.
+
+The projection owner must remain evidence-only. Consumer Compile/tooling bindings, all committed MSBuild configuration/root selectors and tracked SDK/restore configuration (`global.json` and NuGet configuration filename variants) are sealed; additional or indirect consumption fails closed. Only the two approved source blobs may be materialized into an isolated consumer, never its umbrella tree. Before affected builds or live handoff/release acceptance, recompute supplied raw inventory/catalog evidence and consumer bindings from exact committed objects; rehashing forged evidence does not authenticate it. Raw v1 schemas stay unchanged, with separate closed consumer projection reports in semantic results.
+
+AD-2/AD-6/AD-10 trusted exact metadata acquisition remains binding: an unconsumed nested Builds selector still has its raw catalog digest, while the helper consumes root Builds. Missing metadata fails; no inventory-only source acquisition is permitted. AD-12 delayed activation governs collection, consumer validation, acquisition, build scheduling and both exact semantic expectation edits. Candidate policy cannot authorize itself; zero/missing base diagnostics cannot authorize projection acquisition/execution.
+
+The same user approval permits only the FrontComposer semantic expectations for Microsoft.Extensions.Localization and System.Collections.Immutable 10.0.13→10.0.14, matching already-selected Builds 81ab. No actual catalog, SDK, package, Gitlink, authentication behavior or other baseline changes. This bounded approval does not close the independent Product/Release/implementation gates above. Exact policy rows and current evidence are owned by the [Story 13.6 spec](../implementation-artifacts/spec-13-6-qualify-full-topology-readiness.md) and its approved amendment context.
+
+Root-source projection validation also recomputes supplied depth-one rows from the actual committed root before any selected-owner skip, and authenticates root Builds catalog bytes/digest. Legitimate older roots without the owner receive no projection authority; a rehashed omitted owner or stale root selector cannot bypass collection/affected-build validation.

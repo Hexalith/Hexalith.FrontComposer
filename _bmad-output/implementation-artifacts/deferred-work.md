@@ -10901,3 +10901,15 @@ Aggregate Story13.6 review reproduction coordinates: reconciler command `dotnet 
   evidence: C2-V1, source-inspected verification gap in independent external feature work. New callback-fault tests use a one-shot RunFallback that ignores the documented completion predicate. A fallback fixture consuming the predicate must terminate after throwing ReadFailed or Degraded announcements. No mutant test execution or new production defect is claimed.
 
 Latest Story13.6 follow-up reconciliation at c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4: eighteen historical/current groups, three resolved, fifteen outstanding (including two partially resolved). R5-V3 additionally lacks browser assertions for c2's new external-description text observer. The exact-source feedback/download reproduction in `/tmp/fc-c2-feedback-reconcile-35_56cn9/` records source hashes, harness and successful-exit observations; hosted qualification remains separate.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-qualify-full-topology-readiness.md`
+  summary: Add readiness-failure, pending-cancellation and awaited async-disposal regression cases for the independently published optimistic reconciler change.
+  evidence: Review B10: tests/Hexalith.FrontComposer.Shell.Tests/Services/FcOptimisticReconcilerTests.cs covers delayed subscription success but not fault/cancellation while pending; FcOptimisticReconciler catch/finally paths exist. The four owning files are the preserved external 5af87f9e feature and remain equal to HEAD.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-qualify-full-topology-readiness.md`
+  summary: Adopt subscription-readiness waiting in the selected Parties optimistic-reconcile adapter and test delayed real registration.
+  evidence: Review V2 (pre-verified verification gap): references/Hexalith.Parties/src/Hexalith.Parties.UI/Services/OptimisticReconcile.cs omits WaitForSubscriptionAsync while PartiesProjectionSubscription registers asynchronously, so a fast accepted command can miss its only confirmation and remain Saving. Existing adapter tests use synchronous registration; ownership is the separately published 5af87f9e contract and selected Parties adapter.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-qualify-full-topology-readiness.md`
+  summary: Align the Parties fallback driver with the shared reconciler lifetime contract and test connection followed by disconnect before confirmation.
+  evidence: Review V3 (pre-verified verification gap): the shared reconciler invokes RunFallback once, but references/Hexalith.Parties/src/Hexalith.Parties.UI/Services/ProjectionFreshnessFallback.cs returns on connection and its tests assert that old behavior. A later disconnect therefore has no fallback restart. This is a distinct pre-existing adapter/contract mismatch in the external optimistic-reconcile work.

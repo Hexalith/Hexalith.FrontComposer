@@ -7,6 +7,9 @@
     <IsPackable>false</IsPackable>
     <IsPublishable>true</IsPublishable>
     <UserSecretsId>hexalith-frontcomposer</UserSecretsId>
+    <!-- Canonical hosting helpers remain source-owned in package/Release mode as well. -->
+    <HexalithPlatformRoot Condition="'$(HexalithPlatformRoot)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'references', 'Hexalith.Platform'))</HexalithPlatformRoot>
+    <HexalithBuildsRoot Condition="'$(HexalithBuildsRoot)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'references', 'Hexalith.Builds'))</HexalithBuildsRoot>
   </PropertyGroup>
   <ItemGroup>
     <!-- Reusable DAPR topology orchestration (state store + pub/sub, sidecars, resiliency)
@@ -24,6 +27,14 @@
     <ProjectReference Include="..\..\tests\Hexalith.FrontComposer.CounterFixture\Hexalith.FrontComposer.CounterFixture.csproj" />
     <!-- Combined FrontComposer module UI for Tenants + Parties. -->
     <ProjectReference Include="..\Hexalith.FrontComposer.UI\Hexalith.FrontComposer.UI.csproj" />
+  </ItemGroup>
+
+  <!-- Consume the approved canonical orchestration; do not copy it into this owner. -->
+  <ItemGroup>
+    <Compile Include="$(HexalithPlatformRoot)/DaprSelfHostedMtls.cs" Link="Platform/DaprSelfHostedMtls.cs" />
+    <Compile Include="$(HexalithPlatformRoot)/DaprSelfHostedMtlsSubscriber.cs" Link="Platform/DaprSelfHostedMtlsSubscriber.cs" />
+    <ProjectReference Include="$(HexalithBuildsRoot)/src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj"
+                      AdditionalProperties="$(_HexalithSourceReferenceProperties)" IsAspireProjectResource="false" />
   </ItemGroup>
 
   <!-- Debug build-forcing references for path-only child resources. The resources are added to the

@@ -329,7 +329,7 @@
       "decisionDate": "2026-07-17",
       "reviewDate": "2027-07-17",
       "trigger": "Revalidate on each touched source symbol or relevant analyzer change.",
-      "evidence": "Bidirectional tracked-source control inventory. Story 13.1 adds a CA2007 pragma for the opt-in live two-tenant xUnit fixture; the source-pragmas inventory includes its tracked path. Revalidated 2026-10-05 for the approved Story 13.4 task audit: source-pragmas entryCount increases from 85 to 86 solely for the directive-adjacent CA2012 NSubstitute Returns statement in PendingCommandPollingCoordinatorTests.ConfirmationReturningAtThePollingBudgetClosesAsExhausted, separately recorded by story134-ca2012-polling-budget-valuetask-fixture. Paths, diagnostic IDs, and all historical dispositions remain unchanged."
+      "evidence": "Bidirectional tracked-source control inventory. Story 13.1 adds a CA2007 pragma for the opt-in live two-tenant xUnit fixture; the source-pragmas inventory includes its tracked path. Revalidated 2026-10-05 for the approved Story 13.4 task audit: source-pragmas entryCount increases from 85 to 86 solely for the directive-adjacent CA2012 NSubstitute Returns statement in PendingCommandPollingCoordinatorTests.ConfirmationReturningAtThePollingBudgetClosesAsExhausted, separately recorded by story134-ca2012-polling-budget-valuetask-fixture. Paths, diagnostic IDs, and all historical dispositions remain unchanged. Revalidated 2026-10-28 after external user-authored commit 5af87f9e5cc8db16896fc97d19b6a828b2ed0d0d: the existing member-level CA1822 on FcOptimisticReconciler.ExecuteAsync preserves its published instance service API for DI adapters. The factual source-suppression-attributes census increases 46 to 47 and adds that exact tracked path; diagnostic IDs, controls, owner, decision dates, approvals and source severities are unchanged. This is post-runtime-proof inventory reconciliation, not a new suppression or sign-off."
     },
     {
       "key": "hfc1002-fixture-narrowing",
@@ -464,6 +464,19 @@
       "diagnosticIds": [
         "CA2201"
       ]
+    },
+    {
+      "key": "canonical-platform-mtls-source-adoption",
+      "sourceKind": "EditorConfig",
+      "exactScope": "references/Hexalith.Platform/DaprSelfHostedMtls.cs",
+      "mechanism": "Exact-file CA1050 and CA1859 EditorConfig severity",
+      "decision": "narrow",
+      "rationale": "The user approved reuse of canonical Platform b742b1b7a496ac72d6961ca6db5213d3df42d234 unchanged. Its global public helper type and existing IReadOnlyDictionary parameter trigger these two consumer rules. Scope only these diagnostics on that exact imported file; retain Recommended analysis and warnings-as-errors for FrontComposer-owned code. This is source-adoption bookkeeping under the canonical enrollment approval, not a separate human or Architect sign-off.",
+      "owner": "FrontComposer Story 13.6 implementation",
+      "decisionDate": "2026-10-28",
+      "reviewDate": "2027-10-28",
+      "trigger": "Revalidate on canonical source/pin, SDK or analyzer change; annual date is a review reminder, not an additional approval.",
+      "evidence": "Spec 13.6 human-approved Platform/mTLS enrollment; exact canonical-source digest governance and the consumer compatibility build reporting only CA1050/CA1859 before adoption treatment."
     }
   ],
   "warningControls": [
@@ -817,6 +830,7 @@
         "src/Hexalith.FrontComposer.Shell/Services/DerivedValues/LastUsedValueProvider.cs",
         "src/Hexalith.FrontComposer.Shell/Services/DerivedValues/SystemValueProvider.cs",
         "src/Hexalith.FrontComposer.Shell/Services/FcJson.cs",
+        "src/Hexalith.FrontComposer.Shell/Services/Feedback/FcOptimisticReconciler.cs",
         "src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs",
         "src/Hexalith.FrontComposer.Shell/Services/ProjectionTemplates/ProjectionTemplateAssemblySource.cs",
         "src/Hexalith.FrontComposer.Shell/Services/ProjectionViewOverrides/ProjectionViewOverrideRegistry.cs",
@@ -826,7 +840,7 @@
         "src/Hexalith.FrontComposer.Testing/ProjectionTestDataBuilder.cs",
         "tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaPathTruncationTests.cs"
       ],
-      "entryCount": 46,
+      "entryCount": 47,
       "diagnosticIds": [
         "CA1000",
         "CA1822",
@@ -846,6 +860,34 @@
       "exactScope": "listed root-owned source paths",
       "mechanism": "SuppressMessage or UnconditionalSuppressMessage",
       "dispositionKey": "source-local-compatibility-controls"
+    },
+    {
+      "key": "editorconfig-platform-mtls-ca1050",
+      "sourceKind": "editorconfig",
+      "path": ".editorconfig",
+      "section": "[references/Hexalith.Platform/DaprSelfHostedMtls.cs]",
+      "property": "dotnet_diagnostic.CA1050.severity",
+      "value": "none",
+      "diagnosticIds": [
+        "CA1050"
+      ],
+      "exactScope": "references/Hexalith.Platform/DaprSelfHostedMtls.cs",
+      "mechanism": "EditorConfig severity",
+      "dispositionKey": "canonical-platform-mtls-source-adoption"
+    },
+    {
+      "key": "editorconfig-platform-mtls-ca1859",
+      "sourceKind": "editorconfig",
+      "path": ".editorconfig",
+      "section": "[references/Hexalith.Platform/DaprSelfHostedMtls.cs]",
+      "property": "dotnet_diagnostic.CA1859.severity",
+      "value": "none",
+      "diagnosticIds": [
+        "CA1859"
+      ],
+      "exactScope": "references/Hexalith.Platform/DaprSelfHostedMtls.cs",
+      "mechanism": "EditorConfig severity",
+      "dispositionKey": "canonical-platform-mtls-source-adoption"
     }
   ],
   "story1121Census": {

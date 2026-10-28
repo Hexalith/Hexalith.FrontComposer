@@ -31,11 +31,11 @@ spec:
       cleanupInterval: "168h"
   accessControl:
     defaultAction: allow  # Local-only allow-by-default; production uses deploy/dapr/accesscontrol.eventstore-admin.yaml
-    trustDomain: "public"
+    trustDomain: "localhost"
     policies:
       - appId: eventstore-admin-ui
         defaultAction: deny
-        trustDomain: "public"
+        trustDomain: "localhost"
         namespace: "default"
         operations:
           - name: /**

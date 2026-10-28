@@ -29,11 +29,11 @@ spec:
       cleanupInterval: "168h"
   accessControl:
     defaultAction: allow
-    trustDomain: "public"
+    trustDomain: "localhost"
     policies:
       - appId: eventstore
         defaultAction: deny
-        trustDomain: "public"
+        trustDomain: "localhost"
         namespace: "default"
         operations:
           - name: /**

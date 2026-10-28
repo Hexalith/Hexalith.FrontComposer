@@ -187,3 +187,26 @@ condition pass.
 
 Historical implementation narration and validation receipts remain available in repository history and
 the dated architecture review artifacts. They are not current conformance claims.
+
+
+## Story 13.6 bounded source-consumer amendment — 2026-10-28
+
+The user-approved Story 13.6 amendment is implemented through AD-12a in the [GOV-1 spine](../planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md) and the [FC-DEP-1 contract](../contracts/shared-catalog-dependency-governance-2026-07-19.md). Raw v1 inventory/catalog/digest rules and global identity trust remain intact; the closed source-consumer projection records the exact sealed umbrella inventory without acquiring/executing its seven untrusted identities. Only the two approved canonical Compile blobs and existing root Builds tooling participate in consumer materialization; whole-owner scheduling is forbidden.
+
+Collection, object-only consumer validation, affected-proof checks and every live handoff/release consumer share the same active-policy gate. Configuration/root-selector drift or a rehashed forged depth-two envelope fails before build/materialization. The two exact14 semantic expectations are policy-only changes for already-selected81ab. AD-12 delayed activation remains mandatory; no root commit/publication or new runtime was created for this amendment. Current commands/counts/object diagnostics are appended to the [owning Story 13.6 result](13-6-accessibility-result.md); this amendment does not complete GOV-1's independent release/adoption gates.
+
+
+## Root evidence authentication refinement after parent audit — 2026-10-28
+
+The parent identified a concrete new-primitive boundary: rehashed supplied depth-one rows could omit the Platform selection or disagree with actual root gitlinks/mappings, and root Builds catalog evidence was not independently authenticated. Validation now recomputes supplied root direct rows from actual committed root `.gitmodules`/gitlinks **before any selected-owner/skip path**, and verifies raw root Builds catalog bytes/digest/null marker alongside the existing nested metadata checks. A legitimate authenticated older root without Platform still receives no projection authority. These changes affect governance inspection only; AppHost/service/runtime code and binaries remain unchanged.
+
+The final engine suite passes **128/128**, including structurally valid rehashed omitted-owner, actual-root-target/mapping and root-catalog forgeries through affected-build validation with no materialization/execution, plus a legitimate older-root case. Final consumer reruns pass handoff **11/11** and release-evidence **15/15**. Logs: `/tmp/fc-mtls-final-gad9h52g/governance-full-tests-root-evidence.log`, `governance-handoff-consumers-root-evidence.log`, `governance-release-consumers-root-evidence.log`. The pre-fix attempts/fixture failures remain retained, without relabelling retries as an original clean pass. Real-object component diagnostics are refreshed in `governance-actual-object-diagnostics.json` and `governance-actual-object-diagnostics-root-evidence.log`: full raw 69/all 17 and both root 81ab/nested 51 catalog evidence remain intact; current working seals/14 expectations pass their diagnostic components. Strict committed c494/old-active-base refusals retain their previously documented expected AD-12 limitations; no actual-root commit or candidate self-authorization is created.
+
+The refined identity/refusal guard separately retains Python **73/73** and read-only actual-candidate acceptance. c2tg0uhi remains the earlier runner's successful development runtime proof, not a new-runner full-pass claim. No full runtime was repeated. Guarded copyback, exact hashes and refreshed review patches are external evidence under `/tmp/fc-mtls-final-gad9h52g/`; parent task/matrix audit, independent Build review and independent release/manual gates remain the parent's responsibility.
+
+
+## Story 13.6 independent Build review follow-through — 2026-10-28
+
+The independent review found that AD-12a's consumer configuration digest omitted tracked SDK/restore inputs. The engine now seals `global.json` and NuGet configuration filename variants; the actual two added files are unchanged, and the sole policy correction is the consumer configuration seal `68386ed899cdef31131e081c321424fa18af8864b8d8efcd6f59eae99a870fca`. The adopted spine, FC-DEP-1 contract and memory log agree. All existing source/owner/inventory/selector seals, actual SDK/package/catalog/Gitlink selections and AD-12 delayed activation remain unchanged.
+
+Parent verification passes engine **130/130**, handoff **11/11** and release-evidence **15/15**. Positive integration now depends on exact canonical materialization before commands; its bypass mutation is detected. Read-only actual-object diagnostics independently confirm the expanded working-candidate seal, 69 total / 17 Platform raw edges and original canonical committed blobs. Logs and reproducible diagnostics are `/tmp/fc-parent-13-6-final-verification/`. The current committed root still predates the approved consumer/policy landing and correctly refuses strict acceptance; later owner landing and a later active base are required. No current hosted CI, release acceptance, commit or publication is claimed.
