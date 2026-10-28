@@ -25,13 +25,16 @@ public sealed record FcOptimisticReconcileRequest
     /// <summary>Gets routine announcement callbacks; the routine never moves focus.</summary>
     public required Action<FcReconcileState> Announce { get; init; }
 
-    /// <summary>Gets a callback registering confirmations and returning their lifetime handle.</summary>
+    /// <summary>Gets a callback registering confirmations and returning their lifetime handle. Asynchronous handles are drained at teardown.</summary>
     public required Func<Action, IDisposable> Subscribe { get; init; }
+
+    /// <summary>Gets optional transport readiness before command dispatch. Omit only for synchronous registration.</summary>
+    public Func<IDisposable, CancellationToken, Task>? WaitForSubscriptionAsync { get; init; }
 
     /// <summary>Gets a callback reporting whether the confirmation transport is connected.</summary>
     public required Func<bool> IsConnected { get; init; }
 
-    /// <summary>Gets the fallback driver, supplied a re-read, completion predicate, and lifetime token.</summary>
+    /// <summary>Gets the fallback driver, supplied a re-read, completion predicate, and lifetime token. Observe connectivity until completion or cancellation, resuming reads on each disconnection.</summary>
     public required Func<Func<CancellationToken, Task>, Func<bool>, CancellationToken, Task> RunFallback { get; init; }
 
     /// <summary>Gets optional coarse feedback for a retryable re-read failure; never log payloads.</summary>
