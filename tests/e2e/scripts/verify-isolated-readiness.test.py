@@ -137,18 +137,27 @@ class ReadinessSafetyTests(unittest.TestCase):
     def test_api_health_uses_observed_json_contract_without_accepting_degraded(self):
         readiness.validate_application_health("tenants-api", "/ready", 200, {"status": "Healthy", "results": {"eventstore-gateway": {"status": "Healthy"}}})
         for code, body in [(200, "Healthy"), (503, {"status": "Healthy"}), (200, {"status": "Degraded"}),
-                           (200, {"status": "Healthy", "results": {"eventstore-gateway": {"status": "Degraded"}}})]:
+                           (200, {"status": "Healthy", "results": {"eventstore-gateway": {"status": "Degraded"}}}),
+                           (200, {"status": "Healthy", "results": {}})]:
             with self.subTest(code=code, body=body), self.assertRaises(RuntimeError):
                 readiness.validate_application_health("tenants-api", "/ready", code, body)
 
     def test_api_boundary_failure_keeps_navigation_unreached(self):
-        with patch.object(readiness, "require_navigation_composition"), \
+        with tempfile.TemporaryDirectory() as root, patch.object(readiness, "require_navigation_composition"), \
                 patch.object(readiness, "authenticate_administrator", return_value="private-test-token"), \
                 patch.object(readiness, "resource", return_value={}), \
                 patch.object(readiness, "correlate_sidecar", return_value="http://localhost:12345"), \
                 patch.object(readiness, "request", return_value=(200, {})):
             with self.assertRaisesRegex(RuntimeError, "missing-bearer"):
-                readiness.verify_api_boundaries(Path("/private"), {}, {})
+                readiness.verify_api_boundaries(Path(root) / "private", {}, {})
+            evidence = json.loads((Path(root) / "api-boundaries.json").read_text())
+            self.assertEqual(evidence, [{"caller": "tenants-ui", "check": "missing-bearer", "status": 200, "expectedStatus": 401}])
+            self.assertNotIn("private-test-token", json.dumps(evidence))
+
+    def test_owned_realm_loss_has_a_controlled_operation_diagnostic(self):
+        with patch.object(readiness, "invoke", side_effect=RuntimeError("private-test-secret")), self.assertRaisesRegex(RuntimeError, "Owned Keycloak container inspection failed") as failure:
+            readiness.read_owned_realm("owned-id", self.configuration())
+        self.assertNotIn("private-test-secret", str(failure.exception))
 
     def test_inherited_shared_or_ambiguous_paths_are_refused_before_configuration(self):
         for key in ("DAPR_RESOURCES_PATH", "Dapr:PlacementHostAddress", "ConnectionStrings__Redis", "services__tenants__http__0",
@@ -206,7 +215,10 @@ class ReadinessSafetyTests(unittest.TestCase):
                     return 200, {"id": name, "components": [{"name": item} for item in readiness.FULL_SIDECARS[name]]}
                 if current[0] == "sample":
                     return 200, "alive" if url.endswith("/alive") else "healthy"
-                return 200, {"status": "Healthy", "results": {"self": {"status": "Healthy"}}}
+                entries = {"self": {"status": "Healthy"}}
+                if current[0] == "tenants-api":
+                    entries["eventstore-gateway"] = {"status": "Healthy"}
+                return 200, {"status": "Healthy", "results": entries}
             last = [None]
             def correlated(item, sidecar, name):
                 last[0] = name

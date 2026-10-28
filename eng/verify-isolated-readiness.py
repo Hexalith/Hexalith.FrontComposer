@@ -282,7 +282,10 @@ def validate_marker(marker, source_commit):
 
 
 def read_owned_realm(identifier, config):
-    containers = json.loads(invoke(["docker", "inspect", identifier]))
+    try:
+        containers = json.loads(invoke(["docker", "inspect", identifier]))
+    except RuntimeError:
+        raise RuntimeError("Owned Keycloak container inspection failed; private realm access stopped.") from None
     require(len(containers) == 1 and containers[0]["Id"] == identifier
             and containers[0].get("Name") == "/fc-verify-" + config["owner"] + "-identity"
             and containers[0].get("Config", {}).get("Labels", {}).get(LABEL) == config["owner"],
@@ -290,8 +293,11 @@ def read_owned_realm(identifier, config):
     # The selected Aspire Keycloak integration copies imports with WithContainerFiles;
     # it does not bind-mount the original private directory. Read only the known copy
     # in the exact container discovered from this owned AppHost; never log its body.
-    return json.loads(invoke(["docker", "exec", identifier, "cat",
-                              "/opt/keycloak/data/import/hexalith-realm.json"]))
+    try:
+        return json.loads(invoke(["docker", "exec", identifier, "cat",
+                                 "/opt/keycloak/data/import/hexalith-realm.json"]))
+    except RuntimeError:
+        raise RuntimeError("Owned Keycloak private realm could not be read; verification stopped.") from None
 
 
 def verify_workload_identity(env, config):
@@ -374,6 +380,9 @@ def validate_application_health(name, path, code, result):
     else:
         healthy = (code == 200 and isinstance(result, dict) and result.get("status") == "Healthy"
                    and all(entry.get("status") == "Healthy" for entry in result.get("results", {}).values()))
+    if name == "tenants-api" and healthy:
+        expected = {"eventstore-gateway", "self"} if path == "/health" else {"eventstore-gateway"}
+        healthy = expected <= result.get("results", {}).keys()
     require(healthy, f"{name} {path} failed its application health contract (HTTP {code}).")
 
 
@@ -470,6 +479,11 @@ def verify_api_boundaries(directory, env, endpoints):
     require_navigation_composition(env)
     token = authenticate_administrator(directory, env)
     results = []
+
+    def record(result):
+        results.append(result)
+        Path(directory).parent.joinpath("api-boundaries.json").write_text(json.dumps(results, indent=2))
+
     for name in ("tenants-ui", "frontcomposer-ui"):
         sidecar = correlate_sidecar(resource(name, env), resource(name + "-dapr-cli", env), name)
         invoke_api = sidecar + "/v1.0/invoke/tenants-api/method"
@@ -479,18 +493,17 @@ def verify_api_boundaries(directory, env, endpoints):
                 ("disallowed-verb", "/api/tenants", "POST", token, 403),
                 ("disallowed-path", "/health", "GET", token, 403)):
             code, _ = request(invoke_api + path, token=bearer, method=method)
-            results.append({"caller": name, "check": label, "status": code})
-            require(code == expected, "API caller/route/verb/bearer rejection failed (" + name + "/" + label + ").")
+            record({"caller": name, "check": label, "status": code, "expectedStatus": expected})
+            require(code == expected, "API caller/route/verb/bearer rejection failed (" + name + "/" + label + ", HTTP " + str(code) + "; expected " + str(expected) + ").")
     outsider = correlate_sidecar(resource("sample", env), resource("sample-dapr-cli", env), "sample")
     code, _ = request(outsider + "/v1.0/invoke/tenants-api/method/api/tenants", token=token)
-    results.append({"caller": "sample", "check": "unapproved-caller", "status": code})
+    record({"caller": "sample", "check": "unapproved-caller", "status": code, "expectedStatus": 403})
     require(code == 403, "An unapproved API caller was admitted.")
     api_sidecar = correlate_sidecar(resource("tenants-api", env), resource("tenants-api-dapr-cli", env), "tenants-api")
     for name in ("tenants-ui", "frontcomposer-ui"):
         code, _ = request(api_sidecar + "/v1.0/invoke/" + name + "/method/", token=token)
-        results.append({"receiver": name, "check": "closed-bff", "status": code})
+        record({"receiver": name, "check": "closed-bff", "status": code, "expectedStatus": 403})
         require(code == 403, "A BFF receiver exposed an invocation operation.")
-    Path(directory).parent.joinpath("api-boundaries.json").write_text(json.dumps(results, indent=2))
     print("API/BFF boundaries: missing/invalid bearer, unapproved caller, verb/path and BFF invocation refused.", flush=True)
 
 
@@ -568,7 +581,11 @@ def source_inputs():
     paths = [*APPHOST.parent.glob("*.cs"), APPHOST, *APPHOST.parent.joinpath("DaprComponents").glob("*.yaml"),
              ROOT / "eng/verify-isolated-readiness.py", ROOT / "eng/verify-apphost-invalid-bearer.sh",
              ROOT / "eng/run-epic9-live-proof.sh", ROOT / "tests/e2e/specs/full-topology-readiness.spec.ts"]
+    working_patch = invoke(["git", "diff", "HEAD", "--", "src", "samples", "eng", "tests", "Directory.Build.props",
+                            "Directory.Build.targets", "Directory.Packages.props", "NuGet.Config", "global.json",
+                            "deps.local.props", "deps.nuget.props", "aspire.config.json", "package.json", "package-lock.json"])
     return {"root": invoke(["git", "rev-parse", "HEAD"]).decode().strip(), "sources": sources,
+            "workingPatchSha256": hashlib.sha256(working_patch).hexdigest(),
             "inputSha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(paths)}}
 
 
