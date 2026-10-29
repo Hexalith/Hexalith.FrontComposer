@@ -2,13 +2,21 @@
 title: 'Story 15.5: Reconcile the Published Compatibility Baseline'
 type: 'chore'
 created: '2026-10-26'
-status: 'in-progress'
-route: 'oneshot'
+status: 'done'
+route: 'dispatch'
 story_id: '15.5'
 story_key: '15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline'
 baseline_commit: '2c8e204c9f1ca5c2c44d70005d481dd70f89f3fb'
 review_loop_iteration: 0
-context: []
+context:
+  - '{project-root}/AGENTS.md'
+  - '{project-root}/references/Hexalith.AI.Tools/hexalith-llm-instructions.md'
+  - '{project-root}/.editorconfig'
+  - '{project-root}/.gitattributes'
+  - '{project-root}/Directory.Build.props'
+  - '{project-root}/Directory.Build.targets'
+  - '{project-root}/tests/Directory.Build.props'
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-15-context.md'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -19,9 +27,121 @@ context: []
 
 **Approach:** Retain the verified 4.7.0 baseline, append a dated compatibility reconciliation to the existing release ledger, and link it from diagnostic governance documentation. Record the exact published source, Release and Release Evidence runs, inventory, evidence limits and existing compatibility checks. Preserve historical dispositions and independent owner approvals. Reuse existing ApiCompat, policy, public-surface and documentation lanes; add no scanner, reconstructed published packages or evidence bundle.
 
+## Approved amendment — 2026-10-29
+
+The user approved advancing to the newly evidence-backed 4.7.1 and retaining
+this spec's historical evidence. This supersedes the original instruction to
+retain 4.7.0 for current implementation; the original dated observations above
+remain historical. Align the existing policy constant, shared default,
+Contracts.UI override, Quality pack/consumer coordinates, focused baseline and
+package-boundary tests, and current diagnostic guidance to 4.7.1. Append the
+exact v4.7.1 publication evidence and reuse existing verification lanes. Keep
+the empty v4.7 suppression ledger, historical release dispositions, original
+baseline_commit, independent approvals and public contracts. No dependency
+selection, AppHost/runtime change, new scanner or reconstructed historical
+package is authorized. The current Tasks & Acceptance below define the bounded
+implementation. Keep older Implementation Notes/Verification/Review Findings
+as dated history; they do not override this amendment.
+
 </frozen-after-approval>
 
+## Code Map
+
+- `eng/release_compatibility.py` — `PUBLISHED_BASELINE_VERSION`, pack arguments
+  and same-release-line policy; change only the selected patch version.
+- `Directory.Build.targets` and
+  `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj`
+  — shared baseline and reviewed explicit override; align both to 4.7.1.
+- `.github/workflows/quality.yml` — CLI and seven-library package-validation
+  commands plus validated synthetic package version; align their baseline and
+  4.7.x-ci coordinates together. Preserve all gates.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`
+  and `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
+  — existing baseline expectations; update alongside configuration.
+- `tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs`
+  and `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs`
+  — package-boundary baseline assertions and MCP candidate/binary versions;
+  advance together and run their existing focused checks. Python pack tests
+  derive the selected version from the existing policy constant.
+- `src/Hexalith.FrontComposer.Contracts.UI/PublicAPI.Shipped.txt` — add the
+  existing `FcOptimisticReconcileRequest.WaitForSubscriptionAsync` signature
+  exposed by the required public-surface check; no runtime member is changed.
+- `docs/diagnostics/README.md` and
+  `_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md`
+  — current baseline guidance and append-only dated publication observations.
+- `eng/dependency-graph-policy.json` — recompute only the existing consumer
+  configuration seal after the approved XML baseline updates; preserve raw
+  graph/source/selector/catalog identities and all validation semantics.
+- `docs/diagnostics/compatibility-suppressions.json` — remains v4.7, empty;
+  patch advancement does not change the release line or authorize suppressions.
+- Existing seven-project inventory-driven ApiCompat command above — reuse with
+  the policy constant after advancement. No new scanner, reconstructed historical
+  package or evidence bundle. AppHost/Keycloak changes remain owned by Story 13.6.
+
+## Tasks & Acceptance
+
+The user approved this bounded plan and retained historical evidence on
+2026-10-29. The frozen block now records that amendment; older statements
+that approval is pending describe the preceding investigation.
+
+- [x] `eng/release_compatibility.py`, `Directory.Build.targets`,
+  `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj`
+  and `.github/workflows/quality.yml` — advance the selected baseline coherently
+  to 4.7.1 and align Quality's candidate/consumer coordinates. Update only the
+  derived `consumer_configuration_sha256` in `eng/dependency-graph-policy.json`
+  to match those approved XML bytes; preserve every dependency selection and
+  validator guard. Verify exact candidate graph semantics and retain the separate
+  prior-active-policy transition limitation if it still refuses.
+- [x] `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`
+  and `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
+  plus `tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs`
+  and `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs`
+  — align existing expectations and MCP candidate/binary versions; run Python
+  policy, diagnostic, governance and package-boundary checks and all seven real
+  ApiCompat packs against published 4.7.1. Record the independently added optional
+  callback in `src/Hexalith.FrontComposer.Contracts.UI/PublicAPI.Shipped.txt`
+  using the existing exact-member inventory mechanism; preserve runtime APIs.
+- [x] `docs/diagnostics/README.md` and
+  `_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md`
+  — describe 4.7.1, exact source and attempt identities, original published
+  metadata hashes and independent-verification limits; retain dated history.
+- [x] `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  and `_bmad-output/implementation-artifacts/sprint-status.yaml` — reconcile
+  review ownership, record fresh checks and preserve independent approvals.
+
+Acceptance: Given approval and published-package evidence, when the baseline
+advances, then all existing selected-baseline sites agree on 4.7.1, all seven
+ApiCompat packs pass, and affected public-surface/governance checks pass through
+existing mechanisms. Given no approval or a failed gate, when work stops, then
+story completion is not claimed. Historical source, evidence and accepted
+commit-scope defects remain attributed to their original revisions.
+
+
 ## Implementation Notes
+
+### Current implementation handoff (2026-10-29)
+
+The baseline advancement plan is approved. Implement only its tasks. Original
+baseline `2c8e204c9f1ca5c2c44d70005d481dd70f89f3fb` stays unchanged; current
+continuation begins at `612d23485d7e2845d22102621a38d6c904e1ea90` with only the
+two known draft documentation edits. Preserve historical notes and results;
+append fresh results with exact commands/counts and external scratch locations.
+Raw reports/packages/logs belong in temporary or ignored output, never tracked
+evidence packets. The historical strict story check has known accounting
+failures; do not move the baseline, delete old ownership or weaken validation.
+Ordinary development builds use Debug/source mode. Real ApiCompat and package
+boundary checks necessarily exercise Release/NuGet package mode. Run test
+projects individually; prefer built xUnit assemblies for focused filtering.
+No staging/commit/push by the implementation subagent; the parent handles the
+final diff audit, independent review and pinned commit-message validation.
+Record pass-3 stale/superseded/false findings with evidence. AppHost model-test
+coverage and the standalone bearer helper's merged stderr remain independently
+owned Story 13.6 follow-ups; append explicit deferred-work handoffs. Do not
+change those runtime/helper paths or claim to have fixed them. Historical
+"No runtime/configuration files changed" statements apply to their dated
+iterations, not this approved package-baseline amendment.
+
+### Historical implementation notes (through 2026-10-26)
 
 - No intent gaps, irreversible actions or new APIs. Small documentation change: existing release ledger, diagnostic README, refreshed Epic 15 context, this spec and sprint status. The already correct baseline/configuration and all public contracts remain unchanged.
 - Verified latest stable release: v4.7.0, immutable release 416759469, published 2026-10-18T22:57:16Z; exact source/tag commit cf5fe8da100bd5224a0d7f597fc92e1ebb98a5f4. Release 39173030800 and independent Release Evidence 39174645465 succeeded for that source. All eight NuGet version indexes select 4.7.0 as latest stable and their package endpoints return HTTP 200 on 2026-10-26. Metadata queries download no package bytes.
@@ -37,7 +157,152 @@ context: []
 - The existing 2026-10-26 review decisions accept the two historical commit-scope defects without rewriting history or declaring delivery work shared. Their strict-validator failures remain explicit below; declaring concurrent Story 13.6 artifacts only completes unrelated-path accounting.
 - Concurrent edits to `spec-13-6-repair-hosted-verification-blockers.md` appeared after the initially clean worktree check. They are preserved and excluded from this follow-up's commit.
 
+### Replanning trigger and fresh checks (2026-10-29)
+
+Resumed from initially clean `main` at
+`612d23485d7e2845d22102621a38d6c904e1ea90`. The original baseline and frozen
+intent are preserved. Stop/replan was triggered by the newly published 4.7.1,
+which the original "retain 4.7.0" intent does not authorize selecting. No
+runtime, workflow, baseline configuration or dependencies have been changed.
+The ledger's inventory citation is completed as an authorized documentation
+patch. Implementation of the proposed advancement awaits the human decision.
+
+Fresh published JSON reads confirm v4.7.1 inventory `683094182` is valid with
+eight packable rows (raw hash `c1e6662f6042c6ec72165a666a51935a626867a5c2e259382a822b2530d30f0a`),
+consumer validation `683094079` is valid, and sealed manifest `683094417` hashes
+to `f5ebb7d831c1a0c5b06a8f879109ab102b19c690c55f2e4ffa7af4ca64b782f8`.
+The manifest binds source `5688c3eba98567133285b0f51843d9daa8f24f0b`, tag v4.7.1
+and release run 40593684166. Exact attempt-1 API queries confirm the Release
+and Release Evidence successes. All eight NuGet indexes select 4.7.1, while
+HEAD requests for the eight 4.7.0 endpoints still return 200. No historical
+package bytes were rebuilt or downloaded. Published-JSON scratch and exact
+attempt/job API records: `/tmp/fc-story15-5-20261029-gyd2sf55/`.
+
+`python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py`
+passed 60/60 in 4.843s against the unchanged 4.7.0 configuration.
+`python3 eng/validate-story-artifacts.py` passed. The legacy story-scoped
+command now exits 1 because later independently owned commits added paths
+since the original baseline; its older pass is historical. No baseline or
+validator is changed to hide that result. The known strict-history failures
+remain separate. The follow-up-only command
+`python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md --base 612d23485d7e2845d22102621a38d6c904e1ea90`
+also exits 1: the four historical File List entries unchanged in this two-file
+follow-up have no matching change in that narrower range. These are accounting
+limitations, not passing gates; no original ownership list is deleted to obtain
+a pass. `pwsh -NoProfile -File eng/validate-docs.ps1 -SkipDocFx -SkipSnippetBuild`
+passed; `git diff --check` passed. A focused comparison confirms the frozen
+block is identical to the starting revision after repository newline
+normalization. No ApiCompat rerun or new .NET result is claimed.
+
+A separate investigation agent checked the concrete draft, original frozen
+intent, exact publication metadata and impacted baseline sites. Its two
+missing-test-site findings were incorporated: Contracts.UI package-boundary
+assertions and MCP package-boundary baseline/candidate/binary identities. The
+active amendment proposal is about 1,100 tokens by character estimate; the
+existing full spec and historical review evidence remain about 12,400 tokens.
+Keeping that history avoids deleting prior evidence; the user can instead
+request a separate historical archive before approving implementation.
+
+Review pass 3 recheck: the consumed CI pin is now
+`6952b59c3486ee50d32056c3fee07a07e8120bd5`, whose exact workflow source has
+heredoc-isolated TRX verification; its adoption is documented by Story 13.6,
+so the old request to select 09af is superseded, not applied by this story.
+`LocalWorkloadRealm` and its regression now preserve `CreateDefaultClientScopes`;
+Story 13.6 records actual workload/user token exchanges and four 401s, so its
+former "unwired" result is historical. The claimed Boolean whitespace defect
+is false: `pwsh -NoProfile -Command` exercised `Boolean.TryParse` with `true`,
+space-padded true and tab/CRLF-padded true, all successful. The remaining
+AppHost source-text/model-test gap and standalone bearer's merged stderr are
+still present, independently owned Story 13.6 issues; no fix or new runtime
+verification is claimed here.
+
 ## Verification
+
+### Approved advancement verification (2026-10-29)
+
+The approved baseline amendment is implemented from continuation source
+`612d23485d7e2845d22102621a38d6c904e1ea90`; the original `baseline_commit`
+remains unchanged. The selected configuration and focused expectations now
+agree on `4.7.1`. Quality builds/consumes `4.7.1-ci`; MCP package-boundary
+validation builds `4.7.1-review.compat` with binary identity `4.7.1.0`.
+The `v4.7` suppression ledger and public contracts are unchanged. No AppHost,
+runtime, dependency selection, publication or independent approval was changed.
+
+Fresh local logs, original published JSON, exact attempt/job API responses,
+and expanded pack commands are external scratch at
+`/tmp/fc-story15-5-implementation-20261029-e4k5a67r/`. No tracked evidence
+bundle or reconstructed published package was created.
+
+- `python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py`
+  — exit 0, 60/60 passed in 2.956s (`python-policy.log`).
+- The existing Repeatable ApiCompat command above, after the policy constant
+  advanced to `4.7.1`, ran all seven projects with candidate `4.7.1-ci`,
+  `EnableFrontComposerPackageValidation=true`, baseline `4.7.1`,
+  `FrontComposerPackageValidationSkipBaseline=false`, and a distinct temporary
+  `BaseOutputPath` per project. All seven `dotnet pack` processes exited 0.
+  Exact arguments/results are in `apicompat-results.json`; per-project
+  `*-apicompat.log` files retain the expanded commands. Inventory: Contracts
+  (net10.0/netstandard2.0), Contracts.UI, Mcp, Schema, Shell, SourceTools
+  (netstandard2.0), Testing.
+- Individually built SourceTools.Tests, Shell.Tests, Contracts.UI.Tests and
+  Mcp.Tests with `dotnet build tests/<project>/<project>.csproj --configuration Debug --nologo -v:minimal`.
+  Each exited 0 with zero warnings/errors. These ordinary development builds
+  use the repository's Debug/source mode; the existing real package checks
+  necessarily invoke Release/NuGet mode themselves.
+- `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class Hexalith.FrontComposer.SourceTools.Tests.Diagnostics.DiagnosticRegistryTests -class '*SchemaFingerprint*' -class '*Drift*'`
+  — exit 0, 289 passed; zero failed/errors/skipped/unrun (`source-tests.log`).
+- `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method '*CiGovernanceTests.PackageInventory_IsExplicitLockstepAndReviewable' -method '*CiGovernanceTests.SemanticReleasePack_EvaluatesThePublishedPackageValidationBaseline' -method '*CiGovernanceTests.QualityWorkflow_Gate4ValidatesEveryPackableLibrary'`
+  — exit 0, 3 passed; zero failed/errors/skipped/unrun (`governance-tests.log`).
+- `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Contracts.UI.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.UI.Tests.dll -class Hexalith.FrontComposer.Contracts.UI.Tests.PackageBoundaryTests`
+  — exit 1, 4 executed / 3 passed / 1 failed; zero errors/skipped/unrun
+  (`contracts-ui-tests.log`). Baseline policy, ownership, and real packed
+  clean-consumer checks pass. `PublicApi_ExportedMembers_MatchIntentionalBaseline`
+  fails on exactly the independently added
+  `Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.WaitForSubscriptionAsync:System.Func<System.IDisposable,System.Threading.CancellationToken,System.Threading.Tasks.Task>:get/set`.
+  Commit `5af87f9e5cc8db16896fc97d19b6a828b2ed0d0d` added the member;
+  unchanged HEAD source contains it and unchanged HEAD `PublicAPI.Shipped.txt`
+  omits it. The comparison has no missing members and that one added member
+  (`contracts-ui-public-api-diff.json`). The implementation subagent preserves
+  the failed gate and public contracts; the parent owns the inventory correction
+  and rerun during its final audit. Completion is not claimed at this handoff.
+- `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Mcp.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Mcp.Tests.dll -class Hexalith.FrontComposer.Mcp.Tests.Skills.McpRuntimePackageBoundaryTests`
+  — exit 0, 2 passed; zero failed/errors/skipped/unrun (`mcp-tests.log`). This
+  includes cold/warm baseline validation and actionable missing-baseline refusal.
+- `pwsh -NoProfile -File eng/validate-docs.ps1 -SkipDocFx -SkipSnippetBuild`
+  — exit 0; documentation validation passed (`docs-validation.log`). Publication
+  inputs/snippets are unchanged; DocFX and snippet compilation were not rerun.
+
+Final local assertions verify the README URL against the actual heading-derived
+ledger anchor, all three raw published hashes against original asset digests,
+the empty `v4.7` suppression ledger, and the original story baseline (exit 0;
+`final-focused-assertions.log`). `python3 eng/validate-story-artifacts.py` passes.
+The exact legacy `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+exits 1 because later independently owned changes since the original baseline
+are absent from this story's ownership list (`artifacts-legacy-story.log`).
+Adding the approved baseline sites to File List also makes strict
+`python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md --candidate HEAD`
+report later unrelated commits touching those sites alongside the accepted
+original `unmapped` / `interleaved` defects (`artifacts-strict-story.log`).
+These are current accounting failures, not passing gates. No baseline, history,
+validator or unrelated-path inventory was rewritten to force a pass.
+
+Original publication observations are appended to the existing
+[release ledger](rel-ai-1-release-evidence-ledger.md#story-155-approved-compatibility-baseline-advancement-2026-10-29).
+Reproduction used `gh api repos/Hexalith/Hexalith.FrontComposer/releases/tags/v4.7.1`,
+`gh api repos/Hexalith/Hexalith.FrontComposer/git/ref/tags/v4.7.1`, exact
+`gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/<run-id>/attempts/1`
+and `/attempts/1/jobs?per_page=100` for runs `40593684166` / `40596573358`,
+and `gh api repos/Hexalith/Hexalith.FrontComposer/releases/assets/<asset-id> -H 'Accept: application/octet-stream'`
+for original inventory `683094182`, consumer validation `683094079`, and sealed
+manifest `683094417`. SHA-256 was computed over raw response bytes before JSON
+parsing. Their hashes match the published digests and the ledger. Eight existing
+inventory-derived NuGet index reads select `4.7.1`; HEAD requests to their `4.7.1`
+package endpoints all return 200 (`nuget-availability.json`). No new byte/signature
+independent audit or original independent artifact download is claimed. These
+published-release runs do not test this later worktree amendment; parent review,
+delivery SHA/CI provenance, and all separately owned approvals remain outstanding.
+
+### Historical verification (2026-10-26)
 
 - `python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py` — exit 0; 60 passed. Includes production/synthetic pack plans, baseline agreement, suppression lifecycle and failure paths.
 - For each of the seven projects returned by `eng/release_compatibility.py:packable_library_projects`, ran `dotnet pack <project> --configuration Release --output /tmp/frontcomposer-15-5-apicompat-_uwokzr9/packages -p:Version=4.7.0-ci -p:PackageVersion=4.7.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=4.7.0 -p:FrontComposerPackageValidationSkipBaseline=false -p:BaseOutputPath=/tmp/frontcomposer-15-5-apicompat-_uwokzr9/<project-name>/bin/ --nologo -v:minimal` — all seven exited 0. Exact expanded commands and logs remain local at that scratch path. Inventory: Contracts (net10.0/netstandard2.0), Contracts.UI, Mcp, Schema, Shell, SourceTools (netstandard2.0), Testing. This reuses Quality Gate 4's actual package-validation mechanism.
@@ -48,6 +313,26 @@ context: []
 - `pwsh -NoProfile -File eng/validate-docs.ps1 -SkipDocFx -SkipSnippetBuild` — exit 0; documentation validation passed, no blocking failures. Local log `/tmp/frontcomposer-15-5-docs.log`. No publication input/configuration or snippet changed, so full site regeneration is unnecessary here.
 - `python3 eng/validate-story-artifacts.py` and `git diff --check` — exit 0 before review; final story-scoped ownership check follows review.
 - Reuse [Story 15.4's verification](spec-15-4-correct-the-fluent-ui-v5-contingency-identity.md#verification), including 127 passing MigrationCommandTests and full DocFX/snippet publication proof, plus [its follow-up's verification](spec-15-4-correct-the-fluent-ui-v5-contingency-identity-2.md#verification), covering 59 passing documentation cases, for unchanged migration/publication behavior. Those are historical focused results, not claims of fresh execution in this story. All public API, generated-output and migration authorities remain unchanged by the five owned documentation/tracking files.
+
+### Parent task audit (2026-10-29)
+
+The required Contracts.UI public-surface gate exposed one pre-existing inventory
+omission from `5af87f9e5cc8db16896fc97d19b6a828b2ed0d0d`. Added exactly its
+existing optional `WaitForSubscriptionAsync` signature to the existing
+`PublicAPI.Shipped.txt`; no runtime member, visibility, behavior or test assertion
+changed. This uses the story's existing public-surface baseline mechanism.
+The same full four-test class reran against the corrected inventory:
+`DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Contracts.UI.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.UI.Tests.dll -class Hexalith.FrontComposer.Contracts.UI.Tests.PackageBoundaryTests`
+— exit 0, 4 passed, zero failures/errors/skips/unrun, 3.030s; exact output
+`/tmp/fc-story15-5-implementation-20261029-e4k5a67r/contracts-ui-after-inventory.log`.
+This supersedes the earlier failed first attempt above. The correction changes
+only a text inventory, so the previously passed ApiCompat and compiled-assembly
+checks remain applicable. All four current implementation tasks and their
+acceptance criteria now pass; no I/O matrix was introduced. Independent review
+and final status reconciliation follow. Hosted CI for this continuation has not
+run: the approved workflow does not push or dispatch remote work, and no overall
+hosted-green claim is made for the new local commit.
+
 
 ### Delivery and CI provenance (review follow-up 2026-10-26)
 
@@ -196,9 +481,9 @@ use a validated commit message with Story 15.5 identity; verify its full SHA and
 - `eng/verify-apphost-invalid-bearer.sh` — concurrent bearer-verification work appeared during final checks; preserved and outside Story 15.5.
 - `tests/e2e/package.json` — concurrent browser test wiring; preserved and outside Story 15.5.
 - `tests/e2e/scripts/verify-apphost-invalid-bearer.test.mjs` — concurrent bearer-verification tests; preserved and outside Story 15.5.
-- `.github/workflows/quality.yml` — concurrent CI/browser work appeared after investigation; preserved and outside Story 15.5.
+- `.github/workflows/quality.yml` — earlier Story 13.6 CI/browser work remains unrelated historical content; the approved 2026-10-29 baseline-only changes to this file are Story 15.5-owned.
 - `eng/validate-docs.ps1` — concurrent documentation validator hardening; preserved and outside Story 15.5.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — concurrent CI/browser governance; preserved and outside Story 15.5.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — earlier concurrent CI/browser governance remains unrelated historical content; the approved 2026-10-29 selected-baseline expectation is Story 15.5-owned.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs` — concurrent documentation validator tests; preserved and outside Story 15.5.
 - `tests/e2e/specs/adopter-historical-label-cleanup.spec.ts` — concurrent browser/adopter work; preserved and outside Story 15.5.
 
@@ -211,6 +496,19 @@ use a validated commit message with Story 15.5 identity; verify its full SHA and
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `docs/diagnostics/README.md`
 
+
+- `.github/workflows/quality.yml`
+- `Directory.Build.targets`
+- `eng/release_compatibility.py`
+- `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj`
+- `tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`
+
+- `src/Hexalith.FrontComposer.Contracts.UI/PublicAPI.Shipped.txt`
+
+- `eng/dependency-graph-policy.json`
 
 ## Review Triage Log
 
@@ -309,3 +607,115 @@ Code review pass 3 (`bmad-code-review`, 2026-10-26) covered `2c8e204c...5b8a8607
 - Spec `done` vs sprint `review`, and strict validator exit 1 — false: the spec records both. The sprint row stays `review` for maintainer acceptance, and the validator failure is the accepted `unmapped`/`interleaved` history.
 - README `blob/main` anchor is unresolved — false: the ledger heading is `Story 15.5 Compatibility Baseline Reconciliation (2026-10-26)`, the README uses that anchor, and `5b8a8607` is `main`.
 - Missing lock-directory preflight — low: the default lock root is `/tmp`, which is present for normal local and CI runs. A pre-check is an extra branch for a custom `FC_EPIC9_LOCK_ROOT`.
+
+
+### Current review ownership reconciliation (2026-10-29)
+
+The pass-3 checkboxes above preserve that dated review snapshot. Their current
+ownership/dispositions are below; they are not seven new baseline-amendment tasks.
+
+| Historical pass-3 finding | Current disposition and evidence |
+| --- | --- |
+| CI pin requests `09af6ef8` | Superseded by independently owned Story 13.6 adoption. `.github/workflows/ci.yml:25` consumes `6952b59c3486ee50d32056c3fee07a07e8120bd5`. A fresh read of that exact GitHub workflow source confirms four heredoc-isolated `PYTRX` validators; no workflow pin was changed here. |
+| Missing `CreateDefaultClientScopes` | Resolved by Story 13.6. `LocalWorkloadRealm.cs:69` preserves/sets the attribute and its existing regression checks it. No realm code changed here. |
+| AppHost wiring asserted as source text | Still a verification gap at `FrontComposerUiAppHostTests.cs:326`; the existing case reads `Program.cs`. Explicit Story 13.6 deferred-work handoff appended; no Aspire model test or runtime fix claimed. |
+| `Boolean.TryParse` whitespace rejection | False. Fresh `pwsh -NoProfile -Command` checked `true`, space-padded true, and tab/CRLF-padded true; all parsed successfully as true (exit 0, `boolean-whitespace.log`). |
+| Invalid-bearer stderr merged into JSON | Still present at `eng/verify-apphost-invalid-bearer.sh:94`. Explicit Story 13.6 deferred-work handoff appended; no helper change claimed. |
+| Accessibility result says workload client unwired | Superseded historical observation. The current Story 13.6 result records token exchange and all four actual 401 responses, including attributed hosted results. No fresh bearer execution or whole-runtime pass claimed here. |
+| Missing original 4.7.0 inventory citation | Patched by the preserved October 29 draft observation: asset `654681115` and raw SHA-256 `c1e6662f6042c6ec72165a666a51935a626867a5c2e259382a822b2530d30f0a` are now explicit. The new approved observation separately cites the 4.7.1 assets. |
+
+At the implementation handoff, the numbered story and REL-BASE-1 alias remain
+`in-progress` pending the parent inventory correction and independent review;
+the Parent task audit above records the subsequent green gate. Epic 15 and all
+Fluent/Product, migration, publication and Release Owner approval states retain
+their existing independent ownership. Accepted original commit-scope defects,
+original baseline and historical unrelated-path declarations remain unchanged.
+
+
+### Independent review of approved advancement (2026-10-29)
+
+All three current layers completed before classification. They reviewed the
+full original-baseline diff at `/tmp/fc-story15-5-full-history-411supss.diff`
+(1,219,068 bytes), including independently owned commits since the original
+baseline. Parent separately audited the complete 14-file current continuation
+and scoped runtime exclusions. Blind Hunter's ten findings all concern those
+inherited runtime/test additions; Edge Case Hunter found the affected derived
+configuration seal; Verification Gap found inherited ordinary Tenants wiring
+coverage. No public/runtime/dependency selection change is added by triage.
+
+| Finding | Verdict and evidence | Route |
+| --- | --- | --- |
+| B1 typed input mounts after first render | medium: `FcDestructiveConfirmationDialog.OnAfterRenderAsync` returns on later renders, while `RequiredName` is mutable and renders the input conditionally; its accessibility observer is not installed for a later mount. | defer to Story 13.6; inherited runtime excluded by approved intent. |
+| B2 reconciler UI callbacks resume off dispatcher | medium: `Reconcile`/`IssueCommand` await with `ConfigureAwait(false)` and then invoke Action callbacks without renderer dispatch; ordinary asynchronous Blazor adapters can update UI off context. | defer to owning feedback work; runtime/API change excluded. |
+| B3 one connected confirmation followed by failed/stale read stalls | medium: the failed/stale read leaves completion pending, while the fallback wrapper suppresses polls whenever `IsConnected()` is true; absent a new notification only cancellation completes it. | defer to owning feedback work; inherited behavior. |
+| B4 per-read cancellation token ignored | medium: `TryReconcileAsync(CancellationToken ignored)` uses only operation `token` for gate/read, so a caller fallback's bounded read token cannot cancel that read. | defer to owning feedback work; inherited behavior. |
+| B5 Current may describe a pre-command record | maybe-false, medium if confirmed: core accepts Current and its public freshness enum describes the current projection, but the request explicitly leaves domain mapping caller-owned. A real adapter returning Current for pre-command state plus a disconnected fallback reproduction would establish false confirmation; no such adapter failure was demonstrated here. | defer unverified to owning feedback/adapter work. |
+| B6 typed confirmation help lacks description association | medium: markup renders `ConfirmationHelp` in an unlabelled paragraph; `aria-describedby` names only the body, and the projection cannot discover that help. | defer to Story 13.6 accessibility work; inherited markup. |
+| B7 /tenants route assertion can pass a pending/error surface | medium: after the second navigation the live case checks only focused heading and three absent selectors; it does not reuse the stronger terminal data/empty checks above. | defer to Story 13.6 full-topology verification. |
+| B8 real .NET-to-browser download path is uncovered | medium: the browser suite fabricates `arrayBuffer()` and C# tests mock interop, leaving `DotNetStreamReference` transport unexercised. | defer to owning download work; no new failure claimed. |
+| B9 feedback manifest omits contract modifiers | medium: `FormatParameters` records only types; property formatting treats accessor existence as visibility and omits init/nullability/defaults, allowing some future source-contract changes to evade that snapshot. | defer to owning public-surface verification; existing ApiCompat remains required. |
+| B10 new service adopter documentation missing | medium: repository `docs/` has no registration/service/reconciler symbol matches, leaving adapters without stream/cancellation/dispatch/lifetime examples. | defer to owning feedback/download documentation work. |
+| V1 ordinary Tenants receiver binding lacks executable test | medium, pre-verified: the source-string AppHost case passes with the receiver-policy variable substituted; disposable verification overwrites that binding, and the live suite is opt-in. | defer to Story 13.6; approved intent excludes AppHost/runtime changes. |
+| E1 changed XML invalidates consumer configuration seal | medium: `evaluate_consumer_projections` hashes all committed build configuration and compares it to the enrolled seal, so changing the shared targets and Contracts.UI project rejects the candidate even with unchanged source selectors. | patch: recompute only that derived metadata; preserve guards and separately validate the actual prior-policy transition. |
+
+
+### Review correction and final local disposition (2026-10-29)
+
+E1 was patched by changing only the existing derived consumer configuration
+seal in `eng/dependency-graph-policy.json` from
+`68386ed899cdef31131e081c321424fa18af8864b8d8efcd6f59eae99a870fca` to
+`f5186d1b483c33e065ac542374a4b90c0da8257782ebc871d29aaf0ef3613762`.
+A deep policy comparison confirms every other policy value is unchanged.
+The 39-file committed configuration map differs from the continuation base
+only in `Directory.Build.targets` and Contracts.UI's project baseline literal.
+No source, selector, catalog pin, trust identity, or validator guard changed.
+
+`python3 -m unittest tests.eng.test_dependency_graph.ConsumerProjectionTests tests.eng.test_dependency_graph.ApprovedProjectionExpectationTests`
+— exit 0, 21 passed in 7.947s; log
+`/tmp/fc-story15-5-implementation-20261029-e4k5a67r/consumer-seal-focused-tests.log`.
+All previously green package/test lanes remain applicable to this derived JSON
+metadata correction. Current total: 379 focused tests passed and seven real
+ApiCompat packs passed; the failed first UI inventory attempt remains recorded.
+
+Parent created isolated scratch commit
+`8ac611e0ac8eba0386cb63bac47148fa9fb014eb` after pinned-message validation,
+without moving HEAD or a branch. Its exact source/configuration includes the
+completed amendment and corrected seal; later changes are documentation/status
+only. `python3 eng/dependency_graph.py --root . validate --commit 8ac611e0ac8eba0386cb63bac47148fa9fb014eb`
+— exit 0, `ok=true`, 69 edges, eight unchanged selectors and the corrected
+consumer projection. Original Platform source/inventory and root Builds pins
+are preserved. Command/output records are in
+`/tmp/fc-story15-5-implementation-20261029-e4k5a67r/candidate-governance-results.json`
+and `candidate-graph.log`; these are disposable local verification artifacts.
+
+**Separate prior-policy push gate remains blocked:**
+`python3 eng/dependency_graph.py --root . diff --event push --event-base 612d23485d7e2845d22102621a38d6c904e1ea90 --candidate 8ac611e0ac8eba0386cb63bac47148fa9fb014eb`
+— exit 1, `consumer Compile/ProjectReference configuration changed from its sealed source projection`.
+This uses the actual prior active policy and is not relabelled as a pass or
+repaired by substituting candidate policy. The baseline configuration change
+requires a separately governed integration/activation path before a push from
+that prior base can qualify. No new transition mechanism, validation exception,
+publication authorization, push, or hosted CI run is implied by local completion.
+The accepted historical story-accounting failures remain separate limitations.
+
+All three review layers completed: one current-amendment metadata correction,
+eleven inherited follow-ups (including one unverified adapter concern) recorded
+individually in deferred-work, and no runtime/API changes made from that review.
+The spec records local implementation completion; sprint and REL-BASE-1 move to
+review for maintainer acceptance. Epic 15 and independent approval gates remain
+unchanged. This does not claim hosted/integration readiness.
+
+Pinned commit-message check:
+`node node_modules/@commitlint/cli/cli.js --edit /tmp/fc-story15-5-implementation-20261029-e4k5a67r/commit-message.txt --verbose`
+— exit 0, zero problems/warnings. Installed CLI 21.2.2 equals the repository's
+package-lock pin; successful evidence is `commitlint.log` in that scratch path.
+
+
+Final post-review documentation and artifact hygiene checks passed. The final
+scratch story-accounting run still exits 1 for preserved historical/later
+ownership failures, while scratch commit
+`8ac611e0ac8eba0386cb63bac47148fa9fb014eb` itself is `story-id=match` and
+`disposition=owned`, with all its paths owned. Its exact output is
+`/tmp/fc-story15-5-implementation-20261029-e4k5a67r/final-scratch-story-accounting.log`.
+The final diff check detected one trailing blank line in the appended deferred
+entries; removing that blank line is the only formatting correction.

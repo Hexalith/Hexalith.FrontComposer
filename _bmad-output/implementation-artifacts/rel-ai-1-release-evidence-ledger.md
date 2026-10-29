@@ -2,7 +2,7 @@
 title: REL-AI-1 Release Evidence Compliance Ledger
 project: frontcomposer
 created: 2026-07-15
-updated: 2026-10-26
+updated: 2026-10-29
 owner: Release Owner
 decisionContract: frontcomposer.release-compliance-ledger.v1
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md
@@ -690,3 +690,113 @@ reconciliation stays open.
 
 Focused commands, results and final story ownership are recorded in
 [Story 15.5](spec-15-5-reconcile-the-published-compatibility-baseline.md).
+
+
+### Story 15.5 follow-up observation (2026-10-29)
+
+The original v4.7.0 package-inventory asset is `654681115`, with raw-byte
+SHA-256 `c1e6662f6042c6ec72165a666a51935a626867a5c2e259382a822b2530d30f0a`.
+A fresh read of the published JSON through the release-assets API confirmed
+`status=valid`, eight packable rows, and that hash. The original sealed-manifest
+asset `654681307` still hashes to
+`2aa2d01e8cc6b8b489b016c2828af478192dcf68850ea9c1978d14b7d19f24ba`.
+These observations complete the original inventory citation without changing
+its publication or compliance disposition.
+
+The earlier statement that 4.7.0 was the latest evidence-backed stable release
+is dated October 26. A fresh October 29 check identifies immutable
+[Release v4.7.1](https://github.com/Hexalith/Hexalith.FrontComposer/releases/tag/v4.7.1),
+release `426062933`, published `2026-10-27T22:38:59Z`, at exact source/tag
+`5688c3eba98567133285b0f51843d9daa8f24f0b`.
+[Release attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40593684166/attempts/1)
+and independent
+[Release Evidence attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40596573358/attempts/1)
+both succeeded for that source. All eight NuGet version indexes now identify
+4.7.1 as latest stable; all eight historical 4.7.0 package endpoints still
+return HTTP 200. This supersedes the earlier latest-release observation;
+4.7.0 remains the currently configured baseline.
+
+Story 15.5 is reopened for a human decision because its frozen intent
+explicitly requires retaining 4.7.0. The proposed 4.7.1 advancement is recorded
+in the [story's approved amendment](spec-15-5-reconcile-the-published-compatibility-baseline.md#approved-amendment--2026-10-29).
+No advancement or bounded-lag approval is implied by this observation. The
+current 4.7.0 configuration passes the existing same-release-line policy, but
+that policy pass does not satisfy the story's latest-release acceptance or
+supply a Release Owner lag decision. No FR24 disposition, owner sign-off or
+new publication permission is supplied for either release.
+
+### Story 15.5 Approved Compatibility Baseline Advancement (2026-10-29)
+
+The user approved selecting published `4.7.1` on 2026-10-29. This supersedes
+only the preceding observation's configured-baseline and pending-decision
+statements. The dated `4.7.0` evidence, historical compliance dispositions and
+independent owner approvals remain unchanged.
+
+- [Immutable Release v4.7.1](https://github.com/Hexalith/Hexalith.FrontComposer/releases/tag/v4.7.1),
+  release ID `426062933`, was published `2026-10-27T22:38:59Z`; the tag and
+  original sealed manifest both bind exact source
+  `5688c3eba98567133285b0f51843d9daa8f24f0b`.
+- [Release 40593684166, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40593684166/attempts/1)
+  (`workflow_dispatch`) and independent
+  [Release Evidence 40596573358, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40596573358/attempts/1)
+  (`workflow_run`) each report `run_attempt=1`, that exact source, and
+  `conclusion=success`. The independent
+  [verify-published-release job 122513885369](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40596573358/job/122513885369)
+  passed its sealed-manifest-over-downloaded-bytes, exact NuGet publication,
+  and served-byte NuGet.org repository-signature verification steps.
+- The original published JSON assets were read through the release-assets API
+  and hashed before parsing or reserialization:
+
+| Original v4.7.1 asset | Asset ID | Raw-byte SHA-256 | Observed contents |
+| --- | --- | --- | --- |
+| [package-inventory.json](https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.7.1/package-inventory.json) | `683094182` | `c1e6662f6042c6ec72165a666a51935a626867a5c2e259382a822b2530d30f0a` | `status=valid`; eight packable rows. |
+| [consumer-validation.json](https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.7.1/consumer-validation.json) | `683094079` | `87a652c54cab11a1e2dedc1c70c1b8417bfcc3d3d79b4ce8bcedcb8571a9868c` | `status=valid`; package metadata/kernel split and consumer boundaries passed. |
+| [sealed-manifest.json](https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.7.1/sealed-manifest.json) | `683094417` | `f5ebb7d831c1a0c5b06a8f879109ab102b19c690c55f2e4ffa7af4ca64b782f8` | `hexalith.release-evidence.v3`; same source, `v4.7.1`, release run `40593684166`, and eight `4.7.1` package identities. |
+
+All three hashes equal their original release API `sha256:` digests. Fresh
+read-only checks used the existing eight-package inventory. On 2026-10-29 each
+NuGet version index selected `4.7.1` as latest stable, and HTTP HEAD to each
+`4.7.1` package endpoint returned 200:
+
+| Package ID | Latest stable | Package endpoint |
+| --- | --- | --- |
+| Hexalith.FrontComposer.Cli | 4.7.1 | HTTP 200 |
+| Hexalith.FrontComposer.Contracts | 4.7.1 | HTTP 200 |
+| Hexalith.FrontComposer.Contracts.UI | 4.7.1 | HTTP 200 |
+| Hexalith.FrontComposer.Mcp | 4.7.1 | HTTP 200 |
+| Hexalith.FrontComposer.Schema | 4.7.1 | HTTP 200 |
+| Hexalith.FrontComposer.Shell | 4.7.1 | HTTP 200 |
+| Hexalith.FrontComposer.SourceTools | 4.7.1 | HTTP 200 |
+| Hexalith.FrontComposer.Testing | 4.7.1 | HTTP 200 |
+
+The policy constant, shared default, Contracts.UI override, Quality baseline and
+`4.7.1-ci` pack/consumer coordinates, and focused baseline assertions now agree
+on `4.7.1`; the MCP package test uses candidate `4.7.1-review.compat` and binary
+`4.7.1.0`. All seven existing inventory-driven ApiCompat packs passed against
+published `4.7.1`, with validation enabled and baseline skipping disabled.
+The `v4.7` suppression ledger remains empty. No public contract was changed.
+
+These observations read original published metadata and exact workflow-attempt
+results. They do not repeat the independent workflow's downloaded-byte or
+repository-signature audit, download its original verification artifact, or
+claim new independent ledger booleans. Current ApiCompat packs build disposable
+current candidates; they do not reconstruct historical published packages.
+The required Contracts.UI public-surface check exposed the independently
+added `WaitForSubscriptionAsync` member missing from its text inventory. Recording
+that existing member through `PublicAPI.Shipped.txt` restored exact public-surface
+parity; all four package-boundary tests then passed. Runtime contracts remain
+unchanged. Exact fresh commands, the initial failure, its correction and the
+independent review are recorded in the [story record](spec-15-5-reconcile-the-published-compatibility-baseline.md#approved-advancement-verification-2026-10-29).
+This technical baseline selection grants no FR24 disposition, Release Owner
+sign-off, new publication permission, or Fluent/Product approval, and performs
+no REL-LEDGER-2 backfill.
+
+
+Local completion after independent review also refreshes the existing derived
+consumer-configuration seal for the two changed XML baseline sites. The exact
+candidate's 69-edge graph validates with all dependency selections preserved;
+21 focused projection checks pass. The original prior-active-policy push model
+still refuses that configuration transition, so integration/activation remains
+separately governed. Local compatibility completion does not claim a passing
+push gate or hosted CI for this amendment; the story records the exact failed
+command and retained output alongside the passing local results.

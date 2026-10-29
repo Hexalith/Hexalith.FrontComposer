@@ -30,6 +30,7 @@ Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.Revert:S
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.RunFallback:System.Func<System.Func<System.Threading.CancellationToken,System.Threading.Tasks.Task>,System.Func<System.Boolean>,System.Threading.CancellationToken,System.Threading.Tasks.Task>:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.Subscribe:System.Func<System.Action,System.IDisposable>:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.ToString():System.String
+Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.WaitForSubscriptionAsync:System.Func<System.IDisposable,System.Threading.CancellationToken,System.Threading.Tasks.Task>:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcReconcileState
 Hexalith.FrontComposer.Contracts.Freshness.FcReconcileState.Degraded:Hexalith.FrontComposer.Contracts.Freshness.FcReconcileState
 Hexalith.FrontComposer.Contracts.Freshness.FcReconcileState.Reconciled:Hexalith.FrontComposer.Contracts.Freshness.FcReconcileState

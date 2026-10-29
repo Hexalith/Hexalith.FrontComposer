@@ -64,7 +64,7 @@ public sealed class PackageBoundaryTests {
             @"<FrontComposerPackageValidationBaselineVersion Condition=""'\$\(FrontComposerPackageValidationBaselineVersion\)' == ''"">(?<version>[^<]+)</FrontComposerPackageValidationBaselineVersion>");
         sharedBaseline.Success.ShouldBeTrue("Directory.Build.targets must default the package-validation baseline.");
         string baseline = sharedBaseline.Groups["version"].Value;
-        baseline.ShouldBe("4.7.0");
+        baseline.ShouldBe("4.7.1");
 
         project.ShouldContain($"<FrontComposerPackageValidationBaselineVersion>{baseline}</FrontComposerPackageValidationBaselineVersion>");
         project.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.4</FrontComposerPackageValidationBaselineVersion>");

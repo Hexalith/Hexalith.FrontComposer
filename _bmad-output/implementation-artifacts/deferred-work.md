@@ -10913,3 +10913,64 @@ Latest Story13.6 follow-up reconciliation at c2b925bae1c9b3bfa8c3a4698ad0104de02
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-qualify-full-topology-readiness.md`
   summary: Align the Parties fallback driver with the shared reconciler lifetime contract and test connection followed by disconnect before confirmation.
   evidence: Review V3 (pre-verified verification gap): the shared reconciler invokes RunFallback once, but references/Hexalith.Parties/src/Hexalith.Parties.UI/Services/ProjectionFreshnessFallback.cs returns on connection and its tests assert that old behavior. A later disconnect therefore has no fallback restart. This is a distinct pre-existing adapter/contract mismatch in the external optimistic-reconcile work.
+
+## Deferred from: Story 15.5 approved compatibility-baseline advancement (2026-10-29)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Exercise actual Aspire workload resource wiring and secret agreement in the Story 13.6 host-model tests.
+  status: deferred
+  owner: Story 13.6
+  evidence: Reconfirmed pass-3 verification gap at `tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs:326`. `AppHostWorkloadWiringIsLocalAndUsesTheRenderedSecretParameter` reads `Program.cs` and asserts substrings; it does not build the Aspire resource model. Add an owning-story model check of the actual import directory, callback-supplied client secret and persistent-realm refusal. This is a source-inspected test gap, not a newly reproduced runtime failure. The approved 4.7.1 amendment excludes AppHost/runtime changes.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Separate the standalone invalid-bearer helper's lifecycle JSON from stderr and retain the Aspire child log.
+  status: deferred
+  owner: Story 13.6
+  evidence: Reconfirmed pass-3 issue at `eng/verify-apphost-invalid-bearer.sh:94`: `aspire start --isolated --no-build --format Json` still redirects stdout and stderr together, then extracts from the first brace line. A JSON-shaped diagnostic can make ownership parsing fail closed. Follow the existing Epic 9 helper's separate `--log-file` approach and test a brace-prefixed stderr diagnostic while retaining exact owned cleanup and the four 401/403 checks. No helper/runtime change or new live bearer proof is claimed by Story 15.5.
+
+
+## Deferred from: Story 15.5 full-history independent review (2026-10-29)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Install typed-input accessibility projection when RequiredName changes from null after initial render.
+  evidence: Full-history review B1; FcDestructiveConfirmationDialog.razor.cs:126 returns for all non-first renders although RequiredName can mount a new input. The inherited accessibility observer is therefore absent for that transition. Owner: Story 13.6 dialog accessibility; runtime changes excluded by this approved baseline amendment.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Define and verify renderer dispatch for asynchronous optimistic-reconciliation presentation callbacks.
+  evidence: Full-history review B2; FcOptimisticReconciler.cs awaits command/read/transport with ConfigureAwait(false), then invokes Action callbacks without dispatcher marshalling. Blazor adapters must marshal or can update UI off context. Owner: existing feedback routine; no baseline-amendment runtime fix is claimed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Recover a connected reconciliation operation after its only confirmation read fails or remains stale.
+  evidence: Full-history review B3; FcOptimisticReconciler.cs leaves completion pending after failed/stale reads, while the fallback wrapper suppresses polling whenever IsConnected is true. Without a second confirmation the operation waits until cancellation. Owner: existing feedback/reconciliation work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Honor a fallback driver's per-read cancellation token in the reconciliation read.
+  evidence: Full-history review B4; FcOptimisticReconciler.TryReconcileAsync(CancellationToken ignored) uses only the operation lifetime for gate/read; a driver cannot bound an individual read using its supplied token. Owner: existing feedback routine; no new runtime failure was exercised in this story.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Verify that disconnected fallback cannot mistake a pre-command current projection for operation confirmation.
+  evidence: Full-history review B5; Unverified, medium if confirmed: the freshness enum describes a current projection, but domain mapping is caller-owned. Settle with a real adapter that returns Current for unchanged pre-command state and a disconnected-fallback test; no such adapter failure was demonstrated by this review. Owner: feedback/domain adapter work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Associate caller-supplied typed-name confirmation help with the native input description.
+  evidence: Full-history review B6; FcDestructiveConfirmationDialog.razor renders ConfirmationHelp in a paragraph without an ID; aria-describedby names only the body description. Owner: Story 13.6 accessibility; inherited runtime markup is outside this baseline amendment.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Require terminal authorized data or empty state after the second /tenants navigation in full-topology proof.
+  evidence: Full-history review B7; full-topology-readiness.spec.ts:62-64 checks only focus and three absent selectors on the second navigation, unlike tenantSurface's stronger checks; a pending or other error surface can pass. Owner: Story 13.6 full-topology verification.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Exercise a real Blazor IFcBrowserDownloadService and DotNetStreamReference transfer through browser download and cancellation.
+  evidence: Full-history review B8; browser-download.spec.ts fabricates the stream arrayBuffer object, while C# tests mock JS interop; neither covers the complete .NET/browser transfer seam. Owner: existing browser-download work; this is a verified coverage gap, not a new reproduced runtime defect.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Cover default values, nullability and property accessor/init contracts for feedback and download public APIs.
+  evidence: Full-history review B9; FcFeedbackPublicApiTests records parameter types and accessor existence only. Those source-compatibility aspects can change without changing the snapshot; existing ApiCompat remains independently required. Owner: existing public-surface verification work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Document feedback/download registration, ownership, cancellation, renderer dispatch and reconciliation fallback lifetimes for adopters.
+  evidence: Full-history review B10; A repository docs search finds no AddFrontComposerFeedback, IFcBrowserDownloadService or FcOptimisticReconciler examples. Owner: existing feedback/download documentation work; the approved amendment changes only current compatibility guidance.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
+  summary: Add an executable ordinary Tenants API receiver-policy binding regression before disposable overrides apply.
+  evidence: Full-history review V1; Pre-verified gap: FrontComposerUiAppHostTests.cs:595 asserts source strings; replacing tenantsApiAccessControlConfigPath with the BFF policy at Program.cs:224 leaves those assertions satisfied. LocalReadinessTopology.cs:96 overwrites the binding, and the live suite is opt-in, so neither proves the ordinary resource selection. Owner: Story 13.6 AppHost verification; runtime changes excluded by this approved baseline amendment.
