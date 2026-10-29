@@ -10991,3 +10991,15 @@ Latest Story13.6 follow-up reconciliation at c2b925bae1c9b3bfa8c3a4698ad0104de02
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-correct-parties-shared-catalog-inheritance.md`
   summary: Reconcile Parties' existing EventStore 3.128.3 property override with generic consumer-package authority under an owner-approved dependency decision.
   evidence: Prior independent review B10 retained the actual pre-existing generic-authority refusal and user-selected override. This repair preserves that pin and passing exact standalone proofs; it does not grant full Parties authority/CI acceptance or authorize an unrelated version change.
+
+### Story 15.5 current catalog-object blocker
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-activation-handoff.md`
+  summary: FrontComposer dependency-governance maintainers must resolve the missing exact catalog object blocking current local validation and hosted Quality.
+  evidence: At source 7319f44bcf02b67d7ee09a315ba8aa9c7251b1f6, `python3 eng/dependency_graph.py --root . validate --commit 7319f44bcf02b67d7ee09a315ba8aa9c7251b1f6` exits 1 because `git ls-tree a9455fb3b57a65233020f4b3fc61426514521d7c -- Props/Directory.Packages.props` reports `fatal: not a tree object` in root Builds. Quality 40884129344 attempt 1 job 123483170149 fails InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds on the same lookup and skips Gate 4. Investigate approved exact-object acquisition/materialization while preserving committed selectors, active-policy guards and the no-nested-initialization boundary. Closure requires the ordinary committed-source graph command, hosted infrastructure gate and subsequent ApiCompat Gate 4 to pass at the repaired exact source; the earlier cde40df71ebcef6c6c74c25a5a5644bebef3fc17 activation pass is not a substitute.
+
+### Story 15.5 current Testing catalog-version blocker
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-activation-handoff.md`
+  summary: FrontComposer package-test maintainers must reconcile Testing's localization-version expectation with the selected central catalog and rerun the affected CI tests.
+  evidence: CI 40884129895 attempt 1 job 123483171783 at source 7319f44bcf02b67d7ee09a315ba8aa9c7251b1f6 reports two failures in tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs: CentralPackageVersion_Mismatch_ReportsExpectedAndActualBeforePackaging for Microsoft.Extensions.Localization.Abstractions, and CleanTemporaryConsumer_RestoresFromPackedNupkgs_WithoutRepoRelativeProjectReferences. The existing LocalizationAbstractionsVersion is 10.0.13, while the catalog and clean-consumer failure report 10.0.14. Preserve the catalog authority and fail-closed package checks; this handoff authorizes no dependency selection change. Closure requires the two existing cases, actual clean-consumer restore and blocking hosted CI lane to pass at the repaired exact source.

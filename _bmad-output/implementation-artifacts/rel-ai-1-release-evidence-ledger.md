@@ -800,3 +800,64 @@ still refuses that configuration transition, so integration/activation remains
 separately governed. Local compatibility completion does not claim a passing
 push gate or hosted CI for this amendment; the story records the exact failed
 command and retained output alongside the passing local results.
+
+
+### Story 15.5 Activation Handoff Recheck (2026-10-29)
+
+Read-only rechecks from source
+`7319f44bcf02b67d7ee09a315ba8aa9c7251b1f6` still identify
+[immutable v4.7.1](https://github.com/Hexalith/Hexalith.FrontComposer/releases/tag/v4.7.1)
+as the latest stable GitHub release. Its ID, publication time and reported
+JSON asset digests match the approved advancement above. The existing
+inventory's eight NuGet version indexes each still select `4.7.1`; HEAD
+requests to all eight `4.7.1` package endpoints return HTTP 200. The configured
+baseline remains current; no advancement or lag exception is needed. These
+are metadata/availability checks, not a repeated package-byte/signature audit.
+
+The [later-base activation record](spec-15-5-governed-policy-transition.md)
+now has an actual branch commit:
+`cde40df71ebcef6c6c74c25a5a5644bebef3fc17`, whose direct parent is
+`0b469e03c5ae81cf6756f7cd8f2f78df7074514c`. Fresh execution of
+`python3 eng/dependency_graph.py --root . diff --event push --event-base 0b469e03c5ae81cf6756f7cd8f2f78df7074514c --candidate cde40df71ebcef6c6c74c25a5a5644bebef3fc17`
+exits 0: the actual prior policy is at that event base, raw SHA-256
+`49dfbe45fd1da400b8ee17815cb8272b63bf8370d14161c53e3a18381ef7391d`,
+with zero graph changes and zero affected modules. This establishes that
+bounded local transition under the existing contract. It does not reclassify
+the original earlier-base refusal or establish hosted success.
+
+Current checkout validation is a separate result:
+`python3 eng/dependency_graph.py --root . validate --commit 7319f44bcf02b67d7ee09a315ba8aa9c7251b1f6`
+exits 1: `git ls-tree a9455fb3b57a65233020f4b3fc61426514521d7c -- Props/Directory.Packages.props`
+fails in the root Builds object store with `fatal: not a tree object`.
+The successful activation check above must not be projected onto this later
+source. No selector, dependency, policy or validator is changed by this recheck.
+
+Exact hosted attempt-1 observations for that same later source are:
+
+- [CI 40884129895, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40884129895/attempts/1)
+  failed. Testing's `PackageBoundaryTests` reports two failures: the localization
+  mismatch diagnostic expectation and clean consumer's catalog-version
+  precondition. Its pinned expectation is `10.0.13`; the catalog selects
+  `10.0.14`. The clean consumer fails before its package restore.
+- [Quality 40884129344, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40884129344/attempts/1)
+  failed its infrastructure-governance gate on the same missing catalog object
+  as the local graph command. Gate 4, `Library Package Validation (ApiCompat baseline)`,
+  is skipped. The successful browser jobs do not establish that skipped gate.
+
+Fresh `python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py`
+passes 60/60 (exit 0). The seven real ApiCompat packs and public-surface results
+in the [approved implementation](spec-15-5-reconcile-the-published-compatibility-baseline.md#approved-advancement-verification-2026-10-29)
+remain historical results for that implementation, not new results for this
+later source. Two current blockers are handed off explicitly: the
+[catalog-object lookup](deferred-work.md#story-155-current-catalog-object-blocker)
+to FrontComposer dependency-governance maintainers, and the
+[Testing catalog-version expectation](deferred-work.md#story-155-current-testing-catalog-version-blocker)
+to package-test maintainers. Closure needs passing current-source graph and
+infrastructure checks, both affected package tests with actual clean-consumer
+restore, blocking hosted CI and the subsequently executed ApiCompat Gate 4.
+No pipeline repair or fresh ApiCompat pass is claimed here.
+
+The [handoff continuation](spec-15-5-reconcile-the-activation-handoff.md)
+records local checks and review. Story 15.5 and REL-BASE-1 remain at review.
+This append-only observation preserves original refusals, incidents and
+Release Owner, publication, Fluent and Product approval states.
