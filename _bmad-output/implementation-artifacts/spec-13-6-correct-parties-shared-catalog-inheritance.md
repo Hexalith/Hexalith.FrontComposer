@@ -2,9 +2,11 @@
 title: 'Story 13.6: Correct Parties Shared Catalog Inheritance'
 type: 'bugfix'
 created: '2026-10-28'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
-review_loop_iteration: 0
+artifact_role: 'supporting-implementation-record'
+primary_story: '_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md'
+review_loop_iteration: 1
 baseline_commit: '29f865e9a663d05179e0f23cb5f87f0feec858b3'
 context:
   - '{project-root}/AGENTS.md'
@@ -40,9 +42,9 @@ context:
 
 - `references/Hexalith.Builds/Props/Directory.Packages.props`: catalog owner; exact one-row patch is `/tmp/fc-story13-6-catalog-proposal-9mzn3fr6/builds.patch`. The isolated worktree remains backed by the root-declared Builds repository/object store.
 - `references/Hexalith.Parties/Directory.Packages.props`: remove the exact local ItemGroup/comment using sibling `parties.patch`; selected revision is `9239c531f3b0cbb4a998c419e537463b597ff14b`. Its `.gitmodules`/tree select the old Builds commit. No nested checkout is necessary.
-- `eng/dependency_graph.py`: reuse exact-object collection, canonical digest, `materialize_build_checkout`, semantic validation and CLI transition logic. No new validator primitive is proposed.
+- `eng/dependency_graph.py`: reuse exact-object collection, canonical digest, `materialize_repository_tree` / `materialize_contract_tree`, semantic validation and CLI transition logic. No new validator primitive is proposed.
 - `eng/dependency-graph-policy.json`: only the necessary root selector seal may change; keep source/configuration seals unchanged unless measured committed bytes establish an existing normalization discrepancy, which must be reported before any scope expansion.
-- `tests/eng/test_dependency_graph.py`, `test_dependency_handoff.py`, `test_release_evidence.py`: existing projection/semantic/refusal consumers.
+- `tests/eng/test_dependency_graph.py`, `test_dependency_handoff.py`, `tests/eng/test_release_evidence_v2.py`: existing projection/semantic/refusal consumers.
 - `Hexalith.Parties.Standalone.slnx`, closed `module_build_registry`: authoritative isolated Release/NuGet commands and edge-bound Builds materialization.
 
 ## Tasks & Acceptance
@@ -90,7 +92,31 @@ The owning Builds README requires catalog/consumer/exception validators before i
 
 - 2026-10-28: Implemented the approved exact catalog/Parties successors and root selector amendment. Frozen intent is unchanged; independent audit/review and later activation remain parent-owned.
 
+- 2026-10-28 review loop 1: E1 reproduced a sibling-root catalog restore regression (three NU1010 errors) missed by the isolated package proof. The root-catalog extension needs amendment of the frozen 81ab constraint; approval is pending. KEEP the valid Parties catalog/audit successors, all existing selected versions and unrelated evidence, exact graph/inventory/trust/configuration checks, passing standalone/source gates, historical failures and manual/owner boundaries. Do not claim bounded completion or remove the unrelated EventStore override.
+
 ## Review Triage Log
+
+### Independent three-layer review — 2026-10-28
+
+All three layers returned before classification: Blind Hunter ten findings (plus floor arithmetic), Edge Case Hunter one finding, Verification Gap Reviewer no gaps. The full root/owning-repository diff was reviewed. Verdicts precede grouping; every finding is retained individually.
+
+| Finding | Verdict | Verified evidence | Route / disposition |
+|---|---|---|---|
+| B1 old tracking-base integration boundary | medium | The actual c3f217ee→71c5ac33 push model still exits 1 on the old selector seal; 6a41a075→71c5ac33 passes. Local activation never qualified the older event base, and both the current tracking revision and hosted limit are explicit. | Reject the requested edit to this build's spec under the review rule; preserve the integration limit and failed command. |
+| B2 leading result still calls the earlier proposal unapplied/unapproved | low | The first result checkpoint remains headed Current while later checkpoints record approval/implementation. A current disposition banner would prevent readers treating the historical proposal state as today's status. | patch, held behind the intent loopback; update the result without deleting historical facts. |
+| B3 authoritative catalog test omits new essential identity/family alignment | low | The existing required-package list and shared-family checks exclude Contracts.UI. It therefore lacks an owner-level regression guard for the exact missing identity that caused this repair; downstream standalone proof is narrower in timing. | patch, held behind the intent loopback; extend the existing contract check with presence and family-property alignment plus meaningful negative verification. |
+| B4 Parties semantic profile omits Contracts.UI | low | The original and current parties-catalog-v1 required-name lists contain only three other names. The current exact catalog/build proof succeeds, but semantic validation alone does not assert this essential package's presence in a future catalog. | defer pending loopback resolution: pre-existing profile subset; any profile amendment needs an explicit contract decision, without inferring complete package closure from validate. |
+| B5 durable evidence archive requested | false | Epic 13's owner policy records commands/counts/revisions/CI links in story documents and explicitly permits raw scratch/CI artifacts; it does not require an external archive or replay packet for local development proof. The requested extra archive conflicts with that policy. | reject. |
+| B6 reused assembly lacks recorded checksum | low | The .NET command and successful earlier Debug build are recorded, with explicit unchanged-assembly limits; adding another identifier would improve audit convenience but changes this build's spec rather than behavior. | Reject the requested spec edit; no release/runtime identity is inferred. |
+| B7 root File List omits owning-repository inventory | false | This File List correctly projects root-owned changes, including its Parties gitlink. The Code Map, exact owner revision/delta tables and appended owning-repository diffs identify the catalog, audit, wrapper and nested selector; listing those as root edits would misstate ownership. | reject. |
+| B8 fixture invocation commands not beside counts | low | Exact fixture argv/cwd are retained in results.jsonl and their documented owning Tools/README commands; the inline record names counts/receipts rather than duplicating every argv. | Reject the requested edit to this build's spec. |
+| B9 scratch materialization recipe requested | low | Exact module/catalog revisions, registry argv and committed materialize_repository_tree/materialize_contract_tree helpers are recorded; scratch scripts are convenience invocations of tracked bounded helpers. A new persistent replay lane is outside the owner evidence policy. | Reject the requested spec edit; retain exact inputs and tracked helper references. |
+| B10 pre-existing Parties authority refusal needs tracking | medium | The actual tracked Parties wrapper retains its user-selected EventStore 3.128.3 property override from the original 9239c531 tree. The generic authority validator refuses it before and after this correction; standalone NuGet builds and the approved FrontComposer profile remain separate passes. | defer pending loopback resolution to the Parties owner, preserving the pin until separately authorized reconciliation and full authority validation. |
+| E1 sibling-catalog package fallback loses Contracts.UI version | medium | With nested Builds uninitialized, package mode imports unchanged sibling root Builds 81ab, which lacks Contracts.UI. Parent restore with separate artifacts reproduces NU1010 in UI/AdminPortal/ConsumerPortal. The approved isolated catalog proof does not cover this reachable fallback. | intent_gap: the captured frozen Keep-root-Builds-81ab constraint prevents the necessary root-catalog adoption; owner amendment requested. |
+
+Survivor groups are separate: current-result clarity (B2), persistent owner catalog contract (B3), pre-existing semantic-profile coverage (B4), pre-existing EventStore authority override (B10), and the sibling-catalog regression (E1). E1 triggers the cascading intent loopback, so lower patch/defer work is held rather than silently presented as resolved. No duplicate ledger entries were created.
+
+The parent prepared an unapplied root-81ab one-row catalog extension at `/tmp/fc-story13-6-root-catalog-extension-vg27zos8/`, preserving all existing values and using the unchanged 4.7.1 family property. Owner audit refresh, local root pin/projection binding changes, later activation and both package paths would be required. The async owner question requests that bounded extension. All implementation behavior already verified remains positive KEEP evidence. Published/user changes are preserved: local tracking c3f217ee was advanced by a push outside this workflow, so no rollback of that accepted partial correction or dependent immutable commits is attempted while the owner decision is pending. This follows the repository's user-change preservation instruction; the spec is not marked complete.
 
 ## Verification
 
@@ -177,6 +203,24 @@ Implementation handoff is ready for parent audit, later activation and formal re
 The parent read the entire baseline-root/untracked/owning-repository diff, independently recomputed the final selector seal from committed Gitlinks/mappings, and confirmed that only Parties selection and that policy field changed. Independent audit comparison preserves all 307 previous selected versions, 302 unrelated package rows and 150 unrelated family decisions. Both initial parent-document byte prefixes, frozen acceptance, checkboxes and status remain intact. Receipts are in `/tmp/fc-story13-6-parent-catalog-audit-alktsxqp/`; the complete reviewed diff is `/tmp/fc-story13-6-review-iptb7vt0.diff`.
 
 This record supplies the separately authorized later local activation revision after implementation root `6a41a075e1f0512b8acaa80368974b92c4bbe1c3`. Its actual canonical identifier and committed-base validation will be recorded after creation; no transition pass is inferred in advance. Only this bounded spec is staged; both existing parent documents stay unstaged. Current local tracking `origin/main` is `c3f217ee7216f998875b23a4d6b8175280e8a86a`; its local reflog records a push update during this work. This workflow performed no push or hosted query, and local activation will not be presented as hosted qualification.
+
+## Actual later-base activation and parent matrix audit — 2026-10-28
+
+The parent created exact local activation revision `71c5ac33d3e75e2bfa688d22149dafb34db85497` as a direct child of implementation revision `6a41a075e1f0512b8acaa80368974b92c4bbe1c3`, after validating its full message with root-pinned commitlint 21.2.2. Only this bounded record was committed; both existing parent documents remain unstaged.
+
+`python3 eng/dependency_graph.py --root . validate --commit 71c5ac33d3e75e2bfa688d22149dafb34db85497` and `python3 eng/dependency_graph.py --root . diff --event push --event-base 6a41a075e1f0512b8acaa80368974b92c4bbe1c3 --candidate 71c5ac33d3e75e2bfa688d22149dafb34db85497` both exit **0**, using the actual committed base policy at `6a41a075e1f0512b8acaa80368974b92c4bbe1c3` (raw policy SHA-256 `b7e05c72f42769e4b273a93dc2dd4ca2928c043031def483e663b7aec3fada8d`). The activation has **zero selector changes / zero affected modules**; the required actual Parties standalone proof was executed separately on the final exact selected revision, not inferred from that empty activation set. Current-object validation retains **69 edges / eight selectors**. This is local committed-object/transition evidence; it grants no hosted, publication or release approval.
+
+Fresh parent checks on the activation pass **20/20 ConsumerProjectionTests** and **76/76 AppHost/infrastructure tests**, with zero failures/skips/not-run cases. The direct .NET execution reuses the already validated unchanged Debug test assembly; no new whole-runtime or rebuild claim is made. Full argv/exits/logs are `activation-checks.json`, `projection-command.json`, `activation-host-governance-command.json` and sibling logs in `/tmp/fc-story13-6-parent-catalog-audit-alktsxqp/`.
+
+Parent matrix audit: shared package resolution/build is demonstrated at final Parties 492a8cc1/Builds 326af3d2; raw graph/trust/configuration invariants and the independently recomputed selector seal pass; earlier old-base refusals plus the actual later-base success establish delayed activation; executed engine/consumer suites and the fresh 20-case projection subset cover drift/forgery refusal. Every implementation task and behavioral matrix row is verified. Formal independent review remains the next workflow step. This supporting record does not transition the primary Story 13.6 or sprint; their frozen baseline, manual waiver and separate acceptance gates remain unchanged.
+
+## Review status: owner amendment pending — 2026-10-28
+
+The correction remains in-review. The isolated final catalog/build and local activation proof pass, but E1 is a real package-fallback regression and is unresolved. The exact reproduction command/result are `/tmp/fc-story13-6-root-catalog-extension-vg27zos8/fallback-command.json` and `fallback-restore.log`; the restore exits 1 with NU1010 for all three UI consumers. The full reviewed proposal is its sibling `README.txt` / `builds-root-catalog.patch`. The owner decision is required before changing the frozen root Builds constraint. Primary Story 13.6 and sprint remain in-progress; no further dependency edit, push or publication is authorized by elapsed time.
+
+### Concrete root-extension proposal checks — 2026-10-28
+
+The parent verified the pending proposal outside tracked checkouts. Current unmodified sibling fallback restore exits 1 with three NU1010 errors. Supplying the proposed root catalog temporarily through the existing Hexalith2BuildPackageProps import property makes the same package restore exit 0, preserving the wrapper settings. The proposed authoritative-package guard passes its 51-identity/four-family positive fixture and rejects missing-UI and wrong-family fixtures with the expected diagnostics. The initial fixture omitted a secondary validator helper; its failure is retained separately from the complete subsequent fixture. Source patches, exact argv/results and all logs are `/tmp/fc-story13-6-root-catalog-extension-vg27zos8/`. Neither source patch nor any root pin/policy extension has been applied; owner amendment remains pending.
 
 ## File List
 
