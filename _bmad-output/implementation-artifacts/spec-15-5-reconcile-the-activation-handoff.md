@@ -174,3 +174,33 @@ preserve their already-later/current review state without editing sprint status.
 The current-source CI failures and skipped ApiCompat gate remain explicit. Two
 inherited CI blockers are deferred to their responsible maintainer roles; no
 baseline, runtime, dependency, policy or public API repair is claimed.
+
+
+## Documented Unrelated Changes
+
+- `.config/dotnet-tools.json` — concurrent DocFX 2.78.5 to 2.81.0 update in
+  `9591708e442439dbf5b223685ac5f7fea5a58b80`, merged by
+  `7e2702791451f3dd0e72e961d6993ed6f2650c61`; outside this handoff and preserved.
+
+### Concurrent delivery during finalization
+
+The final pre-commit guard detected that another session advanced main through
+that DocFX merge and then committed all four handoff documents as
+`a2ed597bfbf3e178928144963ad8c9cb63077b3c`. This session's prepared commit was
+not executed. The landed content matches the reviewed worktree, and the
+working tree was clean. Earlier source-specific observations above remain
+attributed to invocation source 7319f44bcf02b67d7ee09a315ba8aa9c7251b1f6;
+no graph/CI result is projected onto these later commits.
+
+Global artifact validation still passes. The legacy focused check then failed
+because the independently committed DocFX path was not declared; the unrelated
+entry above repairs that path accounting without changing this story's File
+List or original baseline. Separately,
+`python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-reconcile-the-activation-handoff.md --candidate a2ed597bfbf3e178928144963ad8c9cb63077b3c`
+exits 1: external delivery a2ed597bfbf3e178928144963ad8c9cb63077b3c is
+`story-id=no-match`, `disposition=unmapped`, and its four delivery paths are
+`listed-unowned`. Exact output: `concurrent-delivery-strict.log` in local scratch.
+No history rewrite, non-owning exemption, baseline movement or passing strict
+classification is claimed. This is an additional review limitation, not an
+accepted human disposition. This session's final follow-up records only this
+concurrency/accounting result and uses the already-validated Story 15.5 message.
