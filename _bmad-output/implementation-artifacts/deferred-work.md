@@ -10974,3 +10974,20 @@ Latest Story13.6 follow-up reconciliation at c2b925bae1c9b3bfa8c3a4698ad0104de02
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md`
   summary: Add an executable ordinary Tenants API receiver-policy binding regression before disposable overrides apply.
   evidence: Full-history review V1; Pre-verified gap: FrontComposerUiAppHostTests.cs:595 asserts source strings; replacing tenantsApiAccessControlConfigPath with the BFF policy at Program.cs:224 leaves those assertions satisfied. LocalReadinessTopology.cs:96 overwrites the binding, and the live suite is opt-in, so neither proves the ordinary resource selection. Owner: Story 13.6 AppHost verification; runtime changes excluded by this approved baseline amendment.
+
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-repair-root-catalog-fallback.md`
+  summary: Restore the historical E9-APP-1 to G-5/OI-1 mapping in Epic 13 agent context while preserving the later-candidate limitation.
+  evidence: Independent review B8 verified that regenerated epic-13-context.md omits the prior explicit historical gate mapping; the build workflow defers fixes to agent-context files.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-repair-root-catalog-fallback.md`
+  summary: Scope the agent-context prohibition on whole-owner and nested-source execution explicitly to the bounded Platform source projection.
+  evidence: Independent review B9 found that epic-13-context.md names no owner in that restriction, which can be misread as excluding separately authorized Parties/Builds dependency validation; global trust and projection constraints must remain intact.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-correct-parties-shared-catalog-inheritance.md`
+  summary: Assess the pre-existing Parties semantic-profile subset for a required Contracts.UI identity through its owning contract decision.
+  evidence: Prior independent review B4 was held behind the now-resolved E1 intent loopback. Both current exact catalog paths build successfully, but the pre-existing profile required-name subset omits Contracts.UI; no broader future package-closure guarantee is inferred or profile change authorized by this repair.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-correct-parties-shared-catalog-inheritance.md`
+  summary: Reconcile Parties' existing EventStore 3.128.3 property override with generic consumer-package authority under an owner-approved dependency decision.
+  evidence: Prior independent review B10 retained the actual pre-existing generic-authority refusal and user-selected override. This repair preserves that pin and passing exact standalone proofs; it does not grant full Parties authority/CI acceptance or authorize an unrelated version change.

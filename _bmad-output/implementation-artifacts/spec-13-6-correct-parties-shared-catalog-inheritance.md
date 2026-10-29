@@ -2,7 +2,7 @@
 title: 'Story 13.6: Correct Parties Shared Catalog Inheritance'
 type: 'bugfix'
 created: '2026-10-28'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 artifact_role: 'supporting-implementation-record'
 primary_story: '_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md'
@@ -233,3 +233,14 @@ The parent verified the pending proposal outside tracked checkouts. Current unmo
 ## Approved root-catalog fallback amendment - 2026-10-29
 
 The Owner replied "approve" to the concrete catalog/guard, audit, local pin/seal and activation proposal. This explicitly renegotiates only the frozen keep-root-Builds-81ab constraint above. Existing catalog/Parties successors, all package versions, exact source/inventory/trust boundaries, AD-12, manual waiver and primary in-progress status remain preserved. Implementation and independent review continue in [the bounded fallback spec](spec-13-6-repair-root-catalog-fallback.md); the earlier pending-decision checkpoints remain historical. No push/publication is authorized.
+
+## Current B3 and E1 dispositions — 2026-10-29
+
+These dispositions follow the [approved bounded root catalog repair](spec-13-6-repair-root-catalog-fallback.md). The dated findings and pending-decision rows above remain historical; overall status remains parent-owned.
+
+- **B3 — resolved.** Builds source `11ef2cab441433c5fe25a2fb3ddcfc282e3a7f0e`, retained in selected successor `81225bcb6151c38ae891abd9110af17385e1b3b9`, adds Contracts.UI to the existing required-identity and evaluated family-alignment guard. The positive check passes for 51 identities/four family bindings; missing-UI and wrong-family controls both reject for the intended reason. The [guard implementation and executed controls](spec-13-6-repair-root-catalog-fallback.md#implementation-verification--2026-10-29) provide the current resolution of the earlier held patch.
+- **E1 — resolved.** Exact Parties `492a8cc1417c625cdfb7fd4c946686ef88adab9d` passes the literal registry Release/NuGet restore/build commands through both reachable paths: uninitialized-nested fallback to root Builds `81225bcb6151c38ae891abd9110af17385e1b3b9`, and its own selected catalog `326af3d248974b5f3849ff667e97a5d61e3e3f30`. Both paths have zero warnings/errors and resolve all three direct Contracts.UI consumers at unchanged 4.7.1; see the [exact two-path proof](spec-13-6-repair-root-catalog-fallback.md#implementation-verification--2026-10-29). The [actual committed-base activation proof](spec-13-6-repair-root-catalog-fallback.md#actual-local-activation-and-parent-matrix-audit---2026-10-29) records `f54ce542db8675d685c50408b390158152283106` to `e04652d7f3fef2d3c2c6a77504a73b0c2f363a6e`, retaining 69 edges/eight selectors and the separate earlier old-base refusal. Historical NU1010 evidence and independent primary/manual/owner/release gates remain preserved.
+
+## Bounded correction review complete - 2026-10-29
+
+The [completed fallback repair](spec-13-6-repair-root-catalog-fallback.md#final-independent-review-and-disposition---2026-10-29) resolves current E1/B3 with both exact package paths, the persistent owner guard and actual committed-base activation. B2 current-result clarity is corrected. The earlier B4 semantic-profile subset and B10 pre-existing Parties authority-override limits are appended to deferred work without changing policy or the user-selected version. All independent review layers completed and current documentation patches are applied; this supporting record is done. Primary Story13.6 and sprint remain in-progress; original acceptance/manual history and independent platform/owner/release gates retain their meanings. No push/publication is authorized or performed.

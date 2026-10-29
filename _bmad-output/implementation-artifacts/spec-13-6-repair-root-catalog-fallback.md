@@ -2,7 +2,7 @@
 title: 'Story 13.6: Repair the Root Catalog Package Fallback'
 type: 'bugfix'
 created: '2026-10-29'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 artifact_role: 'supporting-implementation-record'
 primary_story: '_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md'
@@ -66,6 +66,24 @@ Owner approval received after the concrete red/green proposal. Parent owns origi
 ## Spec Change Log
 
 ## Review Triage Log
+
+### Independent three-layer review - 2026-10-29
+
+All layers returned before triage: Blind Hunter nine findings (floor arithmetic retained in its report); Edge Case Hunter `[]`; Verification Gap Reviewer no gaps. The diff includes the full root/untracked change and actual owning Builds delta. Each finding was individually verified before grouping.
+
+| Finding | Verdict | Verified evidence | Route/disposition |
+|---|---|---|---|
+| B1 project-conditional mutation passes default guard | low | Parent reproduced mutant guard success and zero UI rows for the excluded consumer. Current committed row is unconditional, both actual package paths/three consumers pass, and the existing guard has always evaluated a default context. This is future mutation coverage, not a current bad catalog. | reject under low-finding rule: adding consumer/declaration logic addresses an unlikely future guard change beyond a direct correction. |
+| B2 literal-version mutation passes equal-value guard | low | Parent reproduced literal4.7.1 success. Actual committed row retains the exact family expression; existing evaluated shared-family logic would fail a later family bump with a stale literal. | reject under low-finding rule: a new declaration-binding verifier adds logic for a hypothetical change; current source and required version binding are correct. |
+| B3 scratch-only negative controls | low | Negatives are external; the persistent evaluated guard itself now asserts presence and family equality and is invoked by Builds CI/release. Existing fixture suites and executed negatives pass; no new verifier primitive was introduced. | reject under low-finding rule: testing deletion of test assertions needs further test-fixture logic and addresses no current input defect. |
+| B4 no dedicated persistent Parties layout regression | low | Dedicated new fixture is absent. Existing committed authority fixtures already cover fallback-chain import and missing catalog rows; both exact actual Parties package paths executed successfully. Wrapper selection code is unchanged. | reject under low-finding rule: an additional Parties-specific fixture would duplicate an existing mechanism for hypothetical future wrapper changes. |
+| B5 old supporting findings lack current E1/B3 disposition | low | Old dated rows still say held/pending; later approval delegates the implementation without a concise current finding resolution. | patch: append explicit current E1/B3 dispositions and exact proof links, preserve historical rows. |
+| B6 direct old current-result anchor misses supersession | low | The older same-date Current checkpoint retains pending approval and can be reached directly below the new leading result. | patch: insert a historical notice at that anchor without changing existing facts/anchor. |
+| B7 joined names/versions/counts in new summaries | low | New current result/primary paragraphs contain the cited joined words; these reduce readability. | patch: add spaces/formatting only in the new summaries. |
+| B8 epic context loses historical G-5/OI-1 mapping | low | The regenerated context retains the later-candidate warning but omits the explicit historical E9-APP-1 mapping. | defer: fix edits an agent-context file; preserve this scoped follow-up in the ledger. |
+| B9 epic context projection restriction lacks Platform name | low | The paragraph describes a bounded source projection but omits the owner name, allowing overly broad interpretation alongside separately authorized dependency builds. | defer: fix edits an agent-context file; name the Platform projection in the follow-up without changing trust rules. |
+
+B1/B2 are reproduced conservative-verifier limitations only under future modified catalogs, not failures in the adopted unconditional family-expression row. No high/medium finding or verification gap remains. Surviving document patches are re-engaged with the original implementation agent; two agent-context follow-ups route to deferred work as required by the workflow. No source/catalog/policy or frozen-intent change is warranted.
 
 ## Verification
 
@@ -143,6 +161,8 @@ A separate existing browser capability probe passes 3/3 on implementation f54: C
 
 ## File List
 
+- `_bmad-output/implementation-artifacts/deferred-work.md` - Append two agent-context review follow-ups and the two previously held pre-existing supporting-review follow-ups.
+
 - `references/Hexalith.Builds` - Adopt the exact approved catalog/guard/audit successor; owning three-file delta is independently reviewed.
 - `eng/dependency-graph-policy.json` - Rebind only exact root Builds source and selector seal.
 - `_bmad-output/implementation-artifacts/spec-13-6-repair-root-catalog-fallback.md` - Approved bounded plan, implementation, activation and review record.
@@ -150,3 +170,21 @@ A separate existing browser capability probe passes 3/3 on implementation f54: C
 - `_bmad-output/implementation-artifacts/13-6-accessibility-result.md` - Pre-existing reconciliation preserved unstaged; parent will append current final disposition.
 - `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md` - Pre-existing parent story preserved unstaged; parent will append final disposition without changing acceptance/status.
 - `_bmad-output/implementation-artifacts/epic-13-context.md` - Pre-existing regenerated planning context preserved unstaged.
+
+## Actual local activation and parent matrix audit - 2026-10-29
+
+The parent created local record `e04652d7f3fef2d3c2c6a77504a73b0c2f363a6e` as a direct child of implementation `f54ce542db8675d685c50408b390158152283106`, after validating the exact message with root lock-pinned commitlint 21.2.2. Only this bounded record and the Owner-amended supporting spec were committed; the three pre-existing modified context/parent/result documents remain unstaged.
+
+Both `python3 eng/dependency_graph.py --root . validate --commit e04652d7f3fef2d3c2c6a77504a73b0c2f363a6e` and `python3 eng/dependency_graph.py --root . diff --event push --event-base f54ce542db8675d685c50408b390158152283106 --candidate e04652d7f3fef2d3c2c6a77504a73b0c2f363a6e` exit 0. The latter consumes actual committed policy f54, raw SHA-256 `e9ad463b10e144c9117378c92f518306e914680e6ac9a2cc2542a9e8a07b5bd6`; it reports zero graph changes/affected modules. The graph retains 69 edges/eight selectors. Standalone package acceptance is established by the separately executed exact selected/fallback builds, not inferred from the empty activation set. The earlier cde-to-f54 refusal remains valid; local activation does not qualify a future integration from an older published base or grant hosted/release approval. Exact JSON/argv receipts are `activation-checks.json`, `activation-graph.json` and `activation-transition.json` under parent scratch.
+
+All implementation tasks and behavioral matrix rows are now verified, including the actual later-base transition and executed refusal suites; final independent review is next. New current result/primary-story sections supersede the earlier pending-amendment diagnosis without altering historical evidence, original acceptance/manual waiver, or primary in-progress status.
+
+## Deferred review follow-ups - 2026-10-29
+
+The ledger now records B8/B9 agent-context improvements as required by the workflow, plus the earlier supporting review's pre-existing B4 semantic-profile subset and B10 Parties authority-override follow-ups that were held behind E1. None is represented as a current catalog/runtime failure or an approval of broader dependency/policy scope. Existing ledger entries are unchanged.
+
+## Final independent review and disposition - 2026-10-29
+
+All three independent layers completed: no verification gaps, no edge-case findings, nine individually triaged Blind Hunter findings. B5-B7 documentation patches are applied: explicit current B3/E1 resolutions in the earlier supporting record, a historical notice at the old same-date result anchor, and readable current-summary spacing. B1-B4 are low hypothetical future-verifier/test improvements rejected under the workflow's complexity rule; the adopted unconditional family-expression row, persistent CI guard and actual two-path builds are correct. B8/B9 agent-context changes and prior pre-existing B4/B10 supporting-review follow-ups are recorded in the append-only ledger. There is no unresolved high/medium finding, intent gap or source patch.
+
+The parent rechecked the patch and proof links. Only documentation changed after the successful source/data/build/refusal verification, so final validation is artifact integrity plus whitespace; no unchanged broad suite or runtime is relabelled as rerun. All matrix rows and acceptance conditions of this bounded repair are satisfied. The earlier supporting correction closes with E1/B3 resolved and pre-existing follow-ups retained. Primary Story13.6/sprint, manual waiver, original checkboxes, WebKit/UX and independent owner decisions remain unchanged. The three initial modified parent/context/result files remain unstaged. No push, hosted execution or publication occurred.
