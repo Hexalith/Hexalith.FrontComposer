@@ -204,3 +204,55 @@ No history rewrite, non-owning exemption, baseline movement or passing strict
 classification is claimed. This is an additional review limitation, not an
 accepted human disposition. This session's final follow-up records only this
 concurrency/accounting result and uses the already-validated Story 15.5 message.
+
+
+### Authorized CI-blocker repair continuation — 2026-10-29
+
+The user subsequently authorized repair of the two deferred CI blockers. The
+[new bounded repair](spec-15-5-repair-verification-blockers.md) records the exact
+commands, counts and source attribution. This append preserves the original
+frozen intent, baseline 7319f44bcf02b67d7ee09a315ba8aa9c7251b1f6, File List,
+historical refusals and concurrency findings above.
+
+Before changes, HEAD and hosted main both remained
+2fcb1e9b5802ed32fc387680c6e42369130e0384 with a clean root worktree.
+[CI 40921392978, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40921392978/attempts/1)
+and
+[Quality 40921392023, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40921392023/attempts/1)
+reproduce the same two blockers; hosted Quality Gate 4 remains skipped.
+
+The graph engine now has explicit `acquire-catalogs` preparation, invoked before
+Quality governance. It reads bounded committed base/candidate inventories under
+the active event-base policy, acquires only missing exact Builds catalog commits
+from the policy identity's canonical remote, and verifies the requested objects
+and catalog blobs. Graph/validate stay offline; no trust, projection or semantic
+guard is weakened. Local acquisition of a9455fb3b57a65233020f4b3fc61426514521d7c
+succeeded without checkout or nested initialization. Root Builds remains
+at e38700b3a8de8ef57342688e9dfbbe3f573201ff with unchanged catalog bytes.
+Testing's expectation alone now matches catalog-selected localization 10.0.14.
+
+Local repair results after review: 32 projection/acquisition/workflow regressions
+passed; the broader Python dependency/guard suite ran 427 cases (425 passed,
+2 skipped); 60 release
+policy regressions passed; Testing and Contracts.UI boundary classes passed
+5/5 and 4/4, including real clean consumers. The existing seven-library Quality
+ApiCompat lane passed locally against 4.7.1. CLI packing and all eight package
+boundary validations passed. Both additional PackageReference-only consumers
+restored and built with zero warnings/errors. These are fresh local results for
+the repair worktree rooted at 2fcb1e9b5802ed32fc387680c6e42369130e0384.
+
+The missing-object repair exposes a further existing fail-closed condition:
+ordinary committed-source validate and actual-parent push diff now both exit 1,
+`consumer projection root source selectors changed`. The selected current Builds
+and root selector tuple disagree with the existing projection seal. That seal
+and all selections are preserved. The infrastructure/CI governance run exits 1:
+106 total, 104 passed, 2 failed. One is this selector guard; the other is a local
+pre-existing `tests/e2e/node_modules/node_modules` self-link causing
+`Too many levels of symbolic links`. No full-governance success is claimed.
+
+The concurrent a2ed597bfbf3e178928144963ad8c9cb63077b3c strict command above was
+rerun and still exits 1 with `story-id=no-match`, `disposition=unmapped` and the
+four `listed-unowned` paths. Neither its disposition nor either original story
+baseline is changed. Fresh local successes do not establish passing hosted CI,
+close either deferred blocker's hosted closure conditions, or grant any
+independent approval. Story 15.5 and REL-BASE-1 remain at review.

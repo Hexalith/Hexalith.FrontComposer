@@ -545,10 +545,10 @@ def _owner_edges(
     return edges
 
 
-def _collect_raw_graph(root_dir: Path, root_identity: str, root_commit: str, policy: dict[str, Any]) -> dict[str, Any]:
+def _collect_edges(root_dir: Path, root_identity: str, root_commit: str, policy: dict[str, Any]) -> list[dict[str, Any]]:
+    """Read the bounded committed inventory without requiring catalog objects."""
     require_commit(root_commit, "root commit")
     limits = policy["resource_limits"]
-    builds_identity = policy["builds_identity"]
 
     edges = _owner_edges(root_dir, root_commit, root_identity, 1, policy, root_dir)
     for depth1_edge in list(edges):
@@ -559,6 +559,13 @@ def _collect_raw_graph(root_dir: Path, root_identity: str, root_commit: str, pol
 
     if len(edges) > limits["max_edges"]:
         raise GraphError(f"graph has {len(edges)} edges, exceeds the {limits['max_edges']}-edge ceiling")
+    return edges
+
+
+def _collect_raw_graph(root_dir: Path, root_identity: str, root_commit: str, policy: dict[str, Any]) -> dict[str, Any]:
+    limits = policy["resource_limits"]
+    builds_identity = policy["builds_identity"]
+    edges = _collect_edges(root_dir, root_identity, root_commit, policy)
 
     catalog_cache: dict[str, str] = {}
     for edge in edges:
@@ -990,6 +997,69 @@ def _ensure_commit_available(local_path: Path, commit: str) -> None:
             f"{fetch.stderr.decode('utf-8', 'replace').strip()}"
         )
     _git_ok(["cat-file", "-e", f"{commit}^{{commit}}"], local_path)
+
+
+def acquire_catalog_objects(root_dir: Path, event_base: str, candidate: str) -> dict[str, Any]:
+    """Prepare exact selected catalogs in the root Builds store, without checkouts.
+
+    The committed event-base policy authorizes the identity. Both root mappings
+    must be valid before networking; neither candidate URLs nor origin are used.
+    Missing root Builds objects are prerequisites for reading their inventories.
+    Collection and validation remain offline and retain missing-object failures.
+    """
+    event_base = require_commit(event_base, "catalog acquisition event base")
+    candidate = require_commit(candidate, "catalog acquisition candidate")
+    if event_base == "0" * 40:
+        raise GraphError("catalog acquisition requires a nonzero active event base")
+    policy, _raw, _projection = load_policy_at_commit(root_dir, event_base)
+    builds_identity = policy["builds_identity"]
+    builds_local = resolve_local_path(policy, builds_identity, root_dir)
+    if not builds_local.is_dir() or Path(
+        _git_ok(["rev-parse", "--show-toplevel"], builds_local).decode("utf-8").strip()
+    ).resolve() != builds_local:
+        raise GraphError("catalog acquisition requires an initialized root Builds object store")
+
+    remote = _canonical_clone_url(builds_identity)
+    def ensure_catalog_commit(commit: str) -> None:
+        require_commit(commit, "catalog acquisition selector")
+        if _run_git(["cat-file", "-e", f"{commit}^{{commit}}"], builds_local).returncode != 0:
+            fetch, attempts = _run_git_network(
+                ["-c", "submodule.recurse=false", "fetch", "--no-recurse-submodules", "--no-tags", remote, commit],
+                builds_local,
+            )
+            if fetch.returncode != 0:
+                raise GraphError(
+                    f"failed to acquire exact approved catalog {commit}{_attempts_note(attempts)}: "
+                    f"{fetch.stderr.decode('utf-8', 'replace').strip()}"
+                )
+        _git_ok(["cat-file", "-e", f"{commit}^{{commit}}"], builds_local)
+
+    root_commits: set[str] = set()
+    for revision in dict.fromkeys((event_base, candidate)):
+        edges = _owner_edges(root_dir, revision, "github.com/hexalith/hexalith.frontcomposer", 1, policy, root_dir)
+        if len(edges) > policy["resource_limits"]["max_edges"]:
+            raise GraphError("catalog acquisition exceeds the root edge ceiling")
+        root_builds = [edge for edge in edges if edge["repository"] == builds_identity]
+        if len(root_builds) != 1 or (root_dir / root_builds[0]["path"]).resolve() != builds_local:
+            raise GraphError("catalog acquisition requires the policy-mapped root Builds gitlink")
+        root_commits.add(root_builds[0]["commit"])
+    # Root-only initialization may lack a base-only/off-main Builds commit.
+    # Fetch only these approved exact prerequisites before reading depth-two data.
+    for commit in sorted(root_commits):
+        ensure_catalog_commit(commit)
+
+    commits: set[str] = set()
+    for revision in dict.fromkeys((event_base, candidate)):
+        edges = _collect_edges(root_dir, "github.com/hexalith/hexalith.frontcomposer", revision, policy)
+        commits.update(edge["commit"] for edge in edges if edge["repository"] == builds_identity)
+
+    for commit in sorted(commits):
+        ensure_catalog_commit(commit)
+        if read_blob(builds_local, commit, "Props/Directory.Packages.props",
+                     policy["resource_limits"]["max_catalog_blob_bytes"], f"{builds_identity}@{commit}") is None:
+            raise GraphError(f"{builds_identity}@{commit}: missing Props/Directory.Packages.props")
+    return {"event_base": event_base, "candidate": candidate, "repository": builds_identity,
+            "catalog_commits": sorted(commits)}
 
 
 def acquire_object_stores(
@@ -2221,6 +2291,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     acquire_cmd.add_argument("--candidate", required=True)
     acquire_cmd.add_argument("--destination", required=True)
 
+    catalogs_cmd = sub.add_parser("acquire-catalogs", help="Prepare exact selected catalogs in the initialized root Builds store")
+    catalogs_cmd.add_argument("--event-base", required=True)
+    catalogs_cmd.add_argument("--candidate", required=True)
+
     return parser
 
 
@@ -2246,6 +2320,11 @@ def main(argv: list[str] | None = None) -> int:
             evidence = evidence_document.get("evidence", evidence_document)
             results = run_affected_builds(root_dir, evidence, Path(args.output_root).resolve())
             print(json.dumps({"ok": True, "results": results}, indent=2, sort_keys=True))
+            return 0
+
+        if args.command == "acquire-catalogs":
+            result = acquire_catalog_objects(root_dir, args.event_base, args.candidate)
+            print(json.dumps({"ok": True, "acquisition": result}, indent=2, sort_keys=True))
             return 0
 
         if args.command == "acquire":

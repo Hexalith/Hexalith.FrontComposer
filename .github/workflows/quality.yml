@@ -129,6 +129,35 @@ jobs:
       - name: Restore local .NET tools
         run: dotnet tool restore
 
+      # Root-only initialization does not acquire off-main depth-two catalog commits.
+      # Prepare only exact catalog objects; ordinary validation stays offline/fail-closed.
+      - name: Prepare exact governance catalog objects
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PULL_REQUEST_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          CANDIDATE: ${{ github.sha }}
+          SELECTED_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            event_base="$PULL_REQUEST_BASE"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            event_base="$PUSH_BEFORE"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            # Manual diagnostics use the selected commit's already-landed policy.
+            if [ "$SELECTED_REF" != "refs/heads/main" ]; then
+              echo "::error::manual catalog acquisition requires the main ref"
+              exit 1
+            fi
+            event_base="$CANDIDATE"
+          else
+            echo "::error::unsupported catalog acquisition event: $EVENT_NAME"
+            exit 1
+          fi
+          python3 eng/dependency_graph.py --root . acquire-catalogs --event-base "$event_base" --candidate "$CANDIDATE"
+
       # Gate 2b: Infrastructure governance and telemetry contracts
       - name: 'Gate 2b: Infrastructure governance and telemetry contracts'
         env:

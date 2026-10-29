@@ -206,6 +206,16 @@ public sealed class CiGovernanceTests {
         dependencyGraphStep.ShouldContain("python3 -m unittest tests/eng/test_release_contract.py");
         dependencyGraphStep.ShouldContain("python3 -m unittest tests/eng/test_release_evidence_v2.py");
         dependencyGraphStep.ShouldNotContain("continue-on-error: true");
+
+        string preparation = ExtractNamedStep(stripped, "Prepare exact governance catalog objects");
+        preparation.ShouldContain("python3 eng/dependency_graph.py --root . acquire-catalogs --event-base \"$event_base\" --candidate \"$CANDIDATE\"");
+        preparation.ShouldContain("event_base=\"$PULL_REQUEST_BASE\"");
+        preparation.ShouldContain("event_base=\"$PUSH_BEFORE\"");
+        preparation.ShouldContain("set -euo pipefail");
+        preparation.ShouldNotContain("continue-on-error");
+        preparation.ShouldNotContain("if:");
+        stripped.IndexOf("Prepare exact governance catalog objects", StringComparison.Ordinal)
+            .ShouldBeLessThan(stripped.IndexOf(gateName, StringComparison.Ordinal));
     }
 
     [Fact]

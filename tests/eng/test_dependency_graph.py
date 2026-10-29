@@ -2832,6 +2832,128 @@ class ConsumerProjectionTests(unittest.TestCase):
         self.root.write_text(dg.POLICY_PATH, json.dumps(self.fixture.policy, indent=2) + "\n")
         return self.root.commit()
 
+    def _make_catalog_object_unavailable(self) -> pathlib.Path:
+        remote = pathlib.Path(self.temp.name) / "catalog-remote"
+        self.builds.root.rename(remote)
+        _run(["clone", "--quiet", "--depth=1", remote.as_uri(), str(self.builds.root)], self.root.root)
+        self.assertNotEqual(dg._run_git(["cat-file", "-e", self.nested_builds], self.builds.root).returncode, 0)
+        return remote
+
+    def test_catalog_preparation_acquires_exact_object_without_checkout_or_nested_initialization(self) -> None:
+        self.root.link_gitlink("references/Builds", self.nested_builds)
+        base = self.write_policy()
+        self.root.link_gitlink("references/Builds", self.root_builds)
+        commit = self.root.commit()
+        remote = self._make_catalog_object_unavailable()
+        _run(["remote", "set-url", "origin", "https://untrusted.invalid/builds.git"], self.builds.root)
+        before_head = self.builds.head()
+        before_catalog = (self.builds.root / "Props/Directory.Packages.props").read_bytes()
+        before_status = _run(["status", "--porcelain"], self.builds.root)
+        with mock.patch.object(dg, "_run_git_network") as network, self.assertRaises(dg.GraphError):
+            self.graph(commit)
+        network.assert_not_called()
+
+        def fetch(args, cwd):
+            self.assertEqual(args, ["-c", "submodule.recurse=false", "fetch", "--no-recurse-submodules",
+                                    "--no-tags", dg._canonical_clone_url(self.fixture.identity("Builds")), self.nested_builds])
+            self.assertEqual(cwd, self.builds.root)
+            return dg._run_git([*args[:-2], remote.as_uri(), args[-1]], cwd), 1
+
+        with mock.patch.object(dg, "_run_git_network", side_effect=fetch) as network:
+            result = dg.acquire_catalog_objects(self.root.root, base, commit)
+            network.assert_called_once()
+        self.assertEqual(result["catalog_commits"], sorted([self.root_builds, self.nested_builds]))
+        self.assertEqual(self.builds.head(), before_head)
+        self.assertEqual((self.builds.root / "Props/Directory.Packages.props").read_bytes(), before_catalog)
+        self.assertEqual(_run(["status", "--porcelain"], self.builds.root), before_status)
+        self.assertFalse((self.source.root / "references/Builds/.git").exists())
+        self.assertEqual(self.graph(commit)["edge_count"], 10)
+        with mock.patch.object(dg, "_run_git_network") as network:
+            dg.acquire_catalog_objects(self.root.root, commit, commit)
+        network.assert_not_called()
+
+    def test_catalog_preparation_refuses_candidate_self_authorization_before_network(self) -> None:
+        base = self.write_policy()
+        self._make_catalog_object_unavailable()
+        self.root.add_submodule("Outside", "references/Outside", "https://github.com/outside/catalog.git", "1" * 40)
+        self.fixture.policy["trusted_identities"].append({"identity": "github.com/outside/catalog", "local_path": "references/Outside"})
+        candidate = self.write_policy()
+        with mock.patch.object(dg, "_run_git_network") as network, self.assertRaisesRegex(dg.GraphError, "unknown/untrusted"):
+            dg.acquire_catalog_objects(self.root.root, base, candidate)
+        network.assert_not_called()
+
+    def test_catalog_preparation_refuses_uninitialized_store_before_network(self) -> None:
+        commit = self.write_policy()
+        (self.builds.root / ".git").rename(self.builds.root / "git-store-backup")
+        with mock.patch.object(dg, "_run_git_network") as network, self.assertRaisesRegex(dg.GraphError, "initialized root Builds"):
+            dg.acquire_catalog_objects(self.root.root, commit, commit)
+        network.assert_not_called()
+
+    def test_catalog_preparation_refuses_mismatched_root_mapping_before_network(self) -> None:
+        base = self.write_policy()
+        self._make_catalog_object_unavailable()
+        modules = (self.root.root / ".gitmodules").read_text()
+        self.root.write_text(".gitmodules", modules.replace("path = references/Builds", "path = references/OtherBuilds"))
+        _run(["update-index", "--force-remove", "references/Builds"], self.root.root)
+        self.root.link_gitlink("references/OtherBuilds", self.root_builds)
+        candidate = self.root.commit()
+        with mock.patch.object(dg, "_run_git_network") as network, self.assertRaisesRegex(dg.GraphError, "policy-mapped root Builds"):
+            dg.acquire_catalog_objects(self.root.root, base, candidate)
+        network.assert_not_called()
+
+    def test_catalog_preparation_rejects_absent_non_blob_and_oversized_catalogs(self) -> None:
+        limit = len(BASELINE_CATALOG) + 100
+        self.fixture.policy["resource_limits"]["max_catalog_blob_bytes"] = limit
+        base = self.write_policy()
+        for kind, error in (("absent", "missing Props"), ("tree", "not a blob"), ("oversized", "exceeds")):
+            with self.subTest(kind=kind):
+                _run(["rm", "-r", "-f", "Props/Directory.Packages.props"], self.builds.root)
+                if kind == "tree":
+                    self.builds.write_text("Props/Directory.Packages.props/entry", "unexpected directory")
+                elif kind == "oversized":
+                    self.builds.write_bytes("Props/Directory.Packages.props", b"x" * (limit + 1))
+                selected = self.builds.commit()
+                self.root.link_gitlink("references/Builds", selected)
+                candidate = self.root.commit()
+                with mock.patch.object(dg, "_run_git_network") as network, self.assertRaisesRegex(dg.GraphError, error):
+                    dg.acquire_catalog_objects(self.root.root, base, candidate)
+                network.assert_not_called()
+                if kind == "absent":
+                    self.builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
+                    self.builds.commit()
+
+    def test_catalog_preparation_refuses_zero_base_before_network(self) -> None:
+        commit = self.write_policy()
+        with mock.patch.object(dg, "_run_git_network") as network, self.assertRaisesRegex(dg.GraphError, "active event base"):
+            dg.acquire_catalog_objects(self.root.root, "0" * 40, commit)
+        network.assert_not_called()
+
+    def test_catalog_preparation_keeps_authoritative_fetch_failure(self) -> None:
+        commit = self.write_policy()
+        self._make_catalog_object_unavailable()
+        failure = subprocess.CompletedProcess([], 128, b"", b"fatal: not our ref")
+        with mock.patch.object(dg, "_run_git_network", return_value=(failure, 1)) as network:
+            with self.assertRaisesRegex(dg.GraphError, "failed to acquire exact approved catalog.*not our ref"):
+                dg.acquire_catalog_objects(self.root.root, commit, commit)
+        network.assert_called_once()
+        with self.assertRaises(dg.GraphError):
+            self.graph(commit)
+
+    def test_catalog_preparation_verifies_fetched_object_even_after_successful_fetch(self) -> None:
+        commit = self.write_policy()
+        self._make_catalog_object_unavailable()
+        success = subprocess.CompletedProcess([], 0, b"", b"")
+        with mock.patch.object(dg, "_run_git_network", return_value=(success, 1)):
+            with self.assertRaisesRegex(dg.GraphError, "cat-file"):
+                dg.acquire_catalog_objects(self.root.root, commit, commit)
+
+    def test_catalog_preparation_enforces_edge_ceiling_before_network(self) -> None:
+        self.fixture.policy["resource_limits"]["max_edges"] = 1
+        commit = self.write_policy()
+        with mock.patch.object(dg, "_run_git_network") as network, self.assertRaisesRegex(dg.GraphError, "edge ceiling"):
+            dg.acquire_catalog_objects(self.root.root, commit, commit)
+        network.assert_not_called()
+
     def test_candidate_cannot_authorize_its_own_projection_or_expectations(self) -> None:
         row = self.fixture.policy.pop("consumer_source_projections")
         base = self.write_policy()
@@ -2913,6 +3035,49 @@ class ConsumerProjectionTests(unittest.TestCase):
         self.assertTrue(all(f"{number + 1:040x}" not in calls for number in range(7)))
         self.assertIn(self.nested_builds, calls)
         self.assertTrue(all(not (destination / "references" / ("Inventory" + str(number))).exists() for number in range(7)))
+
+
+class QualityCatalogPreparationWorkflowTests(unittest.TestCase):
+    def setUp(self) -> None:
+        workflow = (ROOT / ".github/workflows/quality.yml").read_text()
+        step = workflow.split("      - name: Prepare exact governance catalog objects\n", 1)[1]
+        self.step = step.split("\n      # Gate 2b:", 1)[0]
+        self.script = "\n".join(line[10:] for line in self.step.split("        run: |\n", 1)[1].splitlines())
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = pathlib.Path(self.temp.name)
+        self.capture = self.root / "argv.txt"
+        stub = self.root / "python3"
+        stub.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$CAPTURE"\n')
+        stub.chmod(0o755)
+
+    def run_event(self, event: str, selected_ref: str = "refs/heads/main") -> subprocess.CompletedProcess:
+        env = os.environ.copy()
+        env.update(EVENT_NAME=event, PULL_REQUEST_BASE="1" * 40, PUSH_BEFORE="2" * 40,
+                   CANDIDATE="3" * 40, SELECTED_REF=selected_ref, CAPTURE=str(self.capture))
+        env["PATH"] = str(self.root) + os.pathsep + os.defpath
+        return subprocess.run(["bash", "-c", self.script], env=env, capture_output=True, text=True)
+
+    def test_supported_events_select_the_exact_base_and_candidate(self) -> None:
+        for event, base in (("pull_request", "1" * 40), ("push", "2" * 40), ("workflow_dispatch", "3" * 40)):
+            with self.subTest(event=event):
+                result = self.run_event(event)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(self.capture.read_text().splitlines(), ["eng/dependency_graph.py", "--root", ".",
+                    "acquire-catalogs", "--event-base", base, "--candidate", "3" * 40])
+
+    def test_unlanded_manual_refs_and_unknown_events_refuse_before_acquisition(self) -> None:
+        for event, selected_ref in (("workflow_dispatch", "refs/heads/unmerged"), ("workflow_dispatch", "refs/tags/unreviewed"),
+                                    ("unsupported", "refs/heads/main")):
+            with self.subTest(event=event, selected_ref=selected_ref):
+                result = self.run_event(event, selected_ref)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(self.capture.exists())
+
+    def test_revision_environment_bindings_are_exact(self) -> None:
+        for name, expression in (("EVENT_NAME", "github.event_name"), ("PULL_REQUEST_BASE", "github.event.pull_request.base.sha"),
+                                 ("PUSH_BEFORE", "github.event.before"), ("CANDIDATE", "github.sha"), ("SELECTED_REF", "github.ref")):
+            self.assertIn(f"          {name}: ${{{{ {expression} }}}}", self.step)
 
 
 class ApprovedProjectionExpectationTests(unittest.TestCase):

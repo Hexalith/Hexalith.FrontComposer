@@ -861,3 +861,48 @@ The [handoff continuation](spec-15-5-reconcile-the-activation-handoff.md)
 records local checks and review. Story 15.5 and REL-BASE-1 remain at review.
 This append-only observation preserves original refusals, incidents and
 Release Owner, publication, Fluent and Product approval states.
+
+
+### Story 15.5 CI-blocker repair observation — 2026-10-29
+
+The [authorized repair continuation](spec-15-5-repair-verification-blockers.md)
+starts at 2fcb1e9b5802ed32fc387680c6e42369130e0384. Read-only hosted rechecks
+before edits find that same main source:
+[CI 40921392978 attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40921392978/attempts/1)
+failed on Testing's two localization expectations, and
+[Quality 40921392023 attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/40921392023/attempts/1)
+failed on missing Builds a9455fb3b57a65233020f4b3fc61426514521d7c; hosted Gate 4
+is skipped. No repair-source hosted run is claimed.
+
+Explicit bounded catalog preparation now acquires the exact selected objects
+into the initialized root Builds store using active-base policy and canonical
+identity, before ordinary read-only governance. The missing object was acquired
+locally without changing catalog, gitlinks, dependency selections or nested
+submodule state. Testing's expectation now matches catalog-selected 10.0.14.
+The reviewed repair worktree's local checks pass 32 focused projection/acquisition/
+workflow cases, 425 of 427 broader Python cases (2 skipped), 60 release-policy
+cases, 5 Testing and 4 Contracts.UI
+boundary cases, eight package validations and both additional fresh consumer
+restore/builds. Testing's generated smoke test is compiled, not executed.
+
+The existing Quality ApiCompat run block was executed locally unchanged:
+seven inventory-derived library packs passed with baseline 4.7.1, skip=false,
+validation enabled and isolated per-project output. This is fresh local
+compatibility evidence, not a passing hosted Gate 4 or release/publication
+approval. Exact commands, guard diagnostics and scratch log paths are in the
+repair continuation.
+
+After acquisition, current committed validate and actual-parent push diff both
+exit 1: `consumer projection root source selectors changed`. The existing
+projection's selector/Builds seal disagrees with current committed selections;
+it is not resealed here. Infrastructure/CI governance remains 104 passed /
+2 failed out of 106, including that guard and a separate local npm symlink loop.
+The [deferred-work follow-up](deferred-work.md#story-155-repair-follow-up-and-preserved-gates)
+keeps the remaining ownership and hosted closure conditions explicit.
+
+The original earlier-base refusal and successful later activation retain their
+original attribution. The concurrent a2ed597bfbf3e178928144963ad8c9cb63077b3c strict
+attribution still fails with no matching story ID, unmapped disposition and four
+listed-unowned delivery paths. No history rewrite, baseline movement or human
+disposition is inferred. Story 15.5, REL-BASE-1, Release Owner, publication,
+Fluent, Product and EventStore approval gates retain their prior states.
