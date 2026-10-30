@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-10-29
+# last_updated: 2026-10-30
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 10-29-2026 09:58
+last_updated: 10-30-2026 17:20
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -233,8 +233,8 @@ development_status:
   15-7-retire-bulky-browser-evidence: done
   epic-15-retrospective: optional
 
-  epic-16: backlog
-  16-1-i-evt-id-1-capture-the-current-eventstore-runtime-tuple: backlog
+  epic-16: in-progress
+  16-1-i-evt-id-1-capture-the-current-eventstore-runtime-tuple: in-progress
   16-2-a-evt-xfer-1-conditional-transfer-migration-approval-ownersh: backlog
   16-3-a-evt-app-1-approve-or-reject-the-exact-runtime-migration: backlog
   epic-16-retrospective: optional
