@@ -906,3 +906,68 @@ attribution still fails with no matching story ID, unmapped disposition and four
 listed-unowned delivery paths. No history rewrite, baseline movement or human
 disposition is inferred. Story 15.5, REL-BASE-1, Release Owner, publication,
 Fluent, Product and EventStore approval gates retain their prior states.
+
+
+### Clean governance and source-authority continuation — 2026-10-30
+
+The [new qualification record](spec-15-5-qualify-the-governance-transition.md)
+continues this repair without changing its frozen intent, baseline, historical
+results or completed bounded-repair disposition. It records every exact command,
+source tuple, first/final environment result and remaining prerequisite.
+
+HEAD/hosted main initially matched f3fef9f2dad49638521d7bc2fd3bf43c8056b516.
+While this task was read-only, an external commit
+e7e892b6ed584501f6dd18e11acd299948c0113f recorded the existing Platform pointer
+and landed locally/remotely. Clean qualification is pinned to that source and its
+actual parent f3fef9f2dad49638521d7bc2fd3bf43c8056b516. This task made no change
+to dependency selections or unrelated workspace content.
+
+The active policy still authorizes Platform b742b1b7a496ac72d6961ca6db5213d3df42d234,
+root Builds 81225bcb6151c38ae891abd9110af17385e1b3b9 and root selector digest
+ddf83f55971c78a6d265f46b3bc9d6364c1acf85cfc88ee5c3e60818c13f81ef. The exact
+current tuple selects Platform a8e6276b512186b1e9e35160b8c150a50a17f789 and Builds
+0b17f8022cdc23b8b242b000f5b2aa15580184ac, root selector digest
+b6534b18c7f4462366def97b1a0e5e79d1224e17c3543833de3042895dc4a40d. Helper bytes,
+configuration and .gitmodules still match, but the inventory and root tooling
+source differ. No hashes were refreshed. AD-12 requires a reviewed inactive
+precursor to land before a later event can use that prior policy; candidate
+self-authorization and a scratch base remain forbidden. The ordinary current
+validate, actual-parent diff and catalog preparation all exit 1 on the owner pin.
+
+Clean checkout plus lockfile-only npm installation avoids the recorded self-link:
+infrastructure/CI governance is 105/106, with the projection guard the sole failure.
+The 427-case Python suite passes with two skips, 60 release regressions pass,
+Testing/Contracts.UI boundary classes pass 5/5 and 4/4, all seven existing ApiCompat
+library packs pass against 4.7.1, all eight package validations pass, and both
+additional fresh package-only consumers restore/build. No new suppression, guard
+change or nested initialization occurs. Exact logs are local scratch in
+`/tmp/fc-15-5-governance-20261030-zqwjdxk5/`.
+
+[CI 41023803195 attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41023803195/attempts/1)
+passes its build/test job but fails dependency governance; [Quality 41023802429
+attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41023802429/attempts/1)
+fails catalog preparation. Both reach actual-base Platform 2cbb8a68d277bdd55e321972b8aa11ef015fc54e's
+owner-pin refusal. Hosted infrastructure and ApiCompat remain skipped. These are
+existing push runs of e7e892b6ed584501f6dd18e11acd299948c0113f, not PR results.
+
+The relevant local gates remain failed, so no PR/push/merge is made under the
+user's passing-gates prerequisite. Story 15.5 and REL-BASE-1 remain at review;
+all independent approvals retain their dispositions. Strict attribution for
+concurrent a2ed597bfbf3e178928144963ad8c9cb63077b3c was rerun and remains exit 1:
+story-id=no-match, disposition=unmapped, four listed-unowned paths. No exemption
+or reinterpretation is introduced.
+
+This is a verification observation, not a release-compliance disposition. No
+publication or independent approval is granted; historical release rows are unchanged.
+
+Review-qualified observation at 2026-10-30 08:20:37 UTC: CI 41023803195
+attempt 1 is completed/failure; Quality 41023802429 attempt 1 remains in_progress
+without an overall conclusion, while its build-and-test job 123957050415 is
+completed/failure with infrastructure and ApiCompat skipped. The current Platform
+also selects nested Builds 1884a88ab80d3d0ae80c09a5ed9dfe23867d9fb9, whose catalog
+object is absent locally; its digest is unavailable and no remote absence is
+inferred. This remains an exact-metadata prerequisite after authorized policy
+activation. The qualification record now contains full diagnostic code, actual-base
+coordinates, named skip reasons and a verified archive outside temporary storage
+with its checksum/retrieval path. No failed gate, old attribution failure or
+independent approval is reclassified.
