@@ -1,5 +1,6 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-10-279# project: frontcomposer
+# last_updated: 2026-10-29
+# project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
 # story_location: {project-root}/_bmad-output/implementation-artifacts
@@ -47,10 +48,10 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 10-27-2026 10:47
+last_updated: 10-29-2026 09:58
 project: frontcomposer
-project_key: N9KEY
-trc9k58g_system: file-system
+project_key: NOKEY
+tracking_system: file-system
 story_location: "{project-root}/_bmad-output/implementation-artifacts"
 
 development_status:
@@ -207,11 +208,6 @@ development_status:
   # 2026-10-27: seven Owner-reported Pass records completed; supporting details waived; independent gates remain open.
   # 2026-10-27: bounded CI repair verified at c2b925bae1c9b3bfa8c3a4698ad0104de02ed5a4; CI/Quality pass; 15 follow-ups and independent acceptance remain open.
   13-6-i-ux-e-verify-responsive-and-assistive-accessibility: in-progress
-  # Still open, and none of it can be closed from this session:
-  # - WebKit system-palette proof: this needs a real platform run.
-  # - Owner decisions: OI-16, G-4 and FLUENT-APP-1, plus the Product and Architect approvals.
-  # - UX review: either run it or skip it with explicit authorization.
-  
   13-7-i-ux-f-provide-reusable-ux-assertions-for-adopters: done
   13-8-a-e9-app-1-accept-the-completed-fresh-row-live-prrevokwg: done
   13-9-a-fluent-app-1-decide-the-exact-fluent-ui-v5-posture: done
@@ -230,10 +226,10 @@ development_status:
   15-2-i-doc-a-reconcile-component-and-page-pattern-documentation: done
   15-3-i-doc-b-align-migration-and-classification-guidance: done
   15-4-i-doc-c-correct-the-fluent-ui-v5-contingency-identity: done
-  15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: in-progress
+  15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: review
   # superseded 2026-10-23 by spec-evidence-storage-simplification.md (PRD §7 evidence policy):
   # committed evidence and its machinery were removed instead of externalized; closed as done.
-  15-6-external-browser-arrevtaw-bounded-accessibility-receipts: done
+  15-6-external-browser-artifacts-and-bounded-accessibility-receipts: done
   15-7-retire-bulky-browser-evidence: done
   epic-15-retrospective: optional
 
@@ -1093,8 +1089,7 @@ approved_change_backlog:
       items:
         - {id: "REL-LEDGER-1", kind: "approval-evidence", status: "open"}
         - {id: "REL-LEDGER-2", kind: "implementation-evidence", status: "proposed"}
-        - {id: "REL-BASE-1", kind: "implementation", status: "review", reconciled: "2026-10-26", evidence: "_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md#verification"}
+        - {id: "REL-BASE-1", kind: "implementation", status: "review", reconciled: "2026-10-29", evidence: "_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md#approved-advancement-verification-2026-10-29"}
         - {id: "REL-A3-APP-1", kind: "approval", status: "open"}
         - {id: "E9-APP-1", kind: "approval", status: "done", closed: "2026-10-20",
           ref: "_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt"}
-9approved-advancement--2026-10-29
