@@ -1054,3 +1054,30 @@ hosted release evidence. Its final-results/ annex separately records final
 commit/ownership/hygiene and committed-source/live-base results. The precursor
 remains unpushed and in-review; all Story 15.5 and independent approval blockers
 remain explicit. The historical qualification record is unchanged.
+
+
+### Story 15.5 resumed review: landing observed, current tuple refused — 2026-10-30
+
+Local main dd575b67c82c377bd17c34fb3d14366277d2ac62 contains precursor merge
+92eff2e7b1b0f53631c53fa8284b466e202ae921 and delivery commits
+f75d774d281aa6d4764d9576597ff98ecfbaa3a7 / e65502da0b755e2299a32fe6c112cdb9fddff0b2.
+That later ancestry observation supersedes no historical failed gate or approval
+disposition and establishes no protected review or successful activation.
+
+The three-reviewer resumed pass and 93 focused Python regressions complete;
+strict current ownership and global artifact checks pass at inspected dd575.
+Ordinary validation and actual-parent diff fail their owner-pin guards. Quality
+41097179475 attempt 1 was in progress with Gate 2c pending at the recorded
+17:17–17:19 UTC observation; no later CI conclusion is inferred.
+
+Subsequent external commit f69562a2a1b0f11295278c4e715bbf7ecf2999f7 changes
+all nine root selectors. Ordinary validation still fails selected Platform
+eba576951e61e9763341463516247dcbf8fc0b90's pin. Independently the unchanged
+inline-version predicate refuses selected Parties 8b0e23e437296691d0233fe86afc765063f9fef5's
+root Directory.Packages.props; the old DW-1988 retained-file refusal remains
+history. Current/parent nested Builds catalogs are unavailable locally, with no
+invented digest. The [resumed precursor record](spec-15-5-prepare-the-inactive-policy-precursor.md#resumed-verification-and-external-landing--2026-10-30)
+contains exact commands/revisions, evidence limits, review triage and renewed
+source/selection prerequisites. No current semantic, infrastructure, runtime,
+ApiCompat, publication or independent approval is granted. Story 15.5/REL-BASE-1
+remain review. This resumed run makes no commit, push, merge or remote write.

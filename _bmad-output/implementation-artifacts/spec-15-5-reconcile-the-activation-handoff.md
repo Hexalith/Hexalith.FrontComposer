@@ -401,3 +401,32 @@ hosted release evidence. Its final-results/ annex separately records final
 commit/ownership/hygiene and committed-source/live-base results. The precursor
 remains unpushed and in-review; all Story 15.5 and independent approval blockers
 remain explicit. The historical qualification record is unchanged.
+
+
+### Resumed review and external landing — 2026-10-30
+
+Local main dd575b67c82c377bd17c34fb3d14366277d2ac62 contains precursor merge
+92eff2e7b1b0f53631c53fa8284b466e202ae921 and delivery commits
+f75d774d281aa6d4764d9576597ff98ecfbaa3a7 / e65502da0b755e2299a32fe6c112cdb9fddff0b2.
+This later ancestry observation preserves earlier dated unlanded observations;
+it establishes no protected owner review, successful activation or hosted PR.
+
+Resumed independent review completed with one externally caused tuple-drift
+handoff and a landing-observation correction. All 93 focused Python regressions
+and strict/global artifact checks pass at inspected dd575 source; ordinary
+committed-source validation and actual-parent diff fail the owner-pin guard.
+Quality 41097179475 attempt 1 was still in progress at the recorded 17:17–17:19
+UTC observation, with Gate 2c pending. No successful CI result is inferred.
+
+A subsequent external commit f69562a2a1b0f11295278c4e715bbf7ecf2999f7 changes
+all nine root selectors. Its selected Platform eba576951e61e9763341463516247dcbf8fc0b90
+still fails ordinary owner-pin validation. The unchanged inline-version predicate
+independently rejects current Parties 8b0e23e437296691d0233fe86afc765063f9fef5's
+root Directory.Packages.props. Current and parent nested Builds catalogs are
+missing locally. The [resumed precursor record](spec-15-5-prepare-the-inactive-policy-precursor.md#resumed-verification-and-external-landing--2026-10-30)
+records exact commands/revisions, review triage, distinct historical/current
+Parties failures and the need for renewed source/selection authorization.
+This run does not alter policy, dependencies, guards, Story 16.1 or sprint status,
+and makes no commit or remote write. Story 15.5/REL-BASE-1 remain review; all
+independent approvals and a2ed597bfbf3e178928144963ad8c9cb63077b3c's historical
+strict failure retain their prior dispositions.

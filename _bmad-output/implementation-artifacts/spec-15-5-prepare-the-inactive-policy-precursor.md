@@ -351,3 +351,134 @@ This continuation stays in-review: the initial bounded proposal is prepared
 locally, but the independent candidate failure and externally advanced tuple
 remain blocking. No review finding authorizes a guard or scope change. The
 conditional draft PR has not been created, and Story 15.5 remains open.
+
+
+### Resumed review — 2026-10-30
+
+Step 4 reviewed the complete baseline-to-workspace diff at inspected source
+dd575b67c82c377bd17c34fb3d14366277d2ac62: 85.028 kB; Blind Hunter floor
+min(floor(sqrt(85.028) + 1), 10) = 10. Three independent context-free reviewers
+ran at the parent model capability. Edge Case Hunter returned no findings.
+Verification Gap returned no gaps after tracing ConsumerProjectionTests, ordinary
+InfrastructureGovernance validation and Quality's existing invocation. The diff
+also included independently owned pushall and Story 16.1 commits; inclusion does
+not transfer their ownership to this continuation. The human explicitly allowed
+continuation while preserving those changes.
+
+Every Blind Hunter finding was checked separately:
+
+- BH-R1 — high / defer: ordinary validation at dd575b67c82c377bd17c34fb3d14366277d2ac62 reproduces the owner-pin refusal: Platform 9e01ffacc45cb6a5ee12853d44f4b7f6e1f4084c differs from this precursor's a8e6276b512186b1e9e35160b8c150a50a17f789 seal. This external selection movement postdates the precursor. Renewed tuple review and a separately authorized successor are required; no seal is refreshed here. A new deferred entry records the latest subsequent movement too.
+- BH-R2 — medium / patch: the handoff and release ledger lacked a later ancestry observation of the precursor merge. Append that observation and the failed current gate to both records, retaining every earlier dated unpushed/unlanded observation. Ancestry proves inclusion; it supplies no protected-review, hosted-PR or successful-activation receipt.
+- BH-R3 — low / reject: the suggested final-annex checksum would edit this spec and create another local evidence identity without establishing hosted authority. The existing archive/annex already disclaim that authority. Fresh strict verification below checks the committed delivery range independently; no new evidence archive is introduced.
+- BH-R4 — medium / reject outside intent: Story 16.1 lacks a File List; its legacy validator command reproduces that failure. The user explicitly requested preservation of that independently owned spec. This review neither repairs it nor adds its paths to 15.5 ownership.
+- BH-R5 — medium / reject outside intent: Story 16.1 omits --candidate and therefore does not request strict attribution, as the validator reference confirms. Correcting the independently owned spec is excluded by the preservation instruction.
+- BH-R6 — low / reject outside intent: Story 16.1's first execution bullet omits its frozen human decision's current-selection comparison. That explicit decision remains authoritative. Aligning its task text would edit the preserved spec.
+- BH-R7 — false: Story 16.1 explicitly distinguishes the Quality-tested tuple SHA from the later record commit and requires release comparison with that tested tuple. No record descendant is claimed to have been tested merely because it records a result; no immutability exception is introduced.
+- BH-R8 — medium / reject outside intent: Story 16.1 names two commit paths in its frozen approach and three in its later task list. Reconciling its authorized scope belongs to its owner; this run preserves that spec.
+- BH-R9 — low / reject outside intent: Story 16.1 uses both overall-passing-run and individual-required-step wording; its frozen rule requires individual-step inspection, and no tuple record exists. Clarifying its independently owned plan would edit a preserved spec rather than repair this precursor.
+- BH-R10 — medium / reject outside intent: Story 16.1's planned record lacks an explicit run-attempt/job binding, which matters across reruns. No tuple record exists yet. That future requirement belongs to the preserved spec's owner; this run records its own hosted observation with attempt and job identities below.
+
+## Resumed verification and external landing — 2026-10-30
+
+Local main at dd575b67c82c377bd17c34fb3d14366277d2ac62 includes merge
+92eff2e7b1b0f53631c53fa8284b466e202ae921 and precursor delivery commits
+f75d774d281aa6d4764d9576597ff98ecfbaa3a7 and
+e65502da0b755e2299a32fe6c112cdb9fddff0b2. Earlier non-landing observations
+remain dated history. Inclusion supplies no independent owner approval.
+This resumed run performs no Git mutation or remote write.
+
+| Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
+| --- | --- | --- | --- | --- | --- |
+| Projection regressions | `python3 -m unittest tests.eng.test_dependency_graph.ConsumerProjectionTests tests.eng.test_dependency_graph.QualityCatalogPreparationWorkflowTests tests.eng.test_dependency_graph.ApprovedProjectionExpectationTests` | Passed: 33 run, zero failures/skips, 14.751s, at dd575b67c82c377bd17c34fb3d14366277d2ac62 | None | None needed | Local fixture evidence only |
+| Compatibility policy | `python3 -m unittest tests.eng.test_pack_release_packages tests.eng.test_release_prepublish` | Passed: 60 run, zero failures/skips, 1.830s, at the same source | None | None needed | Local regression evidence only |
+| Global integrity | `python3 eng/validate-story-artifacts.py` | Passed, exit 0 before record updates; final rerun follows below | None | None needed | Local artifact evidence only |
+| Strict ownership | `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-prepare-the-inactive-policy-precursor.md --candidate dd575b67c82c377bd17c34fb3d14366277d2ac62 --unrelated references/Hexalith.Platform --reason 'User authorized preserving the existing Platform workspace changes while continuing Story 15.5.'` | Passed, exit 0; both 15.5 delivery commits owned; interleaved commits unrelated | None | None needed | No semantic or approval authority |
+| Committed source | `python3 eng/dependency_graph.py --root . validate --commit dd575b67c82c377bd17c34fb3d14366277d2ac62` | Failed, exit 1 | Collection, before semantics: selected Platform 9e01ffacc45cb6a5ee12853d44f4b7f6e1f4084c, `consumer source projection owner pin changed` | Raw diagnostic is not a passing substitute | No hosted acceptance inferred |
+| Actual-parent transition | `python3 eng/dependency_graph.py --root . diff --event push --event-base 2255fb8a7fc135a04769c7b9df0f14de3796fb19 --candidate dd575b67c82c377bd17c34fb3d14366277d2ac62` | Failed, exit 1 | Base collection: Platform 8ff6db8feb5b3165bdaaf90899778199823bc59e, same owner-pin refusal | No candidate-policy override or self-comparison | Local parent/candidate reproduction only |
+
+Raw inspection reuses the tracked diagnostic in the qualification record with
+source dd575b67c82c377bd17c34fb3d14366277d2ac62, authorized-root example
+b1d89648ae6feed1c89e48c265de013e1507fa97 and parent
+2255fb8a7fc135a04769c7b9df0f14de3796fb19. It reports metadata only, never
+authorization. The two helper hashes and consumer-configuration seal match the
+policy, but all 17 Platform gitlinks have changed from the a8e owner. A three-scalar
+preview was prepared in scratch only; it is not applied or accepted.
+
+Hosted observation at 2026-10-30 17:17–17:19 UTC: Quality
+[41097179475](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41097179475)
+on dd575b67c82c377bd17c34fb3d14366277d2ac62 is push attempt 1, in_progress,
+with no conclusion. Attempt-specific job 124205767715 has catalog preparation
+and all four Gate 2c steps pending; epic9-live-acceptance job 124205767773 is
+also in_progress. Read with `gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/41097179475`
+and `gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/41097179475/attempts/1/jobs --paginate`.
+These timestamped observations claim no later result or successful runtime gate.
+
+### Subsequent external nine-selector advance
+
+Before these append-only notes were written, external commit
+f69562a2a1b0f11295278c4e715bbf7ecf2999f7 advanced all nine root gitlinks.
+It is preserved, and no dd575 result is relabeled as verification of that tuple.
+The exact selected Platform is now eba576951e61e9763341463516247dcbf8fc0b90,
+root Builds 1160a3a7ddc0f4c6927456b5735a2963261016a0, and Parties
+8b0e23e437296691d0233fe86afc765063f9fef5. The prior three-scalar preview is
+therefore stale even as a proposal; it must not be applied to this new tuple.
+
+`python3 eng/dependency_graph.py --root . validate --commit f69562a2a1b0f11295278c4e715bbf7ecf2999f7`
+exits 1 at the unchanged projection owner-pin guard, before semantics. The raw
+diagnostic exits 0 as a metadata reporter: root selector digest
+43ac5d825fb2b2d8fdb5cf74d3c4f47ad5d0db9c3711f7018900a85832bab747,
+Platform inventory digest 2bec644d9c20bcb8bbb68bbac9a61c191e05f9363123c6e90eb11d41ca0e6c69,
+and unchanged helper hashes. The new Platform selects nested Builds
+cc0db51b800be1d0d5badc3780395cfb5953d0f5; that object and the parent's nested
+69701dfcf54cb9c69fc6cb0c51b031af8d218142 are absent in the inspected local
+Builds store (`fatal: not a tree object`). The old 1884a88ab80d3d0ae80c09a5ed9dfe23867d9fb9
+object is now available there after the external dependency advance; its catalog
+hash still matches fa3df877f1304db565456dd6c79da7d13ad2cff600fea94331ea093523568a10.
+No fetch or nested-submodule initialization was performed by this run.
+
+The existing Parties `assert_no_inline_versions` predicate, invoked with the
+unchanged policy's selected profile/extensions/limits against exact committed
+8b0e23e437296691d0233fe86afc765063f9fef5, independently rejects its root
+Directory.Packages.props: `must inherit every package version from the pinned
+Builds catalog`. This is a new current-source diagnostic, distinct from DW-1988's
+historical retained-file refusal at e2528a5d5853641f2b38e5e2e34bb02c0cc4be23.
+Neither reports that ordinary validation passed the Platform guard or that a full
+candidate graph was accepted. Earlier manual predicate probes failed on incorrect
+call arguments/policy lookup before evaluation; only the corrected existing
+predicate supplies this refusal evidence.
+
+Source/ancestry renewal must cover all nine new selectors and changed Builds.Tooling,
+exact current/parent catalogs and Parties owner content. The frozen preservation
+constraints do not authorize silently adopting that tuple, changing a dependency
+or weakening an owner guard. No current infrastructure, ApiCompat or hosted-CI
+success is claimed. All original baselines, historical failures, independent
+approvals, Story 16.1 and sprint status are preserved. This continuation remains
+in-review; the workflow's done/commit step is not reached while required gates fail.
+Commands, raw diagnostics and the stale unapplied preview remain local in
+`/tmp/fc-15-5-resume-review-dqivd22x/`; no evidence packet is committed.
+
+
+### Final resumed checks
+
+The current Parties root refusal is the local Contracts.UI fallback ItemGroup:
+_PartiesContractsUiCatalogVersion plus a conditional PackageVersion for
+Hexalith.FrontComposer.Contracts.UI. The guard deliberately rejects any locally
+declared PackageVersion, including this conditional family-version fallback.
+An upstream repair must confirm the exact selected catalog supplies that package,
+remove the local fallback through the owning repository, address any further
+tracked-version refusals and separately authorize the resulting root selection.
+No scanner exemption or semantic-profile relaxation is proposed.
+
+After all resumed append-only updates:
+
+- `python3 eng/validate-story-artifacts.py` — exit 0.
+- `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-prepare-the-inactive-policy-precursor.md --candidate f69562a2a1b0f11295278c4e715bbf7ecf2999f7` — exit 0, both 15.5 delivery commits owned; external selector/skill/Story 16.1 commits remain unrelated; four owned unstaged documentation paths, no staged/untracked/unresolved paths.
+- `git diff --check` — exit 0.
+- SHA-256 comparisons with the pre-review snapshot confirm Story 16.1 and sprint-status are byte-identical. Policy is unchanged; the four updated documents preserve their entire pre-review content as a prefix and retain CRLF. External dependency commits are preserved rather than included in this run's changes.
+
+This run leaves four append-only documentation edits for review. No commit is
+created because required candidate/governance prerequisites remain failed and
+this spec must not be promoted to done. Completing the successor requires a
+human amendment permitting renewed current-tuple qualification and the necessary
+Parties content/dependency-selection repair; the preservation constraints and
+all independent approvals otherwise remain in force.
