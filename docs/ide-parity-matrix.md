@@ -8,7 +8,7 @@ Visual Studio is the calibration IDE used to baseline the suite. It is not the r
 
 | Surface | Pin |
 | --- | --- |
-| Active repository .NET SDK | 10.0.402 |
+| Active repository .NET SDK | 10.0.403 |
 | SourceTools package | Hexalith.FrontComposer.SourceTools local v0.1 story-9-3 |
 | Generated output path contract | obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs (canonical: `Hexalith.FrontComposer.Contracts.Conformance.GeneratedOutputPathContract.Template`) |
 | Generated output path contract version | v1 |
@@ -19,7 +19,7 @@ Visual Studio is the calibration IDE used to baseline the suite. It is not the r
 C# Dev Kit is required for VS Code parity. Microsoft account and proprietary license implications are adopter prerequisites. OmniSharp-only VS Code is unsupported in v1.
 
 The manual IDE checks behind the `lastValidated` date (2026-05-09) ran on .NET SDK 10.0.302; manual IDE
-behavior on 10.0.402 has not been revalidated yet. A revalidation is recorded in its story or spec as the
+behavior on 10.0.403 has not been revalidated yet. A revalidation is recorded in its story or spec as the
 commands and manual steps run, their results, the commit SHA, and the CI run link; no evidence files are
 committed.
 

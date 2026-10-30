@@ -1257,7 +1257,7 @@ public sealed class CiGovernanceTests {
 
     [Fact]
     public void ToolchainPins_MatchApprovedDotnetAndAspireVersions() {
-        const string expectedDotnetSdk = "10.0.402";
+        const string expectedDotnetSdk = "10.0.403";
         const string sourceResourceCompatibilitySdk = "10.0.302";
         const string expectedAspire = "13.6.0";
         const string expectedAspireHosting = "13.6.4";
@@ -1273,9 +1273,9 @@ public sealed class CiGovernanceTests {
             @"(?m)^[ \t]*dotnet-version[ \t]*:[ \t]*(?<quote>['""]?)(?<version>[^'""#\s]+)\k<quote>[ \t]*(?:#.*)?\r?$",
             RegexOptions.CultureInvariant);
         foreach (string quotingVariant in new[] {
-            "dotnet-version: '10.0.402'",
-            "dotnet-version: \"10.0.402\"",
-            "dotnet-version: 10.0.402",
+            "dotnet-version: '10.0.403'",
+            "dotnet-version: \"10.0.403\"",
+            "dotnet-version: 10.0.403",
         }) {
             Match sample = dotnetVersionPin.Match(quotingVariant);
             sample.Success.ShouldBeTrue($"active dotnet-version parser must support valid YAML quoting: {quotingVariant}");
@@ -1309,11 +1309,11 @@ public sealed class CiGovernanceTests {
         sdkVerificationStep.ShouldContain("set -euo pipefail");
         sdkVerificationStep.ShouldContain("active_sdk=\"$(dotnet --version)\"");
         sdkVerificationStep.ShouldContain("^10\\.0\\.([0-9]+)$");
-        sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} < 402");
+        sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} < 403");
         sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} >= 500");
         sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^10\\.0\\.302\\s'");
-        sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^10\\.0\\.402\\s'");
-        sdkVerificationStep.ShouldNotContain("test \"$(dotnet --version)\" = \"10.0.402\"");
+        sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^10\\.0\\.403\\s'");
+        sdkVerificationStep.ShouldNotContain("test \"$(dotnet --version)\" = \"10.0.403\"");
 
         Regex aspireCliInstall = new(
             @"(?m)^[^#\r\n]*\bdotnet\s+tool\s+install\s+--global\s+Aspire\.Cli\s+--version\s+(?<quote>['""]?)(?<version>[^'""#\s]+)\k<quote>(?:\s|$)",
@@ -1369,7 +1369,8 @@ public sealed class CiGovernanceTests {
     [InlineData("10.0.302", 1)]
     [InlineData("10.0.400", 1)]
     [InlineData("10.0.401", 1)]
-    [InlineData("10.0.402", 0)]
+    [InlineData("10.0.402", 1)]
+    [InlineData("10.0.403", 0)]
     [InlineData("10.0.499", 0)]
     [InlineData("10.0.500", 1)]
     [InlineData("10.0.402-preview.1", 1)]

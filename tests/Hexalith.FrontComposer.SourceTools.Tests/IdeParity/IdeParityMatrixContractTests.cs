@@ -19,7 +19,7 @@ public sealed class IdeParityMatrixContractTests {
         ValidateMatrixDocument(root).ShouldBeEmpty("IDE parity matrix JSON must reject unknown fields with a named category.");
 
         JsonElement metadata = root.GetProperty("metadata");
-        RequiredString(metadata, "dotnetSdk").ShouldBe("10.0.402");
+        RequiredString(metadata, "dotnetSdk").ShouldBe("10.0.403");
         ShouldBeIsoDate(RequiredString(metadata, "lastValidated"), "lastValidated", "metadata");
         RequiredString(metadata, "visualStudio").ShouldContain("Visual Studio 2022 17.13");
         RequiredString(metadata, "rider").ShouldContain("Rider 2026.1");
@@ -74,7 +74,7 @@ public sealed class IdeParityMatrixContractTests {
         markdown.ShouldContain("OmniSharp-only VS Code is unsupported in v1");
         markdown.ShouldContain("direct generated-file rename is unsupported");
         markdown.ShouldContain("Generated files remain read-only by design");
-        markdown.ShouldContain("10.0.402");
+        markdown.ShouldContain("10.0.403");
         markdown.ShouldContain(GeneratedOutputPathContract.Template);
         markdown.ShouldContain("samples/IdeParityCounter");
         markdown.ShouldContain("IDE-MUST-001");
