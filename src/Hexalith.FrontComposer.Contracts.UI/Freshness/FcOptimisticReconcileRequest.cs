@@ -13,6 +13,18 @@ public sealed record FcOptimisticReconcileRequest
     /// <summary>Gets the idempotent record re-read callback.</summary>
     public required Func<CancellationToken, Task<FcFreshnessStatus>> Reconcile { get; init; }
 
+    /// <summary>Gets the operation-specific witness evaluated after each Current read. Capture the accepted command/checkpoint and inspect the model just read; unrelated signals cannot satisfy it.</summary>
+    public Func<CancellationToken, Task<bool>>? OperationWitness { get; init; }
+
+    /// <summary>Gets the retry clock for strengthened reconciliation.</summary>
+    public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
+
+    /// <summary>Gets the retry interval; defaults to the existing thirty-second interval.</summary>
+    public TimeSpan RetryInterval { get; init; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>Gets a durable transport transition/rejoin generation, sampled before dispatch.</summary>
+    public Func<long>? RecoveryGeneration { get; init; }
+
     /// <summary>Gets the optimistic rollback callback.</summary>
     public required Action Revert { get; init; }
 

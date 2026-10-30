@@ -8,6 +8,61 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services;
 public sealed class FcOptimisticReconcilerTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StrengthenedCurrentRequiresWitnessAndRetriesSoleFailedOrStaleConfirmation(bool failFirst)
+    {
+        var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        var states = new List<FcReconcileState>();
+        Action? confirm = null;
+        bool witnessed = false;
+        int reads = 0;
+        var handle = Substitute.For<IDisposable>();
+        var request = NewRequest(states) with
+        {
+            Subscribe = callback => { confirm = callback; return handle; },
+            IsConnected = () => true,
+            TimeProvider = time,
+            OperationWitness = _ => Task.FromResult(witnessed),
+            Reconcile = _ => ++reads == 1 && failFirst ? throw new IOException("read unavailable") : Task.FromResult(FcFreshnessStatus.Current),
+        };
+        Task run = new FcOptimisticReconciler().ExecuteAsync(request, TestContext.Current.CancellationToken);
+        confirm!();
+        run.IsCompleted.ShouldBeFalse();
+        time.Advance(TimeSpan.FromSeconds(30));
+        run.IsCompleted.ShouldBeFalse();
+        witnessed = true;
+        time.Advance(TimeSpan.FromSeconds(30));
+        await run.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        reads.ShouldBe(3);
+        confirm();
+        reads.ShouldBe(3);
+        states.Count(state => state == FcReconcileState.Reconciled).ShouldBe(1);
+        handle.Received(1).Dispose();
+        time.Advance(TimeSpan.FromMinutes(1));
+        reads.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task StrengthenedCatchUpRetainsOutageDuringAcceptance()
+    {
+        var states = new List<FcReconcileState>();
+        long generation = 0;
+        int reads = 0;
+        var request = NewRequest(states) with
+        {
+            RecoveryGeneration = () => generation,
+            IssueCommand = _ => { generation += 2; return Task.FromResult(true); },
+            OperationWitness = _ => Task.FromResult(true),
+            Reconcile = _ => { reads++; return Task.FromResult(FcFreshnessStatus.Current); },
+        };
+        await new FcOptimisticReconciler().ExecuteAsync(request, TestContext.Current.CancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        reads.ShouldBe(1);
+        states.ShouldBe([FcReconcileState.Saving, FcReconcileState.Reconciled]);
+    }
+
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task AcceptanceUsesConfirmOrFallbackAndDisposesSubscription(bool connected)

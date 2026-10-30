@@ -28,6 +28,7 @@ public sealed class FcOptimisticReconciler
         // Serializing asynchronous reads fences simultaneous confirmations and late responses.
         // The gate remains reachable by a captured late callback, so it is intentionally not disposed.
         var gate = new SemaphoreSlim(1, 1);
+        long generation = request.RecoveryGeneration?.Invoke() ?? 0;
         bool done = false;
         bool accepted = false;
         bool commandStarted = false;
@@ -66,6 +67,11 @@ public sealed class FcOptimisticReconciler
                 try
                 {
                     freshness = await request.Reconcile(token).ConfigureAwait(false);
+                    if (freshness == FcFreshnessStatus.Current
+                        && (request.OperationWitness is { } witness && !await witness(token).ConfigureAwait(false)))
+                    {
+                        freshness = FcFreshnessStatus.Stale;
+                    }
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
@@ -125,6 +131,7 @@ public sealed class FcOptimisticReconciler
         }
         using CancellationTokenRegistration registration = token.Register(() => completion.TrySetCanceled(token));
         Task polling = Task.CompletedTask;
+        Task retries = Task.CompletedTask;
         try
         {
             bool commandAccepted;
@@ -168,6 +175,7 @@ public sealed class FcOptimisticReconciler
                 await TryReconcileAsync(token).ConfigureAwait(false);
             }
             polling = ObserveFallbackAsync();
+            retries = ObserveRetriesAsync();
             await completion.Task.ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -198,7 +206,7 @@ public sealed class FcOptimisticReconciler
             {
                 try
                 {
-                    await polling.ConfigureAwait(false);
+                    await Task.WhenAll(polling, retries).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -206,6 +214,42 @@ public sealed class FcOptimisticReconciler
                     await gate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
                     gate.Release();
                 }
+            }
+        }
+
+        async Task ObserveRetriesAsync()
+        {
+            if (request.OperationWitness is null)
+            {
+                return; // Compatibility only: legacy Current is not causal proof.
+            }
+            try
+            {
+                while (!token.IsCancellationRequested && !Volatile.Read(ref done))
+                {
+                    long current = request.RecoveryGeneration?.Invoke() ?? generation;
+                    if (current != generation)
+                    {
+                        generation = current;
+                        await TryReconcileAsync(token).ConfigureAwait(false);
+                    }
+                    var tick = new TaskCompletionSource();
+                    using ITimer timer = request.TimeProvider.CreateTimer(
+                        static state => ((TaskCompletionSource)state!).TrySetResult(), tick,
+                        request.RetryInterval > TimeSpan.Zero ? request.RetryInterval : TimeSpan.FromSeconds(30), Timeout.InfiniteTimeSpan);
+                    using CancellationTokenRegistration cancellation = token.Register(() => tick.TrySetCanceled(token));
+                    await tick.Task.ConfigureAwait(false);
+                    // This interval read also catches up every transition observed so far.
+                    generation = request.RecoveryGeneration?.Invoke() ?? generation;
+                    await TryReconcileAsync(token).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+            }
+            catch (Exception exception)
+            {
+                completion.TrySetException(exception);
             }
         }
 
