@@ -24,7 +24,7 @@ public sealed partial class DocsSiteValidationTests {
             .GetProperty("version")
             .GetString()!;
 
-        version.ShouldBe("2.78.5");
+        version.ShouldBe("2.81.0");
     }
 
     [Fact]
