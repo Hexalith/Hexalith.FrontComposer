@@ -2,7 +2,7 @@
 title: 'Story 15.5: Prepare the Inactive Policy Precursor'
 type: 'chore'
 created: '2026-10-30'
-status: 'in-progress'
+status: 'in-review'
 route: 'oneshot'
 story_id: '15.5'
 story_key: '15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline'
@@ -176,3 +176,178 @@ PR. This independent candidate failure is not exempted: the draft PR remains
 blocked until the stated candidate-validation prerequisite can pass. No remote
 write, merge, protection bypass, activation or independent approval is authorized
 by these diagnostics. Story 15.5 and REL-BASE-1 remain in review.
+
+## Committed-source verification at f75d774d281aa6d4764d9576597ff98ecfbaa3a7
+
+This local commit is a direct child of the preserved starting HEAD
+b1d89648ae6feed1c89e48c265de013e1507fa97. It is not pushed or landed. Its policy
+SHA-256 is `1d55bd290472beb0b8ef5fc44437c0ecea57d8df49330cf02e9e69d9832255d1`.
+All commands below run from the isolated clean root unless otherwise stated.
+Full argv/results are in commands.jsonl under the receipt root above.
+
+- `npm ci --ignore-scripts --no-audit --no-fund` — exit 0, 352 packages from the existing lockfile. No original npm directory is reused or modified.
+- `python3 -m unittest tests/eng/test_dependency_graph.py tests/eng/test_workflow_source_closure.py tests/eng/test_dependency_handoff.py tests/eng/test_release_contract.py tests/eng/test_release_evidence_v2.py tests/eng/test_validate_contract_artifacts.py eng.tests.test_validate_story_artifacts` — exit 0, 427 run, 425 passed, 2 skipped, 234.799s runner time. Includes closed projection shapes, inventory-only trust, root and configuration drift, forged evidence, missing historical catalogs, candidate self-authorization, zero-base acquisition/execution refusal, actual workflow preparation, handoff and release checks.
+- `python3 eng/dependency_graph.py --root . --policy eng/dependency-graph-policy.json graph --commit b1d89648ae6feed1c89e48c265de013e1507fa97` — exit 0, 69 raw edges and eight Builds selectors, with projection checks enforced by the collector. This explicit working-policy diagnostic authenticates the described inventory/catalog metadata and bindings; it is not semantic validation or prior-base authority.
+- `python3 eng/dependency_graph.py --root . validate --commit f75d774d281aa6d4764d9576597ff98ecfbaa3a7` — exit 1, ordinary committed candidate-policy validation reaches the Parties retained-catalog inheritance refusal above. No --policy override is used here. Candidate validation has not passed.
+- `python3 eng/dependency_graph.py --root . diff --event pull_request --event-base e7e892b6ed584501f6dd18e11acd299948c0113f --candidate f75d774d281aa6d4764d9576597ff98ecfbaa3a7` — exit 1, real remote-main base's existing policy refuses Platform a8e6276b512186b1e9e35160b8c150a50a17f789: `consumer source projection owner pin changed`. This is the explicitly permitted expected actual-base refusal, preserved as failed evidence, not waived validation.
+- `python3 eng/dependency_graph.py --root . diff --event push --event-base b1d89648ae6feed1c89e48c265de013e1507fa97 --candidate f75d774d281aa6d4764d9576597ff98ecfbaa3a7` — exit 1, same refusal under the local commit's exact direct-parent policy. This local transition check is not a hosted push event or activation claim.
+- `python3 eng/dependency_graph.py --root . acquire-catalogs --event-base e7e892b6ed584501f6dd18e11acd299948c0113f --candidate f75d774d281aa6d4764d9576597ff98ecfbaa3a7` — exit 1 at the unchanged actual-base owner pin, even after the explicitly requested exact metadata fetch. Candidate policy never authorizes this preparation command.
+- `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --nologo -m:1 -p:NuGetAudit=false` — exit 0, zero warnings/errors. This builds the package-based Release governance harness, not the changed Builds.Tooling source or a runtime topology.
+- `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-prepare-the-inactive-policy-precursor.md --candidate f75d774d281aa6d4764d9576597ff98ecfbaa3a7` — exit 0, story-id=match, disposition=owned, exactly five owned paths. This continuation uses its own baseline; no historical attribution is repaired.
+- `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-reconcile-the-activation-handoff.md --candidate a2ed597bfbf3e178928144963ad8c9cb63077b3c` — exit 1, strict story-id=no-match, disposition=unmapped and the same four listed-unowned delivery paths. Rerun from the original workspace also reports its preserved unrelated dirty Platform pointer; no disposition or exemption is added.
+- `node node_modules/@commitlint/cli/cli.js --edit /tmp/fc-15-5-policy-precursor-20261030-5womdkxt/precursor-commit-message.txt --verbose` — exit 0, pinned commitlint 21.2.2, zero problems/warnings before the local commit. `git diff --check` and `bash eng/check-committed-files.sh --staged` pass, five staged files.
+
+The two optional skips are ReviewVerifierTests.test_artifact_validation_failure_prevents_done_review_completion
+and ReviewVerifierTests.test_incomplete_review_reports_workflow_not_complete:
+`bmad-story-automator skill is not installed`. Neither integration is claimed
+passed. Earlier `gh run view --json ...attempt...` probes exited 1 because this
+installed gh has no attempt JSON field; corrected gh api calls at 09:30:29–30 UTC
+confirm both existing runs completed/failure, attempt 1. Failed probe logs remain.
+
+No new package, clean-consumer, ApiCompat, DocFX, runtime or hosted PR success is
+claimed. Those earlier qualification results retain their original revisions.
+The draft remains conditional on actual candidate validation and relevant
+regressions passing, separately from the permitted actual-base refusal. A later
+real event can select a reviewed, landed precursor as its prior policy; a local
+commit or diagnostic cannot do so. Upstream content repair would change the tuple
+and require renewed review before updating this proposal. Do not silently rehash.
+
+### Clean infrastructure/CI result
+
+`dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests -class Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests`
+— exit 1 at committed source f75d774d281aa6d4764d9576597ff98ecfbaa3a7;
+106 total, 105 passed, one failed, zero errors/skips/unrun. The sole failure is
+CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds,
+on the Parties retained-catalog inheritance refusal. The unchanged
+GovernanceBuildTrait_IsDeclaredOnlyInTheProjectTheHeavyLaneRuns passes in the
+clean npm environment; the original self-link remains untouched. Log:
+clean-infrastructure-ci-governance.log. This is a failed candidate governance gate,
+not the separately permitted actual-base refusal, so draft-PR creation is blocked.
+
+All original Story 15.5 baselines remain unchanged: published-baseline
+2c8e204c9f1ca5c2c44d70005d481dd70f89f3fb, activation handoff
+7319f44bcf02b67d7ee09a315ba8aa9c7251b1f6, repair
+2fcb1e9b5802ed32fc387680c6e42369130e0384 and qualification
+e7e892b6ed584501f6dd18e11acd299948c0113f. Sprint and REL-BASE-1 remain review.
+Release Owner, publication, Fluent, Product, EventStore and GOV-1 approvals retain
+their independent previously recorded dispositions. No source adoption approval
+is created by the agent's comparison, test execution or local commit.
+
+## External source movement and live-base disposition
+
+At 2026-10-30 09:34:14 UTC, fresh read-only history and ls-remote record an
+external advance. Original-workspace HEAD is now
+12dd17c92d023735ea77fe2840bee00581b851b9, whose exact parents are
+b1d89648ae6feed1c89e48c265de013e1507fa97 and
+65cc17f69f4d42a5a7e1a5f145c5e1c3090c4b15. Remote main is the latter commit,
+whose parent is e7e892b6ed584501f6dd18e11acd299948c0113f. This task created
+neither external commit and did not stage, merge, push or change the original
+workspace. The originally dirty Platform checkout is unchanged at
+aa8c66edc782b1735539e60b2b949f7f4015e3e3; the external commit now records it,
+so the original workspace is clean rather than still showing that dirty pointer.
+
+The external delta versus the initial committed source is solely Platform's
+root gitlink a8e6276b512186b1e9e35160b8c150a50a17f789 to
+aa8c66edc782b1735539e60b2b949f7f4015e3e3. It is preserved in the original
+workspace and remote main. The isolated precursor still describes its exact
+reviewed starting tuple at b1d89648ae6feed1c89e48c265de013e1507fa97; it does
+not adopt or authorize the externally advanced tuple. References above to e7 as
+the real remote-main/PR base are timestamped initial-preflight observations;
+e7 is no longer live main. No PR exists, so none of these local probes claims an
+authenticated hosted event. Both the independent candidate refusal and renewed
+source/ancestry review block carrying this local proposal to a future PR.
+
+`python3 eng/dependency_graph.py --root . diff --event pull_request --event-base 65cc17f69f4d42a5a7e1a5f145c5e1c3090c4b15 --candidate f75d774d281aa6d4764d9576597ff98ecfbaa3a7`
+— exit 1, live target-base policy refuses Platform
+aa8c66edc782b1735539e60b2b949f7f4015e3e3's owner pin. The check stops before
+candidate or ancestry evaluation; it proves neither. `git merge-base 65cc17f69f4d42a5a7e1a5f145c5e1c3090c4b15 f75d774d281aa6d4764d9576597ff98ecfbaa3a7`
+returns e7e892b6ed584501f6dd18e11acd299948c0113f (exit 0), so this precursor
+does not include the new main commit. Do not rebase/rewrite historical commits,
+switch the proposed owner or refresh seals without substantive renewed review.
+
+At 09:34:15 UTC, `gh run list --repo Hexalith/Hexalith.FrontComposer --commit 65cc17f69f4d42a5a7e1a5f145c5e1c3090c4b15 --limit 10 --json databaseId,name,status,conclusion,headSha,event,url`
+reports CI 41033896935 and Quality 41033896567 in_progress with no conclusion;
+Commitlint 41033896747 passed and CodeQL 41033896900 is in_progress. No result is
+inferred for unfinished work. Those are external push runs, not precursor PR
+runs. The existing initial-source CI/Quality failures remain historical failures.
+
+### Reproduction and source-attribution clarification
+
+The complete raw tuple diagnostic is already preserved in the historical
+[qualification record](spec-15-5-qualify-the-governance-transition.md#reproduce-the-raw-tuple-inspection).
+Reproduce this continuation's exact inspect-source-tuple.py from that code block
+by changing only `commit` from e7e892b6ed584501f6dd18e11acd299948c0113f to
+b1d89648ae6feed1c89e48c265de013e1507fa97, and `base` from
+f3fef9f2dad49638521d7bc2fd3bf43c8056b516 to
+e7e892b6ed584501f6dd18e11acd299948c0113f. Run from a checkout with the exact
+root object stores and the independently acquired trusted catalog metadata.
+The historical spec remains unmodified; no unavailable scratch-only source is
+required to reconstruct the diagnostic. The exact executed copy is retained
+with the receipts below. It uses raw object helpers and never authorizes sources.
+
+The npm install, 427-case fixture regression suite, explicit working-policy
+diagnostics and Shell build ran with HEAD b1d89648ae6feed1c89e48c265de013e1507fa97
+and the four proposed working-policy replacements. They are pre-commit evidence;
+the suite is not a successful validation of the real candidate's catalogs.
+Ordinary validate, both initial-base diffs, initial-base acquire-catalogs, strict
+new-continuation attribution and the clean infrastructure/CI test execution
+ran after the actual f75d774d281aa6d4764d9576597ff98ecfbaa3a7 commit, using its
+committed policy without an override where specified. Later documentation-only
+additions are separately attributed by the final strict check; the f75 receipt
+does not cover their unstaged content. No f75 hash is assigned to a pre-commit
+working-tree state.
+
+### Source review reproduction and retained receipts
+
+The complete reviewed source delta is reproduced from the root Builds repository
+with `git diff --no-ext-diff --no-renames 81225bcb6151c38ae891abd9110af17385e1b3b9 0b17f8022cdc23b8b242b000f5b2aa15580184ac -- src/libraries/Hexalith.Builds.Tooling`
+(exit 0; tooling-source-diff.log). In that immutable diff, Runtime/CompositionAttachAdmission.cs
+and CompositionAttachRequest.cs contain owner/mode/hold admission; CompositionEngine.cs
+and ModuleCommandExecutionService.cs contain withdrawal, retention and cleanup
+changes; CompositionDurableFlush.cs and the document/native snapshot callers
+contain checked fsync before rename; CompositionResourceClaimStore.cs contains
+empty-resource verification; TestEnvironment/TestResultWriter.cs and native
+report/execution files contain attachment-aware results; and
+Workspace/SourceMappingReconciliationTask.cs changes empty-property splitting.
+These exact source locations support the earlier code-reading observations.
+Neither the stat nor this review is runtime or owner-adoption acceptance.
+
+A verified machine-local receipt snapshot is retained outside temporary storage:
+
+- Archive: `/home/administrator/.local/state/hexalith/frontcomposer/story-15-5-policy-precursor-20261030/precursor-receipts.tar.gz`.
+- SHA-256: `2c91b227148d46b97a1b0c24af2554c67e4ff95dc49b0e63011b9029b36f844f`.
+- 76 members include exact command argv/CWD/UTC/result logs, raw tuple JSON, full tooling diff, executed diagnostic/setup/preservation scripts, messages and receipt-members.json. The latter gives each other member's byte count and SHA-256; all hashes were verified against extracted member bytes.
+- Verify with `sha256sum /home/administrator/.local/state/hexalith/frontcomposer/story-15-5-policy-precursor-20261030/precursor-receipts.tar.gz`; list/retrieve with `tar -tzf /home/administrator/.local/state/hexalith/frontcomposer/story-15-5-policy-precursor-20261030/precursor-receipts.tar.gz` and `tar -xzf /home/administrator/.local/state/hexalith/frontcomposer/story-15-5-policy-precursor-20261030/precursor-receipts.tar.gz -C <existing-local-receipt-directory>`.
+
+This snapshot ends after the full source-diff/preservation checks and precedes
+final documentation finalization. A final-results/ annex under the same persistent
+directory retains exact final commit, ownership, whitespace, ordinary validation,
+live-base refusal and Git-state checks. The final commit cannot embed its own
+identifier. This local retention is not hosted release evidence or a remote
+access guarantee; another machine can reproduce from the tracked diagnostic
+block and exact canonical objects, or must explicitly obtain the local archive.
+No receipt archive, manifest or raw-output packet is committed to the repository.
+
+The preservation script confirms exactly four changed policy scalars, all other
+policy values identical, unchanged proposed root gitlinks, complete historical
+document prefixes, unchanged original baseline files and no initialized nested
+Git entries in either workspace. SDK 10.0.403, runtime 10.0.14, Node v26.4.0,
+Python 3.14.4 and pinned commitlint 21.2.2 were used. Global NuGet and Git object
+caches are shared; no cold-cache qualification is inferred.
+
+## Review Triage Log
+
+Independent Blind Hunter: 32.551 kB changed content; finding floor
+min(floor(sqrt(32.551)+1),10)=6. Every finding was checked against source/receipts.
+
+- BH-1 — medium / patch: /tmp-only receipts could disappear. Added the verified external archive, exact checksum, per-member manifest and retrieval instructions. Explicitly retain the machine-local/hosted-evidence distinction.
+- BH-2 — medium / patch: the diagnostic reproduction depended on a scratch-only script. Linked the historical tracked complete implementation and specified both exact revision substitutions; retained the executed copy in the archive.
+- BH-3 — medium / patch: diff --stat alone did not substantiate behavioral source observations. Recorded the full immutable source-diff command/log and the precise implementation files supporting each code-reading conclusion; runtime/owner acceptance remains unclaimed.
+- BH-4 — medium / patch: the committed-verification heading grouped pre-commit checks. Added explicit pre-commit versus post-commit source attribution and the relation to unchanged committed policy/source bytes; no pre-commit run is attributed to f75.
+- BH-5 — medium / patch: earlier strict/hygiene receipts omitted later documentation additions. Finalization runs fresh ownership and whitespace checks after all additions, records the exact resulting commit in the persistent final-results annex, and leaves the old snapshot receipts untouched.
+- BH-6 — medium / patch: the new Parties blocker lacked a stable actionable ledger coordinate. Added open DW-1988 with owner roles, exact evidence and completion criteria; prior entries remain append-only history. Completion requires separately authorized upstream content/selection work and renewed exact tuple validation, never an exemption or inferred approval.
+
+This continuation stays in-review: the initial bounded proposal is prepared
+locally, but the independent candidate failure and externally advanced tuple
+remain blocking. No review finding authorizes a guard or scope change. The
+conditional draft PR has not been created, and Story 15.5 remains open.

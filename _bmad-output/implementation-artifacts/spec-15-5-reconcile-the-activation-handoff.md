@@ -358,3 +358,46 @@ infrastructure/ApiCompat. These existing push results are not precursor PR
 verification. All independent approvals and Story 15.5/REL-BASE-1 remain at their
 previous dispositions. Concurrent a2ed597bfbf3e178928144963ad8c9cb63077b3c's
 strict no-match/unmapped/four-listed-unowned failure remains explicit and open.
+
+
+Local committed precursor f75d774d281aa6d4764d9576597ff98ecfbaa3a7 has policy
+SHA-256 1d55bd290472beb0b8ef5fc44437c0ecea57d8df49330cf02e9e69d9832255d1.
+The 427-case focused suite passes (425 passed, two optional integrations skipped),
+and the clean Shell build passes with zero warnings/errors. Ordinary committed
+validation fails the independent Parties retained-catalog rule; infrastructure/CI
+governance is 105/106 with the same sole failure. Actual remote-main PR diff,
+local direct-parent push diff and actual-base acquire-catalogs each exit 1 at the
+preserved old projection owner pin. The actual-base refusal is expressly
+permitted for a precursor PR and remains failed evidence; the separate candidate
+failure is not permitted, so no draft PR/push is made. Strict attribution for this
+new continuation passes at the local commit; that does not alter concurrent
+a2ed597bfbf3e178928144963ad8c9cb63077b3c's strict failure. Full exact commands,
+source review and limits are in the new record; no remote success is inferred.
+
+
+A later live-base observation supersedes the initial remote-main coordinate:
+at 2026-10-30 09:34:14 UTC, remote main is
+65cc17f69f4d42a5a7e1a5f145c5e1c3090c4b15 and original-workspace HEAD is
+12dd17c92d023735ea77fe2840bee00581b851b9. These externally created commits
+record Platform aa8c66edc782b1735539e60b2b949f7f4015e3e3 and are preserved.
+The local precursor remains pinned to its reviewed initial b1/a8e tuple; it does
+not include the newer main commit (merge base remains e7) or authorize its owner.
+The live target-base diff exits 1 at aa8c66ed's old-policy owner-pin guard, before
+candidate/ancestry checks. Carrying the proposal forward requires renewed tuple
+and ancestry review as well as resolving the independent Parties candidate
+failure; no silent rehash or rewrite is made. CI 41033896935 and Quality
+41033896567 on new main are in_progress at 09:34:15 UTC, without inferred
+conclusions. No precursor PR, push, merge, activation or approval is claimed.
+
+
+Independent precursor review found six documentation/receipt gaps, all addressed
+without policy/guard changes. Upstream candidate prerequisite DW-1988 is open
+with owner roles and explicit repair/review/validation completion criteria. Exact
+receipts are retained outside /tmp at
+`/home/administrator/.local/state/hexalith/frontcomposer/story-15-5-policy-precursor-20261030/precursor-receipts.tar.gz`,
+SHA-256 `2c91b227148d46b97a1b0c24af2554c67e4ff95dc49b0e63011b9029b36f844f`, with a verified per-member manifest and retrieval
+instructions in the new precursor record. This is machine-local retention, not
+hosted release evidence. Its final-results/ annex separately records final
+commit/ownership/hygiene and committed-source/live-base results. The precursor
+remains unpushed and in-review; all Story 15.5 and independent approval blockers
+remain explicit. The historical qualification record is unchanged.
