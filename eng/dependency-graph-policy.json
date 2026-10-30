@@ -2773,9 +2773,9 @@
   },
   "consumer_source_projections": {
     "github.com/hexalith/hexalith.platform": {
-      "owner_commit": "a8e6276b512186b1e9e35160b8c150a50a17f789",
+      "owner_commit": "a57383fd34faec3a6ff891b5c63f0a9f535ed699",
       "gitmodules_sha256": "6da4f5297d79bfa54afcb8daacda70670af11868ba1738cc185f584db8eb6ab7",
-      "inventory_sha256": "2145b99e0580abdb05a812dc81ea009b4364d12990fe176a6d0dc5988efccedb",
+      "inventory_sha256": "0a35b374389642ed9012266b4bd145cb8b167fcd30c8c2518be07ba991cb108c",
       "inventory_only_identities": [
         "github.com/hexalith/hexalith.agents",
         "github.com/hexalith/hexalith.chatbot",
@@ -2796,10 +2796,10 @@
         "DaprSelfHostedMtls.cs": "Platform/DaprSelfHostedMtls.cs",
         "DaprSelfHostedMtlsSubscriber.cs": "Platform/DaprSelfHostedMtlsSubscriber.cs"
       },
-      "builds_commit": "0b17f8022cdc23b8b242b000f5b2aa15580184ac",
+      "builds_commit": "849b0be6849f14c097ab05ff9bafbc115bdabe7e",
       "builds_project": "src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj",
-      "root_selectors_sha256": "b6534b18c7f4462366def97b1a0e5e79d1224e17c3543833de3042895dc4a40d",
-      "consumer_configuration_sha256": "f5186d1b483c33e065ac542374a4b90c0da8257782ebc871d29aaf0ef3613762"
+      "root_selectors_sha256": "7075111723c535ac94cdf40f2acd24b097bdb4bd6b4c5ba50445681366606eee",
+      "consumer_configuration_sha256": "576787166037b08cb25c3c21ae06c1135d7573ba8a47520c4b06208349841484"
     }
   }
 }
