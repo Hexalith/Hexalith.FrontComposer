@@ -23,12 +23,16 @@ Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.Failed:S
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.GetHashCode():System.Int32
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.IsConnected:System.Func<System.Boolean>:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.IssueCommand:System.Func<System.Threading.CancellationToken,System.Threading.Tasks.Task<System.Boolean>>:get/set
+Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.OperationWitness:System.Func<System.Threading.CancellationToken,System.Threading.Tasks.Task<System.Boolean>>:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.ReadFailed:System.Action:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.Reconcile:System.Func<System.Threading.CancellationToken,System.Threading.Tasks.Task<Hexalith.FrontComposer.Contracts.Freshness.FcFreshnessStatus>>:get/set
+Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.RecoveryGeneration:System.Func<System.Int64>:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.Rejected:System.Action:get/set
+Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.RetryInterval:System.TimeSpan:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.Revert:System.Action:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.RunFallback:System.Func<System.Func<System.Threading.CancellationToken,System.Threading.Tasks.Task>,System.Func<System.Boolean>,System.Threading.CancellationToken,System.Threading.Tasks.Task>:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.Subscribe:System.Func<System.Action,System.IDisposable>:get/set
+Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.TimeProvider:System.TimeProvider:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.ToString():System.String
 Hexalith.FrontComposer.Contracts.Freshness.FcOptimisticReconcileRequest.WaitForSubscriptionAsync:System.Func<System.IDisposable,System.Threading.CancellationToken,System.Threading.Tasks.Task>:get/set
 Hexalith.FrontComposer.Contracts.Freshness.FcReconcileState
