@@ -318,3 +318,43 @@ activation. The qualification record now contains full diagnostic code, actual-b
 coordinates, named skip reasons and a verified archive outside temporary storage
 with its checksum/retrieval path. No failed gate, old attribution failure or
 independent approval is reclassified.
+
+
+### Story 15.5 inactive precursor preparation — 2026-10-30
+
+The [new bounded precursor](spec-15-5-prepare-the-inactive-policy-precursor.md)
+uses starting HEAD b1d89648ae6feed1c89e48c265de013e1507fa97 and real remote-main
+base e7e892b6ed584501f6dd18e11acd299948c0113f. The existing qualification commit
+and unrelated dirty Platform checkout aa8c66edc782b1735539e60b2b949f7f4015e3e3
+are preserved. Only four fields of the Platform projection are proposed: owner
+and raw inventory for a8e6276b512186b1e9e35160b8c150a50a17f789, actual root Builds
+0b17f8022cdc23b8b242b000f5b2aa15580184ac and the sealed nine-root selector tuple.
+The supporting record compares all root and Platform inventory selectors, both
+unchanged helper blobs, unchanged consumer configuration and substantive
+25-file Builds.Tooling changes. No dependency selection, catalog, trust,
+expectation, evaluator or validation guard changes.
+
+Exact Builds 1884a88ab80d3d0ae80c09a5ed9dfe23867d9fb9 was acquired into an
+isolated root Builds object store from the canonical URL with no recursive fetch,
+checkout or nested initialization. Its raw catalog SHA-256 is
+fa3df877f1304db565456dd6c79da7d13ad2cff600fea94331ea093523568a10. This resolves
+the historical locally-missing metadata observation; it grants no projection,
+source, catalog-adoption or runtime authority.
+
+Explicit candidate-policy validation now reaches an independent Parties
+committed-source refusal: at e2528a5d5853641f2b38e5e2e34bb02c0cc4be23, the
+retained-source-mapping/pinned-tree/Props/Directory.Packages.props artifact
+contains 307 direct PackageVersion rows, violating the existing all-tracked-file
+inheritance guard. The full path, exact blob hash and command are in the new
+record. No fixture exception or policy weakening is introduced. The user's
+exception permits only the expected actual-base refusal; candidate validation
+still blocks a draft PR. No activation or remote publication is claimed.
+
+CI 41023803195 attempt 1 and Quality 41023802429 attempt 1 on
+e7e892b6ed584501f6dd18e11acd299948c0113f are both completed/failure at the
+2026-10-30 09:23:49 UTC pre-edit observation. CI's build/test job passed, but
+its dependency gate failed; Quality failed catalog preparation and skipped
+infrastructure/ApiCompat. These existing push results are not precursor PR
+verification. All independent approvals and Story 15.5/REL-BASE-1 remain at their
+previous dispositions. Concurrent a2ed597bfbf3e178928144963ad8c9cb63077b3c's
+strict no-match/unmapped/four-listed-unowned failure remains explicit and open.
