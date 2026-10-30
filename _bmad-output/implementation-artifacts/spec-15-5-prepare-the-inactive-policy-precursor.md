@@ -2,7 +2,7 @@
 title: 'Story 15.5: Prepare the Inactive Policy Precursor'
 type: 'chore'
 created: '2026-10-30'
-status: 'in-review'
+status: 'in-progress'
 route: 'oneshot'
 story_id: '15.5'
 story_key: '15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline'
