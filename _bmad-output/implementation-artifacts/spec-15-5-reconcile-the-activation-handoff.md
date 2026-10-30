@@ -318,3 +318,86 @@ activation. The qualification record now contains full diagnostic code, actual-b
 coordinates, named skip reasons and a verified archive outside temporary storage
 with its checksum/retrieval path. No failed gate, old attribution failure or
 independent approval is reclassified.
+
+
+### Story 15.5 inactive precursor preparation — 2026-10-30
+
+The [new bounded precursor](spec-15-5-prepare-the-inactive-policy-precursor.md)
+uses starting HEAD b1d89648ae6feed1c89e48c265de013e1507fa97 and real remote-main
+base e7e892b6ed584501f6dd18e11acd299948c0113f. The existing qualification commit
+and unrelated dirty Platform checkout aa8c66edc782b1735539e60b2b949f7f4015e3e3
+are preserved. Only four fields of the Platform projection are proposed: owner
+and raw inventory for a8e6276b512186b1e9e35160b8c150a50a17f789, actual root Builds
+0b17f8022cdc23b8b242b000f5b2aa15580184ac and the sealed nine-root selector tuple.
+The supporting record compares all root and Platform inventory selectors, both
+unchanged helper blobs, unchanged consumer configuration and substantive
+25-file Builds.Tooling changes. No dependency selection, catalog, trust,
+expectation, evaluator or validation guard changes.
+
+Exact Builds 1884a88ab80d3d0ae80c09a5ed9dfe23867d9fb9 was acquired into an
+isolated root Builds object store from the canonical URL with no recursive fetch,
+checkout or nested initialization. Its raw catalog SHA-256 is
+fa3df877f1304db565456dd6c79da7d13ad2cff600fea94331ea093523568a10. This resolves
+the historical locally-missing metadata observation; it grants no projection,
+source, catalog-adoption or runtime authority.
+
+Explicit candidate-policy validation now reaches an independent Parties
+committed-source refusal: at e2528a5d5853641f2b38e5e2e34bb02c0cc4be23, the
+retained-source-mapping/pinned-tree/Props/Directory.Packages.props artifact
+contains 307 direct PackageVersion rows, violating the existing all-tracked-file
+inheritance guard. The full path, exact blob hash and command are in the new
+record. No fixture exception or policy weakening is introduced. The user's
+exception permits only the expected actual-base refusal; candidate validation
+still blocks a draft PR. No activation or remote publication is claimed.
+
+CI 41023803195 attempt 1 and Quality 41023802429 attempt 1 on
+e7e892b6ed584501f6dd18e11acd299948c0113f are both completed/failure at the
+2026-10-30 09:23:49 UTC pre-edit observation. CI's build/test job passed, but
+its dependency gate failed; Quality failed catalog preparation and skipped
+infrastructure/ApiCompat. These existing push results are not precursor PR
+verification. All independent approvals and Story 15.5/REL-BASE-1 remain at their
+previous dispositions. Concurrent a2ed597bfbf3e178928144963ad8c9cb63077b3c's
+strict no-match/unmapped/four-listed-unowned failure remains explicit and open.
+
+
+Local committed precursor f75d774d281aa6d4764d9576597ff98ecfbaa3a7 has policy
+SHA-256 1d55bd290472beb0b8ef5fc44437c0ecea57d8df49330cf02e9e69d9832255d1.
+The 427-case focused suite passes (425 passed, two optional integrations skipped),
+and the clean Shell build passes with zero warnings/errors. Ordinary committed
+validation fails the independent Parties retained-catalog rule; infrastructure/CI
+governance is 105/106 with the same sole failure. Actual remote-main PR diff,
+local direct-parent push diff and actual-base acquire-catalogs each exit 1 at the
+preserved old projection owner pin. The actual-base refusal is expressly
+permitted for a precursor PR and remains failed evidence; the separate candidate
+failure is not permitted, so no draft PR/push is made. Strict attribution for this
+new continuation passes at the local commit; that does not alter concurrent
+a2ed597bfbf3e178928144963ad8c9cb63077b3c's strict failure. Full exact commands,
+source review and limits are in the new record; no remote success is inferred.
+
+
+A later live-base observation supersedes the initial remote-main coordinate:
+at 2026-10-30 09:34:14 UTC, remote main is
+65cc17f69f4d42a5a7e1a5f145c5e1c3090c4b15 and original-workspace HEAD is
+12dd17c92d023735ea77fe2840bee00581b851b9. These externally created commits
+record Platform aa8c66edc782b1735539e60b2b949f7f4015e3e3 and are preserved.
+The local precursor remains pinned to its reviewed initial b1/a8e tuple; it does
+not include the newer main commit (merge base remains e7) or authorize its owner.
+The live target-base diff exits 1 at aa8c66ed's old-policy owner-pin guard, before
+candidate/ancestry checks. Carrying the proposal forward requires renewed tuple
+and ancestry review as well as resolving the independent Parties candidate
+failure; no silent rehash or rewrite is made. CI 41033896935 and Quality
+41033896567 on new main are in_progress at 09:34:15 UTC, without inferred
+conclusions. No precursor PR, push, merge, activation or approval is claimed.
+
+
+Independent precursor review found six documentation/receipt gaps, all addressed
+without policy/guard changes. Upstream candidate prerequisite DW-1988 is open
+with owner roles and explicit repair/review/validation completion criteria. Exact
+receipts are retained outside /tmp at
+`/home/administrator/.local/state/hexalith/frontcomposer/story-15-5-policy-precursor-20261030/precursor-receipts.tar.gz`,
+SHA-256 `2c91b227148d46b97a1b0c24af2554c67e4ff95dc49b0e63011b9029b36f844f`, with a verified per-member manifest and retrieval
+instructions in the new precursor record. This is machine-local retention, not
+hosted release evidence. Its final-results/ annex separately records final
+commit/ownership/hygiene and committed-source/live-base results. The precursor
+remains unpushed and in-review; all Story 15.5 and independent approval blockers
+remain explicit. The historical qualification record is unchanged.
