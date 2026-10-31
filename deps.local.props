@@ -18,7 +18,11 @@
     <CommonsPath Condition="'$(CommonsPath)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj')">$(MSBuildThisFileDirectory)../Hexalith.Commons</CommonsPath>
     <CommonsPath Condition="'$(CommonsPath)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.Commons</CommonsPath>
     <!-- Canonical hosting source and tooling always resolve to root-declared dependencies. -->
+    <HexalithPlatformRoot Condition="'$(HexalithPlatformRoot)' == '' and Exists('$(MSBuildThisFileDirectory)references/Hexalith.Platform/src/Hexalith.Platform.Composition/Hexalith.Platform.Composition.csproj')">$(MSBuildThisFileDirectory)references/Hexalith.Platform</HexalithPlatformRoot>
+    <HexalithPlatformRoot Condition="'$(HexalithPlatformRoot)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Platform/src/Hexalith.Platform.Composition/Hexalith.Platform.Composition.csproj')">$(MSBuildThisFileDirectory)../Hexalith.Platform</HexalithPlatformRoot>
     <HexalithPlatformRoot Condition="'$(HexalithPlatformRoot)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.Platform</HexalithPlatformRoot>
+    <HexalithBuildsRoot Condition="'$(HexalithBuildsRoot)' == '' and Exists('$(MSBuildThisFileDirectory)references/Hexalith.Builds/src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj')">$(MSBuildThisFileDirectory)references/Hexalith.Builds</HexalithBuildsRoot>
+    <HexalithBuildsRoot Condition="'$(HexalithBuildsRoot)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Builds/src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj')">$(MSBuildThisFileDirectory)../Hexalith.Builds</HexalithBuildsRoot>
     <HexalithBuildsRoot Condition="'$(HexalithBuildsRoot)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.Builds</HexalithBuildsRoot>
     <HexalithEventStoreRoot>$(EventStorePath)</HexalithEventStoreRoot>
     <HexalithTenantsRoot>$(TenantsPath)</HexalithTenantsRoot>
