@@ -2639,6 +2639,35 @@ class ConsumerProjectionTests(unittest.TestCase):
         with self.assertRaisesRegex(dg.GraphError, "owner pin changed"):
             self.graph(changed)
 
+    def test_reviewed_helper_and_configuration_change_requires_each_exact_seal(self) -> None:
+        # A new selected helper and reviewed root configuration are separate inputs.
+        # Updating either seal alone must not authorize the other changed input.
+        original_sources = dict(self.row["source_files"])
+        self.builds.write_text("src/Tooling.csproj", "<Project><PropertyGroup><ReviewedHelper>true</ReviewedHelper></PropertyGroup></Project>\n")
+        selected_helper = self.builds.commit()
+        self.root.link_gitlink("references/Builds", selected_helper)
+        self.root.write_text("deps.local.props", "<Project><PropertyGroup><ReviewedRoot>true</ReviewedRoot></PropertyGroup></Project>\n")
+        candidate = self.root.commit()
+        with self.assertRaisesRegex(dg.GraphError, "root source selectors changed"):
+            self.graph(candidate)
+        direct = dg._owner_edges(self.root.root, candidate, self.fixture.identity("Root"), 1, self.fixture.policy, self.root.root)
+        self.row["root_selectors_sha256"] = dg.canonical_digest([
+            {key: edge[key] for key in ("path", "repository", "commit")} for edge in direct])
+        with self.assertRaisesRegex(dg.GraphError, "exact approved root Builds source"):
+            self.graph(candidate)
+        self.row["builds_commit"] = selected_helper
+        with self.assertRaisesRegex(dg.GraphError, "Compile/ProjectReference configuration changed"):
+            self.graph(candidate)
+        self.row["consumer_configuration_sha256"] = dg.canonical_digest(
+            dg.consumer_configuration(self.root.root, candidate, self.fixture.policy))
+        projection = dg.evaluate_consumer_projections(self.root.root, self.fixture.policy, self.graph(candidate))[self.fixture.identity("Source")]
+        self.assertEqual(projection["root_builds_commit"], selected_helper)
+        self.assertEqual(projection["source_files"], original_sources)
+        self.root.write_text("deps.local.props", "<Project><Import Project=\"unreviewed.targets\" /></Project>\n")
+        unreviewed = self.root.commit()
+        with self.assertRaisesRegex(dg.GraphError, "Compile/ProjectReference configuration changed"):
+            self.graph(unreviewed)
+
     def test_added_or_indirect_compile_and_project_reference_consumption_refuse(self) -> None:
         for item in ('<Compile Include="$(CanonicalSourceRoot)/Other.cs" />',
                      '<ProjectReference Include="$(CanonicalSourceRoot)/Other.csproj" />'):
