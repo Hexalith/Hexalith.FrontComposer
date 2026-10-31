@@ -1314,3 +1314,24 @@ advances the encompassing Story 15.5 to review, an open state. This is a trackin
 transition after local verification and independent implementation review; it
 does not resolve the retained policy-transition failures or separately owned
 approvals. No push, merge or activation is authorized by that handoff.
+
+
+### Story 15.5 code review: cancelled seal-transition check — 2026-10-31
+
+The post-delivery code review of `eb1f0f7158b254dfacf460b2e30199ac8912944f`
+(landed as `decbb195f1c010460530fde6b662a6118a83ee7c`, merged by
+`5cd01bd8b501a4f64c0997e966c964dccaa2eb71`) returns Story 15.5 to in-progress.
+CI run `41182262969` for decbb195, the push that changed the consumer projection
+seal, was cancelled by the `ci-refs/heads/main` concurrency group when
+`05f01d7265c064389419c3a9dc547114562235c7` was pushed; its dependency-governance
+verdict never completed. CI `41182438087` (05f01d72) then used decbb195 as its
+event base, and the later green runs `41183043376` (5cd01bd8) and `41184768444`
+(eacc218d) evaluated only later transitions.
+
+A local read-only replay of the cancelled event,
+`python3 eng/dependency_graph.py --root . diff --event push --event-base a9c66bfee79dddcf57664971c1617633cf707919 --candidate decbb195f1c010460530fde6b662a6118a83ee7c`,
+exits 1 with `consumer Compile/ProjectReference configuration changed from its
+sealed source projection`. The cancelled run is therefore recorded as an
+uncompleted transition that would have refused, not as a pass, and later green
+results do not relabel it. The precursor spec's seven open round-3 review patches
+also remain open. No hosted re-run, release, activation or approval occurred.

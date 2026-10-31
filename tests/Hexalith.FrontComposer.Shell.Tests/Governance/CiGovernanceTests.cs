@@ -2001,9 +2001,10 @@ public sealed class CiGovernanceTests {
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("4.7.1")]
-    public void QualityWorkflow_Gate4ValidatesEveryPackableLibrary(string? laterBaselineOverride) {
+    [InlineData(null, null)]
+    [InlineData("-p:", "4.7.1")]
+    [InlineData("/p:", "4.7.1")]
+    public void QualityWorkflow_Gate4ValidatesEveryPackableLibrary(string? overrideSwitch, string? laterBaselineOverride) {
         // Spec "make the release compatibility gates actually enforce" (amended after review pass
         // 1): Gate 2a packs only Hexalith.FrontComposer.Cli, which is PackAsTool, and the SDK
         // disables package validation for tool layouts — those properties are inert there. Gate 4
@@ -2077,41 +2078,50 @@ public sealed class CiGovernanceTests {
         expectedLibraries.Count.ShouldBe(7);
         toolExceptions.ShouldBe(["src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj"]);
 
-        // Preserve property order: MSBuild applies the last duplicate command-line property.
-        string packCommand = Regex.Matches(libraryGate, @"(?m)^[ \t]*dotnet pack[^\r\n]*").Single().Value;
+        // A later override is injected as a `\`-continued line, so the collector must join shell
+        // continuations and accept every MSBuild property-switch spelling to see it.
+        string packScript = libraryGate;
         if (laterBaselineOverride is not null) {
-            packCommand += $" -p:FrontComposerPackageValidationBaselineVersion={laterBaselineOverride}";
+            packScript = Regex.Replace(
+                packScript,
+                @"(?m)^([ \t]*dotnet pack[^\r\n]*)",
+                $"$1 \\\n    {overrideSwitch}FrontComposerPackageValidationBaselineVersion={laterBaselineOverride}");
         }
 
+        // Preserve property order: MSBuild applies the last duplicate command-line property.
+        packScript = Regex.Replace(packScript, @"\\\r?\n[ \t]*", " ");
+        string packCommand = Regex.Matches(packScript, @"(?m)^[ \t]*dotnet pack[^\r\n]*").Single().Value;
         Match configuration = Regex.Match(packCommand, @"--configuration (?<value>[^\s]+)");
         configuration.Success.ShouldBeTrue("evaluate the same configuration as the live pack command.");
+        const string propertySwitch = @"(?:--?|/)(?i:p|property):";
         string[] packProperties = [
             $"-p:Configuration={configuration.Groups["value"].Value}",
-            .. Regex.Matches(packCommand, @"(?<!\S)-p:(?:[^\s""]|""[^""]*"")+")
-                .Select(match => match.Value.Replace("\"", string.Empty, StringComparison.Ordinal)),
+            .. Regex.Matches(packCommand, $@"(?<!\S){propertySwitch}(?:[^\s""]|""[^""]*"")+")
+                .Select(match => Regex.Replace(match.Value, $"^{propertySwitch}", "-p:")
+                    .Replace("\"", string.Empty, StringComparison.Ordinal)),
+        ];
+
+        string[] PropertiesFor(string project) => [
+            .. packProperties.Select(value => value
+                .Replace("$GITHUB_WORKSPACE", root, StringComparison.Ordinal)
+                .Replace("$name", Path.GetFileNameWithoutExtension(project), StringComparison.Ordinal)),
         ];
 
         // Evaluate the actual pack properties, including later overrides, instead of defaults.
         foreach (string project in expectedLibraries) {
-            string[] properties = packProperties.Select(value => value
-                .Replace("$GITHUB_WORKSPACE", root, StringComparison.Ordinal)
-                .Replace("$name", Path.GetFileNameWithoutExtension(project), StringComparison.Ordinal)).ToArray();
-            (string enable, string baseline) = EvaluatePackageValidation(root, Path.Combine(root, project), properties);
+            (string enable, string baseline) = EvaluatePackageValidation(root, Path.Combine(root, project), PropertiesFor(project));
             enable.ShouldBe("true", project);
             if (laterBaselineOverride is null) {
                 baseline.ShouldBe(publishedBaseline, project);
             }
             else {
                 baseline.ShouldBe(laterBaselineOverride, project);
-                Should.Throw<ShouldAssertException>(() => baseline.ShouldBe(publishedBaseline, project));
+                baseline.ShouldNotBe(publishedBaseline, project);
             }
         }
 
         foreach (string project in toolExceptions) {
-            string[] properties = packProperties.Select(value => value
-                .Replace("$GITHUB_WORKSPACE", root, StringComparison.Ordinal)
-                .Replace("$name", Path.GetFileNameWithoutExtension(project), StringComparison.Ordinal)).ToArray();
-            (string enable, _) = EvaluatePackageValidation(root, Path.Combine(root, project), properties);
+            (string enable, _) = EvaluatePackageValidation(root, Path.Combine(root, project), PropertiesFor(project));
             enable.ShouldBe(
                 "false",
                 $"{project} is PackAsTool, so the SDK disables package validation and the CLI pack alone cannot enforce the gate.");

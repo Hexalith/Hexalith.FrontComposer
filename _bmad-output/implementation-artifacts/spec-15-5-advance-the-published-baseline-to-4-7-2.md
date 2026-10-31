@@ -79,6 +79,7 @@ Run ordinary dependency validation and the actual event-base diff with full cano
 - `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-activation-handoff.md`
 - `_bmad-output/implementation-artifacts/spec-15-5-advance-the-published-baseline-to-4-7-2.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
 
 
 ## Implementation Verification — 2026-10-31
@@ -446,3 +447,85 @@ require their separately authorized event/review path; no push or merge is part
 of this delivery. A local delivery commit will be validated against the actual
 parent and receive ordinary/strict checks at its actual canonical SHA. Its final
 SHA cannot be embedded in its own contents; post-commit receipts remain local.
+
+
+## Code review — 2026-10-31
+
+Post-delivery review of the story commit
+4dfc5390e117b601b88254304985f60d74981acd..eb1f0f7158b254dfacf460b2e30199ac8912944f
+(82.007 kB; Blind Hunter floor min(floor(sqrt(82.007) + 1), 10) = 10). External
+4dfc5390 is excluded. Four independent reviewers ran at the parent model
+capability: Blind Hunter, Edge Case Hunter, Verification Gap and Acceptance
+Auditor. At review time main was eacc218d431e198e1d48d83f3e4260c4dd53991b; the
+rebased copy decbb195f1c010460530fde6b662a6118a83ee7c and merge
+5cd01bd8b501a4f64c0997e966c964dccaa2eb71 carry the same content, and every listed
+path at HEAD equals eb1f0f71 except the later re-sealed
+`eng/dependency-graph-policy.json`. Every finding was verified against HEAD, the
+hosted runs and the story validators before triage.
+
+### Review Findings
+
+- [x] [Review][Decision] Story 15.5 `review` transition is not supported by current evidence — sprint-status moved the story in-progress → review, but `spec-15-5-prepare-the-inactive-policy-precursor.md` is still `in-progress` with seven unchecked round-3 `[Review][Patch]` items, and the frozen intent keeps Story 15.5 open while transition gates remain unresolved. Hosted: CI 41182262969 for decbb195 (the seal change) was cancelled by `cancel-in-progress` when 05f01d72 was pushed; CI 41182438087 then used decbb195 as its event base (failing on its own `consumer projection root source selectors changed`), and CI 41183043376 (5cd01bd8) and 41184768444 (eacc218d) are green. The seal transition's actual-base check never completed — neither refused nor passed — and the new seal is now the active event-base policy. Options: return Story 15.5 to in-progress until the precursor patches and transition record are resolved, or keep `review` (an open state) and record the cancelled actual-base check as an open item. (Acceptance Auditor; Blind Hunter's companion claim that no admission route is recorded is refuted — the route lives in the precursor and policy-activation specs.) Resolved 2026-10-31: Story 15.5 returns to in-progress; this bounded 4.7.2 spec stays done. A local read-only replay of the cancelled event (`--event-base a9c66bfe… --candidate decbb195…`) exits 1 on the configuration seal, recorded in the ledger's `Story 15.5 code review: cancelled seal-transition check — 2026-10-31` entry; no hosted re-run was requested.
+- [x] [Review][Patch] Gate 4 pack-argument collector drops overrides it cannot parse [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2081] — `(?<!\S)-p:` (line 2090) matches only the `-p:` spelling and `Single()` reads one physical line, so a `/p:`, `-property:`, `--property:` or `\`-continued override of `FrontComposerPackageValidationBaselineVersion` reaches ApiCompat while the test still evaluates 4.7.2 (pre-verified by Verification Gap). Join continuations, collect every property-switch spelling normalized to `-p:`, and add a `/p:` regression case beside `[InlineData("4.7.1")]`.
+- [x] [Review][Patch] Real-tree hotfix test and production fixture still model a 4.7.1 candidate below the 4.7.2 baseline [tests/eng/test_pack_release_packages.py:299] — `validate_release_policy(ROOT, "4.7.1")` and its comment "`4.7.1` against published `4.7.0`" no longer describe the tree; `PRODUCTION_VERSION = "4.7.1-review.compat"` (line 40) is paired with the 4.7.2 `PUBLISHED_BASELINE_VERSION` while the MCP lane moved to `4.7.2-review.compat`. Use a `4.7.3` hotfix candidate against published `4.7.2` and align the fixture candidate.
+- [x] [Review][Patch] VG-1 theory asserts indirectly and duplicates its property substitution [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2106] — `Should.Throw<ShouldAssertException>(() => baseline.ShouldBe(...))` is `ShouldNotBe`, and the `$GITHUB_WORKSPACE`/`$name` substitution block is copied into the library and tool loops, so a new placeholder can be added to one loop and not the other.
+- [x] [Review][Patch] Published diagnostics page exposes undefined internal process terms [docs/diagnostics/README.md:9] — "prior-policy refusals, precursor review" name internal BMAD records adopters cannot resolve; keep the technical-baseline statement and the existing separately-owned disclaimer.
+- [x] [Review][Defer] CI cancel-in-progress can erase a policy-changing push's dependency-governance verdict [.github/workflows/ci.yml:16] — deferred: pre-existing concurrency setting; observed on decbb195 (run 41182262969 cancelled, the next event used it as its base). The fix touches a release-chain-pinned workflow and needs its own authorized change.
+- [x] [Review][Defer] Focused strict validation of this spec exits 1 at HEAD [_bmad-output/implementation-artifacts/spec-15-5-advance-the-published-baseline-to-4-7-2.md:65] — deferred: pre-existing; six later unrelated commits (5aeae9a9, d13fa361, 05f01d72, e9a0edd5, e08f0ef8, 126c43f6) touch listed paths and are reported as unmapped delivery commits; the global validator passes. Reconcile with `--base` on the next delivery that touches this spec.
+- [x] [Review][Defer] Baseline advancement has no maintained site checklist [docs/diagnostics/README.md:9] — deferred: pre-existing; one patch advance touches about 16 hand-maintained literals across 13 files plus a seal recompute, and the line-299 drift shows sites can lag silently.
+
+#### Rejected
+
+- Spec self-contradictions (status, sprint-status "no diff", 13 vs 15 paths) — rejected: the fix edits the spec under review.
+- Ledger and handoff state both in-progress and review — false: the closing paragraph explicitly records the transition to review as an open state that resolves no gate.
+- Orphaned, duplicated handoff paragraph — false: it sits under the dated `### Story 15.5 isolated final verification — 2026-10-31` heading; repeating it in the self-contained handoff record is append-only convention.
+- npm preset `^10.4.1` expectation is out of scope — low: documented in the isolated-verification record, the identical edit landed independently in 5aeae9a9, and HEAD is consistent; no correction remains without rewriting pushed history.
+- Collector misses `env:` overrides, `${VAR}` forms, quoted values or leftover `$` — false: `-p:` global properties override environment variables, and unexpanded or quoted values either touch only `BaseOutputPath` or fail the evaluation loudly.
+- CLI evaluated with Gate 4 arguments; Gate 2a baseline literal unasserted — low: the CLI branch only asserts validation is off, which PackAsTool guarantees for any arguments; the Gate 2a literal is inert by SDK design.
+- Gate 4 and Gate 4a version literals are not tied — low: a mismatch fails the blocking Gate 4a with `package-missing` (`eng/adopter_proof.py:73-75`); a static guard adds complexity for an unlikely drift.
+- Local-only proof, unresolvable candidate SHAs, no CI link for the delivered commit — rejected: recording post-delivery SHA/CI edits the spec under review; the hosted facts are captured in the decision and defer entries above.
+- Hosted observations left stale — rejected: the fix edits the spec under review or the append-only ledger.
+- Ledger reproduction script prints without asserting and lacks None guards — low: an eyeballed, recorded recipe in an append-only ledger; adding guards is more than a direct correction.
+- Candidates sort below the published baseline, so ApiCompat compares the package with itself — false: candidates are built from current source, AssemblyVersion 4.7.2.0 equals the baseline, and `<baseline>-ci` is the pre-existing enforced convention.
+- Counts and Tasks list disagree across the record — rejected: the fix edits the spec under review.
+- `review_loop_iteration` not advanced — rejected: the fix edits the spec under review.
+- Policy accepts a candidate at or below the baseline — low: pre-existing `eng/release_compatibility.py` behavior; semantic-release always computes a newer version and ApiCompat rejects a lower AssemblyVersion; the fix adds a guard.
+- Removed default evaluation masks per-project overrides — false: every live pack passes the baseline as a global property, which wins over project or imported values, and `_validate_baseline` still scans every packable project through the real-tree release-policy test.
+- Sprint-status `last_updated` key not advanced — low: superseded by this review's sprint-status synchronization.
+- Story pushed and merged twice despite "no push or merge" — false as a code defect: user-performed delivery; listed paths at HEAD equal eb1f0f71 apart from the later re-sealed policy file.
+
+### Review resolution — 2026-10-31
+
+The decision resolved to returning Story 15.5 to in-progress (sprint-status and
+the ledger entry above); this spec stays `done`, because its bounded 4.7.2 scope
+has no open patch. All four patches were applied on main after
+`34d0afde14c43b6079208c47f95297d0cf99b51d`:
+
+- Gate 4's collector joins `\` continuations and accepts every `-`/`--`/`/`
+  `p:`/`property:` switch, normalized to `-p:`. The override case is injected as
+  a continued line and runs with both `-p:` and `/p:`; the redundant
+  `Should.Throw` became `ShouldNotBe`, and one local function owns the
+  `$GITHUB_WORKSPACE`/`$name` substitution.
+- The real-tree hotfix test and `PRODUCTION_VERSION` derive the next patch from
+  `PUBLISHED_BASELINE_VERSION` (now `4.7.3` and `4.7.3-review.compat`),
+  following the fixture's history of sitting one release above the baseline.
+- `docs/diagnostics/README.md` drops "prior-policy refusals, precursor review".
+
+Local verification:
+
+- `python3 -m unittest tests/eng/test_pack_release_packages.py`: 47 passed.
+- `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -nodeReuse:false --disable-build-servers`:
+  0 warnings, 0 errors.
+- Shell.Tests `-method …CiGovernanceTests.QualityWorkflow_Gate4ValidatesEveryPackableLibrary`:
+  3 passed. Mutation checks: restricting the switch to `-p:` fails only the
+  `/p:` case; removing the continuation join fails both override cases.
+- Shell.Tests `-class …CiGovernanceTests -class …AnalyzerPolicyGovernanceTests`:
+  97 total, 94 passed, 3 failed. All three failures were the canonical Release
+  build's MSB3277 AngleSharp 1.8.6/1.9.0 conflict from a stale local
+  `Testing.Tests` restore, not this change. After
+  `dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release`,
+  `-class …AnalyzerPolicyGovernanceTests` passed 8 of 8, including the
+  identifier-inventory seal.
+- `pwsh -NoProfile -File eng/validate-docs.ps1`: exit 0.
+
+No hosted run has observed these patches yet.
