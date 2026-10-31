@@ -1335,3 +1335,59 @@ sealed source projection`. The cancelled run is therefore recorded as an
 uncompleted transition that would have refused, not as a pass, and later green
 results do not relabel it. The precursor spec's seven open round-3 review patches
 also remain open. No hosted re-run, release, activation or approval occurred.
+
+
+### Story 15.5 precursor round-3 review resolution — 2026-10-31
+
+The [precursor's round-3 resolution](spec-15-5-prepare-the-inactive-policy-precursor.md#round-3-review-resolution--2026-10-31)
+resolves its seven review patches as documentation only. Earlier ledger entries
+stay as written; this entry corrects them where stated.
+
+The precursor deviated from its frozen intent. It reached main through direct
+merge 92eff2e7b1b0f53631c53fa8284b466e202ae921 with no PR (`gh pr list --head
+fix/story-15-5-policy-precursor --state all` returns `[]`), while candidate
+validation was failing. The landed f75d774d281aa6d4764d9576597ff98ecfbaa3a7
+policy is unreviewed and must not serve as a reviewed prior policy for
+activation. Its owner acceptance remains open.
+
+The 2026-10-30 resumed entry above says the run made no commit, push, merge or
+remote write, and that the selected Platform was
+eba576951e61e9763341463516247dcbf8fc0b90. Both were stale at delivery. Commit
+e07e2f42605ffde307606f4ee027c382ef1e8aa4 delivered that entry to origin/main and
+selected Platform a185bfaa5541f8de675fb82e4f553e1e49931201. Ordinary validation
+refuses that owner pin. At e07e2f42,
+[CI 41099330117](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41099330117)
+failed dependency-governance, and
+[Quality 41099329667](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41099329667)
+failed catalog preparation, skipped Gate 2b–4a and ended cancelled. The earlier
+in-progress Quality 41097179475 failed catalog preparation at 17:19:14Z and
+ended cancelled at 17:20:39Z. Quality 41097863471 and CI 41097864370 at
+f69562a2a1b0f11295278c4e715bbf7ecf2999f7 also ended cancelled. None supplies a
+governance verdict.
+
+The same entry says "the old DW-1988 retained-file refusal remains history".
+That is wrong: the retained blob dae4eaa21e728002a0304104327e5f4de8fff7c3
+(SHA-256 `48b3abca2eb67bc09bde33f3f0203e10fbca810614d0582852be4ab54294dc9d`) is
+still present at Parties 8b0e23e437296691d0233fe86afc765063f9fef5, masked by the
+root refusal. Upstream Parties d651173dc4b9b121217a28a97b3090ddf9e60960 later
+cleared both refusals, and FrontComposer fa30a34785b27a1a95903e35a7a1c1507426a5ab
+sealed the result. DW-1988's closure remains its owners' decision.
+
+At HEAD 188d8b733090a83108bd006aaa9fa71cd9a5a2d8, `acquire-catalogs` passes.
+Ordinary validation, the actual-parent push diff from
+a55960f5441239410107bda3d547b381fdfa6f3a and clean infrastructure/CI governance
+(108 of 109) fail on `consumer projection root source selectors changed`.
+External commit a55960f5 moved root Builds and changed consumer configuration
+without renewing the Platform projection seals. `root_selectors_sha256`,
+`builds_commit` and `consumer_configuration_sha256` all drift; only the first is
+reported. Failed-step logs of hosted CI 41214552453 and 41215250922 and of
+Quality 41215250572 (one Gate 2b Shell.Tests error) carry the same message. The
+reseal is a separate seal transition, deferred here, as are owner acceptance of
+the unreviewed precursor policy and sibling-spec strict attribution.
+
+Receipts are archived at
+`/home/administrator/.local/state/hexalith/frontcomposer/story-15-5-policy-precursor-20261031/round3-receipts.tar.gz`
+(SHA-256 `55b4d00df5d68170868d60734d929bbc87cbb858387e22625733723eb45c24e0`).
+This is machine-local retention, not hosted evidence. The resolution changes no
+policy, dependency, guard or gitlink and grants no publication, owner, Fluent,
+Product, EventStore, GOV-1 or activation approval.
