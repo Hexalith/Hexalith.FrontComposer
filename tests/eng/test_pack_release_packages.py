@@ -112,7 +112,7 @@ class PackReleasePackagesTests(unittest.TestCase):
         # The production plan test runs against a synthetic fixture, so this is the only guard
         # that the REAL script exits 0 with --release-policy against the REAL tree. A tree that
         # cannot pack any version -- the pass-1 regression -- fails here.
-        result = self.run_plan("4.7.1", release_policy=True)
+        result = self.run_plan("4.7.2", release_policy=True)
 
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)

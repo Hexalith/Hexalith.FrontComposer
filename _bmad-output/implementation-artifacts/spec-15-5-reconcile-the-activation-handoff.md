@@ -430,3 +430,76 @@ This run does not alter policy, dependencies, guards, Story 16.1 or sprint statu
 and makes no commit or remote write. Story 15.5/REL-BASE-1 remain review; all
 independent approvals and a2ed597bfbf3e178928144963ad8c9cb63077b3c's historical
 strict failure retain their prior dispositions.
+
+
+### Published 4.7.2 technical baseline continuation — 2026-10-31
+
+The [new bounded advancement](spec-15-5-advance-the-published-baseline-to-4-7-2.md)
+and [append-only ledger observation](rel-ai-1-release-evidence-ledger.md#story-155-published-472-baseline-advancement--2026-10-31)
+select exactly published `4.7.2`, preserving this completed handoff, its frozen
+intent, baseline, File List and every historical result above. Immutable v4.7.2
+release `429411190` and all eight NuGet nuspecs identify source
+`085026328a6ae6f9818b9529e7b79db374e1f055`.
+[Release 41111778787/1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41111778787/attempts/1)
+and independent
+[Release Evidence 41115667970/1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41115667970/attempts/1)
+are completed/success at that source; these are not candidate-source CI results.
+
+The active baseline and focused candidate/binary expectations advance together;
+only the two XML baseline inputs change the consumer-configuration seal. All
+other policy values, root selectors, guards, contracts and the empty suppression
+ledger remain intact. Local 202-case Python, 98 diagnostic, 107 infrastructure/CI,
+four Contracts.UI and five Testing boundary results pass, as do all seven existing
+Release Gate 4 ApiCompat packs against 4.7.2. Exact commands and remaining checks
+are recorded in the new implementation artifact.
+
+Starting HEAD `7e25d2b52a0becf265b7904cc157b42c7bff5b1d` and local unreferenced
+technical candidate `67b483831d2104203379c19ae1f1559c4064e2ae` each pass ordinary
+committed validation. Their actual-base transition remains exit 1 on the sealed
+configuration guard; the previous actual-parent event remains exit 1 on Platform
+`097d663f79f409f723fc1d2bd0609d46be4a417a`'s owner pin. Candidate diagnostics do
+not authorize either event, approve the merged unreviewed precursor, or repair
+historical compliance/attribution failures.
+
+At the dated ledger observation, CI `41176684664` attempt 1 at starting HEAD is
+completed/failure. Quality `41176684504` attempt 1 remains in_progress overall,
+with failed catalog preparation and skipped infrastructure/ApiCompat in its
+completed failed build job. The successful publication/verifier attempts and
+local packs do not replace those source-specific hosted gates. Story 15.5 stays
+in-progress; REL-BASE-1 remains review. Publication, owner, Fluent, Product and
+EventStore approvals retain their independent dispositions. No push, merge,
+publication, dependency update or approval is performed by this continuation.
+
+The later local MCP boundary run also passes both cases, including cold/warm
+4.7.2 validation and the unchanged missing-baseline refusal. This does not change
+the failed actual-base transitions or any separately owned approval.
+
+Full documentation validation subsequently passes, including eight compile
+snippets and DocFX 2.81.0 metadata/site generation, after restoring the existing
+pinned local tool manifest. Global/focused artifact checks and diff hygiene pass.
+The new spec retains the initial missing-command failure, exact commands, source
+coordinates and all unresolved transition/approval limits.
+
+
+### Stable-source review completion — 2026-10-31
+
+The new 4.7.2 successor's independent review is complete and all five accepted
+corrections are resolved. A clean local candidate
+`ccf8250a5404aea3fca835de74d0a30858610364`, parented by preserved external
+4dfc5390, passes 419 focused tests, all seven ApiCompat packs, matching-source
+Gate 4a adopter smoke, fresh-context Gate 2a CLI smoke, full documentation and
+strict artifact ownership. The earlier shared-worktree package mismatch remains
+failed history; the new pass uses freshly aligned package/source identities.
+Only the existing configuration seal changes. Its direct-parent transition
+still fails, the historical Platform refusal is retained, and Story 15.5 remains
+in-progress. No precursor owner acceptance, publication or independent approval
+is inferred. Exact commands and preserved prerequisite failures are in the new
+implementation record; this completed historical handoff's frozen intent,
+baseline, File List and earlier content remain unchanged.
+
+
+The final build-workflow handoff marks only the bounded 4.7.2 successor done and
+advances the encompassing Story 15.5 to review, an open state. This is a tracking
+transition after local verification and independent implementation review; it
+does not resolve the retained policy-transition failures or separately owned
+approvals. No push, merge or activation is authorized by that handoff.
