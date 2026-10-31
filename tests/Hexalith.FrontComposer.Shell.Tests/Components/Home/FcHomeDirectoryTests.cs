@@ -189,7 +189,7 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
     [Theory]
     [InlineData("en", "Order processing", "Order processing, 4 items pending")]
     [InlineData("fr", "Traitement des commandes", "Traitement des commandes, 4 éléments en attente")]
-    public void HomeCard_PositiveCount_PreservesLocalizedPendingSummaryAndMultipleVisibleRows(
+    public void HomeCard_PositiveCount_LocalizesAccessibleName(
         string cultureName,
         string displayName,
         string expectedPendingSummary) {
