@@ -22,6 +22,8 @@ public sealed class FcThemeToggleTests : LayoutComponentTestBase {
 
         cut.Markup.ShouldContain("fc-sr-only");
         cut.Markup.ShouldContain(localizer["ThemeToggleAriaLabel"].Value);
+        cut.Find("fluent-menu-button").GetAttribute("aria-label")
+            .ShouldBe($"{localizer["ThemeToggleAriaLabel"].Value}: {localizer["ThemeLightLabel"].Value}");
     }
 
     [Fact]
@@ -32,5 +34,21 @@ public sealed class FcThemeToggleTests : LayoutComponentTestBase {
         IStringLocalizer<FcShellResources> localizer = Services.GetRequiredService<IStringLocalizer<FcShellResources>>();
 
         cut.Markup.ShouldContain(localizer["ThemeDarkLabel"].Value);
+        cut.Find("fluent-menu-button").GetAttribute("aria-label")
+            .ShouldBe($"{localizer["ThemeToggleAriaLabel"].Value}: {localizer["ThemeDarkLabel"].Value}");
+    }
+
+    [Fact]
+    public void Accessible_name_tracks_theme_changes_after_render() {
+        IRenderedComponent<FcThemeToggle> cut = Render<FcThemeToggle>();
+        IStringLocalizer<FcShellResources> localizer = Services.GetRequiredService<IStringLocalizer<FcShellResources>>();
+
+        DispatchTheme(ThemeValue.System);
+        cut.WaitForAssertion(() => cut.Find("fluent-menu-button").GetAttribute("aria-label")
+            .ShouldBe($"{localizer["ThemeToggleAriaLabel"].Value}: {localizer["ThemeSystemLabel"].Value}"));
+
+        DispatchTheme(ThemeValue.Dark);
+        cut.WaitForAssertion(() => cut.Find("fluent-menu-button").GetAttribute("aria-label")
+            .ShouldBe($"{localizer["ThemeToggleAriaLabel"].Value}: {localizer["ThemeDarkLabel"].Value}"));
     }
 }
