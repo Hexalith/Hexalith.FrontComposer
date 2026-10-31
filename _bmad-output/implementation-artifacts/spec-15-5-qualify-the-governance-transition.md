@@ -2,7 +2,7 @@
 title: 'Story 15.5: Qualify the Governance Transition'
 type: 'chore'
 created: '2026-10-30'
-status: 'in-review'
+status: 'done'
 route: 'oneshot'
 story_id: '15.5'
 story_key: '15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline'
@@ -411,3 +411,93 @@ Hunter and Verification Gap. Every finding was checked against actual artifacts.
 These patches improve the evidence record. They do not approve a new source tuple
 or remedy failed graph/governance gates. The existing policy/metadata prerequisites
 are handed off explicitly; no new behavior or independent approval is inferred.
+
+
+## Code review — 2026-10-31
+
+Follow-up review of the three Story 15.5 commits that had no four-layer review:
+b1d89648ae6feed1c89e48c265de013e1507fa97 (this record),
+188d8b733090a83108bd006aaa9fa71cd9a5a2d8 (the 4.7.2 review patches, governed by
+[the 4.7.2 record](spec-15-5-advance-the-published-baseline-to-4-7-2.md#code-review--2026-10-31))
+and 6811bfd6ca47e3272c692288503c68552040df4c (the precursor round-3 resolution,
+governed by [the precursor record](spec-15-5-prepare-the-inactive-policy-precursor.md#code-review-round-3--2026-10-30)).
+Each commit was diffed against its own parent (147.235 kB; Blind Hunter floor
+min(floor(sqrt(147.235) + 1), 10) = 10). Four independent reviewers ran at the
+parent model capability: Blind Hunter, Edge Case Hunter, Verification Gap and
+Acceptance Auditor. Every finding was verified against HEAD
+e442544c, Git history, hosted runs and local probes before triage.
+
+### Review Findings
+
+- [x] [Review][Decision] Precursor promoted to `done` without the human amendment its own record requires — 6811bfd6 sets `spec-15-5-prepare-the-inactive-policy-precursor.md` to `status: 'done'` on Blind Hunter BH-31-13 alone. The same record's 2026-10-30 resumed section (line 490) says "this spec must not be promoted to done. Completing the successor requires a human amendment permitting renewed current-tuple qualification and the necessary Parties content/dependency-selection repair". Its frozen intent (a draft owner-review PR, no merge) was never met: the precursor landed by direct merge 92eff2e7 with no PR, its policy is recorded as unreviewed and owner acceptance is open. No human amendment is recorded. Options: (1) keep `done` and record a dated human amendment that the bounded record work is closed, with the open items carried by the three round-3 deferrals; (2) set the precursor to a non-done state (for example `blocked`) until owner acceptance is settled. Resolved 2026-10-31: human decision, option 1. The precursor stays `done`; a dated human amendment is recorded in the precursor record (patch below).
+- [x] [Review][Patch] Record the human amendment that keeps the precursor `done` [_bmad-output/implementation-artifacts/spec-15-5-prepare-the-inactive-policy-precursor.md:721] — append a dated `Human amendment — 2026-10-31` section. It states that the 2026-10-31 human decision closes the bounded record work and supersedes the line-490 condition. It also states that `done` does not accept or review the f75d774d policy, close owner acceptance or grant activation, and that the open items stay with the three round-3 deferrals.
+- [x] [Review][Patch] Round-3 records say main is red on a55960f5's unsealed Builds move, but bf87ab62 had already resealed it [_bmad-output/implementation-artifacts/deferred-work.md:11089] — 6811bfd6 (authored 17:19+01:00, committed 19:22+01:00 on parent 51121f24) adds a high deferral saying main's dependency governance "has been red since" a55960f5 and "every later push stays red until a separately authorized seal transition renews all three fields"; its ledger entry calls the reseal "deferred here" and the sprint-status comment (sprint-status.yaml:232) says "main stays red on a55960f5's unsealed Builds move (deferred)". Ancestor bf87ab6224979d7ba8a297b23365ec99db861cbf (`spec-requalify-selected-hosting-helper`) had already renewed `builds_commit` (a22b55f0 → bb1b71eb), `root_selectors_sha256` and `consumer_configuration_sha256`. `python3 eng/dependency_graph.py --root . validate --commit <sha>` exits 0 at bf87ab62, 86e07bab, 51121f24 and 6811bfd6, and exits 1 only at 188d8b73. Hosted CI and Quality are success at 86e07bab (41223391369/41223391036), 51121f24 (41225916404/41225916043) and 6811bfd6 (41229072774/41229072509); bf87ab62's own CI 41223229013 and Quality 41223228512 were cancelled, the cancel-in-progress pattern already deferred for decbb195. Correct the high deferral in place as resolved by bf87ab62, append a dated ledger correction and rewrite the sprint-status reason. HEAD e442544c (`fix: submodules`, outside this review) is red again for a different reason: validate exits 1 with `github.com/hexalith/hexalith.platform@03a099bba258c37a8f16c8b2e842ae842b1ad6d6: consumer source projection owner pin changed`.
+- [x] [Review][Patch] Gate 4 collector misses quoted, space-delimited and `=`-delimited override switches [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2096] — 188d8b73's comment and commit claim the collector accepts every MSBuild property-switch spelling, but `propertySwitch` requires a colon and `(?<!\S)` fails after a quote. A local probe shows `dotnet pack` applies `-p Foo=X`, `-p=Foo=X` and `--property Foo=X`, and bash passes a quoted `"-p:FrontComposerPackageValidationBaselineVersion=4.7.1"` to the pack unquoted. None is collected, so such a later Gate 4 override would reach ApiCompat while the live row still evaluates 4.7.2. Accept `:`, `=` or whitespace after the switch, allow a leading quote in the lookbehind and add a row for each new form.
+- [x] [Review][Patch] No theory row exercises the `property:` or double-dash spellings [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2004] — the rows cover only `-p:` and `/p:`; narrowing `propertySwitch` to `(?:-|/)p:` still passes all three, so the `property:` hardening the 4.7.2 review asked for can be lost silently. Add `[InlineData("--property:", "4.7.1")]`; each row costs eight `dotnet msbuild -getProperty` evaluations.
+- [x] [Review][Patch] Hotfix comment says real-tree candidates "track every advance", but only patch advances are derived [tests/eng/test_pack_release_packages.py:40] — the `v4.7` release line stays literal at line 302 and in the `current_release="v4.7"` fixtures, so a minor advance still needs manual edits. Say "every patch advance".
+- [x] [Review][Patch] Checklist deferral cites a line its own commit fixed as still lagging [_bmad-output/implementation-artifacts/deferred-work.md:11084] — 188d8b73 adds "`tests/eng/test_pack_release_packages.py:299` has lagged since the 4.7.1 advance" in the commit that fixes line 299. A sweep that re-verifies the cited line can close the still-valid checklist deferral as already resolved. Reword it as past drift fixed by 188d8b73.
+- [x] [Review][Patch] Release ledger never records Story 15.5's return to review [_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md:1340] — the ledger's last Story 15.5 status statement (line 1323) is 188d8b73's "returns Story 15.5 to in-progress"; 6811bfd6 moves sprint-status to `review`, but its ledger and handoff entries do not record the transition, although earlier transitions were recorded there. Append it with the ledger correction above.
+
+#### Rejected
+
+Findings whose fix would edit one of the three specs under review are rejected under the workflow rule; where the record defect behind one is real, the line says so.
+
+- Qualification record says "No PR or remote write was made", yet b1d89648 is on origin/main — false: the statement covers this record's own run; when the precursor started, b1d89648 was local and remote main was e7e892b6 (precursor Implementation Notes), and the later push came through user-performed merges, as in the 4.7.2 review's rejected "pushed and merged twice" row.
+- This record has no superseded note or final state for Quality 41023802429, and its three deferrals are stale — rejected: the fix edits the spec under review; the deferral part is carried from round-3 BH-31-3 (true when observed; the sweep re-verifies).
+- b1d89648's three deferrals sit under the 2026-10-29 section and lack severity markers — false: they sit under their own dated `### … — 2026-10-30` heading and each carries `source_spec:` naming this record; round 3's defect was a block with no heading. The flat format has no severity field (round-3 BH-31-2).
+- Copied continuation text says "this repair" and points at /tmp — false: in the ledger and handoff it follows the repair's own entry, and the ledger's review-qualified paragraph points to this record's archive and checksum.
+- Receipt archives use different directories, and "Verify with `sha256sum <archive>`" checks nothing — low: both paths are outside temporary storage and recorded exactly, the expected hash is on the line above, and the fix edits the precursor spec under review.
+- The override is injected after the first physical `dotnet pack` line — low: the live command is one line; a multi-line reformat degrades only the self-test override rows (the live row joins correctly), and the fix restructures the injection.
+- Response-file (`@args.rsp`) overrides are not collected — low: no Gate 4 step uses response files, and modelling them is more than a direct correction.
+- `PUBLISHED_BASELINE_VERSION.split(".")` fails at import for a prerelease or four-part baseline — false: the constant is a published stable baseline, and a malformed value fails loudly at import.
+- The hotfix version is derived from the constant under test, so the test cannot catch a wrong constant — false: the requested 4.7.3 is exactly what is computed, and a literal would not catch a wrong constant either, because the policy accepts candidates at or below the baseline (the 4.7.2 review's rejected `eng/release_compatibility.py` row).
+- 188d8b73's verification omitted ordinary validation and InfrastructureGovernance, and "No hosted run has observed these patches yet" was never revisited — rejected: the fix edits the 4.7.2 spec under review; the red base was external (a55960f5), 6811bfd6 recorded the 188d8b73 lanes, and hosted CI/Quality at 6811bfd6 ran the patched tests green.
+- The decbb195 replay lacks context on whether refusal is expected and on its base — low: nothing it states is false; replay base a9c66bfe is decbb195's direct parent.
+- Sprint-status keeps the old "seven open patches" comment instead of replacing it — low: stacked dated comments are this file's convention (Story 15.1), and the newer comment supersedes it.
+- `acquire-catalogs` passes at 188d8b73 but failed at e7e892b6 without explanation, so hosted preparation lets a drifted-seal base through — false: preparation is not admission; at 188d8b73 Quality 41215250572 still failed Gate 2b and CI 41215250922 failed dependency governance on the same seal. An explanation would edit the precursor spec under review.
+- DW-1988 has no pointer to its new decision entry — false, carried from round-3 BH-31-2: the new entry names DW-1988, and the adjacent in-place correction was required by round-3 Patch 3.
+- Hosted checks name connector tools instead of `gh` commands — rejected: the fix edits the spec under review; the exact REST paths are recorded and reproducible with `gh api`.
+- The inline reproduction script uses bare `assert` (stripped by `-O`), a private helper, an unused import and a double write, and raises `StopIteration`/`TypeError` or writes an empty or partial report on missing data — rejected: the fix edits the spec under review; each case either fails loudly or needs input never shown reachable for this diagnostic.
+- Round-3 diagnostics exist only in a machine-local archive — false: round-3 Patch 4 required a persistent archive with checksum, member manifest and exact invocations, and all four were delivered.
+- This spec is `in-review` while its text says the transition is blocked — false: `in-review` is the correct state while this review is pending; the blocked transition is an external prerequisite recorded in the body.
+
+### Review resolution — 2026-10-31
+
+The decision resolved to option 1, and all seven patches were applied to the
+working tree on HEAD e442544ca2369a43c3e5244eb8005a551a713a77:
+
+- `deferred-work.md`: the round-3 a55960f5 entry is corrected in place as resolved
+  by bf87ab62, with the validation and hosted evidence above, and the checklist
+  entry now reads its line-299 lag as past drift fixed by 188d8b73.
+- `rel-ai-1-release-evidence-ledger.md`: a dated entry records the reseal
+  correction, e442544c's new owner-pin refusal, Story 15.5's return to review
+  and the human amendment's limits.
+- `sprint-status.yaml`: the false clause is removed from the round-3 reason, and
+  a dated comment records the correction.
+- `spec-15-5-prepare-the-inactive-policy-precursor.md`: a dated `Human amendment
+  — 2026-10-31` section keeps the spec `done` and states what that does not grant.
+- `CiGovernanceTests.cs`: the collector accepts `:`, `=` or whitespace after the
+  switch and a fully quoted switch argument; the theory now passes a template
+  per row and adds `--property:`, `-p `, `-p=` and quoted `"-p:…"` rows.
+- `test_pack_release_packages.py`: the comment says "every patch advance".
+
+Local verification:
+
+- `python3 -m unittest tests/eng/test_pack_release_packages.py`: 47 passed.
+- `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release --nologo -nodeReuse:false --disable-build-servers -p:NuGetAudit=false`:
+  0 warnings, 0 errors.
+- Shell.Tests `-method …CiGovernanceTests.QualityWorkflow_Gate4ValidatesEveryPackableLibrary`:
+  7 passed. Mutation checks: the previous collector regex fails exactly the
+  `-p `, `-p=` and quoted rows; narrowing the switch to `(?:-|/)p` fails exactly
+  the `--property:` row. The file was restored byte-identically and rebuilt.
+- Shell.Tests `-class …CiGovernanceTests`: 93 passed.
+- `python3 eng/validate-story-artifacts.py`: exit 0. `git diff --check`: exit 0.
+  All seven edited files remain CRLF-only.
+
+No hosted run has observed these patches yet.
+
+By human decision on 2026-10-31, this spec moves to `done`. That supersedes the
+2026-10-30 statement that it is not marked done while its governance transition
+and PR are blocked. `done` closes only the reviewed record work. The blocked
+transition remains an external prerequisite, Story 15.5 and REL-BASE-1 stay at
+review, and no publication, owner or independent approval is granted.

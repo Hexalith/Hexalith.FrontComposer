@@ -2002,9 +2002,13 @@ public sealed class CiGovernanceTests {
 
     [Theory]
     [InlineData(null, null)]
-    [InlineData("-p:", "4.7.1")]
-    [InlineData("/p:", "4.7.1")]
-    public void QualityWorkflow_Gate4ValidatesEveryPackableLibrary(string? overrideSwitch, string? laterBaselineOverride) {
+    [InlineData("-p:{property}", "4.7.1")]
+    [InlineData("/p:{property}", "4.7.1")]
+    [InlineData("--property:{property}", "4.7.1")]
+    [InlineData("-p {property}", "4.7.1")]
+    [InlineData("-p={property}", "4.7.1")]
+    [InlineData("\"-p:{property}\"", "4.7.1")]
+    public void QualityWorkflow_Gate4ValidatesEveryPackableLibrary(string? overrideArgument, string? laterBaselineOverride) {
         // Spec "make the release compatibility gates actually enforce" (amended after review pass
         // 1): Gate 2a packs only Hexalith.FrontComposer.Cli, which is PackAsTool, and the SDK
         // disables package validation for tool layouts — those properties are inert there. Gate 4
@@ -2079,13 +2083,18 @@ public sealed class CiGovernanceTests {
         toolExceptions.ShouldBe(["src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj"]);
 
         // A later override is injected as a `\`-continued line, so the collector must join shell
-        // continuations and accept every MSBuild property-switch spelling to see it.
+        // continuations and accept every property-switch spelling `dotnet pack` applies: `-`, `--`
+        // or `/`; `p` or `property`; `:`, `=` or whitespace; optionally as one quoted argument.
         string packScript = libraryGate;
         if (laterBaselineOverride is not null) {
+            string overrideProperty = (overrideArgument ?? string.Empty).Replace(
+                "{property}",
+                $"FrontComposerPackageValidationBaselineVersion={laterBaselineOverride}",
+                StringComparison.Ordinal);
             packScript = Regex.Replace(
                 packScript,
                 @"(?m)^([ \t]*dotnet pack[^\r\n]*)",
-                $"$1 \\\n    {overrideSwitch}FrontComposerPackageValidationBaselineVersion={laterBaselineOverride}");
+                $"$1 \\\n    {overrideProperty}");
         }
 
         // Preserve property order: MSBuild applies the last duplicate command-line property.
@@ -2093,11 +2102,13 @@ public sealed class CiGovernanceTests {
         string packCommand = Regex.Matches(packScript, @"(?m)^[ \t]*dotnet pack[^\r\n]*").Single().Value;
         Match configuration = Regex.Match(packCommand, @"--configuration (?<value>[^\s]+)");
         configuration.Success.ShouldBeTrue("evaluate the same configuration as the live pack command.");
-        const string propertySwitch = @"(?:--?|/)(?i:p|property):";
+        const string propertySwitch = @"(?:--?|/)(?i:p|property)(?::|=|[ \t]+)";
         string[] packProperties = [
             $"-p:Configuration={configuration.Groups["value"].Value}",
-            .. Regex.Matches(packCommand, $@"(?<!\S){propertySwitch}(?:[^\s""]|""[^""]*"")+")
-                .Select(match => Regex.Replace(match.Value, $"^{propertySwitch}", "-p:")
+            .. Regex.Matches(
+                    packCommand,
+                    $@"(?<!\S)(?:""{propertySwitch}[^""]*""|'{propertySwitch}[^']*'|{propertySwitch}(?:[^\s""]|""[^""]*"")+)")
+                .Select(match => Regex.Replace(match.Value.Trim('"', '\''), $"^{propertySwitch}", "-p:")
                     .Replace("\"", string.Empty, StringComparison.Ordinal)),
         ];
 

@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 10-31-2026 17:18
+last_updated: 10-31-2026 23:49
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -229,8 +229,12 @@ development_status:
   # 2026-10-31: Story 15.5 code review returned the story to in-progress: the precursor spec keeps seven open
   # review patches and the decbb195 seal transition's actual-base check was cancelled, never completed.
   # 2026-10-31: precursor round-3 patches resolved (spec done); the cancelled decbb195 check is recorded as a
-  # refusing, uncompleted transition. Review is an open state: main stays red on a55960f5's unsealed Builds
-  # move (deferred), and precursor owner acceptance and the qualification spec remain open.
+  # refusing, uncompleted transition. Review is an open state: precursor owner acceptance and the qualification
+  # spec remain open.
+  # 2026-10-31: code review of b1d89648/188d8b73/6811bfd6 corrected the reason above: bf87ab62 had already
+  # resealed a55960f5's Builds move (main green at 6811bfd6). HEAD e442544c is red on a new Platform owner pin.
+  # By human decision the precursor stays done (amendment) and the qualification spec is done; Story 15.5
+  # stays at review while precursor owner acceptance remains open.
   15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: review
   # superseded 2026-10-23 by spec-evidence-storage-simplification.md (PRD §7 evidence policy):
   # committed evidence and its machinery were removed instead of externalized; closed as done.

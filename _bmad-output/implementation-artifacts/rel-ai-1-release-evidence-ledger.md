@@ -1391,3 +1391,36 @@ Receipts are archived at
 This is machine-local retention, not hosted evidence. The resolution changes no
 policy, dependency, guard or gitlink and grants no publication, owner, Fluent,
 Product, EventStore, GOV-1 or activation approval.
+
+
+### Story 15.5 code review of three unreviewed commits — 2026-10-31
+
+The [code review recorded in the qualification record](spec-15-5-qualify-the-governance-transition.md#code-review--2026-10-31)
+covers b1d89648ae6feed1c89e48c265de013e1507fa97,
+188d8b733090a83108bd006aaa9fa71cd9a5a2d8 and
+6811bfd6ca47e3272c692288503c68552040df4c. This entry corrects the round-3 entry
+above where stated; earlier entries stay as written.
+
+The round-3 entry says the a55960f5441239410107bda3d547b381fdfa6f3a reseal is
+"deferred here". It was already done when that entry landed. Ancestor
+bf87ab6224979d7ba8a297b23365ec99db861cbf (`test: qualify selected hosting helper
+sources`) renewed `builds_commit` (a22b55f0 → bb1b71eb), `root_selectors_sha256`
+and `consumer_configuration_sha256`. `python3 eng/dependency_graph.py --root .
+validate --commit <sha>` exits 0 at bf87ab62, 86e07bab, 51121f24 and 6811bfd6,
+and exits 1 at 188d8b73. Hosted CI and Quality succeed at 86e07bab
+(41223391369/41223391036), 51121f24 (41225916404/41225916043) and 6811bfd6
+(41229072774/41229072509). The reseal's own CI 41223229013 and Quality
+41223228512 were cancelled by cancel-in-progress, the pattern already deferred
+for decbb195. The corresponding deferred entry is corrected in place.
+
+Later commit e442544ca2369a43c3e5244eb8005a551a713a77 (`fix: submodules`), outside
+this review, moves six root submodule pointers without renewing the projection.
+Ordinary validation at it exits 1 with
+`github.com/hexalith/hexalith.platform@03a099bba258c37a8f16c8b2e842ae842b1ad6d6: consumer source projection owner pin changed`.
+
+Commit 6811bfd6 moved Story 15.5 from in-progress back to review, an open state;
+the round-3 entry did not record that transition. By human decision on
+2026-10-31, the precursor spec stays `done` through a dated human amendment in
+its record. That amendment closes only the bounded record work. It neither
+reviews nor accepts the f75d774d281aa6d4764d9576597ff98ecfbaa3a7 policy, closes
+owner acceptance, nor grants publication, activation or any independent approval.

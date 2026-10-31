@@ -719,3 +719,25 @@ The 2026-10-30 note that the done step is not reached while required gates fail
 applied to that run's own candidate gates. The precursor proposal has since been
 overtaken: it landed unreviewed and was re-sealed by later commits. The gates
 that still fail belong to the external a55960f5 seal gap. Story 15.5 stays open.
+
+
+## Human amendment — 2026-10-31
+
+The 2026-10-30 resumed section says this spec "must not be promoted to done" and
+that completing the successor requires a human amendment. The round-3 resolution
+promoted it to `done` without one. In the
+[code review recorded in the qualification record](spec-15-5-qualify-the-governance-transition.md#code-review--2026-10-31),
+the human decision of 2026-10-31 keeps this spec `done`. This amendment
+supersedes the 2026-10-30 condition.
+
+`done` here means only that the bounded record work is closed. It does not review
+or accept the f75d774d281aa6d4764d9576597ff98ecfbaa3a7 policy, does not close owner
+acceptance, and grants no publication, activation, owner, Fluent, Product,
+EventStore or GOV-1 approval. The frozen-intent deviation recorded above stands.
+The open items stay with three round-3 deferrals: owner acceptance and the
+reviewed prior policy, DW-1988's closure, and sibling-spec strict attribution.
+
+The a55960f5 seal gap named above was already closed when the round-3 resolution
+landed: bf87ab6224979d7ba8a297b23365ec99db861cbf renewed all three sealed fields,
+and ordinary validation passes at 6811bfd6ca47e3272c692288503c68552040df4c. The
+deferred and release ledgers carry that correction. Story 15.5 stays open.
