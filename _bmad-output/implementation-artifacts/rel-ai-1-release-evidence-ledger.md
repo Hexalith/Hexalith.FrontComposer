@@ -1081,3 +1081,236 @@ contains exact commands/revisions, evidence limits, review triage and renewed
 source/selection prerequisites. No current semantic, infrastructure, runtime,
 ApiCompat, publication or independent approval is granted. Story 15.5/REL-BASE-1
 remain review. This resumed run makes no commit, push, merge or remote write.
+
+
+### Story 15.5 Published 4.7.2 Baseline Advancement — 2026-10-31
+
+The user authorized advancing the active technical baseline to exactly `4.7.2`.
+The [bounded implementation](spec-15-5-advance-the-published-baseline-to-4-7-2.md)
+preserves the completed 4.7.1 spec, its frozen amendment and all earlier ledger
+observations. Starting HEAD remains
+`7e25d2b52a0becf265b7904cc157b42c7bff5b1d`.
+
+Read-only GitHub API observations on 2026-10-31 confirm
+[immutable v4.7.2](https://github.com/Hexalith/Hexalith.FrontComposer/releases/tag/v4.7.2),
+release ID `429411190`, published `2026-10-30T19:28:01Z`. Its tag resolves directly
+to source `085026328a6ae6f9818b9529e7b79db374e1f055`.
+[Release 41111778787, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41111778787/attempts/1)
+and the independent
+[Release Evidence 41115667970, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41115667970/attempts/1)
+are completed/success at that exact source. These are published-source results,
+not CI results for this local baseline change.
+
+Inventory-derived NuGet v3 flat-container index, package HEAD and downloaded
+nuspec checks find exactly these eight latest stable packages. Every nuspec
+reports version `4.7.2` and repository commit
+`085026328a6ae6f9818b9529e7b79db374e1f055`:
+
+| Package | Version | Package endpoint |
+| --- | --- | --- |
+| Hexalith.FrontComposer.Cli | 4.7.2 | HTTP 200 |
+| Hexalith.FrontComposer.Contracts | 4.7.2 | HTTP 200 |
+| Hexalith.FrontComposer.Contracts.UI | 4.7.2 | HTTP 200 |
+| Hexalith.FrontComposer.Mcp | 4.7.2 | HTTP 200 |
+| Hexalith.FrontComposer.Schema | 4.7.2 | HTTP 200 |
+| Hexalith.FrontComposer.Shell | 4.7.2 | HTTP 200 |
+| Hexalith.FrontComposer.SourceTools | 4.7.2 | HTTP 200 |
+| Hexalith.FrontComposer.Testing | 4.7.2 | HTTP 200 |
+
+The API inputs are `repos/Hexalith/Hexalith.FrontComposer/releases/tags/v4.7.2`,
+`git/ref/tags/v4.7.2` and the two `actions/runs/<id>/attempts/1` endpoints.
+NuGet inputs are `https://api.nuget.org/v3-flatcontainer/<lowercase-package>/index.json`
+and `<lowercase-package>/4.7.2/<lowercase-package>.4.7.2.nupkg` on that same base.
+These availability/nuspec checks do not claim a fresh signature or ZIP-member
+comparison audit; the successful independent hosted verifier remains attributed
+to its original source and attempt.
+
+The policy constant, shared/default and Contracts.UI override, Quality consumer
+and pack coordinates, and four focused assertion files now select `4.7.2`.
+MCP uses candidate `4.7.2-review.compat` and binary `4.7.2.0`; its missing-baseline
+failure remains required. The existing empty v4.7 suppression ledger, contracts,
+inventory, selectors, all other policy values and guards are preserved.
+
+Only the consumer-configuration seal changes, from
+`576787166037b08cb25c3c21ae06c1135d7573ba8a47520c4b06208349841484`
+to `c05817271c10b796ad652a868ca59a5bf076f36584acfb2190a821f24070a9be`.
+The existing `consumer_configuration` and `canonical_digest` functions read 39
+exact Git configuration blobs; only `Directory.Build.targets` and the
+Contracts.UI project differ. Every root gitlink and the root-selector digest
+`33d945a7f93d45f238dd749d0412c9823b85e6bae4d0266b8151fdf5a6f180bf`
+match the preserved baseline. Unreferenced local technical candidate
+`67b483831d2104203379c19ae1f1559c4064e2ae` contains only the nine implementation
+paths and keeps all baseline gitlinks. It exists in disposable Git objects under
+local scratch; no branch, real index, HEAD or repository history was changed.
+
+Ordinary validation at starting HEAD passes eight selectors; ordinary validation
+of that technical candidate also passes eight. Candidate validation is diagnostic
+and cannot authorize a prior-policy event. The actual-base push transition from
+`7e25d2b52a0becf265b7904cc157b42c7bff5b1d` to that candidate exits 1:
+`consumer Compile/ProjectReference configuration changed from its sealed source projection`.
+The actual prior event from `085026328a6ae6f9818b9529e7b79db374e1f055` to starting
+HEAD also exits 1: Platform
+`097d663f79f409f723fc1d2bd0609d46be4a417a`'s consumer source projection owner pin
+changed. Both failures remain failures; the merged precursor remains unreviewed.
+
+Fresh local checks pass 202 Python policy/graph cases, 98 DiagnosticRegistryTests,
+107 infrastructure/CI governance cases, four Contracts.UI boundary cases and five
+Testing boundary cases. The unchanged existing Release Gate 4 shell block
+successfully packs all seven inventory-derived libraries at `4.7.2-ci` against
+published `4.7.2`, with validation enabled and baseline skipping disabled.
+These are local worktree/package-lane results, not hosted verification of the
+uncommitted change. Exact commands, further verification and concurrent checkout
+coordinates are in the bounded implementation record; raw output remains local at
+`/tmp/fc-15-5-472-implementation-9c0s47dg/`.
+
+At `2026-10-31T06:47:22Z`, source
+`7e25d2b52a0becf265b7904cc157b42c7bff5b1d`'s
+[CI 41176684664, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41176684664/attempts/1)
+is completed/failure: build/test job `124465587169` passed, dependency-governance
+job `124466918079` failed the exact Platform owner-pin refusal above.
+[Quality 41176684504, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41176684504/attempts/1)
+remains in_progress with no overall conclusion; build-and-test job `124465587020`
+is completed/failure at catalog preparation with that same refusal and skips
+infrastructure and ApiCompat Gate 4. No overall Quality success is inferred.
+
+Story 15.5 remains in-progress while required transition gates remain unresolved;
+REL-BASE-1 retains its separate review disposition. No publication, protected
+owner review, Fluent/Product/EventStore approval, push, merge, activation or
+repair of historical incidents is granted by these observations.
+
+MCP boundary verification subsequently completed: two passed, zero failures/skips,
+including both cold/warm 4.7.2 package validation and the required missing-baseline
+failure. The calling workflow still owns independent implementation review.
+
+Final local documentation validation passes in full after `dotnet tool restore`
+registered the already-pinned DocFX 2.81.0 command; the initial missing-command
+failure remains recorded. All eight compile snippets, API/site generation, global
+and focused story-artifact validation, and `git diff --check` pass. Historical
+ledger/handoff prefixes and the approved frozen block remain unchanged. These
+local checks grant no transition authorization or independent approval.
+
+
+### Story 15.5 review corrections and consumer smoke observations — 2026-10-31
+
+The real-tree production-plan candidate alone now selects `4.7.2`; unrelated
+synthetic/historical fixture versions are preserved. Existing Gate 4 governance
+now evaluates the ordered property arguments from the actual pack command,
+including its Release configuration and per-project output path, through the
+same MSBuild probe. Its second case appends a later 4.7.1 baseline override and
+proves the effective old value is rejected by the policy-baseline assertion.
+No workflow behavior, production surface or independent validator was added.
+
+Focused correction checks:
+
+- `python3 -m unittest tests.eng.test_pack_release_packages.PackReleasePackagesTests.test_real_script_packs_the_checked_in_release_line_under_release_policy`
+  — exit 0, one passed.
+- `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Debug --nologo -m:1 -p:NuGetAudit=false`
+  — final exit 0, zero warnings/errors.
+- `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method '*QualityWorkflow_Gate4ValidatesEveryPackableLibrary' -method '*SemanticReleasePack_EvaluatesThePublishedPackageValidationBaseline'`
+  — final exit 0, three passed: live Gate 4 arguments, later-override regression
+  and existing shared/UI-default probe behavior. The first new test run found
+  a CRLF-sensitive command-extraction expression; that expression was corrected
+  before the passing rebuild/run. No wider suite was rerun for these corrections.
+
+The exact existing Quality Gate 2a and Gate 4a `run` blocks were extracted
+unchanged to `review-gate2a.sh` / `review-gate4a.sh` in the previously cited local
+scratch. Both were executed with CI's `bash --noprofile --norc -eo pipefail`
+semantics and `GITHUB_WORKSPACE=/home/administrator/projects/hexalith/frontcomposer`.
+Their local results do not establish hosted verification or separate approvals.
+
+- Gate 2a prerequisite:
+  `dotnet build src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release --nologo -m:1 -p:NuGetAudit=false`
+  — exit 0, zero warnings/errors. Then
+  `GITHUB_WORKSPACE=/home/administrator/projects/hexalith/frontcomposer bash --noprofile --norc -eo pipefail /tmp/fc-15-5-472-implementation-9c0s47dg/review-gate2a.sh`
+  — exit 0. The recorded prerequisite/block interval is
+  `2026-10-31T07:04:27.250703Z`–`2026-10-31T07:04:33.068312Z` at HEAD
+  `4dfc5390e117b601b88254304985f60d74981acd`. The CLI package
+  `Hexalith.FrontComposer.Cli.0.0.0-ci.nupkg` and symbols were produced using the
+  4.7.2 baseline argument; installation into a fresh local tool manifest, help,
+  inspect, migrate dry-run and migrate apply completed. Apply reports changed=1,
+  failed=0 and conflicts=0. The SDK's tool-layout ApiCompat exception is preserved.
+- Gate 4a:
+  `GITHUB_WORKSPACE=/home/administrator/projects/hexalith/frontcomposer RUNNER_TEMP=/tmp/fc-15-5-472-implementation-9c0s47dg/review-runner bash --noprofile --norc -eo pipefail /tmp/fc-15-5-472-implementation-9c0s47dg/review-gate4a.sh`
+  — exit 1, `adopter proof: fail (package-candidate-mismatch)`, at
+  `2026-10-31T07:03:44.091568Z`–`2026-10-31T07:03:44.158485Z`.
+  Root HEAD independently advanced to
+  `4dfc5390e117b601b88254304985f60d74981acd`, which the unchanged command selects;
+  all seven existing 4.7.2-ci nupkg nuspecs still identify their original pack
+  source `7e25d2b52a0becf265b7904cc157b42c7bff5b1d`. The source guard refuses before
+  runtime/consumer assertions: package identity verified=false and all four
+  runtime assertions=false. No packages were restamped and no source argument
+  or workflow behavior was changed to mask this blocker. A matching-source
+  Gate 4a consumer pass remains absent.
+
+A fresh package-only observation ran from `2026-10-31T07:03:44.126724Z` through
+`2026-10-31T07:03:47.397720Z`: all eight inventory packages again returned HTTP
+200, version/latest-stable 4.7.2 and nuspec repository commit
+`085026328a6ae6f9818b9529e7b79db374e1f055`. From the repository root, reproduce
+that bounded read-only check with the following command; it prints its own exact
+start/end times and each observed value. This checks availability, version and
+nuspec source metadata, not repository signatures or ZIP-member equivalence:
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+import datetime, io, json, urllib.request as request, xml.etree.ElementTree as ET, zipfile
+print('started', datetime.datetime.now(datetime.timezone.utc).isoformat(), flush=True)
+for row in json.loads(Path('eng/release-package-inventory.json').read_text())['packages']:
+    if not row['packable']: continue
+    name = row['package_id']; package = name.lower()
+    base = f'https://api.nuget.org/v3-flatcontainer/{package}'
+    url = f'{base}/4.7.2/{package}.4.7.2.nupkg'
+    with request.urlopen(base + '/index.json', timeout=45) as response:
+        latest = next(v for v in reversed(json.load(response)['versions']) if '-' not in v)
+    with request.urlopen(request.Request(url, method='HEAD'), timeout=45) as response:
+        status = response.status
+    with request.urlopen(url, timeout=45) as response, zipfile.ZipFile(io.BytesIO(response.read())) as archive:
+        nuspec = ET.fromstring(archive.read(next(n for n in archive.namelist() if n.endswith('.nuspec'))))
+    print(json.dumps({'package': name, 'version': nuspec.findtext('.//{*}version'),
+        'latest_stable': latest, 'http_status': status,
+        'repository_commit': nuspec.find('.//{*}repository').get('commit')}), flush=True)
+print('finished', datetime.datetime.now(datetime.timezone.utc).isoformat())
+PY
+```
+
+Exact smoke logs/results and timestamped query values remain local under
+`/tmp/fc-15-5-472-implementation-9c0s47dg/review-*`. All prior observations,
+actual-base failures, approvals and historical prefixes remain unchanged.
+
+
+### Story 15.5 isolated final verification — 2026-10-31
+
+Following the retained source-mismatch failure, a clean detached local candidate
+`ccf8250a5404aea3fca835de74d0a30858610364`, parent
+`4dfc5390e117b601b88254304985f60d74981acd`, freezes all nine approved root
+selections and the 14 owned changes. No nested submodules are initialized.
+All 419 focused Python/.NET cases pass, including the effective later-override
+regression. The external preset's two test expectations were aligned to the
+already-committed ^10.4.1 without changing any dependency selection or matrix.
+Initial cache/Release-output prerequisites and their failures remain in the
+implementation record, followed by their passing focused reruns.
+
+The unchanged existing Gate 4 block freshly packs all seven 4.7.2-ci libraries
+against published 4.7.2, with validation enabled and baseline skipping false.
+The unchanged Gate 4a block now exits 0: all four adopter assertions pass and
+package source identity verifies against ccf8250a. Gate 2a exits 0 using a private
+empty NuGet package directory and fresh local tool manifest; its produced CLI
+also identifies ccf8250a. These are matching-source local consumer results,
+not a hosted candidate run or external adopter approval.
+
+Full documentation passes with all eight compiled snippets and DocFX 2.81.0.
+Global/focused/strict artifact checks and diff hygiene pass; strict scope owns
+exactly 14 paths and treats external 4dfc5390 as unrelated. Candidate dependency
+validation passes, while its direct-parent transition still exits 1 on the
+configuration seal. The historical Platform owner-pin refusal is retained.
+All exact commands, local source/cache qualifications and raw-log locations are
+in the bounded implementation record. No release, push, merge, activation or
+independent approval occurred; Story 15.5 remains open pending its required
+transition and separately owned decisions.
+
+
+The final build-workflow handoff marks only the bounded 4.7.2 successor done and
+advances the encompassing Story 15.5 to review, an open state. This is a tracking
+transition after local verification and independent implementation review; it
+does not resolve the retained policy-transition failures or separately owned
+approvals. No push, merge or activation is authorized by that handoff.

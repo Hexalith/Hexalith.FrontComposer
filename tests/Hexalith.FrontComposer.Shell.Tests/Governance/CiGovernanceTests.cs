@@ -1775,7 +1775,7 @@ public sealed class CiGovernanceTests {
                 .GetProperty("devDependencies")
                 .GetProperty("conventional-changelog-conventionalcommits")
                 .GetString()
-                .ShouldBe("^10.4.0");
+                .ShouldBe("^10.4.1");
         }
 
         using (JsonDocument packageLock = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "package-lock.json")))) {
@@ -1785,7 +1785,7 @@ public sealed class CiGovernanceTests {
                 .GetProperty("devDependencies")
                 .GetProperty("conventional-changelog-conventionalcommits")
                 .GetString()
-                .ShouldBe("^10.4.0");
+                .ShouldBe("^10.4.1");
         }
 
         const string analyzerHarness = """
@@ -1929,7 +1929,7 @@ public sealed class CiGovernanceTests {
         // Bind the published baseline to the packer's own --plan output rather than to a Python
         // source substring: the literal alone went green on a constant compared with itself.
         string publishedBaseline = PublishedPackageValidationBaseline(root);
-        publishedBaseline.ShouldBe("4.7.1");
+        publishedBaseline.ShouldBe("4.7.2");
         File.Exists(Path.Combine(root, "eng/pack_release_packages.py")).ShouldBeFalse(
             "the retired build-plus-pack lifecycle entrypoint must not coexist with the live packer.");
         qualityWorkflow.ShouldContain("python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py");
@@ -2000,8 +2000,10 @@ public sealed class CiGovernanceTests {
         uiBaseline.ShouldBe(publishedBaseline);
     }
 
-    [Fact]
-    public void QualityWorkflow_Gate4ValidatesEveryPackableLibrary() {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("4.7.1")]
+    public void QualityWorkflow_Gate4ValidatesEveryPackableLibrary(string? laterBaselineOverride) {
         // Spec "make the release compatibility gates actually enforce" (amended after review pass
         // 1): Gate 2a packs only Hexalith.FrontComposer.Cli, which is PackAsTool, and the SDK
         // disables package validation for tool layouts — those properties are inert there. Gate 4
@@ -2075,28 +2077,56 @@ public sealed class CiGovernanceTests {
         expectedLibraries.Count.ShouldBe(7);
         toolExceptions.ShouldBe(["src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj"]);
 
-        // Every packable library must actually evaluate package validation on, at the published
-        // baseline; the documented tool exception must evaluate it off.
+        // Preserve property order: MSBuild applies the last duplicate command-line property.
+        string packCommand = Regex.Matches(libraryGate, @"(?m)^[ \t]*dotnet pack[^\r\n]*").Single().Value;
+        if (laterBaselineOverride is not null) {
+            packCommand += $" -p:FrontComposerPackageValidationBaselineVersion={laterBaselineOverride}";
+        }
+
+        Match configuration = Regex.Match(packCommand, @"--configuration (?<value>[^\s]+)");
+        configuration.Success.ShouldBeTrue("evaluate the same configuration as the live pack command.");
+        string[] packProperties = [
+            $"-p:Configuration={configuration.Groups["value"].Value}",
+            .. Regex.Matches(packCommand, @"(?<!\S)-p:(?:[^\s""]|""[^""]*"")+")
+                .Select(match => match.Value.Replace("\"", string.Empty, StringComparison.Ordinal)),
+        ];
+
+        // Evaluate the actual pack properties, including later overrides, instead of defaults.
         foreach (string project in expectedLibraries) {
-            (string enable, string baseline) = EvaluatePackageValidation(root, Path.Combine(root, project));
+            string[] properties = packProperties.Select(value => value
+                .Replace("$GITHUB_WORKSPACE", root, StringComparison.Ordinal)
+                .Replace("$name", Path.GetFileNameWithoutExtension(project), StringComparison.Ordinal)).ToArray();
+            (string enable, string baseline) = EvaluatePackageValidation(root, Path.Combine(root, project), properties);
             enable.ShouldBe("true", project);
-            baseline.ShouldBe(publishedBaseline, project);
+            if (laterBaselineOverride is null) {
+                baseline.ShouldBe(publishedBaseline, project);
+            }
+            else {
+                baseline.ShouldBe(laterBaselineOverride, project);
+                Should.Throw<ShouldAssertException>(() => baseline.ShouldBe(publishedBaseline, project));
+            }
         }
 
         foreach (string project in toolExceptions) {
-            (string enable, _) = EvaluatePackageValidation(root, Path.Combine(root, project));
+            string[] properties = packProperties.Select(value => value
+                .Replace("$GITHUB_WORKSPACE", root, StringComparison.Ordinal)
+                .Replace("$name", Path.GetFileNameWithoutExtension(project), StringComparison.Ordinal)).ToArray();
+            (string enable, _) = EvaluatePackageValidation(root, Path.Combine(root, project), properties);
             enable.ShouldBe(
                 "false",
                 $"{project} is PackAsTool, so the SDK disables package validation and the CLI pack alone cannot enforce the gate.");
         }
     }
 
-    private static (string Enable, string Baseline) EvaluatePackageValidation(string root, string project) {
+    private static (string Enable, string Baseline) EvaluatePackageValidation(
+        string root,
+        string project,
+        IReadOnlyList<string>? propertyArguments = null) {
         ProcessResult result = RunProcess(root, "dotnet", [
             "msbuild",
             project,
             "-getProperty:EnablePackageValidation,PackageValidationBaselineVersion",
-            "-p:EnableFrontComposerPackageValidation=true",
+            .. propertyArguments ?? ["-p:EnableFrontComposerPackageValidation=true"],
             "-nologo",
         ]);
         result.ExitCode.ShouldBe(0, result.Error);
