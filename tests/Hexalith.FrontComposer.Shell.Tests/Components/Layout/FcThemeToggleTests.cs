@@ -39,7 +39,7 @@ public sealed class FcThemeToggleTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void Accessible_name_tracks_theme_changes_after_render() {
+    public void AccessibleNameTracksThemeChangesAfterRender() {
         IRenderedComponent<FcThemeToggle> cut = Render<FcThemeToggle>();
         IStringLocalizer<FcShellResources> localizer = Services.GetRequiredService<IStringLocalizer<FcShellResources>>();
 

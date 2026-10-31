@@ -1775,7 +1775,7 @@ public sealed class CiGovernanceTests {
                 .GetProperty("devDependencies")
                 .GetProperty("conventional-changelog-conventionalcommits")
                 .GetString()
-                .ShouldBe("^10.4.0");
+                .ShouldBe("^10.4.1");
         }
 
         using (JsonDocument packageLock = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "package-lock.json")))) {
@@ -1785,7 +1785,7 @@ public sealed class CiGovernanceTests {
                 .GetProperty("devDependencies")
                 .GetProperty("conventional-changelog-conventionalcommits")
                 .GetString()
-                .ShouldBe("^10.4.0");
+                .ShouldBe("^10.4.1");
         }
 
         const string analyzerHarness = """
