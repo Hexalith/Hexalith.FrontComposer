@@ -1,6 +1,6 @@
 ---
 title: Requalify the selected canonical hosting helper inputs
-status: in-progress
+status: verifying
 created: 2026-10-31
 baseline_commit: 188d8b733090a83108bd006aaa9fa71cd9a5a2d8
 ---
@@ -71,3 +71,33 @@ No authorization, storage, tenant isolation, contract or product source changes.
   `/tmp/frontcomposer-188-projection-tests.log`.
 - No product/package source changes; all existing4.7.4public archives remain
   unchanged and no release bump is requested by this test-only correction.
+
+## Landed seal and unchanged-base transition
+
+Correctionbf87ab6224979d7ba8a297b23365ec99db861cbf is pushed. Pinned
+commitlint21.2.4 and the real Husky committed-file/commit-message hooks passed.
+The actual previously failing C# governance method now passes1/1against the
+committed correction, with the genuine eight-selector dependency engine and
+isolated exact metadata stores; its Shell test graph builds0warnings/errors.
+
+The immutable188→bf87push replay still refuses the stale188active policy with
+`consumer projection root source selectors changed` and exit1, as required.
+Evidence:`/tmp/frontcomposer-invalid-base-transition.json`. This is recorded
+without changing the active-base guard or historical results. First correction
+hosted CI41223229013and Quality41223228512are pending and may be superseded by
+this genuine evidence update. The current evidence-only follow-up must qualify
+under already-landedbf87policy; final exact-head hosted CI/Quality is still
+required. No publication or human verification receipt is fabricated.
+
+Focused commands:
+
+```sh
+python3 -m unittest tests.eng.test_dependency_graph.ConsumerProjectionTests -v
+```
+
+Actual failing-method proof log:
+`/tmp/frontcomposer-resealed-real-governance-case.log`.
+Committed candidate graph proof:
+`/tmp/frontcomposer-resealed-candidate-graph.json`.
+Shell consumer test build:
+`/tmp/frontcomposer-resealed-shell-build.log`.
