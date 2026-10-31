@@ -367,6 +367,28 @@ for (const theme of ['light', 'dark']) {
     ]) {
       test(`${surface.name}: composed text, targets, current-state and forced-color cues`, async ({ page }, info) => {
         await ready(page, surface.path, theme);
+        if (surface.name === 'home') {
+          const cards = page.locator('button.fc-home-card-button');
+          await expect(cards.first()).toBeVisible();
+          await expect(page.getByTestId('fc-home-card-Counter').locator('button'))
+            .toHaveAccessibleName('Counter CounterProjection');
+          const nativeNames = [];
+          for (const card of await cards.all()) {
+            // Blazor strips formatting text nodes; rendered heading/row blocks retain their
+            // natural separators. Include the localized pending summary only when rendered.
+            const heading = await card.locator('h2').innerText();
+            const rows = await card.locator('.fc-home-card-projection').allInnerTexts();
+            const pendingSummaries = await card.locator('.fc-sr-only').allTextContents();
+            const text = [heading, ...rows, ...pendingSummaries].join(' ').replace(/\s+/g, ' ').trim();
+            expect(text, 'A rendered home card must have native name content').not.toBe('');
+            await expect(card).toHaveAccessibleName(text);
+            await expect(card).not.toHaveAttribute('aria-label');
+            await expect(card).not.toHaveAttribute('aria-labelledby');
+            await expect(card).not.toHaveAttribute('aria-description');
+            nativeNames.push({ text, pendingSummaryCount: pendingSummaries.length });
+          }
+          await info.attach(`home-card-native-names-${theme}`, { body: JSON.stringify(nativeNames), contentType: 'application/json' });
+        }
         await evidence(page, page.locator('#fc-main-content'), `${surface.name}-${theme}`, info);
         const inventory = await expectTargetSizes(page);
         await info.attach(`targets-${surface.name}-${theme}`, { body: JSON.stringify(inventory), contentType: 'application/json' });

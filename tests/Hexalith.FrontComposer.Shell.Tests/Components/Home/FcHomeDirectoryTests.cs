@@ -189,26 +189,34 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
     [Theory]
     [InlineData("en", "Order processing", "Order processing, 4 items pending")]
     [InlineData("fr", "Traitement des commandes", "Traitement des commandes, 4 éléments en attente")]
-    public void HomeCard_PositiveCount_LocalizesAccessibleName(
+    public void HomeCard_PositiveCount_PreservesLocalizedPendingSummaryAndMultipleVisibleRows(
         string cultureName,
         string displayName,
-        string expectedAccessibleName) {
+        string expectedPendingSummary) {
         using CultureScope _ = new(cultureName);
         _registry.GetManifests().Returns([
-            new DomainManifest(displayName, "Orders", [typeof(string).FullName!], []),
+            new DomainManifest(displayName, "Orders", [typeof(string).FullName!, typeof(int).FullName!], []),
         ]);
 
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
             ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)));
         dispatcher.Dispatch(new BadgeCountsSeededAction(
-            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 4)));
+            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 3).Add(typeof(int), 1)));
 
         IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
 
-        cut.Find("button.fc-home-card-button")
-            .GetAttribute("aria-label")
-            .ShouldBe(expectedAccessibleName);
+        cut.Find("button.fc-home-card-button").GetAttribute("aria-label").ShouldBeNull();
+        cut.Find("button.fc-home-card-button").GetAttribute("aria-labelledby").ShouldBeNull();
+        cut.Find("button.fc-home-card-button").GetAttribute("aria-description").ShouldBeNull();
+        cut.Find("button.fc-home-card-button").TextContent.ShouldContain(displayName);
+        cut.Find("button.fc-home-card-button .fc-sr-only").TextContent.ShouldBe(expectedPendingSummary);
+        cut.FindAll("button.fc-home-card-button .fc-home-card-projection").Count.ShouldBe(2);
+        cut.Find("button.fc-home-card-button").TextContent.ShouldContain("String");
+        cut.Find("button.fc-home-card-button").TextContent.ShouldContain("Int32");
+        cut.Find("[data-testid='fc-home-card-badge-Orders']").TextContent.Trim().ShouldBe("4");
+        cut.Find("[data-testid='fc-home-card-projection-badge-Orders-String']").TextContent.Trim().ShouldBe("3");
+        cut.Find("[data-testid='fc-home-card-projection-badge-Orders-Int32']").TextContent.Trim().ShouldBe("1");
     }
 
     [Fact]
@@ -221,9 +229,10 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
 
         IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
 
-        cut.Find("button.fc-home-card-button")
-            .GetAttribute("aria-label")
-            .ShouldBe("Traitement des commandes");
+        cut.Find("button.fc-home-card-button").GetAttribute("aria-label").ShouldBeNull();
+        cut.Find("button.fc-home-card-button").GetAttribute("aria-description").ShouldBeNull();
+        cut.FindAll("button.fc-home-card-button .fc-sr-only").ShouldBeEmpty();
+        cut.Find("button.fc-home-card-button h2").TextContent.Trim().ShouldBe("Traitement des commandes");
     }
 
     [Fact]

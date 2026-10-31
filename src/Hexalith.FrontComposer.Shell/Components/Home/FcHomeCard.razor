@@ -30,7 +30,6 @@
     <button type="button" class="fc-home-card-button"
             role="link"
             tabindex="0"
-            aria-label="@ariaLabel"
             @onclick="HandleClickAsync"
             @onkeydown="HandleKeydownAsync">
         <h2 class="fc-home-card-title">
@@ -85,6 +84,10 @@
                     </li>
                 }
             </ul>
+        }
+        @if (Card.AggregateCount > 0)
+        {
+            <span class="fc-sr-only">@ariaLabel</span>
         }
     </button>
 </li>

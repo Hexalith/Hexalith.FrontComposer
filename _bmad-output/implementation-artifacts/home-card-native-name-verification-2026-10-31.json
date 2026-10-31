@@ -1,0 +1,110 @@
+{
+  "schema": "hexalith.frontcomposer.home-card-native-name-verification.v1",
+  "baselineCommit": "a9c66bfee79dddcf57664971c1617633cf707919",
+  "sourceFiles": [
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Home/FcHomeCard.razor",
+      "sha256": "f6dd5139e512e5f9de22f8d50205cecc048047b8de9b359a4508e0d969783060"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Components/Home/FcHomeDirectoryTests.cs",
+      "sha256": "53dc72833795b223c79b1420c9aed8947fb41df93302ec440ce2b87295c9c232"
+    },
+    {
+      "path": "tests/e2e/specs/accessibility-state-matrix.spec.ts",
+      "sha256": "f5c85aadf3e30ae3863d6a9c82c59db682c7f1bbd3a972a1a36053faed9491c0"
+    }
+  ],
+  "builds": {
+    "configuration": "Release",
+    "dependencyMode": "NuGet",
+    "counterSample": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0
+    },
+    "shellTests": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0
+    }
+  },
+  "bunit": {
+    "class": "Hexalith.FrontComposer.Shell.Tests.Components.Home.FcHomeDirectoryTests",
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0,
+    "positiveLocalizedMultirowCultures": [
+      "en",
+      "fr"
+    ]
+  },
+  "browser": {
+    "node": "24.22.1",
+    "playwright": "1.64.1",
+    "axeCore": "4.14.0",
+    "axePlaywright": "4.14.0",
+    "project": "chromium",
+    "stats": {
+      "startTime": "2026-10-31T08:14:39.633Z",
+      "duration": 8200.627,
+      "expected": 2,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "nativeNames": [
+      {
+        "name": "home-card-native-names-light",
+        "cards": [
+          {
+            "text": "Counter CounterProjection",
+            "pendingSummaryCount": 0
+          },
+          {
+            "text": "Default",
+            "pendingSummaryCount": 0
+          },
+          {
+            "text": "Specimens SpecimenFormattingProjection SpecimenStatusProjection",
+            "pendingSummaryCount": 0
+          }
+        ]
+      },
+      {
+        "name": "home-card-native-names-dark",
+        "cards": [
+          {
+            "text": "Counter CounterProjection",
+            "pendingSummaryCount": 0
+          },
+          {
+            "text": "Default",
+            "pendingSummaryCount": 0
+          },
+          {
+            "text": "Specimens SpecimenFormattingProjection SpecimenStatusProjection",
+            "pendingSummaryCount": 0
+          }
+        ]
+      }
+    ],
+    "axe": [
+      {
+        "name": "axe-state-home-dark.json",
+        "route": "/home",
+        "blocking": [],
+        "reportOnly": [],
+        "unknown": []
+      },
+      {
+        "name": "axe-state-home-light.json",
+        "route": "/home",
+        "blocking": [],
+        "reportOnly": [],
+        "unknown": []
+      }
+    ],
+    "pendingCountScope": "Actual browser cards have zero pending counts; positive localized pending semantics are covered by bUnit, not claimed as browser proof."
+  }
+}
