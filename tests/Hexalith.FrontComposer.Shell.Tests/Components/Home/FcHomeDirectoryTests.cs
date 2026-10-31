@@ -210,7 +210,10 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
         cut.Find("button.fc-home-card-button").GetAttribute("aria-labelledby").ShouldBeNull();
         cut.Find("button.fc-home-card-button").GetAttribute("aria-description").ShouldBeNull();
         cut.Find("button.fc-home-card-button").TextContent.ShouldContain(displayName);
-        cut.Find("button.fc-home-card-button .fc-sr-only").TextContent.ShouldBe(expectedPendingSummary);
+        cut.Find("button.fc-home-card-button h2 .fc-sr-only").TextContent.ShouldBe(expectedPendingSummary);
+        cut.Find("button.fc-home-card-button h2 > span[aria-hidden='true']").TextContent.ShouldBe(displayName);
+        cut.Find("[data-testid='fc-home-card-badge-Orders']").GetAttribute("aria-hidden").ShouldBe("true");
+        cut.Find("[data-testid='fc-home-card-projection-badge-Orders-String']").GetAttribute("aria-hidden").ShouldBeNull();
         cut.FindAll("button.fc-home-card-button .fc-home-card-projection").Count.ShouldBe(2);
         cut.Find("button.fc-home-card-button").TextContent.ShouldContain("String");
         cut.Find("button.fc-home-card-button").TextContent.ShouldContain("Int32");
@@ -232,6 +235,7 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
         cut.Find("button.fc-home-card-button").GetAttribute("aria-label").ShouldBeNull();
         cut.Find("button.fc-home-card-button").GetAttribute("aria-description").ShouldBeNull();
         cut.FindAll("button.fc-home-card-button .fc-sr-only").ShouldBeEmpty();
+        cut.FindAll("button.fc-home-card-button [aria-hidden]").ShouldBeEmpty();
         cut.Find("button.fc-home-card-button h2").TextContent.Trim().ShouldBe("Traitement des commandes");
     }
 

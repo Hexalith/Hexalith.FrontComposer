@@ -375,11 +375,15 @@ for (const theme of ['light', 'dark']) {
           const nativeNames = [];
           for (const card of await cards.all()) {
             // Blazor strips formatting text nodes; rendered heading/row blocks retain their
-            // natural separators. Include the localized pending summary only when rendered.
-            const heading = await card.locator('h2').innerText();
+            // natural separators. With pending items the heading's visible name and total are
+            // aria-hidden and its localized pending summary speaks for them, so skip hidden nodes.
+            const heading = await card.locator('h2').evaluate((h2) => Array.from(h2.childNodes)
+              .filter((node) => !(node instanceof Element && node.getAttribute('aria-hidden') === 'true'))
+              .map((node) => node.textContent ?? '')
+              .join(' '));
             const rows = await card.locator('.fc-home-card-projection').allInnerTexts();
             const pendingSummaries = await card.locator('.fc-sr-only').allTextContents();
-            const text = [heading, ...rows, ...pendingSummaries].join(' ').replace(/\s+/g, ' ').trim();
+            const text = [heading, ...rows].join(' ').replace(/\s+/g, ' ').trim();
             expect(text, 'A rendered home card must have native name content').not.toBe('');
             await expect(card).toHaveAccessibleName(text);
             await expect(card).not.toHaveAttribute('aria-label');

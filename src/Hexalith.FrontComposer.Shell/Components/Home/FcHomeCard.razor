@@ -33,12 +33,20 @@
             @onclick="HandleClickAsync"
             @onkeydown="HandleKeydownAsync">
         <h2 class="fc-home-card-title">
-            @Card.Manifest.Name
             @if (Card.AggregateCount > 0)
             {
+                @* The localized pending summary already says the name and total, so the visible name
+                   and total badge are hidden from assistive technology to avoid announcing them twice. *@
+                <span aria-hidden="true">@Card.Manifest.Name</span>
                 <FluentBadge Appearance="@BadgeAppearance.Filled"
                              Color="@BadgeColor.Brand"
+                             aria-hidden="true"
                              data-testid="@($"fc-home-card-badge-{Card.Manifest.BoundedContext}")">@Card.AggregateCount</FluentBadge>
+                <span class="fc-sr-only">@ariaLabel</span>
+            }
+            else
+            {
+                @Card.Manifest.Name
             }
             @if (bcShowsNew)
             {
@@ -84,10 +92,6 @@
                     </li>
                 }
             </ul>
-        }
-        @if (Card.AggregateCount > 0)
-        {
-            <span class="fc-sr-only">@ariaLabel</span>
         }
     </button>
 </li>
