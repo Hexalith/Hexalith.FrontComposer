@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 10-31-2026 15:44
+last_updated: 10-31-2026 17:18
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -228,7 +228,10 @@ development_status:
   15-4-i-doc-c-correct-the-fluent-ui-v5-contingency-identity: done
   # 2026-10-31: Story 15.5 code review returned the story to in-progress: the precursor spec keeps seven open
   # review patches and the decbb195 seal transition's actual-base check was cancelled, never completed.
-  15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: in-progress
+  # 2026-10-31: precursor round-3 patches resolved (spec done); the cancelled decbb195 check is recorded as a
+  # refusing, uncompleted transition. Review is an open state: main stays red on a55960f5's unsealed Builds
+  # move (deferred), and precursor owner acceptance and the qualification spec remain open.
+  15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: review
   # superseded 2026-10-23 by spec-evidence-storage-simplification.md (PRD §7 evidence policy):
   # committed evidence and its machinery were removed instead of externalized; closed as done.
   15-6-external-browser-artifacts-and-bounded-accessibility-receipts: done

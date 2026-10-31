@@ -2,7 +2,7 @@
 title: 'Story 15.5: Prepare the Inactive Policy Precursor'
 type: 'chore'
 created: '2026-10-30'
-status: 'in-progress'
+status: 'done'
 route: 'oneshot'
 story_id: '15.5'
 story_key: '15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline'
@@ -30,6 +30,7 @@ Run focused regressions, ordinary committed-source validation, actual-base depen
 - Intent gaps: none. The authorized draft PR is reversible; no deployment or irreversible data operation is needed. Footprint: four scalar changes in the existing projection row plus this record and append-only handoff/release/deferred-ledger updates. No implementation, workflow, trust, expectation, package, SDK, catalog or gitlink changes.
 - Source investigation confirms only owner_commit, inventory_sha256, builds_commit and root_selectors_sha256 need a proposed replacement. All other projection fields and every policy section remain unchanged. Substantive review precedes those replacements; the computed identities describe a proposal for owner review.
 - Receipt root: `/tmp/fc-15-5-policy-precursor-20261030-5womdkxt/`; exact argv, CWD, UTC time, result and logs are recorded in commands.jsonl. Clean npm install uses the existing lockfile; object and global NuGet caches are shared, so this is not a cold-network availability claim.
+- 2026-10-31 round-3 resolution: resolves the seven open round-3 `[Review][Patch]` items as documentation only; no policy, dependency selection, guard, workflow, test or gitlink change. Before it, the user asked to fast-forward the nine root-declared dependency checkouts in the original workspace to their origin/main (non-recursive, no nested initialization, no gitlink committed). The resulting checkouts are Builds 585ffbce4452d995ef09b9f65d21b4ba343d4993, EventStore 61e6fa853d81cf822d67d6abfd6a130bdbb14ce2, Memories 00919bdd6fe97284da5f4f1657da4a5b336867cc, Parties 05aeee0d647a34eab112b6f8282a0810d35b7bf6, Platform 03a099bba258c37a8f16c8b2e842ae842b1ad6d6 and Tenants 9e5a991d0ba304bac7b1a5809cd71797b47d78ed; Commons, PolymorphicSerializations and AI.Tools were already current. These unstaged checkout moves are not part of this delivery; staging only the File List paths keeps them out, because committing them would be another unsealed seal transition. Every lane ran in an isolated clean clone at HEAD 188d8b733090a83108bd006aaa9fa71cd9a5a2d8's committed gitlinks. Two inline corrections (DW-1988 wording here and in the deferred ledger) follow the review's explicit instruction; the handoff and release ledger stay append-only and receive dated corrections instead. Surprise: external a55960f5441239410107bda3d547b381fdfa6f3a moved root Builds without resealing the root selectors, so ordinary validation and clean infrastructure governance fail at HEAD for a reason unrelated to this precursor.
 
 ## File List
 
@@ -38,6 +39,7 @@ Run focused regressions, ordinary committed-source validation, actual-base depen
 - `_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-activation-handoff.md`
 - `_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## Proposed tuple and substantive source review
 
@@ -380,6 +382,9 @@ Every Blind Hunter finding was checked separately:
 
 ## Resumed verification and external landing — 2026-10-30
 
+Superseded in part on 2026-10-31: the round-3 review resolution below corrects
+this section's delivery, hosted, nested-catalog, Parties and receipt statements.
+
 Local main at dd575b67c82c377bd17c34fb3d14366277d2ac62 includes merge
 92eff2e7b1b0f53631c53fa8284b466e202ae921 and precursor delivery commits
 f75d774d281aa6d4764d9576597ff98ecfbaa3a7 and
@@ -440,8 +445,10 @@ The existing Parties `assert_no_inline_versions` predicate, invoked with the
 unchanged policy's selected profile/extensions/limits against exact committed
 8b0e23e437296691d0233fe86afc765063f9fef5, independently rejects its root
 Directory.Packages.props: `must inherit every package version from the pinned
-Builds catalog`. This is a new current-source diagnostic, distinct from DW-1988's
-historical retained-file refusal at e2528a5d5853641f2b38e5e2e34bb02c0cc4be23.
+Builds catalog`. This root refusal masks, rather than replaces, DW-1988's
+retained-file refusal: the identical retained blob is still present at
+8b0e23e437296691d0233fe86afc765063f9fef5 and is rejected too (corrected
+2026-10-31; see the round-3 resolution below).
 Neither reports that ordinary validation passed the Platform guard or that a full
 candidate graph was accepted. Earlier manual predicate probes failed on incorrect
 call arguments/policy lookup before evaluation; only the corrected existing
@@ -466,7 +473,9 @@ Hexalith.FrontComposer.Contracts.UI. The guard deliberately rejects any locally
 declared PackageVersion, including this conditional family-version fallback.
 An upstream repair must confirm the exact selected catalog supplies that package,
 remove the local fallback through the owning repository, address any further
-tracked-version refusals and separately authorize the resulting root selection.
+tracked-version refusals — including DW-1988's retained
+`_bmad-output/implementation-artifacts/tests/five-reconciliation-and-migration-2026-10-28/retained-source-mapping/pinned-tree/Props/Directory.Packages.props` —
+and separately authorize the resulting root selection.
 No scanner exemption or semantic-profile relaxation is proposed.
 
 After all resumed append-only updates:
@@ -494,13 +503,16 @@ before triage.
 
 ### Review Findings
 
-- [ ] [Review][Patch] Record the precursor's direct-merge landing as unreviewed [spec-15-5-prepare-the-inactive-policy-precursor.md:381] — human decision 2026-10-30: state the frozen-intent deviation; the landed policy is unreviewed and must not serve as a reviewed prior policy for activation; owner acceptance stays a separate open item. 92eff2e7b1b0f53631c53fa8284b466e202ae921 (`build: merge fix/story-15-5-policy-precursor into main`) is on origin/main; `gh pr list --repo Hexalith/Hexalith.FrontComposer --head fix/story-15-5-policy-precursor --state all` returns none; candidate validation was failing when it merged. The frozen intent requires a draft precursor PR for owner review, forbids merging or bypassing protection, and needs a later real event after the reviewed precursor lands. The records call this an external landing / ancestry observation without recording the deviation or whether the owner's direct merge counts as owner review. The f75d774d281aa6d4764d9576597ff98ecfbaa3a7 policy is now main's committed policy.
-- [ ] [Review][Patch] Records are stale at their own delivery commit [spec-15-5-prepare-the-inactive-policy-precursor.md:419] — they state no Git mutation, no commit and no push/remote write (this record, the handoff and the release ledger) and name Platform eba576951e61e9763341463516247dcbf8fc0b90 as the current selection, but e07e2f42605ffde307606f4ee027c382ef1e8aa4 delivers them to origin/main and selects Platform a185bfaa5541f8de675fb82e4f553e1e49931201; `python3 eng/dependency_graph.py --root . validate --commit e07e2f42605ffde307606f4ee027c382ef1e8aa4` refuses that owner pin. Append a dated delivery observation to this record, the handoff and the release ledger.
-- [ ] [Review][Patch] DW-1988's retained-file refusal is still current, not historical [spec-15-5-prepare-the-inactive-policy-precursor.md:439] — retained-source-mapping/pinned-tree/Props/Directory.Packages.props blob dae4eaa21e728002a0304104327e5f4de8fff7c3 (SHA-256 48b3abca2eb67bc09bde33f3f0203e10fbca810614d0582852be4ab54294dc9d, 307 PackageVersion rows) is byte-identical at selected Parties 8b0e23e437296691d0233fe86afc765063f9fef5. `assert_no_inline_versions` raises on the first rejected file and the root Directory.Packages.props sorts first, masking it. Correct the historical wording in all four records and name the retained file in the repair plan.
-- [ ] [Review][Patch] Resumed receipts are /tmp-only and several new results lack exact commands [spec-15-5-prepare-the-inactive-policy-precursor.md:426] — the f69562a2 raw-diagnostic parameters, the corrected Parties predicate invocation, the nested Builds `fatal: not a tree object` probe and the stale three-scalar preview exist only in /tmp/fc-15-5-resume-review-dqivd22x/, regressing accepted patches BH-1/BH-2. Archive them persistently with a checksum and member manifest, and record the exact invocations.
-- [ ] [Review][Patch] Intent-required lanes are missing from the resumed lane table [spec-15-5-prepare-the-inactive-policy-precursor.md:390] — no row, result or blocker for clean InfrastructureGovernance/CiGovernance, the actual-parent diff of the current tuple or acquire-catalogs; only validate ran for f69562a2a1b0f11295278c4e715bbf7ecf2999f7. Run them at the current committed source and record exact results or blockers.
-- [ ] [Review][Patch] Hosted Quality observation superseded before delivery [spec-15-5-prepare-the-inactive-policy-precursor.md:407] — run 41097179475 failed "Prepare exact governance catalog objects" at 17:19:14Z, skipped every Gate 2b–4a step and ended cancelled at 17:20:39Z, before e07e2f42 was committed (17:27:48Z); f69562a2's Quality 41097863471 and CI 41097864370 also ended cancelled. Append the final hosted state.
-- [ ] [Review][Patch] New deferred block has no section heading [deferred-work.md:11066] — it follows DW-1988 directly without a `## Deferred from:` heading, so the sweep migration's section context attributes it to the 2026-10-29 full-history review. Insert a dated heading above it. (The block stays visible as its own legacy item: the bmad-loop parser ends DW entries at a flat block.)
+The seven `[Review][Patch]` items are resolved by the round-3 review resolution
+(2026-10-31) below.
+
+- [x] [Review][Patch] Record the precursor's direct-merge landing as unreviewed [spec-15-5-prepare-the-inactive-policy-precursor.md:381] — human decision 2026-10-30: state the frozen-intent deviation; the landed policy is unreviewed and must not serve as a reviewed prior policy for activation; owner acceptance stays a separate open item. 92eff2e7b1b0f53631c53fa8284b466e202ae921 (`build: merge fix/story-15-5-policy-precursor into main`) is on origin/main; `gh pr list --repo Hexalith/Hexalith.FrontComposer --head fix/story-15-5-policy-precursor --state all` returns none; candidate validation was failing when it merged. The frozen intent requires a draft precursor PR for owner review, forbids merging or bypassing protection, and needs a later real event after the reviewed precursor lands. The records call this an external landing / ancestry observation without recording the deviation or whether the owner's direct merge counts as owner review. The f75d774d281aa6d4764d9576597ff98ecfbaa3a7 policy is now main's committed policy.
+- [x] [Review][Patch] Records are stale at their own delivery commit [spec-15-5-prepare-the-inactive-policy-precursor.md:419] — they state no Git mutation, no commit and no push/remote write (this record, the handoff and the release ledger) and name Platform eba576951e61e9763341463516247dcbf8fc0b90 as the current selection, but e07e2f42605ffde307606f4ee027c382ef1e8aa4 delivers them to origin/main and selects Platform a185bfaa5541f8de675fb82e4f553e1e49931201; `python3 eng/dependency_graph.py --root . validate --commit e07e2f42605ffde307606f4ee027c382ef1e8aa4` refuses that owner pin. Append a dated delivery observation to this record, the handoff and the release ledger.
+- [x] [Review][Patch] DW-1988's retained-file refusal is still current, not historical [spec-15-5-prepare-the-inactive-policy-precursor.md:439] — retained-source-mapping/pinned-tree/Props/Directory.Packages.props blob dae4eaa21e728002a0304104327e5f4de8fff7c3 (SHA-256 48b3abca2eb67bc09bde33f3f0203e10fbca810614d0582852be4ab54294dc9d, 307 PackageVersion rows) is byte-identical at selected Parties 8b0e23e437296691d0233fe86afc765063f9fef5. `assert_no_inline_versions` raises on the first rejected file and the root Directory.Packages.props sorts first, masking it. Correct the historical wording in all four records and name the retained file in the repair plan.
+- [x] [Review][Patch] Resumed receipts are /tmp-only and several new results lack exact commands [spec-15-5-prepare-the-inactive-policy-precursor.md:426] — the f69562a2 raw-diagnostic parameters, the corrected Parties predicate invocation, the nested Builds `fatal: not a tree object` probe and the stale three-scalar preview exist only in /tmp/fc-15-5-resume-review-dqivd22x/, regressing accepted patches BH-1/BH-2. Archive them persistently with a checksum and member manifest, and record the exact invocations.
+- [x] [Review][Patch] Intent-required lanes are missing from the resumed lane table [spec-15-5-prepare-the-inactive-policy-precursor.md:390] — no row, result or blocker for clean InfrastructureGovernance/CiGovernance, the actual-parent diff of the current tuple or acquire-catalogs; only validate ran for f69562a2a1b0f11295278c4e715bbf7ecf2999f7. Run them at the current committed source and record exact results or blockers.
+- [x] [Review][Patch] Hosted Quality observation superseded before delivery [spec-15-5-prepare-the-inactive-policy-precursor.md:407] — run 41097179475 failed "Prepare exact governance catalog objects" at 17:19:14Z, skipped every Gate 2b–4a step and ended cancelled at 17:20:39Z, before e07e2f42 was committed (17:27:48Z); f69562a2's Quality 41097863471 and CI 41097864370 also ended cancelled. Append the final hosted state.
+- [x] [Review][Patch] New deferred block has no section heading [deferred-work.md:11066] — it follows DW-1988 directly without a `## Deferred from:` heading, so the sweep migration's section context attributes it to the 2026-10-29 full-history review. Insert a dated heading above it. (The block stays visible as its own legacy item: the bmad-loop parser ends DW entries at a flat block.)
 - [x] [Review][Defer] Story-labelled delivery commit carries an unowned Platform gitlink [commit e07e2f42605ffde307606f4ee027c382ef1e8aa4] — deferred (human decision 2026-10-30): pushed history cannot be rewritten and the validator has no per-commit exception outside Story 13.7; an authorized exception needs its own guard-change story. e07e2f42605ffde307606f4ee027c382ef1e8aa4 (`fix: story 15.5`, on origin/main) also moves references/Hexalith.Platform eba576951e61e9763341463516247dcbf8fc0b90 → a185bfaa5541f8de675fb82e4f553e1e49931201. `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-prepare-the-inactive-policy-precursor.md --candidate e07e2f42605ffde307606f4ee027c382ef1e8aa4` exits 1: `interleaved story commit ... touches unowned paths: references/Hexalith.Platform`. `--unrelated` does not suppress it, and the historical-owned recovery is hardcoded to two Story 13.7 commits. Strict attribution therefore fails for every candidate at or after e07e2f42; the recorded exit-0 strict check ran at f69562a2a1b0f11295278c4e715bbf7ecf2999f7 and does not cover the delivered commit.
 - [x] [Review][Defer] Nine selector bumps have no executed Gate 2b–4a evidence [references/* at f69562a2a1b0f11295278c4e715bbf7ecf2999f7 and e07e2f42605ffde307606f4ee027c382ef1e8aa4] — deferred: pre-existing/external; Quality's catalog preparation fails first on the owner-pin guard, so Gate 2c provider verification, Gate 3a and Gate 4 ApiCompat are skipped for the bumped tuple. Closing it needs separately authorized seal renewal or gate reordering.
 - [x] [Review][Defer] Story 16.1 findings BH-R4–BH-R10 were rejected without a ledger pointer [spec-15-5-prepare-the-inactive-policy-precursor.md:373] — deferred: their fixes belong to the independently owned, in-progress Story 16.1 spec, which still has no File List; recorded for its owner.
@@ -511,3 +523,199 @@ before triage.
 - BH-R3's rejection rationale contradicts this run's spec edits; the final-results annex lacks a tracked checksum — low, carried: repeats round-2 rejected BH-R3.
 - No authorization path for acquiring the missing nested Builds catalogs — false: the deferred entry conditions acquisition on permitted metadata, and the exact authorized fetch form is tracked in this record's catalog-acquisition section.
 - `review_loop_iteration` stays 0 after a resumed review — false: bmad-build step-04 increments it only before intent_gap/bad_spec loopbacks, not for code-review rounds.
+
+
+## Round-3 review resolution — 2026-10-31
+
+This continuation resolves the seven round-3 `[Review][Patch]` items above.
+Starting HEAD and origin/main are 188d8b733090a83108bd006aaa9fa71cd9a5a2d8,
+actual parent a55960f5441239410107bda3d547b381fdfa6f3a. Every lane ran from an
+isolated clean clone of that HEAD with standalone clones of only the nine
+root-declared dependencies at its committed gitlinks; no nested repository was
+initialized. Earlier dated observations stay as written apart from the two
+DW-1988 wording corrections named below.
+
+### Unreviewed direct-merge landing
+
+The precursor deviated from its frozen intent. That intent required a draft
+precursor PR for owner review once candidate validation passed, and forbade
+merging or bypassing protection. Instead, branch `fix/story-15-5-policy-precursor`
+landed on main through direct merge commit
+92eff2e7b1b0f53631c53fa8284b466e202ae921 (`build: merge
+fix/story-15-5-policy-precursor into main`, 2026-10-30T15:34:17Z), while ordinary
+candidate validation was failing. At 2026-10-31T16:03:01Z, and again in the
+archived receipts at 16:03:31–16:03:32Z,
+`gh pr list --repo Hexalith/Hexalith.FrontComposer --head fix/story-15-5-policy-precursor --state all --json number,state,title`
+returns `[]` and `gh api repos/Hexalith/Hexalith.FrontComposer/commits/92eff2e7b1b0f53631c53fa8284b466e202ae921/pulls --jq length`
+returns `0`: no PR ever carried the precursor.
+
+Per the 2026-10-30 human decision, the landed f75d774d281aa6d4764d9576597ff98ecfbaa3a7
+policy is unreviewed. It must not serve as a reviewed prior policy for any
+activation event, and the direct merge is not recorded as owner review. Owner
+acceptance of that policy remains a separate open item. Later policy commits
+(3725144b19cf3453fe1f607f9711c1d33743cc60 through
+126c43f670cfa3a36f31e9281271f54d8779b322) have since replaced the f75 projection
+row. Their review status belongs to their own records; this record grants them
+nothing.
+
+### Delivery observation for the resumed records
+
+The 2026-10-30 resumed records were stale at their own delivery commit. They state
+that the resumed run made no Git mutation, commit or remote write, and they name
+Platform eba576951e61e9763341463516247dcbf8fc0b90 as the current selection. Commit
+e07e2f42605ffde307606f4ee027c382ef1e8aa4 (`fix: story 15.5`,
+2026-10-30T17:27:48Z, parent f69562a2a1b0f11295278c4e715bbf7ecf2999f7) then
+delivered this record, the handoff, the release ledger and the deferred ledger to
+origin/main. The same commit moved references/Hexalith.Platform to
+a185bfaa5541f8de675fb82e4f553e1e49931201; its strict-attribution consequence stays
+deferred as recorded above.
+
+`python3 eng/dependency_graph.py --root . validate --commit e07e2f42605ffde307606f4ee027c382ef1e8aa4`
+exits 1: `github.com/hexalith/hexalith.platform@a185bfaa5541f8de675fb82e4f553e1e49931201: consumer source projection owner pin changed`.
+Hosted, both attempt 1:
+
+- [CI 41099330117](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41099330117) — completed/failure. Dependency-governance job 124216571609 failed "Collect exact graph diff and affected-module proof" at 17:39:59Z.
+- [Quality 41099329667](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41099329667) — completed/cancelled at 17:59:56Z. Build-and-test job 124214027080 failed "Prepare exact governance catalog objects" at 17:40:37Z; Gate 1, 2 and 2a passed, every Gate 2b–4a step was skipped.
+
+### Final hosted state of the superseded observations
+
+The 17:17–17:19 UTC in-progress observation above was superseded before delivery:
+
+- [Quality 41097179475](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41097179475) (dd575b67c82c377bd17c34fb3d14366277d2ac62, push, attempt 1) — build-and-test job 124205767715 failed "Prepare exact governance catalog objects" at 17:19:14Z and skipped every Gate 2b–4a step, including all Gate 2c steps; the run ended completed/cancelled at 17:20:39Z, before e07e2f42 was committed.
+- [Quality 41097863471](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41097863471) (f69562a2a1b0f11295278c4e715bbf7ecf2999f7, attempt 1) — build-and-test job 124208616695 failed the same step at 17:27:10Z, skipping Gate 2b–4a; completed/cancelled at 17:31:25Z.
+- [CI 41097864370](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41097864370) (same source, attempt 1) — all four jobs, including dependency-governance 124213535116, were cancelled at 17:30:25Z; completed/cancelled at 17:30:27Z.
+
+None of these runs supplies a governance verdict for its source.
+
+### DW-1988 correction
+
+The 2026-10-30 records called DW-1988's retained-file refusal historical at
+Parties 8b0e23e437296691d0233fe86afc765063f9fef5. That was wrong. The retained
+`_bmad-output/implementation-artifacts/tests/five-reconciliation-and-migration-2026-10-28/retained-source-mapping/pinned-tree/Props/Directory.Packages.props`
+is still there as blob dae4eaa21e728002a0304104327e5f4de8fff7c3 (SHA-256
+`48b3abca2eb67bc09bde33f3f0203e10fbca810614d0582852be4ab54294dc9d`, 307
+PackageVersion rows). `assert_no_inline_versions` raises on the first rejected
+tracked file, and the root Directory.Packages.props sorts first, so the root
+refusal masked it. The archived `round3-resolution-20261031/parties-predicate.py`
+runs the unchanged predicate twice. First it runs once over every tracked file,
+exactly as validation does. Then it runs once per tracked file, with the file
+listing narrowed to that path, so every rule applies and no earlier file masks a
+later one. Run from the clean clone's root:
+
+- `python3 parties-predicate.py e07e2f42605ffde307606f4ee027c382ef1e8aa4 e2528a5d5853641f2b38e5e2e34bb02c0cc4be23 8b0e23e437296691d0233fe86afc765063f9fef5` — exit 0 (diagnostic; receipt `parties-predicate-e07-policy-v2.log`). Under parties-catalog-v1 (.csproj/.props/.targets), e2528a5d's 48 tracked files reject only the retained file. 8b0e23e4's 50 files reject both the root file and the retained file.
+- `python3 parties-predicate.py 188d8b733090a83108bd006aaa9fa71cd9a5a2d8 9e29b203e1c5af9d92ef8172a507843e6cb0e068` — exit 0 (`parties-predicate-head-policy-v2.log`); none of HEAD's selected Parties' 53 files is rejected.
+- The earlier `parties-predicate-*-policy.log` receipts came from a first script version. Its per-file list re-implemented only the ItemGroup/PackageVersion rule, so the v2 runs supersede them; they reported the same files.
+
+Upstream state since then: Parties d651173dc4b9b121217a28a97b3090ddf9e60960
+(`fix: inherit package versions from the shared catalog`, 2026-10-30T18:08:01Z)
+removed the root Contracts.UI fallback. It also renamed the retained file to
+`…/Directory.Packages.props.snapshot` with the same blob, which puts it outside
+the scanned extensions. FrontComposer fa30a34785b27a1a95903e35a7a1c1507426a5ab
+sealed Parties 6b8f0f8637c9a3bc7596794e2f819e5015e40e8e, a descendant of that
+fix. Ordinary validation at 126c43f670cfa3a36f31e9281271f54d8779b322 validates
+Parties 9e29b203e1c5af9d92ef8172a507843e6cb0e068 under parties-catalog-v1.
+Whether renaming the retained file's extension satisfies DW-1988 is for its
+owners to decide; this record does not close DW-1988. The four records
+are corrected in place here and in the deferred ledger, and by dated corrections
+in the handoff and release ledger.
+
+### Persistent receipts and exact invocations
+
+The 2026-10-30 resume receipts and this resolution's receipts are archived
+outside temporary storage:
+
+- Archive: `/home/administrator/.local/state/hexalith/frontcomposer/story-15-5-policy-precursor-20261031/round3-receipts.tar.gz`.
+- SHA-256: `55b4d00df5d68170868d60734d929bbc87cbb858387e22625733723eb45c24e0`.
+- 66 members plus `receipt-members.json`, which lists each member's byte count and SHA-256; every hash was verified against extracted bytes. `resume-review-20261030/` is a byte copy of `/tmp/fc-15-5-resume-review-dqivd22x/`. `round3-resolution-20261031/` holds `commands.jsonl` (argv, CWD, UTC start/end, exit), every lane log, the hosted-API and failed-step-log receipts, `run.py`, `parties-predicate.py`, `projection-field-drift.py` and `setup-clean-checkout.sh`.
+- Verify with `sha256sum <archive>`; list with `tar -tzf <archive>`; extract with `tar -xzf <archive> -C <existing-directory>`.
+
+Exact invocations of the 2026-10-30 resume results:
+
+- f69562a2 raw diagnostic: `python3 /tmp/fc-15-5-resume-review-dqivd22x/inspect-latest-source-tuple.py`, run from the workspace root `/home/administrator/projects/hexalith/frontcomposer`. That CWD is evident from the store paths in its log. The retained script fixes source f69562a2a1b0f11295278c4e715bbf7ecf2999f7, authorized-root example b1d89648ae6feed1c89e48c265de013e1507fa97 and base dd575b67c82c377bd17c34fb3d14366277d2ac62, and writes `source-tuple-latest.json`. The original argv was not logged; this invocation is reconstructed from the retained script and log. To rerun it, extract the archive and run `resume-review-20261030/inspect-latest-source-tuple.py` from a FrontComposer root whose root stores hold those revisions. First point its hard-coded `scratch` path at an existing directory.
+- Corrected Parties predicate: the 2026-10-30 invocation was not retained, only its JSON results. It is replaced by the archived `round3-resolution-20261031/parties-predicate.py` v2 runs above. They reproduce both earlier first refusals and add the per-file view. Run the extracted script by path, with the CWD set to a FrontComposer root (here the clean clone created by `setup-clean-checkout.sh`); its exact argv and CWD are in `commands.jsonl`.
+- Nested Builds probe: the 2026-10-30 `fatal: not a tree object` came from `git ls-tree <commit> -- Props/Directory.Packages.props` (`dependency_graph.read_blob`) in the workspace's references/Hexalith.Builds store, as logged in `inspect-latest-source-tuple.log`. Rerun on 2026-10-31 in the clean clone's Builds store, `git ls-tree cc0db51b800be1d0d5badc3780395cfb5953d0f5 -- Props/Directory.Packages.props` and the same for 69701dfcf54cb9c69fc6cb0c51b031af8d218142 each exit 0 with blob 52c61818bc0a0f62489cb8bf91de143d73a7d07e. Both commits are now on Builds origin/main. Their availability today is no evidence about the earlier observation time.
+- Stale three-scalar preview: `proposed-current-platform-reseal.diff` (owner 9e01ffacc45cb6a5ee12853d44f4b7f6e1f4084c) is archived as stale and was never applied.
+
+### Intent-required lanes at the current committed source
+
+All commands ran from the clean clone's root, created by `setup-clean-checkout.sh`
+at the ephemeral session scratch path
+`/tmp/claude-1000/-home-administrator-projects-hexalith-frontcomposer/9ed344d0-14bf-42c2-b4db-4061a520f965/scratchpad/fc155/checkout`.
+The clone is clean in its working trees and gitlink selections, but not in its
+objects. `git clone --shared` borrows the original workspace's object stores
+through alternates. Those stores had fetched every root dependency's origin/main
+earlier that day, so the `acquire-catalogs` pass is not a cold-network
+acquisition claim. Global NuGet and npm caches are shared too.
+
+| Lane | Command | Result at 188d8b733090a83108bd006aaa9fa71cd9a5a2d8 | Blocker |
+| --- | --- | --- | --- |
+| Ordinary committed source | `python3 eng/dependency_graph.py --root . validate --commit 188d8b733090a83108bd006aaa9fa71cd9a5a2d8` | Failed, exit 1 | Collection: `consumer projection root source selectors changed` |
+| Actual-parent transition | `python3 eng/dependency_graph.py --root . diff --event push --event-base a55960f5441239410107bda3d547b381fdfa6f3a --candidate 188d8b733090a83108bd006aaa9fa71cd9a5a2d8` | Failed, exit 1 | Same refusal; validation of base a55960f5 itself exits 1, so the diff stops before candidate semantics |
+| Exact catalog preparation | `python3 eng/dependency_graph.py --root . acquire-catalogs --event-base a55960f5441239410107bda3d547b381fdfa6f3a --candidate 188d8b733090a83108bd006aaa9fa71cd9a5a2d8` | Passed, exit 0; seven exact catalog commits prepared in the clone's root Builds store | None |
+| Clean infrastructure/CI governance | `npm ci --ignore-scripts --no-audit --no-fund` (exit 0, 352 packages); `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --nologo -m:1 -nodeReuse:false --disable-build-servers -p:NuGetAudit=false` (exit 0, zero warnings/errors); `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests -class Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests` | Failed, exit 1: 109 total, 108 passed, one failed, zero skipped/errors | Sole failure `CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds`, on the same root-selector refusal |
+
+The blocker is external to this precursor. Ordinary validation passes, with
+eight Builds selectors validated, at 34d0afde14c43b6079208c47f95297d0cf99b51d
+and at the last policy seal, 126c43f670cfa3a36f31e9281271f54d8779b322. Commit
+a55960f5441239410107bda3d547b381fdfa6f3a (`fix(build): resolve reviewed workspace
+dependencies`, 2026-10-31T15:22:25Z) then moved root Builds
+a22b55f0a4f6d2aaa3a5ccc505896064ac595364 → bb1b71ebc2b966b50b974e624e55cf540ad8a29c.
+It also changed `Directory.Packages.props` and `deps.local.props`, and renewed
+no seal.
+
+A raw comparison against the Platform projection row (receipt
+`projection-field-drift.log`) shows three sealed fields drift at a55960f5 and
+HEAD. In `evaluate_consumer_projections` order they are `root_selectors_sha256`,
+`builds_commit` (still a22b55f0) and `consumer_configuration_sha256`. All three
+match at 126c43f6. Only the first refusal is reported because the evaluation
+stops there, so the renewal must cover all three fields.
+
+Hosted failed-step logs (receipts `hosted-log-failed-<run>.log`) show the same
+refusal:
+
+- CI [41214552453](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41214552453) (a55960f5) and [41215250922](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41215250922) (HEAD) failed dependency-governance with `consumer projection root source selectors changed`.
+- Quality [41215250572](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41215250572) (HEAD) failed "Gate 2b: Infrastructure governance and telemetry contracts" in job 124578671464 and skipped the remaining Gate 2b–4a steps. Its log reports one Shell.Tests error, `CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds`, with the same message.
+- Quality [41214551987](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41214551987) (a55960f5) has the same Gate 2b refusal and ended cancelled.
+
+Renewing those seals is its own seal transition and is not attempted here; a
+deferred entry records it. No current infrastructure, ApiCompat, hosted or
+activation success is claimed. This resolution grants no publication, owner,
+Fluent, Product, EventStore or GOV-1 approval. Story 16.1, every original
+baseline and every independent approval keep their recorded dispositions.
+
+### Round-3 resolution checks
+
+Final run in the original workspace after every edit, including the review
+patches and the sprint-status synchronization:
+
+- `python3 eng/validate-story-artifacts.py` — exit 0, `Story artifact validation passed.`
+- `git diff --check` — exit 0. All five edited files remain CRLF-only.
+- `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-prepare-the-inactive-policy-precursor.md --candidate 188d8b733090a83108bd006aaa9fa71cd9a5a2d8 --unrelated references/Hexalith.Builds --unrelated references/Hexalith.EventStore --unrelated references/Hexalith.Memories --unrelated references/Hexalith.Parties --unrelated references/Hexalith.Platform --unrelated references/Hexalith.Tenants --reason 'User asked to fast-forward the root-declared submodule checkouts to origin/main before this run; no gitlink is committed.'` — exit 1. Four Story 15.5 commits are `interleaved`. e07e2f42605ffde307606f4ee027c382ef1e8aa4 carries the already-deferred unowned Platform gitlink. fc17308d969129edc461c451e16dedacf777b2b0 (`docs: record story 15.5 as in progress`) touches this spec and `sprint-status.yaml`. It was interleaved in the first run and became `owned` once the status sync added `sprint-status.yaml` to this File List. decbb195f1c010460530fde6b662a6118a83ee7c, eb1f0f7158b254dfacf460b2e30199ac8912944f and 188d8b733090a83108bd006aaa9fa71cd9a5a2d8 deliver the sibling 4.7.2 spec and its review. The existing high deferral covers only e07e2f42. No deferral covered these sibling-spec interleavings, because the validator attributes by story ID rather than by spec; a new deferred entry records that. The six documented-unrelated dependency checkouts are reported as such.
+
+
+## Review Triage Log — round-3 resolution, 2026-10-31
+
+The oneshot route ran Blind Hunter only; Edge Case Hunter and Verification Gap
+were skipped. One context-free reviewer at the parent model capability reviewed
+the changed worktree: 47.875 kB of diff, floor min(floor(sqrt(47.9) + 1), 10) = 7.
+It returned 14 findings, each checked against the code, receipts and Git history.
+
+- BH-31-1 — medium / patch: the reseal scope was understated. `projection-field-drift.log` shows that `root_selectors_sha256`, `builds_commit` and `consumer_configuration_sha256` all drift at a55960f5 and HEAD and all match at 126c43f6; `evaluate_consumer_projections` reports only the first. All four records now name the three fields.
+- BH-31-2 — false / low / reject: the requested DW id, owner and completion criteria for the new high entry are false findings. The workflow prescribes the flat `source_spec`/`summary`/`evidence` defer format, and the sweep migration assigns DW coordinates. The malformed `validate --commit` command was real (low) and is patched to `--commit <sha>`. A cross-link inside DW-1988 is rejected (low): it would rewrite an old entry, and the new entry already names DW-1988.
+- BH-31-3 — low / reject: the resumed deferred entry's nested-catalog, Parties and tuple statements were true when observed. Only its DW-1988 sentence was wrong when written, and that sentence is corrected. The sweep re-verifies entries against current code, and the new entries record the overtaken state.
+- BH-31-4 — low / patch: added a superseded-in-part pointer at the top of the resumed section and a resolution pointer under the round-3 findings.
+- BH-31-5 — low / patch: the landing check now cites both the manual observation (16:03:01Z) and the archived receipts (16:03:31–16:03:32Z).
+- BH-31-6 — low / patch: "eight selectors" now reads "eight Builds selectors validated". `selectors_validated` counts Builds-selector edges, not the nine depth-1 root selectors.
+- BH-31-7 — medium / patch + defer: fc17308d is now described correctly (this spec plus `sprint-status.yaml`). The claim that the existing deferral covered sibling commits is withdrawn, and a new deferred entry records sibling-spec strict attribution.
+- BH-31-8 — medium / patch: v1's per-file list re-implemented one rule. v2 runs the unchanged predicate once per tracked file and reproduces the same results; its receipts supersede v1's.
+- BH-31-9 — low / patch: the hosted cause was correct but uncited. Archived failed-step logs show the same message; HEAD's Gate 2b reports one Shell.Tests error.
+- BH-31-10 — medium / patch: the record now says the `--shared` clone borrows the original object stores (fetched that day), so `acquire-catalogs` is not a cold-network claim. It also records the ephemeral clone path and the shared NuGet/npm caches.
+- BH-31-11 — low / patch: the fast-forwarded checkout SHAs are recorded. The delivery stages only File List paths, so no gitlink move is committed.
+- BH-31-12 — medium / defer: owner acceptance of the unreviewed precursor policy, and which policy may serve as the reviewed prior for activation, are now a deferred entry. Settling them needs the owner/protection process.
+- BH-31-13 — low / patch at finalize: this spec moves to `done`, because its bounded patches are resolved and its remaining blockers are external and deferred. Sprint-status gets a dated comment replacing the now-false seven-open-patches reason.
+- BH-31-14 — low / patch: the record now gives the archived member paths and the CWD for both diagnostics; "closed" is corrected to "resolves" in the handoff.
+
+The 2026-10-30 note that the done step is not reached while required gates fail
+applied to that run's own candidate gates. The precursor proposal has since been
+overtaken: it landed unreviewed and was re-sealed by later commits. The gates
+that still fail belong to the external a55960f5 seal gap. Story 15.5 stays open.

@@ -503,3 +503,49 @@ advances the encompassing Story 15.5 to review, an open state. This is a trackin
 transition after local verification and independent implementation review; it
 does not resolve the retained policy-transition failures or separately owned
 approvals. No push, merge or activation is authorized by that handoff.
+
+
+### Precursor round-3 review resolution — 2026-10-31
+
+The [precursor's round-3 resolution](spec-15-5-prepare-the-inactive-policy-precursor.md#round-3-review-resolution--2026-10-31)
+resolves its seven review patches as documentation only. Earlier observations in
+this handoff stay as written; this entry corrects them where stated.
+
+- **Landing.** The precursor reached main through direct merge
+  92eff2e7b1b0f53631c53fa8284b466e202ae921, with no PR, while candidate validation
+  was failing. That deviates from the frozen intent. The landed
+  f75d774d281aa6d4764d9576597ff98ecfbaa3a7 policy is unreviewed, must not serve as
+  a reviewed prior policy for activation, and its owner acceptance remains open.
+- **Delivery.** The 2026-10-30 resumed entry above says that run made no commit or
+  remote write. Commit e07e2f42605ffde307606f4ee027c382ef1e8aa4 then delivered it to
+  origin/main and selected Platform a185bfaa5541f8de675fb82e4f553e1e49931201,
+  whose owner pin ordinary validation refuses. CI 41099330117 failed, and
+  Quality 41099329667 was cancelled after failing catalog preparation.
+- **Superseded hosted observation.** Quality 41097179475 failed catalog preparation
+  at 17:19:14Z, skipped Gate 2b–4a and ended cancelled at 17:20:39Z. Quality
+  41097863471 and CI 41097864370 for f69562a2a1b0f11295278c4e715bbf7ecf2999f7
+  also ended cancelled.
+- **DW-1988 correction.** The entry above describes "distinct historical/current
+  Parties failures". That is wrong: DW-1988's retained file is byte-identical at
+  Parties 8b0e23e437296691d0233fe86afc765063f9fef5, and the root refusal masked it.
+  Upstream Parties d651173dc4b9b121217a28a97b3090ddf9e60960 later cleared both,
+  and fa30a34785b27a1a95903e35a7a1c1507426a5ab sealed the result. DW-1988's
+  closure remains its owners' decision.
+- **Current lanes.** At HEAD 188d8b733090a83108bd006aaa9fa71cd9a5a2d8,
+  `acquire-catalogs` passes. Ordinary validation, the actual-parent push diff and
+  clean infrastructure governance (108/109) fail on
+  `consumer projection root source selectors changed`. Hosted failed-step logs
+  show the same message. The cause is external commit
+  a55960f5441239410107bda3d547b381fdfa6f3a, which moved root Builds and changed
+  consumer configuration without renewing the Platform projection seals.
+  `root_selectors_sha256`, `builds_commit` and `consumer_configuration_sha256`
+  all drift; only the first is reported. It is deferred and not repaired here.
+- **Open tracking.** Owner acceptance of the unreviewed precursor policy, and
+  which policy may serve as the reviewed prior for activation, are now
+  deferred items. So is strict attribution across sibling Story 15.5 specs.
+
+Receipts are archived at
+`/home/administrator/.local/state/hexalith/frontcomposer/story-15-5-policy-precursor-20261031/round3-receipts.tar.gz`
+(SHA-256 `55b4d00df5d68170868d60734d929bbc87cbb858387e22625733723eb45c24e0`).
+This is machine-local retention, not hosted evidence. The resolution changes no
+policy, dependency, guard or gitlink and grants no activation or approval.
