@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 11-01-2026 15:17
+last_updated: 11-01-2026 17:52
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -244,7 +244,7 @@ development_status:
   # committed evidence and its machinery were removed instead of externalized; closed as done.
   15-6-external-browser-artifacts-and-bounded-accessibility-receipts: done
   15-7-retire-bulky-browser-evidence: done
-  epic-15-retrospective: optional
+  epic-15-retrospective: done
 
   epic-16: in-progress
   16-1-i-evt-id-1-capture-the-current-eventstore-runtime-tuple: in-progress
@@ -1039,6 +1039,70 @@ action_items:
     status: open
     evidence: "_bmad-output/implementation-artifacts/13-6-accessibility-result.md#retrospective-follow-through--2026-10-22"
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-10-22.md"
+  - id: "E15R-AI-1"
+    epic: 15
+    action: "Close deferred-work.md:11105 (Platform owner pin) with a separately authorized
+      seal transition, then record a Quality run on a later non-seal commit where
+      Gates 2b-4a execute green, including the c46c1fb5/589d63aa/bd189a4e Gate 4 theory
+      rows (closes :11119-11121); cite it in spec-15-5-qualify-the-governance-transition.md."
+    owner: "Release Owner + CI maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md"
+  - id: "E15R-AI-2"
+    epic: 15
+    action: "Keep offline gates reporting when dependency governance refuses: move
+      catalog acquisition (quality.yml:134-159) to its own job, handle an unreachable
+      github.event.before, and make the /pushall gitlink-move path run dependency_graph.py
+      validate before pushing; coordinate with E12R-AI-1."
+    owner: "CI maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md"
+  - id: "E15R-AI-3"
+    epic: 15
+    action: "Harden two Epic 15 boundaries: PathUtilities.HasExcludedSegment refuses
+      a generated segment at any position (test a project-root Generated/), and 'Upload
+      contract diagnostics' stops publishing provider-verification.json unless the
+      redaction scan passed."
+    owner: "CLI maintainer + CI maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md"
+  - id: "E15R-AI-4"
+    epic: 15
+    action: "Make the Gate 4 guard outcome-based (reject DisablePackageBaselineValidation,
+      PackageValidationBaselinePath/Name, suppression-file generation, shell expansion
+      and comments on the pack line, or assert the compared baseline package) and
+      collapse the 14 hand-written 4.7.2 sites onto one source of truth."
+    owner: "CI / governance maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md"
+  - id: "E15R-AI-5"
+    epic: 15
+    action: "Log and correctly word generated-fallback faults in FcCustomizationFallbackBoundary,
+      add a release note for the FcShellOptions startup-validation change, and restore
+      a machine-checked non-evidence IDE-parity revalidation status."
+    owner: "Shell maintainer + Technical writer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md"
+  - id: "E15R-AI-6"
+    epic: 15
+    action: "Reconcile tracking and specs: PLAN-INT-2/DOC-A/DOC-B/DOC-C aliases to
+      done; epics.md:3990 and prd.md:731 to the 4.7.0-4.7.1-4.7.2 history; remove
+      stale run status at docs/fluent-ui-v5-contingency.md:38; de-duplicate docs/reference/cli.md;
+      fix the NU5104 comment; note E13R-AI-4 superseded by the evidence policy; close
+      satisfied deferrals; give Epic 15 legacy deferrals DW ids."
+    owner: "Sprint tracking owner + Product Manager"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md"
+  - id: "E15R-AI-7"
+    epic: 15
+    action: "Record process rules: auto-commit and /pushall subjects match content
+      and never cross story scope; one branch per story with reviewed merge resolutions;
+      closure cites the last green hosted run or states hosted proof unavailable;
+      add a terminal superseded sprint status; plan sealed-configuration edits as
+      their own governed stories."
+    owner: "Scrum Master / process owner"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md"
 approved_change_backlog:
   source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md"
   approved: "2026-09-22"
@@ -1072,12 +1136,18 @@ approved_change_backlog:
         - {id: "MCP-APP-1", kind: "approval-evidence", status: "done"}
     - name: "UX Conformance and Documentation Parity"
       items:
-        - {id: "UX-A", kind: "implementation", status: "done", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md#verification"}
-        - {id: "UX-B", kind: "implementation", status: "done", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md#verification"}
-        - {id: "UX-C", kind: "implementation", status: "done", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-4-announce-projection-and-command-state-without-noise.md#verification"}
-        - {id: "UX-D", kind: "implementation", status: "done", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md#verification"}
-        - {id: "UX-E", kind: "implementation", status: "review", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md#verification"}
-        - {id: "UX-F", kind: "implementation", status: "done", reconciled: "2026-10-22", evidence: "_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md#verification"}
+        - {id: "UX-A", kind: "implementation", status: "done", reconciled: "2026-10-22",
+          evidence: "_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md#verification"}
+        - {id: "UX-B", kind: "implementation", status: "done", reconciled: "2026-10-22",
+          evidence: "_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md#verification"}
+        - {id: "UX-C", kind: "implementation", status: "done", reconciled: "2026-10-22",
+          evidence: "_bmad-output/implementation-artifacts/spec-13-4-announce-projection-and-command-state-without-noise.md#verification"}
+        - {id: "UX-D", kind: "implementation", status: "done", reconciled: "2026-10-22",
+          evidence: "_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md#verification"}
+        - {id: "UX-E", kind: "implementation", status: "review", reconciled: "2026-10-22",
+          evidence: "_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md#verification"}
+        - {id: "UX-F", kind: "implementation", status: "done", reconciled: "2026-10-22",
+          evidence: "_bmad-output/implementation-artifacts/spec-13-7-provide-reusable-ux-assertions-for-adopters.md#verification"}
         - {id: "DOC-A", kind: "implementation", status: "proposed"}
         - {id: "DOC-B", kind: "implementation", status: "proposed"}
         - {id: "DOC-C", kind: "implementation", status: "proposed"}
@@ -1102,7 +1172,8 @@ approved_change_backlog:
       items:
         - {id: "REL-LEDGER-1", kind: "approval-evidence", status: "open"}
         - {id: "REL-LEDGER-2", kind: "implementation-evidence", status: "proposed"}
-        - {id: "REL-BASE-1", kind: "implementation", status: "done", reconciled: "2026-10-29", closed: "2026-11-01", evidence: "_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md#approved-advancement-verification-2026-10-29",
+        - {id: "REL-BASE-1", kind: "implementation", status: "done", reconciled: "2026-10-29",
+          closed: "2026-11-01", evidence: "_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md#approved-advancement-verification-2026-10-29",
           ref: "_bmad-output/implementation-artifacts/spec-15-5-qualify-the-governance-transition.md#code-review-round-2--2026-11-01"}
         - {id: "REL-A3-APP-1", kind: "approval", status: "open"}
         - {id: "E9-APP-1", kind: "approval", status: "done", closed: "2026-10-20",
