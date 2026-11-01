@@ -29,6 +29,9 @@
     "semantic-release": "^25.0.9"
   },
   "overrides": {
-    "conventional-changelog-writer": "^9.2.1"
+    "conventional-changelog-writer": "^9.2.1",
+    "semantic-release": {
+      "@semantic-release/npm": "npm:@semantic-release/error@4.0.0"
+    }
   }
 }
