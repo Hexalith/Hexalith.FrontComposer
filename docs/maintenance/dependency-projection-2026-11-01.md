@@ -23,3 +23,9 @@ runtime checks. No earlier CI result is reclassified as successful.
 Verification: with the seal commit as event base, `dependency_graph.py
 acquire-catalogs`, `validate --commit`, and the CI `acquire` plus `diff` pair
 pass for the first descendant before it is pushed.
+
+A subsequent synchronization advances the EventStore and Tenants declarations to
+their current sibling main revisions. The root-selector fingerprint is recomputed
+from those exact committed declarations. The policy transition remains subject to
+its prior base; this descendant supplies a later-base evaluation without changing
+the dependency or authorization rules.
