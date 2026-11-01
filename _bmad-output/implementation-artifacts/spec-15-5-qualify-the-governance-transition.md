@@ -585,3 +585,90 @@ still exits 1 on the Platform 03a099bba258c37a8f16c8b2e842ae842b1ad6d6 owner pin
 By human decision on 2026-11-01, Story 15.5 and REL-BASE-1 close as `done`.
 Precursor owner acceptance stays open in the deferred ledger, outside the story.
 No publication, activation, owner or independent approval is granted.
+
+
+## Code review round 3 — 2026-11-01
+
+Follow-up review of the fix delta 589d63aa1a91c9c602f4caa15deef48bcf035b0c,
+which applied the [round-2 code review](#code-review-round-2--2026-11-01) patches
+and closed Story 15.5. The diff is `git diff c46c1fb5 589d63aa` (34.321 kB; Blind
+Hunter floor min(floor(sqrt(34.321) + 1), 10) = 6). The later commits 5c8a89a0,
+44453a45 and 1e1f3fde (gitlink syncs) and c092e8f9 (`fix(deps)`) are outside
+Story 15.5 and are excluded. Four independent reviewers ran at the parent model
+capability: Blind Hunter, Edge Case Hunter, Verification Gap and Acceptance
+Auditor. Every finding was verified against HEAD c092e8f9, whose reviewed paths
+are unchanged since 589d63aa, plus Git history, hosted runs and local probes
+before triage.
+
+### Review Findings
+
+- [x] [Review][Decision] Epic 15 stays `in-progress` although all seven of its stories are `done` — 589d63aa closed Story 15.5, the last open Epic 15 story: 15-1 through 15-7 are `done`, and `epics.md` lists no Story 15.8. The status file's rule is "in-progress → done: Manually when all stories reach 'done' status" (sprint-status.yaml:17), and `epic-15: in-progress` (line 224) has no dated comment explaining the hold. The file has precedents for both choices: epic-14 is `done` while its retrospective stays `optional`, and epic-12 moved to `done` after its retrospective was accepted. Options: (1) set `epic-15: done` now with a dated comment, leaving `epic-15-retrospective: optional`; (2) keep `epic-15: in-progress` until the retrospective runs, with a dated comment saying so. Resolved 2026-11-01: human decision, option 2. Epic 15 stays `in-progress` until its retrospective runs; a dated sprint-status comment records the hold (patch below).
+- [x] [Review][Patch] Record the Epic 15 hold [_bmad-output/implementation-artifacts/sprint-status.yaml:224] — apply the option-2 decision: above `epic-15: in-progress`, add a dated comment saying that all seven Epic 15 stories are `done` and that, by human decision, the epic stays `in-progress` until `epic-15-retrospective` runs. No story status changes.
+- [x] [Review][Patch] Theory rows still do not pin the case-insensitive switch match [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2012] — `propertySwitch` matches `(?i:p|property)` (line 2109), but all nine rows are lowercase, so narrowing it to `(?:p|property)` keeps every row green. Two independent probes on SDK 10.0.403 show that `dotnet pack` applies `-P:Foo=X`, so an uppercase later override would reach ApiCompat while the live row still evaluates 4.7.2. 589d63aa's subject says "pin every Gate 4 collector branch". Add `[InlineData("-P:{property}", "4.7.1")]`. The tab delimiter and the embedded-quote value segment also have no row. They stay unpinned: no Gate 4 line uses a tab, and a mis-collected quoted value evaluates `PackageValidationBaselineVersion` as empty (probed), which fails the live row loudly.
+- [x] [Review][Patch] Collector comment omits case-insensitivity and lists a quoted whitespace form that pack rejects [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2088] — it says the collector accepts "the property-switch spellings `dotnet pack` applies" and names "`p` or `property`" without case. The quoted branch also accepts whitespace, so it collects `"-p Name=Value"`, which pack rejects (MSB1001, round 2); that form fails loudly. Say "`p` or `property` in any case", and state that a quoted switch with whitespace before its value is collected although pack rejects it.
+- [x] [Review][Patch] Release-line checklist omits the ledger's own `currentRelease` sites [_bmad-output/implementation-artifacts/deferred-work.md:11084] — the amended entry names only the eleven `v4.7` literals in `tests/eng/test_pack_release_packages.py`. A minor or major advance also moves `docs/diagnostics/compatibility-suppressions.json:3` (`"currentRelease": "v4.7"`), `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:701` (`ShouldBe("v4.7")`) and the diagnostics README's "active `v4.7` ledger" (`docs/diagnostics/README.md:7`). Add them to the entry's added sentence.
+- [x] [Review][Patch] Hotfix comment does not say that a ledger release-line advance also breaks the derived real-tree candidates [tests/eng/test_pack_release_packages.py:40] — the candidates derive from the baseline only. When `currentRelease` opens the next line while the baseline stays one line behind, which the policy permits, `run_plan(PUBLISHED_BASELINE_VERSION, release_policy=True)` (line 120) and `validate_release_policy(ROOT, HOTFIX_VERSION)` (line 304) fail with "does not match currentRelease" (`eng/release_compatibility.py:401-404`), even after the `v4.7` literals move. Say so in the comment.
+- [x] [Review][Patch] Sprint-status header date was not advanced [_bmad-output/implementation-artifacts/sprint-status.yaml:2] — 589d63aa moved `last_updated:` to `11-01-2026 07:46` but left `# last_updated: 2026-10-31`. The eight previous status commits kept the two in step. Set the header to `# last_updated: 2026-11-01`.
+- [x] [Review][Patch] An open deferral still names unblocking Story 15.5 as its purpose [_bmad-output/implementation-artifacts/deferred-work.md:11071] — the resumed-review entry asks maintainers to finish its work "before an authorized successor can unblock Story 15.5", and 589d63aa closed that story. A sweep can read the entry as moot and close work that is still open. Append a dated note under this review's deferred heading: Story 15.5 closed on 2026-11-01 by human decision, the line-11071 entry and the owner-acceptance entry (line 11096) stay open outside the story, and only line 11071's "unblock Story 15.5" purpose is obsolete.
+- [x] [Review][Patch] The 4.7.2 forward-pointer deferral misses 589d63aa [_bmad-output/implementation-artifacts/deferred-work.md:11113] — it names only c46c1fb5, but 589d63aa changed the same theory and collector comment again. Name both commits.
+- [x] [Review][Defer] No hosted run has executed the c46c1fb5 or 589d63aa test changes, or Gate 4, since e442544c [.github/workflows/quality.yml:162] — deferred: pre-existing, caused by the Platform owner-pin refusal already deferred as high. Quality fails "Prepare exact governance catalog objects" and skips every Gate 2b–4a step: 41250039403 at c46c1fb5 (failure), 41282260584 at 589d63aa (that step failed, run cancelled) and 41289068705 at HEAD c092e8f9 (failure). Push CI does not run Shell.Tests. The last executed Gate 4 is Quality 41229072509 at 6811bfd6 (success). Neither the high deferral nor the release-ledger closure entry says that these gates are skipped. Ordinary validation at HEAD now refuses Platform 55592ec3a57e26d11928971d5e04d9e50235a959, moved by 1e1f3fde, instead of 03a099bb.
+- [x] [Review][Defer] The activation handoff and the repair record neither Story 15.5's return to review nor its closure [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-activation-handoff.md:508] — deferred: the fix edits other specs. This spec's frozen intent requires appending to "the repair, activation handoff, release ledger and deferred ledger". The handoff's last section is the 2026-10-31 precursor round-3 resolution, and the repair's last section is dated 2026-10-30; neither has a 2026-11-01 entry. The round-2 deferral (deferred-work.md:11107) covers only the handoff and only the return to review.
+
+#### Rejected
+
+- Blind Hunter, Edge Case Hunter and Acceptance Auditor: the File List and Footprint omit this delivery's paths, and focused strict attribution now fails for good — medium, rejected because the fix edits this spec (carried from round 2). `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-qualify-the-governance-transition.md --base c46c1fb5 --candidate 589d63aa` exits 1: 589d63aa is `interleaved` with three unowned paths (`sprint-status.yaml`, `CiGovernanceTests.cs`, `test_pack_release_packages.py`). With Story 15.5 `done`, no later delivery will reconcile it.
+- Blind Hunter and Acceptance Auditor: the verification record is inconsistent (nine rows in 20.2 s against seven in 21.2 s at "about 3 s" each), records the mutations only in prose and has no commitlint evidence — rejected: the fix edits this spec. The timings are run-to-run variance, and the pinned commitlint CLI accepts 589d63aa's message with 0 problems and 0 warnings.
+- Acceptance Auditor: the ledger says "the same human decision of 2026-10-31" moved this spec to `done`, but the 2026-10-31 Decision row offered only precursor options — maybe-false, low: the 2026-10-31 sprint-status comment records both moves in one human decision ("the precursor stays done (amendment) and the qualification spec is done"). Settling it needs the 2026-10-31 decision itself.
+- Blind Hunter and Acceptance Auditor: REL-BASE-1 closes on the superseded 4.7.1 receipt — false: `reconciled` and `evidence` are the dated reconciliation receipt, the same shape as UX-A through UX-F. The `done` receipt is the new `ref:` to the round-2 review, which leads to the 4.7.2 record.
+- Verification Gap: the high owner-pin deferral names 03a099bb, but main now refuses on 55592ec3 — false as a defect of this delta: validate still prints 03a099bb at 589d63aa, and the deferral asks for a renewed "Platform owner pin", not one SHA. 55592ec3 came from 1e1f3fde after this delta; the hosted-gates deferral above records it.
+- Blind Hunter: the owner-acceptance deferral (deferred-work.md:11096) still says it "has no tracker" — false: the round-2 Decision named exactly that, and option 2 chose to carry owner acceptance by that entry alone.
+- Acceptance Auditor: deferred-work.md:11026 still targets the closed story — false: it names no Story 15.5 target, and "the current request's passing-local-gates PR prerequisite remains unmet" is still true.
+- Edge Case Hunter: derive the real-tree candidates from `currentRelease` so that a ledger line advance keeps them green — low: the failure is loud, it occurs only at a ledger line advance, and the derivation is more than a direct correction. The comment patch above names the case.
+
+### Review resolution — 2026-11-01
+
+The decision resolved to option 2, and all eight patches were applied to the
+working tree on HEAD c092e8f91ebb670fad4ab959f2d3c8e13d809e0f, whose reviewed
+paths are unchanged since 589d63aa:
+
+- `sprint-status.yaml`: a dated comment above `epic-15: in-progress` records the
+  hold until `epic-15-retrospective` runs. The header reads
+  `# last_updated: 2026-11-01`, and `last_updated:` reads `11-01-2026 15:17`. No
+  story status changes.
+- `CiGovernanceTests.cs`: the theory adds a `-P:{property}` row. The collector
+  comment says that `p` or `property` matches in any case, and that a quoted switch
+  with whitespace before its value is collected although pack rejects it.
+- `test_pack_release_packages.py`: the comment says that the real-tree candidates
+  do not follow the ledger, so a `currentRelease` line advance ahead of the
+  baseline fails the real-tree release-policy plan test and the hotfix-candidate
+  test.
+- `deferred-work.md`: the checklist entry names the three ledger release-line
+  sites, and the 4.7.2 forward-pointer entry names 589d63aa as well as c46c1fb5. A
+  dated note under this review's deferred heading says that only line 11071's
+  "unblock Story 15.5" purpose is obsolete, and that it and the owner-acceptance
+  entry stay open outside the story.
+
+Local verification:
+
+- `python3 -m unittest tests/eng/test_pack_release_packages.py`: 47 passed.
+- `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release --nologo -nodeReuse:false --disable-build-servers -p:NuGetAudit=false`:
+  0 warnings, 0 errors.
+- `tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests -method "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.QualityWorkflow_Gate4ValidatesEveryPackableLibrary"`:
+  10 passed (31.0 s).
+- Mutation check, rebuilt and run with the same `-method`: replacing
+  `(?i:p|property)` with `(?:p|property)` fails exactly the `-P:{property}` row (9
+  passed, 1 failed). The line was restored, `git diff` shows only the patch lines,
+  and the file was rebuilt.
+- The same executable with `-class "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests"`
+  on the restored file: 96 passed.
+- `python3 eng/validate-story-artifacts.py`: exit 0. The focused `--story` form
+  still exits 1 on the File List gap rejected above (carried). `git diff --check`:
+  exit 0. All five edited files remain CRLF-only, and `sprint-status.yaml` parses.
+
+`python3 eng/dependency_graph.py --root . validate --commit` still exits 1 at
+c092e8f9 on the Platform 55592ec3a57e26d11928971d5e04d9e50235a959 owner pin
+(deferred above). No hosted run has observed these patches yet.
+
+By human decision on 2026-11-01, Epic 15 stays `in-progress` until its
+retrospective runs, and Story 15.5 stays `done`. No publication, activation, owner
+or independent approval is granted.

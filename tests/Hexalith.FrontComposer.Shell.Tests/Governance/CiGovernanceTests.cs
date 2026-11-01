@@ -2010,6 +2010,7 @@ public sealed class CiGovernanceTests {
     [InlineData("\"-p:{property}\"", "4.7.1")]
     [InlineData("'-p:{property}'", "4.7.1")]
     [InlineData("--property {property}", "4.7.1")]
+    [InlineData("-P:{property}", "4.7.1")]
     public void QualityWorkflow_Gate4ValidatesEveryPackableLibrary(string? overrideArgument, string? laterBaselineOverride) {
         // Spec "make the release compatibility gates actually enforce" (amended after review pass
         // 1): Gate 2a packs only Hexalith.FrontComposer.Cli, which is PackAsTool, and the SDK
@@ -2086,9 +2087,11 @@ public sealed class CiGovernanceTests {
 
         // A later override is injected as a `\`-continued line, so the collector must join shell
         // continuations and accept the property-switch spellings `dotnet pack` applies: `-`, `--`
-        // or `/`; `p` or `property`; `:`, `=` or whitespace; optionally as one single- or
-        // double-quoted argument. It does not model a switch quoted apart from its value
-        // (`"-p" Name=Value`), quoted text joined to an unquoted suffix, or response files.
+        // or `/`; `p` or `property` in any case; `:`, `=` or whitespace; optionally as one single-
+        // or double-quoted argument. A quoted switch with whitespace before its value
+        // (`"-p Name=Value"`) is collected although pack rejects it (MSB1001). It does not model a
+        // switch quoted apart from its value (`"-p" Name=Value`), quoted text joined to an unquoted
+        // suffix, or response files.
         string packScript = libraryGate;
         if (laterBaselineOverride is not null) {
             string overrideProperty = (overrideArgument ?? string.Empty).Replace(

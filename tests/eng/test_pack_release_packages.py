@@ -39,7 +39,10 @@ VERSION = "4.3.0-review.compat"
 FIXTURE_BASELINE = "4.2.0"
 # Real-tree candidates derive from the published baseline (the baseline itself or the next hotfix
 # above it), so they track every patch advance; a minor or major advance still moves the `v4.7`
-# release-line literals by hand.
+# release-line literals by hand. They do not follow the ledger: when `currentRelease` opens the
+# next line while the baseline stays on the preceding one, the real-tree release-policy plan test
+# and the hotfix-candidate test fail with "does not match currentRelease" even after the literals
+# move.
 _BASELINE_MAJOR, _BASELINE_MINOR, _BASELINE_PATCH = PUBLISHED_BASELINE_VERSION.split(".")
 HOTFIX_VERSION = f"{_BASELINE_MAJOR}.{_BASELINE_MINOR}.{int(_BASELINE_PATCH) + 1}"
 PRODUCTION_VERSION = f"{HOTFIX_VERSION}-review.compat"
