@@ -37,8 +37,9 @@ VERSION = "4.3.0-review.compat"
 # The fixture ledger plans v4.3, so its checked-in baseline must sit on the preceding v4.2
 # line. The real repository plans a different line; its baseline is asserted separately.
 FIXTURE_BASELINE = "4.2.0"
-# Real-tree candidates are the next hotfix above the published baseline, so they track every patch
-# advance; a minor advance still moves the `v4.7` release-line literals by hand.
+# Real-tree candidates derive from the published baseline (the baseline itself or the next hotfix
+# above it), so they track every patch advance; a minor or major advance still moves the `v4.7`
+# release-line literals by hand.
 _BASELINE_MAJOR, _BASELINE_MINOR, _BASELINE_PATCH = PUBLISHED_BASELINE_VERSION.split(".")
 HOTFIX_VERSION = f"{_BASELINE_MAJOR}.{_BASELINE_MINOR}.{int(_BASELINE_PATCH) + 1}"
 PRODUCTION_VERSION = f"{HOTFIX_VERSION}-review.compat"
@@ -116,7 +117,7 @@ class PackReleasePackagesTests(unittest.TestCase):
         # The production plan test runs against a synthetic fixture, so this is the only guard
         # that the REAL script exits 0 with --release-policy against the REAL tree. A tree that
         # cannot pack any version -- the pass-1 regression -- fails here.
-        result = self.run_plan("4.7.2", release_policy=True)
+        result = self.run_plan(PUBLISHED_BASELINE_VERSION, release_policy=True)
 
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)

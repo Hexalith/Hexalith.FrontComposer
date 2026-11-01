@@ -501,3 +501,87 @@ By human decision on 2026-10-31, this spec moves to `done`. That supersedes the
 and PR are blocked. `done` closes only the reviewed record work. The blocked
 transition remains an external prerequisite, Story 15.5 and REL-BASE-1 stay at
 review, and no publication, owner or independent approval is granted.
+
+
+## Code review round 2 — 2026-11-01
+
+Follow-up review of the fix delta c46c1fb540604f76ce6754437ba68c894007ca8f,
+which applied the [2026-10-31 code review](#code-review--2026-10-31) patches. The
+diff is `git diff e442544c c46c1fb5` (34.402 kB; Blind Hunter floor
+min(floor(sqrt(34.402) + 1), 10) = 6). e442544ca2369a43c3e5244eb8005a551a713a77
+(`fix: submodules`) is outside Story 15.5 and is excluded. Four independent
+reviewers ran at the parent model capability: Blind Hunter, Edge Case Hunter,
+Verification Gap and Acceptance Auditor. Every finding was verified against HEAD
+c46c1fb5, Git history, hosted runs and local probes before triage.
+
+### Review Findings
+
+- [x] [Review][Decision] Nothing tracks what closes Story 15.5 now that all seven of its specs are `done` — c46c1fb5 moves this spec, the last open Story 15.5 spec, to `done`. Story 15.5 and REL-BASE-1 stay at `review` only through a sprint-status comment ("stays at review while precursor owner acceptance remains open"). The deferral that holds owner acceptance says it "has no tracker" (deferred-work.md:11095), and no artifact names an owner or closing condition. A spec-to-story status sync, including this workflow's own status step, would set the story to `done` while owner acceptance is still open. Options: (1) keep Story 15.5 at `review` and add an open tracker for precursor owner acceptance, for example an `approved_change_backlog` approval item next to REL-BASE-1 that names the owner and the closing condition; (2) close Story 15.5 and REL-BASE-1 as `done` and carry owner acceptance only as the existing deferral, outside the story; (3) open a new non-done Story 15.5 spec (for example `blocked`) that owns owner acceptance. Resolved 2026-11-01: human decision, option 2. Story 15.5 and REL-BASE-1 close as `done`; precursor owner acceptance is carried only by the existing deferral (deferred-work.md:11095), outside the story (patch below).
+- [x] [Review][Patch] Close Story 15.5 and REL-BASE-1 as `done` [_bmad-output/implementation-artifacts/sprint-status.yaml:238] — apply the option-2 decision: set REL-BASE-1 in `approved_change_backlog` to `done` with its closing date and a reference to this decision, and add a dated sprint-status comment saying owner acceptance stays open in the deferred ledger, outside the story. The development-status entry moves to `done` in the review's status step. Closing the story grants no publication, activation, owner, Fluent, Product, EventStore or GOV-1 approval, and it does not accept the f75d774d281aa6d4764d9576597ff98ecfbaa3a7 policy.
+- [x] [Review][Patch] Theory rows do not pin every spelling the collector accepts [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2010] — c46c1fb5 adds a single-quoted branch `'{propertySwitch}[^']*'` and `Trim('\'')`, but no row passes a single-quoted argument. A probe that deletes the branch keeps all seven rows green. Bash still applies a single-quoted later override, so it would reach ApiCompat while the live row evaluates 4.7.2. The 2026-10-31 probe also named `--property Foo=X`, which has no row. Add `[InlineData("'-p:{property}'", "4.7.1")]` and `[InlineData("--property {property}", "4.7.1")]`; each row costs about 3 s (the seven rows take 21.2 s).
+- [x] [Review][Patch] Collector comment still claims every spelling `dotnet pack` applies [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2085] — a probe of the exact expression shows that `"-p" FrontComposerPackageValidationBaselineVersion=4.7.1` is not collected, although bash gives it the same argv as `-p Foo=X`. `"-p:Foo=4.7.2"-rc` is collected as `4.7.2`, and `"-p Foo=X"` is collected although pack rejects it (MSB1001). c46c1fb5's subject and body repeat the claim. Reword the comment to name the forms it models, and state that a switch quoted apart from its value, quoted text joined to an unquoted suffix and response files are not modelled.
+- [x] [Review][Patch] Hotfix comment still overstates what tracks an advance [tests/eng/test_pack_release_packages.py:40] — `test_real_script_packs_the_checked_in_release_line_under_release_policy` packs the literal `"4.7.2"` (line 119). The at-or-below policy keeps it green after the next advance, so it lags silently, as line 299 did. A major advance also moves the `v4.7` literals, and the checklist deferral's "about 16" sites (deferred-work.md:11084) omit those release-line literals. Derive line 119 from `PUBLISHED_BASELINE_VERSION`, say "a minor or major advance", and add the release-line literals to the deferral.
+- [x] [Review][Patch] Release ledger never records this spec's move to `done` [_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md:1426] — c46c1fb5's body says it records "the qualification spec's move to done", but its ledger entry records only the precursor amendment. The move appears only in this spec and a sprint-status comment. Append a dated ledger line that records it and its limits.
+- [x] [Review][Patch] Resolved a55960f5 deferral still parses as an open high item [_bmad-output/implementation-artifacts/deferred-work.md:11089] — the entry now says "Resolved before this entry landed … filed as high" but keeps an open flat summary with no closure marker. Use the ledger's closure form (deferred-work.md:9760-9762): prefix the summary with `RESOLVED 2026-10-31 —` and add `status: done 2026-10-31`, so a sweep or `--migrate` does not import it as an open high deferral.
+- [x] [Review][Defer] Main is red again on the Platform owner pin, and no deferral tracks it [_bmad-output/implementation-artifacts/deferred-work.md:11090] — deferred: pre-existing, caused by e442544c outside Story 15.5. `python3 eng/dependency_graph.py --root . validate --commit <sha>` exits 1 at e442544c and c46c1fb5 with `github.com/hexalith/hexalith.platform@03a099bba258c37a8f16c8b2e842ae842b1ad6d6: consumer source projection owner pin changed`. CI 41246730936 for e442544c failed, and c46c1fb5's CI 41250039661 and Quality 41250039403 inherit it. The corrected entry says only "this entry does not track that".
+- [x] [Review][Defer] Activation handoff still says the a55960f5 drift is deferred and not repaired [_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-activation-handoff.md:542] — deferred: the fix edits another spec. The 2026-10-31 release-ledger patch named the missing "ledger and handoff entries", but c46c1fb5 corrected only the deferred ledger, the release ledger and sprint-status. The handoff also never records Story 15.5's return to review, and this spec's intent requires appending to the handoff.
+- [x] [Review][Defer] Precursor amendment does not say it leaves the successor amendment unmet [_bmad-output/implementation-artifacts/spec-15-5-prepare-the-inactive-policy-precursor.md:731] — deferred: the fix edits another spec. The 2026-10-30 section sets two conditions: the spec "must not be promoted to done", and "Completing the successor requires a human amendment permitting renewed current-tuple qualification and the necessary Parties content/dependency-selection repair". The `Human amendment — 2026-10-31` section quotes both and "supersedes the 2026-10-30 condition" (singular). Its "does not" list omits renewed qualification and the Parties repair, so it can be read as that successor amendment. The human decision (option 1) granted only the bounded record closure.
+- [x] [Review][Defer] 4.7.2 record still describes 188d8b73's collector as current [_bmad-output/implementation-artifacts/spec-15-5-advance-the-published-baseline-to-4-7-2.md:504] — deferred: the fix edits another spec. Its resolution says the collector "accepts every `-`/`--`/`/`" spelling, and that record owns `CiGovernanceTests.cs` in its File List, but nothing points it to c46c1fb5's change.
+
+#### Rejected
+
+- Blind Hunter: c46c1fb5's local verification omits ordinary validation and InfrastructureGovernance — low: the fix edits this spec, and the red base it would show (e442544c) is already recorded in the resolution and deferred above.
+- Blind Hunter: seven rows of eight `dotnet msbuild` evaluations make the theory costly, so extract a string-only collector — low: all seven rows take 21.2 s, and the refactor is more than a direct correction.
+- Blind Hunter and Acceptance Auditor: the rejection rule contradicts the accepted patches — false: the precursor amendment was the human's option-1 decision recorded in the Decision row, and appending a review record to this spec is the workflow's own output, not a finding fix. The stale Quality 41023802429 `in_progress` state the auditor cites is real but is carried from the 2026-10-31 review, because its fix edits this spec.
+- Blind Hunter: rejected findings that are real defects are not tracked anywhere — false: each one is recorded with its reason in the 2026-10-31 Rejected list, and leaving them out of the deferred ledger is the workflow rule.
+- Blind Hunter and Acceptance Auditor: this spec moved to `done` without a Decision row or amendment section — low: the fix edits this spec, and the human decision is recorded and dated at the end of the 2026-10-31 resolution.
+- Blind Hunter and Acceptance Auditor: the File List and Footprint were not updated, and focused strict validation fails — medium, rejected because the fix edits this spec. `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-15-5-qualify-the-governance-transition.md --base e442544c` exits 1 (four changed paths unlisted, two listed paths untouched), so the line-383 exit-0 claim does not cover the review delivery. The global validator exits 0.
+- Blind Hunter and Acceptance Auditor: the sprint-status round-3 comment and the deferral were corrected in place instead of stacked — false: the 2026-10-31 "Round-3 records" patch prescribed both in-place corrections. The stacked convention covers superseded but true comments, the removed clause was false, and the new dated comment and the deferral's "corrected 2026-10-31 by code review" say what changed.
+- Edge Case Hunter: a single-quoted value (`-p:Foo='4.7.1'`, `-p 'Foo=4.7.1'`) is mis-collected — false: the probe yields `'4.7.1` or an invalid `'Foo` property, so the live row fails loudly on the baseline assertion or the msbuild exit code. It never passes silently.
+- Edge Case Hunter: a quoted switch followed by an unquoted suffix is cut at the closing quote — low: it passes silently only when the quoted prefix equals the published baseline, no Gate 4 line does this, and modelling bash concatenation is more than a direct correction. The comment patch names it as unmodelled.
+- Acceptance Auditor: the verification record elides the Shell.Tests commands and records no commitlint run — low: the fix edits this spec, and the message passes local commitlint and hosted Commitlint 41250039616.
+
+### Review resolution — 2026-11-01
+
+The decision resolved to option 2, and all six patches were applied to the
+working tree on HEAD c46c1fb540604f76ce6754437ba68c894007ca8f:
+
+- `CiGovernanceTests.cs`: the theory adds `'-p:{property}'` and
+  `--property {property}` rows. The collector comment now lists the modelled
+  spellings and names the unmodelled ones.
+- `test_pack_release_packages.py`: the real-tree release-line test packs
+  `PUBLISHED_BASELINE_VERSION` instead of `"4.7.2"`. The comment says that a minor
+  or major advance still moves the `v4.7` literals.
+- `deferred-work.md`: the checklist entry names the eleven release-line literals,
+  and the a55960f5 entry carries `RESOLVED 2026-10-31 —` and
+  `status: done 2026-10-31`. Four round-2 deferrals are appended.
+- `rel-ai-1-release-evidence-ledger.md`: a dated entry records this spec's move to
+  `done`, the Story 15.5 and REL-BASE-1 closure and its limits, and the open
+  owner-pin refusal.
+- `sprint-status.yaml`: REL-BASE-1 is `done` (closed 2026-11-01) with a reference
+  to this review, and a dated comment records the decision.
+
+Local verification:
+
+- `python3 -m unittest tests/eng/test_pack_release_packages.py`: 47 passed.
+- `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release --nologo -nodeReuse:false --disable-build-servers -p:NuGetAudit=false`:
+  0 warnings, 0 errors.
+- `tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests -method "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.QualityWorkflow_Gate4ValidatesEveryPackableLibrary"`:
+  9 passed (20.2 s).
+- Mutation checks, each rebuilt and then run with the same `-method`: deleting the
+  `'{propertySwitch}[^']*'` alternative fails exactly the `'-p:{property}'` row,
+  and limiting whitespace to the short `p` form fails exactly the
+  `--property {property}` row. The file was restored byte-identically (SHA-256
+  compared), rebuilt and re-run green.
+- The same executable with `-class "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests"`:
+  95 passed.
+- `python3 eng/validate-story-artifacts.py`: exit 0. `git diff --check`: exit 0.
+  All six edited files remain CRLF-only.
+
+`python3 eng/dependency_graph.py --root . validate --commit c46c1fb540604f76ce6754437ba68c894007ca8f`
+still exits 1 on the Platform 03a099bba258c37a8f16c8b2e842ae842b1ad6d6 owner pin
+(deferred above). No hosted run has observed these patches yet.
+
+By human decision on 2026-11-01, Story 15.5 and REL-BASE-1 close as `done`.
+Precursor owner acceptance stays open in the deferred ledger, outside the story.
+No publication, activation, owner or independent approval is granted.

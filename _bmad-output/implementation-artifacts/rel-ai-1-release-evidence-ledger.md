@@ -1424,3 +1424,28 @@ the round-3 entry did not record that transition. By human decision on
 its record. That amendment closes only the bounded record work. It neither
 reviews nor accepts the f75d774d281aa6d4764d9576597ff98ecfbaa3a7 policy, closes
 owner acceptance, nor grants publication, activation or any independent approval.
+
+
+### Story 15.5 code review round 2 and closure — 2026-11-01
+
+The [round-2 code review recorded in the qualification record](spec-15-5-qualify-the-governance-transition.md#code-review-round-2--2026-11-01)
+covers fix delta c46c1fb540604f76ce6754437ba68c894007ca8f. This entry adds to the
+2026-10-31 entry above; earlier entries stay as written.
+
+The 2026-10-31 entry records only the precursor amendment. By the same human
+decision of 2026-10-31, the qualification spec
+`spec-15-5-qualify-the-governance-transition.md` also moved to `done`. That closes
+only its reviewed record work. Its governance transition stays blocked as an
+external prerequisite.
+
+By human decision on 2026-11-01 (round-2 Decision, option 2), Story 15.5 and
+REL-BASE-1 close as `done`. All seven Story 15.5 specs are `done`. Precursor owner
+acceptance stays open, carried only by its deferred entry in `deferred-work.md`
+and no longer by Story 15.5's status. Closing the story neither reviews nor
+accepts the f75d774d281aa6d4764d9576597ff98ecfbaa3a7 policy. It grants no
+publication, activation, owner, Fluent, Product, EventStore or GOV-1 approval.
+
+At c46c1fb5, ordinary validation still exits 1 on the Platform
+03a099bba258c37a8f16c8b2e842ae842b1ad6d6 owner pin introduced by e442544c. That
+refusal is now a high deferral. Release from a later non-seal commit after a
+separately authorized reseal.

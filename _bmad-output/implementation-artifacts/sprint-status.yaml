@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 10-31-2026 23:49
+last_updated: 11-01-2026 07:46
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -235,7 +235,9 @@ development_status:
   # resealed a55960f5's Builds move (main green at 6811bfd6). HEAD e442544c is red on a new Platform owner pin.
   # By human decision the precursor stays done (amendment) and the qualification spec is done; Story 15.5
   # stays at review while precursor owner acceptance remains open.
-  15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: review
+  # 2026-11-01: code review round 2 of c46c1fb5. By human decision (option 2) Story 15.5 and REL-BASE-1 close as
+  # done; precursor owner acceptance stays open in deferred-work.md, outside the story. No approval is granted.
+  15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: done
   # superseded 2026-10-23 by spec-evidence-storage-simplification.md (PRD §7 evidence policy):
   # committed evidence and its machinery were removed instead of externalized; closed as done.
   15-6-external-browser-artifacts-and-bounded-accessibility-receipts: done
@@ -1098,7 +1100,8 @@ approved_change_backlog:
       items:
         - {id: "REL-LEDGER-1", kind: "approval-evidence", status: "open"}
         - {id: "REL-LEDGER-2", kind: "implementation-evidence", status: "proposed"}
-        - {id: "REL-BASE-1", kind: "implementation", status: "review", reconciled: "2026-10-29", evidence: "_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md#approved-advancement-verification-2026-10-29"}
+        - {id: "REL-BASE-1", kind: "implementation", status: "done", reconciled: "2026-10-29", closed: "2026-11-01", evidence: "_bmad-output/implementation-artifacts/spec-15-5-reconcile-the-published-compatibility-baseline.md#approved-advancement-verification-2026-10-29",
+          ref: "_bmad-output/implementation-artifacts/spec-15-5-qualify-the-governance-transition.md#code-review-round-2--2026-11-01"}
         - {id: "REL-A3-APP-1", kind: "approval", status: "open"}
         - {id: "E9-APP-1", kind: "approval", status: "done", closed: "2026-10-20",
           ref: "_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt"}
