@@ -919,11 +919,13 @@ jobs:
       # The Epic 9 proof sends only valid credentials and stops its AppHost on exit. This step
       # restarts the same prebuilt AppHost and checks that the composed EventStore rejects a bogus
       # bearer (401/403) on command submit, command status, query and the projection hub
-      # negotiate endpoint. Results go to the job log only.
+      # negotiate endpoint. Safe diagnostics from this owned restart are retained separately
+      # from the earlier Counter-Web proof; raw discovery, logs and curl data stay private.
       - name: AppHost rejects invalid bearer tokens
         shell: bash
         env:
           HexalithFrontComposerFromSource: 'true'
+          FC_INVALID_BEARER_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/invalid-bearer
         run: ./eng/verify-apphost-invalid-bearer.sh
 
       - name: Upload Epic 9 acceptance artifacts
@@ -934,7 +936,9 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           include-hidden-files: true
-          path: artifacts/epic-9/**
+          path: |
+            artifacts/epic-9/**
+            artifacts/invalid-bearer/diagnostics.*.json
 
   # Every other .NET test lane builds Release, which compiles out `#if DEBUG` diagnostic gates and
   # their test branches. This separate job keeps those branches in CI without depending on the
