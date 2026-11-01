@@ -672,3 +672,73 @@ c092e8f9 on the Platform 55592ec3a57e26d11928971d5e04d9e50235a959 owner pin
 By human decision on 2026-11-01, Epic 15 stays `in-progress` until its
 retrospective runs, and Story 15.5 stays `done`. No publication, activation, owner
 or independent approval is granted.
+
+## Hosted governance qualification — 2026-11-01 (E15R-AI-1)
+
+Epic 15 retrospective action E15R-AI-1 closes the two deferrals that kept this
+record's hosted gates unexecuted. The seal transitions were human-authorized. No
+policy rule, guard, selector or workflow changed.
+
+Seal transitions:
+
+- fdb61860e6eea6ce8f8bfb0bc3d6235406f7f222 resealed Platform
+  55592ec3a57e26d11928971d5e04d9e50235a959. That commit pinned Builds
+  74c1bc5ca68bc9856a5fa7d06323f60a0b48b604 and EventStore
+  9a962a1be8cdc0df814a63254eed0fca77328e54, two local sync commits that never
+  reached GitHub. CI
+  [41328585991](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41328585991)
+  at dbc846fa603fc861e312e00499b3a267b73fd524 passed build-and-test but failed
+  dependency-governance with `failed to acquire exact approved commit 74c1bc5c…:
+  not our ref`.
+- 1a4761d831bf51edb8c55ca7eba1fa66932f96f0 moved all nine root submodules to the
+  head of their main branches and resealed the Platform row: owner
+  4c43913231b54214b40574d02ce5ed5ed30c470d, Builds
+  17616d439b36957a7c5da078e293e598bb339790, and the inventory and root-selector
+  digests. The `.gitmodules` digest, canonical sources, inventory-only identities
+  and consumer configuration are unchanged. Every nested pin of the selected
+  commits is on its own repository's main branch.
+- 4436dd53643e3b9a8de121f231303744a51cb0f1 advanced EventStore to
+  69c0276a21bf0a9204593d69ea7f2f9e058aa109 and Tenants to
+  01803dc080d8c397450acc5dc7da3cc094d5ef00, and
+  78ba5c24cdad39bb3cf7b6b7926dadfaebd5670b renewed `root_selectors_sha256`.
+- Each later push cancelled the runs of the one before it (cancel-in-progress):
+  the seal pushes and the docs commit edb541bcd143c927964d068dc7361662489ac40e.
+
+Hosted proof on the non-seal descendant 0c9012a61a53519db160c7127a0c677c7e03b772
+(event base 78ba5c24):
+
+- CI
+  [41330569875](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41330569875):
+  success. dependency-governance passed "Collect exact graph diff and
+  affected-module proof", "Create exact-source release proof", "Create AD-13
+  dependency-release-handoff" and "Enforce dependency-governance result".
+- Quality
+  [41330569491](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/41330569491):
+  build-and-test success. Every step from Gate 1 to Gate 4a executed and
+  succeeded, including "Prepare exact governance catalog objects", every Gate 2b
+  step ("Infrastructure governance and telemetry contracts", "Release suppression
+  lifecycle tests" and the rest), Gate 2c, Gates 3a–3d, Gate 4 "Library Package
+  Validation (ApiCompat baseline)" and Gate 4a "Adopter proof kit smoke". The
+  `test-results` artifact records all 10
+  `CiGovernanceTests.QualityWorkflow_Gate4ValidatesEveryPackableLibrary` rows as
+  Passed: the null row, the c46c1fb5 and 589d63aa spellings, and the bd189a4e
+  `-P:{property}` row.
+- The Quality run's conclusion is still failure, because the separate
+  `epic9-live-acceptance` job failed "AppHost rejects invalid bearer tokens":
+  every advertised EventStore endpoint timed out. That job passed at 589d63aa
+  (Quality 41282260584) and has failed since 1e1f3fde (Quality 41283830089),
+  which is before both reseals. It is deferred in `deferred-work.md`.
+
+Local verification before the pushes:
+
+- `python3 eng/dependency_graph.py --root . acquire-catalogs --event-base <push base> --candidate <sha>`
+  and `validate --commit <sha>`: exit 0 for edb541bc over 1a4761d8, and for
+  0c9012a6 over 78ba5c24. With base dbc846fa, 1a4761d8 is refused with
+  `consumer source projection owner pin changed`, as designed.
+- The CI pair `acquire` then `diff --event push` for edb541bc over 1a4761d8: ok,
+  0 changes.
+- `python3 -m pytest tests/eng/test_dependency_graph.py`: 143 passed.
+- `dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release`: success.
+
+E15R-AI-1 stays `open` in sprint-status until the human decision. No
+publication, activation, owner or independent approval is granted.
