@@ -14,4 +14,25 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <!-- Source mode: Tenants forwards its own EventStore version on every EventStore edge.
+       Without one root selection, the same EventStore project builds under two Version
+       identities into one bin/obj, and the launched gateway can load a Contracts assembly
+       older than the one it compiled against. Forward this root's selection instead; it is
+       defined only after deps.local.props, so the edges are completed here. -->
+  <ItemGroup Condition="'$(_HexalithSourceReferenceProperties)' != '' AND '$(HexalithEventStoreVersion)' != ''">
+    <ProjectReference Update="@(ProjectReference)">
+      <AdditionalProperties>%(ProjectReference.AdditionalProperties);HexalithEventStoreVersion=$(HexalithEventStoreVersion)</AdditionalProperties>
+    </ProjectReference>
+  </ItemGroup>
+  <!-- The SDK adds transitive references after evaluation without the edge metadata above. -->
+  <Target Name="SelectFrontComposerTransitiveEventStoreVersion"
+          AfterTargets="IncludeTransitiveProjectReferences"
+          Condition="'$(_HexalithSourceReferenceProperties)' != '' AND '$(HexalithEventStoreVersion)' != ''">
+    <ItemGroup>
+      <ProjectReference Condition="!$([System.String]::Copy(';%(ProjectReference.AdditionalProperties);').Contains(';HexalithEventStoreVersion='))">
+        <AdditionalProperties>%(ProjectReference.AdditionalProperties);HexalithEventStoreVersion=$(HexalithEventStoreVersion)</AdditionalProperties>
+      </ProjectReference>
+    </ItemGroup>
+  </Target>
+
 </Project>

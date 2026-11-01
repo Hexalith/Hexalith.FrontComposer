@@ -20,7 +20,8 @@ MEMORIES_IDS = {"Hexalith.Memories.Contracts", "Hexalith.Memories.Client.Rest"}
 def evaluate(project: Path, configuration: str | None, properties: dict[str, str] | None = None) -> dict:
     command = [
         "dotnet", "msbuild", str(project), "-nologo",
-        "-getProperty:HexalithMemoriesFromSource,ProjectAssetsFile,RestoreUseStaticGraphEvaluation,FrontComposerCallerHookObserved",
+        "-getProperty:HexalithMemoriesFromSource,ProjectAssetsFile,RestoreUseStaticGraphEvaluation,FrontComposerCallerHookObserved,"
+        "HexalithEventStoreVersion,Version",
         "-getItem:ProjectReference,PackageReference,Compile",
     ]
     if configuration is not None:
@@ -61,6 +62,7 @@ class AppHostDependencyModeTests(unittest.TestCase):
                 self.assertEqual(selection.get("HexalithCommonsFromSource"), "true")
                 self.assertEqual(selection.get("HexalithEventStoreFromSource"), "true")
                 self.assertEqual(Path(selection["HexalithCommonsRoot"]), ROOT / "references/Hexalith.Commons")
+                self.assertEqual(selection.get("HexalithEventStoreVersion"), parent["Properties"]["HexalithEventStoreVersion"])
                 if expected is None:
                     expected = selection
                 self.assertEqual(selection, expected, reference["FullPath"])
@@ -68,6 +70,32 @@ class AppHostDependencyModeTests(unittest.TestCase):
         for properties in ({}, {"UseHexalithProjectReferences": "false"}):
             configuration = "Release" if not properties else "Debug"
             self.assertNotEqual(evaluate(APPHOST, configuration, properties)["Properties"]["RestoreUseStaticGraphEvaluation"], "true")
+
+    def test_debug_tenants_edges_keep_the_root_eventstore_identity(self) -> None:
+        # Tenants forwards its own EventStore version on every EventStore edge. Unless the root
+        # selection reaches it, one EventStore project builds under two Versions into a shared
+        # bin/obj and the AppHost-launched gateway cannot load its Contracts assembly.
+        host = evaluate(APPHOST, "Debug")
+        selected = host["Properties"]["HexalithEventStoreVersion"]
+        self.assertTrue(selected)
+        eventstore = ROOT / "references/Hexalith.EventStore"
+        tenants = ROOT / "references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj"
+        tenants_globals = forwarded_properties(module_reference(host, tenants))
+        child = evaluate(tenants, "Debug", tenants_globals)
+        self.assertEqual(child["Properties"]["HexalithEventStoreVersion"], selected)
+        edges = [item for item in child["Items"]["ProjectReference"] if Path(item["FullPath"]).is_relative_to(eventstore)]
+        self.assertTrue(edges)
+        gateway_host = eventstore / "src/Hexalith.EventStore/Hexalith.EventStore.csproj"
+        direct_globals = forwarded_properties(module_reference(host, gateway_host))
+        for edge in edges:
+            with self.subTest(project=Path(edge["FullPath"]).name):
+                forwarded = forwarded_properties(edge)
+                self.assertEqual(forwarded.get("HexalithEventStoreVersion"), selected)
+                project = Path(edge["FullPath"])
+                via_tenants = evaluate(project, "Debug", tenants_globals | forwarded)
+                direct = evaluate(project, "Debug", direct_globals)
+                self.assertEqual(via_tenants["Properties"]["Version"], selected)
+                self.assertEqual(direct["Properties"]["Version"], selected)
 
     def test_canonical_mtls_source_is_linked_in_source_and_package_modes(self) -> None:
         platform = ROOT / "references/Hexalith.Platform"
@@ -152,6 +180,21 @@ class AppHostDependencyModeTests(unittest.TestCase):
             )
             self.assertEqual(late.returncode, 0, late.stdout + late.stderr)
             self.assertIn("Version", module_reference(json.loads(late.stdout), unique_ids)["GlobalPropertiesToRemove"].split(";"))
+
+            # Promoted AppHost edges lose evaluation metadata; they must still carry the
+            # root EventStore selection, or EventStore Contracts builds under a second Version.
+            promoted = subprocess.run(
+                ["dotnet", "msbuild", str(APPHOST), "-nologo", "-p:Configuration=Debug", f"-p:ArtifactsPath={artifacts}",
+                 "-t:IncludeTransitiveProjectReferences", "-getProperty:HexalithEventStoreVersion", "-getItem:ProjectReference"],
+                cwd=ROOT, capture_output=True, text=True, timeout=90,
+            )
+            self.assertEqual(promoted.returncode, 0, promoted.stdout + promoted.stderr)
+            promoted_host = json.loads(promoted.stdout)
+            contracts = ROOT / "references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj"
+            self.assertIn(contracts, {Path(item["FullPath"]) for item in promoted_host["Items"]["ProjectReference"]})
+            for reference in promoted_host["Items"]["ProjectReference"]:
+                self.assertEqual(forwarded_properties(reference).get("HexalithEventStoreVersion"),
+                                 promoted_host["Properties"]["HexalithEventStoreVersion"], reference["FullPath"])
 
             build = subprocess.run(
                 ["dotnet", "build", str(APPHOST), "-c", "Debug", "-m:1", "--no-restore",
