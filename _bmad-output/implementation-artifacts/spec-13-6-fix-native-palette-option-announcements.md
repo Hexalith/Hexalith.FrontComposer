@@ -57,3 +57,7 @@ The required one-shot Blind Hunter review and source/test follow-up completed; a
 - `docs/accessibility-verification/story-13-6-manual-walkthrough.md`
 
 Pinned root commitlint CLI 21.2.4 validated the exact full commit message with zero problems/warnings before staging. Successful evidence is `/tmp/fc-native-palette-commitlint.log`; no validator was bypassed. Artifact validation, explicit File List validation and whitespace checks pass.
+
+## User acceptance of the native palette correction — 2026-11-02
+
+The user's **“I accept”** accepts the implemented correction and reported automated verification at `9b386d4f0b305c06f2a7b00e949506970fda4ba2`. The [owning result](13-6-accessibility-result.md#user-acceptance-of-the-native-palette-correction--2026-11-02) records its scope. This supporting implementation remains done; primary Story 13.6 remains in-progress for the existing human observation and hosted-CI requirements.

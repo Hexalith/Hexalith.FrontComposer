@@ -1391,3 +1391,7 @@ The user asked the assistant to execute the NVDA/Firefox session. Native Windows
 Final corrected-build results: zero-warning Debug builds; 72 focused Shell tests; 21 three-engine browser checks; and one real native NVDA/Firefox palette check producing the selected option exactly once with return focus. The existing live-region owner and visual design are preserved. Source/test review findings are addressed, including delayed/replaced shadow input observation and disposal. Native compatibility fallback is tested separately and does not claim corrected speech on older engines.
 
 These are automated AT observations. Historical Owner reports/waiver, primary frozen criteria and original incomplete acceptance tasks remain unchanged. Human observations and current-patch hosted qualification remain outstanding; primary Story/sprint remain in-progress. Supporting-fix completion does not advance the primary sprint entry.
+
+## User acceptance of the native palette correction — 2026-11-02
+
+The user accepted the tested implementation with **“I accept”**, following the report for commit `9b386d4f0b305c06f2a7b00e949506970fda4ba2`. The [dated acceptance receipt](13-6-accessibility-result.md#user-acceptance-of-the-native-palette-correction--2026-11-02) binds that statement to the reported automated verification. This supplies user acceptance of the correction. Candidate-specific human observations and hosted CI remain pending; the original frozen criteria, historical manual records/waiver and primary Story/sprint **in-progress** status are retained.

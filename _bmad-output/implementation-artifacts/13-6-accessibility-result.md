@@ -1,5 +1,11 @@
 # Story 13.6 accessibility result and human checklist
 
+## User acceptance of the native palette correction — 2026-11-02
+
+The user replied **“I accept”** after the report of the native NVDA/Firefox correction, successful automated checks and local commit `9b386d4f0b305c06f2a7b00e949506970fda4ba2`. This records the user's acceptance of that implementation and its reported verification: 72 focused .NET tests, 21 browser checks, and the corrected native NVDA selected-result announcement/focus check.
+
+The acceptance is bound to that exact commit and the preceding native verification record. Automated AT findings retain their automated classification. The original candidate-specific human observation requirement remains pending, alongside hosted CI for this commit; the seven historical Owner reports and their existing waiver retain their original scope. Primary Story 13.6 and sprint remain **in-progress**. This receipt supplies no additional independent gate or release-role decision.
+
 ## Agent-run native NVDA checks and palette correction — 2026-11-02
 
 At the user's request, the assistant drove **native Windows Firefox 155.0.1 with installed NVDA 2026.2**, using isolated Firefox/NVDA profiles, native Windows keystrokes and NVDA's input/output speech log. Windows reported Windows 11 26H2, build 10.0.26300.9818. These are **automated assistive-technology observations**, not human listening or a new manual Pass.
