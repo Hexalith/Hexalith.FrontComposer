@@ -68,7 +68,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page).toHaveURL(/\/counter$/);
 
     await page.getByTestId('fc-palette-trigger').click();
-    const paletteSearch = page.getByRole('searchbox');
+    const paletteSearch = page.getByTestId('fc-palette-search').locator('input');
     await expect(paletteSearch).toBeFocused();
     expect(await page.evaluate(() => (window as any).__fcModalReservation)).toBeTruthy();
     await paletteSearch.pressSequentially('Configure');
@@ -125,7 +125,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
 
     const paletteTrigger = page.getByTestId('fc-palette-trigger');
     await paletteTrigger.click();
-    await expect(page.getByRole('searchbox')).toBeFocused();
+    await expect(page.getByTestId('fc-palette-search').locator('input')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(paletteTrigger).toBeFocused();
 
@@ -149,7 +149,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     expect(tenant.tenantId).toBeTruthy();
     await new CounterPage(page).goto();
     await page.getByTestId('fc-palette-trigger').click();
-    const search = page.getByRole('searchbox');
+    const search = page.getByTestId('fc-palette-search').locator('input');
     await search.fill('Configure');
     await expect(search).toBeFocused();
 
@@ -306,7 +306,7 @@ test('repeated palette shortcut preserves the original invoker', async ({ page }
   const trigger = page.getByTestId('fc-palette-trigger');
   await trigger.focus();
   await page.keyboard.press('Control+k');
-  await expect(page.getByRole('searchbox')).toBeFocused();
+  await expect(page.getByTestId('fc-palette-search').locator('input')).toBeFocused();
   await page.keyboard.press('Control+k');
   await page.keyboard.press('Escape');
   await expect(trigger).toBeFocused();

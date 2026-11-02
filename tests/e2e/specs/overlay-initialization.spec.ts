@@ -71,7 +71,7 @@ test.describe('Deferred Fluent modal initialization', () => {
     });
 
     await page.getByTestId('fc-palette-trigger').click();
-    const search = page.getByRole('searchbox');
+    const search = page.getByTestId('fc-palette-search').locator('input');
     await expect(search).toBeFocused();
     await search.pressSequentially('Configure');
     await expect(search).toHaveValue('Configure');

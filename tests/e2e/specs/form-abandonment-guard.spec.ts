@@ -102,7 +102,7 @@ test.describe('Story 4.2: unsaved full-page command form abandonment guard', () 
     await fieldEditorByLabel(form, 'Description').focus();
 
     await page.keyboard.press('Control+k');
-    const search = page.getByRole('searchbox');
+    const search = page.getByTestId('fc-palette-search').locator('input');
     await expect(search).toBeFocused();
     await search.pressSequentially('Counter');
     const destination = page.locator('[aria-labelledby="fc-palette-group-projection"]')
