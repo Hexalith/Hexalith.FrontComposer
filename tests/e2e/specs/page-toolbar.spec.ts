@@ -75,12 +75,21 @@ test.describe('Story 8.6: reusable page toolbar @p1 @smoke', () => {
     await expect(specimen.searchInput).toHaveValue('open');
 
     await page.goto('/counter');
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
     await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Counter' })).toBeFocused();
     const trigger = page.getByTestId('fc-palette-trigger');
     await trigger.focus();
     await page.keyboard.press('/');
     await expect(trigger).toBeFocused();
-    await expect(page.getByRole('searchbox')).toHaveCount(0);
+    const paletteSearch = page.getByTestId('fc-palette-search');
+    await expect(paletteSearch).toHaveCount(0);
+
+    await trigger.click();
+    await expect(paletteSearch).toBeVisible();
+    await expect(paletteSearch.locator('input')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(paletteSearch).toHaveCount(0);
+    await expect(trigger).toBeFocused();
   });
 
   test('search, filters, view menu, actions, and tabs are reachable end-to-end', async ({ page, tenant }) => {
