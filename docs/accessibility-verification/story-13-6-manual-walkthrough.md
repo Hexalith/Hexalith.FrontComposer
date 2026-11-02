@@ -4,11 +4,11 @@ Start with one Firefox/NVDA session on Windows. The assistant prepares the app a
 
 ## Prepared application
 
-The local Counter Test host runs at [the accessibility scenario page](http://localhost:5070/__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true&density=compact&theme=light). It uses fixed sample data and outcomes. This session tests the UI and its speech; it does not prove a live EventStore backend.
+Once started, the local Counter Test host serves [the accessibility scenario page](http://localhost:5070/__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true&density=compact&theme=light). It uses fixed sample data and outcomes. This session tests the UI and its speech; it does not prove a live EventStore backend.
 
-The first preparation matched product source `d1236f9e5f21c0a000e1081846a2ea6308a35fd3`. The assistant subsequently ran native NVDA/Firefox checks, found and corrected a palette announcement gap, and rebuilt this host. The [current result](../../_bmad-output/implementation-artifacts/13-6-accessibility-result.md#agent-run-native-nvda-checks-and-palette-correction--2026-11-02) identifies the corrected source and exact automated results. Record that current source for any resumed human run. Agent-generated speech checks do not supply the human observations requested below.
+The first preparation matched product source `d1236f9e5f21c0a000e1081846a2ea6308a35fd3`. The assistant subsequently ran native NVDA/Firefox checks, found and corrected a palette announcement gap, and rebuilt the host used for those checks. The [current result](../../_bmad-output/implementation-artifacts/13-6-accessibility-result.md#agent-run-native-nvda-checks-and-palette-correction--2026-11-02) identifies the corrected source and exact automated results. That correction is committed as `9b386d4f0b305c06f2a7b00e949506970fda4ba2`. For any resumed human run, record the commit actually built and served, currently `9b386d4f0b305c06f2a7b00e949506970fda4ba2`. Agent-generated speech checks do not supply the human observations requested below.
 
-The assistant keeps the server running during the guided session. If the page stops responding, ask the assistant to check or restart this host. A tester on another computer, Mac, tablet or phone needs a separately prepared reachable test instance; `localhost` refers to that device itself.
+The host is not left running between sessions. Ask the assistant to build and start it before you begin, and to check or restart it if the page stops responding. A tester on another computer, Mac, tablet or phone needs a separately prepared reachable test instance; `localhost` refers to that device itself.
 
 ## Start NVDA
 
