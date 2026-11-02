@@ -1309,6 +1309,7 @@ public class CommandFormEmitterTests {
         // VG2-13 — a hidden zero-field form hands its AM-20 outcome to the renderer.
         source.ShouldContain("[Parameter] public EventCallback<bool> OnBlockedSubmission { get; set; }");
         source.ShouldContain("[Parameter] public bool ExternalStatusOwner { get; set; }");
+        source.ShouldContain("[Parameter] public string? AttemptedControlId { get; set; }");
         source.ShouldContain("await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(true));");
         source.ShouldContain("await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(false));");
         masked.ShouldContain("if (!ExternalStatusOwner && !OnBlockedSubmission.HasDelegate)");
@@ -1324,7 +1325,7 @@ public class CommandFormEmitterTests {
         presentBody.ShouldNotContain("ShowAndFocusAsync");
         // R4-A1 — every blocked attempt withdraws the earlier hidden outcome before AM-20; scope loss
         // replaces it through its own presentation instead.
-        int scopeBranchEnd = presentBody.IndexOf("await FocusAttemptedControlAsync(_formDomId + \"-submit\").ConfigureAwait(false);", StringComparison.Ordinal);
+        int scopeBranchEnd = presentBody.IndexOf("await FocusAttemptedControlAsync(AttemptedControlId ?? _formDomId + \"-submit\").ConfigureAwait(false);", StringComparison.Ordinal);
         int blockedClear = presentBody.IndexOf("await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);", StringComparison.Ordinal);
         int blockedPublish = presentBody.IndexOf("CommandFeedbackPublisher.PublishWarning(CreateCommandBlockedWarning(reason));", StringComparison.Ordinal);
         int scopePresentation = presentBody.IndexOf("await PresentScopeUnavailableAsync().ConfigureAwait(false);", StringComparison.Ordinal);
@@ -1340,9 +1341,9 @@ public class CommandFormEmitterTests {
         blockedDisposedGuard.ShouldBeGreaterThan(blockedClear);
         blockedDisposedGuard.ShouldBeLessThan(blockedPublish);
 
-        // BH4-04 — a scope-unavailable attempt uses the AM-20 attempted-control rule instead of forcing
-        // focus onto the submit button, so Enter in a field keeps that field focused.
-        presentBody.ShouldContain("await FocusAttemptedControlAsync(_formDomId + \"-submit\").ConfigureAwait(false);");
+        // A visible host supplies its trigger; ordinary forms retain the submit fallback and the
+        // AM-20 attempted-control rule preserves focus already inside the form.
+        presentBody.ShouldContain("await FocusAttemptedControlAsync(AttemptedControlId ?? _formDomId + \"-submit\").ConfigureAwait(false);");
         presentBody.ShouldNotContain("FocusElementAsync(");
         source.ShouldContain("_ = await module.InvokeAsync<bool>(\"focusAttemptedControl\", id, false).ConfigureAwait(false);");
     }

@@ -56,6 +56,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     [Parameter] public EventCallback<string?> OnHiddenOutcome { get; set; }
     /// <summary>When true, a visible host provides the sole persistent status node for this hidden form.</summary>
     [Parameter] public bool ExternalStatusOwner { get; set; }
+    /// <summary>Visible attempted control for a form whose submit button is hidden by its host.</summary>
+    [Parameter] public string? AttemptedControlId { get; set; }
     /// <summary>Gets or sets the visible host's shared announcement surface for a hidden form.</summary>
     [Parameter] public string? AnnouncementSurface { get; set; }
     private string FormAnnouncementSurface => AnnouncementSurface ?? "command-form:" + _formDomId;
@@ -271,8 +273,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         {
             await PresentScopeUnavailableAsync().ConfigureAwait(false);
             if (_disposed) return;
-            // BH4-04 — the same attempted-control rule as AM-20: Enter in a field keeps that field focused.
-            await FocusAttemptedControlAsync(_formDomId + "-submit").ConfigureAwait(false);
+            // Keep the visible host trigger focused when this form's own submit is hidden.
+            await FocusAttemptedControlAsync(AttemptedControlId ?? _formDomId + "-submit").ConfigureAwait(false);
             return;
         }
 

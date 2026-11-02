@@ -214,6 +214,29 @@ for (const theme of ['light', 'dark']) {
       });
     }
 
+    test('generated zero-field scope-unavailable pointer activation focuses its visible trigger', async ({ page }) => {
+      await ready(page, `${scenarioPath}&theme=${theme}`, theme);
+      const root = page.getByTestId('fc-ae-scenarios');
+      const selector = root.getByTestId('fc-ae-select-admission');
+      await selector.click();
+      const trigger = root.getByRole('button', { name: 'Run accessibility specimen', exact: true });
+      await selector.focus();
+      // Safari-style pointer activation can dispatch click without moving focus.
+      // Cancel only this press's default focus move while retaining its real pointer/click path.
+      await trigger.evaluate(element => {
+        element.addEventListener('mousedown', event => event.preventDefault(), { once: true });
+        element.addEventListener('click', () => element.setAttribute('data-focused-at-click', String(document.activeElement === element)), { capture: true, once: true });
+      });
+      await trigger.click();
+      await expect(trigger).toHaveAttribute('data-focused-at-click', 'false');
+      const feedback = root.getByTestId('fc-zero-field-outcome');
+      await expect(feedback).toBeVisible();
+      await expect(feedback).toContainText('workspace identity');
+      await expect(trigger).toBeFocused();
+      await expect(root.getByTestId('fc-ae-command-probe')).toHaveAttribute('data-dispatch-count', '0');
+      await expect(root.getByTestId('fc-surface-status').filter({ hasText: /workspace identity/i })).toHaveCount(1);
+    });
+
     test('generated zero-field wrapped feedback clears the complete trigger focus ring', async ({ page }, info) => {
       await ready(page, `${scenarioPath}&theme=${theme}`, theme);
       const root = page.getByTestId('fc-ae-scenarios');

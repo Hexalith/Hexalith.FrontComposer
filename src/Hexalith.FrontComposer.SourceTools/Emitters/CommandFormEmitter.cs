@@ -98,6 +98,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    [Parameter] public EventCallback<string?> OnHiddenOutcome { get; set; }");
         _ = sb.AppendLine("    /// <summary>When true, a visible host provides the sole persistent status node for this hidden form.</summary>");
         _ = sb.AppendLine("    [Parameter] public bool ExternalStatusOwner { get; set; }");
+        _ = sb.AppendLine("    /// <summary>Visible attempted control for a form whose submit button is hidden by its host.</summary>");
+        _ = sb.AppendLine("    [Parameter] public string? AttemptedControlId { get; set; }");
         _ = sb.AppendLine("    /// <summary>Gets or sets the visible host's shared announcement surface for a hidden form.</summary>");
         _ = sb.AppendLine("    [Parameter] public string? AnnouncementSurface { get; set; }");
         _ = sb.AppendLine("    private string FormAnnouncementSurface => AnnouncementSurface ?? \"command-form:\" + _formDomId;");
@@ -563,8 +565,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            await PresentScopeUnavailableAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("            if (_disposed) return;");
-        _ = sb.AppendLine("            // BH4-04 — the same attempted-control rule as AM-20: Enter in a field keeps that field focused.");
-        _ = sb.AppendLine("            await FocusAttemptedControlAsync(_formDomId + \"-submit\").ConfigureAwait(false);");
+        _ = sb.AppendLine("            // Keep the visible host trigger focused when this form's own submit is hidden.");
+        _ = sb.AppendLine("            await FocusAttemptedControlAsync(AttemptedControlId ?? _formDomId + \"-submit\").ConfigureAwait(false);");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();

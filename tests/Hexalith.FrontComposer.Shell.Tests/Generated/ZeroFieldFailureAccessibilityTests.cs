@@ -318,19 +318,14 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
         cut.Find("fluent-button").Click();
         cut.WaitForAssertion(() => cut.Find("[data-testid='fc-zero-field-outcome']").TextContent.ShouldContain("workspace identity"));
         cut.WaitForAssertion(() => speech.Count(message => message.Contains("workspace identity", StringComparison.Ordinal)).ShouldBe(1));
-        // The current scope-unavailable path invokes the hidden form's submit target once per attempt.
-        // That target is not focusable here (deferred R8-B1); this pins the known limitation and the
-        // positive control for the disposed exit, without proving the AM-20 visible-trigger contract.
+        // The hidden form returns focus to the renderer's visible trigger once per blocked attempt.
         cut.WaitForAssertion(() => AttemptedControlFocus().ShouldHaveSingleItem());
         cut.Render();
         speech.Count(message => message.Contains("workspace identity", StringComparison.Ordinal)).ShouldBe(1);
         cut.Find("fluent-button").Click();
         cut.WaitForAssertion(() => speech.Count(message => message.Contains("workspace identity", StringComparison.Ordinal)).ShouldBe(2));
         cut.WaitForAssertion(() => AttemptedControlFocus().Count.ShouldBe(2));
-        string attemptedControlId = AttemptedControlFocus()[0].Arguments[0].ShouldBeOfType<string>();
-        attemptedControlId.ShouldStartWith("fc-command-form-");
-        attemptedControlId.ShouldEndWith("-submit");
-        AttemptedControlFocus().ShouldAllBe(call => call.Arguments.SequenceEqual(new object?[] { attemptedControlId, false }));
+        AttemptedControlFocus().ShouldAllBe(call => call.Arguments.SequenceEqual(new object?[] { triggerId, false }));
         _ = service.DidNotReceive().DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
         FcFocusModule.VerifyNotInvoke("focusValidationOutcome");
         FcFocusModule.VerifyNotInvoke("focusElementById");
