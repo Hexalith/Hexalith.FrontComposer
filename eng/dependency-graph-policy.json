@@ -167,8 +167,8 @@
         "well_formed_project_root": true,
         "override_not_enabled": true,
         "canonical_source_files": {
-          "DaprSelfHostedMtls.cs": "703072feb8b609c2661a1c7eaa955fbd2c9d838402520b4fc425bda2000ba1a8",
-          "DaprSelfHostedMtlsSubscriber.cs": "55c280284d0a305b1d6b6667f31362b7c4e4a3cf39890b6175d913cd762bb9c6"
+          "DaprSelfHostedMtls.cs": "3fa9ccf46cd70cdc2253dda51ad06b3bcf5f7f696b3b74a95ca1b86913489a7c",
+          "DaprSelfHostedMtlsSubscriber.cs": "35e5f5b4418814e8df7fc5f73b3d25ea2531215978723b8dcf49060cd2cd7e24"
         }
       },
       "selected_catalog_required_properties": {},
