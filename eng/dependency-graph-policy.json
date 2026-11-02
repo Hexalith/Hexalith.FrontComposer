@@ -2773,9 +2773,9 @@
   },
   "consumer_source_projections": {
     "github.com/hexalith/hexalith.platform": {
-      "owner_commit": "4c43913231b54214b40574d02ce5ed5ed30c470d",
+      "owner_commit": "92f87e6a49e4357f91b2ffb821e044931291c0e6",
       "gitmodules_sha256": "6da4f5297d79bfa54afcb8daacda70670af11868ba1738cc185f584db8eb6ab7",
-      "inventory_sha256": "3c06e9c90bb343b61d66ac8c77565c5c3e1d1bec70f67cc37662bd5e69981bd1",
+      "inventory_sha256": "a6f51b0181c1f8ef4ec1ad5cb3c96ad275cead832394e345713eb52bb58dac49",
       "inventory_only_identities": [
         "github.com/hexalith/hexalith.agents",
         "github.com/hexalith/hexalith.chatbot",
@@ -2786,8 +2786,8 @@
         "github.com/hexalith/hexalith.works"
       ],
       "source_files": {
-        "DaprSelfHostedMtls.cs": "703072feb8b609c2661a1c7eaa955fbd2c9d838402520b4fc425bda2000ba1a8",
-        "DaprSelfHostedMtlsSubscriber.cs": "55c280284d0a305b1d6b6667f31362b7c4e4a3cf39890b6175d913cd762bb9c6"
+        "DaprSelfHostedMtls.cs": "3fa9ccf46cd70cdc2253dda51ad06b3bcf5f7f696b3b74a95ca1b86913489a7c",
+        "DaprSelfHostedMtlsSubscriber.cs": "35e5f5b4418814e8df7fc5f73b3d25ea2531215978723b8dcf49060cd2cd7e24"
       },
       "consumer_repository": "github.com/hexalith/hexalith.frontcomposer",
       "consumer_project": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
@@ -2796,9 +2796,9 @@
         "DaprSelfHostedMtls.cs": "Platform/DaprSelfHostedMtls.cs",
         "DaprSelfHostedMtlsSubscriber.cs": "Platform/DaprSelfHostedMtlsSubscriber.cs"
       },
-      "builds_commit": "17616d439b36957a7c5da078e293e598bb339790",
+      "builds_commit": "2afc90eb107d73490aa0299a32efbca4bc160b05",
       "builds_project": "src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj",
-      "root_selectors_sha256": "74262dd78446d74a6a42d7e7762a622ca36d66f2dd5c7aaef66e7f25fcacf80f",
+      "root_selectors_sha256": "d28d78854ce043c9b4a2b0c046d11d69bf8a8856ec94f2105153733b17f7d3c6",
       "consumer_configuration_sha256": "761443f7449d0d15bfd30beeabccaf9823c34a82657648da06efc1bfd1fb3d52"
     }
   }
