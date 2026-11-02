@@ -170,6 +170,9 @@
   <data name="CommandPaletteTitle" xml:space="preserve">
     <value>Palette de commandes</value>
   </data>
+  <data name="PaletteResultsAriaLabel" xml:space="preserve">
+    <value>Résultats de recherche</value>
+  </data>
   <data name="PaletteSearchPlaceholder" xml:space="preserve">
     <value>Rechercher projections, commandes, récents… (tapez ? pour raccourcis)</value>
   </data>

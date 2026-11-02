@@ -23,12 +23,12 @@
     }
     else
     {
-        <ul class="fc-palette-listbox" role="listbox" aria-activedescendant="@ActiveDescendantId">
+        <ul class="fc-palette-listbox" role="listbox" aria-label="@Localizer["PaletteResultsAriaLabel"].Value" aria-activedescendant="@ActiveDescendantId">
             @foreach ((PaletteResultCategory category, IReadOnlyList<(PaletteResult Result, int FlatIndex)> rows) in
         GroupResults(Results))
             {
                 <li role="none">
-                    <h4 id="@GroupHeadingId(category)" class="fc-palette-group-heading">@CategoryLabel(category)</h4>
+                    <h4 id="@GroupHeadingId(category)" class="fc-palette-group-heading" aria-hidden="true">@CategoryLabel(category)</h4>
                     <ul role="group" aria-labelledby="@GroupHeadingId(category)">
                         @foreach ((PaletteResult result, int flatIndex) in rows)
                         {

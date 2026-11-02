@@ -731,6 +731,51 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
       await page.keyboard.press('Escape');
     }
   });
+  for (const overlay of ['palette', 'settings'] as const) {
+    for (const spacing of [false, true]) {
+      test(`${overlay} at 320 by 225 reflow${spacing ? ' with text spacing' : ''} has no blocking WCAG 2.2 findings`, async ({ page }) => {
+        await page.setViewportSize({ width: 320, height: 225 });
+        await page.goto('/counter');
+        await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        if (spacing) await applyTextSpacing(page);
+        await page.getByTestId(overlay === 'palette' ? 'fc-palette-trigger' : 'fc-settings-button').click();
+        await page.getByTestId(overlay === 'palette' ? 'fc-palette-root' : 'fc-settings-dialog').waitFor();
+        if (overlay === 'palette') {
+          await expect(page.getByRole('listbox', { name: 'Search results' })).toBeVisible();
+          await expect(page.getByRole('group', { name: 'Projections' })).toBeVisible();
+        }
+        else {
+          const radios = page.locator('fluent-radio[name="fc-density-select"]');
+          await expect(radios).toHaveCount(3);
+          await expect(page.getByRole('radio', { name: 'Comfortable' })).toHaveAttribute('aria-checked', 'true');
+          await page.getByRole('radio', { name: 'Roomy' }).click();
+          await expect(page.getByRole('radio', { name: 'Roomy' })).toHaveAttribute('aria-checked', 'true');
+          await expect(page.getByRole('radio', { name: 'Comfortable' })).toHaveAttribute('aria-checked', 'false');
+        }
+        await expectNoPageOverflow(page);
+        await expectNoTextClipping(page);
+        await expectNoBlockingAxeViolations(page, { route: `/counter#${overlay}` });
+      });
+    }
+  }
+  for (const spacing of [false, true]) {
+    test(`open navigation at 320 by 225 reflow${spacing ? ' with text spacing' : ''} has supported expanded semantics`, async ({ page }) => {
+      await page.setViewportSize({ width: 320, height: 225 });
+      await page.goto('/counter');
+      await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      if (spacing) await applyTextSpacing(page);
+      const hamburger = page.getByTestId('fc-hamburger-toggle');
+      await hamburger.click();
+      await expect(hamburger).toHaveAttribute('role', 'group');
+      await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
+      await expect(hamburger.getByRole('button', { name: 'Toggle navigation' })).toBeVisible();
+      await expectNoPageOverflow(page);
+      await expectNoTextClipping(page);
+      await expectNoBlockingAxeViolations(page, { route: '/counter#navigation-drawer' });
+    });
+  }
 });
 
 test('missing-detail recovery consumes only lost detail focus and cancels stale captures', async ({ page }) => {

@@ -77,7 +77,8 @@ public sealed class FcHamburgerToggleTests : LayoutComponentTestBase {
             cut.Markup.ShouldContain("data-testid=\"fc-hamburger-toggle\"");
             cut.Find("[data-testid=fc-hamburger-toggle]").QuerySelectorAll("[role=button]").Length.ShouldBe(1,
                 "the responsive toggle must expose only Fluent's inner keyboard-operable button");
-            cut.Find("[data-testid=fc-hamburger-toggle]").HasAttribute("role").ShouldBeFalse();
+            cut.Find("[data-testid=fc-hamburger-toggle]").GetAttribute("role").ShouldBe("group",
+                "Fluent sets aria-expanded on the wrapper, which needs a supporting role without adding a second button.");
         });
     }
 }

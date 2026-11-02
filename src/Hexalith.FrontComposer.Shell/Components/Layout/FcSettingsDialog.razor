@@ -37,9 +37,9 @@
                                       TValue="DensityLevel"
                                       Name="fc-density-select"
                                       aria-label="@Localizer["DensitySectionLabel"].Value">
-                        <FluentRadio Value="@DensityLevel.Compact">@Localizer["DensityCompactLabel"].Value</FluentRadio>
-                        <FluentRadio Value="@DensityLevel.Comfortable">@Localizer["DensityComfortableLabel"].Value</FluentRadio>
-                        <FluentRadio Value="@DensityLevel.Roomy">@Localizer["DensityRoomyLabel"].Value</FluentRadio>
+                        <FluentRadio Value="@DensityLevel.Compact" role="radio" aria-checked="@(SelectedDensity == DensityLevel.Compact ? "true" : "false")">@Localizer["DensityCompactLabel"].Value</FluentRadio>
+                        <FluentRadio Value="@DensityLevel.Comfortable" role="radio" aria-checked="@(SelectedDensity == DensityLevel.Comfortable ? "true" : "false")">@Localizer["DensityComfortableLabel"].Value</FluentRadio>
+                        <FluentRadio Value="@DensityLevel.Roomy" role="radio" aria-checked="@(SelectedDensity == DensityLevel.Roomy ? "true" : "false")">@Localizer["DensityRoomyLabel"].Value</FluentRadio>
                     </FluentRadioGroup>
                     @if (IsForcedByViewport)
                     {
