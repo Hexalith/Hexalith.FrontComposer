@@ -336,6 +336,70 @@ export function registerPaletteKeyFilter(element) {
             key === "Escape"
         );
     });
+    registerPaletteAccessibility(element);
+}
+
+function registerPaletteAccessibility(element) {
+    if (!(element instanceof HTMLElement) || element.__fcPaletteAccessibility) return;
+    const state = { disposed: false, frame: 0, observer: null, shadowObserver: null, shadowRoot: null };
+    const sync = () => {
+        if (state.disposed || !element.isConnected) return;
+        const host = element.querySelector('[data-testid="fc-palette-search"]');
+        if (!(host instanceof HTMLElement)) return;
+        if (host.shadowRoot !== state.shadowRoot) {
+            state.shadowObserver?.disconnect();
+            state.shadowRoot = host.shadowRoot;
+            if (state.shadowRoot) {
+                state.shadowObserver = new MutationObserver(sync);
+                state.shadowObserver.observe(state.shadowRoot, { childList: true, subtree: true });
+            }
+        }
+        const input = host?.shadowRoot?.querySelector('input');
+        if (!(input instanceof HTMLInputElement)) return;
+        const resultId = host.getAttribute('data-fc-palette-controls');
+        const results = resultId ? element.querySelector(`#${CSS.escape(resultId)}`) : null;
+        const listbox = results?.querySelector('[role="listbox"]') ?? null;
+        const activeId = host.getAttribute('data-fc-palette-active-descendant');
+        const active = activeId && listbox ? listbox.querySelector(`#${CSS.escape(activeId)}`) : null;
+        const reflected = 'ariaControlsElements' in input && 'ariaActiveDescendantElement' in input;
+        const owner = reflected ? input : host;
+        const label = host.getAttribute('aria-label') ?? host.getAttribute('placeholder') ?? '';
+        for (const [name, value] of [
+            ['role', 'combobox'], ['aria-haspopup', 'listbox'], ['aria-autocomplete', 'list'],
+            ['aria-expanded', host.getAttribute('data-fc-palette-expanded') ?? 'false'], ['aria-label', label],
+        ]) {
+            if (owner.getAttribute(name) !== value) owner.setAttribute(name, value);
+        }
+        if (reflected) {
+            // ID strings in the shadow input cannot reference the light-DOM results.
+            // Element references preserve those real accessibility relationships.
+            const controlled = input.ariaControlsElements ?? [];
+            if (controlled.length !== (listbox ? 1 : 0) || (listbox && controlled[0] !== listbox)) {
+                input.ariaControlsElements = listbox ? [listbox] : [];
+            }
+            if (input.ariaActiveDescendantElement !== active) input.ariaActiveDescendantElement = active;
+            for (const name of ['role', 'aria-haspopup', 'aria-autocomplete', 'aria-expanded', 'aria-controls', 'aria-activedescendant']) {
+                host.removeAttribute(name);
+            }
+        } else {
+            // Retain the existing host semantics on older engines without reflection.
+            owner.setAttribute('aria-controls', listbox?.id ?? resultId ?? '');
+            if (activeId) owner.setAttribute('aria-activedescendant', activeId);
+            else owner.removeAttribute('aria-activedescendant');
+        }
+    };
+    state.observer = new MutationObserver(sync);
+    state.observer.observe(element, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['data-fc-palette-controls', 'data-fc-palette-active-descendant', 'data-fc-palette-expanded', 'aria-label', 'placeholder'],
+    });
+    element.__fcPaletteAccessibility = state;
+    sync();
+    customElements.whenDefined('fluent-text-input').then(() => {
+        if (!state.disposed) state.frame = requestAnimationFrame(sync);
+    });
 }
 
 // P9 (2026-04-21 pass-3): teardown companions for the register* pair so hot-reload and
@@ -356,6 +420,14 @@ export function unregisterShellKeyFilter(element) {
 }
 
 export function unregisterPaletteKeyFilter(element) {
+    const accessibility = element?.__fcPaletteAccessibility;
+    if (accessibility) {
+        accessibility.disposed = true;
+        accessibility.observer.disconnect();
+        accessibility.shadowObserver?.disconnect();
+        cancelAnimationFrame(accessibility.frame);
+        element.__fcPaletteAccessibility = null;
+    }
     if (!element || !element.__fcPaletteKeyFilter) {
         return;
     }

@@ -92,9 +92,9 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
         EnsureStoreInitialized();
         IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
 
-        cut.Markup.ShouldContain("aria-controls=\"fc-palette-results\"");
-        cut.Markup.ShouldContain("aria-expanded=\"false\"");
-        cut.Markup.ShouldContain("aria-autocomplete=\"list\"");
+        cut.Markup.ShouldContain("data-fc-palette-controls=\"fc-palette-results\"");
+        cut.Markup.ShouldContain("data-fc-palette-expanded=\"false\"");
+        cut.FindComponent<FluentTextInput>().Instance.AriaLabel.ShouldNotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
 
         IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
 
-        cut.Markup.ShouldContain("aria-expanded=\"true\"");
+        cut.Markup.ShouldContain("data-fc-palette-expanded=\"true\"");
     }
 
     [Fact]
@@ -344,14 +344,14 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
 
     [Fact]
     public void SearchInput_RendersAsAriaCombobox() {
-        // Story 2.7 Task 1 (AC1) — default-lane pin for the combobox ROLE itself. Pre-existing pins
-        // asserted aria-controls / aria-expanded / aria-autocomplete but never that the input carries
-        // role="combobox" + aria-haspopup="listbox" (the WAI-ARIA combobox pattern entry point).
+        // Native semantics belong on FluentTextInput's shadow input; bUnit pins the
+        // localized label and synchronization registration. Browser tests prove the real owner.
         EnsureStoreInitialized();
         IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
 
-        cut.Markup.ShouldContain("role=\"combobox\"");
-        cut.Markup.ShouldContain("aria-haspopup=\"listbox\"");
+        cut.Find("[data-testid='fc-palette-search']").HasAttribute("role").ShouldBeFalse();
+        cut.FindComponent<FluentTextInput>().Instance.AriaLabel.ShouldBe("Search projections, commands, recent… (type ? for shortcuts)");
+        KeyboardModule.Invocations.Any(i => i.Identifier == "registerPaletteKeyFilter").ShouldBeTrue();
         cut.FindComponent<Microsoft.FluentUI.AspNetCore.Components.FluentTextInput>()
             .Instance.Immediate.ShouldBeTrue("palette search must publish each typed query without waiting for blur");
     }
@@ -359,7 +359,8 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
     [Fact]
     public async Task ArrowKeys_MoveSelection_AndTrackAriaActiveDescendant() {
         // Story 2.7 Task 1 (AC1) — DEFAULT-LANE proof that ArrowDown/ArrowUp in the RENDERED palette
-        // advance the selection AND the input's aria-activedescendant. Previously this end-to-end path
+        // advance selection and its native-synchronization state. The browser test proves the
+        // actual focused input relationship. Previously this end-to-end path
         // (rendered keydown → reducer → activedescendant) was only exercised in the EXCLUDED
         // e2e-palette lane; the reducer clamp logic alone was the only default-lane coverage.
         EnsureStoreInitialized();
@@ -377,17 +378,17 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
         IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
 
         // Initial selection sits on flat index 0.
-        cut.Markup.ShouldContain("aria-activedescendant=\"fc-palette-result-0\"");
+        cut.Markup.ShouldContain("data-fc-palette-active-descendant=\"fc-palette-result-0\"");
 
         await cut.InvokeAsync(() =>
             cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" }));
         cut.WaitForAssertion(() =>
-            cut.Markup.ShouldContain("aria-activedescendant=\"fc-palette-result-1\""));
+            cut.Markup.ShouldContain("data-fc-palette-active-descendant=\"fc-palette-result-1\""));
 
         await cut.InvokeAsync(() =>
             cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "ArrowUp" }));
         cut.WaitForAssertion(() =>
-            cut.Markup.ShouldContain("aria-activedescendant=\"fc-palette-result-0\""));
+            cut.Markup.ShouldContain("data-fc-palette-active-descendant=\"fc-palette-result-0\""));
     }
 
     [Fact]
