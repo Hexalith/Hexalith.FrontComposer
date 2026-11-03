@@ -37,3 +37,9 @@ browser checks passed, but dependency governance rejected the previous Platform
 seal. Commit `a2af59e8` updates only the owner commit, owner inventory digest,
 Builds commit, and root selector digest from committed objects. This descendant
 lets CI evaluate that landed policy against the selected root submodules.
+
+Platform main subsequently advanced to `247fbdd06f882a55c3ed86d1004b7c567bc446e3`
+with evidence changes only. Commit `5c941578` selected that exact owner and
+resealed its committed inventory and root selector. This follow-up evaluates
+the new seal as the event base; the earlier transition result remains subject
+to its previous policy.
