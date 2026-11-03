@@ -109,22 +109,13 @@
     margin: calc(var(--fc-spacing-unit, 4px) * 2) 0;
 }
 
-/* Story 5-4 — single lane-level sweep marker after reconnect reconciliation. The
-   marker is intentionally subtle, bounded to 700ms, and does not affect layout.
-   P35 — provide solid-rgba fallbacks before the color-mix() declarations so legacy
-   browsers (Safari < 16.2, older Edge) still render a visible outline + flash even
-   without color-mix support. The @supports block lets capable browsers use the
-   theme-aware accent variant. */
+/* Story 5-4 — informative lane-level marker after reconnect reconciliation.
+   The opaque Fluent stroke retains contrast throughout the 700ms background flash.
+   The flash keeps its legacy color-mix fallback; it does not affect layout. */
 .fc-reconciliation-sweep {
     animation: fc-reconciliation-sweep 700ms ease-out 1;
-    outline: 1px solid rgba(0, 120, 212, 0.45);
+    outline: 1px solid var(--colorNeutralStrokeAccessible);
     outline-offset: -1px;
-}
-
-@supports (color: color-mix(in srgb, red, blue)) {
-    .fc-reconciliation-sweep {
-        outline: 1px solid color-mix(in srgb, var(--colorBrandBackground, #0078d4) 45%, transparent);
-    }
 }
 
 @keyframes fc-reconciliation-sweep {
@@ -152,13 +143,6 @@
 @media (prefers-reduced-motion: reduce) {
     .fc-reconciliation-sweep {
         animation: none;
-        outline: 1px solid rgba(0, 120, 212, 0.35);
-    }
-
-    @supports (color: color-mix(in srgb, red, blue)) {
-        .fc-reconciliation-sweep {
-            outline: 1px solid color-mix(in srgb, var(--colorBrandBackground, #0078d4) 35%, transparent);
-        }
     }
 }
 
@@ -183,6 +167,7 @@
 
 @media (forced-colors: active) {
     @supports (forced-color-adjust: auto) {
+        .fc-reconciliation-sweep { outline-color: CanvasText; }
         .fc-datagrid-host:focus-visible,
         .fc-projection-grid td .fc-field-placeholder a:focus-visible { outline-color: CanvasText; }
     }

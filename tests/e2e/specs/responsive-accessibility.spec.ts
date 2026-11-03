@@ -602,6 +602,88 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
       await expect(table).toHaveCSS('table-layout', 'fixed');
     });
 
+    test(`reconciliation outline retains contrast and keyboard focus in ${theme}`, async ({ page }, testInfo) => {
+      await page.goto(`/__frontcomposer/specimens/type?generatedGrid=true&theme=${theme}&density=compact`);
+      await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+      const themeLabel = theme === 'dark' ? 'Dark' : 'Light';
+      await page.getByTitle('Change theme').first().click();
+      await page.getByRole('menuitem', { name: themeLabel, exact: true }).click();
+      await expect(page.getByTitle('Change theme').first()).toContainText(themeLabel);
+      const grid = page.getByTestId('fc-generated-counter-grid').locator('[data-fc-datagrid]');
+      await expect(grid).toBeVisible();
+      await grid.scrollIntoViewIfNeeded();
+      await grid.evaluate(element => {
+        element.id = 'ae-reconciliation-grid';
+        element.classList.add('fc-reconciliation-sweep');
+      });
+      const measurements = [];
+      const focusMeasurements = [];
+      for (const media of [
+        { forcedColors: 'none', reducedMotion: 'no-preference' },
+        { forcedColors: 'none', reducedMotion: 'reduce' },
+        { forcedColors: 'active', reducedMotion: 'no-preference' },
+        { forcedColors: 'active', reducedMotion: 'reduce' },
+      ] as const) {
+        await grid.evaluate(element => (element as HTMLElement).blur());
+        await page.emulateMedia(media);
+        // Inspect both ends of the real background flash without racing its 700ms lifetime.
+        const times = media.reducedMotion === 'reduce' ? [0] : [0, 700];
+        for (const time of times) {
+          await grid.evaluate((element, time) => {
+            for (const animation of element.getAnimations()) { animation.pause(); animation.currentTime = time; }
+          }, time);
+          const samples = await measureSurfaceContrast(grid, 'cue');
+          const outline = samples.filter(sample => sample.node === 'div#ae-reconciliation-grid' && sample.paint === 'element outline');
+          expect(outline, 'The marked grid itself must supply the measured outline').toHaveLength(1);
+          expect(outline[0].ratio, `${theme} ${JSON.stringify(media)} at ${time}ms`).toBeGreaterThanOrEqual(3);
+          const paint = await grid.evaluate(element => {
+            const css = getComputedStyle(element), context = document.createElement('canvas').getContext('2d')!;
+            context.fillStyle = css.outlineColor; context.fillRect(0, 0, 1, 1);
+            const probe = document.createElement('div');
+            probe.style.cssText = 'position:fixed;left:-10000px;color:rgb(255,0,0);background:rgb(0,255,0);forced-color-adjust:auto';
+            document.body.append(probe);
+            const forced = getComputedStyle(probe);
+            const systemPaint = forced.color !== 'rgb(255, 0, 0)' && forced.backgroundColor !== 'rgb(0, 255, 0)';
+            probe.style.color = 'CanvasText';
+            const systemOutline = getComputedStyle(probe).color;
+            probe.remove();
+            return { alpha: context.getImageData(0, 0, 1, 1).data[3], width: css.outlineWidth, outlineColor: css.outlineColor,
+              adjustment: css.getPropertyValue('forced-color-adjust'), systemOutline, animation: css.animationName,
+              duration: css.animationDuration, iterations: css.animationIterationCount, delay: css.animationDelay, fill: css.animationFillMode, systemPaint };
+          });
+          expect(paint.width).toBe('1px');
+          expect(paint.alpha, 'The informative stroke must be opaque').toBe(255);
+          if (media.reducedMotion === 'reduce') expect(paint.animation).toBe('none');
+          else {
+            expect(paint.animation).toBe('fc-reconciliation-sweep');
+            expect(paint.duration).toBe('0.7s');
+            expect(paint.iterations).toBe('1');
+            expect(paint.delay).toBe('0s');
+            expect(paint.fill).toBe('none');
+          }
+          if (media.forcedColors === 'active') {
+            if (paint.systemPaint) {
+              expect(paint.adjustment).toBe('auto');
+              expect(paint.outlineColor).toBe(paint.systemOutline);
+            } else expect(testInfo.project.name).toBe('webkit');
+          }
+          measurements.push({ media, time, outline: outline[0], paint,
+            palette: media.forcedColors === 'none' ? 'authored theme' : paint.systemPaint ? 'painted system palette' : 'WebKit media-only capability' });
+        }
+        // The existing keyboard ring wins over the informative marker on the same grid.
+        await page.keyboard.press('Tab');
+        await grid.focus();
+        await expect(grid).toBeFocused();
+        await expect(grid).toHaveCSS('outline-width', '2px');
+        const focused = (await measureSurfaceContrast(grid, 'focus')).filter(sample => sample.node === 'div#ae-reconciliation-grid' && sample.paint === 'element outline');
+        expect(focused, 'The focused grid must supply the measured keyboard ring').toHaveLength(1);
+        expect(focused[0].ratio).toBeGreaterThanOrEqual(3);
+        focusMeasurements.push({ media, outline: focused[0] });
+      }
+      await testInfo.attach(`reconciliation-focus-${theme}`, { body: JSON.stringify(focusMeasurements), contentType: 'application/json' });
+      await testInfo.attach(`reconciliation-outline-${theme}`, { body: JSON.stringify(measurements), contentType: 'application/json' });
+    });
+
     test(`type states retain contrast, system colors and immediate reduced-motion cues in ${theme}`, async ({ page }, testInfo) => {
       await page.goto(`/__frontcomposer/specimens/type?theme=${theme}&density=compact`);
       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
@@ -656,9 +738,8 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
         expect(motion.transition.split(',').every(duration => parseFloat(duration) === 0), `${selector} transition`).toBe(true);
         expect(motion.animation, `${selector} animation`).toBe('none');
       }
-      // The supplementary reconciliation marker remains static and paints in both palettes. It briefly
-      // marks a refreshed grid whose values carry the content; partial reconnects show it without
-      // the Reconnected notice, so it depends on no notice. This checks no contrast claim.
+      // The informative reconciliation marker stays static under reduced motion. The real-grid
+      // regression above measures its contrast; this fixture retains the independent motion check.
       expect((await motionOf('.fc-reconciliation-sweep')).outline, 'reduced-motion sweep outline').toMatch(/^solid [1-9]/u);
       await page.emulateMedia({ forcedColors: 'none', reducedMotion: 'reduce' });
       const authoredOutline = await page.locator('#ae-motion-fixture .fc-reconciliation-sweep').evaluate(element => {
