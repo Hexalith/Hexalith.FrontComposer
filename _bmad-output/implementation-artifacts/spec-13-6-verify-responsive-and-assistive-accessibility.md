@@ -1478,3 +1478,18 @@ Global `python3 eng/validate-story-artifacts.py`, TypeScript and `git diff --che
 - `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
 - `_bmad-output/implementation-artifacts/13-6-accessibility-result.md`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
+
+
+## Current committed-source local browser and native verification — 2026-11-03
+
+The full primary spec and both frontmatter context files were loaded. All specified product/test corrections through GEO1–GEO4 are committed at initially clean root `b105c846c31844441f1cff84b5c187da0eff3546`; no additional product correction was demonstrated. The `src tests` diff from `fbe01c913cb863abb0fd4a317d370d36fff593b3` hashes to final GEO patch `4e50ecd68e8b45f4f4db9feec43bc62a0331eafd474897d20f6e1efd5db46f0e`. Six dependency selections have advanced since that earlier proof. The [leading result](13-6-accessibility-result.md#current-committed-source-local-browser-and-native-verification--2026-11-03) records fresh current-runtime evidence and exact commands/digests/limitations.
+
+The complete local three-spec browser selection passes **1,121 checks / four named skips**, zero failed/flaky/retries/runner errors: Chromium **375**, Firefox **373/two skips**, WebKit **373/two skips**. Every engine has **116 state records** and artifact-validator exit **0**. All **18** visual comparisons pass; all **69** tracked PNG/Verify baselines remain unchanged. The configured individual Debug Shell suite passes **3,899/3,899**, zero failed/skipped/errors/not-run. Its build, including Counter, has zero warnings/errors; Node evidence passes **29/29** and TypeScript exits **0**.
+
+The user requested that the assistant perform available checks. Fresh automated native Chromium zoom passes **32/32**, verifying **1280×900/DPR1 → 320×225/DPR4**, outer width 1280, visual scale/CSS zoom 1, including four direct grid-focus theme/spacing cases. The inspected runner changes only its result path. Native Windows **10.0.26300.0 / Firefox 155.0.1 / NVDA 2026.2** passes **13/13** in one run: eleven outcomes with one generated speech record, retained trigger focus and measured 1.5s idle silence; Settings radio state/return focus; palette selected-option speech exactly once/return focus. Only the prior focused-runner startup/fixture/focus setup corrections are applied to the external runner.
+
+Owned Test/native/FrontComposer AppHost sessions are stopped, port 5070 is closed, and the unrelated Folders AppHost is preserved. The baseline confirms Counter readiness while security is Unhealthy and dependent applications wait. The host retains specimen diagnostics and one startup JS-interop `TaskCanceledException`, without a correlated failed check or clean-log/full-topology claim.
+
+This supplies the missing local post-GEO complete browser/state-artifact and configured individual Shell evidence plus fresh automated native results. Full-solution .NET/SourceTools, hosted Quality and full-topology results retain their prior candidates. Current-candidate human evidence, applicable changed-cue WebKit capability acceptance and independent OI-16/G-4/FLUENT-APP-1/Product/Architect decisions remain open. Delegating checks supplies no human observation or waiver. Historical MAN-136 reports/waiver, eighteen itemized boxes, frozen intent/baseline, original unchecked tasks and Story/sprint **in-progress** remain unchanged.
+
+Only this spec and `13-6-accessibility-result.md` change. Final `python3 eng/validate-story-artifacts.py` and `git diff --check` pass. No evidence packet, manifest, runtime-identity record, source/test/dependency/policy/baseline/gitlink edit, staging, commit, push or remote operation is added.

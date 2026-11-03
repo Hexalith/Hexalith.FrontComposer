@@ -1,5 +1,70 @@
 # Story 13.6 accessibility result and human checklist
 
+## Current committed-source local browser and native verification — 2026-11-03
+
+The full primary spec and both frontmatter context files were loaded. The initially clean tested root is `b105c846c31844441f1cff84b5c187da0eff3546`; all specified corrections through GEO1–GEO4 are committed and no additional product failure was demonstrated. Its `git diff --binary fbe01c913cb863abb0fd4a317d370d36fff593b3 HEAD -- src tests` SHA-256 is `4e50ecd68e8b45f4f4db9feec43bc62a0331eafd474897d20f6e1efd5db46f0e`, matching the final GEO source. Six selections (Builds, EventStore, Memories, Parties, Platform and Tenants) have advanced since that earlier proof. Fresh results below bind the rebuilt current runtime; earlier results keep their original candidates. Only this result and the primary spec change.
+
+| Current local lane | Outcome |
+| --- | --- |
+| Complete three-spec Chromium selection | **375 passed**, zero skipped/failed/flaky/errors/retries |
+| Complete three-spec Firefox selection | **373 passed / two named skips**, zero failed/flaky/errors/retries |
+| Complete three-spec WebKit selection | **373 passed / two named skips**, zero failed/flaky/errors/retries |
+| Browser aggregate | **1,121 passed / four named skips**, 1,125 total |
+| Current-run state evidence / artifact validators | **116 states per engine** / all three exit **0** |
+| Visual comparisons, included above | **18/18**; all **69** tracked PNG/Verify baselines unchanged |
+| Configured individual Debug Shell suite | **3,899 passed**, zero failed/skipped/errors/not-run |
+| Shell.Tests Debug build, including Counter | Zero warnings/errors |
+| Fresh actual native Chromium 400% zoom | **32/32** |
+| Fresh native Windows NVDA/Firefox | **13/13** |
+| Linux Node evidence / TypeScript | **29/29** / exit **0** |
+
+Firefox skips `review native-plane circular corner proof rejects supported bevel paint` and `story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion`. WebKit skips `review clipping preserves visible competing paint: overflow clip margin` and that same Chromium-specific motion pin. WebKit forced-color checks execute and retain media-only attribution where actual palette replacement is unsupported.
+
+Exact root commands:
+
+```text
+dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug --no-restore -m:1 -v:q
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- Category=GovernanceBuild -trait- Category=Performance -trait- Category=e2e-palette -trait- Category=NightlyProperty -trait- Category=Quarantined -longRunning 30 -result-xml /tmp/fc-story13-6-b105c846-188r1aqs/shell-configured.xml
+node --test tests/e2e/scripts/a11y-state-evidence.test.mjs
+npm --prefix tests/e2e run typecheck
+```
+
+From `tests/e2e`, once per `<engine>` (`chromium`, `firefox`, `webkit`):
+
+```text
+BASE_URL=http://127.0.0.1:5070 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=/tmp/fc-story13-6-b105c846-188r1aqs/<engine> FC_E2E_HTML_REPORT_DIR=/tmp/fc-story13-6-b105c846-188r1aqs/<engine>-html FC_A11Y_EVIDENCE_ENGINE=<engine> FC_A11Y_EVIDENCE_RUN_ID=story13-6-b105c846-<engine>-20261103 npx --no -- playwright test specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --project=<engine> --workers=2 --retries=0
+```
+
+Each was followed by `node scripts/validate-a11y-artifacts.mjs` in the **same engine/run/output environment**. Exact expanded argv, environment, cwd, durations, exits and log hashes are in `/tmp/fc-story13-6-b105c846-188r1aqs/commands.jsonl`. The executed coordinator is `python3 /tmp/fc-story13-6-b105c846-188r1aqs/run-browsers.py`. All three lanes pass on their first execution in this continuation.
+
+| Report | JSON SHA-256 | Results / HTML bytes |
+| --- | --- | --- |
+| Chromium | `c2280c1b4bb2d75f83b51c34662705d682fa6c5ed30f6b12be37e584b7cdfea9` | 14,322,187 / 8,022,929 |
+| Firefox | `447cd592e662ee38099a01cec4a7194021d9a710164ff7a2f90012d78cca4c06` | 15,537,288 / 8,458,342 |
+| WebKit | `a916ba800cdee0ede3d07b101695d1ddced52f9fee09dd896d24483d22982f02` | 12,754,823 / 7,029,432 |
+
+All six roots stay below the unchanged **52,428,800-byte** cap. The configured toolchain is Playwright **1.64.1**. The headed Chromium executable reports Google Chrome for Testing **156.0.8078.4**; Linux Firefox reports **157.0**, separate from the Windows pairing below.
+
+Fresh native zoom command, from `tests/e2e`: `xvfb-run -a -s '-screen 0 1600x1200x24' node /tmp/fc-story13-6-b105c846-188r1aqs/native-zoom/native-zoom.mjs`. The inspected prior runner has SHA-256 `f43cb2981c84107652efe070854ad3ad1462e7745b53029cd88aec9e627a466e`. Its copy changes only the result output path, yielding script SHA-256 `9745ab562dac5670ae4011a960f444f52db4f5d27724cc83e894c188c09abce9`; actions, timings, thresholds and direct current-helper imports are unchanged. Native tabs zoom verifies **1280×900 / DPR1 → 320×225 / DPR4**, outer width **1280**, visual scale/CSS zoom **1**. All **32/32** pass, including the original 28 operations and four grid-focus light/dark × default/spaced cases. Result SHA-256 is `6ba78e918a64c258d79d46859c971c96377bae3d5ecae4a63ebc97517ba78885`.
+
+Fresh native AT command, from the repository root:
+
+```text
+node.exe 'C:\Users\JeromePiquot\AppData\Local\Temp\fc-story13-6-b105-nvda-yq_55n78\native-current.cjs' 'C:\Users\JeromePiquot\AppData\Local\Temp\fc-story13-6-b105-nvda-yq_55n78'
+```
+
+Inventory verifies Windows OS **10.0.26300.0**, **NVDA 2026.2** and **Firefox 155.0.1**. The fresh owned profile/log combines the prior full runner with the already recorded focused-runner setup corrections: startup reactivation, DOM fixture selection, and explicit trigger focus followed by native Shift+Tab/Tab. Command activation and subsequent AT interaction use native Windows keys. Runner SHA-256 is `3a9c73dccc83f25f8b8c3ca05be20c9f38fc160df71f356f9376843ddaf8822c`. All **13/13** pass in this single run: eleven zero-field outcomes each generate one NVDA outcome speech record, retain trigger focus and remain silent during the measured **1.5-second** idle window; Settings exposes radio name/checked state and returns focus; the palette generates its selected option exactly once and returns focus. Summary SHA-256 is `f3d99a60f42478981ed03e7573d1b9844a26655e06937ddc5982623bbf42d9ce`. Raw speech/driver/profile artifacts stay in that external Windows directory. These are automated native AT observations, without a human listening claim.
+
+The preflight finds no existing NVDA session or port-9516 listener. Cleanup verifies NVDA count **0**, both owned driver/Firefox PIDs absent and port 9516 free. The queried standard JAWS directory is absent; no connected macOS/VoiceOver or physical tablet/phone execution capability is available. No corresponding observation is added.
+
+The exact-target Aspire Test baseline started with `ASPIRE_ENVIRONMENT=Test aspire start --no-build --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json -- --environment Test`. `aspire wait counter-web --timeout 45 --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj` and exact-target describe confirm Counter Healthy; security is Unhealthy and dependent applications wait. The owned AppHost stopped before building. The standalone host command is `dotnet run --project samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --no-build --no-launch-profile --urls http://127.0.0.1:5070`, with `ASPNETCORE_ENVIRONMENT=Test`, `Hexalith__FrontComposer__Specimens__Enabled=true`, `Hexalith__Shell__FormAbandonmentThresholdSeconds=5`, `Hexalith__Shell__TimeoutActionThresholdMs=5000`, `Hexalith__Shell__ProjectionReconnectedNoticeDurationMs=30000`, `Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs=6500` and `Logging__LogLevel__Default=Warning`.
+
+The host log retains specimen outcome diagnostics and one `FrontComposerShell[13200]` startup `TaskCanceledException` during JS interop, without a correlated failed check. Clean-log/full-topology qualification is not claimed. All owned sessions are stopped and port **5070 is closed**; the unrelated Folders AppHost is preserved. The Shell suite's generated Pact handoff was archived externally and its tracked content/CRLF restored.
+
+This closes the missing **local post-GEO complete three-spec/state-artifact and configured individual Shell verification**, with fresh current-runtime automated native results. Full-solution .NET/SourceTools, hosted Quality and full-topology evidence retain their earlier source attribution; no such gate was rerun or inferred. Final `python3 eng/validate-story-artifacts.py` and `git diff --check` pass. No remote operation, source/test/dependency/policy/gitlink/baseline change, staging, commit or push occurred; no evidence packet, manifest or runtime-identity record is committed.
+
+The user delegated the available checks, supplying no human observation or waiver. Current-candidate human evidence, applicable changed-cue WebKit capability acceptance and independent OI-16/G-4/FLUENT-APP-1/Product/Architect decisions remain open. The seven historical MAN-136 Owner-reported Pass records/waiver, eighteen unreported itemized boxes, original frozen criteria/baseline and unchecked acceptance tasks are preserved. Story/sprint remain **in-progress**.
+
 ## Owned-border geometry and unobscured grid focus — 2026-11-03
 
 The full primary spec and both frontmatter context files were loaded. Current local candidate is committed root `fbe01c913cb863abb0fd4a317d370d36fff593b3` plus `git diff --binary HEAD -- src tests` SHA-256 `4e50ecd68e8b45f4f4db9feec43bc62a0331eafd474897d20f6e1efd5db46f0e`. [GEO1–GEO4](spec-13-6-verify-responsive-and-assistive-accessibility.md#remaining-owned-border-focus-geometry--2026-11-03) close the demonstrated engineering gap; original primary acceptance boxes and Story/sprint **in-progress** remain unchanged.
