@@ -19,6 +19,12 @@ and add a GitHub Actions policy with these values:
 | Environment | `production` |
 | Scope | Publish new versions matching `Hexalith.FrontComposer.*` |
 
+The dependency release evaluator uses the policy from the push base commit.
+A new `eng/dependency-graph-policy.json` authorization row becomes active for
+the following source commit, after that policy commit has landed on `main`.
+Before dispatching a release after a policy change, confirm the successful
+push CI handoff names the policy commit containing the new row.
+
 The eight existing package IDs are declared in `tools/release-packages.json`.
 There is no need to grant publication of new package IDs for this release.
 Record the individual **NuGet username that created the policy**, then set the
