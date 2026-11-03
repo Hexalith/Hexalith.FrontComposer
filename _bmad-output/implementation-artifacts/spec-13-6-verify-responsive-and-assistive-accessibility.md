@@ -1433,3 +1433,48 @@ The requested outline comparison recommends a small measured Fluent-stroke contr
 The user selected “apply recommended”: preserve the reconciliation contour as an informative cue and correct its contrast. The [supporting implementation](spec-13-6-make-reconciliation-outline-perceptible.md) uses an opaque accessible Fluent stroke and supported system colors, preserving 700ms/static reduced-motion behavior and the stronger keyboard outline. Base is `f842711d67004200e3248b3c42b7d9bcb2146907` plus source/test patch SHA-256 `0536a29c4130ae950f3468ceaed596a0f614bb67910d011f7bff0573ee1d0737`. Corrected old-source probes fail 1.7875:1 light / 1.4269:1 dark. Fixed three-engine browser verification passes 12/12 with authored minima 4.5437:1 light / 7.0463:1 dark and 21:1 supported system paint. Debug build and TypeScript pass. Commands, raw output, review and the changed-cue WebKit capability-revalidation limits are recorded in the [leading result](13-6-accessibility-result.md#informative-reconciliation-outline-correction--2026-11-03).
 
 The outline decision and bounded contrast correction do not supply new human or independent approvals. Prior hosted qualification applies to its original source; this patch needs its own hosted qualification. Frozen intent, original incomplete tasks, historical manual reports/waiver and Story/sprint **in-progress** are preserved.
+
+
+## Remaining owned-border focus geometry — 2026-11-03
+
+The resumed implementation audit identifies an implementable gap in the original unchecked AE-05 task. The completed informative-outline correction explicitly deferred a conservative `focusGeometry` failure: an internal sticky TH border intersects the focused grid's full bounding rectangle but does not intersect its 2px inset focus ring. The previous old/new screenshots establish no new product regression; the outline regression establishes contrast and priority, not generic geometry. Closing this measurement gap is within the original full-focus/occlusion requirement. The later Firefox finding below expands this derived work to GEO4's bounded focus styling correction; frozen intent, thresholds, approved images and human/owner criteria stay unchanged.
+
+Code map: `tests/e2e/helpers/responsive-accessibility.ts`, `focusGeometry` (indicator inventory and competing pseudo/border/shadow paint loop); `tests/e2e/specs/responsive-accessibility.spec.ts`, real-grid reconciliation regression and synthetic focus-paint regressions. Existing full-target obstruction, clipping, transform, shadow and pseudo-paint negatives remain authoritative. Derive a narrow proof for owned interior border paint against the actual focus indicator; unrelated paint must retain the full-target check. Unsupported geometry must continue to require pixel evidence. Do not ignore descendants or sticky elements wholesale.
+
+### Tasks & Acceptance — owned-border proof
+
+- [x] GEO1 — `tests/e2e/helpers/responsive-accessibility.ts`: distinguish a proven contained owned border that misses the actual indicator from paint that can obscure the target or indicator. Preserve all existing failure paths outside the supported proof and avoid new exported/public APIs.
+- [x] GEO2 — `tests/e2e/specs/responsive-accessibility.spec.ts`: reproduce the owned sticky-border false positive before correction; add a corresponding valid case and genuine overlapping-ring/unrelated-paint negatives. Restore real-grid geometry verification alongside its existing contrast/priority assertions across both themes and forced-color/reduced-motion combinations where supported.
+- [x] GEO3 — run the new regressions and relevant existing focus/occlusion helper and real-surface checks across Chromium, Firefox and WebKit, plus TypeScript and story/whitespace checks. Record exact commands, counts, tested commit plus patch attribution, historical failures and any remaining limitation here and in `13-6-accessibility-result.md`. Source-owned baselines remain unchanged; raw reports stay external scratch.
+
+Given an owned sticky-header border strictly inside the grid and disjoint from its complete proven focus indicator, when geometry is measured, then it does not falsely certify an obstruction. Given paint intersecting that indicator, unrelated covering paint, unsupported geometry or real clipping, when measured, then the helper continues to reject the invalid proof. Passing focused checks does not supply human observations or independent acceptance and does not retroactively qualify a pre-correction full browser run.
+
+### Firefox ring obstruction discovered during GEO verification
+
+The restored real-grid check demonstrates an actual missing right-hand focus stroke beside the sticky header in Firefox. The screenshot and geometry both show the header reaching the grid edge. The native overlay scrollbar reserves no client gutter in that case, so it supplies no exclusion proof. Preserve the failed attempt and the existing helper rejection. The original AE-05 requirement authorizes correcting this demonstrated production focus defect; the frozen intent is unchanged.
+
+#### Tasks & Acceptance — Firefox focus correction
+
+- [x] GEO4 — `src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css`: correct the generated grid's focus contour so sticky content cannot obscure it, using the existing Fluent focus token and 2px ring. Keep tight row-link focus behavior, 1px informative cue, duration, reduced motion, layout, scrolling, and density contracts. Where required, extend only the supported solid rectangular-outline proof in the existing helper; retain rejection of actual ring overlap and unrelated paint. Rebuild the Debug sample and verify restored real-grid geometry/contrast in both themes and supported media combinations across all three engines, plus affected 320px/short-viewport/text-spacing focus journeys. Do not change approved PNGs or weaken comparison thresholds.
+
+
+## Owned-border geometry implementation and verification — 2026-11-03
+
+GEO1–GEO4 are implemented on root `fbe01c913cb863abb0fd4a317d370d36fff593b3` plus source/test patch SHA-256 `4e50ecd68e8b45f4f4db9feec43bc62a0331eafd474897d20f6e1efd5db46f0e`. The [leading result](13-6-accessibility-result.md#owned-border-geometry-and-unobscured-grid-focus--2026-11-03) records exact commands, expanded environments/report hashes, every failed/interrupted attempt and reuse limits. The bounded proof distinguishes a labelled grid's owned interior sticky-header border from actual ring overlap and unrelated paint; unsupported geometry remains fail-closed. Real Firefox ring occlusion required a production correction: retain the 2px Fluent stroke outside the scrollport at zero offset, with stable 2px token clearance funded from existing top padding. Content/normal flow, row density, scroll-padding, informative cue and tight row-link focus remain intact.
+
+Final current-source responsive/specimen results are **807 passed / three named skips**, zero failed/flaky/retries/errors, across Chromium **270**, Firefox **268/two skips** and WebKit **269/one skip**. All **18** approved visual comparisons pass unchanged. The included GEO/real-grid/shared-asset subset passes **42/42**; all 24 theme/media focus records have zero geometry failures, at least **14.5801:1** contrast and no focus-induced layout change. Debug Counter builds are warning/error free, final Fluent conformance passes **39/39**, and TypeScript exits **0**.
+
+Automated actual Chromium zoom passes **32/32** on the same candidate: original 28 operations plus four explicit grid-focus theme/spacing cases. Live reference **1280×900 / DPR1** becomes **320×225 / DPR4**, outer width 1280, visual scale/CSS zoom 1. The first 30/32 attempt retains its two added-case fixture/theme setup failures; current-helper direct imports and the synchronized fixture/shell preconditions are recorded separately. No human observation or renewed native-AT result is inferred.
+
+The pre-correction full Chromium **365/365** plus artifact-validator pass and stopped Firefox **85/two interrupted/278 not run** remain historical, as do all intermediate geometry, stale-pin, TypeScript and visual failures. Final two-file browser verification does not claim a new complete state-artifact-validator/full-.NET/hosted gate. Owned AppHost/Test/native sessions are stopped. Current-candidate human evidence, independent owner decisions and applicable WebKit capability acceptance remain open; historical manual reports/waiver, eighteen itemized boxes, original frozen text/acceptance tasks and Story/sprint **in-progress** are preserved.
+
+Global `python3 eng/validate-story-artifacts.py`, TypeScript and `git diff --check` pass. The additional scoped command `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md --base fbe01c913cb863abb0fd4a317d370d36fff593b3` exits **1** on historical completed-task headings and paths outside this continuation's delta. The legacy history is preserved; no validator rule is bypassed or weakened. The six current changed paths are listed below; the new GEO tasks use recognized task headings. Exact output remains in `/tmp/fc-story13-6-fbe01c91-mqk1oksn/story-current.log`.
+
+## File List
+
+- `src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css`
+- `tests/e2e/helpers/responsive-accessibility.ts`
+- `tests/e2e/specs/responsive-accessibility.spec.ts`
+- `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+- `_bmad-output/implementation-artifacts/13-6-accessibility-result.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`

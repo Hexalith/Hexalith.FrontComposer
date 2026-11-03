@@ -665,6 +665,7 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
       return { left: Math.min(...corners.map(point => point.x)), top: Math.min(...corners.map(point => point.y)), right: Math.max(...corners.map(point => point.x)), bottom: Math.max(...corners.map(point => point.y)) };
     };
     let indicator = false, hardIndicator = false, blurredShadow = false, ring = 0;
+    let outlineInterior: PaintBox | null = null, otherIndicator = false;
     const indicatorOwners = new Set<Element>();
     const shadowBounds: ShadowContrastBound[] = [];
     const box = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
@@ -712,6 +713,14 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
       if (outline) ring = Math.max(ring, Math.max(0, parseFloat(css.outlineWidth) + parseFloat(css.outlineOffset)) || 0);
       if (outline || shadow || pseudoBorder) {
         indicatorOwners.add(visual);
+        // A single square outline has a provable empty interior. Other focus
+        // paint keeps the existing conservative full-target obstruction checks.
+        const offset = parseFloat(css.outlineOffset);
+        if (visual === element && !pseudo && outline && !shadowLayers.length && css.boxShadow === 'none'
+          && css.outlineStyle === 'solid' && Number.isFinite(offset) && rect.width + 2 * offset > 0 && rect.height + 2 * offset > 0
+          && [css.borderTopLeftRadius, css.borderTopRightRadius, css.borderBottomLeftRadius, css.borderBottomRightRadius].every(radius => radius === '0px')) {
+          outlineInterior = { left: rect.left - offset, right: rect.right + offset, top: rect.top - offset, bottom: rect.bottom + offset };
+        } else otherIndicator = true;
         const extent = outline ? Math.max(0, parseFloat(css.outlineWidth) + parseFloat(css.outlineOffset)) : 0;
         box.left = Math.min(box.left, paintBox.left - extent); box.top = Math.min(box.top, paintBox.top - extent);
         box.right = Math.max(box.right, paintBox.right + extent); box.bottom = Math.max(box.bottom, paintBox.bottom + extent);
@@ -912,6 +921,25 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
     }
     const plane = (node: Element) => { for (let current: Element | null = node; current; current = parent(current)) if (current.matches(':popover-open,:modal')) return current; return null; };
     const focusPlane=plane(element);
+    const ownedInteriorBorder = (candidate: Element, css: CSSStyleDeclaration, paint: PaintBox[]) => {
+      if (!outlineInterior || otherIndicator || !paint.length || !element.matches('[data-fc-datagrid][role="region"][tabindex]')
+        || !(element.getAttribute('aria-label')?.trim() || element.getAttribute('aria-labelledby')?.trim())
+        || !candidate.matches('th') || !candidate.closest('thead') || !candidate.closest('table') || !contains(element, candidate)
+        || css.position !== 'sticky' || css.boxShadow !== 'none' || css.borderImageSource !== 'none') return false;
+      // Only this grid's structural header owns its interior border. Nested grids,
+      // transforms and unsupported composition cannot borrow that ownership.
+      for (let owner: Element | null = candidate; owner && owner !== element; owner = parent(owner)) {
+        const style = getComputedStyle(owner);
+        if (owner.matches('[data-fc-datagrid]') || style.transform !== 'none' || style.scale && !['none','1'].includes(style.scale)
+          || style.rotate && style.rotate !== 'none' || style.zoom && !['normal','1'].includes(style.zoom)
+          || Number(style.opacity) !== 1 || style.filter !== 'none' || style.mixBlendMode !== 'normal'
+          || style.getPropertyValue('backdrop-filter') && style.getPropertyValue('backdrop-filter') !== 'none') return false;
+      }
+      // Keep border paint within the actual outline's inner edge, rather than using
+      // the whole focused region as though its ordinary header were an overlay.
+      return paint.every(border => border.left >= outlineInterior!.left && border.right <= outlineInterior!.right
+        && border.top >= outlineInterior!.top && border.bottom <= outlineInterior!.bottom);
+    };
     for (const candidate of candidates) {
       if (related(candidate) || focusPlane && !plane(candidate)) continue;
       let hidden = false;
@@ -945,6 +973,7 @@ export async function focusGeometry(target: Locator, { requireIndicator = true }
           if (owner !== candidate || pseudo) paint = paint.map(box => ({ left: /(auto|scroll|hidden|clip)/u.test(css.overflowX) ? Math.max(box.left,bounds.left) : box.left, right: /(auto|scroll|hidden|clip)/u.test(css.overflowX) ? Math.min(box.right,bounds.right) : box.right, top: /(auto|scroll|hidden|clip)/u.test(css.overflowY) ? Math.max(box.top,bounds.top) : box.top, bottom: /(auto|scroll|hidden|clip)/u.test(css.overflowY) ? Math.min(box.bottom,bounds.bottom) : box.bottom }));
           if (owner.matches(':popover-open,:modal') || pseudo && getComputedStyle(candidate,pseudo).position === 'fixed') break;
         }
+        if (!pseudo && ownedInteriorBorder(candidate, css, paint)) continue;
         if (paint.some(other => other.right > other.left && other.bottom > other.top && other.left < box.right && other.right > box.left && other.top < box.bottom && other.bottom > box.top)) {
           occluder = JSON.stringify({candidate:candidate.tagName+'#'+candidate.id,pseudo,paint});
           failures.push('competing pseudo/border/shadow paint needs pixel evidence');

@@ -486,7 +486,7 @@ for (const theme of ['light', 'dark']) {
       return { width: css.outlineWidth, offset: css.outlineOffset, systemPaletteSupported: CSS.supports('forced-color-adjust', 'auto') };
     });
     expect(paint.width).toBe('2px');
-    expect(paint.offset).toBe('-2px');
+    expect(paint.offset).toBe('0px');
     if (!paint.systemPaletteSupported) expect(info.project.name).toBe('webkit');
     await info.attach(`narrow-focus-${theme}`, { body: JSON.stringify({ normal, system, paint }), contentType: 'application/json' });
 
@@ -515,7 +515,7 @@ for (const theme of ['light', 'dark']) {
     await expectFocusVisible(shared);
     const sharedSystem = await expectSurfaceContrast(shared, 'focus');
     const sharedPaint = await shared.evaluate(element => ({ width: getComputedStyle(element).outlineWidth, offset: getComputedStyle(element).outlineOffset }));
-    expect(sharedPaint).toEqual({ width: '2px', offset: '-2px' });
+    expect(sharedPaint).toEqual({ width: '2px', offset: '0px' });
     await info.attach(`shared-grid-focus-${theme}`, { body: JSON.stringify({ normal: sharedNormal, system: sharedSystem, paint: sharedPaint }), contentType: 'application/json' });
   });
 }
@@ -671,14 +671,25 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
             palette: media.forcedColors === 'none' ? 'authored theme' : paint.systemPaint ? 'painted system palette' : 'WebKit media-only capability' });
         }
         // The existing keyboard ring wins over the informative marker on the same grid.
+        const layout = await grid.evaluate(element => {
+          const node = element as HTMLElement;
+          return { top: node.offsetTop, width: node.offsetWidth, height: node.offsetHeight, margin: getComputedStyle(node).marginBlockStart };
+        });
         await page.keyboard.press('Tab');
         await grid.focus();
         await expect(grid).toBeFocused();
         await expect(grid).toHaveCSS('outline-width', '2px');
+        await expectFocusVisible(grid);
         const focused = (await measureSurfaceContrast(grid, 'focus')).filter(sample => sample.node === 'div#ae-reconciliation-grid' && sample.paint === 'element outline');
         expect(focused, 'The focused grid must supply the measured keyboard ring').toHaveLength(1);
         expect(focused[0].ratio).toBeGreaterThanOrEqual(3);
-        focusMeasurements.push({ media, outline: focused[0] });
+        expect(await grid.evaluate(element => {
+          const node = element as HTMLElement;
+          return { top: node.offsetTop, width: node.offsetWidth, height: node.offsetHeight, margin: getComputedStyle(node).marginBlockStart };
+        }), 'Keyboard focus must not move or resize the grid').toEqual(layout);
+        const geometry = await focusGeometry(grid);
+        expect(geometry.failures).toEqual([]);
+        focusMeasurements.push({ media, outline: focused[0], geometry, layout });
       }
       await testInfo.attach(`reconciliation-focus-${theme}`, { body: JSON.stringify(focusMeasurements), contentType: 'application/json' });
       await testInfo.attach(`reconciliation-outline-${theme}`, { body: JSON.stringify(measurements), contentType: 'application/json' });
@@ -1898,6 +1909,75 @@ test('resume review ordinary flow descendant can obscure the target ring', async
   expect((await focusGeometry(page.locator('a'))).failures).toContain('app content obscures target or focus ring');
   await page.locator('span').evaluate(node => { node.style.cssText = 'width:10px;height:10px;margin:0'; });
   expect((await focusGeometry(page.locator('a'))).failures).toEqual([]);
+});
+
+async function ownedStickyHeaderFixture(page: import('@playwright/test').Page) {
+  await page.setContent('<style>body{margin:0}#grid{position:absolute;left:40px;top:40px;width:300px;height:150px;padding:8px;box-sizing:border-box;overflow:auto;background:white;outline:none}#grid:focus{outline:2px solid black;outline-offset:-2px}table{width:100%;border-spacing:0}th{position:sticky;top:0;padding:0;background:white;border-bottom:1px solid black}th span{display:block;line-height:40px}td{height:40px}</style><div id="grid" data-fc-datagrid="fixture" role="region" aria-label="Records" tabindex="0"><table><thead><tr><th><span>Heading</span></th></tr></thead><tbody><tr><td>Record</td></tr></tbody></table></div>');
+  const grid = page.locator('#grid');
+  await grid.focus();
+  return grid;
+}
+
+test('GEO contained owned sticky header borders leave the complete grid indicator visible', async ({ page }) => {
+  const grid = await ownedStickyHeaderFixture(page);
+  expect((await focusGeometry(grid)).failures).toEqual([]);
+});
+
+test('GEO owned header borders that overlap an inset grid indicator remain rejected', async ({ page }) => {
+  const grid = await ownedStickyHeaderFixture(page);
+  await page.addStyleTag({ content: 'table{margin-top:-8px}th{top:-8px;border-top:2px solid white}' });
+  expect((await page.locator('th').boundingBox())!.y).toBe((await grid.boundingBox())!.y);
+  expect((await focusGeometry(grid)).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+});
+
+test('GEO an outside grid outline stays clear of clipped owned header paint', async ({ page }) => {
+  const grid = await ownedStickyHeaderFixture(page);
+  await page.addStyleTag({ content: '#grid:focus{outline-offset:0}table{width:400px}' });
+  expect(await grid.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+  await expectFocusVisible(grid);
+});
+
+test('GEO unrelated border paint still obstructs an outside grid outline', async ({ page }) => {
+  const grid = await ownedStickyHeaderFixture(page);
+  await page.addStyleTag({ content: '#grid:focus{outline-offset:0}' });
+  await page.evaluate(() => {
+    const cover = document.createElement('div');
+    cover.style.cssText = 'position:absolute;left:340px;top:60px;width:0;height:40px;border-left:3px solid white;pointer-events:none';
+    document.body.append(cover);
+  });
+  expect((await focusGeometry(grid)).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+});
+
+test('GEO a nested grid cannot borrow its parent grids header ownership', async ({ page }) => {
+  const grid = await ownedStickyHeaderFixture(page);
+  await page.locator('table').evaluate(table => {
+    const nested = document.createElement('div');
+    nested.setAttribute('data-fc-datagrid', 'nested');
+    table.before(nested); nested.append(table);
+  });
+  expect((await focusGeometry(grid)).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+});
+
+test('GEO unrelated border paint inside a focused grid still requires full-target proof', async ({ page }) => {
+  const grid = await ownedStickyHeaderFixture(page);
+  await page.locator('th').evaluate(header => { header.style.position = 'static'; });
+  await expectFocusVisible(grid);
+  await page.evaluate(() => {
+    const cover = document.createElement('div');
+    cover.style.cssText = 'position:absolute;left:100px;top:100px;width:40px;height:20px;border:8px solid white;pointer-events:none';
+    document.body.append(cover);
+  });
+  expect((await focusGeometry(grid)).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
+});
+
+for (const unsupported of ['rounded indicator', 'header shadow', 'header pseudo', 'header transform']) test(`GEO ${unsupported} cannot use the owned-border proof`, async ({ page }) => {
+  const grid = await ownedStickyHeaderFixture(page);
+  const content = unsupported === 'rounded indicator' ? '#grid{border-radius:12px}'
+    : unsupported === 'header shadow' ? 'th{box-shadow:0 1px 0 black}'
+    : unsupported === 'header pseudo' ? 'th::after{content:"";position:absolute;left:10px;top:10px;width:20px;height:10px;background:white}'
+    : 'th{transform:translateX(1px)}';
+  await page.addStyleTag({ content });
+  expect((await focusGeometry(grid)).failures).toContain('competing pseudo/border/shadow paint needs pixel evidence');
 });
 
 test('resume review fully clipped pseudo borders supply no contrast evidence', async ({ page }) => {

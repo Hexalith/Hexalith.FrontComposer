@@ -157,11 +157,21 @@
     padding: 8px;
     scroll-padding: 8px;
 }
-/* The generated region follows its row count, and diagnostic links sit in tight row
-   flow. Keep their keyboard contours inside their own bounds, clear of adjacent text. */
+/* Keep the outside grid contour clear of preceding count text in both focus
+   states, funding its clearance from the existing 8px padding so content and
+   normal flow stay put. Diagnostic links retain their tight-row inset contour. */
+.fc-datagrid-host {
+    margin-block-start: var(--spacingVerticalXXS);
+    padding-block-start: calc(8px - var(--spacingVerticalXXS));
+}
 .fc-datagrid-host:focus-visible,
 .fc-projection-grid td .fc-field-placeholder a:focus-visible {
     outline: 2px solid var(--colorStrokeFocus2, #000);
+}
+.fc-datagrid-host:focus-visible {
+    outline-offset: 0;
+}
+.fc-projection-grid td .fc-field-placeholder a:focus-visible {
     outline-offset: -2px;
 }
 
