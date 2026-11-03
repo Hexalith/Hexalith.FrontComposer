@@ -346,7 +346,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
             try
             {
                 _expandInRowModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js").ConfigureAwait(false);
-                await _expandInRowModule.InvokeVoidAsync("initializeExpandInRow", _compactCardRef).ConfigureAwait(false);
+                await _expandInRowModule.InvokeVoidAsync("initializeExpandInRow", _compactCardRef, true).ConfigureAwait(false);
             }
             catch (InvalidOperationException) { /* prerender: JSInterop not yet available. */ }
             catch (JSDisconnectedException) { /* circuit teardown; benign. */ }
