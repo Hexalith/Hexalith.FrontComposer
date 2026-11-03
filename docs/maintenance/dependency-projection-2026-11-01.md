@@ -29,3 +29,11 @@ their current sibling main revisions. The root-selector fingerprint is recompute
 from those exact committed declarations. The policy transition remains subject to
 its prior base; this descendant supplies a later-base evaluation without changing
 the dependency or authorization rules.
+
+The November 3 synchronization selected Platform
+`8ea8fe092f8abb5c932a61830aae16051d442463` and Builds
+`725754075e1d6369430a3adf94d46fb71e6eaf9e`. The application build and
+browser checks passed, but dependency governance rejected the previous Platform
+seal. Commit `a2af59e8` updates only the owner commit, owner inventory digest,
+Builds commit, and root selector digest from committed objects. This descendant
+lets CI evaluate that landed policy against the selected root submodules.
