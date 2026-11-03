@@ -21,15 +21,17 @@ export function focusTriggerElementById(elementId) {
 // avoids fighting a smooth scrollIntoView that's still in flight.
 const SCROLL_CORRECTION_THRESHOLD_PX = 4;
 
-export function initializeExpandInRow(elementRef) {
+export function initializeExpandInRow(elementRef, deferToRouteFocus = false) {
     if (!(elementRef instanceof Element) || !elementRef.isConnected) {
         return;
     }
 
-    // Route navigation owns the initial heading focus. Eager inline forms must not scroll
-    // that focused heading away; a user-opened form has already moved focus to its trigger.
-    if (document.activeElement instanceof HTMLElement
-        && document.activeElement.matches('#fc-main-content h1, main h1, [role="main"] h1')) {
+    // Eager inline forms defer to initial route focus. Ordinary row expansion can have
+    // body focus after a pointer interaction; all callers protect a focused route heading.
+    const activeElement = document.activeElement;
+    if ((deferToRouteFocus && (!activeElement || activeElement === document.body))
+        || (activeElement instanceof HTMLElement
+            && activeElement.matches('#fc-main-content h1, main h1, [role="main"] h1'))) {
         return;
     }
 
@@ -47,9 +49,11 @@ export function initializeExpandInRow(elementRef) {
     }
 
     requestAnimationFrame(() => {
+        const activeElement = document.activeElement;
         if (!elementRef.isConnected
-            || (document.activeElement instanceof HTMLElement
-                && document.activeElement.matches('#fc-main-content h1, main h1, [role="main"] h1'))) {
+            || (deferToRouteFocus && (!activeElement || activeElement === document.body))
+            || (activeElement instanceof HTMLElement
+                && activeElement.matches('#fc-main-content h1, main h1, [role="main"] h1'))) {
             return;
         }
         const rect = elementRef.getBoundingClientRect();

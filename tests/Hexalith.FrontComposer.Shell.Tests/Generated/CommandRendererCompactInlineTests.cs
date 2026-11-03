@@ -82,7 +82,7 @@ public sealed class CommandRendererCompactInlineTests : CommandRendererTestBase 
 
         _ = Render<TwoFieldCompactCommandRenderer>();
 
-        // The single argument is the captured ElementReference (cannot be null when the card is in DOM).
+        // Preserve the card reference and explicitly defer eager initialization to route focus.
         List<JSRuntimeInvocation> initInvocations = [];
         foreach (JSRuntimeInvocation invocation in module.Invocations) {
             if (invocation.Identifier == "initializeExpandInRow") {
@@ -91,7 +91,9 @@ public sealed class CommandRendererCompactInlineTests : CommandRendererTestBase 
         }
 
         initInvocations.ShouldNotBeEmpty();
-        initInvocations[0].Arguments.Count.ShouldBe(1);
+        initInvocations[0].Arguments.Count.ShouldBe(2);
+        initInvocations[0].Arguments[0].ShouldBeOfType<Microsoft.AspNetCore.Components.ElementReference>();
+        initInvocations[0].Arguments[1].ShouldBeOfType<bool>().ShouldBeTrue();
     }
 
     [Fact]

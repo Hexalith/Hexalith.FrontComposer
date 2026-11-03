@@ -804,7 +804,7 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("            try");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                _expandInRowModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js\").ConfigureAwait(false);");
-        _ = sb.AppendLine("                await _expandInRowModule.InvokeVoidAsync(\"initializeExpandInRow\", _compactCardRef).ConfigureAwait(false);");
+        _ = sb.AppendLine("                await _expandInRowModule.InvokeVoidAsync(\"initializeExpandInRow\", _compactCardRef, true).ConfigureAwait(false);");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            catch (InvalidOperationException) { /* prerender: JSInterop not yet available. */ }");
         _ = sb.AppendLine("            catch (JSDisconnectedException) { /* circuit teardown; benign. */ }");
