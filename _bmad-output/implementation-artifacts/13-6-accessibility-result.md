@@ -1,5 +1,102 @@
 # Story 13.6 accessibility result and human checklist
 
+## Agent-generated native NVDA evidence — 2026-11-03
+
+The user answered "create evidence yourself". Every observation below is **automated**: NVDA `Speaking` records are generated speech, never heard speech, and no human observation, waiver or amendment is inferred. The eighteen itemized boxes stay unchecked. OI-16/G-4/FLUENT-APP-1/Product/Architect decisions and the changed-cue WebKit capability acceptance are decisions, not evidence, and stay open.
+
+**Tested source.** Root `37181beae5f52d8cd98091664355871f4eb64f22`. `git diff --binary b105c846c31844441f1cff84b5c187da0eff3546 HEAD -- src tests samples` is empty, so product, test and sample bytes equal the earlier `b105c846` candidate; only `.github/workflows/release.yml` and story documentation changed since. `dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Debug --no-restore -m:1 -v:q -nodeReuse:false --disable-build-servers` exited **0**, zero warnings/errors. The standalone host used the exact command and environment of the [preceding committed-source section](#current-committed-source-local-browser-and-native-verification--2026-11-03) on `http://127.0.0.1:5070`.
+
+**Inventory.** Windows **10.0.26300.0**, NVDA **2026.2**, stock Firefox **155.0.1**, geckodriver SHA-256 `e95b4eac7960ffcd5acbfd92bb7d49d48f99c1d01a20ddd297fef8c80821020d`. The standard JAWS directory is absent (`Test-Path` False). No macOS/VoiceOver or physical tablet/phone is connected. The keyboard layout is French AZERTY (`0x040C`); every key used has a layout-independent virtual-key code.
+
+**Runner.** New directory `C:\Users\JeromePiquot\AppData\Local\Temp\fc-story13-6-nat-ybWKjtDb`; the base runner `native-current.cjs` (SHA-256 `3a9c73dccc83f25f8b8c3ca05be20c9f38fc160df71f356f9376843ddaf8822c`) was copied in unchanged and earlier directories were not touched. The executed copy is `runner-canonical\native-nat.cjs` (SHA-256 `4d040174775d135e697307dafc892691ee88c86e92e3ac658803129c51bb5c8e`) with `common.cjs` (`5bdfdff8feb8d8526e7d9ed6c797660a4596eafdf0d3d2ee2fa2d6fe5ab9e514`) and `keyserver.ps1` (`9667e6474865d86d54f6ff8cdbdb36cd9056d0e72e91983e55fb0fadc28bceb7`). It keeps the base pre-existing-NVDA refusal, geckodriver port 9516, NVDA launch `-c <dir> -f <log> -l 12 --disable-addons`, foreground check before `keybd_event`, `Speaking` extraction and cleanup. Two changes are mechanical: keys go through one persistent PowerShell process that repeats the same foreground check per command, so a native Tab arrives within the 500 ms the delayed-result fixture allows; and a device-pixel `SetWindowPos` gives an exact 1280-CSS-pixel reference. `nvda-config\nvda.ini` is the earlier profile file (SHA-256 `b2963b75307472ca72891f5381952aea8e68da29bd0d5de365277e745cdd0eef`; automatic say-all on page load off).
+
+Commands, from the repository root under WSL:
+
+```text
+FC_NAT_OUT=canonical WSLENV=FC_NAT_OUT node.exe 'C:\Users\JeromePiquot\AppData\Local\Temp\fc-story13-6-nat-ybWKjtDb\native-nat.cjs' 'C:\Users\JeromePiquot\AppData\Local\Temp\fc-story13-6-nat-ybWKjtDb'
+FC_NAT_ONLY='nat4:traverse-scenario-100,nat4:actual,nat4:traverse-scenario-400,nat4:overlays-palette-settings-drawer-400,nat4:zoom-reset' FC_NAT_OUT=focused-rerun WSLENV=FC_NAT_ONLY:FC_NAT_OUT node.exe 'C:\Users\JeromePiquot\AppData\Local\Temp\fc-story13-6-nat-ybWKjtDb\runner-canonical\native-nat.cjs' 'C:\Users\JeromePiquot\AppData\Local\Temp\fc-story13-6-nat-ybWKjtDb'
+```
+
+The canonical run (2026-11-03T20:24:09Z–20:34:39Z) used the byte-identical runner before it was frozen into `runner-canonical\`. Its summary SHA-256 is `9d330accdbeba22e90d7ed915b88052e4de7ac7403d29da72ebd80570d408e5e`; its NVDA log SHA-256 is `2ac055107a8b1e43f2ec19abaad7bf8bb1c63f683869c7e75cf8742ea21ea8b8`. The focused-rerun summary SHA-256 is `e2235a53eb5b0d42ec54abe957d7595fc4cc9472032fd8c62fa6e05aceaac33e`.
+
+**Window and actual zoom.** The primary display is 2160×3840 at 175% (DPR 1.7647), where 400% cannot quantize to exactly four times the reference. The owned window was therefore placed on the 3840×2160 display at 150%. Reference: inner **1280×900 CSS pixels, DPR 1.5**, CSS zoom 1, visual scale 1. **16 native Ctrl+=** presses reached **320×225 CSS pixels at DPR 6.0** (exactly 4 × 1.5), CSS zoom 1, visual scale 1, verified again on every page load. Ctrl+0 restored 1280 / DPR 1.5. Firefox 155 steps zoom more finely than the classic table, so the presses are counted rather than fixed.
+
+### Canonical results — 31 checks: 26 passed / 5 failed
+
+| Check | Result | Native observation |
+| --- | --- | --- |
+| NAT1a focused detail loss | Pass | Native Shift+Tab/Tab onto the detail link; the missing result focused the non-live explanation (`aria-live=off`); **1** generated record "The expanded item is not in the current results."; shared status empty; no Clear filter or AM-22 copy; **0** records in a further 1.5 s. |
+| NAT1b external focus and repeats | Pass | Focus stayed on `fc-ae-rows-two`; **1** shared polite record; three `fc-ae-rows-repeat` refreshes kept focus and message revision `3`, **0** records. |
+| NAT1c delayed result, native Tab | Pass | The native Tab key returned 294 ms after the delayed action started, moving focus out of the detail to the specimen "Counter name" edit; after 2.6 s focus was unchanged and the explanation was never focused. **1** shared polite record. Decision 1 applies here: once focus has left the detail before removal, the removal is no longer a focus loss, so the stale-recovery check is "no focus move". The NAT1(c) "no speech" clause is asserted for the scope and navigation cases. |
+| NAT1c delayed result, tenant change | Pass | Scope changed 6 ms after the delayed action; **0** explanation records, no explanation or status remains; the replacement tenant renders "Workspace unavailable" and its heading takes focus (not a recovery target). |
+| NAT1c delayed result, user change | Pass | Same outcome for the user change: **0** records, blocked heading focused. |
+| NAT1c delayed result, navigation to `/home` | Pass | Navigation 12 ms after the delayed action; the route heading is focused; **0** explanation records. |
+| NAT1c filter-hidden item | Pass | Native Enter on the Success chip; Clear filter focused; **1** record "specimen status region Clear filter button 1 expanded item hidden by current filter". |
+| NAT2 zero-field persistence | Pass | Validation outcome generated **1** record and kept trigger focus; **0** records during 3 s idle; scripted `fc-ae-lifecycle-idle` + `fc-ae-rows-two` re-render kept identical feedback, **0** records, no open dialog. |
+| NAT2 navigation away/back | Pass | In-app `/home` and back: feedback removed; **0** records of the earlier outcome. |
+| NAT2 new attempt | Pass | Validation then `accepted` with native Enter: prior feedback cleared, pending summary visible, no dialog; "Command accepted. Updating the view." generated. |
+| NAT2 `/counter` Batch Increment | Pass | Native Enter on the submit button; statuses `Command accepted. Updating the view.` → `Command confirmed.`; pending summary appeared (absent on an idle load); **1** polite owner; **1** "Command confirmed" record; no assertive/alert node or mutation (DOM-level). |
+| NAT3 `/counter` away and back | Pass | Native Enter on Specimens then Counter tiles; each route heading generated; **0** "Command confirmed" records. |
+| NAT3 `/counter` native F5 reload | Pass | **0** "Command confirmed" records. The reload slice also contains "Density set to Compact." (observation O1). |
+| NAT3 distinct new command | Pass | A second submission generated **1** "Command confirmed" record; no assertive mutation. |
+| NAT3 route headings | Pass | Native Enter on rail tiles Counter → Specimens → Default → Counter: each focused route `h1` generated exactly **1** heading record. |
+| NAT3 blocked scope heading | Pass | Native Enter on `fc-focus-block-scope`: **1** record "Workspace unavailable heading level 1". |
+| NAT3 10 s idle `/counter` | Pass | **0** speech records. |
+| NAT3 10 s idle specimen grid | Pass | **0** speech records. The live-only EventStore fresh-row lane is cited, not closed. |
+| NAT4 traversal `/home`, `/counter` at 100% | Pass | Wrapped through 7 browser-chrome stops: 14 and 31 content stops; every stop has non-empty speech, no identical duplicate, a rectangle inside the viewport, a hit at all four inset corners and no horizontal overflow. |
+| NAT4 traversal scenario at 100% | **Fail** | 120-stop cap; **42** failing stops, all in the two generated grids (finding D1). |
+| NAT4 actual 400% zoom | Pass | As above. |
+| NAT4 traversal `/home`, `/counter` at 400%, with and without spacing | Pass | Wrapped: 9 and 25 content stops in each spacing mode, all criteria met. |
+| NAT4 traversal scenario at 400%, with and without spacing | **Fail** each | Wrapped at 112 content stops; **15** failing stops each, all in grid cells (finding D2). |
+| NAT4 overlays at 400%, with and without spacing | **Fail** each | Settings and drawer met the criteria; the palette open generated an identical duplicate context (finding D3). All three returned focus to their trigger. |
+| NAT4 zoom reset | Pass | 1280 / DPR 1.5 restored. |
+
+Native Tab traversal checks are simplified geometry checks: focused-rectangle containment, a top-element hit at four corners inset by the border radius, and document horizontal overflow. They do not replace the canonical `focusGeometry` helper, target inventory or contrast proof.
+
+**Focused rerun.** The one focused rerun of the five failing checks reproduced all five (2 passed / 5 failed: zoom and reset passed), with failing-stop sets identical to the canonical run. Independent Linux Playwright diagnostics without NVDA (below) reproduce D1, D2, the D3 focus sequence and O1, so the runner is not their cause.
+
+### Reproduced findings for human direction (no product change made)
+
+- **D1. Firefox desktop generated grids.** At 1280 CSS pixels both generated DataGrids lay out at Gecko's maximum coordinate: table width **17,895,614 px**, each data `th` **4,473,910 px**, the labelled region's `scrollWidth` 17,895,622. Only the Id column is visible. Focusing an expand button scrolls the region to 17,894,444 px and shows empty rows (button at x 1314–1338, outside the 76–1252 scrollport). Chromium 156 lays out the same table at 1160 px. The `th` cells carry class `fc-projection-grid` and compute `min-width: max-content; max-width: 100%` from `fc-projection.css:186` (`.fc-projection-grid { max-inline-size: 100%; min-inline-size: max-content; }`, present since `b9e13697`) inside Fluent's `table-layout: fixed; width: 100%`. That rule is the likely trigger; the cause is not proven. Reproduced on Windows Firefox 155 (canonical and rerun) and Linux Firefox 157. The phone-tier `table-layout: auto` override does not apply at Desktop. How the approved 1280-pixel Firefox specimen baselines relate to this layout was not assessed.
+- **D2. Phone-tier badge grid, lower rows.** At actual 400% zoom, native Tab onto cells in rows 5–7 leaves them clipped by the grid scrollport or below the 225-pixel viewport. In Linux Firefox 157 and Chromium 156 at a 320×225 *reflow* viewport the region stays at `scrollTop` 29 of a 137-pixel range while rows 6–7 hold focus, and the element at their centers is not the cell. The same fail-closed rule also rejects the 800–996-pixel counter Metadata cell, which cannot fit a 320-pixel viewport.
+- **D3. Palette open duplicate context.** Opening the palette with native Enter generates "Command palette dialog", "Search results list" and "COMMANDS grouping" twice before the active option, in both zoom variants and the rerun. The earlier `b105` log shows the same pattern at 100%. A Linux Firefox focus trace shows focus entering the native dialog, then the search input 11 ms later, after its combobox attributes are assigned.
+- **O1. Density announcement on every full load.** Each full page load generates "Density set to Compact." without any operator change: **18** records in the canonical log, **14** and **12** in two earlier native logs. Linux Firefox and Chromium populate the same polite region on `/counter` and `/home` with no stored density. `FcDensityAnnouncer` documents skipping first-render announcements. This bears on boxes 15–16; it is not a NAT3 criterion, which concerns the earlier outcome text.
+- **O2. Intermediate return focus.** Closing the palette, Settings or drawer generates "Skip to content link" before the trigger, at 400% here and at 100% in the earlier log. Final focus is correct.
+- **O3. Second banner landmark.** Firefox exposes the Home `<header>`, inside `div role="main"`, as a banner landmark: "banner landmark Welcome back, FrontComposer specimen user. heading level 1".
+- **O4. Unnamed drawer.** The drawer dialog opens as "dialog" with no name.
+- **O5. Unnamed scroll container.** At desktop width Firefox makes the scrollable shell content container a Tab stop on `/counter` and the scenario page. It has no role or name, and NVDA generates its entire content as one record (1,526 characters on `/counter`).
+
+Diagnostics (Linux, `tests/e2e` Playwright 1.64.1, no NVDA) live in `/tmp/claude-1000/-home-administrator-projects-hexalith-frontcomposer/d5dfd614-82d8-474d-97ad-7501244cce1d/scratchpad/nat-Gmn4/explore/`: `diag-grid-narrow.json` (`c7c54de96d06b99abc2fdb861bb65af312e96de7c94586246432940c662e8c1d`), `diag-palette-focus.json` (`625023d02daca599f7727ecd10bf887a3a3bf06f1b837344338f336d218aa04b`), `diag-density.json` (`0079e068a698d47418c3d999472e32d1a730bd2ac5291597dc7072aa4e7fb527`), and grid captures `firefox-badge-grid-1280.png` (`2f2c0aca30ed787659cb58eaa95cc384d74b1be6776f53994b3c09f238fed6da`), `firefox-badge-grid-1280-expand-focused.png` (`a8e6fedbdcc4c2d91585430d6299b25d4f028e4d9870bc9ef0446254b2aa3ac0`) and `chromium-badge-grid-1280.png` (`a67b7e7a4af66952afac17563b4dfb396a59f5a18be550f97cc567d686fa5f39`).
+
+**Retained attempts.** Runner development: `dev-1-nat1a` 1 passed / 0 failed; `dev-2-nat4-smoke` 3 passed / 2 failed. D3 first surfaced in `dev-2-nat4-smoke`. Setup probes without NVDA: `probe-window-zoom.json` found 9 presses gave only DPR 2.857, and `probe-zoom-steps.json` recorded Firefox's finer steps. All stay in the Windows directory; per-check speech slices are under `canonical\slices\` and `focused-rerun\slices\`, and traversal stop records under `*\traversal-*.json`.
+
+**Cleanup.** Each run recorded NVDA count **0**, owned Firefox and driver PIDs absent, geckodriver count 0 and port 9516 free. The host was stopped afterwards and port 5070 is closed. The host log (SHA-256 `d94652343bd3759a61383f91c0d334b91430acfb80f3e80152d20cbb07067f21`) retains tenant-mismatch and same-source specimen diagnostics, plus one circuit-disposal `JSDisconnectedException` on a navigation, with no correlated failed check. No clean-log or full-topology claim is made.
+
+### Box map — eighteen itemized boxes, all still unchecked
+
+| Box | Coverage on this workstation | Evidence and remaining gap |
+| --- | --- | --- |
+| Common 1 — operator journey | Automated native, partial | NAT4 traversal of skip links, hamburger/drawer, rail, theme/palette/settings/account, Home cards, `/counter` tabs, accordions and forms; NAT3 route headings. Toolbar, projection states, destructive dialog and abandonment guard: automated browser only (`accessibility-state-matrix.spec.ts` active-toolbar and validation/policy/destructive/abandonment states). JAWS and VoiceOver pairings not performable here. |
+| Common 2 — 320 px and actual 400% | Automated native, **failing** | NAT4 actual Firefox 400% (D1 at desktop, D2 at 400%); actual Chromium 400% 32/32 in the preceding section; 320 px reflow in `responsive-accessibility.spec.ts`. |
+| Common 3 — text spacing | Automated native, partial | NAT4 400%-spaced traversals; row growth and truthful virtualization: browser only (`responsive-accessibility.spec.ts`). |
+| Common 4 — target inventory | Automated browser only | Target inventory and exceptions in `responsive-accessibility.spec.ts`; not measured natively. |
+| Common 5 — keyboard stops unobscured | Automated native (simplified), **failing** | NAT4 corner hit tests (D1, D2); ring visibility and modal containment: browser only (`focusGeometry`, keyboard-cycle journeys). O2 is relevant. |
+| Common 6 — themes, forced colors, contrast | Automated browser only | State matrix (116 states per engine), Chromium/Firefox system palette; accepted WebKit limitation. |
+| Common 7 — reduced motion | Automated browser only | Reduced-motion fixtures in `responsive-accessibility.spec.ts`. |
+| Missing-item 1 | Automated native | NAT1a. |
+| Missing-item 2 | Automated native | NAT1b. |
+| Missing-item 3 | Automated native | NAT1c (native Tab, tenant, user, navigation; filter-hidden Clear filter). |
+| Zero-field 1 — outcome matrix | Automated native | Eleven outcomes 13/13 in the preceding section (identical product bytes); narrow/zoom wrapping: browser only (`generated zero-field wrapped feedback clears the complete trigger focus ring`). |
+| Zero-field 2 — persistence and removal | Automated native, partial | NAT2 idle, re-render, navigation, new attempt; scope-change removal: .NET `ShellScopeRemountClearsFeedbackAndCancelsHeldPriorScopeDispatch`. |
+| Zero-field 3 — accepted command | Automated native | NAT2 zero-field `accepted` and `/counter` Batch Increment. |
+| Direct speech 1 — owners | Automated native, partial | NAT3 route and blocked headings, NAT1a focused non-live text, NAT2 polite lifecycle, palette option once in the preceding section; projection connection status: browser only (`projection-command-announcements.spec.ts`). D3 is relevant. |
+| Direct speech 2 — silent restore, new message | Automated native, partial | NAT2 navigation and NAT3 away/back, reload and new command; O1 is relevant. |
+| Direct speech 3 — silent ticks and fresh cues | Automated native, partial | NAT3 10 s idle windows, NAT1b repeated refreshes; fresh-cue rules: browser lanes; live-only EventStore lane cited, not closed. |
+| Physical tablet | Not performable here | No connected device. |
+| Physical phone | Not performable here | No connected device. |
+
+These automated results supply no human candidate-specific observation. Historical MAN-136 reports and the waiver, the frozen criteria, the original unchecked acceptance tasks and Story/sprint **in-progress** remain unchanged. Only this result and the primary spec change; no product, test, sample, dependency, baseline, CI or gitlink file changed.
+
 ## Current committed-source local browser and native verification — 2026-11-03
 
 The full primary spec and both frontmatter context files were loaded. The initially clean tested root is `b105c846c31844441f1cff84b5c187da0eff3546`; all specified corrections through GEO1–GEO4 are committed and no additional product failure was demonstrated. Its `git diff --binary fbe01c913cb863abb0fd4a317d370d36fff593b3 HEAD -- src tests` SHA-256 is `4e50ecd68e8b45f4f4db9feec43bc62a0331eafd474897d20f6e1efd5db46f0e`, matching the final GEO source. Six selections (Builds, EventStore, Memories, Parties, Platform and Tenants) have advanced since that earlier proof. Fresh results below bind the rebuilt current runtime; earlier results keep their original candidates. Only this result and the primary spec change.
