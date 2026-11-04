@@ -123,7 +123,11 @@
                 </FluentLayoutItem>
             }
 
-            <FluentLayoutItem Area="@LayoutArea.Content" Padding="@Padding.All3" Class="fc-shell-content">
+            @* Story 13.6 O5 — Firefox alone turns this overflowing scrollport into an unnamed Tab stop
+               whose whole content NVDA reads as one record. It is redundant: the skip link targets
+               #fc-main-content and route focus targets the heading, both inside this scrollport, so
+               keyboard scrolling stays available. tabindex="-1" removes only the sequential stop. *@
+            <FluentLayoutItem Area="@LayoutArea.Content" Padding="@Padding.All3" Class="fc-shell-content" tabindex="-1">
                 <FcLayoutBreakpointWatcher />
                 <FcSystemThemeWatcher />
                 <FcDensityApplier />

@@ -81,4 +81,26 @@ public sealed class FcHamburgerToggleTests : LayoutComponentTestBase {
                 "Fluent sets aria-expanded on the wrapper, which needs a supporting role without adding a second button.");
         });
     }
+
+    [Theory]
+    [InlineData("en", "Primary navigation")]
+    [InlineData("fr", "Navigation principale")]
+    public void ResponsiveDrawerDeclaresItsLocalizedDialogName(string culture, string expected) {
+        // Story 13.6 O4 — the wrapper carries the localized drawer name that fc-keyboard.js forwards
+        // to the drawer host, which names Fluent's native drawer dialog.
+        System.Globalization.CultureInfo previous = System.Globalization.CultureInfo.CurrentUICulture;
+        System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo(culture);
+        try {
+            IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+            dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Phone));
+
+            IRenderedComponent<FcHamburgerToggle> cut = Render<FcHamburgerToggle>();
+
+            cut.WaitForAssertion(() =>
+                cut.Find("[data-testid=fc-hamburger-toggle]").GetAttribute("data-fc-dialog-label").ShouldBe(expected));
+        }
+        finally {
+            System.Globalization.CultureInfo.CurrentUICulture = previous;
+        }
+    }
 }

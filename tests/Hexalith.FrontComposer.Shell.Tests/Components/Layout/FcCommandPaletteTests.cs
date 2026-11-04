@@ -62,8 +62,14 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
         cut.Markup.ShouldContain("data-testid=\"fc-palette-root\"");
         cut.Markup.ShouldContain("data-testid=\"fc-palette-search\"");
         cut.Markup.ShouldContain("Command palette");
-        cut.Markup.ShouldContain("role=\"dialog\"");
-        cut.Markup.ShouldContain("aria-label=\"Command palette\"");
+        // Story 13.6 D3 — Fluent's dialog is the single named dialog; the palette root only
+        // declares the label that fc-keyboard.js forwards to that host, and the search input
+        // carries autofocus so Fluent focuses it while opening.
+        AngleSharp.Dom.IElement root = cut.Find("[data-testid='fc-palette-root']");
+        root.HasAttribute("role").ShouldBeFalse();
+        root.HasAttribute("aria-label").ShouldBeFalse();
+        root.GetAttribute("data-fc-dialog-label").ShouldBe("Command palette");
+        cut.Find("[data-testid='fc-palette-search']").HasAttribute("autofocus").ShouldBeTrue();
 
         // Pass-5 P17 — previous Any-predicate had a closure-over-outer-collection bug
         // (`Count > invocationsBefore` evaluated identically for every item). Compare count

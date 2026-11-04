@@ -40,6 +40,44 @@ if (!window.__fcFocusIntentTrackerInstalled) {
     }, true);
 }
 
+// Story 13.6 D3/O4 — a shell overlay carries one dialog name. The palette content and the
+// navigation hamburger declare it with data-fc-dialog-label. Fluent's dialog and drawer forward
+// their host aria-label to the native dialog, so naming the host as soon as either side is
+// inserted names the dialog before Fluent opens it.
+const dialogLabelSelector = '[data-fc-dialog-label]';
+const dialogHostSelector = 'fluent-dialog, fluent-drawer';
+
+function applyDialogLabel(source) {
+    const label = source?.getAttribute?.('data-fc-dialog-label');
+    if (!label) return;
+    // The palette content sits inside its dialog. FluentLayoutHamburger renders its drawer outside
+    // its own wrapper, with the id "{hamburger id}-drawer"; the browser regression pins that link.
+    const drawer = source.id ? document.getElementById(`${source.id}-drawer`) : null;
+    for (const host of [source.closest('fluent-dialog'), ...source.querySelectorAll(dialogHostSelector), drawer?.matches('fluent-drawer') ? drawer : null]) {
+        if (!(host instanceof HTMLElement)) continue;
+        if (host.getAttribute('aria-label') !== label) host.setAttribute('aria-label', label);
+        // A host that was bound before the label arrived keeps its stale template value in
+        // engines with native ARIA reflection; align the open shadow dialog with the host.
+        const native = host.shadowRoot?.querySelector('dialog');
+        if (native && native.getAttribute('aria-label') !== label) native.setAttribute('aria-label', label);
+    }
+}
+
+function applyDialogLabels() {
+    for (const source of document.querySelectorAll(dialogLabelSelector)) applyDialogLabel(source);
+}
+
+if (!window.__fcDialogLabelObserverInstalled) {
+    window.__fcDialogLabelObserverInstalled = true;
+    const relevant = `${dialogLabelSelector}, ${dialogHostSelector}`;
+    new MutationObserver((records) => {
+        const inserted = records.some((record) => Array.from(record.addedNodes).some((node) =>
+            node instanceof Element && (node.matches(relevant) || node.querySelector(relevant))));
+        if (inserted) applyDialogLabels();
+    }).observe(document.documentElement, { childList: true, subtree: true });
+    applyDialogLabels();
+}
+
 function isEditableElement(element) {
     if (!element || !(element instanceof HTMLElement)) {
         return false;
@@ -344,6 +382,7 @@ function registerPaletteAccessibility(element) {
     const state = { disposed: false, frame: 0, observer: null, shadowObserver: null, shadowRoot: null };
     const sync = () => {
         if (state.disposed || !element.isConnected) return;
+        applyDialogLabel(element);
         const host = element.querySelector('[data-testid="fc-palette-search"]');
         if (!(host instanceof HTMLElement)) return;
         if (host.shadowRoot !== state.shadowRoot) {

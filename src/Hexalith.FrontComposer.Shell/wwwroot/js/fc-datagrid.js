@@ -177,6 +177,16 @@ export function observeRowMetrics(viewKey, instanceId, dotnetRef, defaultHeight)
     for (const event of ['pointerdown', 'keydown']) document.addEventListener(event, () => { state.pendingFocus = null; }, { capture: true, signal: state.focus.signal });
     container.addEventListener('focusin', event => {
         if (event.target instanceof HTMLElement) {
+            // Story 13.6 D2 — keep a focused body cell clear of the sticky header, using the same
+            // margin Fluent applies for its own arrow-key navigation, plus the focus-ring allowance.
+            const header = container.querySelector("tr[row-type='sticky-header']");
+            if (header instanceof HTMLElement && !header.contains(event.target) && event.target.closest('tbody')) {
+                // Write only a changed value: each style mutation schedules another row-metric probe.
+                const margin = `${header.offsetHeight + 8}px`;
+                if (event.target.style.getPropertyValue('scroll-margin-block-start') !== margin) {
+                    event.target.style.setProperty('scroll-margin-block-start', margin);
+                }
+            }
             event.target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
         }
     }, { signal: state.focus.signal });
@@ -198,6 +208,13 @@ export function observeRowMetrics(viewKey, instanceId, dotnetRef, defaultHeight)
         // then discard this synchronous probe's temporary row/cell style records
         // from all observers so grids cannot repeatedly wake each other.
         for (const metrics of rowMetrics.values()) metrics.process(metrics.mutations.takeRecords());
+        // Story 13.6 D2 — the probe briefly shrinks the rows, and the forced layout clamps every
+        // enclosing scroll offset to the shorter content. Restore those offsets with the styles,
+        // otherwise a cell that native focus just scrolled into the labelled region falls back out.
+        const offsets = [];
+        for (let node = container; node; node = composedParent(node)) {
+            if (node.scrollTop || node.scrollLeft) offsets.push([node, node.scrollTop, node.scrollLeft]);
+        }
         try {
             for (const node of nodes) {
                 node.style.setProperty('height', 'auto', 'important');
@@ -207,6 +224,10 @@ export function observeRowMetrics(viewKey, instanceId, dotnetRef, defaultHeight)
         } finally {
             for (const [node, style] of saved) {
                 if (style === null) node.removeAttribute('style'); else node.setAttribute('style', style);
+            }
+            for (const [node, top, left] of offsets) {
+                if (node.scrollTop !== top) node.scrollTop = top;
+                if (node.scrollLeft !== left) node.scrollLeft = left;
             }
             // Drain only this synchronous probe's style records. Unexpected external records still
             // schedule a follow-up; the observer otherwise remains connected throughout the probe.

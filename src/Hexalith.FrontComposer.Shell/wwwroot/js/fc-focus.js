@@ -307,6 +307,34 @@ export function containDialogFocus(testId, retryOnce = true) {
             // host beforetoggle. Clear the same owned slot on that path as well.
             const nativeDialog = host.shadowRoot?.querySelector('dialog');
             nativeDialog?.addEventListener('cancel', prepareReturn, true);
+            // Story 13.6 O2 — Fluent closes the native dialog inside its Escape cancel handler.
+            // When the native close does not restore the invoker, focus rests on <body> until the
+            // guarded return below, and screen readers announce the document start first. Return
+            // an Escape dismissal to its captured origin in the same task. Other dismissals keep
+            // their existing return paths.
+            // The palette handles Escape itself and closes through Blazor, so an Escape keydown
+            // inside the host marks the dismissal as well as the native cancel; any other key or
+            // pointer input, such as Enter on a result that navigates, clears the mark.
+            // Blazor may also remove the host without a toggle; the shared removal observer
+            // handles that path in the same task as the removal.
+            // The origin is captured with the mark: Blazor disposal can clear the shared slot
+            // before it removes the host.
+            const escape = { dismissal: false, origin: null };
+            escapeReturns.set(host, escape);
+            observeEscapeReturnRemovals();
+            const mark = (escaped) => {
+                escape.dismissal = escaped;
+                escape.origin = escaped ? window.__fcOverlayOrigin : null;
+            };
+            nativeDialog?.addEventListener('cancel', () => mark(true), true);
+            host.addEventListener('keydown', (event) => mark(event.key === 'Escape'), true);
+            host.addEventListener('pointerdown', () => mark(false), true);
+            host.addEventListener('toggle', (event) => {
+                if ((event.detail?.newState ?? event.newState) !== 'closed') return;
+                const { dismissal, origin } = escape;
+                mark(false);
+                if (dismissal) returnFromEscapeDismissal(host, origin);
+            });
             nativeDialog?.addEventListener('close', () => {
                 if (!nativeDialog.open) prepareReturn();
             }, true);
@@ -736,6 +764,33 @@ const fieldEditableSelector = [
     'select:not([disabled])',
     '[contenteditable="true"]',
 ].join(', ');
+
+const escapeReturns = new Map();
+let escapeReturnObserver = null;
+
+function observeEscapeReturnRemovals() {
+    if (escapeReturnObserver) return;
+    escapeReturnObserver = new MutationObserver(() => {
+        for (const [host, escape] of escapeReturns) {
+            if (host.isConnected) continue;
+            escapeReturns.delete(host);
+            if (escape.dismissal) {
+                escape.dismissal = false;
+                returnFromEscapeDismissal(host, escape.origin);
+            }
+        }
+    });
+    escapeReturnObserver.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+// Only a focus that the Escape dismissal itself lost is replaced; a pending abandonment
+// stay keeps the same precedence as restoreOverlayOrigin.
+function returnFromEscapeDismissal(host, origin) {
+    if (hasOpenModal() || focusPendingAbandonmentStay()) return;
+    const active = document.activeElement;
+    if (active instanceof Element && !active.matches('body,html') && !host.contains(active)) return;
+    if (origin instanceof HTMLElement && origin.isConnected && !origin.closest(modalContainerSelector)) focusTarget(origin);
+}
 
 function focusTarget(target) {
     if (!(target instanceof HTMLElement) || !target.isConnected || target.hasAttribute('disabled')) return false;

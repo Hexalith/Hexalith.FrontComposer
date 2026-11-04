@@ -184,11 +184,16 @@
 }
 
 .fc-projection-grid { max-inline-size: 100%; min-inline-size: max-content; }
+/* Desktop tiers keep Fluent's inline fixed-layout, 100%-width table. Gecko resolves
+   a max-content minimum on that table to its maximum coordinate, which pushes every
+   column after the first out of the labelled region, so the table alone drops it. */
+table.fc-projection-grid { min-inline-size: auto; }
 /* In the existing mobile layout, let the labelled grid scroll at its natural
    column width. Fluent's inline fixed table layout otherwise lets unwrapped
    glyphs cover neighboring cell targets (including WebKit's native hit area). */
 .fluent-layout[global-scrollbar] table.fc-projection-grid {
     table-layout: auto !important;
+    min-inline-size: max-content;
 }
 .fc-projection-grid tr.fluent-data-grid-row > td, .fc-projection-grid th.column-header {
     overflow: visible;

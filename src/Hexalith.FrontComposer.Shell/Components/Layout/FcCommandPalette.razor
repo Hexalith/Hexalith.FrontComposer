@@ -17,10 +17,13 @@
            The always-true property swallowed Tab, breaking the focus loop. JS module
            fc-keyboard.js:registerPaletteKeyFilter does per-key preventDefault for Arrow/Enter/Escape
            and is the single source of truth. *@
-        <div class="fc-palette-root" role="dialog" aria-label="@Localizer["CommandPaletteTitle"].Value"
+        @* Story 13.6 D3 — Fluent's own dialog is the single dialog: fc-keyboard.js forwards
+           data-fc-dialog-label to its host aria-label before Fluent opens it, so this root no longer
+           nests a second, identically named dialog. *@
+        <div class="fc-palette-root" data-fc-dialog-label="@Localizer["CommandPaletteTitle"].Value"
              data-testid="fc-palette-root" @ref="_paletteRoot" @onkeydown="HandleKeyDownAsync"
              @onkeydown:stopPropagation="true">
-            @* §4.3 — the dialog landmark (role/@ref/@onkeydown) stays a <div>; its flex column moves
+            @* §4.3 — the palette root (@ref/@onkeydown) stays a <div>; its flex column moves
                to a nested FluentStack. *@
             <FluentStack Orientation="Orientation.Vertical" VerticalGap="calc(var(--fc-spacing-unit, 4px) * 2)">
                 @if (PaletteState.Value.ActivationDenial is { } denial)
@@ -29,7 +32,9 @@
                         ? Localizer["UnauthorizedCommandWarningTitle"].Value
                         : Localizer["AuthorizationActionUnavailableTitle"].Value)</h2>
                 }
-                <FluentTextInput @ref="_searchRef" Value="@_localQuery" ValueChanged="OnQueryChangedAsync" Immediate="true"
+                @* autofocus lets Fluent's dialog focus the search input in the task that opens it; the
+                   later FocusSearchAsync call in OnAfterRenderAsync remains a fallback. *@
+                <FluentTextInput @ref="_searchRef" Value="@_localQuery" ValueChanged="OnQueryChangedAsync" Immediate="true" autofocus
                                  TextInputType="TextInputType.Search" Placeholder="@Localizer["PaletteSearchPlaceholder"].Value"
                                  AriaLabel="@Localizer["PaletteSearchPlaceholder"].Value"
                                  data-fc-palette-expanded="@(PaletteState.Value.Results.IsEmpty ? "false" : "true")" data-fc-palette-controls="@ResultListId"

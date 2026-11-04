@@ -63,7 +63,10 @@ else
             }
         }
 
-        <header class="fc-home-header" data-testid="fc-home-header">
+        @* Story 13.6 O3 — the shell's main is a role="main" div, which Firefox does not treat as
+           sectioning content, so a bare <header> here became a second banner landmark. Follow
+           FcPageHeader: keep the header purely visual and leave the single banner to the shell. *@
+        <header class="fc-home-header" role="presentation" data-testid="fc-home-header">
             <h1 tabindex="-1">@WelcomeText()</h1>
             @if (totalActionable > 0)
             {

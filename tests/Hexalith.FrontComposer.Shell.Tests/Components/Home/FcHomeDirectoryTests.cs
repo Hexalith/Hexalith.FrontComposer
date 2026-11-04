@@ -111,6 +111,23 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void HomeHeaderIsPresentationalSoTheShellOwnsTheOnlyBanner() {
+        // Story 13.6 O3 — inside the shell's role="main" div, Firefox still exposed a bare
+        // <header> as a second banner landmark; the FcPageHeader presentation pattern applies.
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", ["Counter.Domain.CounterProjection"], []),
+        ]);
+        SeedHydration(
+            CapabilityDiscoveryHydrationState.Seeded,
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal).Add("bc:Counter"));
+
+        IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
+
+        cut.WaitForAssertion(() =>
+            cut.Find("[data-testid='fc-home-header']").GetAttribute("role").ShouldBe("presentation"));
+    }
+
+    [Fact]
     public void RendersAllCaughtUp_WhenSeenSetNonEmpty_AndZeroItems() {
         _registry.GetManifests().Returns([
             new DomainManifest("Counter", "Counter", ["Counter.Domain.CounterProjection"], []),

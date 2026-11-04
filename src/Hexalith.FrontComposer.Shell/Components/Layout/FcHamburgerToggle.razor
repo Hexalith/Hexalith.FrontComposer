@@ -33,9 +33,13 @@
     }
     else
     {
+        @* Story 13.6 O4 — the panel header shows the drawer title; fc-keyboard.js forwards the same
+           localized label from data-fc-dialog-label to the drawer host, which names its dialog. *@
         <FluentLayoutHamburger Visible="true"
                                @ref="_hamburger"
                                IconTitle="@Localizer["HamburgerToggleAriaLabel"].Value"
+                               PanelHeader="@Localizer["NavMenuAriaLabel"].Value"
+                               data-fc-dialog-label="@Localizer["NavMenuAriaLabel"].Value"
                                role="group"
                                data-testid="fc-hamburger-toggle" />
     }

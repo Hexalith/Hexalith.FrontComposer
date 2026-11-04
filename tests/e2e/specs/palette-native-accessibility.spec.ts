@@ -150,3 +150,44 @@ test('palette retains host compatibility semantics when native reflection is una
   await expect(host).not.toHaveAttribute('aria-activedescendant');
   await expect(host).toHaveAttribute('aria-expanded', 'false');
 });
+
+// Story 13.6 D3 - the palette exposes one named dialog. Fluent's native dialog step focuses its own
+// entry point while opening; the search input must take focus in that same frame, so no rendered
+// frame (and no assistive-technology notification) leaves focus resting on the dialog.
+test('palette opens one named dialog and focuses its combobox in the opening frame', async ({ page }) => {
+  await page.addInitScript(() => {
+    const state = { frame: 0, recording: false, events: [] as { frame: number; target: string }[] };
+    (window as typeof window & { __paletteEntry: typeof state }).__paletteEntry = state;
+    const tick = () => { state.frame++; requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+    document.addEventListener('focusin', event => {
+      if (!state.recording) return;
+      const deep = event.composedPath()[0];
+      state.events.push({ frame: state.frame, target: deep instanceof Element ? deep.tagName : String(deep) });
+    }, true);
+  });
+  await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const trigger = page.getByTestId('fc-palette-trigger');
+  await trigger.focus();
+  await page.evaluate(() => { (window as typeof window & { __paletteEntry: { recording: boolean } }).__paletteEntry.recording = true; });
+  await page.keyboard.press('Enter');
+  const palette = page.getByTestId('fc-palette-root');
+  const input = palette.getByTestId('fc-palette-search').locator('input');
+  await expect(input).toBeFocused();
+  await page.waitForTimeout(300);
+
+  await expect(page.getByRole('alertdialog', { name: 'Command palette', exact: true })).toHaveCount(1);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(palette.locator('[role="dialog"], [role="alertdialog"]')).toHaveCount(0);
+  const events = await page.evaluate(() => (window as typeof window & { __paletteEntry: { events: { frame: number; target: string }[] } }).__paletteEntry.events);
+  const entry = events.findIndex(event => event.target === 'INPUT');
+  expect(entry, 'the search input receives focus').toBeGreaterThanOrEqual(0);
+  expect(events.slice(entry + 1), 'focus stays on the search input after entry').toEqual([]);
+  expect(events.slice(0, entry).filter(event => event.frame !== events[entry].frame), 'no frame rests focus before the search input').toEqual([]);
+  await expect(input).toHaveAttribute('role', 'combobox');
+
+  await input.press('Escape');
+  await expect(palette).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+});

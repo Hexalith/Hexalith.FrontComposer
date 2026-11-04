@@ -652,6 +652,63 @@ All four layers returned before classification over the pass 7 fix delta: Blind 
 | R8-V1 unobservable backdrop clause | low | Same as R8-B4 | patch |
 | R8-V2 hidden attempted control | medium | Same as R8-B1 | decision → defer + patch |
 
+### Native findings correction review — 2026-11-04
+
+Scope: the uncommitted `src`/`tests` delta on HEAD `85d223d6`; the full baseline diff covers 1,942 files. The blind, edge-case and verification-gap layers all ran; the spec was the edge-case claims file. Every finding was verified individually before grouping, and none matched an earlier logged row. There was no intent_gap or bad_spec entry, so no loopback ran and `review_loop_iteration` is unchanged.
+
+| Finding | Verdict | Evidence | Route |
+|---|---|---|---|
+| NBH01 | low | `FcCommandPalette.razor.css:3-4` still calls `.fc-palette-root` the role="dialog" landmark; D3 removed that role from the root. | patch NG02 |
+| NBH02 | medium | Fluent maps `options.Modal = true` (`FrontComposerShortcutRegistrar.cs:171`) to a type whose `dialogRole` is `alertdialog`. The subagent's pre-fix trace already showed an unnamed host `alertdialog` above the nested `dialog`. D3 made that pre-existing host role the only one, and NVDA speaks it as "dialog". The semantic misuse predates this change, and correcting it changes Fluent modality. | defer ND01 |
+| NBH03 | low | The `autofocus` comment in `FcCommandPalette.razor` says it replaces the interop round trip. `OnAfterRenderAsync` still awaits `FocusSearchAsync()` after `containDialogFocus`, so it is a fallback, not a replacement. Losing focus during that millisecond window was not demonstrated. | patch NG03 |
+| NBH04 | low | The hydration guard does silence a selection made while hydration is not `Hydrated`. Every path that stays non-hydrated is transient or terminal: the prerender deferral is re-run by `StorageReadyAction`, `ScopeChangedAction` resets `StorageReady` and `ScopeReadinessGate`, which re-hydrates, cancellation ends the circuit, and an unresolved scope renders `fc-scope-blocked`. The window is unlikely, and the fix would add action subscriptions. | rejected |
+| NBH05 | false | The three preconditions hold. Fluxor notifies `IActionSubscriber` before effects; `FirstMeasuredViewportTierRecomputeIsSilent` would fail otherwise. The announcer is subscribed before the watcher's JS callback, as render-order siblings in `FrontComposerShell.razor`. A second tier report is a genuine change. No failing order was named. | rejected |
+| NBH06 | low | `LaterViewportForcedChangeIsAnnouncedOnce` asserts the text only and never counts announcements; the name over-claims. | patch NG04 |
+| NBH07 | low | Each grid `focusin` rewrites the cell's inline `scroll-margin-block-start` even when unchanged. The resulting style mutation schedules one extra row-metric probe per focus. The Fluent claim is true: `FluentDataGrid.razor.js:100` sets the sticky-header `offsetHeight` margin for arrow navigation. | patch NG05 |
+| NBH08 | false | A three-engine experiment on a 12-column nowrap fixed table in a 1000 px region shows the rule changes nothing in Chromium or WebKit: table 1000 / scroll 1173 and 1000 / 1215, identical before and after. Only Firefox changed, from 17,895,690 to 1000. The desktop nowrap overflow therefore predates D1. | rejected |
+| NBH09 | medium | The shell `main` is `div role="main"`, so any bare `<header>` that adopter content renders inside it can become an extra banner in Firefox. The in-repo surfaces use the presentation pattern (`FcPageHeader`, `FcHomeDirectory`). The issue predates this change. | defer ND03 |
+| NBH10 | low | The two document observers last for the page and do bounded work per insertion. A stale label would need an in-place culture or label change without reinsertion, which was not demonstrated. The fix adds lifecycle code. | rejected |
+| NBH11 | low | The removal entry is lost only if one `fluent-dialog` element is detached and re-attached. Blazor creates a new host per opening, and the `toggle` path stays registered. Unlikely, and the fix needs a host-to-mark map. | rejected |
+| NBH12 | low | Needs an Escape consumed inside the dialog followed by a close with no user input (server push or scope change); returnFromEscapeDismissal also yields when focus has moved elsewhere. Unlikely, and the fix adds guards. | rejected |
+| NBH13 | false | FX6 explicitly requires a WCAG 2.4.11 disposition, and 2.4.11 decides whether a focused component is entirely hidden. The link's canonical `focusGeometry` check, which includes occlusion, covers header coverage of the actionable control. | rejected |
+| NBH14 | medium | The O1 browser test clears storage before every load, so no test loads with a stored preference (the same gap as NVG01). The fixed 1500 ms wait is a weaker concern, and the bUnit pin closes the guard gap. | patch NG01 |
+| NBH15 | low | The O5 test never asserts that the heading holds focus before PageDown, so a scroll from another in-scrollport control could satisfy it. | patch NG06 |
+| NBH16 | false | No caller diverges. bUnit pins `data-fc-dialog-label` on both sources, and the D3/O4 browser tests pin both resulting names, including the Fluent `{id}-drawer` link. | rejected |
+| NEC01 | low | Same claim and evidence as NBH04. | rejected |
+| NEC02 | low | Needs a non-Escape key or pointer inside the palette within the Blazor close round trip; the existing guarded return still restores the origin a frame later. Unlikely, and the fix adds state. | rejected |
+| NEC03 | low | With a null origin, the existing `restoreOverlayOrigin` fallback runs unchanged, so this is pre-existing behaviour and not a regression. The suggested heading fallback is new behaviour. | rejected |
+| NEC04 | low | Needs history navigation while the inert modal Settings dialog is open, followed by Escape. Unlikely, and the fix adds route state. | rejected |
+| NEC05 | low | A click inside the content maps to `#fc-main-content` (tabindex -1, as before). Only the 12 px `Padding.All3` gutter now focuses the scrollport in Chromium/WebKit, and Firefox already did so before. Unlikely, and the fix adds a guard. | rejected |
+| NEC06 | medium | Confirmed natively. In both the 2026-11-03 canonical run and `fx8-nat`, stop 2 of `traversal-home-400` is the global-scrollbar layout DIV, read as one record: banner, main, footer. The issue predates O5, which addressed only the desktop `.fc-shell-content`. A `tabindex` on the layout root changes click focus for the whole page. | defer ND02 |
+| NEC07 | false | Same experiment as NBH08: Chromium and WebKit are unchanged and only Firefox's runaway width is corrected. | rejected |
+| NEC08 | medium | `LoadTimeHydrationChangeIsSilent` hydrates `UserPreference` null with zero viewport reports, so the viewport guard alone keeps it silent. | patch NG01 |
+| NEC09 | low | If `fc-keyboard.js` failed to import, the palette key filter and combobox registration would fail too, so the palette would be unusable regardless of its name. | rejected |
+| NVG01 | medium | Pre-verified gap. No test hydrates a non-null stored preference through `FcDensityAnnouncer`. Removing the hydration guard would announce a stored Roomy on load while every current test stays green. | patch NG01 |
+
+Groups:
+- **NG01** (NVG01, NEC08, NBH14): add a bUnit regression that hydrates a stored preference, after two tier reports, and stays silent.
+- **NG02:** CSS comment.
+- **NG03:** autofocus comment.
+- **NG04:** test name.
+- **NG05:** skip the unchanged margin write.
+- **NG06:** O5 heading-focus assertion.
+- **Deferred:** ND01–ND03 are recorded in `deferred-work.md`.
+
+**Patch verification (2026-11-04).**
+
+- **Patches.** The implementation subagent applied NG01–NG06. Its red check for NG01 removed the hydration guard and saw only `HydrationWithStoredPreferenceIsSilent` fail (6 run, 1 failed). It then restored the guard byte-for-byte (`6d06f0a3…`).
+- **Parent re-verification**, from `src`/`tests` patch SHA-256 `b6a0c10b724913409d0d0dcce3691f71c914d6ffae9059607801d6d35ff5677d` on HEAD `85d223d6`:
+  - Debug Counter and Shell.Tests builds exit 0.
+  - The touched-component bUnit set plus `FluentConformanceTests` and `DensityNoPerComponentLogicLintTest` pass **105/105**.
+  - TypeScript exits 0.
+  - The complete `specimen-accessibility`, `responsive-accessibility` and `accessibility-state-matrix` specs plus `palette-native-accessibility` ran with two workers and no retries: Chromium **389 passed**, Firefox **387 passed / 2 named skips**, WebKit **387 passed / 2 named skips**. Every artifact validator passed, and no approved PNG changed.
+  - Report JSON SHA-256: Chromium `5bda42fa…`, Firefox `f576096a…`, WebKit `ccf8beb2…`.
+- **First attempt.** The identical test run had already passed, but the parent had overridden the reporters with `--reporter=line`. The validators therefore found no HTML/JUnit/JSON artifacts and exited 1. That was a parent invocation error, not a product result, and the rerun above used the configured reporters.
+- **Cleanup.** The host is stopped and port 5070 is closed.
+
+**Completion status (2026-11-04).** Build step 5 would set this spec to `done` and the sprint entry to `review`. Neither change is applied. The frozen intent says "Missing human evidence leaves this story incomplete", and the eighteen human checklist boxes, the owner decisions and the WebKit capability acceptance remain open. The spec therefore returns to `in-progress`, and `sprint-status.yaml` stays `in-progress`.
+
+
 ## Verification
 
 ### Resumed Build verification — 2026-10-18
@@ -1512,7 +1569,7 @@ Code map:
 - [x] NAT1 — missing-item sequence: (a) focus a detail control with native keys, complete the missing result: the focused non-live explanation is generated once, with no shared polite duplicate, Clear Filter or AM-22 copy; (b) with focus on a surviving external control: focus is kept and one shared polite explanation is generated; three `fc-ae-rows-repeat` refreshes generate no repeat and keep focus; (c) start `fc-ae-rows-delayed`, then within 500ms move focus with native Tab, and separately change tenant/user scope or navigate to `/home`: after 2s no stale focus move or "not in the current results" speech; the filter-hidden `fc-badge-grid` item focuses Clear filter and generates its hidden description.
 - [x] NAT2 — zero-field persistence and accepted command: after one outcome, a 3s idle window plus a scripted unrelated re-render keeps the feedback, generates no repeat and opens no dialog; a new attempt clears the prior feedback; navigating away and back removes it. On `/counter`, native-key Batch Increment submission uses the pending summary and one polite lifecycle owner; "Command confirmed." is generated exactly once with no assertive record.
 - [x] NAT3 — direct speech and silent restore: native Enter on navigation links generates the focused route h1 once per navigation; `fc-focus-block-scope` generates the blocked heading; navigating away/back and reloading already-delivered state does not regenerate the earlier outcome/lifecycle text; a distinct new event is then generated once; 10s idle windows on `/counter` and the specimen grid generate no status speech. The live-only EventStore fresh-row lane is cited, not closed.
-- [ ] NAT4 — common journey and actual Firefox 400% zoom: native Tab traversal (until wrap, at most 120 stops) on `/home`, `/counter` and the scenario specimen. Each stop generates at least one non-empty speech record with no identical duplicate; the focused element's rectangle lies inside the viewport and `elementsFromPoint` at its corners returns it or a descendant; the page has no horizontal overflow. Repeat at actual browser zoom reached with native Ctrl+= presses from a verified 1280 CSS-pixel inner width (require 320±1 inner width, 4× the reference devicePixelRatio and CSS zoom 1), with and without the four spacing overrides, including native-key open/close of palette, settings and drawer. Label these simplified geometry checks; they do not replace the canonical helper.
+- [x] NAT4 — common journey and actual Firefox 400% zoom: native Tab traversal (until wrap, at most 120 stops) on `/home`, `/counter` and the scenario specimen. Each stop generates at least one non-empty speech record with no identical duplicate; the focused element's rectangle lies inside the viewport and `elementsFromPoint` at its corners returns it or a descendant; the page has no horizontal overflow. Repeat at actual browser zoom reached with native Ctrl+= presses from a verified 1280 CSS-pixel inner width (require 320±1 inner width, 4× the reference devicePixelRatio and CSS zoom 1), with and without the four spacing overrides, including native-key open/close of palette, settings and drawer. Label these simplified geometry checks; they do not replace the canonical helper.
 - [x] NAT5 — record a new leading section in `13-6-accessibility-result.md` and a summary here: tested HEAD, runner path/SHA-256, versions, exact commands, every check result with first failures retained, summary hash and cleanup proof. Add a table mapping each of the eighteen boxes to automated-native, automated-browser-only (cite the existing lane) or not performable here (JAWS, VoiceOver/Safari, physical devices). Boxes stay unchecked; Story/sprint stay **in-progress**.
 
 Rules: a failing native check is evidence. Retain it, run one focused rerun to separate runner from product causes, and record both. Change no product, test, sample, dependency, baseline or CI file; report a reproduced product defect for human direction. NVDA `Speaking` records are "generated speech", never "heard". Stop NVDA, Firefox, geckodriver and the host afterwards; raw logs stay external. Only this spec and the result change; `python3 eng/validate-story-artifacts.py` and `git diff --check` must pass.
@@ -1545,14 +1602,14 @@ Code map: `src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css` (grid
 
 ### Tasks & Acceptance — D1 correction
 
-- [ ] FX1 — `fc-projection.css`: identify which element's `min-inline-size: max-content` produces Firefox's runaway table width, and correct the sizing rule so generated grids lay out within their labelled region at desktop width in every engine. Preserve:
+- [x] FX1 — `fc-projection.css`: identify which element's `min-inline-size: max-content` produces Firefox's runaway table width, and correct the sizing rule so generated grids lay out within their labelled region at desktop width in every engine. Preserve:
   - bounded labelled horizontal scrolling at 320px, at actual 400% zoom and under text spacing
   - phone-tier `table-layout: auto`, 32px compact rows and truthful virtualization
   - the sticky header, the GEO4 focus contour and Fluent token ownership
 
   CSS only. If CSS cannot express the fix without an emitter or public API change, stop and report.
-- [ ] FX2 — `responsive-accessibility.spec.ts`: add a regression at 1280×900 on the scenario specimen. For both generated grids, the table width must not exceed its labelled region's client width by more than 1px, and every header cell must intersect the region's scrollport, in Chromium, Firefox and WebKit. Demonstrate the new case failing in Firefox on the pre-fix CSS and passing after the fix. Existing narrow, zoom and spacing grid assertions must stay unchanged and passing.
-- [ ] FX3 — verify and record:
+- [x] FX2 — `responsive-accessibility.spec.ts`: add a regression at 1280×900 on the scenario specimen. For both generated grids, the table width must not exceed its labelled region's client width by more than 1px, and every header cell must intersect the region's scrollport, in Chromium, Firefox and WebKit. Demonstrate the new case failing in Firefox on the pre-fix CSS and passing after the fix. Existing narrow, zoom and spacing grid assertions must stay unchanged and passing.
+- [x] FX3 — verify and record:
   - Rebuild the Debug Counter sample. On all three engines (two workers, no retries), run the complete `specimen-accessibility`, `responsive-accessibility` and `accessibility-state-matrix` specs with their artifact validators, plus TypeScript and any Shell tests that read `fc-projection.css`.
   - All 18 approved visual comparisons must pass unchanged. If a correct fix changes an approved image, stop and report the diff for human approval; never update baselines or thresholds.
   - Rerun the native NAT4 checks with the canonical runner, changing only its output directory. `nat4:traverse-scenario-100` must pass, and any remaining failure must be attributable to D2 or D3.
@@ -1561,3 +1618,120 @@ Code map: `src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css` (grid
 Rules: change only `fc-projection.css`, `responsive-accessibility.spec.ts`, this spec and `13-6-accessibility-result.md`. No dependency, baseline, threshold, emitter, sample or CI change. Stop every owned host, browser, NVDA and driver process afterwards. The eighteen boxes, owner decisions, frozen criteria and Story/sprint **in-progress** stay unchanged.
 
 Given Firefox, Chromium or WebKit at 1280×900, when the scenario specimen renders its generated grids, then each table fits its labelled region and every column header is reachable within the scrollport. Given 320px, actual 400% zoom or text spacing, when the grids render, then the existing bounded labelled scrolling, row-sizing and focus assertions still pass. Given the native rerun, when NAT4 executes, then the desktop scenario traversal passes and only deferred D2/D3 failures remain.
+
+### D1 correction results — 2026-11-04
+
+FX1 and FX2 are complete. FX3's browser, .NET, TypeScript and visual lanes pass, but its required native NAT4 rerun is blocked by a locked Windows session. FX3 and NAT4 therefore stay unchecked. The [leading result](13-6-accessibility-result.md#firefox-generated-grid-layout-correction-d1--2026-11-04) has exact commands, hashes and every attempt.
+
+- **Cause and fix (FX1).** An injected-style probe isolated the trigger as the **table's** `min-inline-size: max-content` inside Fluent's inline `table-layout: fixed; width: 100%`. Removing it from the `th`/`td` cells or the region host left Firefox at 17,895,614 px. `fc-projection.css` now sets `table.fc-projection-grid { min-inline-size: auto; }` and restores `max-content` only on the existing `.fluent-layout[global-scrollbar]` table rule. Chromium and WebKit measurements are unchanged at 1440/1280/1024/1023/768/320 CSS pixels with and without text spacing. Firefox is unchanged at the global-scrollbar widths and now matches WebKit at desktop widths. CSS only; no emitter or public API change.
+- **Regression (FX2).** `D1 desktop generated grids keep their tables and column headers within the labelled scrollport` failed in Firefox on the pre-fix CSS (17,895,614 against `<= 1177`; Chromium and WebKit passed) and passes on all three engines after the fix. No existing grid assertion changed.
+- **Verification (FX3).** Root `85d223d6cf799b530e7ef68b3e77663c5a5ef84a` plus `src tests` patch SHA-256 `bbc4aa3baa7d1d29c7d2edf4ca6c9aafaeefe9efb6dc217d63f5e614d3ec970b`.
+  - Builds: Debug Counter and Shell.Tests both build with zero warnings/errors.
+  - .NET: `FluentConformanceTests` + `DensityNoPerComponentLogicLintTest` **40/40**.
+  - TypeScript: exit 0.
+  - Complete three-spec gate, two workers, no retries: Chromium **376**, Firefox **374 / 2 named skips**, WebKit **374 / 2 named skips**, for **1,124 passed / 4 skips**, zero failed or flaky.
+  - Artifacts: every validator exits 0, with 116 state files per engine, **18/18** visual comparisons and unchanged approved PNGs.
+- **Native rerun (blocked).** The canonical runner, with only output directory `fx-nat4` and the NAT4 filter, failed all four executed checks with "Foreground is not the owned Firefox; no keys sent". The workstation is locked (foreground handle 0, `LogonUI` running) and its display configuration had changed (reference DPR 2.5). A 10-minute unlock poll (20 samples, 05:00:41Z–05:10:21Z) found it still locked. This is an environment blocker, not a product result. Rerun the same command on an unlocked session with the 150% secondary display active, then mark NAT4 under the narrowed acceptance if `nat4:traverse-scenario-100` passes and only D2/D3 failures remain.
+
+Only `fc-projection.css`, `responsive-accessibility.spec.ts`, this spec and `13-6-accessibility-result.md` changed. Owned hosts, browsers, NVDA and driver processes are stopped. The eighteen boxes, owner decisions, frozen criteria and Story/sprint **in-progress** stay unchanged, and nothing was staged, committed or pushed.
+
+## Remaining native findings correction — 2026-11-04
+
+**User direction (2026-11-04):** after the D1 decision, the user replied "fix". The assistant reads this as authorizing corrections, in this story, for the findings deferred on 2026-11-04 (D2, D3, O1) and for O2–O5 where a defect is demonstrated. This is the assistant's interpretation, and the user may narrow it. The `deferred-work.md` entries stay as written; each gains an appended resolution note when it is resolved. The frozen intent, the eighteen boxes, owner decisions and Story/sprint **in-progress** stay unchanged. The NAT4 native rerun from FX3 was blocked by a locked Windows session. It moves into FX8 and needs an unlocked session.
+
+Investigation (read-only, 2026-11-04):
+
+- **O1:** `FcDensityAnnouncer.razor.cs` captures `_previousDensity` in `OnInitialized` from the feature default (`EffectiveDensity: Comfortable`, `HydrationState: Idle` in `FrontComposerDensityFeature.cs`). `DensityEffects` hydration then dispatches `DensityHydratedAction` with the resolved value, then `DensityHydratedCompletedAction`. The announcer treats that load-time resolution as an operator change.
+- **D3:** `FcCommandPalette.razor` nests `div.fc-palette-root role="dialog" aria-label="Command palette"` inside Fluent's dialog. `OnAfterRenderAsync(firstRender)` runs `containDialogFocus` and then `FocusSearchAsync`. A Linux Firefox trace shows focus entering the native dialog, then the search input 11 ms later.
+- **O3:** `FcHomeDirectory.razor:66` renders `<header class="fc-home-header">` inside the shell's `div role="main"`. `FcPageHeader.razor.cs:94` already uses `role="presentation"` for exactly this case.
+- **O4:** the drawer is Fluent's `FluentLayoutHamburger` panel in `FcHamburgerToggle.razor:36`. Fluent's `PanelHeader` parameter supplies the panel header.
+- **O5:** the scrollable `FluentLayoutItem Class="fc-shell-content"` in `FrontComposerShell.razor:126` becomes a Firefox keyboard-focusable scroller with no role or name.
+- **O2:** the overlay close paths (`FcCommandPalette.razor.cs` `RestoreOriginFocusAsync`, `FcSettingsDialog`, the hamburger panel) briefly let focus reach "Skip to content" before returning to the trigger.
+- **D2:** in the badge grid at 320×225 (reflow and actual 400% zoom), Tab onto rows 5–7 leaves the grid region at `scrollTop` 29 of 137. The counter Metadata cell (800–996 px) is wider than a 320-pixel viewport.
+
+### Tasks & Acceptance — remaining native findings
+
+- [x] FX4 — O1, `FcDensityAnnouncer.razor{,.cs}`: make load-time hydration and bootstrap-tier resolution silent, without an operator change. Keep announcing post-hydration user selections and post-hydration viewport-forced changes, using the existing density state and no new public API. Add bUnit regressions for the silent hydration and the two announced paths. In the browser, full loads of `/counter` and `/home` must leave the density region empty.
+- [x] FX5 — D3, `FcCommandPalette.razor{,.cs}` and `wwwroot/js/fc-focus.js` or `fc-keyboard.js` as needed: opening the palette must place a single focus on the combobox input and expose one dialog name. Preserve combobox/listbox/option semantics, focus containment, Escape return focus, the trigger guard and the native selected-option-once behavior. Extend the existing palette regressions, for example by asserting that no focus event lands on a dialog element before the input.
+- [x] FX6 — D2, `wwwroot/css/fc-projection.css` and existing grid focus code only if needed: at a 320×225 reflow viewport and at actual 400% zoom, Tab onto any badge-grid cell must bring it fully inside the labelled grid scrollport and the viewport, clear of the sticky header. A wider-than-viewport cell such as Metadata gets a disposition under WCAG 2.4.11 using the canonical `focusGeometry` helper; thresholds are never weakened. Add a regression in `responsive-accessibility.spec.ts` with a red control.
+- [x] FX7 — O2–O5:
+  - **O2:** palette, Settings and drawer close return focus directly to their trigger, with no intermediate focus on another element.
+  - **O3:** `FcHomeDirectory.razor` follows the `FcPageHeader` presentation-role pattern, so there is no second banner.
+  - **O4:** `FcHamburgerToggle.razor` names the drawer dialog through `PanelHeader`, using a localized resource in every shipped culture.
+  - **O5:** give the `.fc-shell-content` stop an evidence-based disposition. Either name it as a region or remove the redundant stop, but remove it only if keyboard scrolling stays available.
+
+  Add focused bUnit or browser regressions for each correction. Record any finding reclassified as accepted behavior with its rationale.
+- [x] FX8 — verify and record:
+  - Run the Shell tests for the touched components, Fluent conformance and Shell governance tests, and TypeScript.
+  - On all three engines (two workers, no retries), run the complete `specimen-accessibility`, `responsive-accessibility` and `accessibility-state-matrix` specs with their artifact validators, plus `palette-native-accessibility`, `route-skip-links`, `settings-persistence` and `sidebar-responsive`.
+  - All 18 approved visuals must pass unchanged. On a changed image, stop and report it for human approval.
+  - In an unlocked Windows session, rerun the complete native NAT suite with the canonical runner (new output directory only), expecting all checks to pass or each failure to be attributed. If the session stays locked, record the blocker and leave FX8 and NAT4 unchecked.
+  - Append resolution notes to the matching `deferred-work.md` entries, and record exact commands, counts, hashes and failed attempts in `13-6-accessibility-result.md` and here.
+
+Rules: change only the files named above, their existing test files, the shipped resource files for O4, this spec, `13-6-accessibility-result.md` and `deferred-work.md` resolution notes. No dependency, baseline, threshold, emitter, CI or public API change. Stop every owned process afterwards. Never record a user confirmation the user did not give.
+
+Given a full page load with no operator change, when the shell hydrates density, then nothing is announced; given a later density change, then it is announced once. Given palette open, when NVDA follows focus, then the dialog context is generated once and focus lands on the combobox. Given 320×225 or actual 400% zoom, when Tab reaches any badge-grid cell, then it is fully visible or carries a canonical-helper disposition. Given overlay close, Home, drawer and desktop content, when traversed, then return focus is direct, there is one banner, the drawer is named, and the scroller has a recorded disposition.
+
+### Remaining native findings results — 2026-11-04
+
+FX4, FX6 and FX7 are complete. FX5 is implemented but stays unchecked: Fluent's native `showModal` step still focuses its own entry point before the search input, and NVDA has not confirmed one dialog context. FX8, FX3 and NAT4 stay unchecked because the native rerun is blocked. The [leading result](13-6-accessibility-result.md#remaining-native-findings-correction-fx4fx8--2026-11-04) holds exact commands, hashes and every attempt.
+
+- **O1 (FX4).** `FcDensityAnnouncer` stays silent while density hydration is idle or in progress, and for the recompute caused by the first measured viewport tier. Post-hydration selections and later viewport-forced changes are announced. Fluxor's existing `IActionSubscriber` counts tier reports; no public API was added. Four bUnit regressions and the O1 browser test pass, with no density text on full loads of `/counter` and `/home` and exactly one announcement after a Settings change.
+- **D3 (FX5).** The palette root no longer nests a second `role="dialog"`. `data-fc-dialog-label` is forwarded to Fluent's dialog host, so one `alertdialog` "Command palette" remains, and `autofocus` makes Fluent focus the combobox in the opening task. Combobox/listbox/option semantics, containment, the trigger guard and Escape return are preserved by the palette, route and overlay specs.
+- **D2 (FX6).** In `fc-datagrid.js`, the row-metric probe now restores the scroll offsets its forced layout clamped (region `scrollTop` 29 of 137), and focused body cells clear the sticky header. The regression checks every Tab stop forward and backward at 320×225 and fails in all three engines against the HEAD module. Disposition for the wider-than-viewport Metadata cell: it is partly visible under WCAG 2.4.11 (AA); its canonical `focusGeometry` result is attached unchanged; its diagnostic link passes in full.
+- **O2–O5 (FX7).**
+  - O2: palette and Settings Escape now return focus to the captured origin in the same task. No frame rests on `<body>`; the palette previously lost one frame.
+  - O3: the Home header is `role="presentation"`.
+  - O4: `PanelHeader` plus the same localized `NavMenuAriaLabel` forwarded through `data-fc-dialog-label` name the drawer "Primary navigation" / "Navigation principale".
+  - O5: the content scrollport is `tabindex="-1"`. It was a redundant Firefox-only stop; keyboard scrolling stays available, with PageDown from the route heading scrolling 445 px. No finding was reclassified as accepted behavior.
+- **Verification.**
+  - Builds: Debug Counter and Shell.Tests, zero warnings/errors.
+  - .NET: touched components and conformance **287/287**. Governance first ran **199/2** (NETSDK1064, a stale Release restore), then **201/201** after `dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release`.
+  - TypeScript: exit 0.
+  - New browser regressions: **30/30**. Red control against the HEAD JS modules: **15 failed / 3 passed**.
+  - Complete three-spec gate, first attempt: Chromium **384/1 failed** (intermittent `held generated recovery cancels after tenant scope change in dark`, so its validator exited 1); Firefox **383/2 skips**; WebKit **383/2 skips**, both validators passing. The failed test then passed **20/20** in isolation, and a second complete Chromium attempt passed **385/385** with its validator.
+  - Required extra specs: **41** per engine. Related palette/settings/route specs: **150/150**.
+  - Visuals: **18/18**, approved PNGs unchanged.
+- **Native rerun (blocked).** The canonical runner, with only output directory `fx48-nat`, passed **2 / 20 failed**. Only the key-free idle checks passed. Every keyed check refused to send keys because Windows did not give the owned Firefox the foreground while another application held it; the display configuration had also changed to one 3840×2400 panel. Cleanup verified NVDA, Firefox and the driver stopped and port 9516 free. Rerun on an unlocked, idle session to confirm D3, O2 and the full NAT suite.
+
+`deferred-work.md` gains a resolution note under each 2026-11-04 entry; the entries themselves are unchanged. Only the files named by FX4–FX8, their existing tests, this spec, the result and those notes changed. No resource file changed: O4 reuses an existing key present in both shipped cultures. Owned processes are stopped. The eighteen boxes, owner decisions, frozen criteria and Story/sprint **in-progress** are unchanged. Nothing was staged, committed or pushed.
+
+**Parent verification (2026-11-04).** The parent session read `git diff HEAD` against FX4–FX8 instead of relying on the report. It confirmed the changed files stay within the FX rules, `deferred-work.md` gained only resolution notes, the cultures are en and fr only, and no visual baseline changed. It normalized `FcHomeDirectory.razor` back to CRLF (no content change). **FX6 is returned to unchecked:** its regression covers the 320×225 reflow viewport, but the clause for actual 400% zoom has no native evidence. Viewport resizing is not browser zoom, so FX6 closes with the FX8 native rerun. At 2026-11-04 the session was still locked (`LogonUI` running, one display), so FX5, FX6, FX8, FX3 and NAT4 stay open. They wait on an unlocked, idle Windows session.
+
+**FX8 native rerun results (2026-11-04).** The user unlocked Windows and replied "continue". An idle gate opened at 08:01:35Z with 222,578 ms since the last input (gate log SHA-256 `5091b8cd1b8cc33a822f7374809dcfcbb8a71472271e637f460d0fadcd4aa3e9`). The unchanged canonical runner (`4d040174…`) then ran the complete suite with only `FC_NAT_OUT=fx8-nat` and passed **27/31** (summary SHA-256 `a53468d2c089e97fa380251bcd15bbf3a02ceaa3bb75c9ed1ac24c797ee27c9c`). Reference 1280×900 at DPR 1.5; 16 native Ctrl+= presses reached 320×225 at DPR 6.0 with CSS zoom 1.
+
+- **Passing groups.** NAT1 7/7, NAT2 4/4 and NAT3 7/7 pass. NAT4 passes all 100% traversals (scenario 120 stops, zero failures, so D1 is confirmed natively), the zoom and reset checks, and the 400% `/home` and `/counter` traversals with and without spacing.
+- **Scenario at 400%.** Both traversals fail only on the counter-grid Metadata cell, the recorded D2 disposition. All 24 badge-grid stops pass, so D2 is confirmed natively.
+- **Overlays at 400%.** Both checks fail on the palette's duplicate context, attributed to D3. No foreground loss occurred, so no second run was needed.
+- **Also confirmed natively.** O1: only two zoom-forced density announcements and none on load. O3: no banner prefix on the Home heading. O4: "Primary navigation dialog". O5: no content-scrollport stop. O2 for the drawer: direct return.
+- **Remaining, reported for human direction and not fixed.** D3: the palette context is still generated twice, likely from Fluent's native entry focus plus NVDA (not proven). O2: palette and Settings closes still generate "Skip to content" before the trigger, although DOM focus returns directly in the same task.
+- **Checkboxes.** FX6, FX3 and FX8 are checked on this evidence. FX7 returns to unchecked for the native O2 symptom, and FX5 and NAT4 stay open on D3. The [leading result](13-6-accessibility-result.md#fx8-native-nat-rerun-on-an-idle-unlocked-session--2026-11-04) has the full record.
+
+No product, test, sample or baseline file changed in this pass. Owned processes are stopped and ports 5070 and 9516 are closed. The eighteen boxes, owner decisions, frozen criteria and Story/sprint **in-progress** are unchanged. Nothing was staged, committed or pushed.
+
+
+## Residual native findings decision — 2026-11-04
+
+**User decision (2026-11-04):** two residuals remained after the FX8 native rerun. Asked how to handle them, the user chose "Defer both, then review". Both appear only in native NVDA 2026.2 with Firefox 155. Browser traces show no wrong DOM focus step for either.
+
+- **D3 residual.** Opening the palette still generates its dialog context twice.
+- **O2 residual.** Escape from the palette or Settings still generates "Skip to content" before the trigger.
+
+Both are recorded in `deferred-work.md` as residual NVDA/Fluent-modal findings, with their native evidence. AE-09's failure handling ("retain scoped findings and dispositions") keeps the duplicate speech on record rather than hiding it.
+
+Acceptance is narrowed under this decision; the frozen intent is unchanged:
+
+- **FX5** closes on one exposed dialog name and the combobox focused in the opening frame, with the extended palette regression passing on three engines. Fluent's native `showModal` entry focus and NVDA's duplicate context are excluded and deferred.
+- **FX7** closes on these results:
+  - DOM focus returns directly to the trigger, with no intermediate focus event or `<body>` frame, in the three-engine O2 regressions.
+  - The drawer's direct return is confirmed natively.
+  - O3, O4 and O5 are confirmed natively.
+
+  NVDA's "Skip to content" speech after the palette and Settings close is excluded and deferred.
+- **NAT4** closes because every remaining native failure in `fx8-nat` is attributed:
+  - The counter-grid Metadata cell is covered by the FX6 disposition (WCAG 2.4.11, a cell wider than the 320-pixel viewport).
+  - The palette overlay duplicate is the deferred D3 residual.
+
+  Every other NAT4 check passed natively, including D1 at 100% and the 24 badge-grid stops at actual 400% zoom.
+
+The eighteen boxes, owner decisions, frozen criteria and Story/sprint **in-progress** stay unchanged; missing human evidence still leaves the story incomplete.

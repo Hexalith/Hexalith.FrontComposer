@@ -34,6 +34,20 @@ public sealed class FrontComposerShellContentLandmarkTests : LayoutComponentTest
     }
 
     [Fact]
+    public void ContentScrollportIsNotASequentialTabStop() {
+        // Story 13.6 O5 — Firefox turned the overflowing content scrollport into an unnamed Tab stop.
+        // The skip link and route focus both land inside it, so only the sequential stop is removed.
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            IElement content = cut.Find(".fc-shell-content");
+            content.GetAttribute("tabindex").ShouldBe("-1");
+            content.QuerySelector("#fc-main-content").ShouldNotBeNull();
+        });
+    }
+
+    [Fact]
     public void MainLandmark_WithContentLabelParameter_EmitsAriaLabel() {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .Add(c => c.ContentLabel, "Tenant operations")

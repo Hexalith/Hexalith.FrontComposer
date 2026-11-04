@@ -520,6 +520,228 @@ for (const theme of ['light', 'dark']) {
   });
 }
 
+// D1: Fluent renders generated grids as fixed-layout 100%-width tables at desktop tiers. Gecko resolves
+// a max-content minimum on such a table to its maximum coordinate, which pushed every column after Id
+// out of the labelled scrollport. Each table must fit its region and expose every column header there.
+test('D1 desktop generated grids keep their tables and column headers within the labelled scrollport', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true&density=compact&theme=light');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const tables = page.locator('table.fc-projection-grid');
+  await expect(tables).toHaveCount(2);
+  await expect(tables.first().locator('thead th').first()).toBeVisible();
+  await settlePaint(page);
+  const layout = await tables.evaluateAll(elements => elements.map(table => {
+    const region = table.closest('[role="region"]');
+    if (!region) return { label: null, table: table.getBoundingClientRect().width, client: 0, headers: [] };
+    const box = region.getBoundingClientRect();
+    const port = { left: box.left + region.clientLeft, top: box.top + region.clientTop, right: box.left + region.clientLeft + region.clientWidth, bottom: box.top + region.clientTop + region.clientHeight };
+    const labelledBy = region.getAttribute('aria-labelledby');
+    const label = region.getAttribute('aria-label') || (labelledBy ? document.getElementById(labelledBy)?.textContent?.trim() : null) || null;
+    const headers = [...table.querySelectorAll('thead th')].map(th => {
+      const cell = th.getBoundingClientRect();
+      return { text: th.textContent?.trim() ?? '', left: cell.left, right: cell.right, intersects: cell.width > 0 && cell.height > 0 && cell.right > port.left && cell.left < port.right && cell.bottom > port.top && cell.top < port.bottom };
+    });
+    return { label, table: table.getBoundingClientRect().width, client: region.clientWidth, port, headers };
+  }));
+  await info.attach('d1-desktop-generated-grid-layout', { body: JSON.stringify(layout, null, 2), contentType: 'application/json' });
+  for (const grid of layout) {
+    expect(grid.label, 'Each generated table is owned by a labelled region').toBeTruthy();
+    expect(grid.table, `${grid.label} table width fits its labelled region`).toBeLessThanOrEqual(grid.client + 1);
+    expect(grid.headers.length, `${grid.label} renders column headers`).toBeGreaterThan(0);
+    expect(grid.headers.filter(header => !header.intersects), `${grid.label} column headers intersect the scrollport`).toEqual([]);
+  }
+});
+
+// D2: the row-metric probe briefly shrank the rows, and the forced layout clamped the labelled region's
+// scroll offset, so Tab onto rows 5-7 left the focused cell below the 320x225 viewport. Every badge-grid
+// stop reached by Tab, forward and backward, must lie fully inside the region's scrollport and the
+// viewport, below the sticky header, and be the element hit at its center and inset corners. The
+// canonical helper's result for each cell is attached unchanged: adjacent row borders keep its
+// competing-paint rule fail-closed for grid cells, which needs pixel evidence.
+test('D2 phone badge-grid cells reached by Tab stay fully visible inside the labelled scrollport', async ({ page }, info) => {
+  await page.setViewportSize({ width: 320, height: 225 });
+  await page.goto('/__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true&density=compact&theme=light');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const grid = page.getByTestId('fc-badge-grid');
+  await expect(grid.locator('tbody tr.fluent-data-grid-row')).toHaveCount(6);
+  await grid.locator('td[role="gridcell"]').first().focus();
+  const stops: { direction: string; text: string; problems: string[]; canonical: string[] }[] = [];
+  const inspect = async (direction: string) => {
+    await settlePaint(page);
+    const focused = page.locator(':focus');
+    const measured = await focused.evaluate(element => {
+      const problems: string[] = [];
+      const box = element.getBoundingClientRect();
+      const region = element.closest('[role="region"]')!;
+      const frame = region.getBoundingClientRect();
+      const port = { left: frame.left + region.clientLeft, top: frame.top + region.clientTop, right: frame.left + region.clientLeft + region.clientWidth, bottom: frame.top + region.clientTop + region.clientHeight };
+      const header = element.closest('table')?.querySelector("tr[row-type='sticky-header']")?.getBoundingClientRect();
+      if (box.left < port.left - 0.5 || box.right > port.right + 0.5 || box.top < port.top - 0.5 || box.bottom > port.bottom + 0.5) problems.push('outside the labelled scrollport');
+      if (box.left < -0.5 || box.top < -0.5 || box.right > innerWidth + 0.5 || box.bottom > innerHeight + 0.5) problems.push('outside the viewport');
+      if (header && box.top < header.bottom - 0.5) problems.push('under the sticky header');
+      const inset = 3;
+      for (const [x, y] of [[(box.left + box.right) / 2, (box.top + box.bottom) / 2], [box.left + inset, box.top + inset], [box.right - inset, box.top + inset], [box.left + inset, box.bottom - inset], [box.right - inset, box.bottom - inset]]) {
+        const hit = document.elementFromPoint(x, y);
+        if (!hit || !(hit === element || element.contains(hit))) problems.push(`point ${Math.round(x)},${Math.round(y)} hits ${hit?.tagName ?? 'nothing'}`);
+      }
+      return { text: `${element.tagName}:${(element.textContent ?? '').trim().slice(0, 24)}`, problems };
+    });
+    const canonical = await focusGeometry(focused);
+    stops.push({ direction, text: measured.text, problems: measured.problems, canonical: canonical.failures });
+  };
+  const insideGrid = () => page.evaluate(() => !!document.activeElement?.closest('[data-testid="fc-badge-grid"] table'));
+  await inspect('start');
+  for (let press = 0; press < 40; press++) {
+    await page.keyboard.press('Tab');
+    if (!(await insideGrid())) break;
+    await inspect('forward');
+  }
+  await page.keyboard.press('Shift+Tab');
+  for (let press = 0; press < 40 && await insideGrid(); press++) {
+    await inspect('backward');
+    await page.keyboard.press('Shift+Tab');
+  }
+  await info.attach('d2-badge-grid-tab-stops', { body: JSON.stringify(stops, null, 2), contentType: 'application/json' });
+  expect(stops.filter(stop => stop.direction === 'forward' && stop.text.includes('FC-1005')).length, 'Tab reached the last badge row').toBeGreaterThan(0);
+  expect(stops.filter(stop => stop.direction === 'backward' && stop.text.includes('FC-1000')).length, 'Shift+Tab returned to the first badge row').toBeGreaterThan(0);
+  expect(stops.filter(stop => stop.problems.length).map(stop => ({ direction: stop.direction, text: stop.text, problems: stop.problems })), 'Every badge-grid Tab stop is fully visible in its scrollport').toEqual([]);
+});
+
+// D2 disposition: the unsupported-field Metadata cell needs more inline space than a 320-pixel viewport.
+// WCAG 2.4.11 (AA) requires a focused component not to be entirely hidden; the canonical helper keeps
+// its stricter whole-target rule and its result is recorded unchanged. The cell's only actionable
+// control, its diagnostic link, must pass that canonical geometry in full.
+test('D2 wider-than-viewport Metadata cell stays partly visible while its link passes the canonical geometry', async ({ page }, info) => {
+  await page.setViewportSize({ width: 320, height: 225 });
+  await page.goto('/__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true&density=compact&theme=light');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const grid = page.getByTestId('fc-generated-counter-grid');
+  const cell = grid.locator('td[role="gridcell"].fc-col-unsupported').first();
+  await cell.focus();
+  await settlePaint(page);
+  const cellGeometry = await focusGeometry(cell);
+  const visibility = await cell.evaluate(element => {
+    const box = element.getBoundingClientRect();
+    const region = element.closest('[role="region"]')!.getBoundingClientRect();
+    const left = Math.max(box.left, region.left, 0), right = Math.min(box.right, region.right, innerWidth);
+    const top = Math.max(box.top, region.top, 0), bottom = Math.min(box.bottom, region.bottom, innerHeight);
+    return { width: box.width, viewport: innerWidth, visibleWidth: Math.max(0, right - left), visibleHeight: Math.max(0, bottom - top), height: box.height };
+  });
+  const link = cell.locator('a').first();
+  await link.focus();
+  await settlePaint(page);
+  const linkGeometry = await focusGeometry(link);
+  await info.attach('d2-metadata-disposition', { body: JSON.stringify({ visibility, cellFailures: cellGeometry.failures, linkFailures: linkGeometry.failures, wcag: '2.4.11 Focus Not Obscured (Minimum): partly visible cell; canonical whole-target result recorded unchanged' }, null, 2), contentType: 'application/json' });
+  expect(visibility.width, 'The disposition applies only to a cell wider than the viewport').toBeGreaterThan(visibility.viewport);
+  expect(visibility.visibleWidth, 'The focused cell is not entirely hidden').toBeGreaterThan(0);
+  expect(visibility.visibleHeight, 'The focused cell keeps its full row height visible').toBeGreaterThanOrEqual(visibility.height - 1);
+  expect(linkGeometry.failures, 'The actionable diagnostic link is entirely visible and unobscured').toEqual([]);
+});
+
+// O1: density hydration and the first measured viewport tier are load-time resolution, not operator changes.
+test('O1 full loads keep the density announcement region silent until an operator changes density', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.clear(); sessionStorage.clear();
+    const records: string[] = [];
+    (window as typeof window & { __densitySpeech: string[] }).__densitySpeech = records;
+    new MutationObserver(mutations => {
+      for (const mutation of mutations) {
+        const owner = (mutation.target instanceof Element ? mutation.target : mutation.target.parentElement)?.closest('[role="status"].fc-sr-only');
+        const text = owner?.textContent?.trim();
+        if (text && /Density/u.test(text)) records.push(text);
+      }
+    }).observe(document, { subtree: true, childList: true, characterData: true });
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const path of ['/counter', '/home']) {
+    await page.goto(path);
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    await page.waitForTimeout(1500);
+    expect(await page.evaluate(() => (window as typeof window & { __densitySpeech: string[] }).__densitySpeech), `${path} full load announces no density`).toEqual([]);
+  }
+  await page.getByTestId('fc-settings-button').click();
+  await page.locator('fluent-radio[name="fc-density-select"][value="Roomy"]').click();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __densitySpeech: string[] }).__densitySpeech)).toEqual(['Density set to Roomy.']);
+});
+
+// O2: Escape dismissal returns focus to the trigger directly. No focus event lands on another
+// element, and no animation frame observes focus resting on <body> in between.
+for (const overlay of [
+  { name: 'palette', width: 1280, height: 900, trigger: '[data-testid="fc-palette-trigger"]', open: '[data-testid="fc-palette-root"]' },
+  { name: 'settings', width: 1280, height: 900, trigger: '[data-testid="fc-settings-button"]', open: '[data-testid="fc-settings-dialog"]' },
+  { name: 'drawer', width: 320, height: 225, trigger: '[data-testid="fc-hamburger-toggle"] fluent-button', open: 'role=dialog[name="Primary navigation"]' },
+]) test(`O2 ${overlay.name} Escape returns focus directly to its trigger`, async ({ page }) => {
+  await page.addInitScript(() => {
+    const state = { recording: false, events: [] as string[] };
+    (window as typeof window & { __returnTrace: typeof state }).__returnTrace = state;
+    const label = (node: EventTarget | null) => node instanceof Element ? `${node.tagName}${node.getAttribute('data-testid') ? `[${node.getAttribute('data-testid')}]` : ''}` : String(node);
+    const sample = () => {
+      if (state.recording && document.activeElement === document.body) state.events.push('frame:body');
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+    document.addEventListener('focusin', event => { if (state.recording) state.events.push(`focusin:${label(event.target)}`); }, true);
+  });
+  await page.setViewportSize({ width: overlay.width, height: overlay.height });
+  await page.goto('/home');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const trigger = page.locator(`${overlay.trigger}:visible`).first();
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator(overlay.open).first()).toBeVisible();
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { (window as typeof window & { __returnTrace: { recording: boolean } }).__returnTrace.recording = true; });
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+  await page.waitForTimeout(400);
+  const events = await page.evaluate(() => (window as typeof window & { __returnTrace: { events: string[] } }).__returnTrace.events);
+  expect(events.filter(event => event === 'frame:body'), `${overlay.name}: no frame with focus on body`).toEqual([]);
+  expect(events.filter(event => event.startsWith('focusin:')), `${overlay.name}: the trigger is the only focus target`).toHaveLength(1);
+});
+
+// O3/O4/O5: one banner on Home, a named navigation drawer, and no redundant content scrollport stop.
+test('O3 Home exposes the shell banner only', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/home');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await expect(page.getByTestId('fc-home-header')).toHaveAttribute('role', 'presentation');
+  await expect(page.getByRole('banner')).toHaveCount(1);
+});
+
+test('O4 the responsive navigation drawer opens as a named dialog', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 225 });
+  await page.goto('/home');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const toggle = page.locator('[data-testid="fc-hamburger-toggle"] fluent-button:visible').first();
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Primary navigation', exact: true })).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(toggle).toBeFocused();
+});
+
+test('O5 the desktop content scrollport is not a Tab stop and stays keyboard scrollable', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const content = page.locator('.fc-shell-content');
+  expect(await content.evaluate(element => ({ tabIndex: (element as HTMLElement).tabIndex, scrollable: element.scrollHeight > element.clientHeight }))).toEqual({ tabIndex: -1, scrollable: true });
+  const lastRailControl = page.locator('[data-testid="fc-nav-flyout-trigger-Specimens"]:visible').first();
+  await lastRailControl.focus();
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => {
+    const active = document.activeElement;
+    return { scrollport: active?.classList.contains('fc-shell-content') ?? false, insideMain: !!active?.closest('#fc-main-content') };
+  }), 'Tab continues from the rail into the content controls').toEqual({ scrollport: false, insideMain: true });
+  const heading = page.locator('#fc-main-content h1').first();
+  await heading.focus();
+  await expect(heading).toBeFocused();
+  await content.evaluate(element => { element.scrollTop = 0; });
+  await page.keyboard.press('PageDown');
+  await expect.poll(() => content.evaluate(element => element.scrollTop), 'PageDown from the route heading scrolls the content scrollport').toBeGreaterThan(0);
+});
+
 test('the real missing-detail component registers recovery before a Fluent shadow action removes detail', async ({ page }) => {
   await page.goto('/__frontcomposer/specimens/type?announcementFocus=true');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
