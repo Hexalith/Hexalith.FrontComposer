@@ -119,10 +119,30 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
                 .Add(component => component.Value, source)
                 .Add(component => component.IsFixed, true)
                 .AddChildContent<SameSourceTargetCommandForm>());
-        sameSource.Find("form").Submit();
-        await sameSource.WaitForAssertionAsync(() =>
-            pending.GetByMessageId("01BRZ3NDEKTSV4RRFFQ69G5FAV").ShouldNotBeNull().Status
-                .ShouldBe(PendingCommandStatus.Pending));
+        // Pending registration changes state without rerendering the fixed wrapper.
+        TaskCompletionSource<bool> sameSourcePending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        void ObserveSameSourcePending(object? sender, EventArgs args)
+        {
+            if (pending.GetByMessageId("01BRZ3NDEKTSV4RRFFQ69G5FAV")?.Status == PendingCommandStatus.Pending)
+            {
+                sameSourcePending.TrySetResult(true);
+            }
+        }
+
+        pending.Changed += ObserveSameSourcePending;
+        try
+        {
+            sameSource.Find("form").Submit();
+            ObserveSameSourcePending(null, EventArgs.Empty);
+            await sameSourcePending.Task.WaitAsync(DefaultWaitTimeout, Xunit.TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            pending.Changed -= ObserveSameSourcePending;
+        }
+
+        pending.GetByMessageId("01BRZ3NDEKTSV4RRFFQ69G5FAV").ShouldNotBeNull().Status
+            .ShouldBe(PendingCommandStatus.Pending);
 
         IPendingCommandStatusQuery statusQuery = new Epic9PendingCommandStatusQuery(new(
                 PendingCommandOutcomeSource.FallbackPolling,
