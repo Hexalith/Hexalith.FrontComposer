@@ -13,9 +13,9 @@ public sealed class FrontComposerUserTokenStoreTests {
         FakeTimeProvider time = new(FixedNow);
         FrontComposerUserTokenStore store = new(time);
 
-        store.Set("user-1", SensitiveToken, FixedNow.AddMinutes(5));
+        store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), SensitiveToken, FixedNow.AddMinutes(5));
 
-        bool found = store.TryGet("user-1", out string token);
+        bool found = store.TryGet(new FrontComposerTokenSession("session-1", "user-1", "acme"), out string token);
 
         found.ShouldBeTrue();
         (token == SensitiveToken).ShouldBeTrue("the stored value should be returned before expiry");
@@ -25,23 +25,23 @@ public sealed class FrontComposerUserTokenStoreTests {
     public void TryGet_EvictsExpiredToken() {
         FakeTimeProvider time = new(FixedNow);
         FrontComposerUserTokenStore store = new(time);
-        store.Set("user-1", SensitiveToken, FixedNow.AddMinutes(5));
+        store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), SensitiveToken, FixedNow.AddMinutes(5));
 
         time.Advance(TimeSpan.FromMinutes(6));
 
-        store.TryGet("user-1", out _).ShouldBeFalse();
-        store.TryGet("user-1", out _).ShouldBeFalse();
+        store.TryGet(new FrontComposerTokenSession("session-1", "user-1", "acme"), out _).ShouldBeFalse();
+        store.TryGet(new FrontComposerTokenSession("session-1", "user-1", "acme"), out _).ShouldBeFalse();
     }
 
     [Fact]
     public void Set_RejectsAlreadyExpiredToken_WithoutRemovingUnexpiredEntry() {
         FakeTimeProvider time = new(FixedNow);
         FrontComposerUserTokenStore store = new(time);
-        store.Set("user-1", SensitiveToken, FixedNow.AddMinutes(5));
+        store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), SensitiveToken, FixedNow.AddMinutes(5));
 
-        store.Set("user-1", "expired-token", FixedNow.AddTicks(-1));
+        store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), "expired-token", FixedNow.AddTicks(-1));
 
-        store.TryGet("user-1", out string token).ShouldBeTrue();
+        store.TryGet(new FrontComposerTokenSession("session-1", "user-1", "acme"), out string token).ShouldBeTrue();
         (token == SensitiveToken).ShouldBeTrue("an already-expired incoming token should not evict a valid stored token");
     }
 
@@ -49,13 +49,13 @@ public sealed class FrontComposerUserTokenStoreTests {
     public void TryGet_ExpiredCleanup_DoesNotRemoveFreshReplacementToken() {
         FakeTimeProvider time = new(FixedNow);
         FrontComposerUserTokenStore store = new(time);
-        store.Set("user-1", SensitiveToken, FixedNow.AddMinutes(5));
+        store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), SensitiveToken, FixedNow.AddMinutes(5));
         time.Advance(TimeSpan.FromMinutes(6));
-        time.BeforeNextRead = () => store.Set("user-1", "fresh-token", FixedNow.AddMinutes(10));
+        time.BeforeNextRead = () => store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), "fresh-token", FixedNow.AddMinutes(10));
 
-        store.TryGet("user-1", out _).ShouldBeFalse();
+        store.TryGet(new FrontComposerTokenSession("session-1", "user-1", "acme"), out _).ShouldBeFalse();
 
-        store.TryGet("user-1", out string token).ShouldBeTrue();
+        store.TryGet(new FrontComposerTokenSession("session-1", "user-1", "acme"), out string token).ShouldBeTrue();
         (token == "fresh-token").ShouldBeTrue("expired cleanup should remove only the stale entry it observed");
     }
 
@@ -64,12 +64,26 @@ public sealed class FrontComposerUserTokenStoreTests {
         FakeTimeProvider time = new(FixedNow);
         FrontComposerUserTokenStore store = new(time);
 
-        store.Remove("user-1");
-        store.Set("user-1", SensitiveToken, FixedNow.AddMinutes(5));
-        store.Remove("user-1");
-        store.Remove("user-1");
+        store.Remove(new FrontComposerTokenSession("session-1", "user-1", "acme"));
+        store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), SensitiveToken, FixedNow.AddMinutes(5));
+        store.Remove(new FrontComposerTokenSession("session-1", "user-1", "acme"));
+        store.Remove(new FrontComposerTokenSession("session-1", "user-1", "acme"));
 
-        store.TryGet("user-1", out _).ShouldBeFalse();
+        store.TryGet(new FrontComposerTokenSession("session-1", "user-1", "acme"), out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Set_PurgesExpiredAbandonedSessions_WhenAnotherSessionSignsIn()
+    {
+        FakeTimeProvider time = new(FixedNow);
+        FrontComposerUserTokenStore store = new(time);
+        store.Set(new("abandoned", "shared", "acme"), SensitiveToken, FixedNow.AddMinutes(1));
+        time.Advance(TimeSpan.FromMinutes(1));
+        store.Set(new("new-session", "shared", "acme"), "new-token", FixedNow.AddMinutes(5));
+        // Verify retention without looking up the expired key (which would itself perform cleanup).
+        object entries = typeof(FrontComposerUserTokenStore).GetField("_tokens",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(store)!;
+        ((System.Collections.ICollection)entries).Count.ShouldBe(1);
     }
 
     private sealed class FakeTimeProvider(DateTimeOffset utcNow) : TimeProvider {

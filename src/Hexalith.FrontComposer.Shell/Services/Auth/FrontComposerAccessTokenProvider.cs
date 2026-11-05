@@ -81,82 +81,54 @@ public sealed class FrontComposerAccessTokenProvider(
             return current.TokenRelay.HostAccessTokenProvider;
         }
 
-        string? httpToken = null;
-        ClaimsPrincipal? principal = null;
-        if (httpContextAccessor.HttpContext is { } context) {
-            httpToken = await ReadHttpContextTokenAsync(context, current).ConfigureAwait(false);
-            principal = context.User;
-        }
-
-        principal ??= await ReadCircuitPrincipalAsync().ConfigureAwait(false);
-        string? userId = ResolveUserId(principal, current);
-        if (userId is not null) {
-            return ct => {
-                ct.ThrowIfCancellationRequested();
-                return ValueTask.FromResult(tokenStore.TryGet(userId, out string accessToken) ? accessToken : null);
-            };
-        }
-
-        return string.IsNullOrWhiteSpace(httpToken)
-            ? null
-            : ct => {
-                ct.ThrowIfCancellationRequested();
-                return ValueTask.FromResult<string?>(httpToken);
-            };
+        AuthenticationStateProvider? capturedState = circuitServicesAccessor.Services?.GetService<AuthenticationStateProvider>();
+        ClaimsPrincipal? principal = await FrontComposerTokenSession.ReadPrincipalAsync(httpContextAccessor, circuitServicesAccessor).ConfigureAwait(false);
+        FrontComposerTokenSession? session = FrontComposerTokenSession.Resolve(principal, current);
+        // Always return a bound delegate. A null capture lets reconnect fall back to ambient identity.
+        return async ct =>
+        {
+            ct.ThrowIfCancellationRequested();
+            ClaimsPrincipal? user = capturedState is not null
+                ? (await capturedState.GetAuthenticationStateAsync().ConfigureAwait(false)).User
+                : principal;
+            return session is not null
+                && session == FrontComposerTokenSession.Resolve(user, current)
+                && tokenStore.TryGet(session, out string accessToken) ? accessToken : null;
+        };
     }
 
-    private async Task<string?> ReadHttpContextOrCircuitTokenAsync(FrontComposerAuthenticationOptions current) {
-        ClaimsPrincipal? principal = null;
-        if (httpContextAccessor.HttpContext is { } context) {
-            string? httpToken = await ReadHttpContextTokenAsync(context, current).ConfigureAwait(false);
-            if (!string.IsNullOrWhiteSpace(httpToken)) {
-                return httpToken;
-            }
-
-            principal = context.User;
+    private async Task<string?> ReadHttpContextOrCircuitTokenAsync(FrontComposerAuthenticationOptions current)
+    {
+        ClaimsPrincipal? principal = await FrontComposerTokenSession.ReadPrincipalAsync(httpContextAccessor, circuitServicesAccessor).ConfigureAwait(false);
+        FrontComposerTokenSession? session = FrontComposerTokenSession.Resolve(principal, current);
+        if (session is not null)
+        {
+            return tokenStore.TryGet(session, out string token) ? token : null;
         }
 
-        principal ??= await ReadCircuitPrincipalAsync().ConfigureAwait(false);
-        string? userId = ResolveUserId(principal, current);
-        return userId is not null && tokenStore.TryGet(userId, out string circuitToken)
-            ? circuitToken
-            : null;
-    }
-
-    private static async Task<string?> ReadHttpContextTokenAsync(
-        HttpContext context,
-        FrontComposerAuthenticationOptions current)
-        => string.IsNullOrWhiteSpace(current.TokenRelay.AuthenticationScheme)
-            ? await context.GetTokenAsync(current.TokenRelay.AccessTokenName).ConfigureAwait(false)
-            : await context.GetTokenAsync(current.TokenRelay.AuthenticationScheme, current.TokenRelay.AccessTokenName).ConfigureAwait(false);
-
-    private async Task<ClaimsPrincipal?> ReadCircuitPrincipalAsync() {
-        if (circuitServicesAccessor.Services?.GetService<AuthenticationStateProvider>() is not { } provider) {
+        // Server circuits must never recover a revoked, expired or unbound token from cookie properties.
+        if (current.TokenRelay.CircuitTokenSourceEnabled || circuitServicesAccessor.Services is not null
+            || principal?.HasClaim(c => c.Type == FrontComposerTokenSession.ClaimType) == true)
+        {
             return null;
         }
 
-        AuthenticationState state = await provider.GetAuthenticationStateAsync().ConfigureAwait(false);
-        return state.User;
-    }
-
-    private static string? ResolveUserId(ClaimsPrincipal? user, FrontComposerAuthenticationOptions current) {
-        if (user?.Identity?.IsAuthenticated != true) {
+        if (httpContextAccessor.HttpContext is not { } context)
+        {
             return null;
         }
 
-        string? stable = user.FindFirstValue("sub") ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!string.IsNullOrWhiteSpace(stable)) {
-            return stable;
+        AuthenticateResult result = await context.AuthenticateAsync(current.TokenRelay.AuthenticationScheme).ConfigureAwait(false);
+        if (!result.Succeeded || result.Principal?.Identity?.IsAuthenticated != true
+            || (result.Properties?.GetTokenValue("expires_at") is { } expiresAt
+                && (!DateTimeOffset.TryParse(expiresAt, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AssumeUniversal, out DateTimeOffset expiry)
+                    || expiry <= tokenStore.UtcNow)))
+        {
+            return null;
         }
 
-        foreach (string claimType in current.UserClaimTypes) {
-            string? value = user.FindFirstValue(claimType);
-            if (!string.IsNullOrWhiteSpace(value)) {
-                return value;
-            }
-        }
-
-        return null;
+        return result.Properties?.GetTokenValue(current.TokenRelay.AccessTokenName);
     }
 
     private static string BoundedProviderKind(FrontComposerAuthenticationProviderKind providerKind)

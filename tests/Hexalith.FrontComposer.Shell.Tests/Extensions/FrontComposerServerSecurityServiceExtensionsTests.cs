@@ -50,14 +50,15 @@ public sealed class FrontComposerServerSecurityServiceExtensionsTests {
     public async Task GatewayAuthorizationHandler_AttachesBearerForAuthenticatedUserWithStoredToken() {
         FrontComposerUserTokenStore store = new();
         const string token = "access-token-1";
-        store.Set("user-1", token, DateTimeOffset.UtcNow.AddMinutes(5));
+        store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), token, DateTimeOffset.UtcNow.AddMinutes(5));
         HttpContextAccessor httpContextAccessor = new() {
             HttpContext = new DefaultHttpContext {
-                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "user-1")], "test")),
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "user-1"), new Claim(FrontComposerTokenSession.ClaimType, "session-1"), new Claim("tenant_id", "acme")], "test")),
             },
         };
         CapturingHandler inner = new();
-        FrontComposerGatewayAuthorizationHandler handler = new(httpContextAccessor, new CircuitServicesAccessor(), store) {
+        FrontComposerGatewayAuthorizationHandler handler = new(httpContextAccessor, new CircuitServicesAccessor(), store,
+            Microsoft.Extensions.Options.Options.Create(new Hexalith.FrontComposer.Shell.Options.FrontComposerAuthenticationOptions { TenantClaimTypes = { "tenant_id" } })) {
             InnerHandler = inner,
         };
         using HttpMessageInvoker invoker = new(handler);
@@ -76,7 +77,8 @@ public sealed class FrontComposerServerSecurityServiceExtensionsTests {
             HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) },
         };
         CapturingHandler inner = new();
-        FrontComposerGatewayAuthorizationHandler handler = new(httpContextAccessor, new CircuitServicesAccessor(), store) {
+        FrontComposerGatewayAuthorizationHandler handler = new(httpContextAccessor, new CircuitServicesAccessor(), store,
+            Microsoft.Extensions.Options.Options.Create(new Hexalith.FrontComposer.Shell.Options.FrontComposerAuthenticationOptions { TenantClaimTypes = { "tenant_id" } })) {
             InnerHandler = inner,
         };
         using HttpMessageInvoker invoker = new(handler);

@@ -68,24 +68,16 @@ public sealed class ServerCircuitUserContextAccessor(
         return result;
     }
 
-    // Mirrors FrontComposerGatewayAuthorizationHandler.ResolveUserIdAsync: prefer the request's
-    // HttpContext principal (server-side render / prerender); when absent (interactive circuit),
-    // read the circuit's AuthenticationStateProvider published by FrontComposerCircuitServicesHandler.
-    // Only a synchronously completed auth-state task is read to avoid sync-over-async on this sync
-    // surface; in a connected circuit the state is resolved before component lifecycle runs.
-    private ClaimsPrincipal? ResolvePrincipal() {
-        ClaimsPrincipal? user = httpContextAccessor.HttpContext?.User;
-        if (user?.Identity?.IsAuthenticated == true) {
-            return user;
-        }
-
-        if (circuitServicesAccessor.Services?.GetService<AuthenticationStateProvider>() is { } provider) {
+    // Use the same circuit-first authority as the credential resolver. A retained HttpContext may
+    // belong to an earlier request and must not override an active circuit, including anonymous state.
+    private ClaimsPrincipal? ResolvePrincipal()
+    {
+        if (circuitServicesAccessor.Services?.GetService<AuthenticationStateProvider>() is { } provider)
+        {
             Task<AuthenticationState> stateTask = provider.GetAuthenticationStateAsync();
-            if (stateTask.IsCompletedSuccessfully) {
-                return stateTask.Result.User;
-            }
+            return stateTask.IsCompletedSuccessfully ? stateTask.Result.User : null;
         }
 
-        return user;
+        return httpContextAccessor.HttpContext?.User;
     }
 }

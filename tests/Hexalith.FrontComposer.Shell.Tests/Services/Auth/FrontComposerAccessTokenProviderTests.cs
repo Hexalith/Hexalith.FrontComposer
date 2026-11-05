@@ -115,11 +115,11 @@ public sealed class FrontComposerAccessTokenProviderTests {
     [Fact]
     public async Task GetAccessTokenAsync_ReadsCircuitTokenStore_WhenHttpContextIsAbsent_AndHostProviderUnconfigured() {
         FrontComposerUserTokenStore store = new(new FakeTimeProvider(new DateTimeOffset(2026, 7, 5, 12, 0, 0, TimeSpan.Zero)));
-        store.Set("user-1", "circuit-token", new DateTimeOffset(2026, 7, 5, 12, 5, 0, TimeSpan.Zero));
+        store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), "circuit-token", new DateTimeOffset(2026, 7, 5, 12, 5, 0, TimeSpan.Zero));
         CircuitServicesAccessor circuitServices = new() {
             Services = new ServiceCollection()
                 .AddScoped<AuthenticationStateProvider>(_ => new StubAuthenticationStateProvider(
-                    new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "user-1")], "Test"))))
+                    new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "user-1"), new Claim(FrontComposerTokenSession.ClaimType, "session-1"), new Claim("tenant_id", "acme")], "Test"))))
                 .BuildServiceProvider(),
         };
         FrontComposerAccessTokenProvider sut = Build(
@@ -130,6 +130,7 @@ public sealed class FrontComposerAccessTokenProviderTests {
                 options.OpenIdConnect.ClientSecret = "secret";
                 options.OpenIdConnect.Audience = "api";
                 options.UserClaimTypes.Add("sub");
+                options.TenantClaimTypes.Add("tenant_id");
             },
             circuitServices: circuitServices,
             tokenStore: store);
@@ -140,15 +141,15 @@ public sealed class FrontComposerAccessTokenProviderTests {
     }
 
     [Fact]
-    public async Task GetAccessTokenAsync_UsesStableSubjectKey_ForCircuitTokenStoreLookup() {
+    public async Task GetAccessTokenAsync_UsesSessionAndStableSubject_WhenDisplayAliasDiffers() {
         FrontComposerUserTokenStore store = new(new FakeTimeProvider(new DateTimeOffset(2026, 7, 5, 12, 0, 0, TimeSpan.Zero)));
-        store.Set("subject-1", "subject-token", new DateTimeOffset(2026, 7, 5, 12, 5, 0, TimeSpan.Zero));
+        store.Set(new FrontComposerTokenSession("session-1", "subject-1", "acme"), "subject-token", new DateTimeOffset(2026, 7, 5, 12, 5, 0, TimeSpan.Zero));
         CircuitServicesAccessor circuitServices = new() {
             Services = new ServiceCollection()
                 .AddScoped<AuthenticationStateProvider>(_ => new StubAuthenticationStateProvider(
                     new ClaimsPrincipal(new ClaimsIdentity([
                         new Claim("email", "alice@example.test"),
-                        new Claim("sub", "subject-1"),
+                        new Claim("sub", "subject-1"), new Claim(FrontComposerTokenSession.ClaimType, "session-1"), new Claim("tenant_id", "acme"),
                     ], "Test"))))
                 .BuildServiceProvider(),
         };
@@ -160,6 +161,7 @@ public sealed class FrontComposerAccessTokenProviderTests {
                 options.OpenIdConnect.ClientSecret = "secret";
                 options.OpenIdConnect.Audience = "api";
                 options.UserClaimTypes.Add("email");
+                options.TenantClaimTypes.Add("tenant_id");
             },
             circuitServices: circuitServices,
             tokenStore: store);
@@ -205,6 +207,7 @@ public sealed class FrontComposerAccessTokenProviderTests {
         options.OpenIdConnect.Audience = "api";
         options.TenantClaimTypes.Add("tenant_id");
         options.UserClaimTypes.Add("sub");
+                options.TenantClaimTypes.Add("tenant_id");
         FrontComposerAccessTokenProvider sut = new(
             http,
             new CircuitServicesAccessor(),

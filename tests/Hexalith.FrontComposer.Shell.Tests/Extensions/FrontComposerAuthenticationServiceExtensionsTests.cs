@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
@@ -15,7 +16,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 using Shouldly;
 
@@ -173,27 +173,166 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
         FakeTimeProvider time = new(now);
         ServiceCollection services = new();
         services.AddSingleton<TimeProvider>(time);
+        services.AddOptions<FrontComposerAuthenticationOptions>().Configure(options => {
+            options.TenantClaimTypes.Add("eventstore:current-tenant");
+            options.UserClaimTypes.Add("sub");
+        });
         services.AddSingleton<IHostEnvironment>(new TestHostEnvironment());
         _ = services.AddHexalithFrontComposerTokenRelay();
 
         await using ServiceProvider provider = services.BuildServiceProvider();
         OpenIdConnectOptions oidc = BuildOpenIdConnectOptions(provider);
-        TokenValidatedContext context = BuildTokenValidatedContext(provider, oidc, "user-1", "opaque-token", expiresIn: "60");
+        TicketReceivedContext context = BuildTicketReceivedContext(provider, oidc, "user-1", "opaque-token", expiresIn: "60");
 
-        await oidc.Events.OnTokenValidated(context);
+        await oidc.Events.OnTicketReceived(context);
 
         FrontComposerUserTokenStore store = provider.GetRequiredService<FrontComposerUserTokenStore>();
-        store.TryGet("user-1", out string token).ShouldBeTrue();
+        store.TryGet(FrontComposerTokenSession.Resolve(context.Principal, provider.GetRequiredService<IOptions<FrontComposerAuthenticationOptions>>().Value)!, out string token).ShouldBeTrue();
         (token == "opaque-token").ShouldBeTrue("the OIDC relay should store the access token before expiry");
         time.Advance(TimeSpan.FromSeconds(61));
-        store.TryGet("user-1", out _).ShouldBeFalse();
+        store.TryGet(FrontComposerTokenSession.Resolve(context.Principal, provider.GetRequiredService<IOptions<FrontComposerAuthenticationOptions>>().Value)!, out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task OidcSignIns_GenerateDistinctLocalSessions_AndRejectMissingCredentialAuthority()
+    {
+        ServiceCollection services = new();
+        services.AddSingleton<IHostEnvironment>(new TestHostEnvironment());
+        services.AddOptions<FrontComposerAuthenticationOptions>().Configure(options =>
+        {
+            options.TenantClaimTypes.Add("eventstore:current-tenant");
+            options.UserClaimTypes.Add("sub");
+        });
+        _ = services.AddHexalithFrontComposerTokenRelay();
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        OpenIdConnectOptions oidc = BuildOpenIdConnectOptions(provider);
+        FrontComposerAuthenticationOptions options = provider.GetRequiredService<IOptions<FrontComposerAuthenticationOptions>>().Value;
+        FrontComposerUserTokenStore store = provider.GetRequiredService<FrontComposerUserTokenStore>();
+        TicketReceivedContext a = BuildTicketReceivedContext(provider, oidc, "shared", "token-a", "60");
+        TicketReceivedContext b = BuildTicketReceivedContext(provider, oidc, "shared", "token-b", "60");
+        ((System.Security.Claims.ClaimsIdentity)a.Principal!.Identity!).AddClaim(new(FrontComposerTokenSession.ClaimType, "incoming-session"));
+        ((System.Security.Claims.ClaimsIdentity)b.Principal!.Identity!).AddClaim(new(FrontComposerTokenSession.ClaimType, "incoming-session"));
+        await oidc.Events.OnTicketReceived(a);
+        await oidc.Events.OnTicketReceived(b);
+        FrontComposerTokenSession sessionA = FrontComposerTokenSession.Resolve(a.Principal, options)!;
+        FrontComposerTokenSession sessionB = FrontComposerTokenSession.Resolve(b.Principal, options)!;
+        sessionA.SessionId.ShouldNotBe(sessionB.SessionId);
+        sessionA.SessionId.ShouldNotBe("incoming-session");
+        store.TryGet(sessionA, out string first).ShouldBeTrue();
+        store.TryGet(sessionB, out string second).ShouldBeTrue();
+        (first == "token-a" && second == "token-b").ShouldBeTrue();
+
+        foreach ((string token, string expiry) in new[] { ("", "60"), ("missing-expiry", ""), ("expired", "0") })
+        {
+            TicketReceivedContext missing = BuildTicketReceivedContext(provider, oidc, "shared", token, expiry);
+            await oidc.Events.OnTicketReceived(missing);
+            store.TryGet(FrontComposerTokenSession.Resolve(missing.Principal, options)!, out _).ShouldBeFalse();
+        }
+        TicketReceivedContext denied = BuildTicketReceivedContext(provider, oidc, "shared", "denied", "60");
+        ((System.Security.Claims.ClaimsIdentity)denied.Principal!.Identity!).AddClaim(new("eventstore:current-tenant", "ambiguous"));
+        await oidc.Events.OnTicketReceived(denied);
+        FrontComposerTokenSession.Resolve(denied.Principal, options).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task TokenRelay_UsesConfiguredScheme_AndTenantAddedAtFinalTicketCallback()
+    {
+        const string scheme = "Custom.Oidc";
+        ServiceCollection services = new();
+        services.AddSingleton<IHostEnvironment>(new TestHostEnvironment());
+        services.AddOptions<FrontComposerAuthenticationOptions>().Configure(options =>
+        {
+            options.OpenIdConnect.ChallengeScheme = scheme;
+            options.TenantClaimTypes.Add("eventstore:current-tenant");
+            options.UserClaimTypes.Add("sub");
+        });
+        services.Configure<OpenIdConnectOptions>(scheme, options => options.Events.OnTicketReceived = context =>
+        {
+            ((System.Security.Claims.ClaimsIdentity)context.Principal!.Identity!).AddClaim(new("eventstore:current-tenant", "late-tenant"));
+            return Task.CompletedTask;
+        });
+        _ = services.AddHexalithFrontComposerTokenRelay();
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        OpenIdConnectOptions oidc = new();
+        foreach (IConfigureOptions<OpenIdConnectOptions> setup in provider.GetServices<IConfigureOptions<OpenIdConnectOptions>>())
+        {
+            if (setup is IConfigureNamedOptions<OpenIdConnectOptions> named)
+            {
+                named.Configure(scheme, oidc);
+            }
+        }
+        TicketReceivedContext context = BuildTicketReceivedContext(provider, oidc, "shared", "late-token", "60");
+        System.Security.Claims.ClaimsIdentity identity = (System.Security.Claims.ClaimsIdentity)context.Principal!.Identity!;
+        identity.RemoveClaim(identity.FindFirst("eventstore:current-tenant")!);
+        await oidc.Events.OnTicketReceived(context);
+        FrontComposerTokenSession session = FrontComposerTokenSession.Resolve(context.Principal,
+            provider.GetRequiredService<IOptions<FrontComposerAuthenticationOptions>>().Value)!;
+        session.TenantId.ShouldBe("late-tenant");
+        provider.GetRequiredService<FrontComposerUserTokenStore>().TryGet(session, out string token).ShouldBeTrue();
+        (token == "late-token").ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ProtectedCookieRoundTrip_IsolatesSameSubjectSessions_AndRevokesOnlySignedOutSession()
+    {
+        ServiceCollection services = new();
+        services.AddSingleton<IHostEnvironment>(new TestHostEnvironment());
+        services.AddLogging();
+        services.AddDataProtection().UseEphemeralDataProtectionProvider();
+        _ = services.AddHexalithFrontComposerServerSecurity(options => options.UseKeycloak(
+            new Uri("https://identity.test/realms/demo"), "client", "secret", "eventstore:current-tenant", "sub"));
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        OpenIdConnectOptions oidc = BuildOpenIdConnectOptions(provider);
+        IOptions<FrontComposerAuthenticationOptions> options = provider.GetRequiredService<IOptions<FrontComposerAuthenticationOptions>>();
+        FrontComposerUserTokenStore store = provider.GetRequiredService<FrontComposerUserTokenStore>();
+        List<string> cookies = [];
+        foreach (string token in new[] { "first-token", "second-token" })
+        {
+            using IServiceScope signInScope = provider.CreateScope();
+            TicketReceivedContext ticket = BuildTicketReceivedContext(signInScope.ServiceProvider, oidc, "shared", token, "60");
+            await oidc.Events.OnTicketReceived(ticket);
+            DefaultHttpContext signIn = new() { RequestServices = signInScope.ServiceProvider };
+            signIn.Request.Scheme = "https";
+            await signIn.SignInAsync(options.Value.OpenIdConnect.SignInScheme, ticket.Principal!, ticket.Properties);
+            cookies.Add(signIn.Response.Headers.SetCookie.ToString().Split(';')[0]);
+        }
+
+        using IServiceScope firstScope = provider.CreateScope();
+        using IServiceScope secondScope = provider.CreateScope();
+        DefaultHttpContext first = new() { RequestServices = firstScope.ServiceProvider };
+        first.Request.Headers.Cookie = cookies[0];
+        AuthenticateResult firstTicket = await first.AuthenticateAsync(options.Value.OpenIdConnect.SignInScheme);
+        firstTicket.Succeeded.ShouldBeTrue();
+        first.User = firstTicket.Principal!;
+        DefaultHttpContext second = new() { RequestServices = secondScope.ServiceProvider };
+        second.Request.Headers.Cookie = cookies[1];
+        AuthenticateResult secondTicket = await second.AuthenticateAsync(options.Value.OpenIdConnect.SignInScheme);
+        secondTicket.Succeeded.ShouldBeTrue();
+        second.User = secondTicket.Principal!;
+        FrontComposerTokenSession firstSession = FrontComposerTokenSession.Resolve(first.User, options.Value)!;
+        FrontComposerTokenSession secondSession = FrontComposerTokenSession.Resolve(second.User, options.Value)!;
+        firstSession.SessionId.ShouldNotBe(secondSession.SessionId);
+        FrontComposerAccessTokenProvider tokens = new(new HttpContextAccessor { HttpContext = first },
+            new CircuitServicesAccessor(), store, options,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<FrontComposerAccessTokenProvider>.Instance);
+        Func<CancellationToken, ValueTask<string?>> captured = (await tokens.CaptureCurrentUserAccessTokenProviderAsync(TestContext.Current.CancellationToken))!;
+        ((await captured(TestContext.Current.CancellationToken)) == "first-token").ShouldBeTrue();
+        RouteEndpoint logout = BuildEndpoint(provider, options.Value.Redirect.LogoutPath);
+        await logout.RequestDelegate!(first);
+        first.Response.Headers.SetCookie.ToString().ShouldContain("expires=");
+        (await captured(TestContext.Current.CancellationToken)).ShouldBeNull();
+        store.TryGet(firstSession, out _).ShouldBeFalse();
+        store.TryGet(secondSession, out string retained).ShouldBeTrue();
+        (retained == "second-token").ShouldBeTrue();
     }
 
     [Fact]
     public async Task SignOutEndpoint_RemovesStoredTokenForCurrentUser() {
         FrontComposerUserTokenStore store = new();
         const string token = "sign-out-token";
-        store.Set("user-1", token, DateTimeOffset.UtcNow.AddMinutes(5));
+        FrontComposerTokenSession sibling = new("session-2", "user-1", "other");
+        store.Set(sibling, "sibling-token", DateTimeOffset.UtcNow.AddMinutes(5));
+        store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), token, DateTimeOffset.UtcNow.AddMinutes(5));
         RecordingAuthenticationService auth = new();
         await using ServiceProvider provider = BuildEndpointProvider(store, auth, userClaimType: "email");
         RouteEndpoint endpoint = BuildEndpoint(provider, "/authentication/sign-out");
@@ -201,12 +340,27 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
             RequestServices = provider,
             User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([
                 new System.Security.Claims.Claim("sub", "user-1"),
+                new System.Security.Claims.Claim(FrontComposerTokenSession.ClaimType, "session-1"),
+                new System.Security.Claims.Claim("tenant_id", "acme"),
             ], "Test")),
         };
 
+        FrontComposerAccessTokenProvider tokenProvider = new(
+            new HttpContextAccessor { HttpContext = context }, new CircuitServicesAccessor(), store,
+            provider.GetRequiredService<IOptions<FrontComposerAuthenticationOptions>>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<FrontComposerAccessTokenProvider>.Instance);
+        Func<CancellationToken, ValueTask<string?>> captured = (await tokenProvider.CaptureCurrentUserAccessTokenProviderAsync(TestContext.Current.CancellationToken))!;
+        ((await captured(TestContext.Current.CancellationToken)) == token).ShouldBeTrue();
+
+        context.User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(context.User.Claims, "Test"));
+        System.Security.Claims.ClaimsIdentity changed = (System.Security.Claims.ClaimsIdentity)context.User.Identity!;
+        changed.RemoveClaim(changed.FindFirst("tenant_id")!);
+        changed.AddClaim(new("tenant_id", "changed-tenant"));
         await endpoint.RequestDelegate!(context);
 
-        store.TryGet("user-1", out _).ShouldBeFalse();
+        (await captured(TestContext.Current.CancellationToken)).ShouldBeNull();
+        store.TryGet(sibling, out _).ShouldBeTrue();
+        store.TryGet(new FrontComposerTokenSession("session-1", "user-1", "acme"), out _).ShouldBeFalse();
         auth.SignOutCount.ShouldBe(1);
     }
 
@@ -214,7 +368,7 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
     public async Task SignOutEndpoint_RemovesStoredTokenByStableSubject_WhenUserAliasDiffers() {
         FrontComposerUserTokenStore store = new();
         const string token = "subject-token";
-        store.Set("subject-1", token, DateTimeOffset.UtcNow.AddMinutes(5));
+        store.Set(new FrontComposerTokenSession("session-1", "subject-1", "acme"), token, DateTimeOffset.UtcNow.AddMinutes(5));
         RecordingAuthenticationService auth = new();
         await using ServiceProvider provider = BuildEndpointProvider(store, auth);
         RouteEndpoint endpoint = BuildEndpoint(provider, "/authentication/sign-out");
@@ -223,12 +377,14 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
             User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([
                 new System.Security.Claims.Claim("email", "alice@example.test"),
                 new System.Security.Claims.Claim("sub", "subject-1"),
+                new System.Security.Claims.Claim(FrontComposerTokenSession.ClaimType, "session-1"),
+                new System.Security.Claims.Claim("tenant_id", "acme"),
             ], "Test")),
         };
 
         await endpoint.RequestDelegate!(context);
 
-        store.TryGet("subject-1", out _).ShouldBeFalse();
+        store.TryGet(new FrontComposerTokenSession("session-1", "subject-1", "acme"), out _).ShouldBeFalse();
         auth.SignOutCount.ShouldBe(1);
     }
 
@@ -261,7 +417,9 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
     public async Task SignOutEndpoint_KeepsStoredToken_WhenSignOutFails() {
         FrontComposerUserTokenStore store = new();
         const string token = "sign-out-token";
-        store.Set("user-1", token, DateTimeOffset.UtcNow.AddMinutes(5));
+        FrontComposerTokenSession sibling = new("session-2", "user-1", "other");
+        store.Set(sibling, "sibling-token", DateTimeOffset.UtcNow.AddMinutes(5));
+        store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), token, DateTimeOffset.UtcNow.AddMinutes(5));
         RecordingAuthenticationService auth = new() { ThrowOnSignOut = true };
         await using ServiceProvider provider = BuildEndpointProvider(store, auth);
         RouteEndpoint endpoint = BuildEndpoint(provider, "/authentication/sign-out");
@@ -269,12 +427,14 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
             RequestServices = provider,
             User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([
                 new System.Security.Claims.Claim("sub", "user-1"),
+                new System.Security.Claims.Claim(FrontComposerTokenSession.ClaimType, "session-1"),
+                new System.Security.Claims.Claim("tenant_id", "acme"),
             ], "Test")),
         };
 
         _ = await Should.ThrowAsync<InvalidOperationException>(() => endpoint.RequestDelegate!(context));
 
-        store.TryGet("user-1", out string stored).ShouldBeTrue();
+        store.TryGet(new FrontComposerTokenSession("session-1", "user-1", "acme"), out string stored).ShouldBeTrue();
         (stored == token).ShouldBeTrue("token eviction should happen only after the sign-out operation succeeds");
         auth.SignOutCount.ShouldBe(1);
     }
@@ -327,7 +487,7 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
         return oidc;
     }
 
-    private static TokenValidatedContext BuildTokenValidatedContext(
+    private static TicketReceivedContext BuildTicketReceivedContext(
         IServiceProvider provider,
         OpenIdConnectOptions oidc,
         string userId,
@@ -340,13 +500,18 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
             typeof(Microsoft.AspNetCore.Authentication.OpenIdConnect.OpenIdConnectHandler));
         System.Security.Claims.ClaimsPrincipal principal = new(new System.Security.Claims.ClaimsIdentity([
             new System.Security.Claims.Claim("sub", userId),
+            new System.Security.Claims.Claim("eventstore:current-tenant", "acme"),
         ], "Test"));
-        TokenValidatedContext validated = new(context, scheme, oidc, principal, new AuthenticationProperties()) {
-            TokenEndpointResponse = new OpenIdConnectMessage {
-                AccessToken = accessToken,
-                ExpiresIn = expiresIn,
-            },
-        };
+        AuthenticationProperties properties = new();
+        List<AuthenticationToken> tokens = [new() { Name = "access_token", Value = accessToken }];
+        if (int.TryParse(expiresIn, out int seconds))
+        {
+            DateTimeOffset now = provider.GetRequiredService<TimeProvider>().GetUtcNow();
+            tokens.Add(new() { Name = "expires_at", Value = now.AddSeconds(seconds).ToString("O", System.Globalization.CultureInfo.InvariantCulture) });
+        }
+        properties.StoreTokens(tokens);
+        TicketReceivedContext validated = new(context, scheme, oidc,
+            new AuthenticationTicket(principal, properties, scheme.Name));
         return validated;
     }
 

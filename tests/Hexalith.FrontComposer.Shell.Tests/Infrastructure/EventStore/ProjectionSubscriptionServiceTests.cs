@@ -436,16 +436,17 @@ public sealed class ProjectionSubscriptionServiceTests {
     public async Task Subscribe_CapturesCircuitTokenProvider_ForSignalRReconnectAfterCircuitContextClears() {
         DateTimeOffset now = new(2026, 7, 5, 12, 0, 0, TimeSpan.Zero);
         FrontComposerUserTokenStore store = new(new FixedTimeProvider(now));
-        store.Set("user-1", "stored-token", now.AddMinutes(5));
+        store.Set(new FrontComposerTokenSession("session-1", "user-1", "acme"), "stored-token", now.AddMinutes(5));
         CircuitServicesAccessor circuitServices = new() {
             Services = new ServiceCollection()
                 .AddScoped<AuthenticationStateProvider>(_ => new StubAuthenticationStateProvider(
-                    new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "user-1")], "Test"))))
+                    new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "user-1"), new Claim(FrontComposerTokenSession.ClaimType, "session-1"), new Claim("tenant_id", "acme")], "Test"))))
                 .BuildServiceProvider(),
         };
         FrontComposerAuthenticationOptions authOptions = new();
         authOptions.CustomBrokered.Enabled = true;
         authOptions.UserClaimTypes.Add("sub");
+        authOptions.TenantClaimTypes.Add("tenant_id");
         FrontComposerAccessTokenProvider tokenProvider = new(
             new HttpContextAccessor(),
             circuitServices,
@@ -469,11 +470,14 @@ public sealed class ProjectionSubscriptionServiceTests {
             userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
         await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+        store.Set(new FrontComposerTokenSession("session-2", "user-1", "other"), "other-session-token", now.AddMinutes(5));
         circuitServices.Services = null;
 
         string? token = await connection.AccessTokenProvider!(TestContext.Current.CancellationToken);
 
-        (token == "stored-token").ShouldBeTrue("SignalR reconnect token acquisition should not depend on ambient circuit services");
+        (token == "stored-token").ShouldBeTrue("SignalR reconnect must retain its original session after another sign-in");
+        store.Remove(new FrontComposerTokenSession("session-1", "user-1", "acme"));
+        _ = await Should.ThrowAsync<FrontComposerAuthenticationException>(() => connection.AccessTokenProvider!(TestContext.Current.CancellationToken).AsTask());
     }
 
     [Fact]

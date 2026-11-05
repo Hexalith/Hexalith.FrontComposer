@@ -87,6 +87,7 @@ public sealed class AuthRedactionStressTests {
         options.TokenRelay.HostAccessTokenProvider = _ => throw root;
         options.TenantClaimTypes.Add("tenant_id");
         options.UserClaimTypes.Add("sub");
+        options.TenantClaimTypes.Add("tenant_id");
 
         CapturingLogger<FrontComposerAccessTokenProvider> logger = new();
         FrontComposerAccessTokenProvider sut = new(
@@ -111,16 +112,17 @@ public sealed class AuthRedactionStressTests {
     [Fact]
     public async Task CircuitTokenFallback_DoesNotLogJwtShapedAccessToken() {
         FrontComposerUserTokenStore store = new(new FixedTimeProvider(new DateTimeOffset(2026, 7, 5, 12, 0, 0, TimeSpan.Zero)));
-        store.Set("alice", JwtShaped, new DateTimeOffset(2026, 7, 5, 12, 5, 0, TimeSpan.Zero));
+        store.Set(new FrontComposerTokenSession("session-1", "alice", "acme"), JwtShaped, new DateTimeOffset(2026, 7, 5, 12, 5, 0, TimeSpan.Zero));
         CircuitServicesAccessor circuitServices = new() {
             Services = new ServiceCollection()
                 .AddScoped<AuthenticationStateProvider>(_ => new StubAuthenticationStateProvider(
-                    Principal(new Claim("sub", "alice"))))
+                    Principal(new Claim("sub", "alice"), new Claim(FrontComposerTokenSession.ClaimType, "session-1"), new Claim("tenant_id", "acme"))))
                 .BuildServiceProvider(),
         };
         FrontComposerAuthenticationOptions options = new();
         options.OpenIdConnect.Enabled = true;
         options.UserClaimTypes.Add("sub");
+        options.TenantClaimTypes.Add("tenant_id");
         CapturingLogger<FrontComposerAccessTokenProvider> logger = new();
         FrontComposerAccessTokenProvider sut = new(
             new HttpContextAccessor(),

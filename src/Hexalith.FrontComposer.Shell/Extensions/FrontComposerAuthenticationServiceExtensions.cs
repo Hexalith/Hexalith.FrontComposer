@@ -121,14 +121,14 @@ public static class FrontComposerAuthenticationServiceExtensions {
         async Task signOut(HttpContext context) {
             string? returnUrl = context.Request.Query["returnUrl"];
             string sanitized = FrontComposerReturnUrl.Sanitize(returnUrl);
-            string? userId = ResolveStableUserId(context.User, options);
+            string? sessionId = FrontComposerTokenSession.ResolveSessionId(context.User);
             await context.SignOutAsync(
                 GetSignInScheme(options),
                 new AuthenticationProperties { RedirectUri = sanitized })
                 .ConfigureAwait(false);
 
-            if (userId is not null) {
-                context.RequestServices.GetService<FrontComposerUserTokenStore>()?.Remove(userId);
+            if (sessionId is not null) {
+                context.RequestServices.GetService<FrontComposerUserTokenStore>()?.RemoveSession(sessionId);
             }
         }
 
@@ -329,23 +329,4 @@ public static class FrontComposerAuthenticationServiceExtensions {
             _ => "Hexalith.FrontComposer.Cookie",
         };
 
-    private static string? ResolveStableUserId(ClaimsPrincipal? user, FrontComposerAuthenticationOptions options) {
-        if (user?.Identity?.IsAuthenticated != true) {
-            return null;
-        }
-
-        string? stable = user.FindFirstValue("sub") ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!string.IsNullOrWhiteSpace(stable)) {
-            return stable;
-        }
-
-        foreach (string claimType in options.UserClaimTypes) {
-            string? value = user.FindFirstValue(claimType);
-            if (!string.IsNullOrWhiteSpace(value)) {
-                return value;
-            }
-        }
-
-        return null;
-    }
 }

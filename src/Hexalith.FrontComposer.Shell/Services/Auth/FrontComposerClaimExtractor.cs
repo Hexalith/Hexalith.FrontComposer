@@ -20,6 +20,10 @@ internal static class FrontComposerClaimExtractor {
         return FrontComposerClaimExtractionResult.Success(tenant.Value, user.Value);
     }
 
+    /// <summary>Validates only the configured current-Tenant segment for credential binding.</summary>
+    internal static string? ExtractTenant(ClaimsPrincipal? principal, IReadOnlyList<string> aliases)
+        => principal?.Identity?.IsAuthenticated == true ? ExtractSegment(principal, aliases).Value : null;
+
     private static SegmentResult ExtractSegment(ClaimsPrincipal principal, IReadOnlyList<string> aliases) {
         List<(string Alias, string Value)> found = [];
         foreach (string alias in aliases) {
