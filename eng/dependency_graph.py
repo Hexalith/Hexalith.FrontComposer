@@ -1035,6 +1035,7 @@ def acquire_catalog_objects(root_dir: Path, event_base: str, candidate: str) -> 
         _git_ok(["cat-file", "-e", f"{commit}^{{commit}}"], builds_local)
 
     root_commits: set[str] = set()
+    owner_requirements: set[tuple[str, str]] = set()
     for revision in dict.fromkeys((event_base, candidate)):
         edges = _owner_edges(root_dir, revision, "github.com/hexalith/hexalith.frontcomposer", 1, policy, root_dir)
         if len(edges) > policy["resource_limits"]["max_edges"]:
@@ -1043,10 +1044,33 @@ def acquire_catalog_objects(root_dir: Path, event_base: str, candidate: str) -> 
         if len(root_builds) != 1 or (root_dir / root_builds[0]["path"]).resolve() != builds_local:
             raise GraphError("catalog acquisition requires the policy-mapped root Builds gitlink")
         root_commits.add(root_builds[0]["commit"])
+        for edge in edges:
+            owner_requirements.add((edge["repository"], edge["commit"]))
+    # Verify every approved top-level object store before the first network call.
+    stores: dict[str, Path] = {}
+    for identity, _commit in sorted(owner_requirements):
+        local = resolve_local_path(policy, identity, root_dir)
+        if not local.is_dir() or Path(_git_ok(["rev-parse", "--show-toplevel"], local).decode("utf-8").strip()).resolve() != local:
+            raise GraphError(f"catalog acquisition requires an initialized root owner object store: {identity}")
+        stores[identity] = local
     # Root-only initialization may lack a base-only/off-main Builds commit.
     # Fetch only these approved exact prerequisites before reading depth-two data.
     for commit in sorted(root_commits):
         ensure_catalog_commit(commit)
+
+    # A candidate-only shallow checkout can lack the event-base owner's inventory.
+    # Fetch its exact approved object without moving HEAD or initializing descendants.
+    for identity, commit in sorted(owner_requirements):
+        if identity == builds_identity:
+            continue
+        local = stores[identity]
+        if _run_git(["cat-file", "-e", f"{commit}^{{commit}}"], local).returncode != 0:
+            fetched, attempts = _run_git_network(
+                ["-c", "submodule.recurse=false", "fetch", "--no-recurse-submodules", "--no-tags", _canonical_clone_url(identity), commit], local)
+            if fetched.returncode != 0:
+                raise GraphError(f"failed to acquire exact approved owner {identity}@{commit}{_attempts_note(attempts)}: "
+                                 f"{fetched.stderr.decode('utf-8', 'replace').strip()}")
+        _git_ok(["cat-file", "-e", f"{commit}^{{commit}}"], local)
 
     commits: set[str] = set()
     for revision in dict.fromkeys((event_base, candidate)):

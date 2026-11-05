@@ -2901,6 +2901,46 @@ class ConsumerProjectionTests(unittest.TestCase):
             dg.acquire_catalog_objects(self.root.root, commit, commit)
         network.assert_not_called()
 
+    def test_catalog_preparation_acquires_missing_base_owner_without_checkout_or_nested_initialization(self) -> None:
+        identity = "github.com/hexalith/hexalith.eventstore"
+        owner = TempGitRepo(self.root.root / "references" / "EventStore")
+        owner.write_text("Directory.Packages.props", OWNER_SHIM)
+        owner.write_text("README.md", "old owner inventory\n")
+        old = owner.commit()
+        owner.write_text("README.md", "current owner inventory\n")
+        current = owner.commit()
+        self.fixture.policy["trusted_identities"].append({"identity": identity, "local_path": "references/EventStore"})
+        self.fixture.policy["semantic_profiles"][identity] = "fixture"
+        self.fixture.policy["module_build_registry"][identity] = copy.deepcopy(self.fixture.policy["module_build_registry"][self.fixture.identity("Root")])
+        self.root.add_submodule("EventStore", "references/EventStore", "https://github.com/hexalith/hexalith.eventstore.git", old)
+        base = self.write_policy()
+        self.root.link_gitlink("references/EventStore", current)
+        candidate = self.root.commit()
+        remote = pathlib.Path(self.temp.name) / "eventstore-remote"
+        owner.root.rename(remote)
+        _run(["clone", "--quiet", "--depth=1", remote.as_uri(), str(owner.root)], self.root.root)
+        _run(["remote", "set-url", "origin", "https://untrusted.invalid/eventstore.git"], owner.root)
+        self.assertNotEqual(dg._run_git(["cat-file", "-e", old], owner.root).returncode, 0)
+        before = (owner.head(), _run(["status", "--porcelain"], owner.root), (owner.root / "README.md").read_bytes())
+        def fetch(args, cwd):
+            self.assertEqual(args, ["-c", "submodule.recurse=false", "fetch", "--no-recurse-submodules", "--no-tags", dg._canonical_clone_url(identity), old])
+            self.assertEqual(cwd, owner.root)
+            return dg._run_git([*args[:-2], remote.as_uri(), old], cwd), 1
+        original = dg._collect_edges
+        def collect(*args):
+            self.assertEqual(dg._run_git(["cat-file", "-e", old + "^{commit}"], owner.root).returncode, 0)
+            return original(*args)
+        for status in (128, 0):
+            with self.subTest(refused_fetch_status=status), mock.patch.object(dg, "_run_git_network", return_value=(subprocess.CompletedProcess([], status, b"", b"not our ref"), 1)):
+                with self.assertRaises(dg.GraphError):
+                    dg.acquire_catalog_objects(self.root.root, base, candidate)
+        with mock.patch.object(dg, "_run_git_network", side_effect=fetch) as network, mock.patch.object(dg, "_collect_edges", side_effect=collect):
+            dg.acquire_catalog_objects(self.root.root, base, candidate)
+            network.assert_called_once()
+        self.assertEqual((owner.head(), _run(["status", "--porcelain"], owner.root), (owner.root / "README.md").read_bytes()), before)
+        self.assertFalse((self.source.root / "references/Builds/.git").exists())
+        self.assertTrue(all(not (self.source.root / "references" / ("Inventory" + str(number)) / ".git").exists() for number in range(7)))
+
     def test_catalog_preparation_refuses_candidate_self_authorization_before_network(self) -> None:
         base = self.write_policy()
         self._make_catalog_object_unavailable()
