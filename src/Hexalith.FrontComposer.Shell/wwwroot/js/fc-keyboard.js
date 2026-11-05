@@ -288,6 +288,14 @@ export function registerShellKeyFilter(element) {
 
     const handler = (event) => {
         const key = (event.key ?? "").toLowerCase();
+        // Only superseding native navigation/scrolling invalidates focus visibility.
+        // Neutral, consumed and IME input must retain the pending ring protection.
+        if (!event.defaultPrevented && !event.isComposing && event.keyCode !== 229
+            && !event.ctrlKey && !event.metaKey && !event.altKey
+            && ['tab', 'pagedown', 'pageup', 'home', 'end', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)
+            && (key === 'tab' || !isEditableInComposedPath(event))) {
+            cancelAnimationFrame(element.__fcShellFocusFrame);
+        }
         const active = document.activeElement;
         const hasModifier =
             event.ctrlKey || event.metaKey || (event.shiftKey && (key.length !== 1 || /\p{L}/u.test(key))) || event.altKey;

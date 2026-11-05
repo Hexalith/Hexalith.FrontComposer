@@ -742,6 +742,141 @@ test('O5 the desktop content scrollport is not a Tab stop and stays keyboard scr
   await expect.poll(() => content.evaluate(element => element.scrollTop), 'PageDown from the route heading scrolls the content scrollport').toBeGreaterThan(0);
 });
 
+test('a later native PageDown supersedes a held shell focus visibility frame', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const content = page.locator('.fc-shell-content');
+  expect(await content.evaluate(element => ({ tabIndex: (element as HTMLElement).tabIndex, scrollable: element.scrollHeight > element.clientHeight }))).toEqual({ tabIndex: -1, scrollable: true });
+  await page.locator('[data-testid="fc-nav-flyout-trigger-Specimens"]:visible').first().focus();
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => !!document.activeElement?.closest('#fc-main-content'))).toBe(true);
+  const heading = page.locator('#fc-main-content h1').first();
+  try {
+    await page.evaluate(() => {
+      const root = document.querySelector<HTMLElement>('.fc-shell-root')! as HTMLElement & { __fcShellFocusVisibility: EventListener };
+      const heading = document.querySelector('#fc-main-content h1')!;
+      const originalFocus = root.__fcShellFocusVisibility;
+      const originalRequest = window.requestAnimationFrame;
+      const originalCancel = window.cancelAnimationFrame;
+      let held: FrameRequestCallback | null = null;
+      let captured = 0;
+      const token = -1;
+      const capture: EventListener = event => {
+        if (event.target !== heading) { originalFocus.call(root, event); return; }
+        // Hold only the RAF synchronously issued by the real shell focus handler.
+        window.requestAnimationFrame = callback => { held = callback; captured++; return token; };
+        try { originalFocus.call(root, event); }
+        finally { window.requestAnimationFrame = originalRequest; }
+      };
+      window.cancelAnimationFrame = id => {
+        if (id === token) { held = null; return; }
+        originalCancel.call(window, id);
+      };
+      root.removeEventListener('focusin', originalFocus);
+      root.addEventListener('focusin', capture);
+      (window as typeof window & { __fcHeldFocusFrame?: { count: () => number; release: () => void; restore: () => void } }).__fcHeldFocusFrame = {
+        count: () => captured,
+        release: () => { const callback = held; held = null; callback?.(performance.now()); },
+        restore: () => {
+          held = null;
+          window.requestAnimationFrame = originalRequest;
+          window.cancelAnimationFrame = originalCancel;
+          root.removeEventListener('focusin', capture);
+          root.addEventListener('focusin', originalFocus);
+        },
+      };
+    });
+    await heading.focus();
+    await expect(heading).toBeFocused();
+    await expect.poll(() => content.evaluate(element => element.scrollTop)).toBe(0);
+    expect(await page.evaluate(() => (window as typeof window & { __fcHeldFocusFrame?: { count: () => number } }).__fcHeldFocusFrame!.count())).toBe(1);
+    await page.keyboard.press('PageDown');
+    await expect.poll(() => content.evaluate(element => element.scrollTop), 'actual native PageDown must scroll before the old frame is released').toBeGreaterThan(0);
+    await page.evaluate(async () => {
+      (window as typeof window & { __fcHeldFocusFrame?: { release: () => void } }).__fcHeldFocusFrame!.release();
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    });
+    await expect(heading).toBeFocused();
+    expect(await content.evaluate(element => element.scrollTop), 'the obsolete focus callback cannot rewind native PageDown').toBeGreaterThan(0);
+  } finally {
+    await page.evaluate(() => {
+      const state = window as typeof window & { __fcHeldFocusFrame?: { restore: () => void } };
+      state.__fcHeldFocusFrame?.restore();
+      delete state.__fcHeldFocusFrame;
+    });
+  }
+});
+
+for (const scenario of ['neutral', 'prevented', 'composing'] as const) {
+  test(`${scenario} keyboard input preserves a held shell focus visibility frame`, async ({ page }) => {
+    await page.goto('/home');
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    try {
+      await page.evaluate(async () => {
+        const modulePath: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js';
+        const keyboard = await import(modulePath);
+        const root = document.createElement('div') as HTMLDivElement & { __fcShellFocusVisibility: EventListener };
+        root.id = 'ae-neutral-focus-shell';
+        root.style.cssText = 'position:fixed;inset:220px 20px auto;height:100px;overflow:auto;z-index:2000;background:Canvas;scroll-padding:8px;padding:8px;box-sizing:border-box';
+        root.innerHTML = '<style>#ae-neutral-focus-shell button{outline:none;scroll-margin:8px}#ae-neutral-focus-shell button:focus{outline:4px solid;outline-offset:3px}</style><div style="height:180px"></div><button>Pending visible action</button><div style="height:30px"></div>';
+        document.body.append(root);
+        keyboard.registerShellKeyFilter(root);
+        const originalFocus = root.__fcShellFocusVisibility;
+        const originalRequest = window.requestAnimationFrame;
+        const originalCancel = window.cancelAnimationFrame;
+        const token = -1;
+        let held: FrameRequestCallback | null = null;
+        const capture: EventListener = event => {
+          window.requestAnimationFrame = callback => { held = callback; return token; };
+          try { originalFocus.call(root, event); }
+          finally { window.requestAnimationFrame = originalRequest; }
+        };
+        window.cancelAnimationFrame = id => {
+          if (id === token) { held = null; return; }
+          originalCancel.call(window, id);
+        };
+        root.removeEventListener('focusin', originalFocus);
+        root.addEventListener('focusin', capture);
+        (window as typeof window & { __fcNeutralFrame?: { release: () => void; restore: () => void } }).__fcNeutralFrame = {
+          release: () => { const callback = held; held = null; callback?.(performance.now()); },
+          restore: () => {
+            keyboard.unregisterShellKeyFilter(root);
+            window.requestAnimationFrame = originalRequest;
+            window.cancelAnimationFrame = originalCancel;
+            root.remove();
+          },
+        };
+        root.querySelector('button')!.focus({ preventScroll: true });
+      });
+      const root = page.locator('#ae-neutral-focus-shell');
+      const action = root.locator('button');
+      expect(await root.evaluate(element => element.scrollTop)).toBe(0);
+      if (scenario === 'neutral') {
+        for (const key of ['Shift', 'Control', 'Alt', 'Meta', 'q']) await page.keyboard.press(key);
+      } else if (scenario === 'prevented') {
+        await action.evaluate(element => element.addEventListener('keydown', event => event.preventDefault(), { once: true }));
+        await page.keyboard.press('PageDown');
+      } else {
+        await action.dispatchEvent('keydown', { key: 'PageDown', isComposing: true, keyCode: 229, bubbles: true, cancelable: true });
+      }
+      expect(await root.evaluate(element => element.scrollTop)).toBe(0);
+      await page.evaluate(async () => {
+        (window as typeof window & { __fcNeutralFrame?: { release: () => void } }).__fcNeutralFrame!.release();
+        await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      });
+      expect(await root.evaluate(element => element.scrollTop), 'the retained visibility adjustment reveals the pending focused control').toBeGreaterThan(0);
+      await expectFocusVisible(action);
+    } finally {
+      await page.evaluate(() => {
+        const state = window as typeof window & { __fcNeutralFrame?: { restore: () => void } };
+        state.__fcNeutralFrame?.restore();
+        delete state.__fcNeutralFrame;
+      });
+    }
+  });
+}
+
 test('the real missing-detail component registers recovery before a Fluent shadow action removes detail', async ({ page }) => {
   await page.goto('/__frontcomposer/specimens/type?announcementFocus=true');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
