@@ -77,13 +77,39 @@ public sealed class FrontComposerUserTokenStoreTests {
     {
         FakeTimeProvider time = new(FixedNow);
         FrontComposerUserTokenStore store = new(time);
-        store.Set(new("abandoned", "shared", "acme"), SensitiveToken, FixedNow.AddMinutes(1));
+        store.Set(new FrontComposerTokenSession("abandoned", "shared", "acme"), SensitiveToken, FixedNow.AddMinutes(1));
         time.Advance(TimeSpan.FromMinutes(1));
-        store.Set(new("new-session", "shared", "acme"), "new-token", FixedNow.AddMinutes(5));
+        store.Set(new FrontComposerTokenSession("new-session", "shared", "acme"), "new-token", FixedNow.AddMinutes(5));
         // Verify retention without looking up the expired key (which would itself perform cleanup).
         object entries = typeof(FrontComposerUserTokenStore).GetField("_tokens",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(store)!;
         ((System.Collections.ICollection)entries).Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void LegacyUserOnlyMethods_RefuseWithoutReadingOrChangingScopedSessions()
+    {
+        FrontComposerUserTokenStore store = new(new FakeTimeProvider(FixedNow));
+        FrontComposerTokenSession first = new("session-a", "shared", "tenant-a");
+        FrontComposerTokenSession second = new("session-b", "shared", "tenant-b");
+        store.Set(first, "first-scoped-token", FixedNow.AddMinutes(5));
+        store.Set(second, "second-scoped-token", FixedNow.AddMinutes(5));
+        typeof(FrontComposerUserTokenStore).GetMethod(nameof(store.Set), [typeof(string), typeof(string), typeof(DateTimeOffset)])
+            .ShouldNotBeNull();
+        typeof(FrontComposerUserTokenStore).GetMethod(nameof(store.TryGet), [typeof(string), typeof(string).MakeByRefType()])
+            .ShouldNotBeNull();
+        typeof(FrontComposerUserTokenStore).GetMethod(nameof(store.Remove), [typeof(string)]).ShouldNotBeNull();
+
+        store.TryGet("shared", out string legacyToken).ShouldBeFalse();
+        legacyToken.ShouldBeEmpty();
+        InvalidOperationException write = Should.Throw<InvalidOperationException>(() => store.Set("shared", "unscoped-token", FixedNow.AddMinutes(5)));
+        InvalidOperationException revoke = Should.Throw<InvalidOperationException>(() => store.Remove("shared"));
+        write.Message.ShouldBe("Token credentials require a FrontComposerTokenSession binding.");
+        revoke.Message.ShouldBe(write.Message);
+        store.TryGet(first, out string firstToken).ShouldBeTrue();
+        (firstToken == "first-scoped-token").ShouldBeTrue();
+        store.TryGet(second, out string secondToken).ShouldBeTrue();
+        (secondToken == "second-scoped-token").ShouldBeTrue();
     }
 
     private sealed class FakeTimeProvider(DateTimeOffset utcNow) : TimeProvider {

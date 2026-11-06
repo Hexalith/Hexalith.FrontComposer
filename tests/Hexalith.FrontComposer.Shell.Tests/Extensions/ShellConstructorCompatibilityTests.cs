@@ -28,6 +28,11 @@ public sealed class ShellConstructorCompatibilityTests
     [Fact]
     public void PublishedSixParameterConstructorsRemainAvailable()
     {
+        typeof(Hexalith.FrontComposer.Shell.Services.Auth.FrontComposerGatewayAuthorizationHandler).GetConstructor([
+            typeof(Microsoft.AspNetCore.Http.IHttpContextAccessor),
+            typeof(Hexalith.FrontComposer.Shell.Services.Auth.CircuitServicesAccessor),
+            typeof(Hexalith.FrontComposer.Shell.Services.Auth.FrontComposerUserTokenStore),
+        ]).ShouldNotBeNull();
         typeof(ProjectionFallbackRefreshScheduler).GetConstructor([
             typeof(IProjectionConnectionState), typeof(IProjectionPageLoader), typeof(IDispatcher),
             typeof(IState<LoadedPageState>), typeof(IOptionsMonitor<FcShellOptions>),

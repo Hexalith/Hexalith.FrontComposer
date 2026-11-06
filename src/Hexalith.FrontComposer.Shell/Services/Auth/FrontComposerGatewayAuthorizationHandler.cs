@@ -22,6 +22,19 @@ public sealed class FrontComposerGatewayAuthorizationHandler(
     CircuitServicesAccessor circuitServicesAccessor,
     FrontComposerUserTokenStore tokenStore,
     IOptions<FrontComposerAuthenticationOptions> options) : DelegatingHandler {
+    /// <summary>
+    /// Preserves the published constructor using default authentication options. Defaults contain no
+    /// Tenant claim aliases, so token relay requires the configured four-argument constructor.
+    /// </summary>
+    public FrontComposerGatewayAuthorizationHandler(
+        IHttpContextAccessor httpContextAccessor,
+        CircuitServicesAccessor circuitServicesAccessor,
+        FrontComposerUserTokenStore tokenStore)
+        : this(httpContextAccessor, circuitServicesAccessor, tokenStore,
+            Microsoft.Extensions.Options.Options.Create(new FrontComposerAuthenticationOptions()))
+    {
+    }
+
     /// <inheritdoc />
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);

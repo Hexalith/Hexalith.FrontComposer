@@ -97,8 +97,8 @@
   },
   "identifierInventory": {
     "algorithm": "SHA-256 over sorted repo-relative path, declaration kind, and underscore-containing identifier for CA1707-relevant public/protected declarations; source line numbers are excluded",
-    "testPublicDeclarationIdentifiers": 3574,
-    "testInventorySha256": "29dbc652b64132fddc9c7cfd1685252f174b03e1395e14326bb981013aae0e11",
+    "testPublicDeclarationIdentifiers": 3586,
+    "testInventorySha256": "70665957549ba58f66e8cd80138e848109e313a69e9c314b877cb32537899530",
     "contractsPublicDeclarationIdentifiers": 89,
     "contractsInventorySha256": "9b81beacad8c65e481b2239b6054ba483dd8e9b6e6af2a0e51ca7065deb3210a"
   },
@@ -825,6 +825,7 @@
         "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreRequestContent.cs",
         "src/Hexalith.FrontComposer.Shell/Infrastructure/ProjectionConnection/ProjectionFallbackRowSignature.cs",
         "src/Hexalith.FrontComposer.Shell/Infrastructure/Storage/LocalStorageService.cs",
+        "src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerUserTokenStore.cs",
         "src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ConstructorDefaultValueProvider.cs",
         "src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ExplicitDefaultValueProvider.cs",
         "src/Hexalith.FrontComposer.Shell/Services/DerivedValues/LastUsedValueProvider.cs",
@@ -840,7 +841,7 @@
         "src/Hexalith.FrontComposer.Testing/ProjectionTestDataBuilder.cs",
         "tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaPathTruncationTests.cs"
       ],
-      "entryCount": 47,
+      "entryCount": 50,
       "diagnosticIds": [
         "CA1000",
         "CA1822",

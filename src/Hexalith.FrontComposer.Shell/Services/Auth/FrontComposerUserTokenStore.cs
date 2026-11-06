@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Hexalith.FrontComposer.Shell.Services.Auth;
 
@@ -17,6 +18,27 @@ public sealed class FrontComposerUserTokenStore {
 
     /// <summary>Gets the current time from the credential store clock.</summary>
     internal DateTimeOffset UtcNow => _timeProvider.GetUtcNow();
+
+    /// <summary>Refuses unscoped writes; use the overload accepting <see cref="FrontComposerTokenSession"/>.</summary>
+    [SuppressMessage("Performance", "CA1822:Mark members as static",
+        Justification = "Preserves the published instance API while refusing credentials without session authority.")]
+    public void Set(string userId, string accessToken, DateTimeOffset expiresAtUtc)
+        => throw new InvalidOperationException("Token credentials require a FrontComposerTokenSession binding.");
+
+    /// <summary>Cannot resolve credentials without a session and Tenant; always returns false.</summary>
+    [SuppressMessage("Performance", "CA1822:Mark members as static",
+        Justification = "Preserves the published instance API while refusing credentials without session authority.")]
+    public bool TryGet(string userId, out string accessToken)
+    {
+        accessToken = string.Empty;
+        return false;
+    }
+
+    /// <summary>Refuses unscoped revocation; use the overload accepting <see cref="FrontComposerTokenSession"/>.</summary>
+    [SuppressMessage("Performance", "CA1822:Mark members as static",
+        Justification = "Preserves the published instance API while refusing credentials without session authority.")]
+    public void Remove(string userId)
+        => throw new InvalidOperationException("Token credentials require a FrontComposerTokenSession binding.");
 
     /// <summary>Stores (or overwrites) the access token for the exact session binding.</summary>
     public void Set(FrontComposerTokenSession session, string accessToken, DateTimeOffset expiresAtUtc) {

@@ -2,6 +2,7 @@ using System.Security.Claims;
 
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Shell.Options;
+using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 
 using Microsoft.AspNetCore.Components.Authorization;
@@ -177,6 +178,57 @@ public sealed class FrontComposerCredentialIsolationTests
             NullLogger<ServerCircuitUserContextAccessor>.Instance);
         userContext.UserId.ShouldBe("alice@example.test");
         userContext.TenantId.ShouldBe("tenant-a");
+    }
+
+    [Theory]
+    [InlineData("missing-session")]
+    [InlineData("expired")]
+    [InlineData("revoked")]
+    [InlineData("unconfigured")]
+    public async Task LegacyHandler_DefaultOptionsNeverRecoverUnscopedCredentials(string scenario)
+    {
+        FakeTimeProvider time = new();
+        FrontComposerUserTokenStore store = new(time);
+        FrontComposerTokenSession session = new("legacy-session", "shared", "tenant-a");
+        store.Set(session, "scoped-token", time.GetUtcNow().AddMinutes(1));
+        ClaimsPrincipal principal = Principal(session);
+        if (scenario == "missing-session")
+        {
+            ClaimsIdentity identity = (ClaimsIdentity)principal.Identity!;
+            identity.RemoveClaim(identity.FindFirst(FrontComposerTokenSession.ClaimType)!);
+        }
+        if (scenario == "expired") time.Advance(TimeSpan.FromMinutes(1));
+        if (scenario == "revoked") store.Remove(session);
+        HttpContextAccessor http = new() { HttpContext = new DefaultHttpContext { User = principal } };
+        using HttpMessageInvoker gateway = new(new FrontComposerGatewayAuthorizationHandler(http, new CircuitServicesAccessor(), store)
+        {
+            InnerHandler = new CredentialEchoHandler(),
+        });
+        using HttpRequestMessage request = new(HttpMethod.Get, "https://gateway.invalid/query");
+        using HttpResponseMessage response = await gateway.SendAsync(request, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken).ConfigureAwait(true)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ConfiguredDiHandler_UsesConfiguredTenantAliasAndExactSession()
+    {
+        FrontComposerTokenSession session = new("configured-session", "shared", "tenant-a");
+        ClaimsPrincipal principal = Principal(session);
+        ClaimsIdentity identity = (ClaimsIdentity)principal.Identity!;
+        identity.RemoveClaim(identity.FindFirst("tenant_id")!);
+        identity.AddClaim(new("configured_tenant", session.TenantId));
+        ServiceCollection services = new();
+        _ = services.AddHexalithFrontComposerTokenRelay();
+        _ = services.Configure<FrontComposerAuthenticationOptions>(options => options.TenantClaimTypes.Add("configured_tenant"));
+        using ServiceProvider provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IHttpContextAccessor>().HttpContext = new DefaultHttpContext { User = principal };
+        provider.GetRequiredService<FrontComposerUserTokenStore>().Set(session, "configured-token", DateTimeOffset.UtcNow.AddMinutes(5));
+        FrontComposerGatewayAuthorizationHandler handler = provider.GetRequiredService<FrontComposerGatewayAuthorizationHandler>();
+        handler.InnerHandler = new CredentialEchoHandler();
+        using HttpMessageInvoker gateway = new(handler);
+        using HttpRequestMessage request = new(HttpMethod.Get, "https://gateway.invalid/query");
+        using HttpResponseMessage response = await gateway.SendAsync(request, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        ((await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken).ConfigureAwait(true)) == "configured-token").ShouldBeTrue();
     }
 
     private static ClaimsPrincipal Principal(FrontComposerTokenSession session) => new(new ClaimsIdentity([
