@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Communication;
@@ -16,8 +17,18 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
     IServiceProvider services,
     IOptions<FrontComposerMcpOptions> options,
     ILogger<FrontComposerMcpLifecycleTracker>? logger = null) {
+    /// <summary>
+    /// Records a command acknowledgement in the shared lifecycle store, bound to the principal that dispatched it.
+    /// </summary>
+    /// <param name="descriptor">Descriptor of the command tool that produced the acknowledgement.</param>
+    /// <param name="creator">Agent context whose tenant and user were injected into the dispatched command.</param>
+    /// <param name="result">Dispatcher acknowledgement containing the agent-visible handles.</param>
+    /// <param name="pendingTransitions">Transitions captured by the command dispatcher callback.</param>
+    /// <param name="cancellationToken">Cancellation token for pending transition recording.</param>
+    /// <returns>The MCP acknowledgement payload.</returns>
     internal McpCommandAcknowledgement TrackAcknowledged(
         McpCommandDescriptor descriptor,
+        FrontComposerMcpAgentContext creator,
         CommandResult result,
         IReadOnlyList<(CommandLifecycleState State, string? MessageId)> pendingTransitions,
         CancellationToken cancellationToken) {
@@ -25,6 +36,7 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
         return store.TrackAcknowledged(
             descriptor,
+            creator,
             result,
             pendingTransitions,
             lifecycle,
@@ -39,12 +51,16 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
         IReadOnlyDictionary<string, JsonElement>? arguments,
         CancellationToken cancellationToken) {
         try {
-            if (!TryReadHandle(arguments, out string? handle)) {
+            // E14R-AI-1 D2: resolve the reader before any handle lookup, so a missing or unusable context
+            // produces the same hidden-unknown result whether or not the handle exists.
+            if (!TryResolveReader(out FrontComposerMcpAgentContext? reader)
+                || !TryReadHandle(arguments, out string? handle)) {
                 return HiddenUnknown();
             }
 
             if (!store.TryReadSnapshot(
                 handle!,
+                reader,
                 options.Value,
                 out McpCommandDescriptor descriptor,
                 out McpLifecycleSnapshot snapshot)) {
@@ -87,6 +103,32 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
         // on the analyzer to model the early-return guard. No behavioural change.
         string exceptionType = ex.GetType().FullName ?? "Exception";
         LogReadFailureMessage(logger, exceptionType);
+    }
+
+    private bool TryResolveReader([NotNullWhen(true)] out FrontComposerMcpAgentContext? reader) {
+        reader = null;
+        IFrontComposerMcpAgentContextAccessor? accessor = services.GetService<IFrontComposerMcpAgentContextAccessor>();
+        if (accessor is null) {
+            return false;
+        }
+
+        FrontComposerMcpAgentContext? context;
+        try {
+            context = accessor.GetContext();
+            if (context is null) {
+                return false;
+            }
+
+            // Uses the admission context check itself, so a reader that admission would reject gets the same
+            // answer for an issued handle as for a never-issued one, and the two rules cannot drift.
+            FrontComposerMcpToolAdmissionService.ValidateContext(context);
+        }
+        catch (FrontComposerMcpException) {
+            return false;
+        }
+
+        reader = context;
+        return true;
     }
 
     private static bool TryReadHandle(IReadOnlyDictionary<string, JsonElement>? arguments, out string? handle) {

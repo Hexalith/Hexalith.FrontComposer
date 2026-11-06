@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Mcp.Invocation;
 
@@ -15,13 +17,18 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 /// that disposal stays idempotent, so those properties are pinned here rather than left to the analyzer fix.
 /// </summary>
 public sealed class McpLifecycleStoreDisposalTests {
+    private static readonly FrontComposerMcpAgentContext Reader = new(
+        "tenant-a",
+        "agent-a",
+        new ClaimsPrincipal(new ClaimsIdentity("test")));
+
     [Fact]
     public void TrackAcknowledged_AfterDispose_ThrowsObjectDisposedException() {
         FrontComposerMcpLifecycleStore store = CreateStore();
         store.Dispose();
 
         _ = Should.Throw<ObjectDisposedException>(
-            () => store.TrackAcknowledged(null!, null!, null!, null!, new CancellationToken(canceled: true)));
+            () => store.TrackAcknowledged(null!, null!, null!, null!, null!, new CancellationToken(canceled: true)));
     }
 
     [Fact]
@@ -48,6 +55,7 @@ public sealed class McpLifecycleStoreDisposalTests {
         _ = Should.Throw<ObjectDisposedException>(
             () => store.TryReadSnapshot(
                 "01JBX0000000000000000000AB",
+                Reader,
                 new FrontComposerMcpOptions(),
                 out _,
                 out _));
@@ -59,6 +67,7 @@ public sealed class McpLifecycleStoreDisposalTests {
 
         bool known = store.TryReadSnapshot(
             "01JBX0000000000000000000AB",
+            Reader,
             new FrontComposerMcpOptions(),
             out _,
             out _);
@@ -77,6 +86,7 @@ public sealed class McpLifecycleStoreDisposalTests {
         _ = Should.Throw<ObjectDisposedException>(
             () => store.TryReadSnapshot(
                 "01JBX0000000000000000000AB",
+                Reader,
                 new FrontComposerMcpOptions(),
                 out _,
                 out _));

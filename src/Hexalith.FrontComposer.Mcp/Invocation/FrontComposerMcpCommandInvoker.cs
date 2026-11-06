@@ -89,6 +89,7 @@ public sealed class FrontComposerMcpCommandInvoker(
             if (lifecycleTracker is not null) {
                 McpCommandAcknowledgement acknowledgement = lifecycleTracker.TrackAcknowledged(
                     descriptor,
+                    context,
                     result,
                     [.. lifecycleTransitions],
                     cancellationToken);

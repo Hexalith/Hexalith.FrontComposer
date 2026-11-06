@@ -173,7 +173,15 @@ public sealed class FrontComposerMcpToolAdmissionService(
         return sb.ToString();
     }
 
-    private static void ValidateContext(FrontComposerMcpAgentContext context) {
+    /// <summary>
+    /// Rejects an agent context without a tenant, a user, or an authenticated principal. Shared with the lifecycle
+    /// tracker so tool admission and lifecycle reads apply the same rule.
+    /// </summary>
+    /// <param name="context">Agent context to validate.</param>
+    /// <exception cref="FrontComposerMcpException">
+    /// Thrown with <see cref="FrontComposerMcpFailureCategory.AuthFailed"/> when the context is not usable.
+    /// </exception>
+    internal static void ValidateContext(FrontComposerMcpAgentContext context) {
         if (string.IsNullOrWhiteSpace(context.TenantId)
             || string.IsNullOrWhiteSpace(context.UserId)
             || context.Principal.Identity is null

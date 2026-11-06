@@ -4,6 +4,8 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 
+using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Extensions;
 
@@ -211,4 +213,135 @@ public sealed class McpSecurityGovernanceTests {
             await serverTransport.DisposeAsync().ConfigureAwait(true);
         }
     }
+
+    [Theory]
+    [InlineData("correlationId")]
+    [InlineData("messageId")]
+    public async Task SdkLifecycleSubscribeAnswersForeignPrincipalsAsNeverIssuedHandle(string handleName) {
+        // E14R-AI-1 (AC 14.2 #4): every principal below is admitted to the same command tool. Only the
+        // principal that created the lifecycle entry may read it; everyone else gets the never-issued shape.
+        const string NeverIssuedHandle = "01JZ0R5K9N8W4Y7V3Q2P6C1A0Z";
+        ServiceCollection services = new();
+        McpAuditLoggerProvider auditLogs = new();
+        _ = services.AddLogging(builder => builder.AddProvider(auditLogs));
+        IFrontComposerMcpAgentContextAccessor accessor = Substitute.For<IFrontComposerMcpAgentContextAccessor>();
+        _ = accessor.GetContext().Returns(AuditContext("tenant-a", "user-a"));
+        _ = services.AddSingleton(accessor);
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(Substitute.For<IFrontComposerMcpResourceVisibilityGate>());
+        _ = services.AddSingleton<ICommandService, McpAuditCommandService>();
+        _ = services.AddScoped(_ => Substitute.For<ILifecycleStateService>());
+        _ = services.AddFrontComposerMcp(options => options.Manifests.Add(new McpManifest(
+            "frontcomposer.mcp.v1",
+            [new McpCommandDescriptor(
+                "Billing.PayInvoice.Execute",
+                typeof(McpAuditLifecycleCommand).FullName!,
+                "Billing",
+                "Pay invoice",
+                null,
+                null,
+                [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
+                ["TenantId", "UserId", "MessageId", "CorrelationId"])],
+            [])));
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        McpServerOptions options = provider.GetRequiredService<IOptions<McpServerOptions>>().Value;
+        // Each SDK request runs in its own DI scope, so the owner's later poll crosses scopes.
+        options.ScopeRequests.ShouldBeTrue();
+        Pipe clientToServer = new();
+        Pipe serverToClient = new();
+        StreamServerTransport serverTransport = new(clientToServer.Reader.AsStream(), serverToClient.Writer.AsStream(), "audit");
+        StreamClientTransport clientTransport = new(clientToServer.Writer.AsStream(), serverToClient.Reader.AsStream());
+        McpServer server = McpServer.Create(serverTransport, options, serviceProvider: provider);
+        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
+        Task serverTask = server.RunAsync(timeout.Token);
+        McpClient? client = null;
+        try {
+            client = await McpClient.CreateAsync(clientTransport, cancellationToken: timeout.Token).ConfigureAwait(true);
+
+            CallToolResult acknowledgement = await client.CallToolAsync(
+                new CallToolRequestParams {
+                    Name = "Billing.PayInvoice.Execute",
+                    Arguments = new Dictionary<string, JsonElement> { ["Amount"] = JsonSerializer.SerializeToElement(42) },
+                },
+                timeout.Token).ConfigureAwait(true);
+            acknowledgement.IsError.GetValueOrDefault().ShouldBeFalse();
+            JsonElement acknowledged = acknowledgement.StructuredContent.ShouldNotBeNull();
+            string messageId = acknowledged.GetProperty("messageId").GetString().ShouldNotBeNull();
+            string correlationId = acknowledged.GetProperty("correlationId").GetString().ShouldNotBeNull();
+            string handle = handleName == "messageId" ? messageId : correlationId;
+            NeverIssuedHandle.ShouldNotBe(messageId);
+            NeverIssuedHandle.ShouldNotBe(correlationId);
+
+            (string TenantId, string UserId)[] foreignPrincipals = [
+                ("tenant-a", "user-b"),
+                ("tenant-b", "user-b"),
+                ("tenant-b", "user-a"),
+                ("TENANT-A", "user-a"),
+            ];
+            foreach ((string tenantId, string userId) in foreignPrincipals) {
+                _ = accessor.GetContext().Returns(AuditContext(tenantId, userId));
+                string issued = JsonSerializer.Serialize(
+                    await SubscribeAsync(client, handleName, handle, timeout.Token).ConfigureAwait(true));
+                string neverIssued = JsonSerializer.Serialize(
+                    await SubscribeAsync(client, handleName, NeverIssuedHandle, timeout.Token).ConfigureAwait(true));
+
+                issued.ShouldBe(neverIssued, $"{tenantId}/{userId} must not be able to tell an issued handle from a never-issued one.");
+                issued.ShouldContain("unknown_tool");
+                issued.ShouldNotContain(messageId);
+                issued.ShouldNotContain(correlationId);
+                issued.ShouldNotContain(NeverIssuedHandle);
+                issued.ShouldNotContain("tenant-", Case.Insensitive);
+                issued.ShouldNotContain("user-", Case.Insensitive);
+            }
+
+            _ = accessor.GetContext().Returns(AuditContext("tenant-a", "user-a"));
+            CallToolResult owner = await SubscribeAsync(client, handleName, handle, timeout.Token).ConfigureAwait(true);
+            owner.IsError.GetValueOrDefault().ShouldBeFalse();
+            JsonElement snapshot = owner.StructuredContent.ShouldNotBeNull();
+            snapshot.GetProperty("messageId").GetString().ShouldBe(messageId);
+            snapshot.GetProperty("correlationId").GetString().ShouldBe(correlationId);
+
+            string logs = string.Join('\n', auditLogs.Entries);
+            logs.ShouldNotContain(messageId);
+            logs.ShouldNotContain(correlationId);
+            logs.ShouldNotContain(NeverIssuedHandle);
+            logs.ShouldNotContain("tenant-a");
+            logs.ShouldNotContain("tenant-b");
+            logs.ShouldNotContain("user-a");
+            logs.ShouldNotContain("user-b");
+        }
+        finally {
+            timeout.Cancel();
+            if (client is not null) {
+                await client.DisposeAsync().ConfigureAwait(true);
+            }
+
+            try {
+                await serverTask.ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) {
+            }
+
+            await server.DisposeAsync().ConfigureAwait(true);
+            await serverTransport.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    private static FrontComposerMcpAgentContext AuditContext(string tenantId, string userId)
+        => new(tenantId, userId, new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("TenantId", tenantId), new Claim("UserId", userId)],
+            authenticationType: "audit")));
+
+    private static async Task<CallToolResult> SubscribeAsync(
+        McpClient client,
+        string handleName,
+        string handle,
+        CancellationToken cancellationToken)
+        => await client.CallToolAsync(
+            new CallToolRequestParams {
+                Name = "frontcomposer.lifecycle.subscribe",
+                Arguments = new Dictionary<string, JsonElement> { [handleName] = JsonSerializer.SerializeToElement(handle) },
+            },
+            cancellationToken).ConfigureAwait(true);
 }

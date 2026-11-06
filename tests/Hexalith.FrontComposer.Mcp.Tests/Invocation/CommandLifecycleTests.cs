@@ -14,6 +14,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
+using NSubstitute;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
@@ -23,6 +25,8 @@ public sealed class CommandLifecycleTests {
     private const string CorrelationId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0C";
     private const string CanonicalMaximum = "7ZZZZZZZZZZZZZZZZZZZZZZZZZ";
     private const string OverflowUlid = "80000000000000000000000000";
+    private const string NeverIssuedHandle = "01JZ0R5K9N8W4Y7V3Q2P6C1A0Z";
+    private static readonly FrontComposerMcpAgentContext OwnerContext = AgentContext("tenant-a", "agent-a");
 
     [Fact]
     public void IdempotentOutcome_ControlWrappedWhitespaceUsesCanonicalItemLabel()
@@ -835,6 +839,7 @@ public sealed class CommandLifecycleTests {
 
         FrontComposerMcpException exception = Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(
             Manifest(policyName: null).Commands.Single(),
+            OwnerContext,
             new CommandResult(messageId, CommandResultStatus.Accepted, correlationId),
             [],
             lifecycle,
@@ -844,8 +849,8 @@ public sealed class CommandLifecycleTests {
         exception.Message.ShouldBe(nameof(FrontComposerMcpFailureCategory.UnsupportedSchema));
         lifecycle.SubscriptionCount.ShouldBe(0);
         lifecycle.TransitionCount.ShouldBe(0);
-        store.TryReadSnapshot(MessageId, currentOptions, out _, out _).ShouldBeFalse();
-        store.TryReadSnapshot(CorrelationId, currentOptions, out _, out _).ShouldBeFalse();
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
     }
 
     [Theory]
@@ -859,6 +864,7 @@ public sealed class CommandLifecycleTests {
 
         FrontComposerMcpException exception = Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(
             Manifest(policyName: null).Commands.Single(),
+            OwnerContext,
             new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId),
             [(CommandLifecycleState.Syncing, transitionMessageId)],
             lifecycle,
@@ -868,8 +874,8 @@ public sealed class CommandLifecycleTests {
         exception.Message.ShouldBe(nameof(FrontComposerMcpFailureCategory.UnsupportedSchema));
         lifecycle.SubscriptionCount.ShouldBe(0);
         lifecycle.TransitionCount.ShouldBe(0);
-        store.TryReadSnapshot(MessageId, currentOptions, out _, out _).ShouldBeFalse();
-        store.TryReadSnapshot(CorrelationId, currentOptions, out _, out _).ShouldBeFalse();
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
     }
 
     [Fact]
@@ -879,16 +885,17 @@ public sealed class CommandLifecycleTests {
         using RecordingLifecycleStateService lifecycle = new();
         _ = store.TrackAcknowledged(
             Manifest(policyName: null).Commands.Single(),
+            OwnerContext,
             new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId),
             [],
             lifecycle,
             TestContext.Current.CancellationToken);
-        store.TryReadSnapshot(CorrelationId, currentOptions, out _, out McpLifecycleSnapshot before).ShouldBeTrue();
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot before).ShouldBeTrue();
 
         store.TryRecordObservedTransition(CreateTransition(OverflowUlid, MessageId)).ShouldBeFalse();
         store.TryRecordObservedTransition(CreateTransition(CorrelationId, OverflowUlid)).ShouldBeFalse();
 
-        store.TryReadSnapshot(CorrelationId, currentOptions, out _, out McpLifecycleSnapshot after).ShouldBeTrue();
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot after).ShouldBeTrue();
         after.ToJson().ToJsonString().ShouldBe(before.ToJson().ToJsonString());
         after.ToJson().ToJsonString().ShouldNotContain(OverflowUlid);
     }
@@ -910,23 +917,258 @@ public sealed class CommandLifecycleTests {
         FrontComposerMcpUlid.IsCanonical(replayCorrelationId).ShouldBeTrue();
         _ = baselineStore.TrackAcknowledged(
             descriptor,
+            OwnerContext,
             result,
             [],
             baselineLifecycle,
             TestContext.Current.CancellationToken);
         _ = replayStore.TrackAcknowledged(
             descriptor,
+            OwnerContext,
             result,
             [],
             replayLifecycle,
             TestContext.Current.CancellationToken);
-        baselineStore.TryReadSnapshot(CorrelationId, currentOptions, out _, out McpLifecycleSnapshot baseline).ShouldBeTrue();
-        replayStore.TryReadSnapshot(CorrelationId, currentOptions, out _, out McpLifecycleSnapshot replayed).ShouldBeTrue();
+        baselineStore.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot baseline).ShouldBeTrue();
+        replayStore.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot replayed).ShouldBeTrue();
 
         replayLifecycle.ReplayCount.ShouldBe(1);
         replayed.ToJson().ToJsonString().ShouldBe(baseline.ToJson().ToJsonString());
         replayed.ToJson().ToJsonString().ShouldNotContain(discardedIdentifier);
     }
+
+    [Theory]
+    [InlineData("TENANT-A", "agent-a")]
+    [InlineData("Tenant-a", "agent-a")]
+    [InlineData("tenant-a", "AGENT-A")]
+    [InlineData("tenant-a ", "agent-a")]
+    [InlineData("tenant-a", " agent-a")]
+    public void StoreReadByCaseOrPaddingVariantPrincipalMissesLikeNeverIssuedHandle(string tenantId, string userId) {
+        // E14R-AI-1: ownership is an exact ordinal match on both identifiers, never a normalized one.
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+        _ = store.TrackAcknowledged(
+            Manifest(policyName: null).Commands.Single(),
+            OwnerContext,
+            new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId),
+            [],
+            lifecycle,
+            TestContext.Current.CancellationToken);
+
+        AssertStoreMissesLikeNeverIssuedHandle(store, AgentContext(tenantId, userId), currentOptions);
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out _).ShouldBeTrue();
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out _, out _).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("", "agent-a")]
+    [InlineData(" ", "agent-a")]
+    [InlineData("tenant-a", "")]
+    [InlineData("tenant-a", "\t")]
+    [InlineData("", "")]
+    public void StoreReadByBlankPrincipalMissesLikeNeverIssuedHandle(string tenantId, string userId) {
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+        _ = store.TrackAcknowledged(
+            Manifest(policyName: null).Commands.Single(),
+            OwnerContext,
+            new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId),
+            [],
+            lifecycle,
+            TestContext.Current.CancellationToken);
+
+        AssertStoreMissesLikeNeverIssuedHandle(store, AgentContext(tenantId, userId), currentOptions);
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out _).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("", "agent-a")]
+    [InlineData(" ", "agent-a")]
+    [InlineData("tenant-a", "")]
+    [InlineData("tenant-a", "\t")]
+    public void StoreAcknowledgementWithoutIdentifiedCreatorFailsClosedBeforeStorage(string tenantId, string userId) {
+        // An entry without an owner could never be read back, so it is refused before it is stored.
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+
+        FrontComposerMcpException exception = Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(
+            Manifest(policyName: null).Commands.Single(),
+            AgentContext(tenantId, userId),
+            new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId),
+            [(CommandLifecycleState.Confirmed, MessageId)],
+            lifecycle,
+            TestContext.Current.CancellationToken));
+
+        exception.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        lifecycle.SubscriptionCount.ShouldBe(0);
+        lifecycle.TransitionCount.ShouldBe(0);
+        AssertStoreMissesLikeNeverIssuedHandle(store, OwnerContext, currentOptions);
+
+        // Nothing was stored for the refused creator, so the same handles remain free for a real owner.
+        McpCommandAcknowledgement acknowledgement = store.TrackAcknowledged(
+            Manifest(policyName: null).Commands.Single(),
+            OwnerContext,
+            new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId),
+            [],
+            lifecycle,
+            TestContext.Current.CancellationToken);
+        acknowledgement.CorrelationId.ShouldBe(CorrelationId);
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out _).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("tenant-a", "agent-b")]
+    [InlineData("tenant-b", "agent-b")]
+    [InlineData("tenant-b", "agent-a")]
+    [InlineData("TENANT-A", "agent-a")]
+    public void StoreReacknowledgementOwnedByAnotherPrincipalFailsClosedWithoutMutation(string tenantId, string userId) {
+        // E14R-AI-1 D3: a dispatcher that hands back handles owned by another principal must not reach,
+        // mutate, or disclose the owner's entry.
+        const string ForeignMessageId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0E";
+        const string ForeignCorrelationId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0F";
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService ownerLifecycle = new();
+        using RecordingLifecycleStateService foreignLifecycle = new();
+        McpCommandDescriptor descriptor = Manifest(policyName: null).Commands.Single();
+        FrontComposerMcpAgentContext foreign = AgentContext(tenantId, userId);
+        _ = store.TrackAcknowledged(
+            descriptor,
+            OwnerContext,
+            new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId, RetryAfter: TimeSpan.FromMilliseconds(250)),
+            [],
+            ownerLifecycle,
+            TestContext.Current.CancellationToken);
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot before).ShouldBeTrue();
+
+        FrontComposerMcpException correlationCollision = Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(
+            descriptor,
+            foreign,
+            new CommandResult(ForeignMessageId, CommandResultStatus.Accepted, CorrelationId, RetryAfter: TimeSpan.FromMilliseconds(4_000)),
+            [(CommandLifecycleState.Confirmed, ForeignMessageId)],
+            foreignLifecycle,
+            TestContext.Current.CancellationToken));
+        FrontComposerMcpException messageCollision = Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(
+            descriptor,
+            foreign,
+            new CommandResult(MessageId, CommandResultStatus.Accepted, ForeignCorrelationId, RetryAfter: TimeSpan.FromMilliseconds(4_000)),
+            [(CommandLifecycleState.Confirmed, MessageId)],
+            foreignLifecycle,
+            TestContext.Current.CancellationToken));
+
+        correlationCollision.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        messageCollision.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        foreignLifecycle.SubscriptionCount.ShouldBe(0);
+        foreignLifecycle.TransitionCount.ShouldBe(0);
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot after).ShouldBeTrue();
+        after.ToJson().ToJsonString().ShouldBe(before.ToJson().ToJsonString());
+        after.ToJson().ToJsonString().ShouldNotContain(ForeignMessageId);
+        store.TryReadSnapshot(ForeignMessageId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+        store.TryReadSnapshot(ForeignCorrelationId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+        store.TryReadSnapshot(ForeignCorrelationId, foreign, currentOptions, out _, out _).ShouldBeFalse();
+        AssertStoreMissesLikeNeverIssuedHandle(store, foreign, currentOptions);
+    }
+
+    [Fact]
+    public void StoreReacknowledgementBySamePrincipalReusesOwnedEntry() {
+        // Ownership compares identifier values, so an equal context from a later request scope still owns the entry.
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+        McpCommandDescriptor descriptor = Manifest(policyName: null).Commands.Single();
+        CommandResult result = new(MessageId, CommandResultStatus.Accepted, CorrelationId);
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, result, [], lifecycle, TestContext.Current.CancellationToken);
+
+        McpCommandAcknowledgement acknowledgement = store.TrackAcknowledged(
+            descriptor,
+            AgentContext("tenant-a", "agent-a"),
+            result,
+            [(CommandLifecycleState.Confirmed, MessageId)],
+            lifecycle,
+            TestContext.Current.CancellationToken);
+
+        acknowledgement.CorrelationId.ShouldBe(CorrelationId);
+        store.TryReadSnapshot(MessageId, AgentContext("tenant-a", "agent-a"), currentOptions, out _, out McpLifecycleSnapshot snapshot)
+            .ShouldBeTrue();
+        snapshot.State.ShouldBe(CommandLifecycleState.Confirmed);
+    }
+
+    [Theory]
+    [InlineData("auth-failed")]
+    [InlineData("tenant-missing")]
+    [InlineData("blank-tenant")]
+    [InlineData("blank-user")]
+    [InlineData("unauthenticated")]
+    public async Task ReadByFailingOrBlankReaderMatchesNeverIssuedHandle(string readerState) {
+        // E14R-AI-1 D2: the reader is resolved before the handle lookup, so an unusable reader gets the same
+        // hidden-unknown result for an issued handle as for a handle that was never issued.
+        Func<FrontComposerMcpAgentContext> currentContext = () => OwnerContext;
+        IFrontComposerMcpAgentContextAccessor accessor = Substitute.For<IFrontComposerMcpAgentContextAccessor>();
+        _ = accessor.GetContext().Returns(_ => currentContext());
+        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider, accessor: accessor);
+        FrontComposerMcpResult acknowledgement = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        acknowledgement.IsError.ShouldBeFalse();
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        currentContext = readerState switch {
+            "auth-failed" => () => throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed),
+            "tenant-missing" => () => throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.TenantMissing),
+            "blank-tenant" => () => AgentContext(" ", "agent-a"),
+            "blank-user" => () => AgentContext("tenant-a", ""),
+            "unauthenticated" => () => new FrontComposerMcpAgentContext("tenant-a", "agent-a", new ClaimsPrincipal(new ClaimsIdentity())),
+            _ => throw new ArgumentOutOfRangeException(nameof(readerState), readerState, null),
+        };
+        FrontComposerMcpResult byCorrelation = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpResult byMessage = await tracker.ReadAsync(
+            Args($$"""{"messageId":"{{MessageId}}"}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpResult neverIssued = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{NeverIssuedHandle}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        neverIssued.IsError.ShouldBeTrue();
+        neverIssued.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+        neverIssued.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
+        Serialize(byCorrelation).ShouldBe(Serialize(neverIssued));
+        Serialize(byMessage).ShouldBe(Serialize(neverIssued));
+        Serialize(byCorrelation).ShouldNotContain(CorrelationId);
+        Serialize(byMessage).ShouldNotContain(MessageId);
+
+        currentContext = () => OwnerContext;
+        FrontComposerMcpResult owner = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+        owner.IsError.ShouldBeFalse();
+        owner.StructuredContent!["correlationId"]!.GetValue<string>().ShouldBe(CorrelationId);
+    }
+
+    private static void AssertStoreMissesLikeNeverIssuedHandle(
+        FrontComposerMcpLifecycleStore store,
+        FrontComposerMcpAgentContext reader,
+        FrontComposerMcpOptions currentOptions) {
+        foreach (string handle in new[] { CorrelationId, MessageId, NeverIssuedHandle }) {
+            store.TryReadSnapshot(handle, reader, currentOptions, out McpCommandDescriptor descriptor, out McpLifecycleSnapshot snapshot)
+                .ShouldBeFalse();
+            descriptor.ShouldBeNull();
+            snapshot.ShouldBeNull();
+        }
+    }
+
+    private static string Serialize(FrontComposerMcpResult result)
+        => new JsonObject {
+            ["isError"] = result.IsError,
+            ["category"] = result.Category.ToString(),
+            ["text"] = result.Text,
+            ["structuredContent"] = result.StructuredContent?.DeepClone(),
+        }.ToJsonString();
 
     [Theory]
     [InlineData(CommandLifecycleState.IdempotentConfirmed, "idempotent_confirmed")]
@@ -994,7 +1236,8 @@ public sealed class CommandLifecycleTests {
         IFrontComposerMcpTenantToolGate? tenantGate = null,
         IUlidFactory? ulidFactory = null,
         Action<FrontComposerMcpOptions>? configureOptions = null,
-        TimeProvider? timeProvider = null) {
+        TimeProvider? timeProvider = null,
+        IFrontComposerMcpAgentContextAccessor? accessor = null) {
         commandService = new LifecycleAwareCommandService();
         ServiceCollection services = new();
         _ = services.AddSingleton<ICommandService>(commandService);
@@ -1021,7 +1264,7 @@ public sealed class CommandLifecycleTests {
         }
 
         _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => accessor ?? new StaticAccessor());
         provider = services.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
     }
@@ -1047,6 +1290,9 @@ public sealed class CommandLifecycleTests {
                 "Synthetic read-your-writes benchmark projection.",
                 [new McpParameterDescriptor("Count", "Int32", "integer", false, false, "Count", null, [], false)]),
         ]);
+
+    private static FrontComposerMcpAgentContext AgentContext(string tenantId, string userId)
+        => new(tenantId, userId, new ClaimsPrincipal(new ClaimsIdentity("test")));
 
     private static Dictionary<string, JsonElement> Args(string json)
         => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;

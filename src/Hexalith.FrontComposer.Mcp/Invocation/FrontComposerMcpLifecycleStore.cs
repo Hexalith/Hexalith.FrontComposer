@@ -28,21 +28,39 @@ public sealed partial class FrontComposerMcpLifecycleStore(
     /// Records a command acknowledgement and the lifecycle transitions emitted by the current command request.
     /// </summary>
     /// <param name="descriptor">Descriptor of the command tool that produced the acknowledgement.</param>
+    /// <param name="creator">
+    /// Agent context whose tenant and user were injected into the dispatched command. The entry records these tenant
+    /// and user identifiers, and later reads must match both exactly (ordinal). The store does not check
+    /// authentication; the caller (the lifecycle tracker) enforces it.
+    /// </param>
     /// <param name="result">Dispatcher acknowledgement containing the agent-visible handles.</param>
     /// <param name="pendingTransitions">Transitions captured by the command dispatcher callback.</param>
     /// <param name="lifecycle">Scoped lifecycle service for the current command request.</param>
     /// <param name="cancellationToken">Cancellation token for pending transition recording.</param>
     /// <returns>The MCP acknowledgement payload.</returns>
+    /// <exception cref="FrontComposerMcpException">
+    /// Thrown with <see cref="FrontComposerMcpFailureCategory.UnsupportedSchema"/> when a handle is not canonical, the
+    /// creator has no tenant or user, the correlation id is already recorded with different tenant or user
+    /// identifiers, or the message id is already mapped to another entry.
+    /// </exception>
     internal McpCommandAcknowledgement TrackAcknowledged(
         McpCommandDescriptor descriptor,
+        FrontComposerMcpAgentContext creator,
         CommandResult result,
         IReadOnlyList<(CommandLifecycleState State, string? MessageId)> pendingTransitions,
         ILifecycleStateService lifecycle,
         CancellationToken cancellationToken) {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(descriptor);
+        ArgumentNullException.ThrowIfNull(creator);
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(lifecycle);
+
+        // E14R-AI-1: an entry must always have a resolvable owner. Without one it could never be read back,
+        // so refuse it before it is stored, subscribed, or counted against capacity.
+        if (!IsIdentifiedPrincipal(creator)) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        }
 
         string messageId = RequireCanonicalIdentifier(result.MessageId);
         string correlationId = result.CorrelationId is null
@@ -55,7 +73,14 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                     ? messageId
                     : RequireCanonicalIdentifier(transition.MessageId))),
         ];
-        LifecycleEntry entry = GetOrCreateEntry(descriptor, correlationId, messageId);
+        LifecycleEntry entry = GetOrCreateEntry(descriptor, creator, correlationId, messageId);
+
+        // E14R-AI-1 D3: a dispatcher that re-acknowledges a correlation owned by another principal must not
+        // reach that entry. Fail closed before any mutation, subscription, or handle disclosure.
+        if (!entry.IsOwnedBy(creator)) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        }
+
         int clampedRetryAfter = ClampRetryAfter(result.RetryAfter);
         entry.SetRetryAfterMs(clampedRetryAfter);
 
@@ -103,16 +128,23 @@ public sealed partial class FrontComposerMcpLifecycleStore(
     /// Attempts to read the lifecycle snapshot for an agent-supplied handle.
     /// </summary>
     /// <param name="handle">Canonical correlation or message identifier.</param>
+    /// <param name="reader">Agent context of the caller polling the handle.</param>
     /// <param name="currentOptions">Current MCP options used for retry bounds.</param>
     /// <param name="descriptor">Descriptor associated with the lifecycle entry.</param>
     /// <param name="snapshot">Current lifecycle snapshot when the handle is known.</param>
-    /// <returns><see langword="true"/> when the handle is known.</returns>
+    /// <returns>
+    /// <see langword="true"/> when the handle is known and its recorded tenant and user identifiers exactly (ordinal)
+    /// match those of <paramref name="reader"/>. Any mismatch returns <see langword="false"/>, exactly like a handle
+    /// that was never issued. The store does not check authentication; the caller (the lifecycle tracker) enforces it.
+    /// </returns>
     internal bool TryReadSnapshot(
         string handle,
+        FrontComposerMcpAgentContext reader,
         FrontComposerMcpOptions currentOptions,
         out McpCommandDescriptor descriptor,
         out McpLifecycleSnapshot snapshot) {
         ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(reader);
         ArgumentNullException.ThrowIfNull(currentOptions);
 
         if (!FrontComposerMcpUlid.IsCanonical(handle)) {
@@ -125,7 +157,9 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             _ = _byMessage.TryGetValue(handle, out entry);
         }
 
-        if (entry is null) {
+        // E14R-AI-1 D1: ownership is part of the lookup, so a foreign principal takes the same miss path as a
+        // never-issued handle and the caller cannot tell the two apart.
+        if (entry is null || !entry.IsOwnedBy(reader)) {
             descriptor = null!;
             snapshot = null!;
             return false;
@@ -164,6 +198,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
 
     private LifecycleEntry GetOrCreateEntry(
         McpCommandDescriptor descriptor,
+        FrontComposerMcpAgentContext creator,
         string correlationId,
         string messageId) {
         _ = RequireCanonicalIdentifier(correlationId);
@@ -181,6 +216,8 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             FrontComposerMcpOptions opts = options.Value;
             LifecycleEntry created = new(
                 descriptor,
+                creator.TenantId,
+                creator.UserId,
                 correlationId,
                 messageId,
                 opts.MaxLifecycleTransitionHistory,
@@ -278,6 +315,9 @@ public sealed partial class FrontComposerMcpLifecycleStore(
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
+    private static bool IsIdentifiedPrincipal(FrontComposerMcpAgentContext context)
+        => !string.IsNullOrWhiteSpace(context.TenantId) && !string.IsNullOrWhiteSpace(context.UserId);
+
     private static string RequireCanonicalIdentifier(string? value) {
         if (!FrontComposerMcpUlid.IsCanonical(value)) {
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
@@ -306,6 +346,8 @@ public sealed partial class FrontComposerMcpLifecycleStore(
 
         public LifecycleEntry(
             McpCommandDescriptor descriptor,
+            string ownerTenantId,
+            string ownerUserId,
             string correlationId,
             string messageId,
             int maxHistory,
@@ -313,6 +355,8 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             TimeProvider time,
             Action<string> onTerminalized) {
             Descriptor = descriptor;
+            OwnerTenantId = ownerTenantId;
+            OwnerUserId = ownerUserId;
             CorrelationId = correlationId;
             MessageId = messageId;
             _maxHistory = Math.Max(1, maxHistory);
@@ -328,11 +372,21 @@ public sealed partial class FrontComposerMcpLifecycleStore(
 
         public McpCommandDescriptor Descriptor { get; }
 
+        public string OwnerTenantId { get; }
+
+        public string OwnerUserId { get; }
+
         public string CorrelationId { get; }
 
         public string MessageId { get; }
 
         public bool IsTerminal => Volatile.Read(ref _isTerminal) != 0;
+
+        // Exact ordinal match on both identifiers. Case variants, padded values, and blank readers never match.
+        public bool IsOwnedBy(FrontComposerMcpAgentContext principal)
+            => IsIdentifiedPrincipal(principal)
+                && string.Equals(OwnerTenantId, principal.TenantId, StringComparison.Ordinal)
+                && string.Equals(OwnerUserId, principal.UserId, StringComparison.Ordinal);
 
         public void SetRetryAfterMs(int retryAfterMs) => Volatile.Write(ref _retryAfterMs, retryAfterMs);
 
