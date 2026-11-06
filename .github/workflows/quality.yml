@@ -773,6 +773,19 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
+      # The hosted Azure HTTP mirror stalled media-library downloads for over 20 minutes.
+      # Keep Ubuntu's signed package suites and every browser dependency; use the main HTTPS archive.
+      - name: Use the Ubuntu HTTPS archive for browser dependencies
+        run: |
+          for apt_source in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+            if [ -f "$apt_source" ]; then
+              sudo sed -i \
+                -e 's|http://azure\.archive\.ubuntu\.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' \
+                -e 's|https://azure\.archive\.ubuntu\.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' \
+                "$apt_source"
+            fi
+          done
+
       - name: Install all pinned Playwright browsers
         working-directory: tests/e2e
         run: npx playwright install --with-deps chromium firefox webkit
