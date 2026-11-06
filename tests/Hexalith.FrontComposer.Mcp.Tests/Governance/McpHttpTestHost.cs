@@ -38,6 +38,9 @@ internal static class McpHttpTestHost {
             _ = builder.Logging.ClearProviders();
             _ = builder.Logging.AddProvider(logs);
             _ = builder.Logging.SetMinimumLevel(LogLevel.Trace);
+
+            // A provider-specific rule outranks any category rule from host configuration, so capture stays at Trace.
+            _ = builder.Logging.AddFilter<McpAuditLoggerProvider>(null, LogLevel.Trace);
         }
 
         _ = builder.Services.AddSingleton<IFrontComposerMcpTenantToolGate>(Substitute.For<IFrontComposerMcpTenantToolGate>());
