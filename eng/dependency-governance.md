@@ -67,3 +67,34 @@ from canonical policy-approved repositories before reading their inventories,
 using bounded network retries. Acquisition does not move any checkout HEAD,
 change working-tree bytes or initialize nested submodules. The seven
 inventory-only Platform descendants remain outside global trust and execution.
+
+## Activating and replaying this seal
+
+The maintenance seal is commit
+`8a51e0a1891f08bbfb51e168b69f766c787b1f46`. Exact committed-source
+validation of that revision passed. This documentation-only activation must
+be pushed separately, with the seal as its actual push event base. It changes
+no dependency selector, consumer configuration or policy byte.
+
+Run the following while checked out at this activation commit, or assign its
+full 40-hex commit to `candidate`. The immediate-parent check prevents replay
+against an unrelated later source. Temporary bare object stores do not
+initialize any nested checkout.
+
+```bash
+seal=8a51e0a1891f08bbfb51e168b69f766c787b1f46
+candidate="$(git rev-parse HEAD)"
+test "$(git rev-parse "${candidate}^")" = "$seal"
+objects="$(mktemp -d)"
+python3 eng/dependency_graph.py acquire-catalogs --event-base "$seal" --candidate "$candidate"
+python3 eng/dependency_graph.py validate --commit "$candidate"
+python3 eng/dependency_graph.py acquire --event-base "$seal" --candidate "$candidate" --destination "$objects"
+python3 eng/dependency_graph.py --root "$objects" diff --event push --event-base "$seal" --candidate "$candidate"
+```
+
+Each command must exit zero; JSON results must report `ok: true`. The graph
+diff must report no dependency changes and no affected-module rebuilds. The
+hosted push CI must independently pass under the seal's active policy and
+produce its run-bound dependency release handoff. Release additionally requires
+successful Quality for that exact candidate; local replay alone cannot
+substitute for those hosted results or authorize publication.

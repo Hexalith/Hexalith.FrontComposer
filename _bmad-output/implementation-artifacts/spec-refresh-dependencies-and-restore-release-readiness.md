@@ -101,3 +101,5 @@ Verification-gap reviewer: no verification gaps found. Automated review did not 
 - Final Platform inventory seal `0d36101a45831e4074be812adeb5275ef483d239e62f79ccf41af88fbae15f9b`; root-selector seal `ecac30d704129430dc99e137ace73f09e117ffb16ae361406c2900418981ccdd`; unchanged consumer-configuration seal `761443f7449d0d15bfd30beeabccaf9823c34a82657648da06efc1bfd1fb3d52`. Fingerprints use committed objects. Primary-agent validation of the resulting committed root and a later-base activation push remain required.
 
 - Post-review patch: included EventStore main `0f22b3ed86a2ecc4a98f09b4cc76bc5a9bba38c9` (packaging test only) and recomputed the selector seal. Its focused seal regression and diff check pass.
+
+- Primary-agent exact-source validation passed for committed seal `8a51e0a1891f08bbfb51e168b69f766c787b1f46`. The separate activation documentation now includes the exact event-base relationship and acquisition/validation commands; hosted gates and publication verification remain the next operational phase.
