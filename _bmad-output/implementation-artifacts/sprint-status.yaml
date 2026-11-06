@@ -246,6 +246,8 @@ development_status:
   15-7-retire-bulky-browser-evidence: done
   epic-15-retrospective: done
 
+  # 2026-11-06: Story 16.1 captures the current main tuple with passing Gate 2c and Epic 9 steps.
+  # Capture awaits review; migration approval is not claimed, sign-off is none and G-3 remains open.
   epic-16: in-progress
   16-1-i-evt-id-1-capture-the-current-eventstore-runtime-tuple: in-progress
   16-2-a-evt-xfer-1-conditional-transfer-migration-approval-ownersh: backlog
