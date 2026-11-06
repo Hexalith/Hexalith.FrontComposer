@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 11-01-2026 18:56
+last_updated: 11-06-2026 13:43
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -217,7 +217,7 @@ development_status:
   14-1-i-mcp-sec-1-enforce-production-mcp-authorization-composition: done
   14-2-i-mcp-sec-2-prove-mcp-leak-and-oracle-resistance: done
   14-3-a-mcp-app-1-record-independent-mcp-security-acceptance: done
-  epic-14-retrospective: optional
+  epic-14-retrospective: done
 
   # 2026-10-21: Story 15.1 implementation and independent review verified; ready for maintainer review.
   # 2026-10-22: Story 15.1 maintainer code review round 2 closed; three patches applied.
@@ -806,7 +806,7 @@ action_items:
       tuple current at execution, then obtain the required migration-approval receipts
       without rewriting Story 11.25 history"
     owner: "Architect + Release Owner"
-    status: open
+    status: in-progress
     gate: "G-3"
     historical_story: "11.25"
     implementation_story: "11.25"
@@ -949,7 +949,7 @@ action_items:
       to the evidence-bound SHA or advance the evidence through EVT-ID-1 (see E11R-AI-1),
       and stop bundling pinned-submodule gitlink bumps into story or spec commits."
     owner: "Architect + Release Owner"
-    status: open
+    status: in-progress
     ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-09-27.md"
   - id: "E12R-AI-3"
     epic: 12
@@ -1105,6 +1105,77 @@ action_items:
     owner: "Scrum Master / process owner"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md"
+  - id: "E14R-AI-1"
+    epic: 14
+    action: "Bind each MCP lifecycle entry to its creating TenantId and UserId and
+      return the hidden-unknown shape (byte-identical to an absent handle) for any
+      other principal; add the two-tenant and two-user cases AC 14.2 #4 names to McpSecurityGovernanceTests
+      while keeping same-scope polling green; decide whether same-millisecond sequential
+      lifecycle handles from the shared ULID factory stay acceptable."
+    owner: "MCP maintainer (Developer) + Security QA"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-06.md"
+  - id: "E14R-AI-2"
+    epic: 14
+    action: "Make the MapFrontComposerMcp authentication requirement non-substitutable:
+      attach an explicit RequireAuthenticatedUser policy object, assert the effective
+      combined policy (anonymous initialize stays 401 with an appended host policy),
+      move the Counter Test-host anonymous probes behind a documented explicit opt-out
+      or give them a principal, and review the map-time edge cases (ordinal Development
+      compare, synthetic-scope gate resolution, decorator bypass, missing auth services)."
+    owner: "MCP maintainer + Architect"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-06.md"
+  - id: "E14R-AI-3"
+    epic: 14
+    action: "Resolve the FrontComposerMcpOptions.ApiKeys versus RequireAuthorization
+      conflict (ship a FrontComposer MCP API-key authentication handler backed by
+      FrontComposerMcpApiKeyCredentialStore and retire the Counter duplicate, or document
+      that hosts must supply one) and publish a migration note for the v4.6.0 host-composition
+      break (AllowAll rejection outside Development, required authorization, API keys)
+      in package-and-hosting.md; coordinate with E15R-AI-5."
+    owner: "MCP maintainer + Technical writer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-06.md"
+  - id: "E14R-AI-4"
+    epic: 14
+    action: "Harden the SM-4 audit: SDK-level hidden/gate-false/policy-denied/tenant-less
+      comparisons with a visible sibling; assert HFC-MCP-UNKNOWN-TOOL; pass a Trace
+      logger factory to McpServer.Create; exercise real AuthFailed/TenantMissing accessor
+      paths; authenticated list+invoke through the mapped host asserting server-side
+      injection; prove Development plus AllowAll mapping succeeds; pin reused focused
+      tests and run AuthRedactionStressTests for the candidate."
+    owner: "Security QA / Test architect"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-06.md"
+  - id: "E14R-AI-5"
+    epic: 14
+    action: "Have a named human independent security reviewer ratify or reject the
+      2026-09-26 MCP-APP-1 acceptance (signed by an AI agent) in light of the lifecycle-isolation,
+      substitutable-authorization and in-repo-host findings, decide whether the AC
+      14.1 #1 narrowing stands, and if G-7 reopens update prd.md OI-2/OI-3, D-14,
+      accepted residuals and the FR-19 rows."
+    owner: "Product Owner + independent security reviewer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-06.md"
+  - id: "E14R-AI-6"
+    epic: 14
+    action: "Close the two resolved legacy deferrals at deferred-work.md:9869 and
+      :9873 (Counter MCP sample gates and API-key authorization) citing b7384b97;
+      keep :10044 (Development fixed public sample key) open."
+    owner: "Sprint tracking owner"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-06.md"
+  - id: "E14R-AI-7"
+    epic: 14
+    action: "Record process rules: an I or A item reaches done only with a story/spec
+      artifact and a recorded review state; an A-class approval names a human reviewer
+      and that reviewer's relationship to the implementing session; a framework host-composition
+      change boots every in-repo host (Counter Test and Development) before closure,
+      e.g. via a composition smoke test."
+    owner: "Scrum Master / process owner + Developer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-06.md"
 approved_change_backlog:
   source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md"
   approved: "2026-09-22"
