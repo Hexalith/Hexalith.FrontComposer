@@ -1259,7 +1259,7 @@ public sealed class CiGovernanceTests {
     public void ToolchainPins_MatchApprovedDotnetAndAspireVersions() {
         const string expectedDotnetSdk = "10.0.403";
         const string sourceResourceCompatibilitySdk = "10.0.302";
-        const string expectedAspire = "13.6.0";
+        const string expectedAspire = "13.6.4";
         const string expectedAspireHosting = "13.6.4";
         const string expectedDaprCli = "1.18.0";
         const string expectedDaprRuntime = "1.18.2";
