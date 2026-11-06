@@ -70,18 +70,18 @@ public sealed class AuthContextAccessorTests {
     }
 
     [Fact]
-    public void ApiKey_TakesPrecedence_OverIdentityClaims() {
-        // When both API key and authenticated claims are present, the API key wins. This avoids
-        // privilege ambiguity if an attacker leaks both an API key and a stale session token.
+    public void ApiKeyWithConflictingIdentityClaimsFailsClosed() {
+        // When an API key and authenticated claims for a different tenant/user are both present (for
+        // example a mixed-scheme policy that merged principals), neither identity wins: the request
+        // fails closed instead of dispatching as the key's tenant.
         HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(
             out HttpContext http,
             configure: o => o.ApiKeys["valid-key"] = new("tenant-from-key", "agent-from-key"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = "valid-key";
         http.User = AuthenticatedUser(tenant: "tenant-from-claim", user: "agent-from-claim");
 
-        FrontComposerMcpAgentContext context = sut.GetContext();
-        context.TenantId.ShouldBe("tenant-from-key");
-        context.UserId.ShouldBe("agent-from-key");
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
+        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
     }
 
     [Fact]

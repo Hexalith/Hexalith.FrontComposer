@@ -1,4 +1,3 @@
-using System.Net;
 using System.Security.Claims;
 
 using Counter.Domain;
@@ -8,8 +7,6 @@ using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp;
 using Hexalith.FrontComposer.Mcp.Extensions;
 
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
@@ -28,6 +25,7 @@ public sealed class CounterMcpSampleAccessTests
     [InlineData("other-tenant", "demo-user", true, false)]
     [InlineData("demo-tenant", "other-user", true, false)]
     [InlineData("", "demo-user", true, false)]
+    [InlineData(CounterMcpSampleAccessPolicy.NonAdmittedTenantId, CounterMcpSampleAccessPolicy.NonAdmittedUserId, true, false)]
     public async Task SampleGates_RestrictGeneratedDescriptorsToTheAuthenticatedSampleIdentity(
         string tenantId, string userId, bool authenticated, bool admitted)
     {
@@ -50,28 +48,6 @@ public sealed class CounterMcpSampleAccessTests
             (await new CounterMcpSampleTenantToolGate().IsVisibleAsync(admittedCommand, context, TestContext.Current.CancellationToken)).ShouldBe(admitted);
         }
         (await new CounterMcpSampleResourceVisibilityGate().IsVisibleAsync(resource, context, TestContext.Current.CancellationToken)).ShouldBe(admitted);
-    }
-
-    [Theory]
-    [InlineData("127.0.0.1", true)]
-    [InlineData("::1", true)]
-    [InlineData("192.0.2.17", false)]
-    [InlineData("2001:db8::17", false)]
-    [InlineData(null, false)]
-    public async Task TestTransportPolicy_AdmitsOnlyLoopbackAddresses(string? address, bool admitted)
-    {
-        ServiceCollection services = [];
-        services.AddLogging();
-        services.AddAuthorization();
-        using ServiceProvider provider = services.BuildServiceProvider();
-        DefaultHttpContext http = new();
-        http.Connection.RemoteIpAddress = address is null ? null : IPAddress.Parse(address);
-        AuthorizationPolicy policy = CounterMcpSampleAccessPolicy.CreateTestTransportPolicy();
-
-        AuthorizationResult result = await provider.GetRequiredService<IAuthorizationService>()
-            .AuthorizeAsync(new ClaimsPrincipal(new ClaimsIdentity()), http, policy);
-
-        result.Succeeded.ShouldBe(admitted);
     }
 
     [Fact]

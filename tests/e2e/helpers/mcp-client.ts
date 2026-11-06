@@ -36,13 +36,16 @@ export interface McpCallToolResult {
   structuredContent?: Record<string, unknown>;
 }
 
+/** The admitted Counter sample API key; the default credential of every {@link McpClient}. */
+export const sampleMcpApiKey = process.env.FC_E2E_MCP_API_KEY ?? 'counter-e2e-mcp-key';
+
 export class McpClient {
   private nextId = 1;
   private sessionId: string | undefined;
 
   public constructor(
     private readonly request: APIRequestContext,
-    private readonly apiKey: string | null = process.env.FC_E2E_MCP_API_KEY ?? 'counter-e2e-mcp-key',
+    private readonly apiKey: string | null = sampleMcpApiKey,
     private readonly extraHeaders: Record<string, string> = {},
   ) {}
 

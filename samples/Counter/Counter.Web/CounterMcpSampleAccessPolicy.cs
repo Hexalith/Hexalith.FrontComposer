@@ -1,8 +1,4 @@
-using System.Net;
-
 using Hexalith.FrontComposer.Mcp;
-
-using Microsoft.AspNetCore.Authorization;
 
 namespace Counter.Web;
 
@@ -18,13 +14,17 @@ internal static class CounterMcpSampleAccessPolicy
     /// <summary>Gets the user associated with the local sample credential.</summary>
     internal const string UserId = "demo-user";
 
-    /// <summary>Admits local Test transport envelopes; MCP gates independently require the sample credential.</summary>
-    /// <returns>The explicit loopback transport policy for the Test sample host.</returns>
-    internal static AuthorizationPolicy CreateTestTransportPolicy() => new AuthorizationPolicyBuilder()
-        .RequireAssertion(context => context.Resource is HttpContext http
-            && http.Connection.RemoteIpAddress is IPAddress address
-            && IPAddress.IsLoopback(address))
-        .Build();
+    /// <summary>
+    /// Gets the Test-only credential that authenticates a caller the sample gates never admit. The browser harness
+    /// uses it to probe the sanitized empty and failure shapes with an authenticated principal.
+    /// </summary>
+    internal const string NonAdmittedApiKey = "counter-e2e-mcp-non-admitted-key";
+
+    /// <summary>Gets the tenant associated with the Test-only non-admitted credential.</summary>
+    internal const string NonAdmittedTenantId = "probe-tenant";
+
+    /// <summary>Gets the user associated with the Test-only non-admitted credential.</summary>
+    internal const string NonAdmittedUserId = "probe-user";
 
     /// <summary>Checks that authenticated context and principal claims match the sample identity.</summary>
     /// <param name="context">The authenticated request context.</param>

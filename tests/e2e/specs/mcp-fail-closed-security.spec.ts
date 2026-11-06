@@ -1,8 +1,10 @@
 import { fileURLToPath } from 'node:url';
 
+import type { APIRequestContext } from '@playwright/test';
+
 import { expect, test } from '../fixtures/index.js';
 import { spawnOwnedProcess, stopOwnedProcess, waitForOwnedServer, type OwnedProcess } from '../helpers/owned-process.js';
-import { McpClient, type McpCallToolResult, type McpResource, type McpTextResourceContents } from '../helpers/mcp-client.js';
+import { McpClient, sampleMcpApiKey, type McpCallToolResult, type McpTextResourceContents } from '../helpers/mcp-client.js';
 
 const lifecycleTool = 'frontcomposer.lifecycle.subscribe';
 const admittedTools = [
@@ -17,6 +19,11 @@ const visibleCommand = 'Counter.BatchIncrementCommand.Execute';
 const absentCommand = 'Counter.DoesNotExistCommand.Execute';
 const secretArgument = 'Bearer eyJhbGciOiJIUzI1NiJ9.agent-secret';
 const invalidApiKey = 'Bearer eyJhbGciOiJIUzI1NiJ9.invalid-mcp-key';
+// Compiled into Counter.Web and registered only in the Test environment: an authenticated principal the sample
+// gates never admit.
+const nonAdmittedApiKey = 'counter-e2e-mcp-non-admitted-key';
+const nonAdmittedIdentity = ['probe-tenant', 'probe-user'];
+const admittedIdentity = ['demo-tenant', 'demo-user'];
 
 test.describe('Story 5.4: MCP fail-closed security gates', () => {
   test('lists only admitted tools plus lifecycle for an authenticated tenant context', async ({ request }) => {
@@ -35,21 +42,26 @@ test.describe('Story 5.4: MCP fail-closed security gates', () => {
     expect(JSON.stringify(result)).not.toContain('demo-user');
   });
 
-  test('returns an empty tools list without protocol error when auth is missing or invalid', async ({ request }) => {
-    for (const client of [new McpClient(request, null), new McpClient(request, invalidApiKey)]) {
-      await client.initialize();
-
-      const result = await client.call<{ tools: McpResource[] }>('tools/list');
-
-      expect(result.tools).toEqual([]);
-      expect(JSON.stringify(result)).not.toContain('auth_failed');
-      expect(JSON.stringify(result)).not.toContain('tenant_missing');
-      expect(JSON.stringify(result)).not.toContain(invalidApiKey);
-    }
+  test('rejects a missing or invalid API key with 401 before MCP dispatch', async ({ request }) => {
+    await expectUnauthenticatedProbesRejected(request);
   });
 
-  test('does not leak auth details or arguments when tool calls are unauthenticated', async ({ request }) => {
-    const client = new McpClient(request, invalidApiKey);
+  test('lists no command tools for an authenticated but non-admitted principal', async ({ request }) => {
+    const client = new McpClient(request, nonAdmittedApiKey);
+    await client.initialize();
+
+    const result = await client.call<{ tools: Array<{ name: string }> }>('tools/list');
+    const body = JSON.stringify(result);
+
+    expect(result.tools.map((tool) => tool.name)).toEqual([lifecycleTool]);
+    expect(body).not.toContain('Specimens.');
+    expect(body).not.toContain('auth_failed');
+    expect(body).not.toContain('tenant_missing');
+    expectNoIdentityOrKeyEcho(body);
+  });
+
+  test('does not leak identity details or arguments when a non-admitted principal calls a tool', async ({ request }) => {
+    const client = new McpClient(request, nonAdmittedApiKey);
     await client.initialize();
 
     const result = await client.call<McpCallToolResult>('tools/call', {
@@ -65,11 +77,10 @@ test.describe('Story 5.4: MCP fail-closed security gates', () => {
     expect(result.isError).toBe(true);
     expect(singleText(result).text).toBe('Request failed.');
     expect(body).not.toContain(secretArgument);
-    expect(body).not.toContain(invalidApiKey);
+    expect(body).not.toContain(visibleCommand);
     expect(body).not.toContain('auth_failed');
     expect(body).not.toContain('tenant_missing');
-    expect(body).not.toContain('demo-tenant');
-    expect(body).not.toContain('demo-user');
+    expectNoIdentityOrKeyEcho(body);
   });
 
   test('returns an opaque unknown-tool payload without echoing raw arguments', async ({ request }) => {
@@ -121,8 +132,8 @@ test.describe('Story 5.4: MCP fail-closed security gates', () => {
     expect(body).not.toContain('messageId');
   });
 
-  test('collapses projection auth failures to the public unknown-resource response', async ({ request }) => {
-    const client = new McpClient(request, invalidApiKey);
+  test('collapses projection visibility failures for a non-admitted principal to the public unknown-resource response', async ({ request }) => {
+    const client = new McpClient(request, nonAdmittedApiKey);
     await client.initialize();
 
     const projection = await client.call<{ contents: McpTextResourceContents[] }>('resources/read', {
@@ -137,9 +148,7 @@ test.describe('Story 5.4: MCP fail-closed security gates', () => {
     expect(body).toContain('unknown_resource');
     expect(body).not.toContain('auth_failed');
     expect(body).not.toContain('tenant_missing');
-    expect(body).not.toContain(invalidApiKey);
-    expect(body).not.toContain('demo-tenant');
-    expect(body).not.toContain('demo-user');
+    expectNoIdentityOrKeyEcho(body);
   });
 });
 
@@ -167,7 +176,7 @@ test.describe('Counter sample Development HTTP authentication', () => {
     await waitForOwnedServer(host, baseUrl, Date.now() + 10_000);
   });
 
-  test('admits the exact API-key tool inventory and rejects missing or invalid HTTP credentials', async ({ playwright }) => {
+  test('admits the exact API-key tool inventory and rejects missing, invalid or Test-only HTTP credentials', async ({ playwright }) => {
     const request = await playwright.request.newContext({ baseURL: baseUrl });
     try {
       const client = new McpClient(request);
@@ -175,28 +184,38 @@ test.describe('Counter sample Development HTTP authentication', () => {
       const result = await client.call<{ tools: Array<{ name: string }> }>('tools/list');
       expect(result.tools.map((tool) => tool.name).sort()).toEqual(admittedTools);
       expect(JSON.stringify(result)).not.toContain('Specimens.');
-      for (const key of [null, invalidApiKey]) {
-        const response = await request.post('/mcp', {
-          headers: {
-            Accept: 'application/json, text/event-stream',
-            ...(key === null ? {} : { 'X-FrontComposer-Mcp-Key': key }),
-          },
-          data: { jsonrpc: '2.0', id: 1, method: 'initialize', params: {
-            protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'auth-probe', version: '0.0.0' },
-          } },
-        });
-        expect(response.status()).toBe(401);
-        const body = await response.text();
-        expect(body).not.toContain(invalidApiKey);
-        expect(body).not.toContain('Invalid sample credential');
-        expect(body).not.toContain('demo-tenant');
-        expect(body).not.toContain('demo-user');
-      }
+      // The non-admitted probe key is registered only for the Test host, so Development rejects it too.
+      await expectUnauthenticatedProbesRejected(request, [nonAdmittedApiKey]);
     } finally {
       await request.dispose();
     }
   });
 });
+
+const expectNoIdentityOrKeyEcho = (body: string) => {
+  for (const secret of [...admittedIdentity, ...nonAdmittedIdentity, nonAdmittedApiKey, invalidApiKey]) {
+    expect(body).not.toContain(secret);
+  }
+};
+
+const expectUnauthenticatedProbesRejected = async (request: APIRequestContext, extraKeys: string[] = []) => {
+  for (const key of [null, invalidApiKey, ...extraKeys]) {
+    const response = await request.post('/mcp', {
+      headers: {
+        Accept: 'application/json, text/event-stream',
+        ...(key === null ? {} : { 'X-FrontComposer-Mcp-Key': key }),
+      },
+      data: { jsonrpc: '2.0', id: 1, method: 'initialize', params: {
+        protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'auth-probe', version: '0.0.0' },
+      } },
+    });
+    expect(response.status(), `initialize with ${key === null ? 'no key' : 'an unaccepted key'}`).toBe(401);
+    const body = await response.text();
+    expect(body).not.toContain('The FrontComposer MCP API key was rejected');
+    expect(body).not.toContain(sampleMcpApiKey);
+    expectNoIdentityOrKeyEcho(body);
+  }
+};
 
 const singleText = (result: McpCallToolResult) => {
   expect(result.content).toHaveLength(1);

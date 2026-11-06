@@ -93,6 +93,15 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
             }
 
             FrontComposerMcpApiKeyIdentity? matched = _apiKeyCredentialStore.Match(candidate) ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
+
+            // A mixed-scheme policy merges principals: another credential (for example a bearer token)
+            // can satisfy host authorization while the key names a different caller. Refuse that request
+            // instead of dispatching as the key's identity.
+            if (HasConflictingClaim(http.User, options.Value.TenantClaimTypes, matched.TenantId.Trim())
+                || HasConflictingClaim(http.User, options.Value.UserClaimTypes, matched.UserId.Trim())) {
+                throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
+            }
+
             return Create(matched.TenantId, matched.UserId, claimsSource: null);
         }
 
@@ -163,6 +172,26 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
         }
 
         return true;
+    }
+
+    private static bool HasConflictingClaim(ClaimsPrincipal? principal, IEnumerable<string> claimTypes, string expected) {
+        if (principal is null) {
+            return false;
+        }
+
+        HashSet<string> types = new(claimTypes, StringComparer.Ordinal);
+        foreach (Claim claim in principal.Claims) {
+            if (!types.Contains(claim.Type)) {
+                continue;
+            }
+
+            string value = claim.Value.Trim();
+            if (value.Length > 0 && !string.Equals(value, expected, StringComparison.Ordinal)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string? FirstClaim(ClaimsPrincipal principal, IEnumerable<string> claimTypes) {

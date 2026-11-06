@@ -206,6 +206,8 @@ public sealed class HostingTests {
         builder.Environment.EnvironmentName = "Development";
         _ = builder.Services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
         _ = builder.Services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = builder.Services.AddAuthentication(FrontComposerMcpAuthenticationDefaults.ApiKeyScheme).AddFrontComposerMcpApiKey();
+        _ = builder.Services.AddAuthorization();
         _ = builder.Services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest(
             "billing.invoice.create",
             DescriptorUri: "frontcomposer://skills/manifest")));

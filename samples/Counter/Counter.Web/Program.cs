@@ -16,7 +16,6 @@ using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -186,9 +185,8 @@ builder.Services.Configure<StubCommandServiceOptions>(
     builder.Configuration.GetSection("Hexalith:FrontComposer:StubCommandService"));
 
 if (mcpEnabled) {
-    _ = builder.Services.AddAuthentication(CounterMcpSampleAuthenticationHandler.SchemeName)
-        .AddScheme<AuthenticationSchemeOptions, CounterMcpSampleAuthenticationHandler>(
-            CounterMcpSampleAuthenticationHandler.SchemeName, _ => { });
+    _ = builder.Services.AddAuthentication(FrontComposerMcpAuthenticationDefaults.ApiKeyScheme)
+        .AddFrontComposerMcpApiKey();
     _ = builder.Services.AddAuthorization();
     builder.Services.TryAddScoped<IQueryService, CounterMcpSampleQueryService>();
     _ = builder.Services.AddSingleton<IFrontComposerMcpTenantToolGate, CounterMcpSampleTenantToolGate>();
@@ -202,6 +200,12 @@ if (mcpEnabled) {
         o.ApiKeys[CounterMcpSampleAccessPolicy.ApiKey] = new FrontComposerMcpApiKeyIdentity(
             CounterMcpSampleAccessPolicy.TenantId,
             CounterMcpSampleAccessPolicy.UserId);
+        if (builder.Environment.IsEnvironment("Test")) {
+            // The sanitized-failure probes need an authenticated caller that the sample gates never admit.
+            o.ApiKeys[CounterMcpSampleAccessPolicy.NonAdmittedApiKey] = new FrontComposerMcpApiKeyIdentity(
+                CounterMcpSampleAccessPolicy.NonAdmittedTenantId,
+                CounterMcpSampleAccessPolicy.NonAdmittedUserId);
+        }
     });
 }
 
@@ -229,12 +233,7 @@ razorComponents
     .AddInteractiveServerRenderMode();
 
 if (mcpEnabled) {
-    IEndpointConventionBuilder mcpEndpoint = app.MapFrontComposerMcp();
-    if (app.Environment.IsEnvironment("Test")) {
-        // Local protocol probes exercise sanitized anonymous failures inside MCP admission.
-        // Explicit transport policy keeps authorization metadata and admits only loopback Test traffic.
-        _ = mcpEndpoint.RequireAuthorization(CounterMcpSampleAccessPolicy.CreateTestTransportPolicy());
-    }
+    _ = app.MapFrontComposerMcp();
 }
 
 app.Run();

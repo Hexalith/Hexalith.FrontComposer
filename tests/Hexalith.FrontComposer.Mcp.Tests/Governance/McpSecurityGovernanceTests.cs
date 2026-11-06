@@ -35,6 +35,8 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Governance;
 
 [Trait("Category", "Governance")]
 public sealed class McpSecurityGovernanceTests {
+    private const string AgentKey = "audit-agent-key-01";
+
     [Theory]
     [InlineData("Production")]
     [InlineData("Staging")]
@@ -90,25 +92,16 @@ public sealed class McpSecurityGovernanceTests {
                 CookieAuthenticationDefaults.AuthenticationScheme))));
         _ = app.MapFrontComposerMcp();
 
-        Endpoint[] endpoints = [.. ((IEndpointRouteBuilder)app).DataSources
-            .SelectMany(source => source.Endpoints)
-            .OfType<RouteEndpoint>()
-            .Where(endpoint => endpoint.RoutePattern.RawText?.StartsWith("/mcp", StringComparison.Ordinal) == true)];
-        endpoints.ShouldNotBeEmpty();
-        endpoints.All(endpoint => endpoint.Metadata.GetMetadata<IAuthorizeData>() is not null).ShouldBeTrue();
-        endpoints.All(endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null).ShouldBeTrue();
-
+        RouteEndpoint[] endpoints = McpHttpTestHost.McpEndpoints(app);
         await app.StartAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
         string address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!
             .Addresses.Single();
         using HttpClient client = new();
         const string initialize = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"audit","version":"1"}}}""";
-        using StringContent content = new(initialize, Encoding.UTF8, "application/json");
-        using HttpRequestMessage request = new(HttpMethod.Post, address.TrimEnd('/') + "/mcp") { Content = content };
-        request.Headers.Accept.ParseAdd("application/json, text/event-stream");
-        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        // Effective outcome, not metadata shape: every mapped MCP endpoint rejects an anonymous caller.
+        await McpHttpTestHost.AssertAnonymousRejectedEverywhereAsync(
+            client, address.TrimEnd('/'), endpoints, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         using HttpClientHandler handler = new() { CookieContainer = new CookieContainer() };
         using HttpClient authenticatedClient = new(handler);
@@ -119,6 +112,242 @@ public sealed class McpSecurityGovernanceTests {
         authorizedRequest.Headers.Accept.ParseAdd("application/json, text/event-stream");
         using HttpResponseMessage authorizedResponse = await authenticatedClient.SendAsync(authorizedRequest, TestContext.Current.CancellationToken).ConfigureAwait(true);
         authorizedResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AppendedHostPolicyCannotRemoveTheAuthenticatedUserRequirement(bool appendNamedPolicy) {
+        // E14R-AI-2 / F-2: an appended policy object used to replace the implicit default policy of an empty [Authorize].
+        WebApplicationBuilder builder = McpHttpTestHost.CreateBuilder("Production");
+        _ = builder.Services.AddAuthentication(FrontComposerMcpAuthenticationDefaults.ApiKeyScheme).AddFrontComposerMcpApiKey();
+        _ = builder.Services.AddAuthorization(options => options.AddPolicy("HostAlwaysTrue", policy => policy.RequireAssertion(_ => true)));
+        _ = builder.Services.AddFrontComposerMcp(options => options.ApiKeys[AgentKey] = new FrontComposerMcpApiKeyIdentity("tenant-a", "agent-a"));
+        await using WebApplication app = builder.Build();
+        _ = app.UseAuthentication();
+        _ = app.UseAuthorization();
+        IEndpointConventionBuilder mcp = app.MapFrontComposerMcp();
+        _ = appendNamedPolicy
+            ? mcp.RequireAuthorization("HostAlwaysTrue")
+            : mcp.RequireAuthorization(new AuthorizationPolicyBuilder().RequireAssertion(_ => true).Build());
+
+        RouteEndpoint[] endpoints = McpHttpTestHost.McpEndpoints(app);
+        string address = await McpHttpTestHost.StartAsync(app, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        using HttpClient client = new();
+
+        await McpHttpTestHost.AssertAnonymousRejectedEverywhereAsync(client, address, endpoints, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        (await McpHttpTestHost.PostInitializeAsync(client, address, [AgentKey], TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .Status.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task HostDefaultPolicyStillAppliesToFrameworkOnlyMapping() {
+        const string OtherTenantKey = "audit-other-tenant-key-02";
+        WebApplicationBuilder builder = McpHttpTestHost.CreateBuilder("Production");
+        _ = builder.Services.AddAuthentication(FrontComposerMcpAuthenticationDefaults.ApiKeyScheme).AddFrontComposerMcpApiKey();
+        _ = builder.Services.AddAuthorization(options => options.DefaultPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .RequireClaim("TenantId", "tenant-a")
+            .Build());
+        _ = builder.Services.AddFrontComposerMcp(options => {
+            options.ApiKeys[AgentKey] = new FrontComposerMcpApiKeyIdentity("tenant-a", "agent-a");
+            options.ApiKeys[OtherTenantKey] = new FrontComposerMcpApiKeyIdentity("tenant-b", "agent-b");
+        });
+        await using WebApplication app = builder.Build();
+        _ = app.UseAuthentication();
+        _ = app.UseAuthorization();
+        _ = app.MapFrontComposerMcp();
+
+        string address = await McpHttpTestHost.StartAsync(app, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        using HttpClient client = new();
+
+        (await McpHttpTestHost.PostInitializeAsync(client, address, null, TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .Status.ShouldBe(HttpStatusCode.Unauthorized);
+        (await McpHttpTestHost.PostInitializeAsync(client, address, [OtherTenantKey], TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await McpHttpTestHost.PostInitializeAsync(client, address, [AgentKey], TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .Status.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task PermissiveHostDefaultPolicyStillRequiresAnAuthenticatedCaller() {
+        // D1: the explicit RequireAuthenticatedUser() applies even when the host's default policy admits everyone.
+        WebApplicationBuilder builder = McpHttpTestHost.CreateBuilder("Production");
+        _ = builder.Services.AddAuthentication(FrontComposerMcpAuthenticationDefaults.ApiKeyScheme).AddFrontComposerMcpApiKey();
+        _ = builder.Services.AddAuthorization(options => options.DefaultPolicy = new AuthorizationPolicyBuilder()
+            .RequireAssertion(_ => true)
+            .Build());
+        _ = builder.Services.AddFrontComposerMcp(options => options.ApiKeys[AgentKey] = new FrontComposerMcpApiKeyIdentity("tenant-a", "agent-a"));
+        await using WebApplication app = builder.Build();
+        _ = app.UseAuthentication();
+        _ = app.UseAuthorization();
+        _ = app.MapFrontComposerMcp();
+
+        RouteEndpoint[] endpoints = McpHttpTestHost.McpEndpoints(app);
+        string address = await McpHttpTestHost.StartAsync(app, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        using HttpClient client = new();
+
+        await McpHttpTestHost.AssertAnonymousRejectedEverywhereAsync(client, address, endpoints, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        (await McpHttpTestHost.PostInitializeAsync(client, address, [AgentKey], TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .Status.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MixedSchemeHostAuthenticatesTheAgentKeyForMcp(bool scopeApiKeyToMcpEndpoints) {
+        WebApplicationBuilder builder = McpHttpTestHost.CreateBuilder("Production");
+        _ = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie(options => options.Events.OnRedirectToLogin = context => {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            })
+            .AddFrontComposerMcpApiKey();
+        _ = scopeApiKeyToMcpEndpoints
+            ? builder.Services.AddAuthorization()
+            : builder.Services.AddAuthorization(options => options.DefaultPolicy = new AuthorizationPolicyBuilder(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    FrontComposerMcpAuthenticationDefaults.ApiKeyScheme)
+                .RequireAuthenticatedUser()
+                .Build());
+        _ = builder.Services.AddFrontComposerMcp(options => options.ApiKeys[AgentKey] = new FrontComposerMcpApiKeyIdentity("tenant-a", "agent-a"));
+        await using WebApplication app = builder.Build();
+        _ = app.UseAuthentication();
+        _ = app.UseAuthorization();
+        IEndpointConventionBuilder mcp = app.MapFrontComposerMcp();
+        if (scopeApiKeyToMcpEndpoints) {
+            _ = mcp.RequireAuthorization(new AuthorizationPolicyBuilder(FrontComposerMcpAuthenticationDefaults.ApiKeyScheme)
+                .RequireAuthenticatedUser()
+                .Build());
+        }
+
+        RouteEndpoint[] endpoints = McpHttpTestHost.McpEndpoints(app);
+        string address = await McpHttpTestHost.StartAsync(app, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        using HttpClient client = new();
+
+        (await McpHttpTestHost.PostInitializeAsync(client, address, [AgentKey], TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .Status.ShouldBe(HttpStatusCode.OK);
+        await McpHttpTestHost.AssertAnonymousRejectedEverywhereAsync(client, address, endpoints, TestContext.Current.CancellationToken).ConfigureAwait(true);
+    }
+
+    [Fact]
+    public async Task ApiKeyOnlyHostAuthenticatesConfiguredKeysBeforeAuthorization() {
+        // E14R-AI-3 / F-3: FrontComposerMcpOptions.ApiKeys used to be matched only after authorization had already run.
+        const string InvalidKey = "audit-unconfigured-key-03";
+        McpAuditLoggerProvider logs = new();
+        WebApplicationBuilder builder = McpHttpTestHost.CreateBuilder("Production", logs);
+        _ = builder.Services.AddAuthentication(FrontComposerMcpAuthenticationDefaults.ApiKeyScheme).AddFrontComposerMcpApiKey();
+        _ = builder.Services.AddAuthorization();
+        _ = builder.Services.AddFrontComposerMcp(options => options.ApiKeys[AgentKey] = new FrontComposerMcpApiKeyIdentity("tenant-a", "agent-a"));
+        await using WebApplication app = builder.Build();
+        _ = app.UseAuthentication();
+        _ = app.UseAuthorization();
+        _ = app.MapFrontComposerMcp();
+
+        RouteEndpoint[] endpoints = McpHttpTestHost.McpEndpoints(app);
+        string address = await McpHttpTestHost.StartAsync(app, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        using HttpClient client = new();
+
+        (await McpHttpTestHost.PostInitializeAsync(client, address, [AgentKey], TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .Status.ShouldBe(HttpStatusCode.OK);
+        await McpHttpTestHost.AssertAnonymousRejectedEverywhereAsync(client, address, endpoints, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        foreach (string[] rejected in new[] {
+            new[] { InvalidKey },
+            new[] { "   " },
+            new[] { AgentKey, AgentKey },
+            new[] { AgentKey + " " + InvalidKey },
+        }) {
+            (HttpStatusCode status, string? responseBody) = await McpHttpTestHost.PostInitializeAsync(
+                client, address, rejected, TestContext.Current.CancellationToken, readBody: true).ConfigureAwait(true);
+
+            status.ShouldBe(HttpStatusCode.Unauthorized);
+            string body = responseBody.ShouldNotBeNull();
+            body.ShouldNotContain(AgentKey);
+            body.ShouldNotContain(InvalidKey);
+        }
+
+        string logText = string.Join('\n', logs.Entries);
+        logText.ShouldContain(FrontComposerMcpApiKeyAuthenticationHandler.FailureMessage);
+        logText.ShouldNotContain(AgentKey);
+        logText.ShouldNotContain(InvalidKey);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void MappingWithoutAuthenticationOrAuthorizationServicesNamesTheMissingCall(bool addAuthentication, bool addAuthorization) {
+        WebApplicationBuilder builder = McpHttpTestHost.CreateBuilder("Production");
+        if (addAuthentication) {
+            _ = builder.Services.AddAuthentication(FrontComposerMcpAuthenticationDefaults.ApiKeyScheme).AddFrontComposerMcpApiKey();
+        }
+
+        if (addAuthorization) {
+            _ = builder.Services.AddAuthorization();
+        }
+
+        _ = builder.Services.AddFrontComposerMcp();
+        using WebApplication app = builder.Build();
+
+        InvalidOperationException error = Should.Throw<InvalidOperationException>(() => app.MapFrontComposerMcp());
+
+        if (addAuthentication) {
+            error.Message.ShouldNotContain("AddAuthentication");
+        }
+        else {
+            error.Message.ShouldContain("AddAuthentication");
+        }
+
+        if (addAuthorization) {
+            error.Message.ShouldNotContain("AddAuthorization");
+        }
+        else {
+            error.Message.ShouldContain("AddAuthorization");
+        }
+
+        McpHttpTestHost.McpEndpoints(app).ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("development")]
+    [InlineData("DEVELOPMENT")]
+    [InlineData("Development")]
+    public async Task DevelopmentEnvironmentInAnyCaseAdmitsAllowAllGates(string environmentName) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environmentName });
+        _ = builder.WebHost.UseUrls("http://127.0.0.1:0");
+        _ = builder.Services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = builder.Services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = builder.Services.AddAuthentication(FrontComposerMcpAuthenticationDefaults.ApiKeyScheme).AddFrontComposerMcpApiKey();
+        _ = builder.Services.AddAuthorization();
+        _ = builder.Services.AddFrontComposerMcp();
+        await using WebApplication app = builder.Build();
+        _ = app.UseAuthentication();
+        _ = app.UseAuthorization();
+
+        _ = app.MapFrontComposerMcp();
+
+        RouteEndpoint[] endpoints = McpHttpTestHost.McpEndpoints(app);
+        string address = await McpHttpTestHost.StartAsync(app, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        using HttpClient client = new();
+        await McpHttpTestHost.AssertAnonymousRejectedEverywhereAsync(client, address, endpoints, TestContext.Current.CancellationToken).ConfigureAwait(true);
+    }
+
+    [Fact]
+    public void ProductionMappingResolvesGatesInAnAsyncDisposedScope() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production" });
+        _ = builder.Services.AddScoped<AsyncOnlyDisposableGateDependency>();
+        _ = builder.Services.AddScoped<IFrontComposerMcpTenantToolGate, AsyncDisposableDependentTenantToolGate>();
+        _ = builder.Services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(Substitute.For<IFrontComposerMcpResourceVisibilityGate>());
+        _ = builder.Services.AddAuthentication(FrontComposerMcpAuthenticationDefaults.ApiKeyScheme).AddFrontComposerMcpApiKey();
+        _ = builder.Services.AddAuthorization();
+        _ = builder.Services.AddFrontComposerMcp();
+        using WebApplication app = builder.Build();
+        int disposalsBefore = AsyncOnlyDisposableGateDependency.Disposals;
+
+        _ = app.MapFrontComposerMcp();
+
+        AsyncOnlyDisposableGateDependency.Disposals.ShouldBe(disposalsBefore + 1);
+        McpHttpTestHost.McpEndpoints(app).ShouldNotBeEmpty();
     }
 
     [Fact]

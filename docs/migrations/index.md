@@ -21,6 +21,7 @@ shortened; use the exact versions in this table and the guide metadata when plan
 
 | fromVersion | toVersion | migrationMode | Guide |
 | --- | --- | --- | --- |
+| 4.7.6 | 5.0.0 | manual-only | [4.7 to 5.0](4.7-to-5.0.md) |
 | 4.5.0 | 4.6.0 | manual-only | [4.5 to 4.6](4.5-to-4.6.md) |
 | 3.1.1 | 4.0.0 | manual-only | [3.1 to 4.0](3.1-to-4.0.md) |
 | 9.1.0 | 9.2.0 | cli-supported | [9.1 to 9.2](9.1-to-9.2.md) |
