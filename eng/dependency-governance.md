@@ -1,18 +1,65 @@
 # Dependency governance source projection
 
-The FrontComposer AppHost selects Platform commit
-`aaa30aff1038688a921494a78c9fc53fc5eb8836` and Builds commit
-`06a51f55bfe2e03a06e1121d94a41e98f1e3e251`. The matching sealed
-inventory, two canonical source-file digests, consumer configuration and root
-selectors are recorded in `dependency-graph-policy.json`.
+The maintenance selection uses these exact committed root dependencies:
 
-The push graph gate evaluates a candidate under its event base's committed
-policy. The reviewed policy reseal at
-`0456bba7198d6ed8c661fd24aa22286eae3bba87` cannot authorize its own
-source or selector changes. This documentation-only follow-up makes that
-reviewed policy the event base for the next exact graph check. No CI outcome
-for the reseal or this follow-up is asserted here; the actual hosted gates
-remain required.
+| Root dependency | Selected commit |
+| --- | --- |
+| Hexalith.AI.Tools | `1745b6663ad32bb1288167135ed0f979366c53a0` |
+| Hexalith.Builds | `0577f0c2d70bd4c2999aa3d98a705c83919bfc00` |
+| Hexalith.Commons | `11555ace9efcae2928a00122dcba91243e5a8a1a` |
+| Hexalith.EventStore | `0f22b3ed86a2ecc4a98f09b4cc76bc5a9bba38c9` |
+| Hexalith.Memories | `246157a7ff8e2dcd8d356c833a77a02514490d2f` |
+| Hexalith.Parties | `1308ad000c79ebc394fc395588f9af91092e8c4c` |
+| Hexalith.Platform | `c1997c60f31e08d945b44cb7aa2afd7800e8ff69` |
+| Hexalith.PolymorphicSerializations | `bce4eb9f45c6b131b960ab4fa39e50ff01e51960` |
+| Hexalith.Tenants | `cf36618a2c27b5722a1ff811cfbbce4528c3c105` |
+
+The matching Platform inventory, two canonical source-file digests, consumer
+configuration, root Builds source and root selectors are sealed in
+`dependency-graph-policy.json`. Platform remains evidence-only, with only the
+existing canonical source pair consumed by the AppHost. All nine repositories
+were fetched and synchronized individually; nested checkouts were not moved or
+initialized. The Builds catalog and its audit were then committed in the owning
+repository.
+
+The 2026-11-06 registry refresh selects MediatR `14.3.0`,
+Microsoft.Azure.Cosmos `3.63.4`, Microsoft.Identity.Web `4.18.0`,
+OpenTelemetry.Instrumentation.Http `1.20.2`, Radzen.Blazor `12.1.12` and the
+existing StyleCop beta channel at `1.3.171-beta`. The Builds audit binds catalog
+commit `b4ae8e36a88ca48159b8949a0c8131871825e2d6` and refreshes the seven
+affected families; its deterministic validation passes for 316 packages. The
+13 Hexalith version properties and their 65 package IDs already match the
+current compatible public versions. Both npm test workspaces select Playwright
+`1.65.0`; Node 24 type declarations remain selected.
+
+The new analyzer also requires multiline collection-expression layout fixes in
+Builds. Those source changes contain whitespace only, and the complete Builds
+Release solution build passes with all analyzer gates enabled. The Shell test
+cleanup helpers poll the existing bunit invocation list by identifier to avoid
+concurrent dictionary enumeration while preserving exactly-once checks.
+
+Compatibility holds remain explicit:
+
+- The SDK stays at stable .NET `10.0.403`.
+- Microsoft.Build and Microsoft.Build.Framework stay at `18.9.6`; the newer
+  inspected versions require unsupported .NET 11 assets.
+- Microsoft.OpenApi stays at `2.13.0` because ASP.NET Core OpenApi 10 requires
+  the 2.x API.
+- AngleSharp stays at patched `1.9.1`. The published `1.10.0` fails the Shell
+  and Testing suites with a `TypeLoadException`: latest stable bunit `2.13.3`
+  wrappers do not implement the new `add_BeforeToggle` member. Upgrade this pin
+  when a compatible bunit release passes those suites.
+
+The FrontComposer catalog profile requires the selected external MCP ASP.NET
+Core package version `2.3.1` exactly. Other strict package expectations and all
+automated build and release gates remain intact.
+
+The push graph gate evaluates both the event base and candidate under the event
+base's committed policy. This reseal cannot authorize its own changed source or
+selectors. After it lands, a separate later-base activation push must be
+evaluated under the landed reseal. Successful local checks do not assert any
+hosted CI, release or NuGet publication outcome; those authoritative gates and
+publication verification remain required.
 
 Catalog preparation first validates both root mappings and their approved
 existing object stores. It acquires only missing exact historical owner commits

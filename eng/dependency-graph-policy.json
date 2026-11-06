@@ -81,7 +81,7 @@
         "Microsoft.CodeAnalysis.Workspaces.Common": "5.9.0",
         "Microsoft.Extensions.Localization": "10.0.14",
         "Microsoft.Extensions.TimeProvider.Testing": "10.11.0",
-        "ModelContextProtocol.AspNetCore": "2.3.0",
+        "ModelContextProtocol.AspNetCore": "2.3.1",
         "NUlid": "1.7.3",
         "PactNet": "5.0.1",
         "System.Collections.Immutable": "10.0.14",
@@ -2844,9 +2844,9 @@
   },
   "consumer_source_projections": {
     "github.com/hexalith/hexalith.platform": {
-      "owner_commit": "aaa30aff1038688a921494a78c9fc53fc5eb8836",
+      "owner_commit": "c1997c60f31e08d945b44cb7aa2afd7800e8ff69",
       "gitmodules_sha256": "6da4f5297d79bfa54afcb8daacda70670af11868ba1738cc185f584db8eb6ab7",
-      "inventory_sha256": "e75b800e0315fe0f5bcb7dfbf7c474ee4396652ffa65e3f3914c09950f4bc366",
+      "inventory_sha256": "0d36101a45831e4074be812adeb5275ef483d239e62f79ccf41af88fbae15f9b",
       "inventory_only_identities": [
         "github.com/hexalith/hexalith.agents",
         "github.com/hexalith/hexalith.chatbot",
@@ -2867,9 +2867,9 @@
         "DaprSelfHostedMtls.cs": "Platform/DaprSelfHostedMtls.cs",
         "DaprSelfHostedMtlsSubscriber.cs": "Platform/DaprSelfHostedMtlsSubscriber.cs"
       },
-      "builds_commit": "06a51f55bfe2e03a06e1121d94a41e98f1e3e251",
+      "builds_commit": "0577f0c2d70bd4c2999aa3d98a705c83919bfc00",
       "builds_project": "src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj",
-      "root_selectors_sha256": "306658afade1f8f7d3643b85f491da59b22d36664983924bd06ee5d478c10754",
+      "root_selectors_sha256": "ecac30d704129430dc99e137ace73f09e117ffb16ae361406c2900418981ccdd",
       "consumer_configuration_sha256": "761443f7449d0d15bfd30beeabccaf9823c34a82657648da06efc1bfd1fb3d52"
     }
   }

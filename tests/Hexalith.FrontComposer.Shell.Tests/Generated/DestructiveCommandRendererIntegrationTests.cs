@@ -385,24 +385,22 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
 
     private void AssertOverlayOriginRestoredOnce() {
         // The restore runs in the gate's finally block, after the last render it may cause, so it is
-        // polled rather than awaited through a render.
+        // polled by identifier rather than enumerating invocations during concurrent JS calls.
         SpinWait.SpinUntil(
-            () => FcFocusModule.Invocations.Any(invocation => invocation.Identifier == "restoreOverlayOrigin"),
+            () => FcFocusModule.Invocations["restoreOverlayOrigin"].Count > 0,
             TimeSpan.FromSeconds(5)).ShouldBeTrue();
-        FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "restoreOverlayOrigin").ShouldBe(1);
+        FcFocusModule.Invocations["restoreOverlayOrigin"].ShouldHaveSingleItem();
     }
 
     private void AssertReservationReleasedByOwner() {
         // The release runs in the gate's finally block or a later render, so it is polled.
         SpinWait.SpinUntil(
-            () => FcFocusModule.Invocations.Any(invocation => invocation.Identifier == "releaseOverlayReservation"),
+            () => FcFocusModule.Invocations["releaseOverlayReservation"].Count > 0,
             TimeSpan.FromSeconds(5)).ShouldBeTrue();
-        string owner = FcFocusModule.Invocations
-            .Last(invocation => invocation.Identifier == "captureOverlayOrigin")
+        string owner = FcFocusModule.Invocations["captureOverlayOrigin"][^1]
             .Arguments[2].ShouldBeOfType<string>();
         owner.ShouldStartWith("fc-trigger-");
-        FcFocusModule.Invocations
-            .Where(invocation => invocation.Identifier == "releaseOverlayReservation")
+        FcFocusModule.Invocations["releaseOverlayReservation"]
             .ShouldHaveSingleItem()
             .Arguments.ShouldHaveSingleItem().ShouldBe(owner);
     }
