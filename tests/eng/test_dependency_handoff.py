@@ -157,6 +157,25 @@ class HandoffTests(unittest.TestCase):
         with self.assertRaises(dh.HandoffError):
             dh.validate_release_handoff(substituted, ci_handoff_raw=ci_raw)
 
+    def test_release_handoff_rejects_same_asset_name_with_different_bytes(self) -> None:
+        ci_raw = dg.canonical_bytes(self._ci_handoff())
+        evaluator = self._evaluator("release")
+        policy = {"evaluator_authorizations": {"release": [self._authorization("release", evaluator)]}}
+        arguments = dict(
+            release_run_id=50, release_run_attempt=1, conclusion="success",
+            ci_handoff_raw=ci_raw, evaluator=evaluator, policy=policy,
+            release={"version": "1.2.3", "tag": "v1.2.3", "github_release_id": 9, "published": True},
+            manifest={"path": "release-evidence.json", "sha256": "4" * 64, "seal": "5" * 64},
+            assets=[{"name": "package.nupkg", "sha256": "1" * 64, "size": 10}],
+        )
+        valid = dh.create_release_handoff(**arguments)
+        valid["assets"].append({"name": "package.nupkg", "sha256": "2" * 64, "size": 20})
+        with self.assertRaisesRegex(dh.HandoffError, "sorted and unique"):
+            dh.validate_release_handoff(valid, ci_handoff_raw=ci_raw)
+        arguments["assets"] = valid["assets"]
+        with self.assertRaisesRegex(dh.HandoffError, "sorted and unique"):
+            dh.create_release_handoff(**arguments)
+
     def test_unpublished_attempt_cannot_green_noop_with_omitted_projection(self) -> None:
         ci = self._ci_handoff()
         handoff = {

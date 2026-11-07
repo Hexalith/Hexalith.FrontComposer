@@ -321,7 +321,7 @@ def validate_release_handoff(
         if isinstance(row["size"], bool) or not isinstance(row["size"], int) or row["size"] < 0:
             raise HandoffError(f"Release handoff assets[{index}].size must be a nonnegative integer")
     expected_assets = sorted(assets, key=lambda row: (row["name"], row["sha256"], row["size"]))
-    if assets != expected_assets or len({dg.canonical_bytes(item) for item in assets}) != len(assets):
+    if assets != expected_assets or len({item["name"] for item in assets}) != len(assets):
         raise HandoffError("Release handoff assets must be ordinally sorted and unique")
     if release["published"]:
         if any(release[name] is None for name in ("version", "tag", "github_release_id")):

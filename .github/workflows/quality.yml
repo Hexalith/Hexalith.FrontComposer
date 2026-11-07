@@ -207,6 +207,7 @@ jobs:
           python3 -m unittest tests/eng/test_dependency_graph.py
           python3 -m unittest tests/eng/test_workflow_source_closure.py
           python3 -m unittest tests/eng/test_dependency_handoff.py
+          python3 -m unittest tests/eng/test_publication_candidate.py
           python3 -m unittest tests/eng/test_release_contract.py
           python3 -m unittest tests/eng/test_release_evidence_v2.py
           python3 -m unittest tests/eng/test_validate_contract_artifacts.py

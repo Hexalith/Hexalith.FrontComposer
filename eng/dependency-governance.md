@@ -98,3 +98,42 @@ hosted push CI must independently pass under the seal's active policy and
 produce its run-bound dependency release handoff. Release additionally requires
 successful Quality for that exact candidate; local replay alone cannot
 substitute for those hosted results or authorize publication.
+
+## Inactive GOV-1 publication-candidate boundary
+
+`eng/publication_candidate.py` implements the local AD-7/AD-19 transfer-data
+producer and verifier. `create` snapshots explicitly inventoried regular files,
+computes their hashes and sizes, checks the independent package/evidence
+inventories, and writes a deterministic, exclusive-create ZIP containing the
+closed `hexalith.publication-candidate.v1` descriptor. Its output coordinates
+are builder diagnostics; the Actions artifact ID exists only after upload.
+
+`verify` consumes independently authenticated run/artifact coordinates, the
+original raw CI handoff, the exact Release evaluator, and the committed active
+policy. The CLI revalidates that CI handoff against exact objects. It bounds and
+snapshots the raw ZIP, scans the central and local structures, checks ZIP64 and
+data descriptors, streams CRC/size/hash verification, and rejects overlap,
+encryption, symlinks, undeclared files, compression bombs and destination-name
+collisions before materializing fresh regular data files. Every descriptor
+asset name is checked against the combined publisher-produced durable names.
+Package and symbol identities, canonical versions and unsigned contents are
+checked against the independent package inventory; release notes remain bounded
+UTF-8 data. The owner supplies the required FR-24 evidence-path array separately
+from candidate bytes. These checks do not assess the contents of test/SBOM
+evidence or create a final manifest or publication authorization.
+
+The library API requires its caller to authenticate the run, artifact, CI and
+policy inputs independently; it performs no network authentication. This helper
+has no publication credentials, API writer or attester. Protected integration
+requires an owner-accepted Builds split successor, bundling every executable
+byte into its pinned owner closure, and AD-12 delayed activation. Existing
+Release callers and policy authorizations have not been switched. The Quality
+workflow runs its hostile-data fixtures as a deny-only check; this does not
+supply the separate trusted dependency-governance or live hostile-credential
+proofs. All GOV-1 closure bundles and release/adoption gates remain open.
+
+```bash
+python3 eng/publication_candidate.py create --help
+python3 eng/publication_candidate.py verify --help
+python3 -m unittest tests/eng/test_publication_candidate.py tests/eng/test_dependency_handoff.py
+```

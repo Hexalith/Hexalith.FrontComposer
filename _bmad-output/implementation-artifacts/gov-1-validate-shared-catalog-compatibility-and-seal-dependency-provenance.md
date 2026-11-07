@@ -1,6 +1,6 @@
 ---
 created: 2026-07-19
-updated: 2026-09-09
+updated: 2026-11-07
 story: GOV-1
 owner: Product Owner + Architect + Developer + Release Owner
 source_proposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
@@ -210,3 +210,87 @@ The refined identity/refusal guard separately retains Python **73/73** and read-
 The independent review found that AD-12a's consumer configuration digest omitted tracked SDK/restore inputs. The engine now seals `global.json` and NuGet configuration filename variants; the actual two added files are unchanged, and the sole policy correction is the consumer configuration seal `68386ed899cdef31131e081c321424fa18af8864b8d8efcd6f59eae99a870fca`. The adopted spine, FC-DEP-1 contract and memory log agree. All existing source/owner/inventory/selector seals, actual SDK/package/catalog/Gitlink selections and AD-12 delayed activation remain unchanged.
 
 Parent verification passes engine **130/130**, handoff **11/11** and release-evidence **15/15**. Positive integration now depends on exact canonical materialization before commands; its bypass mutation is detected. Read-only actual-object diagnostics independently confirm the expanded working-candidate seal, 69 total / 17 Platform raw edges and original canonical committed blobs. Logs and reproducible diagnostics are `/tmp/fc-parent-13-6-final-verification/`. The current committed root still predates the approved consumer/policy landing and correctly refuses strict acceptance; later owner landing and a later active base are required. No current hosted CI, release acceptance, commit or publication is claimed.
+
+
+## Local publication-candidate implementation — 2026-11-07
+
+Added `eng/publication_candidate.py` for deterministic publication-candidate
+production and the bounded, data-only archive/descriptor verification boundary
+defined by AD-7/AD-19. It checks exact run/attempt, raw CI handoff, policy and
+evaluator bindings; safe integers and nonzero commits; every file hash/size;
+canonical versions and the independent package/symbol inventory; and duplicate
+destination names across candidate and mandatory durable publisher assets.
+The existing release-handoff verifier now rejects duplicate asset names even
+when their hashes or sizes differ. The caller-owned input/authentication
+contract and inactive integration state are documented in
+`eng/dependency-governance.md`.
+
+Initial pre-review validation: `python3 -m unittest tests/eng/test_publication_candidate.py
+tests/eng/test_dependency_handoff.py tests/eng/test_release_contract.py
+tests/eng/test_release_evidence_v2.py tests/eng/test_release_prepublish.py
+tests/eng/test_release_disposition.py tests/eng/test_workflow_source_closure.py
+tests/eng/test_dependency_graph.py` passed **263/263**. This includes **35** new
+publication-candidate tests and the new handoff collision regression. Quality
+runs the new module explicitly as a deny-only check. Offline hostile-data and
+process-launch-trap fixtures do not substitute for the authenticated live
+hostile-candidate credential test or any conformance evidence run.
+
+The story remains in progress. No closure bundle is closed by this local work.
+The owner-accepted split reusable, delayed activation, exact caller topology,
+handoff-v3/manifest-v4/ledger migration, protected candidate-free attestation
+and publication, pinned post-release/recovery actions, live artifact/API
+authentication, approved incident response target/runbook, literal-false API
+observation, owner acceptance, protected-main process and exact conformance
+packet/approval protocol remain required. No policy pin, submodule pointer,
+release eligibility, GitHub setting or product publication was changed.
+
+
+## Review Triage Log
+
+The 2026-11-07 local implementation was reviewed by independent blind, edge-case,
+and verification-gap agents. This audit covers the working-tree changes from
+`d042e1c97ce2bb66aa30148b03aacf928dbcd9b9`; the original story
+`baseline_commit` remains preserved. The complete historical-baseline diff is
+retained separately from the local review diff in
+`/tmp/frontcomposer-gov1-review-5hwv0w0t/`. This bounded code review does not
+constitute the five-lens, authenticated GOV-1 split-conformance gate.
+
+| Finding | Verdict | Route | Verification and disposition |
+| --- | --- | --- | --- |
+| Blind 1: encoded XML declarations | medium | patch | Parent reproduced a UTF-16 internal DTD resolving an entity into the accepted package ID; reject DTDs before expansion regardless of encoding. |
+| Blind 2: nuspec envelope and scalar identity | medium | patch | Parent reproduced acceptance of a non-package root and an ID with ignored child content; require the package root and scalar identity fields. |
+| Blind 3: nested package amplification | false | reject | The demonstrated 4 MiB nested payload remains inside the existing release-contract package limits. AD-7's 100:1 and aggregate limits govern the transfer ZIP, which is independently checked before inflation; no breached package ceiling or unbounded path was demonstrated. No new unapproved nested budget is introduced. |
+| Blind 4: nested package special modes | medium | patch | The delegated package-content verifier ignores external file modes; reject special/link package members at the new data boundary and cover the caller path. |
+| Blind 5: unsupported XML encoding | low | patch | Parent reproduced uncaught LookupError for unknown-codec; normalize it to the CLI's structured failure without accepting the metadata. |
+| Blind 6: raw archive FIFO/device | medium | patch | Snapshot opens the supplied path before inspecting its type, so a FIFO can block. Require a nonblocking, no-follow regular-file open before reading. |
+| Blind 7: close-time producer failure | medium | patch | The cleanup handler surrounds the copy loop but excludes buffered target close; include close in the handler so only this call's truncated output is removed. |
+| Blind 8: late CLI output collision | medium | patch | The exclusive result-file open occurs after create/extract, so an existing result path leaves new artifacts after command failure; reserve/check destinations first and preserve existing files. |
+| Blind 9: CLI validation coverage | medium | patch | No test invoked main; add real exact-object CLI positive and negative paths, including malformed-input and output-collision reporting. |
+| Edge 1: UTF-16 DTD/entity bypass | medium | patch | Independently reproduced by the parent; shares the encoded XML declaration defect in Blind 1. |
+| Edge 2: nested identity elements | medium | patch | Independently reproduced by the parent; shares the scalar identity defect in Blind 2. |
+| Edge 3: no-release package relabelling | medium | patch | The no-release early return precedes the extension/role check; reject relabelled package/symbol files before that return. |
+| Verification 1: signed-package caller regression | medium | patch | Reviewer mutation removed the unsigned-validator delegation while all 35 tests stayed green; add signed nupkg/snupkg archive-level negatives with no output destination. |
+| Verification 2: CLI live graph regression | medium | patch | Existing tests call only the library, so dropping the CLI root argument evades coverage; exercise both commands against committed objects and rehashed graph/policy drift. |
+
+
+All patch findings above were resolved and audited by the parent after the
+implementation follow-up; none was deferred. The follow-up added
+encoding-aware declaration rejection, scalar nuspec identity checks, nested
+member-mode validation, no-release package checks, nonblocking regular-file
+archive opens, close-failure cleanup, early result-path reservation, and real
+committed-object CLI coverage. Valid declaration-free UTF-8/UTF-16 inputs still
+pass. The publication-candidate suite now has **49** distinct passing tests.
+Mutation probes independently removed unsigned-package rejection and live-CI
+validation: the signed package/symbol cases and both CLI graph cases failed as
+required, so these checks are observed by the tests.
+
+Final parent verification reran the exact eight-module command recorded above
+and passed **277/277** in 22.352 seconds after all code fixes. Syntax compilation,
+create/verify CLI help, seven-file CRLF verification, and `git diff --check`
+also passed. Retained local logs are
+`/tmp/frontcomposer-gov1-20261107/parent-related-tests.log`,
+`/tmp/frontcomposer-gov1-20261107/review-fixes-tests.log`, and
+`/tmp/frontcomposer-gov1-20261107/review-mutations.log`. These are local checks;
+no hosted run, release approval, conformance packet, or publication is claimed.
+The existing upstream, implementation, adoption and live acceptance gates remain
+open, and the story stays `in-progress` without a completion commit.
