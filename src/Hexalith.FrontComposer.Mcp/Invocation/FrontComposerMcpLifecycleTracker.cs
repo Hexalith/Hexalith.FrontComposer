@@ -68,7 +68,7 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             }
 
             McpToolResolutionResult current = await admissionService
-                .ResolveAsync(descriptor.ProtocolName, cancellationToken)
+                .ResolveAsync(descriptor.ProtocolName, reader, cancellationToken)
                 .ConfigureAwait(false);
             if (!current.Accepted
                 || current.Tool is null

@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/home/administrator/.nvm/versions/node/v24.22.1/bin/node",
+    "node_modules/@commitlint/cli/cli.js",
+    "--edit",
+    "/tmp/five-lifecycle-owner-commit-message.txt",
+    "--verbose"
+  ],
+  "message": "fix: preserve lifecycle handles and reader context\n\nReject conflicting acknowledgements and cross-alias collisions before\nmutating lifecycle state. Bind admission to the validated reader context.\n",
+  "exitCode": 0,
+  "output": "\u29d7   --- input ---\nfix: preserve lifecycle handles and reader context\n\nReject conflicting acknowledgements and cross-alias collisions before\nmutating lifecycle state. Bind admission to the validated reader context.\n\u2714   found 0 problems, 0 warnings\n",
+  "nodeVersion": "v24.22.1",
+  "installedCommitlintVersion": "21.2.4"
+}

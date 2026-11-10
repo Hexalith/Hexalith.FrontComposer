@@ -1162,6 +1162,312 @@ public sealed class CommandLifecycleTests {
         }
     }
 
+    [Theory]
+    [InlineData("message")]
+    [InlineData("protocol")]
+    [InlineData("type")]
+    [InlineData("context")]
+    [InlineData("title")]
+    [InlineData("description")]
+    [InlineData("policy")]
+    [InlineData("parameter")]
+    [InlineData("enum")]
+    [InlineData("badge")]
+    [InlineData("derivable")]
+    [InlineData("fingerprint")]
+    public void StoreConflictingRetryRefusesBeforeMutation(string change) {
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+        McpCommandDescriptor descriptor = Manifest(null).Commands.Single();
+        CommandResult result = new(MessageId, CommandResultStatus.Accepted, CorrelationId, RetryAfter: TimeSpan.FromMilliseconds(250));
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, result, [], lifecycle, TestContext.Current.CancellationToken);
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot before).ShouldBeTrue();
+        McpCommandDescriptor changed = change switch {
+            "protocol" => descriptor with { ProtocolName = "Billing.Other.Execute" },
+            "type" => descriptor with { CommandTypeName = "Other" },
+            "context" => descriptor with { BoundedContext = "Other" },
+            "title" => descriptor with { Title = "Other" },
+            "description" => descriptor with { Description = "Other" },
+            "policy" => descriptor with { AuthorizationPolicyName = "Other" },
+            "parameter" => descriptor with { Parameters = [descriptor.Parameters[0] with { IsRequired = false }] },
+            "enum" => descriptor with { Parameters = [descriptor.Parameters[0] with { EnumValues = ["Other"] }] },
+            "badge" => descriptor with { Parameters = [descriptor.Parameters[0] with { BadgeMappings = new Dictionary<string, string> { ["Other"] = "Danger" } }] },
+            "derivable" => descriptor with { DerivablePropertyNames = ["TenantId"] },
+            "fingerprint" => descriptor with { Fingerprint = new Hexalith.FrontComposer.Contracts.Schema.SchemaFingerprint("sha256-canonical-json-v1", "other") },
+            _ => descriptor,
+        };
+        using RecordingLifecycleStateService retryLifecycle = new();
+        FrontComposerMcpException failure = Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(
+            changed, OwnerContext,
+            result with { MessageId = change == "message" ? NeverIssuedHandle : MessageId, RetryAfter = TimeSpan.FromSeconds(4) },
+            [(CommandLifecycleState.Confirmed, MessageId)], retryLifecycle, TestContext.Current.CancellationToken));
+        failure.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        retryLifecycle.SubscriptionCount.ShouldBe(0);
+        retryLifecycle.TransitionCount.ShouldBe(0);
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot after).ShouldBeTrue();
+        after.ToJson().ToJsonString().ShouldBe(before.ToJson().ToJsonString());
+        store.TryReadSnapshot(NeverIssuedHandle, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void StoreStructurallyEqualDescriptorRetrySucceeds() {
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+        McpCommandDescriptor descriptor = Manifest(null).Commands.Single() with {
+            Parameters = [Manifest(null).Commands.Single().Parameters[0] with {
+                EnumValues = ["a", "b"], BadgeMappings = new Dictionary<string, string> { ["a"] = "Success", ["b"] = "Danger" } }],
+        };
+        CommandResult result = new(MessageId, CommandResultStatus.Accepted, CorrelationId);
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, result, [], lifecycle, TestContext.Current.CancellationToken);
+        McpCommandDescriptor equal = descriptor with {
+            Parameters = [descriptor.Parameters[0] with {
+                EnumValues = ["a", "b"], BadgeMappings = new Dictionary<string, string> { ["b"] = "Danger", ["a"] = "Success" } }],
+            DerivablePropertyNames = descriptor.DerivablePropertyNames.ToArray(),
+        };
+        _ = store.TrackAcknowledged(equal, OwnerContext, result, [], lifecycle, TestContext.Current.CancellationToken);
+        lifecycle.TransitionCount.ShouldBe(2);
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot snapshot).ShouldBeTrue();
+        snapshot.MessageId.ShouldBe(MessageId);
+    }
+
+    [Fact]
+    public void StoreRetryDetectsMutationOfCallerOwnedDescriptorCollections() {
+        List<string> enumValues = ["original"];
+        Dictionary<string, string> badges = new(StringComparer.Ordinal) { ["original"] = "Success" };
+        McpCommandDescriptor descriptor = Manifest(null).Commands.Single();
+        descriptor = descriptor with { Parameters = [descriptor.Parameters[0] with { EnumValues = enumValues, BadgeMappings = badges }] };
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+        CommandResult result = new(MessageId, CommandResultStatus.Accepted, CorrelationId);
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, result, [], lifecycle, TestContext.Current.CancellationToken);
+        enumValues.Add("changed");
+        badges["original"] = "Danger";
+        using RecordingLifecycleStateService retry = new();
+        Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(descriptor, OwnerContext, result,
+            [(CommandLifecycleState.Confirmed, MessageId)], retry, TestContext.Current.CancellationToken))
+            .Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        retry.SubscriptionCount.ShouldBe(0);
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out McpCommandDescriptor retained, out McpLifecycleSnapshot snapshot).ShouldBeTrue();
+        retained.Parameters[0].EnumValues.ShouldBe(["original"]);
+        retained.Parameters[0].BadgeMappings!["original"].ShouldBe("Success");
+        snapshot.State.ShouldBe(CommandLifecycleState.Acknowledged);
+    }
+
+    [Theory]
+    [InlineData("parameters")]
+    [InlineData("derivable")]
+    public void StoreRetryDetectsMutationOfCallerOwnedTopLevelCollections(string collection) {
+        McpCommandDescriptor original = Manifest(null).Commands.Single();
+        List<McpParameterDescriptor> parameters = [.. original.Parameters];
+        List<string> derivable = [.. original.DerivablePropertyNames];
+        McpCommandDescriptor descriptor = original with { Parameters = parameters, DerivablePropertyNames = derivable };
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService initial = new();
+        CommandResult result = new(MessageId, CommandResultStatus.Accepted, CorrelationId);
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, result, [], initial, TestContext.Current.CancellationToken);
+        if (collection == "parameters") { parameters.Add(parameters[0] with { Name = "Additional" }); }
+        else { derivable.Add("Additional"); }
+        using RecordingLifecycleStateService retry = new();
+        Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(descriptor, OwnerContext, result,
+            [(CommandLifecycleState.Confirmed, MessageId)], retry, TestContext.Current.CancellationToken))
+            .Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        retry.SubscriptionCount.ShouldBe(0);
+        retry.TransitionCount.ShouldBe(0);
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out McpCommandDescriptor retained, out McpLifecycleSnapshot snapshot).ShouldBeTrue();
+        retained.Parameters.Count.ShouldBe(original.Parameters.Count);
+        retained.Parameters[0].Name.ShouldBe(original.Parameters[0].Name);
+        retained.DerivablePropertyNames.ShouldBe(original.DerivablePropertyNames);
+        snapshot.State.ShouldBe(CommandLifecycleState.Acknowledged);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void StoreCrossAliasCollisionRefusesWithoutShadowing(bool reverse, bool foreignOwner) {
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+        McpCommandDescriptor descriptor = Manifest(null).Commands.Single();
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId), [], lifecycle, TestContext.Current.CancellationToken);
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot before).ShouldBeTrue();
+        using RecordingLifecycleStateService conflicting = new();
+        FrontComposerMcpException failure = Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(
+            descriptor, foreignOwner ? AgentContext("foreign", "foreign") : OwnerContext,
+            new CommandResult(reverse ? CorrelationId : NeverIssuedHandle, CommandResultStatus.Accepted, reverse ? NeverIssuedHandle : MessageId),
+            [], conflicting, TestContext.Current.CancellationToken));
+        failure.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        conflicting.SubscriptionCount.ShouldBe(0);
+        conflicting.TransitionCount.ShouldBe(0);
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot after).ShouldBeTrue();
+        after.ToJson().ToJsonString().ShouldBe(before.ToJson().ToJsonString());
+        store.TryReadSnapshot(NeverIssuedHandle, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+        AssertStoreMissesLikeNeverIssuedHandle(store, AgentContext("foreign", "foreign"), currentOptions);
+    }
+
+    [Fact]
+    public async Task StoreRacingCrossAliasesReserveOneEntryAtomically() {
+        FrontComposerMcpOptions currentOptions = new() { MaxActiveLifecycleEntries = 1, MaxRetainedTerminalLifecycleEntries = 1 };
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        McpCommandDescriptor descriptor = Manifest(null).Commands.Single();
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var arrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int arrivalCount = 0;
+        Task<bool>[] contenders = [.. Enumerable.Range(0, 16).Select(index => Task.Run(async () => {
+            if (Interlocked.Increment(ref arrivalCount) == 16) { arrived.TrySetResult(); }
+            await ready.Task.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+            using RecordingLifecycleStateService lifecycle = new();
+            try {
+                _ = store.TrackAcknowledged(descriptor, index % 2 == 0 ? OwnerContext : AgentContext("other", "other"),
+                    new CommandResult(index % 2 == 0 ? MessageId : CorrelationId, CommandResultStatus.Accepted, index % 2 == 0 ? CorrelationId : MessageId),
+                    [], lifecycle, TestContext.Current.CancellationToken);
+                return true;
+            }
+            catch (FrontComposerMcpException exception) {
+                exception.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+                lifecycle.SubscriptionCount.ShouldBe(0);
+                return false;
+            }
+        }, TestContext.Current.CancellationToken))];
+        await arrived.Task.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+        ready.SetResult();
+        bool[] accepted = await Task.WhenAll(contenders);
+        accepted.Count(value => value).ShouldBe(8);
+        FrontComposerMcpAgentContext winner = accepted[0] ? OwnerContext : AgentContext("other", "other");
+        FrontComposerMcpAgentContext loser = accepted[0] ? AgentContext("other", "other") : OwnerContext;
+        store.TryReadSnapshot(MessageId, winner, currentOptions, out _, out McpLifecycleSnapshot byMessage).ShouldBeTrue();
+        store.TryReadSnapshot(CorrelationId, winner, currentOptions, out _, out McpLifecycleSnapshot byCorrelation).ShouldBeTrue();
+        byMessage.ToJson().ToJsonString().ShouldBe(byCorrelation.ToJson().ToJsonString());
+        byMessage.State.ShouldBe(CommandLifecycleState.Acknowledged);
+        AssertStoreMissesLikeNeverIssuedHandle(store, loser, currentOptions);
+        using RecordingLifecycleStateService nextLifecycle = new();
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, new CommandResult(NeverIssuedHandle, CommandResultStatus.Accepted, NeverIssuedHandle), [], nextLifecycle, TestContext.Current.CancellationToken);
+        store.TryReadSnapshot(MessageId, winner, currentOptions, out _, out McpLifecycleSnapshot retired).ShouldBeTrue();
+        retired.State.ShouldBe(CommandLifecycleState.Rejected);
+        retired.ToJson()["outcome"]!["category"]!.GetValue<string>().ShouldBe("needs_review");
+        store.TryReadSnapshot(NeverIssuedHandle, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot active).ShouldBeTrue();
+        active.State.ShouldBe(CommandLifecycleState.Acknowledged);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StoreRacingConflictingRetriesPreserveTheOriginalSnapshot(bool changeDescriptor) {
+        FrontComposerMcpOptions currentOptions = new() { MaxActiveLifecycleEntries = 1 };
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService initial = new();
+        McpCommandDescriptor descriptor = Manifest(null).Commands.Single();
+        CommandResult original = new(MessageId, CommandResultStatus.Accepted, CorrelationId);
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, original, [], initial, TestContext.Current.CancellationToken);
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot before).ShouldBeTrue();
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var arrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int arrivalCount = 0;
+        Task<bool>[] retries = [.. Enumerable.Range(0, 16).Select(index => Task.Run(async () => {
+            if (Interlocked.Increment(ref arrivalCount) == 16) { arrived.TrySetResult(); }
+            await ready.Task.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+            bool conflict = index % 2 != 0;
+            using RecordingLifecycleStateService lifecycle = new();
+            try {
+                _ = store.TrackAcknowledged(conflict && changeDescriptor ? descriptor with { Title = "changed" } : descriptor,
+                    OwnerContext, conflict ? original with {
+                        MessageId = changeDescriptor ? MessageId : NeverIssuedHandle,
+                        RetryAfter = TimeSpan.FromSeconds(4),
+                    } : original, conflict ? [(CommandLifecycleState.Confirmed, MessageId)] : [],
+                    lifecycle, TestContext.Current.CancellationToken);
+                return true;
+            }
+            catch (FrontComposerMcpException exception) {
+                exception.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+                lifecycle.SubscriptionCount.ShouldBe(0);
+                lifecycle.TransitionCount.ShouldBe(0);
+                return false;
+            }
+        }, TestContext.Current.CancellationToken))];
+        await arrived.Task.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+        ready.SetResult();
+        (await Task.WhenAll(retries)).Count(accepted => accepted).ShouldBe(8);
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot after).ShouldBeTrue();
+        after.ToJson().ToJsonString().ShouldBe(before.ToJson().ToJsonString());
+        store.TryReadSnapshot(NeverIssuedHandle, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+        using RecordingLifecycleStateService next = new();
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, new CommandResult(NeverIssuedHandle, CommandResultStatus.Accepted, NeverIssuedHandle), [], next, TestContext.Current.CancellationToken);
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot retired).ShouldBeTrue();
+        retired.State.ShouldBe(CommandLifecycleState.Rejected);
+        store.TryReadSnapshot(NeverIssuedHandle, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot active).ShouldBeTrue();
+        active.State.ShouldBe(CommandLifecycleState.Acknowledged);
+    }
+
+    [Fact]
+    public void StoreEvictionReleasesBothAliasesForReuseIncludingEqualAliases() {
+        FrontComposerMcpOptions currentOptions = new() { MaxRetainedTerminalLifecycleEntries = 1 };
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+        McpCommandDescriptor descriptor = Manifest(null).Commands.Single();
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId), [(CommandLifecycleState.Confirmed, MessageId)], lifecycle, TestContext.Current.CancellationToken);
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, new CommandResult(NeverIssuedHandle, CommandResultStatus.Accepted, NeverIssuedHandle), [(CommandLifecycleState.Confirmed, NeverIssuedHandle)], lifecycle, TestContext.Current.CancellationToken);
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+        FrontComposerMcpAgentContext other = AgentContext("other", "other");
+        _ = store.TrackAcknowledged(descriptor, other, new CommandResult(CorrelationId, CommandResultStatus.Accepted, MessageId), [], lifecycle, TestContext.Current.CancellationToken);
+        store.TryReadSnapshot(MessageId, other, currentOptions, out _, out McpLifecycleSnapshot reused).ShouldBeTrue();
+        reused.MessageId.ShouldBe(CorrelationId);
+        store.TryReadSnapshot(CorrelationId, other, currentOptions, out _, out _).ShouldBeTrue();
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("foreign")]
+    [InlineData("unauthenticated")]
+    [InlineData("auth-failed")]
+    public async Task LifecycleReadBindsAdmissionToTheValidatedReader(string nextState) {
+        int reads = 0;
+        bool changing = false;
+        IFrontComposerMcpAgentContextAccessor accessor = Substitute.For<IFrontComposerMcpAgentContextAccessor>();
+        _ = accessor.GetContext().Returns(_ => {
+            if (!changing || Interlocked.Increment(ref reads) == 1) { return OwnerContext; }
+            return nextState switch {
+                "foreign" => AgentContext("other", "other"),
+                "unauthenticated" => new FrontComposerMcpAgentContext("tenant-a", "agent-a", new ClaimsPrincipal(new ClaimsIdentity())),
+                _ => throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed),
+            };
+        });
+        IFrontComposerMcpTenantToolGate gate = Substitute.For<IFrontComposerMcpTenantToolGate>();
+        _ = gate.IsVisibleAsync(Arg.Any<McpCommandDescriptor>(), Arg.Any<FrontComposerMcpAgentContext>(), Arg.Any<CancellationToken>())
+            .Returns(call => ReferenceEquals(call.Arg<FrontComposerMcpAgentContext>(), OwnerContext));
+        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider, tenantGate: gate, accessor: accessor);
+        using (provider) {
+            (await invoker.InvokeAsync("Billing.PayInvoiceCommand.Execute", Args("{\"Amount\":42}"), TestContext.Current.CancellationToken)).IsError.ShouldBeFalse();
+            changing = true;
+            FrontComposerMcpResult result = await provider.GetRequiredService<FrontComposerMcpLifecycleTracker>()
+                .ReadAsync(Args($$"""{"correlationId":"{{CorrelationId}}"}"""), TestContext.Current.CancellationToken);
+            result.IsError.ShouldBeFalse();
+            reads.ShouldBe(1);
+        }
+    }
+
+    [Fact]
+    public async Task LifecycleReadSchemaRefusalRemainsHiddenUnknown() {
+        IFrontComposerMcpAgentContextAccessor accessor = Substitute.For<IFrontComposerMcpAgentContextAccessor>();
+        _ = accessor.GetContext().Returns(OwnerContext);
+        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider, accessor: accessor);
+        using (provider) {
+            (await invoker.InvokeAsync("Billing.PayInvoiceCommand.Execute", Args("{\"Amount\":42}"), TestContext.Current.CancellationToken)).IsError.ShouldBeFalse();
+            _ = accessor.ClientFingerprintHint.Returns(new Hexalith.FrontComposer.Contracts.Schema.SchemaFingerprint("unsupported", "hash"));
+            FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+            FrontComposerMcpResult known = await tracker.ReadAsync(Args($$"""{"correlationId":"{{CorrelationId}}"}"""), TestContext.Current.CancellationToken);
+            FrontComposerMcpResult unknown = await tracker.ReadAsync(Args($$"""{"correlationId":"{{NeverIssuedHandle}}"}"""), TestContext.Current.CancellationToken);
+            known.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+            Serialize(known).ShouldBe(Serialize(unknown));
+        }
+    }
+
     private static string Serialize(FrontComposerMcpResult result)
         => new JsonObject {
             ["isError"] = result.IsError,

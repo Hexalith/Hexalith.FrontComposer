@@ -41,7 +41,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
     /// <exception cref="FrontComposerMcpException">
     /// Thrown with <see cref="FrontComposerMcpFailureCategory.UnsupportedSchema"/> when a handle is not canonical, the
     /// creator has no tenant or user, the correlation id is already recorded with different tenant or user
-    /// identifiers, or the message id is already mapped to another entry.
+    /// identifiers, a retry changes its message or descriptor, or either alias belongs to another entry.
     /// </exception>
     internal McpCommandAcknowledgement TrackAcknowledged(
         McpCommandDescriptor descriptor,
@@ -203,14 +203,25 @@ public sealed partial class FrontComposerMcpLifecycleStore(
         string messageId) {
         _ = RequireCanonicalIdentifier(correlationId);
         _ = RequireCanonicalIdentifier(messageId);
-        if (_byCorrelation.TryGetValue(correlationId, out LifecycleEntry? existing)) {
-            return existing;
-        }
-
         lock (_capacityGate) {
             ThrowIfDisposed();
-            if (_byCorrelation.TryGetValue(correlationId, out existing)) {
+            if (_byCorrelation.TryGetValue(correlationId, out LifecycleEntry? existing)) {
+                // Validate retries before changing retry guidance, subscribing or replaying transitions.
+                if (!existing.IsOwnedBy(creator)
+                    || !string.Equals(existing.MessageId, messageId, StringComparison.Ordinal)
+                    || !DescriptorsEqual(existing.Descriptor, descriptor)) {
+                    throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+                }
+
                 return existing;
+            }
+
+            // Both identifiers share one namespace, including across the two index roles. Hold the
+            // same gate as eviction so a refused reservation cannot publish or terminalize an entry.
+            if (_byMessage.ContainsKey(correlationId)
+                || _byCorrelation.ContainsKey(messageId)
+                || _byMessage.ContainsKey(messageId)) {
+                throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
             }
 
             FrontComposerMcpOptions opts = options.Value;
@@ -242,6 +253,21 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             return created;
         }
     }
+
+    private static bool DescriptorsEqual(McpCommandDescriptor left, McpCommandDescriptor right)
+        => left with { Parameters = right.Parameters, DerivablePropertyNames = right.DerivablePropertyNames } == right
+            && (left.DerivablePropertyNames ?? []).SequenceEqual(right.DerivablePropertyNames ?? [], StringComparer.Ordinal)
+            && left.Parameters.Count == right.Parameters.Count
+            && left.Parameters.Zip(right.Parameters).All(pair => ParametersEqual(pair.First, pair.Second));
+
+    private static bool ParametersEqual(McpParameterDescriptor left, McpParameterDescriptor right)
+        => left with { EnumValues = right.EnumValues, BadgeMappings = right.BadgeMappings } == right
+            && left.EnumValues.SequenceEqual(right.EnumValues, StringComparer.Ordinal)
+            && ((left.BadgeMappings is null && right.BadgeMappings is null)
+                || (left.BadgeMappings is not null && right.BadgeMappings is not null
+                    && left.BadgeMappings.Count == right.BadgeMappings.Count
+                    && left.BadgeMappings.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                        .SequenceEqual(right.BadgeMappings.OrderBy(pair => pair.Key, StringComparer.Ordinal))));
 
     private void EnforceCapacity() {
         lock (_capacityGate) {
@@ -354,7 +380,16 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             TimeSpan timeout,
             TimeProvider time,
             Action<string> onTerminalized) {
-            Descriptor = descriptor;
+            // Descriptor collection interfaces can wrap mutable caller-owned lists and maps. Retain the
+            // acknowledged structure so later caller mutation is checked as a conflicting retry.
+            Descriptor = descriptor with {
+                Parameters = [.. descriptor.Parameters.Select(parameter => parameter with {
+                    EnumValues = [.. parameter.EnumValues],
+                    BadgeMappings = parameter.BadgeMappings is null
+                        ? null : new Dictionary<string, string>(parameter.BadgeMappings, StringComparer.Ordinal),
+                })],
+                DerivablePropertyNames = descriptor.DerivablePropertyNames is null ? null! : [.. descriptor.DerivablePropertyNames],
+            };
             OwnerTenantId = ownerTenantId;
             OwnerUserId = ownerUserId;
             CorrelationId = correlationId;

@@ -22,8 +22,11 @@ public sealed class FrontComposerMcpToolAdmissionService(
     private const int ContextMarkerMinLength = 4;
     private const int PrefixBonusFloor = 90;
 
-    public async ValueTask<McpVisibleToolCatalog> BuildVisibleCatalogAsync(CancellationToken cancellationToken = default) {
-        FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
+    public ValueTask<McpVisibleToolCatalog> BuildVisibleCatalogAsync(CancellationToken cancellationToken = default)
+        => BuildVisibleCatalogAsync(agentContextAccessor.GetContext(), cancellationToken);
+
+    private async ValueTask<McpVisibleToolCatalog> BuildVisibleCatalogAsync(
+        FrontComposerMcpAgentContext context, CancellationToken cancellationToken) {
         ValidateContext(context);
 
         // Policy gate is optional: hosts that do not declare any AuthorizationPolicyName-bearing
@@ -72,8 +75,17 @@ public sealed class FrontComposerMcpToolAdmissionService(
             truncated);
     }
 
-    public async ValueTask<McpToolResolutionResult> ResolveAsync(string? requestedName, CancellationToken cancellationToken = default) {
-        McpVisibleToolCatalog catalog = await BuildVisibleCatalogAsync(cancellationToken).ConfigureAwait(false);
+    public ValueTask<McpToolResolutionResult> ResolveAsync(string? requestedName, CancellationToken cancellationToken = default)
+        => ResolveAsync(requestedName, agentContextAccessor.GetContext(), cancellationToken);
+
+    /// <summary>Resolves admission using the same validated context as the lifecycle ownership lookup.</summary>
+    /// <param name="requestedName">Tool name to resolve.</param>
+    /// <param name="context">Reader context bound by the lifecycle tracker.</param>
+    /// <param name="cancellationToken">Cancellation token for admission.</param>
+    /// <returns>The current policy, tenant and schema admission result.</returns>
+    internal async ValueTask<McpToolResolutionResult> ResolveAsync(
+        string? requestedName, FrontComposerMcpAgentContext context, CancellationToken cancellationToken) {
+        McpVisibleToolCatalog catalog = await BuildVisibleCatalogAsync(context, cancellationToken).ConfigureAwait(false);
         string sanitizedRequested = SanitizeToolName(requestedName, options.Value.MaxToolNameLength);
         if (string.IsNullOrWhiteSpace(sanitizedRequested)) {
             return McpToolResolutionResult.Reject(sanitizedRequested, null, catalog);
