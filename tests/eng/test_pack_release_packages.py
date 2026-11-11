@@ -37,12 +37,9 @@ VERSION = "4.3.0-review.compat"
 # The fixture ledger plans v4.3, so its checked-in baseline must sit on the preceding v4.2
 # line. The real repository plans a different line; its baseline is asserted separately.
 FIXTURE_BASELINE = "4.2.0"
-# Real-tree candidates derive from the published baseline (the baseline itself or the next hotfix
-# above it), so they track every patch advance; a minor or major advance still moves the `v4.7`
-# release-line literals by hand. They do not follow the ledger: when `currentRelease` opens the
-# next line while the baseline stays on the preceding one, the real-tree release-policy plan test
-# and the hotfix-candidate test fail with "does not match currentRelease" even after the literals
-# move.
+# Synthetic fixtures remain on the published baseline's hotfix line. Real-tree checks
+# use the explicitly planned major release so a stale currentRelease fails closed.
+CHECKED_IN_RELEASE_VERSION = "5.0.0"
 _BASELINE_MAJOR, _BASELINE_MINOR, _BASELINE_PATCH = PUBLISHED_BASELINE_VERSION.split(".")
 HOTFIX_VERSION = f"{_BASELINE_MAJOR}.{_BASELINE_MINOR}.{int(_BASELINE_PATCH) + 1}"
 PRODUCTION_VERSION = f"{HOTFIX_VERSION}-review.compat"
@@ -120,12 +117,12 @@ class PackReleasePackagesTests(unittest.TestCase):
         # The production plan test runs against a synthetic fixture, so this is the only guard
         # that the REAL script exits 0 with --release-policy against the REAL tree. A tree that
         # cannot pack any version -- the pass-1 regression -- fails here.
-        result = self.run_plan(PUBLISHED_BASELINE_VERSION, release_policy=True)
+        result = self.run_plan(CHECKED_IN_RELEASE_VERSION, release_policy=True)
 
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)
         self.assertTrue(payload["releasePolicy"])
-        self.assertEqual("v4.7", payload["releaseLine"])
+        self.assertEqual("v5.0", payload["releaseLine"])
         self.assertEqual(8, len(payload["commands"]))
 
     def test_synthetic_ci_positional_contract_skips_only_release_line_matching(self) -> None:
@@ -304,7 +301,7 @@ class PackReleasePackagesTests(unittest.TestCase):
     def test_policy_accepts_a_hotfix_candidate_against_the_checked_in_tree(self) -> None:
         # Regression guard: the strict preceding-line rule made every candidate unpackable, so
         # the next patch candidate against the published baseline must validate here.
-        self.assertEqual("v4.7", validate_release_policy(ROOT, HOTFIX_VERSION))
+        self.assertEqual("v5.0", validate_release_policy(ROOT, "5.0.1"))
 
     def test_major_bump_accepts_any_minor_of_the_previous_major(self) -> None:
         # Documented limitation of `is_preceding_release_line`: the previous major's last minor
