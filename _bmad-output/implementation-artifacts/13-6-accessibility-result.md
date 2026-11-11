@@ -1,5 +1,102 @@
 # Story 13.6 accessibility result and human checklist
 
+## Agent-performed accessibility observations — 2026-11-07
+
+The user requested "do observations yourself" and confirmed that Windows was unlocked and would be left idle. The agent ran the available observations against root `e972d0f06a8eec3446db0b2270fdb14eef4c1186`, using the preceding clean Debug Counter build and the same standalone Test-host launch command. HTTP-served `fc-keyboard.js` and `fc-focus.js` byte-match source (`9b4f25a652572658e755a5dc673c08732493aeba6ae3c98e5648eef0f8184f6e` and `885eabb1ead35f829373f7ec3b25d8beecdf36d0514e50558b7a50abebcf2b87`); loaded Shell DLL is `6588d976d9882e713bf0e7022af6940c57ca81f62dd952ca08904565f00e851f`. These are agent-generated observations; generated speech and emulation are not human heard-speech or physical-device completion.
+
+**Outcome:** responsive, actual-zoom Tab journeys and emulated touch operations pass. A separate focused-heading observation fails the strict AE-05 geometry floor in four cases. Native NVDA coverage is partial because Windows refuses the existing owned-Firefox foreground guard. This continuation does not establish overall accessibility acceptance.
+
+| Observation lane | Result | Executed scope |
+| --- | --- | --- |
+| Existing responsive operator-surface suite | **99 passed**, zero failed/skipped/flaky/retries | 33 per Chromium/Firefox/WebKit: Home, module navigation/tabs and three specimens; 320px at 900px/225px heights, combined spacing, complete Tab cycles, targets, bounded scrolling, WCAG 2.2 axe, contrast and media checks |
+| Actual headed Chromium browser zoom | **14 passed**, zero failed/skipped/flaky/retries | Five page surfaces and palette/Settings, each with/without combined spacing; existing clipping/target/overflow/axe helpers and verbatim keyboard-cycle implementation |
+| Focused headings after actual zoom | **0 passed / 4 failed** | Home and type specimen, each with/without spacing; canonical `focusGeometry` rejects viewport and vertical-scrollport clipping |
+| Emulated tablet/phone touch | **4 passed** | iPad gen 7 and Pixel 7 profiles, portrait/landscape; Home-to-Counter tap, Settings Done dismissal, palette query/result navigation, rotation retaining route, no page overflow |
+| Windows NVDA/Firefox, first attempt | **3 passed / 19 failed** | One focused-detail-loss explanation generated exactly once, plus two silent 10s idle windows; later keyboard checks refused foreground or failed dependent preconditions |
+| Windows NVDA/Firefox, idle-gated retry | **2 passed / 20 failed** | Both key-free idle checks pass; native keys are refused, so the later 400% journeys are not reached |
+
+### Reproduced focused-heading finding
+
+Recipe: load at 100%, set real automatic per-tab browser zoom to 400%, apply all four spacing overrides when listed, focus the page H1, settle paint, then run the unchanged canonical `focusGeometry`. Each measured viewport is **320×225 CSS px, DPR 4**, CSS zoom **1**, visual viewport scale **1**. The complete focused target/ring does not fit the active viewport:
+
+| Focused H1 | Spacing | Top → bottom, CSS px | Canonical failures |
+| --- | --- | --- | --- |
+| Home | Default | 184 → 270 | Viewport clipping; two vertical-scrollport clipping reports |
+| Home | Combined overrides | 196 → 288 | Same |
+| Type specimen | Default | 170 → 444 | Same |
+| Type specimen | Combined overrides | 215 → 649 | Same |
+
+The 14 passing Tab-cycle journeys advance past the already-focused H1 and do not assert its geometry; they therefore do not refute this additional failure. This is an observed focused-heading-after-zoom concern, not a claim that every fresh route-entry sequence was reproduced. Screenshots and the exact focus/zoom sequence are retained. No product correction, threshold change or accepted exception is applied; **AE-05 remains open** on this finding.
+
+### Actual zoom, visual inspection and touch attribution
+
+The temporary headed Chromium **156.0.8078.4** observer uses a minimal Manifest V3 extension with `chrome.tabs.setZoomSettings({mode:'automatic',scope:'per-tab'})` and `chrome.tabs.setZoom(4)`, with `viewport:null`. Reference **1280×900, DPR 1** becomes **320×225, DPR 4**, retaining outer width **1280**, CSS zoom **1** and visual scale **1**. Xvfb supplies a real headed display. CDP captures the complete **1280×900 physical-pixel** viewport. This does not substitute a 320px viewport resize or CSS transform for browser zoom. The temporary observer reuses the repository's exact assertion helpers and keyboard-cycle function without changing product files or approved images.
+
+The agent inspected desktop and 320px Home, Settings, palette and type captures, plus actual-zoom captures. Home labels remain readable; Settings displays the density controls and wrapping forced-density note; the palette exposes its combobox/results and returns focus to its trigger. The separate H1 clipping above remains visible in the zoom captures. These spot observations are not a new complete visual-baseline approval.
+
+Touch execution uses pinned Playwright **1.64.1** Chromium with `hasTouch`/mobile device emulation, not Safari or a physical tablet/phone. The initial harness failed **4/4** looking up Settings Done by Playwright role. A follow-up passed **2/4** and exposed an additional setup mistake: persisted route restoration displaced Home in the second orientation. The final run clears setup storage before navigation and inspects Chrome's **native CDP accessibility tree**: exactly one unignored `button` named **Done** exists in all four cases, although Playwright's role lookup returns zero. Tapping the stable host works. These failures are retained as harness/locator findings, not silently treated as product failures or erased by the final pass.
+
+### Native Windows observations and limits
+
+Installed versions are Windows **10.0.26300.0**, NVDA **2026.2** and Firefox **155.0.1**; JAWS is absent. The initial global `LogonUI` probe was misleading: current RDP session **1** is unlocked, while `LogonUI` belongs to session **3**. The corrected retry gate requires zero current-session LogonUI processes and at least **210,000ms** idle; it opened at **235,906ms**. Nevertheless the unchanged key server reports **"Foreground is not the owned Firefox; no keys sent"**. A bounded diagnostic reproduced that refusal at both the historical off-screen placement and `(20,20)` on the current display; placement alone does not resolve it. The cause of the OS foreground refusal is not established. No foreground-lock workaround or guard relaxation was used.
+
+Both canonical attempts use runner SHA-256 `4d040174775d135e697307dafc892691ee88c86e92e3ac658803129c51bb5c8e`, changing only output directories. The first attempt's focused-detail-loss sequence passed with one generated neutral explanation; all other new speech/zoom claims stay limited to the checks actually reached. The two silent idle windows pass in each attempt. Earlier successful full native runs and the approved D3/O2 deferrals retain their original attribution. No new human observation or native 400% pass is inferred. No macOS/VoiceOver or physical-device connection is accessible in this session; Windows reports no present WPD/Android USB device class, and no ADB/iOS device tool is available.
+
+### Commands, retained results and acceptance
+
+All Linux raw evidence, scripts and captures are under `/tmp/fc-story13-6-observations-20261107-l883mjts/`. Exact commands (repository root unless noted):
+
+```text
+# tests/e2e working directory
+BASE_URL=http://127.0.0.1:5070 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_A11Y_EVIDENCE_RUN_ID=story13-6-observations-20261107 FC_E2E_OUTPUT_DIR=/tmp/fc-story13-6-observations-20261107-l883mjts/browser/out FC_E2E_HTML_REPORT_DIR=/tmp/fc-story13-6-observations-20261107-l883mjts/browser/html npx --no -- playwright test specs/responsive-accessibility.spec.ts --grep 'Story 13.6 responsive operator surfaces' --workers=2 --retries=0
+# repository root; each zoom config uses one worker and zero retries
+xvfb-run -a -s '-screen 0 1600x1200x24' /home/administrator/projects/hexalith/frontcomposer/tests/e2e/node_modules/.bin/playwright test --config=/tmp/fc-story13-6-observations-20261107-l883mjts/zoom.config.ts
+xvfb-run -a -s '-screen 0 1600x1200x24' /home/administrator/projects/hexalith/frontcomposer/tests/e2e/node_modules/.bin/playwright test --config=/tmp/fc-story13-6-observations-20261107-l883mjts/route-entry/zoom.config.ts
+node /tmp/fc-story13-6-observations-20261107-l883mjts/touch-final.cjs
+FC_NAT_OUT=observations-20261107-l883mjts WSLENV=FC_NAT_OUT node.exe 'C:\Users\JeromePiquot\AppData\Local\Temp\fc-story13-6-nat-ybWKjtDb\runner-canonical\native-nat.cjs' 'C:\Users\JeromePiquot\AppData\Local\Temp\fc-story13-6-nat-ybWKjtDb'
+python3 -u /tmp/fc-story13-6-observations-20261107-l883mjts/run-native-after-idle.py
+```
+
+The last wrapper records its exact argv/environment and launches the same canonical runner with only `FC_NAT_OUT=observations-20261107-l883mjts-retry` after the corrected idle gate. Windows raw logs/slices stay under those two output directories in `C:\Users\JeromePiquot\AppData\Local\Temp\fc-story13-6-nat-ybWKjtDb\`. The complete summary at `observation-summary.json` is SHA-256 `d41bcf3a2c31b2bd3128dca062aac653a9bb9e191a62357a89f7a992334c2bae`; it binds source/binary identities, commands' reports, script hashes and cleanup. Report SHA-256 values:
+
+- Responsive: `b52579e7b5d88a7383ca1ca036e11263b829f75a2838939d2b0b8dad8997c863`.
+- Actual-zoom journeys: `b505b65379e34ffeb31c0ca578a60574774fcd8488ef4b46302c33580777f39a`.
+- Focused-heading failures: `89539d6f9d889c1cec86c2991253e8b255b3468c7815b5464912df4025bffda6`.
+- Final touch: `d87ad8d87adb767ca590c527f7aa9b36829c84dee0589534a264649a6a227e46`.
+- Native first/retry: `6d72e3e0e7fcf10e00ccd2c87e7402b6f460526e7e7224534bf7f6241cf4999d` / `14bdccaa2869f33f6fbb3359cd5beac09b1cb7e7d1669aad205e901933032e89`.
+
+**Repository validation.** `git diff --check` and original-byte/checkbox/frozen-block/CRLF preservation checks pass. `python3 eng/validate-story-artifacts.py` exits **1** on the same unchanged Epic 11 tracking: `E11R-AI-1 has unsupported status 'in-progress'` and `E11R-AI-1 must remain open while the active Story 11.25 successor evidence is superseded`. Exact output is retained at `final-story-validator.log`; the gate and Epic 11 records are unchanged.
+
+**Cleanup and status.** The Test host and browser contexts are stopped; port **5070 is closed**. Final Windows inventory reports NVDA **0**, Firefox **0**, geckodriver **0** and port 9516 listeners **0**. Only this result and the primary spec change. The original eighteen human checklist boxes, frozen intent/baseline, historical MAN-136 records/waiver, approved D3/O2 deferrals and independent owner decisions are preserved. Story/sprint remain **in-progress**; the agent observations do not claim manual human completion, physical-device completion, a full visual/state-artifact gate, hosted CI or owner approval.
+
+## Current committed-source keyboard verification — 2026-11-07
+
+All approved product/test corrections are present at clean root `e972d0f06a8eec3446db0b2270fdb14eef4c1186`. This continuation adds evidence only; no new product defect was demonstrated. The [2026-11-04 residual decision](spec-13-6-verify-responsive-and-assistive-accessibility.md#residual-native-findings-decision--2026-11-04) remains authoritative: FX5, FX7 and NAT4 are closed under the narrowed acceptance, while the native D3 duplicate context and O2 skip-link speech remain explicitly deferred. Earlier open-task statements below describe their dated attempts.
+
+**Source and reuse limits.** The `85d223d6cf799b530e7ef68b3e77663c5a5ef84a` → `b70627f649826b1a2338ccc13295ba02b71f7424` `src tests` patch hashes to `b6a0c10b724913409d0d0dcce3691f71c914d6ffae9059607801d6d35ff5677d`, exactly matching the preceding recorded passing review. Since that source, commit `44d802b995da97c6e921b5e1eba6a1eabfd1431d` changes the accessibility implementation only in `fc-keyboard.js`: native navigation cancels a superseded focus-visibility frame; neutral, prevented and composing input retain it. Its four regressions and the adjacent O5 scrollport case are the affected verification lane. That module/spec diff from `b70627f6` to the current root hashes to `e8fd501a65d403c2c6ff9ef8ecfa4d51c558f30e9b1adb205cf44e1ac78e5272`. Other current authentication/MCP, dependency and governance changes are outside this bounded evidence; the previous complete browser, visual, bUnit and native results retain their original source attribution. No current full-runtime equivalence is inferred.
+
+**Fresh checks.** From the repository root, `dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Debug -m:1 -v:minimal --disable-build-servers` exits **0**, with **zero warnings/errors**. From `tests/e2e`, `npm run typecheck` exits **0**. Installed Playwright initially resolved to **1.65.0**, while the tracked lockfile selects **1.64.1**; `npm ci` and `npx --no -- playwright install chromium firefox webkit` both exit **0** and restore the pinned tools without tracked dependency changes. No browser test ran with the stale installation.
+
+The owned standalone Test host was launched from the repository root with:
+
+```text
+env ASPNETCORE_ENVIRONMENT=Test Hexalith__FrontComposer__Specimens__Enabled=true Hexalith__Shell__FormAbandonmentThresholdSeconds=5 Hexalith__Shell__TimeoutActionThresholdMs=5000 Hexalith__Shell__ProjectionReconnectedNoticeDurationMs=30000 Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs=6500 dotnet run --project samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --no-build --no-launch-profile --urls http://127.0.0.1:5070
+```
+
+`/home` and `/counter` returned **200**. The served `/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js` byte-matched the source, SHA-256 `9b4f25a652572658e755a5dc673c08732493aeba6ae3c98e5648eef0f8184f6e`. From `tests/e2e`, the exact browser command was:
+
+```text
+BASE_URL=http://127.0.0.1:5070 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=/tmp/fc-story13-6-current-20261107-274wjetg/browser/out FC_E2E_HTML_REPORT_DIR=/tmp/fc-story13-6-current-20261107-274wjetg/browser/html npx --no -- playwright test specs/responsive-accessibility.spec.ts --grep 'held shell focus visibility frame|O5 the desktop content scrollport' --workers=2 --retries=0
+```
+
+Result: **15/15 passed**, five each on Chromium, Firefox and WebKit; **zero failed/skipped/flaky/runner errors**, zero retries. Native PageDown remains effective after a held obsolete callback is released; neutral, consumed and IME keys preserve the pending visibility adjustment; O5 retains keyboard scrolling without a redundant content stop. This is automated browser evidence, not actual browser zoom or human AT/device evidence. This partial lane does not contain the full state/visual artifact matrix, so no complete artifact-validator or visual pass is claimed.
+
+Raw logs and configured HTML/JUnit/JSON reports remain external at `/tmp/fc-story13-6-current-20261107-274wjetg/`. Report JSON SHA-256 is `8a8f74e5a22be988b566fd17f70a7b396fcedc8db3392d28255f0b4046aed2e2`; browser log `ba8fe1be71e922594f505a87b7c83bb845f4dea7558976de2c20db0d4cd1fef6`; build log `b59be737691d5f0b807916936b0e48160a5489de894d6274b7f4e3c9ba8f2201`; typecheck log `f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2`. The host was stopped and port **5070 is closed**. No native Windows, NVDA or driver process was started. No hosted run was queried or initiated; no current-candidate CI link is supplied by this check.
+
+**Repository checks.** `git diff --check` exits **0**. Byte checks preserve the complete original spec prefix, the complete historical result content, every checkbox, the frozen block and CRLF. `python3 eng/validate-story-artifacts.py` exits **1** on unchanged Epic 11 tracking: `repository integrity: E11R-AI-1 has unsupported status 'in-progress'` and `repository integrity: E11R-AI-1 must remain open while the active Story 11.25 successor evidence is superseded`. Exact output is `story-validator.log` in the scratch directory above. This independent repository-integrity failure is retained; no Epic 11 record or validation rule is changed.
+
+**Acceptance remains incomplete.** Current-candidate human observations, applicable changed-cue WebKit capability acceptance and independent OI-16/G-4/FLUENT-APP-1/Product/Architect decisions remain open. The seven historical Owner-reported MAN-136 Pass records and their supporting-details waiver remain intact; no renewed human observation is inferred. The eighteen itemized boxes, original matrix/result/Evidence acceptance tasks, frozen intent and Story/sprint **in-progress** status are unchanged. Only this result and the primary spec change; no source, test, dependency declaration, policy, baseline or gitlink is edited, and nothing is staged, committed, pushed or published.
+
 ## Code review of the native findings corrections — 2026-11-04
 
 The user chose to defer the D3 and O2 residuals and proceed to review. Three review layers (blind, edge-case and verification-gap) reviewed the uncommitted `src`/`tests` delta. The 26 findings break down as follows:
