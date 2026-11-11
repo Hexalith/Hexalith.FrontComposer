@@ -329,7 +329,7 @@
       "decisionDate": "2026-07-17",
       "reviewDate": "2027-07-17",
       "trigger": "Revalidate on each touched source symbol or relevant analyzer change.",
-      "evidence": "Bidirectional tracked-source control inventory. Story 13.1 adds a CA2007 pragma for the opt-in live two-tenant xUnit fixture; the source-pragmas inventory includes its tracked path. Revalidated 2026-10-05 for the approved Story 13.4 task audit: source-pragmas entryCount increases from 85 to 86 solely for the directive-adjacent CA2012 NSubstitute Returns statement in PendingCommandPollingCoordinatorTests.ConfirmationReturningAtThePollingBudgetClosesAsExhausted, separately recorded by story134-ca2012-polling-budget-valuetask-fixture. Paths, diagnostic IDs, and all historical dispositions remain unchanged. Revalidated 2026-10-28 after external user-authored commit 5af87f9e5cc8db16896fc97d19b6a828b2ed0d0d: the existing member-level CA1822 on FcOptimisticReconciler.ExecuteAsync preserves its published instance service API for DI adapters. The factual source-suppression-attributes census increases 46 to 47 and adds that exact tracked path; diagnostic IDs, controls, owner, decision dates, approvals and source severities are unchanged. This is post-runtime-proof inventory reconciliation, not a new suppression or sign-off."
+      "evidence": "Bidirectional tracked-source control inventory. Story 13.1 adds a CA2007 pragma for the opt-in live two-tenant xUnit fixture; the source-pragmas inventory includes its tracked path. Revalidated 2026-10-05 for the approved Story 13.4 task audit: source-pragmas entryCount increases from 85 to 86 solely for the directive-adjacent CA2012 NSubstitute Returns statement in PendingCommandPollingCoordinatorTests.ConfirmationReturningAtThePollingBudgetClosesAsExhausted, separately recorded by story134-ca2012-polling-budget-valuetask-fixture. Paths, diagnostic IDs, and all historical dispositions remain unchanged. Revalidated 2026-10-28 after external user-authored commit 5af87f9e5cc8db16896fc97d19b6a828b2ed0d0d: the existing member-level CA1822 on FcOptimisticReconciler.ExecuteAsync preserves its published instance service API for DI adapters. The factual source-suppression-attributes census increases 46 to 47 and adds that exact tracked path; diagnostic IDs, controls, owner, decision dates, approvals and source severities are unchanged. This is post-runtime-proof inventory reconciliation, not a new suppression or sign-off. Revalidated 2026-11-11 against existing commit 26be733bfacf77ce4cc56b27765f56f295b974bb: the source-pragmas census increases 86 to 87 and adds xUnit1000 at tests/Hexalith.FrontComposer.Mcp.Tests/Governance/McpSecurityAuditPinGovernanceTests.cs. Its paired disable/restore directives surround only the private PinProbeFixture reflected over by the MCP audit pin tests; this fixture is deliberately not discovered by xUnit. This records the existing test-fixture control without adding a suppression or changing any approval, owner, decision date or analyzer severity."
     },
     {
       "key": "hfc1002-fixture-narrowing",
@@ -746,6 +746,7 @@
         "src/Hexalith.FrontComposer.Shell/Infrastructure/ProjectionConnection/ProjectionFallbackRefreshScheduler.cs",
         "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/FilterEffects.cs",
         "tests/Hexalith.FrontComposer.Contracts.Tests/Communication/QueryRequestTests.cs",
+        "tests/Hexalith.FrontComposer.Mcp.Tests/Governance/McpSecurityAuditPinGovernanceTests.cs",
         "tests/Hexalith.FrontComposer.Shell.Tests/Badges/BadgeCountServiceTests.cs",
         "tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/FcStatusIconTests.cs",
         "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcColumnFilterCellTests.cs",
@@ -783,7 +784,7 @@
         "tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinatorTests.cs",
         "tests/Hexalith.FrontComposer.UI.Tests/ProductionRouterTests.cs"
       ],
-      "entryCount": 86,
+      "entryCount": 87,
       "diagnosticIds": [
         "BL0001",
         "CA1062",
@@ -797,6 +798,7 @@
         "HFC0001",
         "IDE0056",
         "RS2008",
+        "xUnit1000",
         "xUnit1051"
       ],
       "exactScope": "listed root-owned source paths",
