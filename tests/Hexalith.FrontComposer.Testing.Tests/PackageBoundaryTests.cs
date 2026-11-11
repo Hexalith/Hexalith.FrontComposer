@@ -257,6 +257,9 @@ public sealed class ConsumerSmokeTests
 
     private static void AssertCentralPackageVersion(string root, string packageId, string expectedVersion) {
         string path = Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props");
+        if (!File.Exists(path)) {
+            path = Path.Combine(root, "..", "Hexalith.Builds", "Props", "Directory.Packages.props");
+        }
         XDocument document = XDocument.Load(path);
         string? actualVersion = document
             .Descendants("PackageVersion")
