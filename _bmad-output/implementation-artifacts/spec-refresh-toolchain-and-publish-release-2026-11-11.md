@@ -41,7 +41,7 @@ context: []
 **Execution:**
 - [x] Update SDK, Aspire, active mirrors, governance assertions, IDE fingerprint, Stryker and both Playwright locks; synchronize selected-catalog policy expectations.
 - [x] Run focused governance, dependency, release-parser, npm typecheck/browserless tests, and serialized .NET build/test verification. Diagnose and fix actual failures without weakening gates.
-- [ ] Primary agent: independently inspect diff, review, commit and push only after all root dependency commits are remote-verifiable.
+- [x] Primary agent: independently inspect diff, review, commit and push only after all root dependency commits are remote-verifiable.
 - [ ] Primary agent: resolve exact-source CI/Quality failures, dispatch release, handle authorized reviewer approval, and verify GitHub release and eight published NuGet versions.
 
 **Acceptance Criteria:**
@@ -95,3 +95,5 @@ context: []
 - Concurrent maintainer commit c8abcf33705cb1ad5bcbe92e0ccb676d78062824 added explicit net10 SDK companions, pinned initialization, publisher setup, and the official devcontainer lock. Rebased onto it, preserving its changes and combining both SDK/governance guards. Source-runtime package catalog is unchanged from bc3. Its shared workflow shorthand was valid newer Actions syntax but unsupported by the exact-source closure collector. Owning Builds fix7d2019adf4591a2c320a9288f76fc5f0f6905f65 uses an immutable remote action with byte-identical metadata/script; actionlint,8APTtests, pinned commitlint pass and remote main is verified. CI now uses this compatible exact workflow. New CI/Release/post-release authorizations are regenerated from combined committed sources rather than fabricating provenance.
 
 - Merged runtime guard checks pass20/20. Genuine source closures: CI a11ce4e2f867cc4ab2a0c1833b2dae42a83efecd0131ee3bcc74456ae92b33ce (19sources); Release acb2623d2acb3e4096569f0cad8df11031fb4d786d5aa2b8dc0ff5ccb9dfb4fc (12sources); post-release c09ed6628d764df5854da0ee3eb3d16bb40d64c3331c20a60e9ad1f45bf68bd9 (17sources). Each blob was independently recomputed from committed exact source; all current caller hashes match, legacy rows preserved. The generated configuration projection was corrected from actual committed bytes; only the intended AppHost SDK configuration differed, and committed graph validation passed.
+
+- Sealed dependency and workflow policy landed remotely at6d4c5ed1d4019e531222305fb2493b9751f78544. Exact committed graph validation passed. This documentation-only activation has that seal as its immediate parent and changes no selector, executable source, consumer configuration, or policy bytes; exact-source hosted CI and publication remain pending. No push reported bypassed branch-rule warnings.
