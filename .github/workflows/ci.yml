@@ -22,9 +22,10 @@ permissions:
 
 jobs:
   ci:
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@6952b59c3486ee50d32056c3fee07a07e8120bd5
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@6e77e79e8914a375b0c43b0af3bd142405675ecd
     with:
       solution: Hexalith.FrontComposer.slnx
+      additional-sdk-version: '10.0.x'
       test-platform: microsoft-testing-platform
       build-timeout-minutes: 45
       # Enables scripts/pack-release-packages.py + validate-nuget-packages.py +
@@ -63,6 +64,7 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+          dotnet-version: '10.0.x'
 
       - name: Select exact dependency revisions
         id: revisions

@@ -788,7 +788,7 @@ public sealed class PendingCommandOutcomeResolverTests {
 
         sut.Resolve(observation).Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
 
-        indicators.Snapshot("counter-counts").Any().ShouldBe(shouldPublish);
+        (indicators.Snapshot("counter-counts").Count > 0).ShouldBe(shouldPublish);
     }
 
     [Fact]

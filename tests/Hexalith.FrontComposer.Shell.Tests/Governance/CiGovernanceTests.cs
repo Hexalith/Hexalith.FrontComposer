@@ -966,6 +966,7 @@ public sealed class CiGovernanceTests {
             "ci.yml must pin domain-ci.yml to an exact 40-hex lowercase Builds commit SHA (never @main).");
         ci.ShouldNotContain("domain-ci.yml@main");
         ci.ShouldContain("solution: Hexalith.FrontComposer.slnx");
+        ci.ShouldContain("additional-sdk-version: '10.0.x'");
         ci.ShouldContain("test-platform: microsoft-testing-platform");
         ci.ShouldContain("run-consumer-validation: true");
         ci.ShouldContain("unit-test-projects:");
@@ -1257,10 +1258,10 @@ public sealed class CiGovernanceTests {
 
     [Fact]
     public void ToolchainPins_MatchApprovedDotnetAndAspireVersions() {
-        const string expectedDotnetSdk = "10.0.403";
+        const string expectedDotnetSdk = "11.0.100";
         const string sourceResourceCompatibilitySdk = "10.0.302";
-        const string expectedAspire = "13.6.4";
-        const string expectedAspireHosting = "13.6.4";
+        const string expectedAspire = "13.6.5";
+        const string expectedAspireHosting = "13.6.5";
         const string expectedDaprCli = "1.18.0";
         const string expectedDaprRuntime = "1.18.2";
         string root = RepositoryRoot();
@@ -1273,9 +1274,9 @@ public sealed class CiGovernanceTests {
             @"(?m)^[ \t]*dotnet-version[ \t]*:[ \t]*(?<quote>['""]?)(?<version>[^'""#\s]+)\k<quote>[ \t]*(?:#.*)?\r?$",
             RegexOptions.CultureInvariant);
         foreach (string quotingVariant in new[] {
-            "dotnet-version: '10.0.403'",
-            "dotnet-version: \"10.0.403\"",
-            "dotnet-version: 10.0.403",
+            "dotnet-version: '11.0.100'",
+            "dotnet-version: \"11.0.100\"",
+            "dotnet-version: 11.0.100",
         }) {
             Match sample = dotnetVersionPin.Match(quotingVariant);
             sample.Success.ShouldBeTrue($"active dotnet-version parser must support valid YAML quoting: {quotingVariant}");
@@ -1291,13 +1292,18 @@ public sealed class CiGovernanceTests {
             .SelectMany(path => dotnetVersionPin.Matches(File.ReadAllText(path)).Cast<Match>()
                 .Select(match => (
                     Workflow: Path.GetFileName(path),
-                    Version: match.Groups["version"].Value)))
+                    Version: match.Groups["version"].Value,
+                    RuntimeCompanion: string.Equals(match.Groups["version"].Value, "10.0.x", StringComparison.Ordinal)
+                        && Regex.IsMatch(File.ReadAllText(path)[..match.Index],
+                            @"actions/setup-dotnet@[^\r\n]+\r?\n\s+with:\r?\n\s+global-json-file: global.json\r?\n\s*\z",
+                            RegexOptions.CultureInvariant))))
             .ToArray();
         dotnetPins.ShouldNotBeEmpty("active dotnet-version pins must be discovered across every workflow file");
         dotnetPins.Count(pin => string.Equals(pin.Version, sourceResourceCompatibilitySdk, StringComparison.Ordinal))
             .ShouldBe(1, "only the full source-resource topology may install the 10.0.302 compatibility SDK");
         dotnetPins
-            .Where(pin => !string.Equals(pin.Version, sourceResourceCompatibilitySdk, StringComparison.Ordinal))
+            .Where(pin => !string.Equals(pin.Version, sourceResourceCompatibilitySdk, StringComparison.Ordinal)
+                && !pin.RuntimeCompanion)
             .ShouldAllBe(pin => string.Equals(pin.Version, expectedDotnetSdk, StringComparison.Ordinal));
 
         string quality = File.ReadAllText(Path.Combine(workflowsRoot, "quality.yml"));
@@ -1308,11 +1314,11 @@ public sealed class CiGovernanceTests {
         string sdkVerificationStep = ExtractNamedStep(quality, "Verify root and source-resource SDKs");
         sdkVerificationStep.ShouldContain("set -euo pipefail");
         sdkVerificationStep.ShouldContain("active_sdk=\"$(dotnet --version)\"");
-        sdkVerificationStep.ShouldContain("^10\\.0\\.([0-9]+)$");
-        sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} < 403");
-        sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} >= 500");
+        sdkVerificationStep.ShouldContain("^11\\.0\\.([0-9]+)$");
+        sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} < 100");
+        sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} >= 200");
         sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^10\\.0\\.302\\s'");
-        sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^10\\.0\\.403\\s'");
+        sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^11\\.0\\.100\\s'");
         sdkVerificationStep.ShouldNotContain("test \"$(dotnet --version)\" = \"10.0.403\"");
 
         Regex aspireCliInstall = new(
@@ -1332,7 +1338,7 @@ public sealed class CiGovernanceTests {
         ideWorkflow.ShouldContain($"Detected .NET SDK version (e.g. {expectedDotnetSdk})");
         string ideJob = File.ReadAllText(Path.Combine(root, "jobs", "ide-parity-version-revalidation.ps1"));
         ideJob.ShouldContain($"Minimum = \"{expectedDotnetSdk}\"");
-        ideJob.ShouldContain("Maximum = \"10.0.500\"");
+        ideJob.ShouldContain("Maximum = \"11.0.200\"");
 
         XDocument appHost = XDocument.Load(
             Path.Combine(root, "src", "Hexalith.FrontComposer.AppHost", "Hexalith.FrontComposer.AppHost.csproj"));
@@ -1370,9 +1376,14 @@ public sealed class CiGovernanceTests {
     [InlineData("10.0.400", 1)]
     [InlineData("10.0.401", 1)]
     [InlineData("10.0.402", 1)]
-    [InlineData("10.0.403", 0)]
-    [InlineData("10.0.499", 0)]
+    [InlineData("10.0.403", 1)]
+    [InlineData("10.0.499", 1)]
     [InlineData("10.0.500", 1)]
+    [InlineData("11.0.099", 1)]
+    [InlineData("11.0.100", 0)]
+    [InlineData("11.0.199", 0)]
+    [InlineData("11.0.200", 1)]
+    [InlineData("11.0.100-preview.1", 1)]
     [InlineData("10.0.402-preview.1", 1)]
     [InlineData("10.0", 1)]
     [InlineData("10.0.402.1", 1)]
@@ -2568,6 +2579,9 @@ public sealed class CiGovernanceTests {
             @"uses: Hexalith/Hexalith\.Builds/Github/prepare-domain-release@(?<sha>[0-9a-f]{40})\b");
         actionPin.Success.ShouldBeTrue("the caller-owned publisher must pin the Builds preparation action");
         string buildsRoot = Path.Combine(root, "references", "Hexalith.Builds");
+        if (!File.Exists(Path.Combine(buildsRoot, "Github", "prepare-domain-release", "action.yml"))) {
+            buildsRoot = Path.Combine(root, "..", "Hexalith.Builds");
+        }
         ProcessResult shown = RunProcess(buildsRoot, "git", [
             "show", $"{actionPin.Groups["sha"].Value}:Github/prepare-domain-release/action.yml",
         ]);

@@ -2,6 +2,9 @@
   "name": "Hexalith FrontComposer IDE Parity",
   "image": "mcr.microsoft.com/devcontainers/dotnet:10.0",
   "features": {
+    "ghcr.io/devcontainers/features/dotnet:2": {
+      "version": "11.0.100"
+    },
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "customizations": {
