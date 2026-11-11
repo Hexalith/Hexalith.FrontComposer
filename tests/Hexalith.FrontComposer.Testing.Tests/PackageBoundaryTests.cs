@@ -95,7 +95,10 @@ public sealed class PackageBoundaryTests {
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-testing-clean-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-testing-consumer-" + Guid.NewGuid().ToString("N"));
         string packageVersion = "2.0.0-review.g" + Guid.NewGuid().ToString("N")[..8];
-        string fallbackPackages = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+        string? configuredPackages = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
+        string fallbackPackages = string.IsNullOrWhiteSpace(configuredPackages)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages")
+            : Path.GetFullPath(configuredPackages, root);
         _ = Directory.CreateDirectory(packageOutput);
         _ = Directory.CreateDirectory(consumer);
 
@@ -181,6 +184,10 @@ public sealed class ConsumerSmokeTests
 }
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
+        // Only external dependencies may enter the fallback cache. The unique packed
+        // FrontComposer versions must still be restored from the consumer's local feed.
+        await WarmExternalDependenciesAsync(root, packageOutput, Path.Combine(consumer, "Consumer.csproj"), fallbackPackages, TestContext.Current.CancellationToken).ConfigureAwait(true);
+
         await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "restore", "--configfile", nugetConfigPath, "--no-http-cache", "-m:1", "/nr:false").ConfigureAwait(true);
         await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "--no-restore", "-m:1", "/nr:false").ConfigureAwait(true);
 
@@ -200,6 +207,45 @@ public sealed class ConsumerSmokeTests
         assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components.Icons/4.");
         assets.ShouldNotContain("\"type\": \"project\"");
         assets.ShouldNotContain(root.Replace('\\', '/'));
+    }
+
+    private static async Task WarmExternalDependenciesAsync(
+        string root,
+        string packageOutput,
+        string consumerProjectPath,
+        string fallbackPackages,
+        CancellationToken cancellationToken) {
+        List<XElement> references = XDocument.Load(consumerProjectPath)
+            .Descendants("PackageReference")
+            .Select(reference => new XElement(reference))
+            .ToList();
+        foreach (string package in Directory.EnumerateFiles(packageOutput, "*.nupkg")) {
+            using ZipArchive archive = ZipFile.OpenRead(package);
+            XDocument nuspec = XDocument.Parse(ReadNuspec(archive));
+            references.AddRange(nuspec.Descendants()
+                .Where(element => string.Equals(element.Name.LocalName, "dependency", StringComparison.Ordinal))
+                .Select(dependency => new XElement("PackageReference",
+                    new XAttribute("Include", dependency.Attribute("id")!.Value),
+                    new XAttribute("Version", dependency.Attribute("version")!.Value))));
+        }
+
+        IEnumerable<XElement> externalReferences = references
+            .Where(reference => !reference.Attribute("Include")!.Value.StartsWith("Hexalith.FrontComposer.", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(reference => reference.Attribute("Include")!.Value, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => new XElement("PackageReference",
+                new XAttribute("Include", group.Key),
+                new XAttribute("Version", group.Select(reference => reference.Attribute("Version")!.Value).Distinct(StringComparer.Ordinal).Single())));
+        XDocument project = new(new XElement("Project",
+            new XAttribute("Sdk", "Microsoft.NET.Sdk"),
+            new XElement("PropertyGroup",
+                new XElement("TargetFramework", "net10.0"),
+                new XElement("RestorePackagesPath", fallbackPackages)),
+            new XElement("ItemGroup", externalReferences)));
+        string warmup = Path.Combine(Path.GetTempPath(), "fc-testing-external-dependencies-" + Guid.NewGuid().ToString("N"));
+        _ = Directory.CreateDirectory(warmup);
+        await File.WriteAllTextAsync(Path.Combine(warmup, "ExternalDependencies.csproj"), project.ToString(), cancellationToken).ConfigureAwait(true);
+        await RunDotnetAsync(warmup, cancellationToken, "restore", "--configfile", Path.Combine(root, "nuget.config"), "--no-http-cache", "-m:1", "/nr:false").ConfigureAwait(true);
     }
 
     private static string ReadNuspec(ZipArchive archive) {
