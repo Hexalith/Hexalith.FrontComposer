@@ -665,6 +665,9 @@ jobs:
         working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd
         run: npm run test:runner
 
+      - name: Initialize Ubuntu APT for browser dependencies
+        uses: Hexalith/Hexalith.Builds/Github/initialize-apt@f5a46e8a70a1893bc638fa5f488d57767fafdede
+
       - name: Use the Ubuntu HTTPS archive for browser dependencies
         run: bash eng/prepare-browser-package-sources.sh
 
@@ -776,6 +779,9 @@ jobs:
       - name: Install pinned Playwright workspace
         working-directory: tests/e2e
         run: npm ci
+
+      - name: Initialize Ubuntu APT for browser dependencies
+        uses: Hexalith/Hexalith.Builds/Github/initialize-apt@f5a46e8a70a1893bc638fa5f488d57767fafdede
 
       # The hosted Azure HTTP mirror stalled media-library downloads for over 20 minutes.
       # Keep Ubuntu's signed package suites and every browser dependency; use the main HTTPS archive.
@@ -889,6 +895,9 @@ jobs:
       - name: Install Playwright workspace dependencies
         working-directory: tests/e2e
         run: npm ci
+
+      - name: Initialize Ubuntu APT for browser dependencies
+        uses: Hexalith/Hexalith.Builds/Github/initialize-apt@f5a46e8a70a1893bc638fa5f488d57767fafdede
 
       - name: Use the Ubuntu HTTPS archive for browser dependencies
         run: bash eng/prepare-browser-package-sources.sh
