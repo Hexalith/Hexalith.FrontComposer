@@ -346,7 +346,9 @@ jobs:
           # DIVERGENCE 2: FrontComposer has 16+ Verify .verified.txt snapshot files.
           # Without this env var, a snapshot mismatch launches a diff tool and hangs the CI runner.
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-not-trait "Category=GovernanceBuild" --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura
+        # SDK 11 adds merged artifacts; retain one complete report per module
+        # for the existing strict TRX and coverage inventory checks.
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-not-trait "Category=GovernanceBuild" --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura --no-artifact-post-processing
 
       - name: 'Gate 3a: Verify default MTP evidence'
         run: >-

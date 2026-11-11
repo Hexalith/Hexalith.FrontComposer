@@ -40,6 +40,10 @@ The main three-engine npm workspace pins Playwright `1.64.1` and its matching
 core override; the legacy Chromium-only workspace resolves `1.65.0`.
 Node 24 type declarations remain selected. The local mutation tool selects
 Stryker `5.1.0`; DocFX stays at `2.81.0`.
+The Quality default lane uses `--no-artifact-post-processing` to retain one
+complete TRX and Cobertura report per test module under SDK 11. Its evidence
+gate still requires eight distinct test modules and eight measured coverage
+reports; automatic SDK aggregation would add a duplicate summary.
 
 Compatibility holds remain explicit:
 
