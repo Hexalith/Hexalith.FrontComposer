@@ -36,12 +36,20 @@ and `netstandard2.0`. Test workflows explicitly install the .NET and ASP.NET Cor
 the root SDK, plus SDK `10.0.404` for dependencies that pin the 10.0.4xx band.
 IDE and hot-reload documentation retains its historical manual
 validation dates and does not claim that SDK 11 manual checks have run.
-Both npm test workspaces resolve Playwright `1.65.0`, including the core override;
+The main three-engine npm workspace pins Playwright `1.64.1` and its matching
+core override; the legacy Chromium-only workspace resolves `1.65.0`.
 Node 24 type declarations remain selected. The local mutation tool selects
 Stryker `5.1.0`; DocFX stays at `2.81.0`.
 
 Compatibility holds remain explicit:
 
+- The main browser cohort retains `1.64.1`: Firefox bundled with `1.65.0`
+  crashes during cross-world native `aria-labelledby` array reflection, including
+  the complete WCAG axe scan. Rules, frames, locators, and assertions stay enabled.
+  Script-set reflected-name locator support newly added in `1.65.0` remains
+  deferred; the older cohort does not provide equivalent coverage of that feature.
+  Revisit after a released patched Firefox passes the full matrix and native
+  reflection regression; see the [recorded compatibility hold](../docs/accessibility-verification/baseline-change-rationale.md).
 - ASP.NET Core authentication/server packages including OpenIdConnect stay at `10.0.15`: their .NET 11
   assets require `net11.0`. Compatible Microsoft.Extensions and System.Text.Json packages
   now use `11.0.0`; SignalR Client/Common retain `10.0.15` because the 11.x netstandard fallback lacks the invocation-binder method needed by the net10.0 Blazor server. Immutable retains `10.0.15` because 11.x conflicts with the generator test reference assemblies.
