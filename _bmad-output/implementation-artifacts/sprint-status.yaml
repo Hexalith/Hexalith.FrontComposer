@@ -806,7 +806,7 @@ action_items:
       tuple current at execution, then obtain the required migration-approval receipts
       without rewriting Story 11.25 history"
     owner: "Architect + Release Owner"
-    status: in-progress
+    status: open
     gate: "G-3"
     historical_story: "11.25"
     implementation_story: "11.25"
