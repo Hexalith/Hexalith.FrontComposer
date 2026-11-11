@@ -5,7 +5,7 @@ The maintenance selection uses these exact committed root dependencies:
 | Root dependency | Selected commit |
 | --- | --- |
 | Hexalith.AI.Tools | `8a3885dd22aea88edd57771cfe592c382df2c583` |
-| Hexalith.Builds | `bc3efac849d4a17c3d00cba2eee0b54771ec524e` |
+| Hexalith.Builds | `7d2019adf4591a2c320a9288f76fc5f0f6905f65` |
 | Hexalith.Commons | `1f9ab9afebdaa0f64333b5117e0ac45185fad4a4` |
 | Hexalith.EventStore | `15c8ccd525d743f68eed8ff19ba95c6c6bd2e563` |
 | Hexalith.Memories | `e19d7a704ef10ba01cbaf141776160e6467dff19` |
@@ -23,7 +23,7 @@ initialized. The Builds catalog and its audit were then committed in the owning
 repository.
 
 The 2026-11-11 refresh selects the remote-equal root Builds catalog at
-`bc3efac849d4a17c3d00cba2eee0b54771ec524e`, including Aspire `13.6.5`,
+`7d2019adf4591a2c320a9288f76fc5f0f6905f65`, including Aspire `13.6.5`,
 OpenTelemetry `1.21.0`, Microsoft.NET.Test.Sdk `18.12.0`, and Tenants `7.0.7`.
 The existing catalog audit records the exact compatible selection. FrontComposer
 imports that catalog without local version overrides. The selected-catalog

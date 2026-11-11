@@ -75,6 +75,8 @@ context: []
 
 ## Commit Scope Dispositions
 
+- `c8abcf33705cb1ad5bcbe92e0ccb676d78062824` | `shared` | Concurrent maintainer runtime/SDK provisioning and lockfile updates preserved during rebase.
+
 - `d5261cc4e1725869b8c457cf9a502cbaaa4879f2` | `shared` | Concurrent maintainer SDK11 pin, identical to the planned SDK change, fast-forwarded without losing local edits.
 
 ## Final Validation Record
@@ -89,3 +91,5 @@ context: []
 - Source AppHost validation exposed two Parties references with ExcludeAssets=all, forcing framework Logging.Abstractions10 against EventStore11. The owning-module fix retains compile assets in those two references, preserves its generator repair, passes serialized complete AppHost Debug build0warnings/errors, and is pushed/remote-verified at b6b4f8a5c83b77ab57a9b947436317162b4fb337. Its exact message passed owning pinned commitlint21.2.4; evidence /tmp/frontcomposer-parties-commitlint.log. Root selector policy refreshed after remote verification.
 
 - Final source validation: complete serialized Debug AppHost graph passed0warnings/errors; isolated no-build Aspire start13.6.5 succeeded. Discovery reported31 Running/Healthy resources and the expected finished one-shot sample; frontcomposer-ui readiness passed. Exact-path Aspire stop completed for cleanup.
+
+- Concurrent maintainer commit c8abcf33705cb1ad5bcbe92e0ccb676d78062824 added explicit net10 SDK companions, pinned initialization, publisher setup, and the official devcontainer lock. Rebased onto it, preserving its changes and combining both SDK/governance guards. Source-runtime package catalog is unchanged from bc3. Its shared workflow shorthand was valid newer Actions syntax but unsupported by the exact-source closure collector. Owning Builds fix7d2019adf4591a2c320a9288f76fc5f0f6905f65 uses an immutable remote action with byte-identical metadata/script; actionlint,8APTtests, pinned commitlint pass and remote main is verified. CI now uses this compatible exact workflow. New CI/Release/post-release authorizations are regenerated from combined committed sources rather than fabricating provenance.
