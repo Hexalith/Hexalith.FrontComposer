@@ -1260,6 +1260,7 @@ public sealed class CiGovernanceTests {
     public void ToolchainPins_MatchApprovedDotnetAndAspireVersions() {
         const string expectedDotnetSdk = "11.0.100";
         const string sourceResourceCompatibilitySdk = "10.0.302";
+        const string dependencySourceResourceSdk = "10.0.404";
         const string expectedAspire = "13.6.5";
         const string expectedAspireHosting = "13.6.5";
         const string expectedDaprCli = "1.18.0";
@@ -1301,15 +1302,35 @@ public sealed class CiGovernanceTests {
         dotnetPins.ShouldNotBeEmpty("active dotnet-version pins must be discovered across every workflow file");
         dotnetPins.Count(pin => string.Equals(pin.Version, sourceResourceCompatibilitySdk, StringComparison.Ordinal))
             .ShouldBe(1, "only the full source-resource topology may install the 10.0.302 compatibility SDK");
+        dotnetPins.Count(pin => string.Equals(pin.Version, dependencySourceResourceSdk, StringComparison.Ordinal))
+            .ShouldBe(1, "only the full source-resource topology may install the dependency 10.0.404 SDK");
         dotnetPins
             .Where(pin => !string.Equals(pin.Version, sourceResourceCompatibilitySdk, StringComparison.Ordinal)
+                && !string.Equals(pin.Version, dependencySourceResourceSdk, StringComparison.Ordinal)
                 && !pin.RuntimeCompanion)
             .ShouldAllBe(pin => string.Equals(pin.Version, expectedDotnetSdk, StringComparison.Ordinal));
+
+        foreach (string workflowName in new[] { "quality.yml", "nightly.yml", "mutation-property-nightly.yml", "quarantine-governance-nightly.yml" }) {
+            string workflow = File.ReadAllText(Path.Combine(workflowsRoot, workflowName));
+            int sdkSetupCount = dotnetVersionPin.Matches(workflow).Cast<Match>()
+                .Count(match => string.Equals(match.Groups["version"].Value, expectedDotnetSdk, StringComparison.Ordinal));
+            Regex.Count(workflow, @"(?m)^      - name: Install \.NET 10 runtimes\r?$", RegexOptions.CultureInvariant)
+                .ShouldBe(sdkSetupCount, $"Every SDK 11 lane in {workflowName} must explicitly install its net10.0 test runtimes.");
+            workflow.ShouldContain("run: ./eng/install-net10-runtime.ps1");
+        }
+        string runtimeInstaller = File.ReadAllText(Path.Combine(root, "eng", "install-net10-runtime.ps1"));
+        runtimeInstaller.ShouldContain("@('dotnet', 'aspnetcore')");
+        runtimeInstaller.ShouldContain("--version '10.0.15'");
+        runtimeInstaller.ShouldContain("-Version '10.0.15'");
+        runtimeInstaller.ShouldContain("--skip-non-versioned-files");
 
         string quality = File.ReadAllText(Path.Combine(workflowsRoot, "quality.yml"));
         quality.ShouldMatch(
             @"(?ms)^[ \t]*- name:[ \t]*Install source-resource compatibility SDK[ \t]*\r?\n[ \t]*uses:[ \t]*actions/setup-dotnet@[^\r\n]+\r?\n[ \t]*with:[ \t]*\r?\n[ \t]*dotnet-version[ \t]*:[ \t]*(?:'10\.0\.302'|""10\.0\.302""|10\.0\.302)[ \t]*\r?$",
             customMessage: "the sole 10.0.302 pin must stay attached to the explicitly named source-resource compatibility step");
+
+        string dependencySdkStep = ExtractNamedStep(quality, "Install dependency source-resource SDK");
+        dependencySdkStep.ShouldContain("dotnet-version: '10.0.404'");
 
         string sdkVerificationStep = ExtractNamedStep(quality, "Verify root and source-resource SDKs");
         sdkVerificationStep.ShouldContain("set -euo pipefail");
@@ -1318,7 +1339,9 @@ public sealed class CiGovernanceTests {
         sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} < 100");
         sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} >= 200");
         sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^10\\.0\\.302\\s'");
+        sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^10\\.0\\.404\\s'");
         sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^11\\.0\\.100\\s'");
+        sdkVerificationStep.ShouldNotContain("test \"$(dotnet --version)\" = \"11.0.100\"");
         sdkVerificationStep.ShouldNotContain("test \"$(dotnet --version)\" = \"10.0.403\"");
 
         Regex aspireCliInstall = new(
@@ -1387,6 +1410,10 @@ public sealed class CiGovernanceTests {
     [InlineData("10.0.402-preview.1", 1)]
     [InlineData("10.0", 1)]
     [InlineData("10.0.402.1", 1)]
+    [InlineData("11.0.99", 1)]
+    [InlineData("12.0.100", 1)]
+    [InlineData("11.0", 1)]
+    [InlineData("11.0.100.1", 1)]
     public void IdeParityVersionRevalidation_DotnetSdkFeatureBand_FailsClosed(
         string detectedSdk,
         int expectedExitCode) {

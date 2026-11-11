@@ -3153,13 +3153,14 @@ class ApprovedProjectionExpectationTests(unittest.TestCase):
     def test_exact_two_policy_expectations_and_older_wrong_missing_catalog_negatives(self) -> None:
         policy = dg.load_policy(ROOT / "eng/dependency-graph-policy.json")
         requirements = policy["profiles"]["frontcomposer-catalog-v1"]["selected_catalog_required_packages"]
-        for name in ("Microsoft.Extensions.Localization", "System.Collections.Immutable"):
-            self.assertEqual(requirements[name], "10.0.14")
-            for version in ("10.0.14", "10.0.13", "10.0.15", None):
+        for name, approved, newer in (("Microsoft.Extensions.Localization", "11.0.0", "11.0.1"),
+                                      ("System.Collections.Immutable", "10.0.15", "10.0.16")):
+            self.assertEqual(requirements[name], approved)
+            for version in (approved, "10.0.14", newer, None):
                 catalog = ET.fromstring('<Project><ItemGroup>' + (
                     f'<PackageVersion Include="{name}" Version="{version}" />' if version else '') + '</ItemGroup></Project>')
                 with self.subTest(package=name, version=version):
-                    if version == "10.0.14":
+                    if version == approved:
                         dg.assert_authoritative_package_version(catalog, name, requirements[name], "approved expectation")
                     else:
                         with self.assertRaises(dg.GraphError):

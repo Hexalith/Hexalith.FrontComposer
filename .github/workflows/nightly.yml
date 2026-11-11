@@ -35,6 +35,10 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
+      - name: Install .NET 10 runtimes
+        shell: pwsh
+        run: ./eng/install-net10-runtime.ps1
+
       - name: Validate embedded v1 prompt contract
         run: python3 eng/llm_benchmark.py validate-prompt-set --root . --output artifacts/benchmark/prompt-set.json
 

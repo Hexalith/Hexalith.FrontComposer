@@ -35,6 +35,10 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
+      - name: Install .NET 10 runtimes
+        shell: pwsh
+        run: ./eng/install-net10-runtime.ps1
+
       - name: Record nightly lane start
         shell: bash
         run: echo "FC_NIGHTLY_STARTED_AT=$(date -u +%s)" >> "$GITHUB_ENV"

@@ -4,45 +4,49 @@ The maintenance selection uses these exact committed root dependencies:
 
 | Root dependency | Selected commit |
 | --- | --- |
-| Hexalith.AI.Tools | `1745b6663ad32bb1288167135ed0f979366c53a0` |
-| Hexalith.Builds | `0577f0c2d70bd4c2999aa3d98a705c83919bfc00` |
-| Hexalith.Commons | `11555ace9efcae2928a00122dcba91243e5a8a1a` |
-| Hexalith.EventStore | `0f22b3ed86a2ecc4a98f09b4cc76bc5a9bba38c9` |
-| Hexalith.Memories | `246157a7ff8e2dcd8d356c833a77a02514490d2f` |
-| Hexalith.Parties | `1308ad000c79ebc394fc395588f9af91092e8c4c` |
-| Hexalith.Platform | `c1997c60f31e08d945b44cb7aa2afd7800e8ff69` |
-| Hexalith.PolymorphicSerializations | `bce4eb9f45c6b131b960ab4fa39e50ff01e51960` |
-| Hexalith.Tenants | `cf36618a2c27b5722a1ff811cfbbce4528c3c105` |
+| Hexalith.AI.Tools | `8a3885dd22aea88edd57771cfe592c382df2c583` |
+| Hexalith.Builds | `bc3efac849d4a17c3d00cba2eee0b54771ec524e` |
+| Hexalith.Commons | `1f9ab9afebdaa0f64333b5117e0ac45185fad4a4` |
+| Hexalith.EventStore | `15c8ccd525d743f68eed8ff19ba95c6c6bd2e563` |
+| Hexalith.Memories | `e19d7a704ef10ba01cbaf141776160e6467dff19` |
+| Hexalith.Parties | `b6b4f8a5c83b77ab57a9b947436317162b4fb337` |
+| Hexalith.Platform | `fc047fe7ede228d7d356772212c478ccbf36bcdc` |
+| Hexalith.PolymorphicSerializations | `e3b455fcdbfdb702c9b74491778f7adaa6ce3625` |
+| Hexalith.Tenants | `6188ea48cab9fdf4207072135c66aab5a7b7fe32` |
 
-The matching Platform inventory, two canonical source-file digests, consumer
-configuration, root Builds source and root selectors are sealed in
+The current Platform inventory, two unchanged canonical source-file digests, consumer
+configuration, root Builds source and root selectors are resealed in
 `dependency-graph-policy.json`. Platform remains evidence-only, with only the
 existing canonical source pair consumed by the AppHost. All nine repositories
 were fetched and synchronized individually; nested checkouts were not moved or
 initialized. The Builds catalog and its audit were then committed in the owning
 repository.
 
-The 2026-11-06 registry refresh selects MediatR `14.3.0`,
-Microsoft.Azure.Cosmos `3.63.4`, Microsoft.Identity.Web `4.18.0`,
-OpenTelemetry.Instrumentation.Http `1.20.2`, Radzen.Blazor `12.1.12` and the
-existing StyleCop beta channel at `1.3.171-beta`. The Builds audit binds catalog
-commit `b4ae8e36a88ca48159b8949a0c8131871825e2d6` and refreshes the seven
-affected families; its deterministic validation passes for 316 packages. The
-13 Hexalith version properties and their 65 package IDs already match the
-current compatible public versions. Both npm test workspaces select Playwright
-`1.65.0`; Node 24 type declarations remain selected.
+The 2026-11-11 refresh selects the remote-equal root Builds catalog at
+`bc3efac849d4a17c3d00cba2eee0b54771ec524e`, including Aspire `13.6.5`,
+OpenTelemetry `1.21.0`, Microsoft.NET.Test.Sdk `18.12.0`, and Tenants `7.0.7`.
+The existing catalog audit records the exact compatible selection. FrontComposer
+imports that catalog without local version overrides. The selected-catalog
+policy mirrors now match Localization and TimeProvider.Testing `11.0.0`, Immutable `10.0.15`, and external MCP
+ASP.NET Core `2.4.0`.
 
-The new analyzer also requires multiline collection-expression layout fixes in
-Builds. Those source changes contain whitespace only, and the complete Builds
-Release solution build passes with all analyzer gates enabled. The Shell test
-cleanup helpers poll the existing bunit invocation list by identifier to avoid
-concurrent dictionary enumeration while preserving exactly-once checks.
+The active SDK is stable .NET `11.0.100`, while package targets remain `net10.0`
+and `netstandard2.0`. Test workflows explicitly install the .NET and ASP.NET Core
+`10.0.15` runtimes; the live source-resource lane retains SDK `10.0.302` alongside
+the root SDK, plus SDK `10.0.404` for dependencies that pin the 10.0.4xx band.
+IDE and hot-reload documentation retains its historical manual
+validation dates and does not claim that SDK 11 manual checks have run.
+Both npm test workspaces resolve Playwright `1.65.0`, including the core override;
+Node 24 type declarations remain selected. The local mutation tool selects
+Stryker `5.1.0`; DocFX stays at `2.81.0`.
 
 Compatibility holds remain explicit:
 
-- The SDK stays at stable .NET `10.0.403`.
-- Microsoft.Build and Microsoft.Build.Framework stay at `18.9.6`; the newer
-  inspected versions require unsupported .NET 11 assets.
+- ASP.NET Core authentication/server packages including OpenIdConnect stay at `10.0.15`: their .NET 11
+  assets require `net11.0`. Compatible Microsoft.Extensions, SignalR client, and System.Text.Json packages
+  now use `11.0.0`; Immutable retains `10.0.15` because 11.x conflicts with the generator test reference assemblies.
+- Microsoft.Build and Microsoft.Build.Framework stay at `18.9.6`; newer
+  inspected versions require unsupported .NET 11 assets in the `net10.0` consumers.
 - Microsoft.OpenApi stays at `2.13.0` because ASP.NET Core OpenApi 10 requires
   the 2.x API.
 - AngleSharp stays at patched `1.9.1`. The published `1.10.0` fails the Shell
@@ -51,7 +55,7 @@ Compatibility holds remain explicit:
   when a compatible bunit release passes those suites.
 
 The FrontComposer catalog profile requires the selected external MCP ASP.NET
-Core package version `2.3.1` exactly. Other strict package expectations and all
+Core package version `2.4.0` exactly. Other strict package expectations and all
 automated build and release gates remain intact.
 
 The push graph gate evaluates both the event base and candidate under the event
@@ -70,21 +74,31 @@ inventory-only Platform descendants remain outside global trust and execution.
 
 ## Activating and replaying this seal
 
-The maintenance seal is commit
-`8a51e0a1891f08bbfb51e168b69f766c787b1f46`. Exact committed-source
-validation of that revision passed. This documentation-only activation must
-be pushed separately, with the seal as its actual push event base. It changes
-no dependency selector, consumer configuration or policy byte.
+Publish the initial seal commit, containing the complete selected dependency
+pointers, consumer configuration, and matching policy, as its own push. The
+previous event-base policy still evaluates that push; the new seal cannot
+authorize itself. Do not infer release readiness from publishing the seal.
 
+After the seal is remote-visible, create and push a separate documentation-only
+activation commit whose immediate parent is that seal. This activation changes
+no dependency selector, consumer configuration, or policy byte. Its actual push
+event base must be the landed seal, so hosted CI evaluates it under that policy.
+The commands below derive the seal from the latest policy-changing committed
+revision in the chosen candidate's first-parent history. They do not name an
+obsolete selection or treat an uncommitted policy as active.
 Run the following while checked out at this activation commit, or assign its
 full 40-hex commit to `candidate`. The immediate-parent check prevents replay
 against an unrelated later source. Temporary bare object stores do not
 initialize any nested checkout.
 
 ```bash
-seal=8a51e0a1891f08bbfb51e168b69f766c787b1f46
+set -euo pipefail
 candidate="$(git rev-parse HEAD)"
+seal="$(git log --first-parent -1 --format=%H "$candidate" -- eng/dependency-graph-policy.json)"
+
+test -n "$seal"
 test "$(git rev-parse "${candidate}^")" = "$seal"
+git diff --exit-code "$seal" "$candidate" -- eng/dependency-graph-policy.json
 objects="$(mktemp -d)"
 python3 eng/dependency_graph.py acquire-catalogs --event-base "$seal" --candidate "$candidate"
 python3 eng/dependency_graph.py validate --commit "$candidate"

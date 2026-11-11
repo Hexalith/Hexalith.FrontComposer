@@ -31,6 +31,10 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
+      - name: Install .NET 10 runtimes
+        shell: pwsh
+        run: ./eng/install-net10-runtime.ps1
+
       - name: Restore tools and packages
         run: |
           dotnet tool restore
@@ -85,6 +89,10 @@ jobs:
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@6e77e79e8914a375b0c43b0af3bd142405675ecd
         with:
           dotnet-version: '11.0.100'
+
+      - name: Install .NET 10 runtimes
+        shell: pwsh
+        run: ./eng/install-net10-runtime.ps1
 
       - name: Restore packages
         run: dotnet restore Hexalith.FrontComposer.slnx

@@ -54,6 +54,10 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
+      - name: Install .NET 10 runtimes
+        shell: pwsh
+        run: ./eng/install-net10-runtime.ps1
+
       - name: Record full CI lane start
         shell: bash
         run: echo "FC_FULL_CI_STARTED_AT=$(date -u +%s)" >> "$GITHUB_ENV"
@@ -641,6 +645,10 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
+      - name: Install .NET 10 runtimes
+        shell: pwsh
+        run: ./eng/install-net10-runtime.ps1
+
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: '24.10.0'
@@ -771,6 +779,10 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
+      - name: Install .NET 10 runtimes
+        shell: pwsh
+        run: ./eng/install-net10-runtime.ps1
+
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: '24.10.0'
@@ -869,12 +881,22 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
+      - name: Install .NET 10 runtimes
+        shell: pwsh
+        run: ./eng/install-net10-runtime.ps1
+
       # The root/default remains 11.0.100. This one live source-resource lane also loads
       # remote-equal roots that still pin 10.0.302, so install that SDK side-by-side only here.
       - name: Install source-resource compatibility SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '10.0.302'
+
+      # Root-selected dependency projects still pin the 10.0.4xx feature band.
+      - name: Install dependency source-resource SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.404'
 
       - name: Verify root and source-resource SDKs
         shell: bash
@@ -886,6 +908,7 @@ jobs:
             exit 1
           fi
           dotnet --list-sdks | grep -E '^10\.0\.302\s'
+          dotnet --list-sdks | grep -E '^10\.0\.404\s'
           dotnet --list-sdks | grep -E '^11\.0\.100\s'
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -984,6 +1007,10 @@ jobs:
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@6e77e79e8914a375b0c43b0af3bd142405675ecd
         with:
           dotnet-version: '11.0.100'
+
+      - name: Install .NET 10 runtimes
+        shell: pwsh
+        run: ./eng/install-net10-runtime.ps1
 
       - name: Build Debug Shell tests
         run: dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Debug --disable-build-servers -m:1
