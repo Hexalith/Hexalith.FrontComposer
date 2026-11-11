@@ -666,6 +666,7 @@ jobs:
         run: npm run test:runner
 
       - name: Initialize Ubuntu APT for browser dependencies
+        if: runner.os == 'Linux'
         uses: Hexalith/Hexalith.Builds/Github/initialize-apt@f5a46e8a70a1893bc638fa5f488d57767fafdede
 
       - name: Use the Ubuntu HTTPS archive for browser dependencies
@@ -781,6 +782,7 @@ jobs:
         run: npm ci
 
       - name: Initialize Ubuntu APT for browser dependencies
+        if: runner.os == 'Linux'
         uses: Hexalith/Hexalith.Builds/Github/initialize-apt@f5a46e8a70a1893bc638fa5f488d57767fafdede
 
       # The hosted Azure HTTP mirror stalled media-library downloads for over 20 minutes.
@@ -897,6 +899,7 @@ jobs:
         run: npm ci
 
       - name: Initialize Ubuntu APT for browser dependencies
+        if: runner.os == 'Linux'
         uses: Hexalith/Hexalith.Builds/Github/initialize-apt@f5a46e8a70a1893bc638fa5f488d57767fafdede
 
       - name: Use the Ubuntu HTTPS archive for browser dependencies
