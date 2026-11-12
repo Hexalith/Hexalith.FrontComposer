@@ -62,6 +62,38 @@ public sealed class Cs1591DocumentationPolicyTests
     }
 
     [Fact]
+    public void ContractsDocumentationPolicy_EvaluationWithServerNotice_ParsesStandardOutputOnly()
+    {
+        const string json = """
+            { "Properties": { "NoWarn": "1570;1572;1573;1574", "WarningsNotAsErrors": "" } }
+            """;
+        var result = (ExitCode: 0, StandardOutput: json,
+            StandardError: "MSBuild server unavailable: falling back to an in-process build.");
+
+        string evaluation = RequireSuccessfulDotnetOutput(result, ["msbuild", "-getProperty:NoWarn,WarningsNotAsErrors"]);
+        (string noWarn, string warningsNotAsErrors) = ParseMsBuildProperties(evaluation, "NoWarn", "WarningsNotAsErrors");
+
+        noWarn.ShouldBe("1570;1572;1573;1574");
+        warningsNotAsErrors.ShouldBeEmpty();
+        evaluation.ShouldBe(json);
+    }
+
+    [Fact]
+    public void ContractsDocumentationPolicy_FailedEvaluationWithJson_PreservesBothDiagnosticStreams()
+    {
+        const string json = """{ "Properties": { "NoWarn": "1591", "WarningsNotAsErrors": "" } }""";
+        const string error = "MSBUILD : error MSB1009: Project file does not exist.";
+        var result = (ExitCode: 1, StandardOutput: json, StandardError: error);
+
+        Shouldly.ShouldAssertException failure = Should.Throw<Shouldly.ShouldAssertException>(
+            () => RequireSuccessfulDotnetOutput(result, ["msbuild", "missing.csproj"]));
+
+        failure.Message.ShouldContain(json);
+        failure.Message.ShouldContain(error);
+        failure.Message.ShouldContain("missing.csproj");
+    }
+
+    [Fact]
     public void ContractsDocumentationPolicy_DefaultAndFreezeScopes_AreExplicit()
     {
         string root = FindRepoRoot();
@@ -167,7 +199,7 @@ public sealed class Cs1591DocumentationPolicyTests
                 "namespace Synthetic; public sealed class UndocumentedOutsideFreeze;",
                 TestContext.Current.CancellationToken).ConfigureAwait(true);
 
-            (int negativeExitCode, string negativeOutput) = await RunDotnetResultAsync(
+            (int negativeExitCode, string negativeStdout, string negativeStderr) = await RunDotnetResultAsync(
                 temporaryRoot,
                 TestContext.Current.CancellationToken,
                 "build",
@@ -178,6 +210,7 @@ public sealed class Cs1591DocumentationPolicyTests
                 "/nr:false",
                 "-p:NuGetAudit=false").ConfigureAwait(true);
 
+            string negativeOutput = negativeStdout + Environment.NewLine + negativeStderr;
             negativeExitCode.ShouldNotBe(0, "Undocumented public symbols in freeze scopes must fail the build.");
             negativeOutput.ShouldContain("error CS1591");
             negativeOutput.ShouldNotContain("'UndocumentedOutsideFreeze'");
@@ -195,7 +228,7 @@ public sealed class Cs1591DocumentationPolicyTests
                 await WriteSpecimenAsync(nestedDirectory, scope, documented: true).ConfigureAwait(true);
             }
 
-            (int positiveExitCode, string positiveOutput) = await RunDotnetResultAsync(
+            (int positiveExitCode, string positiveStdout, string positiveStderr) = await RunDotnetResultAsync(
                 temporaryRoot,
                 TestContext.Current.CancellationToken,
                 "build",
@@ -208,6 +241,7 @@ public sealed class Cs1591DocumentationPolicyTests
                 "/nr:false",
                 "-p:NuGetAudit=false").ConfigureAwait(true);
 
+            string positiveOutput = positiveStdout + Environment.NewLine + positiveStderr;
             positiveExitCode.ShouldBe(
                 0,
                 $"Documented freeze-scope symbols and undocumented out-of-scope symbols must compile.{Environment.NewLine}{positiveOutput}");
@@ -326,18 +360,26 @@ public sealed class Cs1591DocumentationPolicyTests
         CancellationToken cancellationToken,
         params string[] arguments)
     {
-        (int exitCode, string output) = await RunDotnetResultAsync(
+        (int ExitCode, string StandardOutput, string StandardError) result = await RunDotnetResultAsync(
             workingDirectory,
             cancellationToken,
             arguments).ConfigureAwait(false);
 
-        exitCode.ShouldBe(
-            0,
-            $"dotnet {string.Join(' ', arguments)} failed.{Environment.NewLine}{output}");
-        return output;
+        return RequireSuccessfulDotnetOutput(result, arguments);
     }
 
-    private static async Task<(int ExitCode, string Output)> RunDotnetResultAsync(
+    private static string RequireSuccessfulDotnetOutput(
+        (int ExitCode, string StandardOutput, string StandardError) result,
+        IReadOnlyList<string> arguments)
+    {
+        result.ExitCode.ShouldBe(
+            0,
+            $"dotnet {string.Join(' ', arguments)} failed.{Environment.NewLine}{result.StandardOutput}{Environment.NewLine}{result.StandardError}");
+        // Successful MSBuild server fallback notices belong to stderr, outside the property JSON.
+        return result.StandardOutput;
+    }
+
+    private static async Task<(int ExitCode, string StandardOutput, string StandardError)> RunDotnetResultAsync(
         string workingDirectory,
         CancellationToken cancellationToken,
         params string[] arguments)
@@ -369,7 +411,7 @@ public sealed class Cs1591DocumentationPolicyTests
             string stdout = await stdoutTask.ConfigureAwait(false);
             string stderr = await stderrTask.ConfigureAwait(false);
 
-            return (process.ExitCode, stdout + Environment.NewLine + stderr);
+            return (process.ExitCode, stdout, stderr);
         }
         catch (OperationCanceledException)
         {
