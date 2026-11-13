@@ -489,7 +489,12 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     protected async Task FocusNavigationAsync() {
         IJSObjectReference? module = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
         if (module is not null) {
-            await module.InvokeVoidAsync("focusVisibleElementById", "fc-nav").ConfigureAwait(false);
+            try {
+                await module.InvokeVoidAsync("focusVisibleElementById", "fc-nav").ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is JSException or OperationCanceledException or InvalidOperationException) {
+                // Focus is best effort after the browser circuit or target has disappeared.
+            }
         }
     }
 
@@ -538,7 +543,12 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private async Task FocusElementAsync(ElementReference element) {
         IJSObjectReference? module = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
         if (module is not null) {
-            await module.InvokeVoidAsync("focusElement", element).ConfigureAwait(false);
+            try {
+                await module.InvokeVoidAsync("focusElement", element).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is JSException or OperationCanceledException or InvalidOperationException) {
+                // Focus is best effort after the browser circuit or target has disappeared.
+            }
         }
     }
 

@@ -45,7 +45,7 @@ public sealed class PackageBoundaryTests {
         using ZipArchive archive = ZipFile.OpenRead(package);
         string[] entries = archive.Entries.Select(e => e.FullName).ToArray();
 
-        entries.ShouldContain(e => e.EndsWith("lib/net10.0/Hexalith.FrontComposer.Testing.dll", StringComparison.Ordinal));
+        entries.ShouldContain(e => e.EndsWith("lib/net11.0/Hexalith.FrontComposer.Testing.dll", StringComparison.Ordinal));
         entries.ShouldContain(e => string.Equals(e, "README.md", StringComparison.Ordinal));
         entries.ShouldContain(e => e.EndsWith("build/Hexalith.FrontComposer.Testing.PublicAPI.Shipped.txt", StringComparison.Ordinal));
         entries.ShouldNotContain(e => e.Contains("tests/", StringComparison.OrdinalIgnoreCase));
@@ -116,7 +116,7 @@ public sealed class PackageBoundaryTests {
         await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -239,7 +239,7 @@ public sealed class ConsumerSmokeTests
         XDocument project = new(new XElement("Project",
             new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("PropertyGroup",
-                new XElement("TargetFramework", "net10.0"),
+                new XElement("TargetFramework", "net11.0"),
                 new XElement("RestorePackagesPath", fallbackPackages)),
             new XElement("ItemGroup", externalReferences)));
         string warmup = Path.Combine(Path.GetTempPath(), "fc-testing-external-dependencies-" + Guid.NewGuid().ToString("N"));

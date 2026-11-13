@@ -96,8 +96,15 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
         Justification = "IStorageService callers persist Fluxor state records with preserved members (ThemeValue, DensityLevel, DataGridNavigationState); the interface's generic T is the contract authorising the reflective path.")]
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrEmpty(key);
-        string? json = await _js.InvokeAsync<string?>("localStorage.getItem", cancellationToken, key)
-            .ConfigureAwait(false);
+        string? json;
+        try {
+            json = await _js.InvokeAsync<string?>("localStorage.getItem", cancellationToken, key)
+                .ConfigureAwait(false);
+        }
+        catch (JSException) {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
+        }
         if (json is null) {
             _ = _lruTimestamps.TryRemove(key, out _);
             return default;
@@ -140,10 +147,17 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
     public async Task<IReadOnlyList<string>> GetKeysAsync(string prefix, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(prefix);
         // D16: single round-trip — ask the browser for the full key set and filter on the .NET side.
-        string[] keys = await _js.InvokeAsync<string[]>(
-            "eval",
-            cancellationToken,
-            "Object.keys(window.localStorage)").ConfigureAwait(false);
+        string[] keys;
+        try {
+            keys = await _js.InvokeAsync<string[]>(
+                "eval",
+                cancellationToken,
+                "Object.keys(window.localStorage)").ConfigureAwait(false);
+        }
+        catch (JSException) {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
+        }
         return [.. keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal))];
     }
 

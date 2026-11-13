@@ -319,7 +319,7 @@ public sealed class ScopeBoundaryServiceTests {
 
         public override Task<AuthenticationState> GetAuthenticationStateAsync() => Task.FromResult(_state);
 
-        public void Raise() => Raise(GetAuthenticationStateAsync());
+        public void Raise() => Raise(Task.FromResult(_state));
 
         public void Raise(Task<AuthenticationState> state) => NotifyAuthenticationStateChanged(state);
     }

@@ -34,7 +34,7 @@ public sealed class LocalStorageServiceTests {
     public async Task GetAsync_ExistingKey_DeserializesValue() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
-        js.SetStoredJson("theme", "\"Dark\"");
+        js.StoredJson["theme"] = "\"Dark\"";
 
         string? result = await sut.GetAsync<string?>("theme", ct);
 
@@ -45,7 +45,7 @@ public sealed class LocalStorageServiceTests {
     public async Task GetAsync_UsesWebJsonOptionsForCamelCasePayload() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
-        js.SetStoredJson("payload", "{\"currentTheme\":\"Dark\"}");
+        js.StoredJson["payload"] = "{\"currentTheme\":\"Dark\"}";
 
         PersistedPayload? result = await sut.GetAsync<PersistedPayload>("payload", ct);
 
@@ -56,7 +56,7 @@ public sealed class LocalStorageServiceTests {
     public async Task RemoveAsync_QueuesDeletionUntilFlush() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
-        TaskCompletionSource removeGate = js.BlockRemoveCalls();
+        TaskCompletionSource removeGate = js.RemoveGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         Task task = sut.RemoveAsync("theme", ct);
         task.IsCompleted.ShouldBeTrue();
@@ -71,7 +71,7 @@ public sealed class LocalStorageServiceTests {
     public async Task SetAsync_FireAndForget_ReturnsImmediatelyThenDrainsToJs() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
-        TaskCompletionSource setGate = js.BlockSetItemCalls();
+        TaskCompletionSource setGate = js.SetItemGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         Task task = sut.SetAsync("theme", "Dark", ct);
         task.IsCompleted.ShouldBeTrue();
@@ -132,7 +132,7 @@ public sealed class LocalStorageServiceTests {
     public async Task GetKeysAsync_FiltersByPrefix() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
-        js.SetEvalKeys("acme:u1:theme", "acme:u1:density", "other:u1:theme", "acme:u2:theme");
+        js.EvalKeys = ["acme:u1:theme", "acme:u1:density", "other:u1:theme", "acme:u2:theme"];
 
         IReadOnlyList<string> keys = await sut.GetKeysAsync("acme:u1:", ct);
 
@@ -194,26 +194,27 @@ public sealed class LocalStorageServiceTests {
 
         public Exception? SetItemException { get; set; }
 
-        public TaskCompletionSource? SetItemGate { get; private set; }
+        public TaskCompletionSource? SetItemGate { get; set; }
 
-        public TaskCompletionSource? RemoveGate { get; private set; }
+        public TaskCompletionSource? RemoveGate { get; set; }
 
         public IReadOnlyCollection<JsInvocation> Invocations => _invocations.ToArray();
 
-        public string[] EvalKeys { get; private set; } = [];
+        public string[] EvalKeys { get; set; } = [];
 
-        public TaskCompletionSource BlockRemoveCalls()
-            => RemoveGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public TaskCompletionSource BlockSetItemCalls()
-            => SetItemGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public void SetEvalKeys(params string[] keys) => EvalKeys = keys;
-
-        public void SetStoredJson(string key, string? json) => _storedJson[key] = json;
+        public ConcurrentDictionary<string, string?> StoredJson => _storedJson;
 
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
-            => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+        {
+            try
+            {
+                return InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+            }
+            catch (Exception ex) when (ex is JSException or InvalidOperationException or OperationCanceledException)
+            {
+                return ValueTask.FromException<TValue>(ex);
+            }
+        }
 
         public async ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args) {
             object?[] actualArgs = args ?? [];

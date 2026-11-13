@@ -839,7 +839,7 @@ public sealed class EventStorePactContractTests {
         };
 
     private static JsonElement Json(string json)
-        => JsonDocument.Parse(json).RootElement.Clone();
+        => JsonElement.Parse(json);
 
     private static string ProblemDetailsSubset(int status)
         => $$"""{"status":{{status}}}""";

@@ -105,6 +105,25 @@ using bounded network retries. Acquisition does not move any checkout HEAD,
 change working-tree bytes or initialize nested submodules. The seven
 inventory-only Platform descendants remain outside global trust and execution.
 
+## Story 2.14 .NET 11 prerequisite candidate
+
+The Story 2.14 prerequisite candidate aligns Shell, Testing, the combined UI and AppHost,
+and their source/test/sample consumers with the selected .NET 11 dependency graph.
+Shell and Testing now require .NET 11. This drops their .NET 10 consumer target and is a
+SemVer-major compatibility change for their next publication. Contracts retains
+`net10.0;netstandard2.0`, Contracts.UI retains `net10.0`, Schema retains
+`net10.0;netstandard2.0`, and SourceTools retains `netstandard2.0`.
+Generated forms select `EditContext.ValidateAsync()` for .NET 11 and retain the supported
+synchronous API on earlier target frameworks. Async validation holds command admission,
+resumes on the renderer context, and rechecks disposal and scope before dispatch.
+
+This candidate does not change or activate the committed dependency source seal.
+The consumer configuration includes project target frameworks, so the owner-controlled
+policy/activation transition must qualify the new framework projection before release.
+The prior-policy, exact-source CI, package/API compatibility, publication and downstream
+consumer-adoption gates remain required. No package publication is authorized by this
+prerequisite implementation.
+
 ## Activating and replaying this seal
 
 Publish the initial seal commit, containing the complete selected dependency

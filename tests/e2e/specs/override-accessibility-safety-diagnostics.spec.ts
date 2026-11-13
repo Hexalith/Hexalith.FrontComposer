@@ -7,7 +7,7 @@ const DEVELOPMENT_BASE_URL = process.env.FC_E2E_STORY_6_4_DEVELOPMENT_BASE_URL ?
 const NON_DEVELOPMENT_BASE_URL = process.env.FC_E2E_STORY_6_4_NON_DEVELOPMENT_BASE_URL ?? 'http://127.0.0.1:5085';
 const SERVER_READY_TIMEOUT_MS = 120_000;
 const COUNTER_PROJECT_DIRECTORY = new URL('../../../samples/Counter/Counter.Web/', import.meta.url);
-const COUNTER_DEBUG_ASSEMBLY = fileURLToPath(new URL('bin/Debug/net10.0/Counter.Web.dll', COUNTER_PROJECT_DIRECTORY));
+const COUNTER_DEBUG_ASSEMBLY = fileURLToPath(new URL('bin/Debug/net11.0/Counter.Web.dll', COUNTER_PROJECT_DIRECTORY));
 
 const ownedProcesses: OwnedProcess[] = [];
 

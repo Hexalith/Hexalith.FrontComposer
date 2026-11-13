@@ -11,7 +11,7 @@ export const submissionTest = test.extend<{ submissionBaseUrl: string; mappedRej
   submissionBaseUrl: async ({ mappedRejectionEnabled, dispatchForbiddenEnabled }, use) => {
     const projectDirectory = new URL('../../../samples/Counter/Counter.Web/', import.meta.url);
     const configuration = process.env.FC_E2E_COMMAND_SUBMISSION_CONFIGURATION === 'Debug' ? 'Debug' : 'Release';
-    const assembly = fileURLToPath(new URL(`bin/${configuration}/net10.0/Counter.Web.dll`, projectDirectory));
+    const assembly = fileURLToPath(new URL(`bin/${configuration}/net11.0/Counter.Web.dll`, projectDirectory));
     const host = spawnOwnedProcess('dotnet', [assembly, '--urls', 'http://127.0.0.1:0'], {
       cwd: projectDirectory,
       env: {

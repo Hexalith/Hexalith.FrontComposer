@@ -16,20 +16,27 @@ internal sealed class DelayedHiddenDetailFocusRuntime : IJSRuntime
 
     /// <inheritdoc />
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
-        => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+    {
+        try
+        {
+            return InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or OperationCanceledException)
+        {
+            return ValueTask.FromException<TValue>(ex);
+        }
+    }
 
     /// <inheritdoc />
-    public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+    public async ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
     {
         ImportCalls++;
         if (TimeoutImportsRemaining > 0)
         {
             TimeoutImportsRemaining--;
-            return ValueTask.FromException<TValue>(new TaskCanceledException("interop timeout"));
+            throw new TaskCanceledException("interop timeout");
         }
-        return new(ImportAsync<TValue>());
+        return (TValue)await Import.Task.ConfigureAwait(false);
     }
 
-    private async Task<TValue> ImportAsync<TValue>()
-        => (TValue)await Import.Task.ConfigureAwait(false);
 }
