@@ -44,6 +44,25 @@ public class CommandFormEmitterTests {
             commandTarget);
 
     [Fact]
+    public void ValidationLikeDisplayLabelsRemainLiteralAfterFrameworkSelection() {
+        const string label = "Approve            bool isValid = _editContext.Validate();";
+        CommandFormModel form = new("IncrementCommand", "Counter.Domain", null,
+            "Counter.Domain.IncrementCommand", label,
+            new EquatableArray<FormFieldModel>(ImmutableArray.Create(
+                new FormFieldModel("Name", "String", FormFieldTypeCategory.TextInput, label, false, true, null))));
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("\"" + label + "\"");
+        Regex.Count(source, "#if NET11_0_OR_GREATER").ShouldBe(1);
+        CSharpSyntaxTree.ParseText(source, cancellationToken: TestContext.Current.CancellationToken)
+            .GetDiagnostics(TestContext.Current.CancellationToken).ShouldBeEmpty();
+        CSharpSyntaxTree.ParseText(source, CSharpParseOptions.Default.WithPreprocessorSymbols("NET11_0_OR_GREATER"),
+                cancellationToken: TestContext.Current.CancellationToken)
+            .GetDiagnostics(TestContext.Current.CancellationToken).ShouldBeEmpty();
+    }
+
+    [Fact]
     public void Emit_ProducesValidCSharp() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CommandFormModel form = BuildForm([

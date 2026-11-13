@@ -751,15 +751,16 @@ public static class CommandFormEmitter {
         string source = RenderTreeSequenceRewriter.AssignLiteralsOrFail(sb.ToString());
         // Number the render tree before inserting this non-rendering conditional. The rewriter
         // deliberately refuses unseen conditional branches, so its fail-closed policy stays intact.
+        string newLine = new StringBuilder().AppendLine().ToString();
         return source.Replace(
-            "            bool isValid = _editContext.Validate();",
-            string.Join("\n", new[] {
+            newLine + "            bool isValid = _editContext.Validate();" + newLine,
+            newLine + string.Join(newLine, new[] {
                 "#if NET11_0_OR_GREATER",
                 "            bool isValid = await _editContext.ValidateAsync().ConfigureAwait(true);",
                 "#else",
                 "            bool isValid = _editContext.Validate();",
                 "#endif",
-            }));
+            }) + newLine);
     }
 
     /// <summary>
