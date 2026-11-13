@@ -45,6 +45,27 @@ complete TRX and Cobertura report per test module under SDK 11. Its evidence
 gate still requires eight distinct test modules and eight measured coverage
 reports; automatic SDK aggregation would add a duplicate summary.
 
+The Parties compatibility repair qualified [Platform v2.1.0](https://github.com/Hexalith/Hexalith.Platform/releases/tag/v2.1.0)
+at `b76e0c7c70162653bbff6a8263ebfc4500c1631b` through
+[tuple CI](https://github.com/Hexalith/Hexalith.Platform/actions/runs/43462834314),
+[catalog CI](https://github.com/Hexalith/Hexalith.Platform/actions/runs/43462834460),
+and the existing [source release workflow](https://github.com/Hexalith/Hexalith.Platform/actions/runs/43468621091).
+The original retained artifacts independently verify the unchanged 349 legacy
+and 412 pre-extension controls, plus 478 current, 97 base and 9 extension
+controls, with zero failures, skips or unexecuted cases. The release remains
+source-only and grants no additional native, candidate or Story acceptance.
+
+Its matching producer is [Builds v5.2.2](https://github.com/Hexalith/Hexalith.Builds/releases/tag/v5.2.2),
+source `02ed624aa19781cac75d2c9112940e9bd830441a`. Its
+[CI](https://github.com/Hexalith/Hexalith.Builds/actions/runs/43451348835) and
+[normal release](https://github.com/Hexalith/Hexalith.Builds/actions/runs/43455256492)
+passed. Both `Hexalith.Builds.Evidence.Cli` and `Hexalith.Builds.Module.Cli`
+5.2.2 were independently verified against official NuGet repository signatures,
+official SHA512 values and their exact source/version identities; all 354
+unsigned publisher payload files match. This is the Platform/Parties producer;
+FrontComposer retains its separately qualified NET10-compatible root Builds
+catalog and its existing package target frameworks.
+
 Compatibility holds remain explicit:
 
 - The main browser cohort retains `1.64.1`: Firefox bundled with `1.65.0`
