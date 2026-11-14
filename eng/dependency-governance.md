@@ -179,8 +179,129 @@ workflow runs its hostile-data fixtures as a deny-only check; this does not
 supply the separate trusted dependency-governance or live hostile-credential
 proofs. All GOV-1 closure bundles and release/adoption gates remain open.
 
+## Legacy release denial checks
+
+`release_contract.py select-ci` requires `--runs` and `--quality-runs` alongside
+the exact dispatch SHA and live-main observation. Each complete API response
+must identify exactly one completed successful push run for its workflow,
+candidate and `main`; failed/cancelled runs are excluded before uniqueness.
+The result retains CI coordinates and the selected `quality_run` denial
+projection. Release carries that Quality projection with the original CI handoff;
+it does not add Quality to evaluator trust or fingerprint definitions.
+
+Production classification preserves the exact owner-recorded
+`RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256` input. An absent, malformed or
+stale digest denies the legacy fallback instead of refreshing its approval.
+The release-disposition helper likewise refuses a governed attempt with a
+missing or unequal AD-15 candidate. These refusal checks do not implement the
+target handoff-v3/manifest-v4/run-bound fallback-v3 or append-only ledger and do
+not close GOV-1 or authorize publication. Any changed evaluator caller still
+requires AD-12's independent authorization and delayed activation.
+
+Handoff creation now also fails the CI/Release gate when the active policy does
+not authorize its exact evaluator. `create-release` also requires the requested
+policy commit and loaded raw policy projection to equal the authenticated CI
+handoff, preventing candidate-policy substitution through its CLI input.
+`create-ci` and `create-release` return exit 1 for an authority failure and
+produce neither a normative handoff nor a deferred sentinel. CI rejects a zero/malformed push-before before drafting an evaluator;
+it never substitutes candidate policy, and every nonzero handoff result fails
+the push job. Release reserves the deferred sentinel for the emitter's
+no-authenticated-CI path; once CI is authenticated, even a legacy exit 2 fails
+the emitter while its `if: always()` artifact upload remains in place. These
+caller edits do not pre-authorize themselves: unchanged active-policy rows may
+intentionally block CI until the required independent, later-base authorization
+process completes.
+
 ```bash
 python3 eng/publication_candidate.py create --help
 python3 eng/publication_candidate.py verify --help
 python3 -m unittest tests/eng/test_publication_candidate.py tests/eng/test_dependency_handoff.py
 ```
+
+Object-backed handoff creation and live validation additionally compare each
+CI/Release caller with its actual committed candidate workflow bytes. Release
+creation rechecks CI authorization under that same bound policy; declarations
+or self-rehashed evaluator data cannot replace those checks. Offline structural
+validators and supplied-data factories require their caller to provide
+independently authenticated inputs. The disposition CLI validates the complete
+AD-15 shape and binds repository/workflow/run/attempt/conclusion to the supplied
+authenticated API run before consuming its candidate. Quality includes the
+candidate-refusal regressions. These checks remain legacy-path denials, not the
+atomic handoff-v3/manifest-v4/total-ledger migration or conformance acceptance.
+
+
+## FrontComposer EventStore 5.0.1 selection
+
+The 2026-11-14 user selection retains the shared catalog's current `5.0.1`
+default. Shell's read-only Debug MSBuild projection confirms
+`HexalithEventStoreVersion=5.0.1`, with both `HexalithPartiesSdk42CatalogView`
+and `HexalithBuildsPackagedHostSdk42CatalogView` false. No catalog, package
+version, dependency selector or local version override changes are required.
+
+The FrontComposer semantic profile now recognizes the exact retained `4.2.0`
+compatibility assignment only after a static proof that its two selectors'
+catalog-default scopes exclude FrontComposer. Each selector must have exactly
+one unconditional literal false default and one conditional literal true assignment, in that
+order before the override, directly in unconditional top-level property groups.
+Conditions contain only literal project-name `Equals` disjunctions for Parties
+identities or exactly the three Builds packaged-host roles. Case-insensitive
+version aliases, reassignment, ambiguous scope, changed overrides and invalid
+placement fail closed. Unknown, grouped, duplicate or misplaced imports are
+rejected. The sole supported import is the exact optional
+`$(MSBuildThisFileDirectory)Logging.Build.targets` import and Exists condition,
+directly at the root after the canonical default. Its absence must be proved
+from the same selected Builds commit. A present target must be a bounded regular
+committed blob with the closed analyzer-selection/removal XML structure;
+property assignments, further imports, tasks or unfamiliar content fail.
+Working-tree files and ambient HEAD cannot supply this proof. The canonical
+default must follow the compatibility row and still pass the ordinary unique literal-version contract. Other profiles
+retain the strict single-property rule; compatible future default-version
+changes remain value-independent.
+
+This is a catalog-default contract when no version or selector is supplied as an
+invocation-level global property. MSBuild deliberately honors global overrides;
+this static proof neither constrains arbitrary invocations nor changes that
+precedence. Governed affected builds separately execute the fixed argv in the
+active policy's module build registry, whose changes require AD-12 delayed
+activation. This correction adds no override mechanism or authorization.
+
+The raw shared catalog is preserved, including the retained SDK4.2 consumers.
+The raw logging import remains in synthetic copies too; those metadata-only
+fixtures prove its target absent from their exact committed trees, while
+additional fixtures exercise committed present targets and hostile changes.
+The intermediate blanket import-free refusal is retained as failed evidence.
+This EventStore-default/import proof is separate from whole-profile acceptance:
+the actual catalog's Immutable `11.0.0` still differs from policy `10.0.15`.
+Neither that package pin nor the raw catalog is changed here.
+This static semantic correction does not activate changed evaluators or close
+GOV-1's independent release, upstream, owner or conformance gates.
+
+## FrontComposer Immutable compatibility view — 2026-11-14
+
+The locally corrected shared Builds catalog selects `System.Collections.Immutable`
+`10.0.15` for the exact 25 current FrontComposer and Counter/IdeParity project
+identities through `HexalithFrontComposerImmutable10CatalogView`. Other consumers
+retain the intentional `11.0.0` default. Both values come from one central package
+row; the FrontComposer policy remains `10.0.15`, with no consumer-local override.
+EventStore remains `5.0.1`. Raising Immutable to 11 reproduced CS1705 in the
+net10 generator test build and CS8032 in an SDK 10.0.404 analyzer host.
+
+The `frontcomposer-catalog-v1` reader proves this closed consumer view from the
+selected committed catalog: exact literal project-name scope, false default,
+conditional true assignment, ordered version declarations, one unmasked package
+row and the existing bounded same-commit analyzer import. It rejects changed
+scope, aliases, dynamic or escaped item identities, wildcard masking and inline
+executable targets or outputs. Other profiles retain their existing strict rule.
+A tracked-project inventory check prevents the catalog, reader and owning view
+matrix from silently omitting a new consumer together.
+
+The corrected candidate satisfies all 14 unchanged FrontComposer package
+requirements in an isolated committed fixture. Local checks pass: 327 graph and
+release regression tests, 40 generator tests, 64 actual Debug/Release view
+evaluations, 317 central package entries, and the SDK 10 analyzer-host rebuild.
+The selected Builds commit is still `1fc93c238d5ef2a8f5c2590a8e9fa0cdab63c57c`;
+it does not contain these uncommitted changes. Owning landing and subsequent
+selection/AD-12 activation remain required. The existing Builds audit still
+reports 19 stale-evidence errors, and its broader catalog guard retains 462
+pre-existing Platform assertions; neither is treated as a passing release gate.
+GOV-1 remains in progress with its upstream, owner and conformance gates open.

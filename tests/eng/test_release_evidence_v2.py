@@ -31,11 +31,12 @@ def _load_helper():
 
 HELPER = _load_helper()
 ROOT_IDENTITY = "github.com/hexalith/hexalith.frontcomposer"
+CI_CALLER_BYTES = b"name: fixture CI\n"
 CI_CALLER = {
     "repository": ROOT_IDENTITY,
     "workflow_path": ".github/workflows/ci.yml",
     "commit": "a" * 40,
-    "blob_sha256": "1" * 64,
+    "blob_sha256": hashlib.sha256(CI_CALLER_BYTES).hexdigest(),
 }
 CI_REUSABLE = {
     "repository": "github.com/hexalith/hexalith.builds",
@@ -94,6 +95,10 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         self._git("config", "user.email", "manifest-v2@example.test")
         self._git("config", "user.name", "Manifest V2 Fixture")
 
+        # Authorize the same caller bytes the candidate will actually commit.
+        ci_workflow = self.root / HELPER.CI_WORKFLOW_PATH
+        ci_workflow.parent.mkdir(parents=True, exist_ok=True)
+        ci_workflow.write_bytes(CI_CALLER_BYTES)
         policy = {
             "schema": HELPER.POLICY_SCHEMA,
             "builds_identity": "github.com/hexalith/hexalith.builds",
@@ -143,7 +148,7 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         }
         _write_json(self.root / HELPER.POLICY_PATH, policy)
         _write_json(self.root / "eng/release-package-inventory.json", {"packages": []})
-        self._git("add", HELPER.POLICY_PATH, "eng/release-package-inventory.json")
+        self._git("add", HELPER.POLICY_PATH, "eng/release-package-inventory.json", HELPER.CI_WORKFLOW_PATH)
         self._git("commit", "-q", "-m", "test: seed manifest v2 policy")
         self.base = self._git("rev-parse", "HEAD").stdout.strip()
         self.policy_sha256 = hashlib.sha256(
@@ -881,6 +886,70 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
             )
             self.assertFalse(complete, changed)
             self.assertIn("drifted release definition", diagnostic or "")
+
+    def test_production_cli_never_refreshes_owner_fallback_approval(self) -> None:
+        _, sealed = self._prepare()
+        manifest = json.loads(sealed.read_text(encoding="utf-8"))
+        manifest.pop("seal")
+        manifest.pop("attestation_bundle", None)
+        for row in manifest["packages"]:
+            row["attestation_status"] = "approved-unsupported"
+        manifest["seal"] = {
+            "algorithm": "sha256", "hash": HELPER.canonical_sha256(manifest),
+            "sealed_at": "2026-08-04T00:00:00+00:00",
+        }
+        evidence = json.loads((REPOSITORY_ROOT / "tests/ci-governance/fixtures/release-readiness-cases.json").read_text())["base_evidence"]
+        evidence["manifest"] = manifest
+        now = dt.datetime.now(dt.timezone.utc)
+        owner_digest = HELPER.fallback_v2_digest(
+            HELPER.fallback_invalidation_fingerprints(self.root),
+            package_set=manifest["package_set_fingerprint"],
+            dependency_graph_digest=manifest["dependency_graph"]["graph_digest"],
+            dependency_policy_sha256=manifest["dependency_policy"]["sha256"],
+            workflow_definition_digest=manifest["workflow_provenance"]["definition_digest"],
+        )
+        evidence["attestation"] = {
+            "status": "approved-unsupported",
+            "fallback": {
+                "affected_artifact": "release package set", "approver": "release-owner",
+                "approved_at": (now - dt.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "expires_at": (now + dt.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "reason": "fixture", "evidence": "attestation-unavailable.md",
+                "scope": "fixture", "release_note_impact": "fixture", "reopen_event": "fixture",
+                "approved_against_fingerprints_sha256": owner_digest,
+            },
+        }
+        (self.root / "release-evidence/attestation-unavailable.md").write_text("fixture approval evidence\n")
+        source = self.root / "release-evidence/classification-input.json"
+        output = self.root / "release-evidence/classification-output.json"
+        command = (
+            "python3", str(REPOSITORY_ROOT / "eng/release_evidence.py"), "classify-release",
+            "--evidence", str(source), "--root", str(self.root),
+            "--evidence-root", str(source.parent), "--output", str(output), "--require-publishable",
+        )
+        _write_json(source, evidence)
+        positive = _run(*command, cwd=REPOSITORY_ROOT)
+        self.assertEqual(0, positive.returncode, positive.stdout + positive.stderr)
+        decision = json.loads(output.read_text())
+        self.assertTrue(decision["publish_authorized"])
+        self.assertEqual(owner_digest, decision["fallback_record"]["approved_against_fingerprints_sha256"])
+        for field in ("dependency_graph", "dependency_policy", "workflow_provenance", "approval-missing"):
+            with self.subTest(field=field):
+                changed = copy.deepcopy(evidence)
+                if field == "approval-missing":
+                    changed["attestation"]["fallback"].pop("approved_against_fingerprints_sha256")
+                    expected_diagnostic = "fallback missing required field"
+                else:
+                    key = {"dependency_graph": "graph_digest", "dependency_policy": "sha256", "workflow_provenance": "definition_digest"}[field]
+                    changed["manifest"][field][key] = "9" * 64
+                    expected_diagnostic = "drifted release definition"
+                _write_json(source, changed)
+                negative = _run(*command, cwd=REPOSITORY_ROOT)
+                self.assertEqual(1, negative.returncode, negative.stdout + negative.stderr)
+                decision = json.loads(output.read_text())
+                self.assertFalse(decision["publish_authorized"])
+                self.assertIn(expected_diagnostic, "\n".join(decision["grouped_reasons"]["blocking"]))
+                self.assertEqual(changed, json.loads(source.read_text()))
 
     def test_duplicate_unknown_and_legacy_evidence_fail_closed(self) -> None:
         _, sealed = self._prepare()

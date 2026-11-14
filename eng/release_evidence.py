@@ -33,7 +33,8 @@ from typing import Any
 # 4.1.1: authenticated CI handoffs are projected into the current v3 exact-source
 # provenance shape before sealing instead of reusing the historical v2 evaluator shape.
 # 4.2.1: verify the caller-owned publisher from FrontComposer's exact Git source.
-__version__ = "4.2.1"
+# 4.3.0: fallback approvals retain their immutable owner-recorded digest; drift denies publication.
+__version__ = "4.3.0"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -2518,7 +2519,6 @@ def classify_release_payload(
     *,
     verify_drift: bool = True,
     evidence_root: pathlib.Path | None = None,
-    bind_live_fallback_digest: bool = False,
 ) -> dict[str, Any]:
     section_diagnostics: list[str] = []
     # CR-12-4-P235 (round-10, EC-2): guard against non-dict top-level evidence. P223
@@ -2769,27 +2769,8 @@ def classify_release_payload(
                 if isinstance(manifest.get("workflow_provenance"), dict)
                 else None
             )
-            # Production classify binds the live digest so a protected-environment
-            # contingency approval (approver + expiry) is not invalidated by every
-            # release-definition file edit. Fixture classification keeps the stored
-            # digest so malformed/drift cases stay fail-closed in tests.
-            if (
-                bind_live_fallback_digest
-                and isinstance(fingerprints_for_drift, dict)
-                and isinstance(current_package_set, str)
-                and _valid_sha256(current_package_set)
-                and _valid_sha256(dependency_graph_digest)
-                and _valid_sha256(dependency_policy_sha256)
-                and _valid_sha256(workflow_definition_digest)
-            ):
-                fallback = dict(fallback)
-                fallback["approved_against_fingerprints_sha256"] = fallback_v2_digest(
-                    fingerprints_for_drift,
-                    package_set=current_package_set,
-                    dependency_graph_digest=dependency_graph_digest,
-                    dependency_policy_sha256=dependency_policy_sha256,
-                    workflow_definition_digest=workflow_definition_digest,
-                )
+            # The approval is immutable input. Recomputing the expected digest must
+            # never refresh the owner's recorded value or authorize changed evidence.
             # CR-12-4-P109 (round-5): pass the evidence root so `fallback_complete`
             # can path-check the `evidence` pointer. A fallback that references a
             # missing or empty `attestation-unavailable.md` is treated as incomplete.
@@ -3880,7 +3861,6 @@ def classify_release(args: argparse.Namespace) -> int:
         evidence_for_classify,
         pathlib.Path(args.root),
         evidence_root=evidence_root_arg,
-        bind_live_fallback_digest=True,
     )
     # CR-12-4-P209 (round-8): release owners reading only `grouped_reasons.blocking`
     # need to distinguish PROBE-DEGRADED (infrastructure issue → retry) from a REAL

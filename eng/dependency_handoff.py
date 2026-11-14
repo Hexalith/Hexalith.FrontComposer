@@ -128,6 +128,21 @@ def _load_active_policy(root: Path, projection: dict[str, Any]) -> dict[str, Any
     return policy
 
 
+def _require_committed_caller(
+    root: Path, evaluator: dict[str, Any], candidate: str, workflow_path: str,
+) -> None:
+    """Bind an evaluator to the candidate's actual committed caller bytes."""
+    caller = evaluator["caller"]
+    if (
+        caller["repository"] != ROOT_REPOSITORY
+        or caller["workflow_path"] != workflow_path
+        or caller["commit"] != candidate
+    ):
+        raise HandoffError("evaluator caller must name the exact candidate workflow commit")
+    if caller["blob_sha256"] != _caller_blob_sha256(root, candidate, workflow_path):
+        raise HandoffError(f"evaluator caller hash differs from committed candidate workflow {candidate}:{workflow_path}")
+
+
 def validate_ci_handoff(value: Any, *, root: Path | None = None) -> dict[str, Any]:
     handoff = _closed(
         value,
@@ -169,6 +184,7 @@ def validate_ci_handoff(value: Any, *, root: Path | None = None) -> dict[str, An
     if root is not None:
         policy = _load_active_policy(root, projection)
         require_evaluator_authorized(policy, "ci", evaluator)
+        _require_committed_caller(root, evaluator, candidate, CI_WORKFLOW_PATH)
         live = dg.collect_graph(root, graph["root"]["repository"], candidate, policy)
         if live != graph:
             raise HandoffError("CI handoff dependency graph differs from live exact-candidate graph")
@@ -356,6 +372,7 @@ def validate_release_handoff(
     if root is not None:
         policy = _load_active_policy(root, policy_projection)
         require_evaluator_authorized(policy, "release", evaluator)
+        _require_committed_caller(root, evaluator, candidate, RELEASE_WORKFLOW_PATH)
     return handoff
 
 
@@ -500,18 +517,6 @@ def _load_evaluator(path: str) -> dict[str, Any]:
     return validate_evaluator(value)
 
 
-def _deferred_result(output: Path, error: str) -> int:
-    """Record a fail-closed handoff deferral without claiming a sealed artifact."""
-    deferred_path = (
-        output.with_suffix(".deferred.json")
-        if output.suffix == ".json"
-        else Path(str(output) + ".deferred.json")
-    )
-    _write_json(deferred_path, {"ok": False, "deferred": True, "error": error})
-    print(json.dumps({"ok": False, "deferred": True, "error": error}, sort_keys=True))
-    return 2
-
-
 def create_ci_handoff_from_evidence(
     *,
     root: Path,
@@ -532,7 +537,7 @@ def create_ci_handoff_from_evidence(
     graph = evidence.get("candidate_graph")
     if not isinstance(graph, dict):
         raise HandoffError("dependency evidence must include candidate_graph")
-    return create_ci_handoff(
+    handoff = create_ci_handoff(
         run_id=run_id,
         run_attempt=run_attempt,
         base=base,
@@ -542,6 +547,8 @@ def create_ci_handoff_from_evidence(
         dependency_graph=graph,
         policy=policy,
     )
+    _require_committed_caller(root, evaluator, candidate, CI_WORKFLOW_PATH)
+    return handoff
 
 
 def draft_evaluator_for_stage(
@@ -695,16 +702,13 @@ def main(argv: list[str] | None = None) -> int:
             evidence_value, _evidence_raw = _load(args.evidence)
             evidence = _evidence_from_payload(evidence_value)
             evaluator = _load_evaluator(args.evaluator)
-            try:
-                handoff = create_ci_handoff_from_evidence(
-                    root=checkout_root,
-                    evidence=evidence,
-                    run_id=args.run_id,
-                    run_attempt=args.run_attempt,
-                    evaluator=evaluator,
-                )
-            except dg.GraphError as exc:
-                return _deferred_result(Path(args.output), str(exc))
+            handoff = create_ci_handoff_from_evidence(
+                root=checkout_root,
+                evidence=evidence,
+                run_id=args.run_id,
+                run_attempt=args.run_attempt,
+                evaluator=evaluator,
+            )
             raw = _write_json(Path(args.output), handoff)
             print(json.dumps({"ok": True, "sha256": hashlib.sha256(raw).hexdigest()}, sort_keys=True))
             return 0
@@ -718,35 +722,36 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"ok": True, "count": len(assets), "sha256": hashlib.sha256(raw).hexdigest()}, sort_keys=True))
             return 0
         if args.command == "create-release":
-            _ci_value, ci_raw = _load(args.ci_handoff)
+            ci_value, ci_raw = _load(args.ci_handoff)
             evaluator = _load_evaluator(args.evaluator)
             release_value, _ = _load(args.release)
             manifest_value, _ = _load(args.manifest)
             assets_value, _ = _load(args.assets)
             if not isinstance(assets_value, list):
                 raise HandoffError("Release handoff assets file must contain a JSON array")
-            published = isinstance(release_value, dict) and release_value.get("published") is True
+            ci = validate_ci_handoff(ci_value)
             policy_commit = dg.require_commit(args.policy_commit, "create-release policy commit")
-            policy, _raw, _projection = dg.load_policy_at_commit(checkout_root, policy_commit)
-            try:
-                handoff = create_release_handoff(
-                    release_run_id=args.release_run_id,
-                    release_run_attempt=args.release_run_attempt,
-                    conclusion=args.conclusion,
-                    ci_handoff_raw=ci_raw,
-                    evaluator=evaluator,
-                    policy=policy,
-                    release=release_value,
-                    manifest=manifest_value,
-                    assets=assets_value,
-                )
-            except dg.GraphError as exc:
-                # Published attempts must never soft-defer (exit 2); missing sealed coords,
-                # unauthorized evaluators, or validation failures fail closed with exit 1.
-                if published:
-                    print(json.dumps({"ok": False, "deferred": False, "error": str(exc)}, sort_keys=True))
-                    return 1
-                return _deferred_result(Path(args.output), str(exc))
+            if policy_commit != ci["dependency_policy"]["commit"]:
+                raise HandoffError("create-release policy commit must equal the authenticated CI policy commit")
+            policy, _raw, projection = dg.load_policy_at_commit(checkout_root, policy_commit)
+            if projection != ci["dependency_policy"]:
+                raise HandoffError("create-release active policy projection differs from the authenticated CI handoff")
+            require_evaluator_authorized(policy, "ci", ci["evaluator"])
+            _require_committed_caller(checkout_root, ci["evaluator"], ci["run"]["candidate"], CI_WORKFLOW_PATH)
+            _require_committed_caller(checkout_root, evaluator, ci["run"]["candidate"], RELEASE_WORKFLOW_PATH)
+            # CI bytes have already been supplied: authorization or validation
+            # failure is never the no-authenticated-CI deferred sentinel.
+            handoff = create_release_handoff(
+                release_run_id=args.release_run_id,
+                release_run_attempt=args.release_run_attempt,
+                conclusion=args.conclusion,
+                ci_handoff_raw=ci_raw,
+                evaluator=evaluator,
+                policy=policy,
+                release=release_value,
+                manifest=manifest_value,
+                assets=assets_value,
+            )
             raw = _write_json(Path(args.output), handoff)
             print(json.dumps({"ok": True, "sha256": hashlib.sha256(raw).hexdigest()}, sort_keys=True))
             return 0

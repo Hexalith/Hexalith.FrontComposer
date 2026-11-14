@@ -228,9 +228,17 @@ def validate_package_manifest(root: pathlib.Path, manifest_path: pathlib.Path, e
     return value
 
 
-def select_exact_ci_run(dispatch_sha: str, live_ref: Any, runs_response: Any) -> dict[str, int]:
-    """Validate GitHub API responses and select one successful exact-source push CI run."""
-    if not isinstance(dispatch_sha, str) or SHA_RE.fullmatch(dispatch_sha) is None:
+def select_exact_ci_run(
+    dispatch_sha: str,
+    live_ref: Any,
+    runs_response: Any,
+    *,
+    workflow_path: str = ".github/workflows/ci.yml",
+) -> dict[str, int]:
+    """Select exactly one completed successful push run before testing uniqueness."""
+    if workflow_path not in {".github/workflows/ci.yml", ".github/workflows/quality.yml"}:
+        raise ContractError("unsupported release prerequisite workflow")
+    if not isinstance(dispatch_sha, str) or SHA_RE.fullmatch(dispatch_sha) is None or dispatch_sha == "0" * 40:
         raise ContractError("dispatch SHA must be lowercase 40-hex")
     if not isinstance(live_ref, dict) or set(live_ref) < {"ref", "object"}:
         raise ContractError("main-ref API response is malformed")
@@ -245,7 +253,7 @@ def select_exact_ci_run(dispatch_sha: str, live_ref: Any, runs_response: Any) ->
     if not isinstance(runs_response, dict) or set(runs_response) < {"total_count", "workflow_runs"}:
         raise ContractError("CI-runs API response is malformed")
     runs = runs_response.get("workflow_runs")
-    if isinstance(runs_response.get("total_count"), bool) or not isinstance(runs_response.get("total_count"), int) or not isinstance(runs, list):
+    if type(runs_response.get("total_count")) is not int or not 0 <= runs_response["total_count"] <= 9007199254740991 or not isinstance(runs, list):
         raise ContractError("CI-runs API response has invalid field types")
     if runs_response["total_count"] != len(runs):
         raise ContractError("CI-runs API response is ambiguous or paginated")
@@ -253,24 +261,51 @@ def select_exact_ci_run(dispatch_sha: str, live_ref: Any, runs_response: Any) ->
     for run in runs:
         if not isinstance(run, dict):
             raise ContractError("CI-runs API response contains a non-object run")
-        if run.get("head_sha") == dispatch_sha:
+        for coordinate in ("id", "run_attempt"):
+            if type(run.get(coordinate)) is not int or not 1 <= run[coordinate] <= 9007199254740991:
+                raise ContractError(f"{workflow_path} {coordinate} must be a positive safe integer")
+        head = run.get("head_sha")
+        if not isinstance(head, str) or SHA_RE.fullmatch(head) is None or head == "0" * 40:
+            raise ContractError(f"{workflow_path} run has a malformed head SHA")
+        for field in ("event", "head_branch", "status", "path"):
+            if not isinstance(run.get(field), str) or not run[field]:
+                raise ContractError(f"{workflow_path} run has a malformed {field}")
+        conclusion = run.get("conclusion")
+        if conclusion is not None and (not isinstance(conclusion, str) or conclusion not in {
+            "success", "failure", "cancelled", "action_required", "neutral", "skipped",
+            "stale", "startup_failure", "timed_out",
+        }):
+            raise ContractError(f"{workflow_path} run has an unknown conclusion")
+        if run["status"] == "completed" and conclusion is None:
+            raise ContractError(f"{workflow_path} completed run lacks its conclusion")
+        if all(run.get(field) == expected for field, expected in {
+            "head_sha": dispatch_sha, "event": "push", "head_branch": "main",
+            "status": "completed", "conclusion": "success", "path": workflow_path,
+        }.items()):
             matches.append(run)
     if len(matches) != 1:
-        raise ContractError(f"expected exactly one exact-source CI run; found {len(matches)}")
-    run = matches[0]
-    required = {
-        "event": "push", "head_branch": "main", "status": "completed", "conclusion": "success",
-        "path": ".github/workflows/ci.yml",
+        raise ContractError(f"expected exactly one successful exact-source {workflow_path} run; found {len(matches)}")
+    return {"run_id": matches[0]["id"], "run_attempt": matches[0]["run_attempt"]}
+
+
+def select_release_prerequisites(dispatch_sha: str, live_ref: Any, ci_runs: Any, quality_runs: Any) -> dict[str, Any]:
+    """Require independent CI and Quality success and preserve the selected Quality run."""
+    selected_ci = select_exact_ci_run(dispatch_sha, live_ref, ci_runs)
+    selected_quality = select_exact_ci_run(
+        dispatch_sha, live_ref, quality_runs, workflow_path=".github/workflows/quality.yml",
+    )
+    return {
+        **selected_ci,
+        "quality_run": {
+            "repository": "github.com/hexalith/hexalith.frontcomposer",
+            "workflow_path": ".github/workflows/quality.yml",
+            **selected_quality,
+            "event": "push",
+            "branch": "main",
+            "head_sha": dispatch_sha,
+            "conclusion": "success",
+        },
     }
-    for field, expected in required.items():
-        if run.get(field) != expected:
-            raise ContractError(f"exact-source CI {field} must be {expected!r}")
-    run_id, attempt = run.get("id"), run.get("run_attempt")
-    if isinstance(run_id, bool) or not isinstance(run_id, int) or run_id < 1:
-        raise ContractError("exact-source CI id must be a positive integer")
-    if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1:
-        raise ContractError("exact-source CI run_attempt must be a positive integer")
-    return {"run_id": run_id, "run_attempt": attempt}
 
 
 def validate_publication(
@@ -346,6 +381,7 @@ def main(argv: list[str] | None = None) -> int:
     source.add_argument("--dispatch-sha", required=True)
     source.add_argument("--main-ref", required=True)
     source.add_argument("--runs", required=True)
+    source.add_argument("--quality-runs", required=True)
     source.add_argument("--output", required=True)
     publication = sub.add_parser("publication")
     publication.add_argument("--expected-sha", required=True)
@@ -374,10 +410,11 @@ def main(argv: list[str] | None = None) -> int:
             validate_package_manifest(pathlib.Path(args.root).resolve(), pathlib.Path(args.manifest), args.expected_count)
             print(json.dumps({"ok": True, "package_count": args.expected_count}, sort_keys=True))
         elif args.command == "select-ci":
-            selected = select_exact_ci_run(
+            selected = select_release_prerequisites(
                 args.dispatch_sha,
                 _strict_load(pathlib.Path(args.main_ref)),
                 _strict_load(pathlib.Path(args.runs)),
+                _strict_load(pathlib.Path(args.quality_runs)),
             )
             pathlib.Path(args.output).write_text(json.dumps(selected, sort_keys=True) + "\n", encoding="utf-8")
             print(json.dumps({"ok": True, **selected}, sort_keys=True))

@@ -519,6 +519,11 @@ def phase_classify(non_publishing: bool) -> None:
         if os.environ.get("RELEASE_ATTESTATION_STATUS", "approved-unsupported") != "attested":
             cmd.extend(_validation_fallback_args())
     else:
+        if os.environ.get("RELEASE_ATTESTATION_STATUS", "approved-unsupported") == "approved-unsupported":
+            approved_digest = os.environ.get("RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256", "")
+            if re.fullmatch(r"[0-9a-f]{64}", approved_digest) is None:
+                raise PhaseFailure("classify", "the owner-recorded fallback digest must be an explicit lowercase SHA-256")
+            cmd.extend(["--fallback-approved-against-fingerprints-sha256", approved_digest])
         # The publish-capable candidate can only be prepared after workflow_dispatch
         # exact-source validation reaches the protected production environment.
         mechanism = "workflow_dispatch exact-source gate plus protected production environment approval"

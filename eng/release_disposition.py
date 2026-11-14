@@ -15,6 +15,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import dependency_handoff as dh
+from dependency_graph import GraphError
+
 KNOWN_JOB_NAMES = frozenset({
     "verify-source",
     "plan-release",
@@ -73,7 +76,7 @@ def classify_release_run(
     }
     if any(run.get(key) != value for key, value in expected.items()):
         raise DispositionError("Release run coordinate does not match the authenticated operator dispatch")
-    if re.fullmatch(r"[0-9a-f]{40}", run["head_sha"]) is None:
+    if re.fullmatch(r"[0-9a-f]{40}", run["head_sha"]) is None or run["head_sha"] == "0" * 40:
         raise DispositionError("Release run head SHA is malformed")
     if any(not isinstance(job, dict) or job.get("status") != "completed" for job in jobs):
         raise DispositionError("Release job topology is malformed or incomplete")
@@ -104,9 +107,17 @@ def classify_release_run(
     else:
         disposition = "rejected-before-publication"
         governed_attempt = False
-    candidate = ad15_candidate or run["head_sha"]
-    if ad15_candidate is not None and re.fullmatch(r"[0-9a-f]{40}", ad15_candidate) is None:
+    if governed_attempt and ad15_candidate is None:
+        raise DispositionError("governed Release attempt lacks its authenticated AD-15 candidate")
+    if ad15_candidate is not None and (
+        not isinstance(ad15_candidate, str)
+        or re.fullmatch(r"[0-9a-f]{40}", ad15_candidate) is None
+        or ad15_candidate == "0" * 40
+    ):
         raise DispositionError("AD-15 candidate SHA is malformed")
+    if ad15_candidate is not None and ad15_candidate != run["head_sha"]:
+        raise DispositionError("AD-15 candidate differs from the authenticated Release head SHA")
+    candidate = ad15_candidate if ad15_candidate is not None else run["head_sha"]
     return {
         "decision_contract": "frontcomposer.release-run-disposition.v2",
         "status": disposition,
@@ -155,15 +166,27 @@ def main(argv: list[str] | None = None) -> int:
             jobs = envelope.get("jobs") if isinstance(envelope, dict) else None
             if not isinstance(envelope, dict) or not isinstance(jobs, list):
                 raise DispositionError("malformed Release jobs API response")
-            if envelope.get("total_count") != len(jobs):
+            if type(envelope.get("total_count")) is not int or envelope["total_count"] != len(jobs):
                 raise DispositionError("ambiguous or paginated Release jobs API response")
             ad15_candidate = None
             if args.ad15_handoff:
                 ad15_path = Path(args.ad15_handoff)
                 if ad15_path.is_file():
-                    ad15 = load_json(ad15_path)
-                    if isinstance(ad15, dict) and isinstance(ad15.get("candidate"), str):
-                        ad15_candidate = ad15["candidate"]
+                    ad15 = dh.validate_release_handoff(load_json(ad15_path))
+                    repository = run.get("repository") if isinstance(run, dict) else None
+                    full_name = repository.get("full_name") if isinstance(repository, dict) else None
+                    if not isinstance(full_name, str) or f"github.com/{full_name.lower()}" != dh.ROOT_REPOSITORY:
+                        raise DispositionError("Release run repository does not match the AD-15 repository")
+                    expected_release_run = {
+                        "repository": dh.ROOT_REPOSITORY,
+                        "workflow_path": run.get("path"),
+                        "run_id": run.get("id"),
+                        "run_attempt": run.get("run_attempt"),
+                        "conclusion": run.get("conclusion"),
+                    }
+                    if ad15["release_run"] != expected_release_run:
+                        raise DispositionError("AD-15 Release run coordinate differs from the authenticated API run")
+                    ad15_candidate = ad15["candidate"]
             result = classify_release_run(
                 run=run,
                 jobs=jobs,
@@ -187,7 +210,7 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"ok": True, "publish_authorized": True}, sort_keys=True))
             return 0
         raise DispositionError(f"unsupported command {args.command!r}")
-    except DispositionError as exc:
+    except (DispositionError, GraphError, OSError, ValueError) as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, sort_keys=True), file=sys.stderr)
         return 1
 

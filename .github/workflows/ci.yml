@@ -172,10 +172,8 @@ jobs:
           if-no-files-found: error
           path: artifacts/dependency-governance/dependency-release-source.json
 
-      # AD-13 producer. Always invokes create_ci_handoff via create-ci. Empty
-      # evaluator_authorizations or an unauthorized draft fail closed with exit 2
-      # (deferred diagnostic) so the graph gate stays green until AD-16 populates
-      # an owner-accepted immutable reusable/action closure in policy.
+      # AD-12/AD-13: an unavailable base or unauthorized evaluator fails the push
+      # gate. A diagnostic source proof never substitutes for an authorized handoff.
       - name: Create AD-13 dependency-release-handoff
         id: ad13-handoff
         if: github.event_name == 'push' && steps.dependency-diff.outputs.exit-code == '0'
@@ -186,15 +184,15 @@ jobs:
           EVENT_BASE: ${{ steps.revisions.outputs.event-base }}
         run: |
           set -euo pipefail
-          policy_commit="$EVENT_BASE"
-          if [ "$policy_commit" = "0000000000000000000000000000000000000000" ]; then
-            policy_commit="$CANDIDATE"
+          if [[ ! "$EVENT_BASE" =~ ^[0-9a-f]{40}$ ]] || [ "$EVENT_BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "::error::AD-13 requires the exact nonzero push-before policy; candidate policy cannot authorize itself."
+            exit 1
           fi
           python3 eng/dependency_handoff.py --root "$OBJECT_ROOT" draft-evaluator \
             --stage ci \
             --caller-commit "$CANDIDATE" \
             --caller-workflow .github/workflows/ci.yml \
-            --policy-commit "$policy_commit" \
+            --policy-commit "$EVENT_BASE" \
             --output artifacts/dependency-governance/ci-evaluator.json
           set +e
           python3 eng/dependency_handoff.py --root "$OBJECT_ROOT" create-ci \
@@ -208,11 +206,9 @@ jobs:
           echo "exit-code=$status" >> "$GITHUB_OUTPUT"
           if [ "$status" -eq 0 ]; then
             echo "created=true" >> "$GITHUB_OUTPUT"
-          elif [ "$status" -eq 2 ]; then
-            echo "created=false" >> "$GITHUB_OUTPUT"
-            echo "AD-13 handoff deferred pending active-policy evaluator authorization (AD-16)." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "::error::AD-13 create-ci failed unexpectedly (exit=$status)"
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            echo "::error::AD-13 handoff creation failed closed (exit=$status)"
             exit "$status"
           fi
 

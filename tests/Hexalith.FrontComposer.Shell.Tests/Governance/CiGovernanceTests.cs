@@ -2787,6 +2787,8 @@ public sealed class CiGovernanceTests {
             string runPath = Path.Combine(workRoot, "upstream-run.json");
             string jobsPath = Path.Combine(workRoot, "upstream-jobs.json");
             string outputPath = Path.Combine(workRoot, "release-disposition.json");
+            string handoffPath = Path.Combine(workRoot, "release-verification-handoff.json");
+            File.Copy(Path.Combine(root, "tests/ci-governance/fixtures/release-verification-handoff-valid.json"), handoffPath);
             File.WriteAllText(runPath, $$"""
             {
               "id": 42,
@@ -2796,7 +2798,8 @@ public sealed class CiGovernanceTests {
               "conclusion": "success",
               "head_branch": "main",
               "head_sha": "{{sha}}",
-              "path": ".github/workflows/release.yml"
+              "path": ".github/workflows/release.yml",
+              "repository": {"full_name": "Hexalith/Hexalith.FrontComposer"}
             }
             """);
             File.WriteAllText(jobsPath, $$"""
@@ -2822,6 +2825,7 @@ public sealed class CiGovernanceTests {
                 "--expected-run-attempt", "1",
                 "--expected-conclusion", "success",
                 "--expected-head-sha", sha,
+                "--ad15-handoff", handoffPath,
                 "--output", outputPath,
             ]);
             disposition.ExitCode.ShouldBe(0, disposition.Error);

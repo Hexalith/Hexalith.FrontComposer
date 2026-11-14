@@ -168,6 +168,33 @@ class ReleasePrepublishTests(unittest.TestCase):
         staged = self.root / "release-evidence/dependency-release-source.json"
         self.assertEqual(handoff.read_bytes(), staged.read_bytes())
 
+    def test_production_classification_forwards_the_exact_owner_fallback_digest(self) -> None:
+        approved = "a" * 64
+        with mock.patch.dict(prepublish.os.environ, {
+            "RELEASE_ATTESTATION_STATUS": "approved-unsupported",
+            "RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256": approved,
+        }, clear=True), mock.patch.object(prepublish, "run") as run:
+            prepublish.phase_classify(False)
+        command = run.call_args.args[1]
+        option = command.index("--fallback-approved-against-fingerprints-sha256")
+        self.assertEqual(approved, command[option + 1])
+
+    def test_production_classification_rejects_absent_or_malformed_fallback_digest(self) -> None:
+        for approved in ("", "A" * 64, "a" * 63, "a" * 64 + "\n"):
+            with self.subTest(approved=approved), mock.patch.dict(prepublish.os.environ, {
+                "RELEASE_ATTESTATION_STATUS": "approved-unsupported",
+                "RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256": approved,
+            }, clear=True), mock.patch.object(prepublish, "run") as run:
+                with self.assertRaisesRegex(prepublish.PhaseFailure, "owner-recorded fallback digest"):
+                    prepublish.phase_classify(False)
+                run.assert_not_called()
+
+    def test_attested_classification_requires_no_fallback_digest(self) -> None:
+        with mock.patch.dict(prepublish.os.environ, {"RELEASE_ATTESTATION_STATUS": "attested"}, clear=True), \
+                mock.patch.object(prepublish, "run") as run:
+            prepublish.phase_classify(False)
+        self.assertNotIn("--fallback-approved-against-fingerprints-sha256", run.call_args.args[1])
+
     def test_phase_pack_rechecks_policy_in_live_packer_before_output_mutation(self) -> None:
         sentinel = self.root / "nupkgs" / "existing-output.nupkg"
         sentinel.write_bytes(b"preserve")

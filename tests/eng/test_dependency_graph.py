@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import json
@@ -2032,15 +2033,31 @@ class PolicyShapeTests(unittest.TestCase):
             ])
 
     @staticmethod
-    def _replace_catalog_property_element(catalog: bytes, property_name: str, replacement: bytes) -> bytes:
-        start = catalog.index(f"<{property_name}".encode("ascii"))
+    def _catalog_property_default_start(catalog: bytes, property_name: str) -> int:
+        openings = list(re.finditer(rb"<" + re.escape(property_name.encode("ascii")) + rb"(?=[\s>])[^>]*>", catalog))
+        defaults = []
+        for opening in openings:
+            element = ET.fromstring(opening.group() + f"</{property_name}>".encode("ascii"))
+            condition = element.get("Condition")
+            self_default = dg._SELF_DEFAULT_CONDITION.match(condition) if condition is not None else None
+            if condition is None or (self_default is not None and self_default.group("name") == property_name):
+                defaults.append(opening)
+        if len(defaults) == 1:
+            return defaults[0].start()
+        if len(openings) == 1:
+            return openings[0].start()
+        raise AssertionError(f"Fixture requires one canonical default for {property_name}")
+
+    @classmethod
+    def _replace_catalog_property_element(cls, catalog: bytes, property_name: str, replacement: bytes) -> bytes:
+        start = cls._catalog_property_default_start(catalog, property_name)
         closing = f"</{property_name}>".encode("ascii")
         end = catalog.index(closing, start) + len(closing)
         return catalog[:start] + replacement + catalog[end:]
 
     @classmethod
     def _replace_catalog_property_value(cls, catalog: bytes, property_name: str, value: str) -> bytes:
-        start = catalog.index(f"<{property_name}".encode("ascii"))
+        start = cls._catalog_property_default_start(catalog, property_name)
         opening_end = catalog.index(b">", start) + 1
         closing_start = catalog.index(f"</{property_name}>".encode("ascii"), opening_end)
         return catalog[:opening_end] + value.encode("ascii") + catalog[closing_start:]
@@ -2048,17 +2065,19 @@ class PolicyShapeTests(unittest.TestCase):
     @classmethod
     def _frontcomposer_catalog(cls) -> bytes:
         # These synthetic tests isolate the unchanged owner policy from external
-        # catalog version drift before mutating each intended check. They do not
-        # assert that the actually selected catalog passes owner governance.
+        # catalog version drift before mutating each intended check. They retain
+        # the raw optional logging import and do not assert actual catalog acceptance.
         catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
         for package_id, expected in cls._frontcomposer_profile()["selected_catalog_required_packages"].items():
+            if package_id == "System.Collections.Immutable" and b'Version="$(HexalithImmutableVersion)"' in catalog:
+                continue  # Exercise the consumer view as authored, without normalizing it away.
             pattern = rb'(<PackageVersion Include="' + re.escape(package_id.encode()) + rb'" Version=")[^"]+(" />)'
             catalog, count = re.subn(pattern, lambda match: match[1] + expected.encode() + match[2], catalog)
             if count != 1:
                 raise AssertionError(f"Fixture requires one unconditional package row for {package_id}")
         return catalog
 
-    def _evaluate_frontcomposer_profile(self, catalog: bytes, profile_name: str = "frontcomposer-catalog-v1") -> dict:
+    def _evaluate_frontcomposer_profile(self, catalog: bytes, profile_name: str = "frontcomposer-catalog-v1", *, logging_target: bytes | None = None) -> dict:
         with tempfile.TemporaryDirectory(dir=self.tmp_path) as fixture_directory:
             fx = GraphFixture(pathlib.Path(fixture_directory))
 
@@ -2068,6 +2087,8 @@ class PolicyShapeTests(unittest.TestCase):
             builds = fx.add_repo("Builds")
             builds.write_text(".gitattributes", "Props/Directory.Packages.props text eol=crlf\n")
             builds.write_bytes("Props/Directory.Packages.props", catalog)
+            if logging_target is not None:
+                builds.write_bytes("Props/Logging.Build.targets", logging_target)
             builds_commit = builds.commit()
 
             fx.link("FrontComposer", "references/Hexalith.Builds", "Builds", builds_commit)
@@ -2084,9 +2105,9 @@ class PolicyShapeTests(unittest.TestCase):
             )
             return dg.evaluate_semantics(frontcomposer.root, fx.policy, envelope)
 
-    def _assert_frontcomposer_profile_failure(self, catalog: bytes, expected_diagnostic: str) -> str:
+    def _assert_frontcomposer_profile_failure(self, catalog: bytes, expected_diagnostic: str, *, logging_target: bytes | None = None) -> str:
         with self.assertRaises(dg.GraphError) as ctx:
-            self._evaluate_frontcomposer_profile(catalog)
+            self._evaluate_frontcomposer_profile(catalog, logging_target=logging_target)
 
         message = str(ctx.exception)
         self.assertIn("github.com/test/frontcomposer@", message)
@@ -2219,6 +2240,584 @@ class PolicyShapeTests(unittest.TestCase):
                     self._catalog_xml_bytes(root),
                     "HexalithTenantsVersion must define exactly one version property",
                 )
+
+    def _eventstore_sdk42_catalog(self) -> bytes:
+        root = ET.fromstring(self._eventstore_qualification_catalog())
+        properties = root.find("PropertyGroup")
+        assert properties is not None
+        declarations = []
+        for selector, projects in (
+            ("HexalithPartiesSdk42CatalogView", ("Hexalith.Parties", "Hexalith.Parties.Client")),
+            ("HexalithBuildsPackagedHostSdk42CatalogView", ("Hexalith.Builds.Module.AppHost", "Hexalith.Builds.Module.EventStoreHost", "Hexalith.Builds.Module.UiHost")),
+        ):
+            default = ET.Element(selector)
+            default.text = "false"
+            enabled = ET.Element(selector, {"Condition": " or ".join(f"$(MSBuildProjectName.Equals('{name}'))" for name in projects)})
+            enabled.text = "true"
+            declarations.extend((default, enabled))
+        override = ET.Element("HexalithEventStoreVersion", {"Condition": (
+            "'$(HexalithEventStoreVersion)' == '' and ("
+            "'$(HexalithPartiesSdk42CatalogView)' == 'true' or "
+            "'$(HexalithBuildsPackagedHostSdk42CatalogView)' == 'true')"
+        )})
+        override.text = "4.2.0"
+        declarations.append(override)
+        for index, element in enumerate(declarations):
+            properties.insert(index, element)
+        list(root.iter("HexalithEventStoreVersion"))[1].text = "5.0.1"
+        ET.indent(root)
+        return self._catalog_xml_bytes(root)
+
+    def test_frontcomposer_profile_accepts_proven_inactive_sdk42_and_current_or_future_default(self) -> None:
+        catalog = self._eventstore_sdk42_catalog()
+        for version in ("5.0.1", "6.0.0", "999.0.42"):
+            with self.subTest(version=version):
+                updated = self._replace_catalog_property_value(catalog, "HexalithEventStoreVersion", version)
+                self.assertEqual(["4.2.0", version], [element.text for element in ET.fromstring(updated).iter("HexalithEventStoreVersion")])
+                self.assertEqual(1, self._evaluate_frontcomposer_profile(updated)["selectors_validated"])
+        # Removing an inactive compatibility row retains the ordinary one-default contract.
+        root = ET.fromstring(catalog)
+        properties = root.find("PropertyGroup")
+        properties.remove(list(root.iter("HexalithEventStoreVersion"))[0])
+        self.assertEqual(1, self._evaluate_frontcomposer_profile(self._catalog_xml_bytes(root))["selectors_validated"])
+
+    def test_sdk42_exception_is_frontcomposer_only(self) -> None:
+        catalog = self._eventstore_sdk42_catalog()
+        with self.assertRaisesRegex(dg.GraphError, "must define exactly one version property"):
+            self._evaluate_frontcomposer_profile(catalog, profile_name="strict-catalog-v1")
+        with self.assertRaisesRegex(dg.GraphError, "must define exactly one version property"):
+            dg.assert_selected_catalog_property_shape(ET.fromstring(catalog), "HexalithEventStoreVersion", "strict helper")
+
+    def test_sdk42_selectors_reject_changed_scope_or_nonliteral_conditions(self) -> None:
+        for selector in ("HexalithPartiesSdk42CatalogView", "HexalithBuildsPackagedHostSdk42CatalogView"):
+            for mutation in ("frontcomposer", "other-module", "starts-with", "dynamic-name", "and", "constant", "duplicate-clause", "empty"):
+                with self.subTest(selector=selector, mutation=mutation):
+                    root = ET.fromstring(self._eventstore_sdk42_catalog())
+                    enabled = list(root.iter(selector))[1]
+                    condition = enabled.get("Condition")
+                    if mutation == "frontcomposer":
+                        condition += " or $(MSBuildProjectName.Equals('Hexalith.FrontComposer.Shell'))"
+                    elif mutation == "other-module":
+                        condition += " or $(MSBuildProjectName.Equals('Hexalith.Tenants'))"
+                    elif mutation == "starts-with":
+                        condition = condition.replace(".Equals(", ".StartsWith(")
+                    elif mutation == "dynamic-name":
+                        condition = condition.replace("'Hexalith.", "'$(Other)Hexalith.", 1)
+                    elif mutation == "and":
+                        condition = condition.replace(" or ", " and ", 1)
+                    elif mutation == "constant":
+                        condition = "true"
+                    elif mutation == "duplicate-clause":
+                        condition += " or " + condition.split(" or ")[0]
+                    else:
+                        condition = ""
+                    enabled.set("Condition", condition)
+                    self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "HexalithEventStoreVersion SDK4.2 selector")
+
+    def test_sdk42_selectors_reject_missing_duplicate_or_reassigned_definitions(self) -> None:
+        for selector in ("HexalithPartiesSdk42CatalogView", "HexalithBuildsPackagedHostSdk42CatalogView"):
+            for mutation in ("missing-false", "missing-true", "duplicate-false", "duplicate-true", "reassigned", "case-alias"):
+                with self.subTest(selector=selector, mutation=mutation):
+                    root = ET.fromstring(self._eventstore_sdk42_catalog())
+                    properties = root.find("PropertyGroup")
+                    default, enabled = list(root.iter(selector))
+                    if mutation.startswith("missing"):
+                        properties.remove(default if mutation == "missing-false" else enabled)
+                    elif mutation.startswith("duplicate"):
+                        properties.append(copy.deepcopy(default if mutation == "duplicate-false" else enabled))
+                    else:
+                        reassigned = ET.SubElement(properties, selector if mutation == "reassigned" else selector.lower())
+                        reassigned.text = "true"
+                    self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "requires exactly two canonical declarations")
+
+    def test_sdk42_selectors_reject_changed_assignment_shape(self) -> None:
+        for selector in ("HexalithPartiesSdk42CatalogView", "HexalithBuildsPackagedHostSdk42CatalogView"):
+            for mutation in ("true-default", "conditional-default", "default-child", "false-enabled", "enabled-child", "extra-attribute"):
+                with self.subTest(selector=selector, mutation=mutation):
+                    root = ET.fromstring(self._eventstore_sdk42_catalog())
+                    default, enabled = list(root.iter(selector))
+                    if mutation == "true-default":
+                        default.text = "true"
+                    elif mutation == "conditional-default":
+                        default.set("Condition", "'$(Other)' == ''")
+                    elif mutation == "default-child":
+                        ET.SubElement(default, "Unexpected")
+                    elif mutation == "false-enabled":
+                        enabled.text = "false"
+                    elif mutation == "enabled-child":
+                        ET.SubElement(enabled, "Unexpected")
+                    else:
+                        enabled.set("Label", "unknown")
+                    self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "HexalithEventStoreVersion SDK4.2 selector")
+
+    def test_sdk42_override_rejects_changed_value_condition_or_content(self) -> None:
+        for mutation in ("other-version", "dynamic-version", "remove-gate", "frontcomposer", "child", "extra-attribute", "duplicate"):
+            with self.subTest(mutation=mutation):
+                root = ET.fromstring(self._eventstore_sdk42_catalog())
+                override = list(root.iter("HexalithEventStoreVersion"))[0]
+                if mutation == "other-version":
+                    override.text = "4.2.1"
+                elif mutation == "dynamic-version":
+                    override.text = "$(Other)"
+                elif mutation == "remove-gate":
+                    override.set("Condition", "'$(HexalithEventStoreVersion)' == ''")
+                elif mutation == "frontcomposer":
+                    override.set("Condition", override.get("Condition") + " or '$(MSBuildProjectName)' == 'Hexalith.FrontComposer.Shell'")
+                elif mutation == "child":
+                    ET.SubElement(override, "Unexpected")
+                elif mutation == "extra-attribute":
+                    override.set("Label", "unknown")
+                else:
+                    root.find("PropertyGroup").append(copy.deepcopy(override))
+                self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "must define exactly one version property")
+
+    def test_sdk42_selector_and_override_placement_must_be_global_unconditional_and_ordered(self) -> None:
+        for name, ordinal in (("HexalithPartiesSdk42CatalogView", 0), ("HexalithPartiesSdk42CatalogView", 1),
+                              ("HexalithBuildsPackagedHostSdk42CatalogView", 0), ("HexalithBuildsPackagedHostSdk42CatalogView", 1),
+                              ("HexalithEventStoreVersion", 0)):
+            for placement in ("conditional", "target", "choose"):
+                with self.subTest(name=name, ordinal=ordinal, placement=placement):
+                    root = ET.fromstring(self._eventstore_sdk42_catalog())
+                    element = list(root.iter(name))[ordinal]
+                    root.find("PropertyGroup").remove(element)
+                    if placement == "conditional":
+                        group = ET.SubElement(root, "PropertyGroup", {"Condition": "'$(Other)' == 'true'"})
+                    elif placement == "target":
+                        group = ET.SubElement(ET.SubElement(root, "Target", {"Name": "Later"}), "PropertyGroup")
+                    else:
+                        group = ET.SubElement(ET.SubElement(ET.SubElement(root, "Choose"), "When", {"Condition": "'$(Other)' == 'true'"}), "PropertyGroup")
+                    group.append(element)
+                    self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "unconditional top-level PropertyGroup")
+        for mutation in ("false-after-true", "selector-after-override", "default-before-override"):
+            with self.subTest(order=mutation):
+                root = ET.fromstring(self._eventstore_sdk42_catalog())
+                properties = root.find("PropertyGroup")
+                if mutation == "false-after-true":
+                    element = list(root.iter("HexalithPartiesSdk42CatalogView"))[0]
+                    properties.remove(element)
+                    properties.insert(2, element)
+                elif mutation == "selector-after-override":
+                    element = list(root.iter("HexalithBuildsPackagedHostSdk42CatalogView"))[1]
+                    properties.remove(element)
+                    properties.append(element)
+                else:
+                    element = list(root.iter("HexalithEventStoreVersion"))[1]
+                    properties.remove(element)
+                    properties.insert(0, element)
+                self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "HexalithEventStoreVersion")
+
+    def test_sdk42_selector_proof_rejects_imports_anywhere_in_catalog(self) -> None:
+        for import_group in (False, True):
+            for placement in ("before", "between", "after-override", "after-default"):
+                with self.subTest(import_group=import_group, placement=placement):
+                    root = ET.fromstring(self._eventstore_sdk42_catalog())
+                    properties = root.find("PropertyGroup")
+                    children = list(properties)
+                    split = {"before": 0, "between": 2, "after-override": 5, "after-default": len(children)}[placement]
+                    root.remove(properties)
+                    before, after = ET.Element("PropertyGroup"), ET.Element("PropertyGroup")
+                    before.extend(children[:split])
+                    after.extend(children[split:])
+                    imported = ET.Element("Import", {"Project": "untrusted-selectors.props"})
+                    if import_group:
+                        group = ET.Element("ImportGroup")
+                        group.append(imported)
+                        imported = group
+                    root.insert(0, before)
+                    root.insert(1, imported)
+                    root.insert(2, after)
+                    self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "rejects unsupported, grouped or misplaced catalog imports")
+        # The retained-row exception adds no new rule to an ordinary single default.
+        root = ET.fromstring(self._eventstore_sdk42_catalog())
+        root.find("PropertyGroup").remove(list(root.iter("HexalithEventStoreVersion"))[0])
+        ET.SubElement(root, "Import", {"Project": "ordinary-catalog.props"})
+        self.assertEqual(1, self._evaluate_frontcomposer_profile(self._catalog_xml_bytes(root))["selectors_validated"])
+
+    @staticmethod
+    def _analyzer_logging_target() -> bytes:
+        return b"""<Project>
+  <Target Name="HexalithRemoveReplacedLoggingSourceGenerator" AfterTargets="ResolveReferences" Condition="'$(DisableMicrosoftExtensionsLoggingSourceGenerator)' == 'true'">
+    <ItemGroup>
+      <_HexalithTelemetryLoggingGenerator Include="@(Analyzer)" Condition="'%(Analyzer.Filename)' == 'Microsoft.Gen.Logging'" />
+      <Analyzer Remove="@(Analyzer)" Condition="'@(_HexalithTelemetryLoggingGenerator)' != '' and '%(Analyzer.Filename)' == 'Microsoft.Extensions.Logging.Generators'" />
+    </ItemGroup>
+  </Target>
+</Project>
+"""
+
+    def _sdk42_logging_import_catalog(self) -> bytes:
+        root = ET.fromstring(self._eventstore_sdk42_catalog())
+        ET.SubElement(root, "Import", {
+            "Project": "$(MSBuildThisFileDirectory)Logging.Build.targets",
+            "Condition": "Exists('$(MSBuildThisFileDirectory)Logging.Build.targets')",
+        })
+        return self._catalog_xml_bytes(root)
+
+    def test_sdk42_optional_logging_import_accepts_absence_and_committed_analyzer_target(self) -> None:
+        catalog = self._sdk42_logging_import_catalog()
+        target = self._analyzer_logging_target()
+        for content in (None, target, target.replace(b"<Project>", b"<Project><!-- formatting is not identity -->")):
+            with self.subTest(content=content):
+                self.assertEqual(1, self._evaluate_frontcomposer_profile(catalog, logging_target=content)["selectors_validated"])
+        with self.assertRaisesRegex(dg.GraphError, "requires its exact committed Builds source"):
+            dg.assert_selected_catalog_property_shape(ET.fromstring(catalog), "HexalithEventStoreVersion", "offline import", allow_eventstore_qualification=True)
+
+    def test_sdk42_optional_logging_import_rejects_changed_shape_or_placement(self) -> None:
+        for mutation in ("duplicate", "grouped", "before-default", "inside-properties", "unknown-project", "changed-condition", "missing-condition", "extra-attribute", "child"):
+            with self.subTest(mutation=mutation):
+                root = ET.fromstring(self._sdk42_logging_import_catalog())
+                imported = root.find("Import")
+                if mutation == "duplicate":
+                    root.append(copy.deepcopy(imported))
+                elif mutation in {"grouped", "before-default", "inside-properties"}:
+                    root.remove(imported)
+                    if mutation == "grouped":
+                        ET.SubElement(root, "ImportGroup").append(imported)
+                    elif mutation == "before-default":
+                        root.insert(0, imported)
+                    else:
+                        root.find("PropertyGroup").append(imported)
+                elif mutation == "unknown-project":
+                    imported.set("Project", "$(MSBuildThisFileDirectory)Other.targets")
+                elif mutation == "changed-condition":
+                    imported.set("Condition", "true")
+                elif mutation == "missing-condition":
+                    imported.attrib.pop("Condition")
+                elif mutation == "extra-attribute":
+                    imported.set("Label", "unknown")
+                else:
+                    ET.SubElement(imported, "Unexpected")
+                self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "rejects unsupported, grouped or misplaced catalog imports")
+
+    def test_sdk42_committed_logging_target_rejects_properties_imports_tasks_or_shape_drift(self) -> None:
+        catalog = self._sdk42_logging_import_catalog()
+        for mutation in ("property", "case-alias", "import", "task", "extra-target", "target-attribute", "changed-item", "text", "deep-content", "malformed"):
+            with self.subTest(mutation=mutation):
+                root = ET.fromstring(self._analyzer_logging_target())
+                target = root.find("Target")
+                if mutation in {"property", "case-alias"}:
+                    name = "HexalithEventStoreVersion" if mutation == "property" else "hexalitheventstoreversion"
+                    ET.SubElement(ET.SubElement(root, "PropertyGroup"), name).text = "4.2.0"
+                elif mutation == "import":
+                    ET.SubElement(root, "Import", {"Project": "other.targets"})
+                elif mutation == "task":
+                    ET.SubElement(target, "Exec", {"Command": "must-never-execute"})
+                elif mutation == "extra-target":
+                    root.append(copy.deepcopy(target))
+                elif mutation == "target-attribute":
+                    target.set("BeforeTargets", "Restore")
+                elif mutation == "changed-item":
+                    target.find("ItemGroup/Analyzer").set("Remove", "@(PackageReference)")
+                elif mutation == "text":
+                    target.text = "unknown-content"
+                if mutation == "deep-content":
+                    content = b"<Project>" + b"<Unexpected>" * 1500 + b"</Unexpected>" * 1500 + b"</Project>"
+                else:
+                    content = b"<Project>" if mutation == "malformed" else ET.tostring(root, encoding="utf-8")
+                self._assert_frontcomposer_profile_failure(catalog, "malformed XML" if mutation == "malformed" else "closed analyzer-only XML shape", logging_target=content)
+
+    def test_sdk42_logging_target_modes_and_read_budget_are_enforced(self) -> None:
+        catalog = ET.fromstring(self._sdk42_logging_import_catalog())
+        for mode in ("100644", "100755", "120000", "160000"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory(dir=self.tmp_path) as temporary:
+                repository = TempGitRepo(pathlib.Path(temporary))
+                repository.write_bytes("Props/Directory.Packages.props", self._sdk42_logging_import_catalog())
+                repository.write_bytes("Props/Logging.Build.targets", self._analyzer_logging_target())
+                first = repository.commit("test: seed committed logging source")
+                blob_id = _run(["rev-parse", f"{first}:Props/Logging.Build.targets"], repository.root).decode().strip()
+                if mode != "100644":
+                    _run(["update-index", "--cacheinfo", f"{mode},{first if mode == '160000' else blob_id},Props/Logging.Build.targets"], repository.root)
+                    selected = repository.commit("test: select logging source mode")
+                else:
+                    selected = first
+                source = (repository.root, selected, 4_194_304)
+                if mode in {"100644", "100755"}:
+                    dg.assert_selected_catalog_property_shape(catalog, "HexalithEventStoreVersion", "mode proof", allow_eventstore_qualification=True, catalog_source=source)
+                    with self.assertRaisesRegex(dg.GraphError, "exceeds the 64-byte ceiling"):
+                        dg.assert_selected_catalog_property_shape(catalog, "HexalithEventStoreVersion", "bounded proof", allow_eventstore_qualification=True, catalog_source=(repository.root, selected, 64))
+                else:
+                    with self.assertRaisesRegex(dg.GraphError, "must be a regular committed blob"):
+                        dg.assert_selected_catalog_property_shape(catalog, "HexalithEventStoreVersion", "mode proof", allow_eventstore_qualification=True, catalog_source=source)
+
+    def test_sdk42_logging_target_uses_exact_commit_and_ignores_head_index_and_worktree(self) -> None:
+        catalog = self._sdk42_logging_import_catalog()
+        with tempfile.TemporaryDirectory(dir=self.tmp_path) as temporary:
+            fx = GraphFixture(pathlib.Path(temporary))
+            frontcomposer = fx.add_repo("FrontComposer")
+            frontcomposer.write_text("Directory.Packages.props", OWNER_SHIM)
+            builds = fx.add_repo("Builds")
+            builds.write_text(".gitattributes", "Props/Directory.Packages.props text eol=crlf\n")
+            builds.write_bytes("Props/Directory.Packages.props", catalog)
+            absent = builds.commit("test: record absent optional logging target")
+            hostile = b"<Project><PropertyGroup><HexalithEventStoreVersion>4.2.0</HexalithEventStoreVersion></PropertyGroup></Project>"
+            builds.write_bytes("Props/Logging.Build.targets", hostile)
+            dg.assert_selected_catalog_property_shape(ET.fromstring(catalog), "HexalithEventStoreVersion", "absent committed source", allow_eventstore_qualification=True, catalog_source=(builds.root, absent, 4_194_304))
+            bad_commit = builds.commit("test: commit hostile logging property")
+            builds.write_bytes("Props/Logging.Build.targets", self._analyzer_logging_target())
+            with self.assertRaisesRegex(dg.GraphError, "closed analyzer-only XML shape"):
+                dg.assert_selected_catalog_property_shape(ET.fromstring(catalog), "HexalithEventStoreVersion", "committed hostile source", allow_eventstore_qualification=True, catalog_source=(builds.root, bad_commit, 4_194_304))
+            good_commit = builds.commit("test: commit closed logging analyzer target")
+            fx.link("FrontComposer", "references/Hexalith.Builds", "Builds", good_commit)
+            owner_commit = frontcomposer.commit("test: select closed logging source")
+            owner = fx.identity("FrontComposer")
+            fx.policy["semantic_profiles"][owner] = "frontcomposer-catalog-v1"
+            fx.policy["profiles"]["frontcomposer-catalog-v1"] = self._frontcomposer_profile()
+            graph = dg.collect_graph(frontcomposer.root, owner, owner_commit, fx.policy)
+            builds.write_bytes("Props/Logging.Build.targets", hostile)
+            builds.commit("test: advance ambient logging source")
+            self.assertEqual(1, dg.evaluate_semantics(frontcomposer.root, fx.policy, graph)["selectors_validated"])
+            (builds.root / "Props/Logging.Build.targets").write_bytes(self._analyzer_logging_target())
+            with self.assertRaisesRegex(dg.GraphError, "closed analyzer-only XML shape"):
+                dg.assert_selected_catalog_property_shape(ET.fromstring(catalog), "HexalithEventStoreVersion", "hostile head with clean worktree", allow_eventstore_qualification=True, catalog_source=(builds.root, builds.head(), 4_194_304))
+
+    def test_sdk42_proof_rejects_case_insensitive_version_aliases(self) -> None:
+        for spelling in ("hexalitheventstoreversion", "HexalithEventstoreVersion", "HEXALITHEVENTSTOREVERSION"):
+            for placement in ("before", "after", "replace-default", "rename-override", "unconditional-override"):
+                with self.subTest(spelling=spelling, placement=placement):
+                    root = ET.fromstring(self._eventstore_sdk42_catalog())
+                    properties = root.find("PropertyGroup")
+                    if placement == "replace-default":
+                        list(root.iter("HexalithEventStoreVersion"))[1].tag = spelling
+                    elif placement in {"rename-override", "unconditional-override"}:
+                        override = list(root.iter("HexalithEventStoreVersion"))[0]
+                        override.tag = spelling
+                        if placement == "unconditional-override":
+                            override.attrib.clear()
+                    else:
+                        alias = ET.Element(spelling)
+                        alias.text = "4.2.0"
+                        properties.insert(0, alias) if placement == "before" else properties.append(alias)
+                    self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "rejects case-insensitive version aliases")
+
+    def test_sdk42_mutations_target_unconditional_and_whitespace_self_defaults(self) -> None:
+        for condition in (None, "  '$(HexalithEventStoreVersion)'   ==   ''  ", "\t'$(HexalithEventStoreVersion)'\t==\t''\t"):
+            with self.subTest(condition=condition):
+                root = ET.fromstring(self._eventstore_sdk42_catalog())
+                default = list(root.iter("HexalithEventStoreVersion"))[1]
+                default.attrib.clear()
+                if condition is not None:
+                    default.set("Condition", condition)
+                catalog = self._catalog_xml_bytes(root)
+                self.assertEqual(1, self._evaluate_frontcomposer_profile(catalog)["selectors_validated"])
+                updated = self._replace_catalog_property_value(catalog, "HexalithEventStoreVersion", "6.0.0")
+                self.assertEqual(["4.2.0", "6.0.0"], [element.text for element in ET.fromstring(updated).iter("HexalithEventStoreVersion")])
+                self.assertEqual(1, self._evaluate_frontcomposer_profile(updated)["selectors_validated"])
+                removed = self._replace_catalog_property_element(catalog, "HexalithEventStoreVersion", b"")
+                self.assertEqual(["4.2.0"], [element.text for element in ET.fromstring(removed).iter("HexalithEventStoreVersion")])
+                self._assert_frontcomposer_profile_failure(removed, "must define exactly one version property")
+                invalid = self._replace_catalog_property_value(catalog, "HexalithEventStoreVersion", "$(Other)")
+                self._assert_frontcomposer_profile_failure(invalid, "must contain a literal NuGet version")
+
+    def test_sdk42_override_retains_canonical_default_validation_and_mutation_target(self) -> None:
+        catalog = self._eventstore_sdk42_catalog()
+        missing = self._replace_catalog_property_element(catalog, "HexalithEventStoreVersion", b"")
+        self.assertEqual(["4.2.0"], [element.text for element in ET.fromstring(missing).iter("HexalithEventStoreVersion")])
+        self._assert_frontcomposer_profile_failure(missing, "must define exactly one version property")
+        for value in ("", "$(OtherVersion)", "1.2.3<Unexpected />"):
+            with self.subTest(value=value):
+                self._assert_frontcomposer_profile_failure(
+                    self._replace_catalog_property_value(catalog, "HexalithEventStoreVersion", value),
+                    "must contain a literal NuGet version",
+                )
+        duplicate = self._replace_catalog_property_element(catalog, "HexalithEventStoreVersion",
+            b"<HexalithEventStoreVersion>5.0.1</HexalithEventStoreVersion>" * 2)
+        self._assert_frontcomposer_profile_failure(duplicate, "must define exactly one version property")
+
+    def _immutable_consumer_catalog(self) -> bytes:
+        root = ET.fromstring(self._eventstore_qualification_catalog())
+        actual = ET.fromstring((ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes())
+        properties = root.find("PropertyGroup")
+        properties.remove(list(root.iter("HexalithTenantsVersion"))[1])  # Isolate this view from the unrelated qualification override.
+        for name in ("HexalithFrontComposerImmutable10CatalogView", "HexalithImmutableVersion"):
+            elements = list(actual.iter(name))
+            self.assertEqual(2, len(elements), name)
+            properties.extend(copy.deepcopy(element) for element in elements)
+        next(row for row in root.iter("PackageVersion") if row.get("Include") == "System.Collections.Immutable").set("Version", "$(HexalithImmutableVersion)")
+        return self._catalog_xml_bytes(root)
+
+    def test_immutable_consumer_view_satisfies_existing_policy_without_normalization(self) -> None:
+        catalog = self._immutable_consumer_catalog()
+        self.assertEqual(1, self._evaluate_frontcomposer_profile(catalog)["selectors_validated"])
+        self.assertEqual("$(HexalithImmutableVersion)", next(row for row in ET.fromstring(catalog).iter("PackageVersion") if row.get("Include") == "System.Collections.Immutable").get("Version"))
+        # Other profiles still reject dynamic package authority.
+        with self.assertRaisesRegex(dg.GraphError, "literal NuGet version"):
+            self._evaluate_frontcomposer_profile(catalog, profile_name="strict-catalog-v1")
+        # The authored candidate's real package pins/import are checked without a rewrite.
+        actual = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        self.assertEqual(1, self._evaluate_frontcomposer_profile(actual, logging_target=self._analyzer_logging_target())["selectors_validated"])
+
+    def test_immutable_consumer_scope_matches_tracked_root_project_inventory(self) -> None:
+        tracked = set(_run(["ls-files", "-z", "--", "*.csproj"], ROOT).decode("utf-8").rstrip("\0").split("\0"))
+        archived = {
+            "samples/AdopterProofKit/v1/AdopterProofKit.Domain/AdopterProofKit.Domain.csproj",
+            "samples/AdopterProofKit/v1/AdopterProofKit.Web/AdopterProofKit.Web.csproj",
+        }
+        self.assertTrue(archived <= tracked)
+        admitted_paths = tracked - archived
+        inventory = {pathlib.PurePosixPath(path).stem for path in admitted_paths}
+        self.assertEqual(len(admitted_paths), len(inventory), "Project names must identify a single tracked consumer")
+        self.assertEqual(inventory, dg._FRONTCOMPOSER_IMMUTABLE_PROJECTS)
+        catalog = ET.fromstring((ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes())
+        selectors = list(catalog.iter("HexalithFrontComposerImmutable10CatalogView"))
+        self.assertEqual(2, len(selectors))
+        names = re.findall(r"\$\(MSBuildProjectName\.Equals\('([A-Za-z0-9._-]+)'\)\)", selectors[1].get("Condition", ""))
+        self.assertEqual(len(inventory), len(names))
+        self.assertEqual(inventory, set(names))
+        owner_matrix = ast.parse((ROOT / "references/Hexalith.Builds/Tools/test-frontcomposer-immutable-view.py").read_text())
+        assignments = [node for node in owner_matrix.body if isinstance(node, ast.Assign)
+                       and any(isinstance(target, ast.Name) and target.id == "PROJECTS" for target in node.targets)]
+        self.assertEqual(1, len(assignments))
+        matrix_names = ast.literal_eval(assignments[0].value)
+        self.assertEqual(len(inventory), len(matrix_names))
+        self.assertEqual(inventory, set(matrix_names))
+
+    def test_package_matching_detects_wildcard_masking_in_strict_profiles(self) -> None:
+        for attribute, identity in (("Remove", "System.*"), ("Update", "*.Immutable"), ("Include", "Other.*;system.collections.*")):
+            with self.subTest(attribute=attribute, identity=identity):
+                root = ET.fromstring('<Project><ItemGroup><PackageVersion Include="System.Collections.Immutable" Version="10.0.15" /></ItemGroup></Project>')
+                attributes = {attribute: identity}
+                if attribute != "Remove":
+                    attributes["Version"] = "11.0.0"
+                ET.SubElement(root.find("ItemGroup"), "PackageVersion", attributes)
+                with self.assertRaisesRegex(dg.GraphError, "exactly one unmasked shared operation"):
+                    dg.assert_authoritative_package_version(root, "System.Collections.Immutable", "10.0.15", "strict catalog")
+        self.assertFalse(dg._simple_match("Other.*", "System.Collections.Immutable"))
+        self.assertFalse(dg._simple_match("System.Collections.Immutable.Future", "System.Collections.Immutable"))
+
+    def test_immutable_consumer_view_rejects_wildcard_package_masking(self) -> None:
+        for attribute, identity in (("Remove", "System.*"), ("Remove", "*Immutable"), ("Update", "System.Collections.*"), ("Update", "Other.*;System.*"), ("Include", "System.*")):
+            with self.subTest(attribute=attribute, identity=identity):
+                root = ET.fromstring(self._immutable_consumer_catalog())
+                attributes = {attribute: identity}
+                if attribute != "Remove":
+                    attributes["Version"] = "11.0.0"
+                ET.SubElement(ET.SubElement(root, "ItemGroup"), "PackageVersion", attributes)
+                self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "requires one unmasked package operation")
+        root = ET.fromstring(self._immutable_consumer_catalog())
+        ET.SubElement(ET.SubElement(root, "ItemGroup"), "PackageVersion", {"Remove": "Other.*"})
+        self.assertEqual(1, self._evaluate_frontcomposer_profile(self._catalog_xml_bytes(root))["selectors_validated"])
+
+    def test_immutable_consumer_view_rejects_percent_escaped_update_dots(self) -> None:
+        root = ET.fromstring(self._immutable_consumer_catalog())
+        ET.SubElement(root.find("ItemGroup"), "PackageVersion", {"Update": "System%2ECollections%2EImmutable", "Version": "99.0.0"})
+        self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "dynamic or escaped shared operations")
+
+    def test_immutable_consumer_view_rejects_percent_escaped_update_letter(self) -> None:
+        root = ET.fromstring(self._immutable_consumer_catalog())
+        ET.SubElement(root.find("ItemGroup"), "PackageVersion", {"Update": "System.Collections.%49mmutable", "Version": "99.0.0"})
+        self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "dynamic or escaped shared operations")
+
+    def test_immutable_consumer_view_rejects_executable_package_output(self) -> None:
+        root = ET.fromstring(self._immutable_consumer_catalog())
+        target = ET.SubElement(root, "Target", {"Name": "ForgeImmutable", "BeforeTargets": "CollectPackageReferences"})
+        create_item = ET.SubElement(target, "CreateItem", {"Include": "System.Collections.Immutable", "AdditionalMetadata": "Version=11.0.0"})
+        ET.SubElement(create_item, "Output", {"TaskParameter": "Include", "ItemName": "PackageVersion"})
+        self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "cannot prove package authority with executable targets, tasks or outputs")
+
+    def test_immutable_consumer_view_rejects_broadened_missing_or_dynamic_scope(self) -> None:
+        for mutation in ("broadened", "missing-project", "duplicate-project", "dynamic", "starts-with", "missing-selector", "duplicate-selector", "reassigned", "alias", "true-default"):
+            with self.subTest(mutation=mutation):
+                root = ET.fromstring(self._immutable_consumer_catalog())
+                properties = root.find("PropertyGroup")
+                default, enabled = list(root.iter("HexalithFrontComposerImmutable10CatalogView"))
+                condition = enabled.get("Condition")
+                if mutation == "broadened":
+                    enabled.set("Condition", condition + " or $(MSBuildProjectName.Equals('Hexalith.Builds.Tooling'))")
+                elif mutation == "missing-project":
+                    enabled.set("Condition", " or ".join(condition.split(" or ")[1:]))
+                elif mutation == "duplicate-project":
+                    enabled.set("Condition", condition + " or " + condition.split(" or ")[0])
+                elif mutation == "dynamic":
+                    enabled.set("Condition", condition.replace("Hexalith.FrontComposer.Contracts", "$(Other)", 1))
+                elif mutation == "starts-with":
+                    enabled.set("Condition", condition.replace(".Equals(", ".StartsWith("))
+                elif mutation == "missing-selector":
+                    properties.remove(default)
+                elif mutation == "duplicate-selector":
+                    properties.append(copy.deepcopy(enabled))
+                elif mutation == "reassigned":
+                    ET.SubElement(properties, default.tag).text = "true"
+                elif mutation == "alias":
+                    enabled.tag = enabled.tag.lower()
+                else:
+                    default.text = "true"
+                self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "System.Collections.Immutable FrontComposer compatibility view")
+
+    def test_immutable_consumer_view_rejects_unproven_values_aliases_and_package_authority(self) -> None:
+        for mutation in ("wrong-selected", "dynamic-selected", "dynamic-default", "version-alias", "duplicate-value", "missing-value", "package-literal", "package-dynamic", "package-update", "package-duplicate", "package-case-alias", "package-attribute-alias", "dynamic-package-identity", "package-version-override", "package-child"):
+            with self.subTest(mutation=mutation):
+                root = ET.fromstring(self._immutable_consumer_catalog())
+                properties = root.find("PropertyGroup")
+                default, selected = list(root.iter("HexalithImmutableVersion"))
+                row = next(row for row in root.iter("PackageVersion") if row.get("Include") == "System.Collections.Immutable")
+                if mutation == "wrong-selected":
+                    selected.text = "10.0.16"
+                elif mutation == "dynamic-selected":
+                    selected.text = "$(Other)"
+                elif mutation == "dynamic-default":
+                    default.text = "$(Other)"
+                elif mutation == "version-alias":
+                    selected.tag = selected.tag.lower()
+                elif mutation == "duplicate-value":
+                    properties.append(copy.deepcopy(selected))
+                elif mutation == "missing-value":
+                    properties.remove(selected)
+                elif mutation == "package-literal":
+                    row.set("Version", "10.0.15")
+                elif mutation == "package-dynamic":
+                    row.set("Version", "$(Other)")
+                elif mutation == "package-update":
+                    row.set("Update", row.attrib.pop("Include"))
+                elif mutation == "package-duplicate":
+                    root.find("ItemGroup").append(copy.deepcopy(row))
+                elif mutation == "package-case-alias":
+                    alias = copy.deepcopy(row)
+                    alias.tag = "packageversion"
+                    root.find("ItemGroup").append(alias)
+                elif mutation == "package-attribute-alias":
+                    alias = copy.deepcopy(row)
+                    alias.set("include", alias.attrib.pop("Include"))
+                    root.find("ItemGroup").append(alias)
+                elif mutation == "dynamic-package-identity":
+                    ET.SubElement(root.find("ItemGroup"), "PackageVersion", {"Include": "$(UnknownPackage)", "Version": "11.0.0"})
+                elif mutation == "package-version-override":
+                    row.set("VersionOverride", "10.0.15")
+                else:
+                    ET.SubElement(row, "Version").text = "10.0.15"
+                self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "System.Collections.Immutable FrontComposer compatibility view")
+
+    def test_immutable_consumer_view_rejects_invalid_placement_order_and_imports(self) -> None:
+        for mutation in ("conditional-selector", "target-value", "choose-value", "selector-after-value", "selected-before-default", "conditional-package", "target-package", "import"):
+            with self.subTest(mutation=mutation):
+                root = ET.fromstring(self._immutable_consumer_catalog())
+                properties = root.find("PropertyGroup")
+                enabled = list(root.iter("HexalithFrontComposerImmutable10CatalogView"))[1]
+                default, selected = list(root.iter("HexalithImmutableVersion"))
+                row = next(row for row in root.iter("PackageVersion") if row.get("Include") == "System.Collections.Immutable")
+                if mutation == "conditional-selector":
+                    properties.remove(enabled)
+                    ET.SubElement(root, "PropertyGroup", {"Condition": "'$(Other)' == 'true'"}).append(enabled)
+                elif mutation in {"target-value", "choose-value"}:
+                    properties.remove(selected)
+                    if mutation == "target-value":
+                        group = ET.SubElement(ET.SubElement(root, "Target", {"Name": "Later"}), "PropertyGroup")
+                    else:
+                        group = ET.SubElement(ET.SubElement(ET.SubElement(root, "Choose"), "When", {"Condition": "true"}), "PropertyGroup")
+                    group.append(selected)
+                elif mutation == "selector-after-value":
+                    properties.remove(enabled)
+                    properties.append(enabled)
+                elif mutation == "selected-before-default":
+                    properties.remove(selected)
+                    properties.insert(0, selected)
+                elif mutation == "conditional-package":
+                    row.set("Condition", "true")
+                elif mutation == "target-package":
+                    root.find("ItemGroup").remove(row)
+                    ET.SubElement(ET.SubElement(root, "Target", {"Name": "Later"}), "ItemGroup").append(row)
+                else:
+                    ET.SubElement(root, "Import", {"Project": "unknown.props"})
+                self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "System.Collections.Immutable")
 
     def test_frontcomposer_profile_cross_module_versions_change_semantic_validation_passes(self) -> None:
         property_names = (

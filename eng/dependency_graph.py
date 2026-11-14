@@ -1395,7 +1395,7 @@ def _simple_match(item_spec: str | None, package_id: str) -> bool:
         return False
     for spec in item_spec.split(";"):
         spec = spec.strip()
-        if spec and fnmatch.fnmatch(spec.lower(), package_id.lower()):
+        if spec and fnmatch.fnmatchcase(package_id.lower(), spec.lower()):
             return True
     return False
 
@@ -1460,18 +1460,150 @@ def assert_selected_catalog_property(root: ET.Element, prop_name: str, expected_
         raise GraphError(f"{context}: {prop_name} expected {expected_value!r}, found {observed_text!r}")
 
 
+def _validate_catalog_logging_import(
+    root: ET.Element, default: ET.Element, parents: dict[ET.Element, ET.Element],
+    catalog_source: tuple[Path, str, int] | None, context: str,
+    contract: str = "HexalithEventStoreVersion SDK4.2",
+) -> None:
+    """Prove the sole optional analyzer import from the catalog's exact Builds commit."""
+    imports = [element for element in root.iter() if element.tag in {"Import", "ImportGroup", "Sdk"}]
+    if root.get("Sdk") is not None:
+        raise GraphError(f"{context}: {contract} proof rejects implicit SDK imports")
+    if not imports:
+        return
+    expected_import = {
+        "Project": "$(MSBuildThisFileDirectory)Logging.Build.targets",
+        "Condition": "Exists('$(MSBuildThisFileDirectory)Logging.Build.targets')",
+    }
+    positions = {element: index for index, element in enumerate(root.iter())}
+    if (len(imports) != 1 or imports[0].tag != "Import" or imports[0].attrib != expected_import
+            or parents.get(imports[0]) is not root or positions[imports[0]] <= positions[default]
+            or list(imports[0]) or (imports[0].text or "").strip()):
+        raise GraphError(f"{context}: {contract} proof rejects unsupported, grouped or misplaced catalog imports")
+    if catalog_source is None:
+        raise GraphError(f"{context}: {contract} logging import requires its exact committed Builds source")
+    local_path, commit, max_bytes = catalog_source
+    commit = require_commit(commit, f"{context}: logging import source commit")
+    path = "Props/Logging.Build.targets"
+    entry = _tree_entry(local_path, commit, path)
+    if entry is None:
+        return  # The exact Exists condition is false in this committed contract tree.
+    mode, object_type, _object_id = entry
+    if mode not in {"100644", "100755"} or object_type != "blob":
+        raise GraphError(f"{context}: {path} at {commit} must be a regular committed blob, found {mode} {object_type}")
+    blob = read_blob(local_path, commit, path, max_bytes, context)
+    if blob is None:
+        raise GraphError(f"{context}: {path} at {commit} disappeared during committed import inspection")
+    target = parse_project_xml(blob, f"{context}: {path}@{commit}")
+
+    expected = ("Project", {}, (("Target", {
+        "Name": "HexalithRemoveReplacedLoggingSourceGenerator",
+        "AfterTargets": "ResolveReferences",
+        "Condition": "'$(DisableMicrosoftExtensionsLoggingSourceGenerator)' == 'true'",
+    }, (("ItemGroup", {}, (
+        ("_HexalithTelemetryLoggingGenerator", {
+            "Include": "@(Analyzer)", "Condition": "'%(Analyzer.Filename)' == 'Microsoft.Gen.Logging'",
+        }, ()),
+        ("Analyzer", {
+            "Remove": "@(Analyzer)",
+            "Condition": "'@(_HexalithTelemetryLoggingGenerator)' != '' and '%(Analyzer.Filename)' == 'Microsoft.Extensions.Logging.Generators'",
+        }, ()),
+    )),)),))
+
+    def require_shape(element: ET.Element, expected_node: tuple) -> None:
+        tag, attributes, children = expected_node
+        if (element.tag != tag or element.attrib != attributes or len(element) != len(children)
+                or (element.text or "").strip() or (element.tail or "").strip()):
+            raise GraphError(f"{context}: {path} must contain only the closed analyzer-only XML shape")
+        for child, expected_child in zip(element, children, strict=True):
+            require_shape(child, expected_child)
+
+    require_shape(target, expected)
+
+
+def _inactive_eventstore_sdk42_override(
+    root: ET.Element, matches: list[ET.Element], parents: dict[ET.Element, ET.Element], context: str,
+    catalog_source: tuple[Path, str, int] | None,
+) -> ET.Element | None:
+    """Recognize the SDK4.2 row outside FrontComposer's catalog-default scope.
+
+    Invocation-level global properties retain MSBuild precedence. This static
+    default proof does not authorize them; governed build argv is separately
+    bound by the active policy.
+    """
+    if any(element.tag.casefold() == "hexalitheventstoreversion" and element.tag != "HexalithEventStoreVersion"
+           for element in root.iter()):
+        raise GraphError(f"{context}: HexalithEventStoreVersion SDK4.2 proof rejects case-insensitive version aliases")
+    condition = (
+        "'$(HexalithEventStoreVersion)' == '' and ("
+        "'$(HexalithPartiesSdk42CatalogView)' == 'true' or "
+        "'$(HexalithBuildsPackagedHostSdk42CatalogView)' == 'true')"
+    )
+    overrides = [element for element in matches
+                 if element.attrib == {"Condition": condition} and element.text == "4.2.0" and not list(element)]
+    if len(overrides) != 1:
+        return None
+    override = overrides[0]
+    positions = {element: index for index, element in enumerate(root.iter())}
+
+    def require_global(element: ET.Element, name: str) -> None:
+        group = parents.get(element)
+        if (root.get("Condition") is not None or group is None or group.tag != "PropertyGroup"
+                or group.get("Condition") is not None or parents.get(group) is not root):
+            raise GraphError(f"{context}: HexalithEventStoreVersion SDK4.2 {name} must be in an unconditional top-level PropertyGroup")
+
+    require_global(override, "override")
+    selectors = {
+        "HexalithPartiesSdk42CatalogView": None,
+        "HexalithBuildsPackagedHostSdk42CatalogView": {
+            "Hexalith.Builds.Module.AppHost", "Hexalith.Builds.Module.EventStoreHost", "Hexalith.Builds.Module.UiHost",
+        },
+    }
+    clause = re.compile(r"\$\(MSBuildProjectName\.Equals\('(?P<project>[A-Za-z0-9._-]+)'\)\)")
+    for name, allowed_projects in selectors.items():
+        definitions = [element for element in root.iter() if element.tag.casefold() == name.casefold()]
+        if len(definitions) != 2 or any(element.tag != name for element in definitions):
+            raise GraphError(f"{context}: HexalithEventStoreVersion SDK4.2 selector {name} requires exactly two canonical declarations")
+        default, enabled = definitions
+        for element in definitions:
+            require_global(element, name)
+        if default.attrib or default.text != "false" or list(default):
+            raise GraphError(f"{context}: HexalithEventStoreVersion SDK4.2 selector {name} requires an unconditional literal false default")
+        if set(enabled.attrib) != {"Condition"} or enabled.text != "true" or list(enabled):
+            raise GraphError(f"{context}: HexalithEventStoreVersion SDK4.2 selector {name} requires one conditional literal true assignment")
+        clauses = re.split(r"\s+or\s+", enabled.attrib["Condition"].strip())
+        parsed = [clause.fullmatch(value) for value in clauses]
+        projects = [match.group("project") for match in parsed if match is not None]
+        if (len(projects) != len(clauses) or not projects or len(projects) != len(set(projects))
+                or (allowed_projects is not None and set(projects) != allowed_projects)
+                or (allowed_projects is None and any(re.fullmatch(r"Hexalith\.Parties(?:\.[A-Za-z0-9_-]+)*", project) is None for project in projects))):
+            raise GraphError(f"{context}: HexalithEventStoreVersion SDK4.2 selector {name} must contain only its literal project-name Equals clauses")
+        if not positions[default] < positions[enabled] < positions[override]:
+            raise GraphError(f"{context}: HexalithEventStoreVersion SDK4.2 selector {name} must default false then select its projects before the override")
+    defaults = [element for element in matches if element is not override]
+    if len(defaults) == 1:
+        if positions[defaults[0]] < positions[override]:
+            raise GraphError(f"{context}: HexalithEventStoreVersion canonical default must follow the SDK4.2 override")
+        _validate_catalog_logging_import(root, defaults[0], parents, catalog_source, context)
+    return override
+
+
 def assert_selected_catalog_property_shape(
     root: ET.Element,
     prop_name: str,
     context: str,
     *,
     allow_eventstore_qualification: bool = False,
+    catalog_source: tuple[Path, str, int] | None = None,
 ) -> None:
     """Validate the unique literal default, excluding only a known inactive qualification override.
 
     The FrontComposer profile may exclude the exact Story 5.12 package-only
-    Tenants override for five EventStore qualification projects. Other profiles,
-    properties, conditions and shapes retain the strict unique-property rule.
+    Tenants override and the retained EventStore SDK4.2 row after proving its
+    catalog-default selector scope excludes FrontComposer. Invocation-level
+    global overrides remain separate MSBuild inputs, governed by policy-bound
+    build argv. Other profiles, properties, conditions and shapes retain the
+    strict unique-property rule.
     """
     matches = list(root.iter(prop_name))
     parents = _parent_map(root)
@@ -1497,6 +1629,10 @@ def assert_selected_catalog_property_shape(
         ]
         if len(qualification_overrides) == 1:
             matches.remove(qualification_overrides[0])
+    if allow_eventstore_qualification and prop_name == "HexalithEventStoreVersion":
+        override = _inactive_eventstore_sdk42_override(root, matches, parents, context, catalog_source)
+        if override is not None:
+            matches.remove(override)
     if len(matches) != 1:
         observed_values = [match.text or "" for match in matches]
         observed = "<missing>" if not observed_values else repr(observed_values)
@@ -1557,6 +1693,101 @@ def assert_authoritative_package_presence(root: ET.Element, package_id: str, con
             f"{context}: {package_id} must declare a nonempty literal NuGet version, found {version!r}"
         )
     return el
+
+
+_FRONTCOMPOSER_IMMUTABLE_PROJECTS = frozenset({
+    "Counter.Domain",
+    "Counter.Specimens",
+    "Counter.Specimens.Domain",
+    "Counter.Web",
+    "Hexalith.FrontComposer.AppHost",
+    "Hexalith.FrontComposer.Cli",
+    "Hexalith.FrontComposer.Cli.Tests",
+    "Hexalith.FrontComposer.Contracts",
+    "Hexalith.FrontComposer.Contracts.Tests",
+    "Hexalith.FrontComposer.Contracts.UI",
+    "Hexalith.FrontComposer.Contracts.UI.Tests",
+    "Hexalith.FrontComposer.CounterFixture",
+    "Hexalith.FrontComposer.Mcp",
+    "Hexalith.FrontComposer.Mcp.Tests",
+    "Hexalith.FrontComposer.Schema",
+    "Hexalith.FrontComposer.Shell",
+    "Hexalith.FrontComposer.Shell.Tests",
+    "Hexalith.FrontComposer.Shell.Tests.Bench",
+    "Hexalith.FrontComposer.SourceTools",
+    "Hexalith.FrontComposer.SourceTools.Tests",
+    "Hexalith.FrontComposer.Testing",
+    "Hexalith.FrontComposer.Testing.Tests",
+    "Hexalith.FrontComposer.UI",
+    "Hexalith.FrontComposer.UI.Tests",
+    "IdeParityCounter",
+})
+
+
+def assert_frontcomposer_immutable_version(
+    root: ET.Element, expected_version: str, context: str,
+    catalog_source: tuple[Path, str, int] | None,
+) -> None:
+    """Prove the named net10 consumer view without evaluating candidate MSBuild."""
+    selector = "HexalithFrontComposerImmutable10CatalogView"
+    version_property = "HexalithImmutableVersion"
+    package = "System.Collections.Immutable"
+    nodes = list(root.iter())
+    if not any(element.tag.casefold() in {selector.casefold(), version_property.casefold()} for element in nodes):
+        assert_authoritative_package_version(root, package, expected_version, context)
+        return
+    parents = _parent_map(root)
+    positions = {element: index for index, element in enumerate(nodes)}
+
+    def reject(reason: str) -> None:
+        raise GraphError(f"{context}: {package} FrontComposer compatibility view {reason}")
+
+    if any(element.tag.casefold() in {"target", "usingtask", "output"} for element in nodes):
+        reject("cannot prove package authority with executable targets, tasks or outputs")
+
+    def declarations(name: str) -> list[ET.Element]:
+        found = [element for element in nodes if element.tag.casefold() == name.casefold()]
+        if len(found) != 2 or any(element.tag != name for element in found):
+            reject(f"requires exactly two canonical {name} declarations")
+        for element in found:
+            group = parents.get(element)
+            if (group is None or group.tag != "PropertyGroup" or parents.get(group) is not root
+                    or group.get("Condition") is not None or root.get("Condition") is not None or list(element)):
+                reject(f"requires global unconditional placement and scalar {name} values")
+        return found
+
+    disabled, enabled = declarations(selector)
+    if disabled.attrib or disabled.text != "false" or set(enabled.attrib) != {"Condition"} or enabled.text != "true":
+        reject("requires a literal false default and conditional true assignment")
+    clauses = re.split(r"\s+or\s+", enabled.attrib["Condition"].strip())
+    pattern = re.compile(r"\$\(MSBuildProjectName\.Equals\('(?P<project>[A-Za-z0-9._-]+)'\)\)")
+    parsed = [pattern.fullmatch(value) for value in clauses]
+    projects = [match.group("project") for match in parsed if match is not None]
+    if len(projects) != len(clauses) or len(projects) != len(set(projects)) or set(projects) != _FRONTCOMPOSER_IMMUTABLE_PROJECTS:
+        reject("requires the exact admitted literal project-name Equals scope")
+    default, selected = declarations(version_property)
+    if default.attrib or _NUGET_VERSION.fullmatch(default.text or "") is None:
+        reject("requires an unconditional literal shared default")
+    if selected.attrib != {"Condition": f"'$({selector})' == 'true'"} or selected.text != expected_version:
+        reject(f"must select policy version {expected_version!r}, found {selected.text!r}")
+    package_nodes = [element for element in nodes if element.tag.casefold() == "packageversion"]
+    identity_fields = {"include", "update", "remove"}
+    if any(key.casefold() in identity_fields and any(token in value for token in ("$(", "@(", "%"))
+           for element in package_nodes for key, value in element.attrib.items()):
+        reject("cannot prove package identity from dynamic or escaped shared operations")
+    operations = [element for element in package_nodes if any(
+        key.casefold() in identity_fields and _simple_match(value, package) for key, value in element.attrib.items()
+    )]
+    if len(operations) != 1:
+        reject("requires one unmasked package operation")
+    row = operations[0]
+    group = parents.get(row)
+    if (row.tag != "PackageVersion" or row.attrib != {"Include": package, "Version": f"$({version_property})"} or list(row)
+            or group is None or group.tag != "ItemGroup" or parents.get(group) is not root or group.get("Condition") is not None):
+        reject("requires one unconditional authoritative package row bound to its version property")
+    if not positions[disabled] < positions[enabled] < positions[default] < positions[selected] < positions[row]:
+        reject("requires selector, default, selected value and package declaration order")
+    _validate_catalog_logging_import(root, selected, parents, catalog_source, context, package)
 
 
 def assert_authoritative_package_version(root: ET.Element, package_id: str, expected_version: str, context: str) -> None:
@@ -1803,6 +2034,7 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
                         prop_name,
                         edge_context,
                         allow_eventstore_qualification=profile_name == "frontcomposer-catalog-v1",
+                        catalog_source=(resolve_local_path(policy, builds_identity, root_dir), edge["commit"], limits["max_catalog_blob_bytes"]),
                     )
 
                 for prop_name, expected_value in required_props.items():
@@ -1817,7 +2049,13 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
                             )
 
                 for package_id, expected_version in required_packages.items():
-                    assert_authoritative_package_version(catalog_xml, package_id, expected_version, edge_context)
+                    if profile_name == "frontcomposer-catalog-v1" and package_id == "System.Collections.Immutable":
+                        assert_frontcomposer_immutable_version(
+                            catalog_xml, expected_version, edge_context,
+                            (resolve_local_path(policy, builds_identity, root_dir), edge["commit"], limits["max_catalog_blob_bytes"]),
+                        )
+                    else:
+                        assert_authoritative_package_version(catalog_xml, package_id, expected_version, edge_context)
                     if owner_checks.get("no_local_override_for_selected_catalog_packages") and own_xml is not None:
                         if find_package_version_ops(own_xml, package_id):
                             raise GraphError(

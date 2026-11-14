@@ -1,7 +1,7 @@
 name: Release
 
 # Operator-controlled production release. The unprotected jobs authenticate the
-# exact current main commit and its successful push CI before any production job
+# exact current main commit and its successful push CI and Quality before any production job
 # can start. Semantic Release decides whether that exact source is releasable.
 on:
   workflow_dispatch:
@@ -38,7 +38,7 @@ jobs:
           persist-credentials: false
           submodules: false
 
-      - name: Authenticate current main and successful push CI
+      - name: Authenticate current main and successful push CI and Quality
         id: ci
         shell: bash
         env:
@@ -64,13 +64,18 @@ jobs:
           gh api "repos/${REPOSITORY}/git/ref/heads/main" > artifacts/release-source/main-ref.json
           gh api "repos/${REPOSITORY}/actions/workflows/ci.yml/runs?branch=main&event=push&status=completed&head_sha=${DISPATCH_SHA}&per_page=100" \
             > artifacts/release-source/ci-runs.json
+          gh api "repos/${REPOSITORY}/actions/workflows/quality.yml/runs?branch=main&event=push&status=completed&head_sha=${DISPATCH_SHA}&per_page=100" \
+            > artifacts/release-source/quality-runs.json
           python3 eng/release_contract.py select-ci \
             --dispatch-sha "$DISPATCH_SHA" \
             --main-ref artifacts/release-source/main-ref.json \
             --runs artifacts/release-source/ci-runs.json \
+            --quality-runs artifacts/release-source/quality-runs.json \
             --output artifacts/release-source/selected-ci.json
           run_id="$(jq -er '.run_id' artifacts/release-source/selected-ci.json)"
           run_attempt="$(jq -er '.run_attempt' artifacts/release-source/selected-ci.json)"
+          jq -e '.quality_run' artifacts/release-source/selected-ci.json \
+            > artifacts/release-source/selected-quality-run.json
           echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
           echo "run-attempt=$run_attempt" >> "$GITHUB_OUTPUT"
           echo "candidate=$DISPATCH_SHA" >> "$GITHUB_OUTPUT"
@@ -145,6 +150,7 @@ jobs:
             "$handoff" > /dev/null
           policy_commit="$(jq -er '.dependency_policy.commit' "$handoff")"
           echo "policy-commit=$policy_commit" >> "$GITHUB_OUTPUT"
+          cp "$handoff" artifacts/release-source/dependency-release-handoff.json
 
       - name: Validate approved package boundary
         run: |
@@ -161,7 +167,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-ci-handoff-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/release-source/ci-handoff/dependency-release-handoff.json
+          path: |
+            artifacts/release-source/dependency-release-handoff.json
+            artifacts/release-source/selected-quality-run.json
           if-no-files-found: error
           retention-days: 30
 
@@ -289,6 +297,7 @@ jobs:
           RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER }}
           RELEASE_ATTESTATION_FALLBACK_APPROVED_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVED_AT }}
           RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT }}
+          RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256: ${{ vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256 }}
         run: |
           python3 eng/release_prepublish.py prepare --version "${{ needs.plan-release.outputs.version }}"
           python3 eng/release_prepublish.py bundle --version "${{ needs.plan-release.outputs.version }}"
@@ -547,7 +556,8 @@ jobs:
               echo "::error::AD-15 create-release cannot soft-defer after publication"
               exit 1
             fi
-            echo "AD-15 handoff deferred pending active-policy release evaluator authorization." >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::AD-15 authenticated CI handoff cannot defer for an unauthorized Release evaluator."
+            exit 1
           else
             echo "::error::AD-15 create-release failed unexpectedly (exit=$status)"
             exit "$status"

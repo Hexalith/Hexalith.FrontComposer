@@ -1,0 +1,66 @@
+{
+  "assets": [
+    {
+      "name": "package.nupkg",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "size": 10
+    }
+  ],
+  "candidate": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "ci_handoff": {
+    "evidence_sha256": "0f14cf4e59cf1a2dfb43987e484138bfda7dbeb0fa03dde2d428e0f4a5ca641a",
+    "repository": "github.com/hexalith/hexalith.frontcomposer",
+    "run_attempt": 2,
+    "run_id": 41,
+    "workflow_path": ".github/workflows/ci.yml"
+  },
+  "dependency_policy": {
+    "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "path": "eng/dependency-graph-policy.json",
+    "repository": "github.com/hexalith/hexalith.frontcomposer",
+    "schema": "hexalith.dependency-graph-policy.v1",
+    "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "evaluator": {
+    "actions": [
+      {
+        "blob_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "commit": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "path": "action.yml",
+        "repository": "github.com/actions/checkout"
+      }
+    ],
+    "caller": {
+      "blob_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "repository": "github.com/hexalith/hexalith.frontcomposer",
+      "workflow_path": ".github/workflows/release.yml"
+    },
+    "definition_digest": "35a77f131c5c85277a41fb614bb237b719aab4b15f7eb9d18267b511334ea49d",
+    "reusable": {
+      "blob_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "commit": "dddddddddddddddddddddddddddddddddddddddd",
+      "repository": "github.com/hexalith/hexalith.builds",
+      "workflow_path": ".github/workflows/release.yml"
+    }
+  },
+  "manifest": {
+    "path": "release-evidence.json",
+    "seal": "5555555555555555555555555555555555555555555555555555555555555555",
+    "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "release": {
+    "github_release_id": 9,
+    "published": true,
+    "tag": "v1.2.3",
+    "version": "1.2.3"
+  },
+  "release_run": {
+    "conclusion": "success",
+    "repository": "github.com/hexalith/hexalith.frontcomposer",
+    "run_attempt": 1,
+    "run_id": 42,
+    "workflow_path": ".github/workflows/release.yml"
+  },
+  "schema": "hexalith.release-verification-handoff.v1"
+}

@@ -51,6 +51,149 @@ class ReleaseContractTests(unittest.TestCase):
     def test_selects_one_successful_exact_source_push_ci(self) -> None:
         self.assertEqual(rc.select_exact_ci_run(self.sha, self._ref(), self._runs()), {"run_id": 101, "run_attempt": 2})
 
+    def _quality_runs(self) -> dict:
+        result = self._runs()
+        result["workflow_runs"][0].update({"id": 202, "path": ".github/workflows/quality.yml"})
+        return result
+
+    def test_unsuccessful_runs_do_not_make_one_success_ambiguous(self) -> None:
+        for workflow in (".github/workflows/ci.yml", ".github/workflows/quality.yml"):
+            with self.subTest(workflow=workflow):
+                runs = self._runs()
+                runs["workflow_runs"][0]["path"] = workflow
+                for offset, conclusion in enumerate(("failure", "cancelled"), start=1):
+                    failed = {**runs["workflow_runs"][0], "id": 101 + offset, "conclusion": conclusion}
+                    runs["workflow_runs"].append(failed)
+                runs["total_count"] = len(runs["workflow_runs"])
+                self.assertEqual(
+                    {"run_id": 101, "run_attempt": 2},
+                    rc.select_exact_ci_run(self.sha, self._ref(), runs, workflow_path=workflow),
+                )
+
+    def test_release_requires_and_records_exact_quality_success(self) -> None:
+        selected = rc.select_release_prerequisites(self.sha, self._ref(), self._runs(), self._quality_runs())
+        self.assertEqual({
+            "repository": "github.com/hexalith/hexalith.frontcomposer",
+            "workflow_path": ".github/workflows/quality.yml",
+            "run_id": 202, "run_attempt": 2, "event": "push", "branch": "main",
+            "head_sha": self.sha, "conclusion": "success",
+        }, selected["quality_run"])
+        for key, value in (
+            ("conclusion", "failure"), ("status", "in_progress"), ("event", "pull_request"),
+            ("head_branch", "feature"), ("head_sha", "b" * 40), ("path", ".github/workflows/ci.yml"),
+        ):
+            with self.subTest(key=key):
+                quality = self._quality_runs()
+                quality["workflow_runs"][0][key] = value
+                with self.assertRaises(rc.ContractError):
+                    rc.select_release_prerequisites(self.sha, self._ref(), self._runs(), quality)
+
+    def test_quality_duplicate_success_pagination_and_malformed_data_fail(self) -> None:
+        variants = []
+        duplicate = self._quality_runs()
+        duplicate["workflow_runs"].append({**duplicate["workflow_runs"][0], "id": 203})
+        duplicate["total_count"] = 2
+        variants.append(duplicate)
+        paginated = self._quality_runs()
+        paginated["total_count"] = 2
+        variants.extend((paginated, {"total_count": True, "workflow_runs": []}))
+        for key in ("id", "run_attempt"):
+            for value in (True, 0, 9007199254740992):
+                quality = self._quality_runs()
+                quality["workflow_runs"][0][key] = value
+                variants.append(quality)
+        for value in (None, [], "future-state"):
+            quality = self._quality_runs()
+            quality["workflow_runs"][0]["conclusion"] = value
+            variants.append(quality)
+        for quality in variants:
+            with self.subTest(quality=quality):
+                with self.assertRaises(rc.ContractError):
+                    rc.select_release_prerequisites(self.sha, self._ref(), self._runs(), quality)
+
+    def test_select_ci_cli_requires_quality_and_never_writes_failed_selection(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            work = pathlib.Path(temporary)
+            files = {"main-ref": self._ref(), "runs": self._runs(), "quality-runs": self._quality_runs()}
+            for name, payload in files.items():
+                (work / f"{name}.json").write_text(json.dumps(payload), encoding="utf-8")
+            output = work / "selection.json"
+            command = [sys.executable, str(ROOT / "eng/release_contract.py"), "select-ci", "--dispatch-sha", self.sha]
+            for name in files:
+                command.extend([f"--{name}", str(work / f"{name}.json")])
+            command.extend(["--output", str(output)])
+            passed = subprocess.run(command, capture_output=True, text=True, check=False)
+            self.assertEqual(0, passed.returncode, passed.stderr)
+            self.assertEqual(202, json.loads(output.read_text())["quality_run"]["run_id"])
+            output.unlink()
+            (work / "quality-runs.json").write_text('{"total_count":0,"workflow_runs":[]}', encoding="utf-8")
+            failed = subprocess.run(command, capture_output=True, text=True, check=False)
+            self.assertEqual(1, failed.returncode, failed.stderr)
+            self.assertFalse(output.exists())
+            self.assertIn("quality.yml", failed.stderr)
+
+    def test_dispatch_rejects_zero_sha_and_accepts_safe_integer_boundary(self) -> None:
+        with self.assertRaises(rc.ContractError):
+            rc.select_exact_ci_run("0" * 40, self._ref(), self._runs())
+        runs = self._runs()
+        runs["workflow_runs"][0].update({"id": 9007199254740991, "run_attempt": 9007199254740991})
+        self.assertEqual(
+            {"run_id": 9007199254740991, "run_attempt": 9007199254740991},
+            rc.select_exact_ci_run(self.sha, self._ref(), runs),
+        )
+
+    @unittest.skipUnless(shutil.which("bash") and shutil.which("jq"), "workflow script requires bash and jq")
+    def test_checked_in_workflow_checks_quality_before_emitting_candidate(self) -> None:
+        lines = WORKFLOW.read_text(encoding="utf-8").splitlines()
+        step = lines.index("      - name: Authenticate current main and successful push CI and Quality")
+        start = lines.index("        run: |", step) + 1
+        script = []
+        for line in lines[start:]:
+            if line and not line.startswith("          "):
+                break
+            script.append(line[10:])
+        with tempfile.TemporaryDirectory() as temporary:
+            work = pathlib.Path(temporary)
+            (work / "eng").mkdir()
+            shutil.copyfile(ROOT / "eng/release_contract.py", work / "eng/release_contract.py")
+            binary = work / "bin"
+            binary.mkdir()
+            git = binary / "git"
+            git.write_text('#!/usr/bin/env python3\nimport os\nprint(os.environ["DISPATCH_SHA"])\n')
+            gh = binary / "gh"
+            gh.write_text(
+                '#!/usr/bin/env python3\nimport pathlib, sys\n'
+                'path = sys.argv[-1]\n'
+                'name = "quality.json" if "/quality.yml/runs?" in path else '
+                '"ci.json" if "/ci.yml/runs?" in path else "ref.json" if path.endswith("/git/ref/heads/main") else None\n'
+                'if name is None: raise SystemExit("unexpected API request")\n'
+                'sys.stdout.write(pathlib.Path(name).read_text())\n'
+            )
+            git.chmod(0o755)
+            gh.chmod(0o755)
+            (work / "ref.json").write_text(json.dumps(self._ref()))
+            (work / "ci.json").write_text(json.dumps(self._runs()))
+            environment = {
+                **os.environ, "PATH": str(binary) + os.pathsep + os.environ["PATH"],
+                "DISPATCH_SHA": self.sha, "DISPATCH_REF": "refs/heads/main",
+                "REPOSITORY": "Hexalith/Hexalith.FrontComposer", "GITHUB_OUTPUT": str(work / "outputs"),
+            }
+            for conclusion, expected_status in (("success", 0), ("failure", 1)):
+                with self.subTest(conclusion=conclusion):
+                    quality = self._quality_runs()
+                    quality["workflow_runs"][0]["conclusion"] = conclusion
+                    (work / "quality.json").write_text(json.dumps(quality))
+                    (work / "outputs").unlink(missing_ok=True)
+                    shutil.rmtree(work / "artifacts", ignore_errors=True)
+                    result = subprocess.run(["bash", "-c", "\n".join(script)], cwd=work, env=environment, capture_output=True, text=True)
+                    self.assertEqual(expected_status, result.returncode, result.stdout + result.stderr)
+                    if expected_status == 0:
+                        quality_projection = json.loads((work / "artifacts/release-source/selected-quality-run.json").read_text())
+                        self.assertEqual(202, quality_projection["run_id"])
+                        self.assertIn(f"candidate={self.sha}", (work / "outputs").read_text())
+                    else:
+                        self.assertFalse((work / "outputs").exists())
+
     def test_rejects_stale_main_missing_or_failed_ci_and_malformed_api(self) -> None:
         cases = []
         stale = self._ref()
