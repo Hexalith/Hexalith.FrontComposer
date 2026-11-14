@@ -6,13 +6,13 @@ internal static class MigrationCommand {
     public static async Task<int> RunAsync(CommandOptions options, TextWriter output, TextWriter error, CancellationToken cancellationToken) {
         string format = options.Get("format", "text");
         if (format is not ("text" or "json")) {
-            await error.WriteLineAsync("--format must be 'text' or 'json'.").ConfigureAwait(false);
+            await error.WriteLineAsync("--format must be 'text' or 'json'.", cancellationToken: CancellationToken.None).ConfigureAwait(false);
             return ExitCodes.InvalidArguments;
         }
 
         bool apply = options.Has("apply");
         if (apply && options.Has("dry-run")) {
-            await error.WriteLineAsync("Choose either --dry-run or --apply, not both.").ConfigureAwait(false);
+            await error.WriteLineAsync("Choose either --dry-run or --apply, not both.", cancellationToken: CancellationToken.None).ConfigureAwait(false);
             return ExitCodes.InvalidArguments;
         }
 
@@ -20,19 +20,19 @@ internal static class MigrationCommand {
         string? to = options.Get("to");
         MigrationEdge? edge = MigrationCatalog.Resolve(from, to);
         if (edge is null) {
-            await error.WriteLineAsync(MigrationCatalog.UnsupportedMessage(from, to)).ConfigureAwait(false);
+            await error.WriteLineAsync(MigrationCatalog.UnsupportedMessage(from, to), cancellationToken: CancellationToken.None).ConfigureAwait(false);
             return ExitCodes.InvalidArguments;
         }
 
         var project = ProjectSelection.Resolve(options, Environment.CurrentDirectory);
         if (!project.Success) {
-            await error.WriteLineAsync(project.Error).ConfigureAwait(false);
+            await error.WriteLineAsync(project.Error, cancellationToken: CancellationToken.None).ConfigureAwait(false);
             return ExitCodes.InvalidArguments;
         }
 
         if (ProjectDocumentLoader.HasTopLevelImports(project.ProjectPath!)) {
             await error.WriteLineAsync(
-                "Warning: MSBuild <Import> items are not evaluated by frontcomposer migrate; files contributed only by imports are not migrated. DocsLink: src/Hexalith.FrontComposer.Cli/README.md#migration-output-notes.")
+                "Warning: MSBuild <Import> items are not evaluated by frontcomposer migrate; files contributed only by imports are not migrated. DocsLink: src/Hexalith.FrontComposer.Cli/README.md#migration-output-notes.", cancellationToken: CancellationToken.None)
                 .ConfigureAwait(false);
         }
 

@@ -118,7 +118,7 @@ internal static class GeneratedOutputLoader {
             _ = await standardOutput.ConfigureAwait(false);
             string stderr = await standardError.ConfigureAwait(false);
             if (process.ExitCode != 0 && !string.IsNullOrWhiteSpace(stderr)) {
-                await error.WriteLineAsync(OutputSanitizer.Sanitize(stderr, 4_000)).ConfigureAwait(false);
+                await error.WriteLineAsync(OutputSanitizer.Sanitize(stderr, 4_000), cancellationToken: CancellationToken.None).ConfigureAwait(false);
             }
 
             return process.ExitCode;

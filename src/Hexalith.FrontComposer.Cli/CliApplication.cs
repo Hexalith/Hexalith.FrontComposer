@@ -15,6 +15,7 @@ public static class CliApplication {
             return ExitCodes.Success;
         }
 
+        // Failure diagnostics remain available after the caller cancels the operation.
         try {
             return args[0] switch {
                 "inspect" => await InspectCommand.RunAsync(CommandOptions.Parse(args.Skip(1)), output, error, cancellationToken)
@@ -25,15 +26,15 @@ public static class CliApplication {
             };
         }
         catch (CommandLineException ex) {
-            await error.WriteLineAsync(OutputSanitizer.Sanitize(ex.Message, 240)).ConfigureAwait(false);
+            await error.WriteLineAsync(OutputSanitizer.Sanitize(ex.Message, 240), cancellationToken: CancellationToken.None).ConfigureAwait(false);
             return ExitCodes.InvalidArguments;
         }
         catch (OperationCanceledException) {
-            await error.WriteLineAsync("Operation was cancelled. No further files were written.").ConfigureAwait(false);
+            await error.WriteLineAsync("Operation was cancelled. No further files were written.", cancellationToken: CancellationToken.None).ConfigureAwait(false);
             return ExitCodes.ApplyWriteFailure;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
-            await error.WriteLineAsync("File-system operation failed: " + OutputSanitizer.Sanitize(ex.Message)).ConfigureAwait(false);
+            await error.WriteLineAsync("File-system operation failed: " + OutputSanitizer.Sanitize(ex.Message), cancellationToken: CancellationToken.None).ConfigureAwait(false);
             return ExitCodes.ApplyWriteFailure;
         }
     }

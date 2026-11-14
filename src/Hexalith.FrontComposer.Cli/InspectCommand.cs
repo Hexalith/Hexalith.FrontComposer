@@ -6,13 +6,13 @@ internal static class InspectCommand {
     public static async Task<int> RunAsync(CommandOptions options, TextWriter output, TextWriter error, CancellationToken cancellationToken) {
         string format = options.Get("format", "text");
         if (format is not ("text" or "json")) {
-            await error.WriteLineAsync("--format must be 'text' or 'json'.").ConfigureAwait(false);
+            await error.WriteLineAsync("--format must be 'text' or 'json'.", cancellationToken: CancellationToken.None).ConfigureAwait(false);
             return ExitCodes.InvalidArguments;
         }
 
         var project = ProjectSelection.Resolve(options, Environment.CurrentDirectory);
         if (!project.Success) {
-            await error.WriteLineAsync(project.Error).ConfigureAwait(false);
+            await error.WriteLineAsync(project.Error, cancellationToken: CancellationToken.None).ConfigureAwait(false);
             return ExitCodes.InvalidArguments;
         }
 
@@ -21,7 +21,7 @@ internal static class InspectCommand {
         InspectLoadResult load = await GeneratedOutputLoader.LoadAsync(project.ProjectPath!, configuration, framework, options.Has("build"), options.Has("absolute-paths"), error, cancellationToken)
             .ConfigureAwait(false);
         if (!load.Success) {
-            await error.WriteLineAsync(load.Error).ConfigureAwait(false);
+            await error.WriteLineAsync(load.Error, cancellationToken: CancellationToken.None).ConfigureAwait(false);
             return load.ExitCode;
         }
 
@@ -30,7 +30,7 @@ internal static class InspectCommand {
         if (!string.IsNullOrWhiteSpace(severity)) {
             int minimumSeverity = NormalizeSeverityRank(severity);
             if (minimumSeverity < 0) {
-                await error.WriteLineAsync("--severity must be one of hidden, info, warning, or error.").ConfigureAwait(false);
+                await error.WriteLineAsync("--severity must be one of hidden, info, warning, or error.", cancellationToken: CancellationToken.None).ConfigureAwait(false);
                 return ExitCodes.InvalidArguments;
             }
 
@@ -49,7 +49,7 @@ internal static class InspectCommand {
         if (!string.IsNullOrWhiteSpace(requestedType)) {
             TypeMatchResult match = TypeMatcher.Filter(report, requestedType);
             if (!match.Success) {
-                await error.WriteLineAsync(match.Error).ConfigureAwait(false);
+                await error.WriteLineAsync(match.Error, cancellationToken: CancellationToken.None).ConfigureAwait(false);
                 return match.ExitCode;
             }
 
