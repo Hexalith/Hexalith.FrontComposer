@@ -94,6 +94,7 @@ public sealed class ExpandInRowJSModule : IExpandInRowJSModule, IAsyncDisposable
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "BL0016", Justification = "InitializeAsync awaits the shared import task and handles circuit and JS failures while clearing the failed import for retry.")]
     private Task<IJSObjectReference> GetOrStartImport() {
         lock (_importGate) {
             _moduleTask ??= _js.InvokeAsync<IJSObjectReference>("import", ModulePath).AsTask();

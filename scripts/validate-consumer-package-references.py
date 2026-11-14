@@ -11,7 +11,7 @@ Proves the two documented FrontComposer consumer boundaries (FR24 AC6) with thro
 
 * **Contracts-only** — references ``Hexalith.FrontComposer.Contracts`` only, compiles against
   the public contract surface, and asserts NO Blazor / Fluent / Fluxor runtime assembly resolves
-  into its output (the kernel-split invariant: ``Contracts`` targets ``net10.0;netstandard2.0``
+  into its output (the kernel-split invariant: ``Contracts`` targets ``net11.0;netstandard2.0``
   and is UI-clean, so a Contracts-only consumer never inherits UI runtime deps).
 * **Shell/UI** — references ``Contracts`` + ``Contracts.UI`` + ``Shell`` and compiles the
   documented ``AddHexalithFrontComposerQuickstart`` bootstrap surface (Blazor/Fluent runtime deps
@@ -143,7 +143,7 @@ def write_contracts_only_consumer(root: Path, version: str) -> Path:
         f"""<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
@@ -179,7 +179,7 @@ def write_shell_ui_consumer(root: Path, version: str) -> Path:
         f"""<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
@@ -232,7 +232,7 @@ def build_consumer(project_file: Path) -> Path:
         ["build", str(project_file), "--no-restore", "--configuration", "Release", "-warnaserror", "-p:WarningsNotAsErrors=NU1603"],
         project_file.parent,
     )
-    return project_file.parent / "bin" / "Release" / "net10.0"
+    return project_file.parent / "bin" / "Release" / "net11.0"
 
 
 def main() -> int:

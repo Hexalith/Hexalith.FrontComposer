@@ -14,7 +14,7 @@ Asserts, over the CI-time pack output:
   FrontComposer only ships a README on Cli/Testing) and all packages share one version;
 * no package depends on a host / test / sample project (forbidden-fragment guard); and
 * the kernel-split invariant (FR24 AC6): ``Hexalith.FrontComposer.Contracts`` — which targets
-  ``net10.0;netstandard2.0`` and must stay UI-clean — declares NO Blazor / Fluent / Fluxor
+  ``net11.0;netstandard2.0`` and must stay UI-clean — declares NO Blazor / Fluent / Fluxor
   dependency, so a Contracts-only consumer never inherits UI runtime deps. Contracts.UI / Shell
   are the UI faces and may reference those.
 """
@@ -44,7 +44,7 @@ FORBIDDEN_DEPENDENCY_FRAGMENTS = (
     ".ServiceDefaults",
 )
 
-# The kernel-split invariant: the netstandard2.0/net10 Contracts kernel must never pull UI deps.
+# The kernel-split invariant: the netstandard2.0/net11 Contracts kernel must never pull UI deps.
 KERNEL_PACKAGE_ID = "Hexalith.FrontComposer.Contracts"
 FORBIDDEN_KERNEL_FRAGMENTS = (
     "Microsoft.FluentUI",

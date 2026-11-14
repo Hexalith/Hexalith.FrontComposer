@@ -11,7 +11,7 @@ import { expect, test } from '@playwright/test';
 const execFileAsync = promisify(execFile);
 const REPO_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const CLI_PROJECT = path.join(REPO_ROOT, 'src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj');
-const CLI_BINARY = path.join(REPO_ROOT, 'src/Hexalith.FrontComposer.Cli/bin/Release/net10.0/Hexalith.FrontComposer.Cli');
+const CLI_BINARY = path.join(REPO_ROOT, 'src/Hexalith.FrontComposer.Cli/bin/Release/net11.0/Hexalith.FrontComposer.Cli');
 const DOTNET_HOME = path.join(tmpdir(), 'frontcomposer-e2e-dotnet-home');
 const ACTIONABLE_FINDINGS = 1;
 
@@ -64,7 +64,7 @@ test.describe('Story 10.3: CLI text-output parity guard', () => {
         '--configuration',
         'Debug',
         '--framework',
-        'net10.0',
+        'net11.0',
         '--format',
         'json',
       ]);
@@ -75,7 +75,7 @@ test.describe('Story 10.3: CLI text-output parity guard', () => {
         '--configuration',
         'Debug',
         '--framework',
-        'net10.0',
+        'net11.0',
       ]);
       const typeFiltered = await runCli([
         'inspect',
@@ -84,7 +84,7 @@ test.describe('Story 10.3: CLI text-output parity guard', () => {
         '--configuration',
         'Debug',
         '--framework',
-        'net10.0',
+        'net11.0',
         '--type',
         'Acme.Shipping.ShipmentProjection',
         '--fail-on-error',
@@ -96,7 +96,7 @@ test.describe('Story 10.3: CLI text-output parity guard', () => {
         '--configuration',
         'Debug',
         '--framework',
-        'net10.0',
+        'net11.0',
         '--type',
         'Acme.Shipping.ShipmentProjection',
         '--fail-on-warning',
@@ -113,10 +113,10 @@ test.describe('Story 10.3: CLI text-output parity guard', () => {
         `Forms: ${report.summary.forms}; Grids: ${report.summary.grids}; Registrations: ${report.summary.registrations}; MCP manifests: ${report.summary.mcpManifestEntries}; Warnings: ${report.summary.warnings}; Errors: ${report.summary.errors}`,
       );
       expect(text.stdout).toContain(
-        '- CommandForm: obj/Debug/net10.0/generated/HexalithFrontComposer/Acme.Shipping.CreateShipment.CommandForm.g.razor.cs',
+        '- CommandForm: obj/Debug/net11.0/generated/HexalithFrontComposer/Acme.Shipping.CreateShipment.CommandForm.g.razor.cs',
       );
       expect(text.stdout).toContain(
-        '- McpManifest: obj/Debug/net10.0/generated/HexalithFrontComposer/FrontComposerMcpManifest.g.cs',
+        '- McpManifest: obj/Debug/net11.0/generated/HexalithFrontComposer/FrontComposerMcpManifest.g.cs',
       );
       expect(text.stdout).toContain('! HFC1002 Warning');
       expect(text.stdout).toContain('! HFC1003 Error');
@@ -252,7 +252,7 @@ const createCliWorkspace = async (name: string): Promise<CliWorkspace> => {
   const projectDirectory = path.join(root, 'Acme.App');
   const generatedDirectory = path.join(
     projectDirectory,
-    'obj/Debug/net10.0/generated/HexalithFrontComposer',
+    'obj/Debug/net11.0/generated/HexalithFrontComposer',
   );
   const projectPath = path.join(projectDirectory, 'Acme.App.csproj');
 
@@ -262,7 +262,7 @@ const createCliWorkspace = async (name: string): Promise<CliWorkspace> => {
     [
       '<Project Sdk="Microsoft.NET.Sdk">',
       '  <PropertyGroup>',
-      '    <TargetFramework>net10.0</TargetFramework>',
+      '    <TargetFramework>net11.0</TargetFramework>',
       '  </PropertyGroup>',
       '</Project>',
       '',

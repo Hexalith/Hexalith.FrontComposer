@@ -312,6 +312,7 @@ public sealed class FcCommandBlockedOutcomeTests : BunitContext {
     private sealed class StalledDisposeJSRuntime : IJSRuntime {
         public StalledDisposeModule Module { get; } = new();
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
             => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
 
@@ -324,6 +325,7 @@ public sealed class FcCommandBlockedOutcomeTests : BunitContext {
     private sealed class StalledDisposeModule : IJSObjectReference {
         public int DisposeAttempts { get; private set; }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
             => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
 

@@ -95,7 +95,7 @@ public sealed class McpRuntimePackageBoundaryTests {
                     "The MCP package must not ship benchmark prompts under any package-entry name.");
                 ZipArchiveEntry entry = archive.Entries.Single(item => string.Equals(
                     item.FullName,
-                    $"lib/net10.0/{McpAssemblyFileName}",
+                    $"lib/net11.0/{McpAssemblyFileName}",
                     StringComparison.Ordinal));
                 entry.ExtractToFile(extractedAssemblyPath);
             }
@@ -108,7 +108,7 @@ public sealed class McpRuntimePackageBoundaryTests {
                         "Hexalith.FrontComposer.Mcp",
                         "bin",
                         "Release",
-                        "net10.0"),
+                        "net11.0"),
                     McpAssemblyFileName,
                     SearchOption.AllDirectories)
                 .Single();
@@ -302,7 +302,7 @@ public sealed class McpRuntimePackageBoundaryTests {
                 projectName,
                 "obj",
                 "Release",
-                "net10.0",
+                "net11.0",
                 "ref",
                 $"{projectName}.dll");
             File.Exists(referenceAssembly).ShouldBeTrue(

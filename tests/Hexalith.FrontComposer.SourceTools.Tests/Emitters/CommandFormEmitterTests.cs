@@ -168,7 +168,7 @@ public class CommandFormEmitterTests {
         int submit = source.IndexOf("private async Task SubmitAsync(bool validateBeforeDispatch)", StringComparison.Ordinal);
         int admission = source.IndexOf("if (!admission.IsAdmitted)", submit, StringComparison.Ordinal);
         int clear = source.IndexOf("_rejectionValidationMessages?.Clear();", submit, StringComparison.Ordinal);
-        int validate = source.IndexOf("!_editContext.Validate()", submit, StringComparison.Ordinal);
+        int validate = source.IndexOf("await editContext.ValidateAsync(cancellationToken)", submit, StringComparison.Ordinal);
         clear.ShouldBeGreaterThan(admission);
         clear.ShouldBeLessThan(validate);
     }
@@ -415,7 +415,7 @@ public class CommandFormEmitterTests {
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
         int firstAuthorizationIndex = source.IndexOf("var authorization = await CommandAuthorizationEvaluator.EvaluateAsync", StringComparison.Ordinal);
-        int beforeSubmitIndex = source.IndexOf("await BeforeSubmit().ConfigureAwait(false);", StringComparison.Ordinal);
+        int beforeSubmitIndex = source.IndexOf("await BeforeSubmit().ConfigureAwait(true);", StringComparison.Ordinal);
         int secondAuthorizationIndex = source.IndexOf("var authorizationPostBeforeSubmit = await CommandAuthorizationEvaluator.EvaluateAsync", StringComparison.Ordinal);
         int correlationIndex = source.IndexOf("var correlationId = UlidFactory.NewUlid();", StringComparison.Ordinal);
         int dispatchIndex = source.IndexOf("CommandService.DispatchWithLifecycleObservationsAsync", StringComparison.Ordinal);
@@ -529,15 +529,21 @@ public class CommandFormEmitterTests {
         int lifecycleGateIndex = source.IndexOf("await PresentBlockedSubmissionAsync(", submitIndex, StringComparison.Ordinal);
         int admissionIndex = source.IndexOf("CommandExecutionAdmissionGate.TryAcquire(CreateAdmissionRequest())", submitIndex, StringComparison.Ordinal);
         int admissionDeniedIndex = source.IndexOf("PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId)", submitIndex, StringComparison.Ordinal);
-        int validateIndex = source.IndexOf("!_editContext.Validate()", submitIndex, StringComparison.Ordinal);
+        int validateIndex = source.IndexOf("await editContext.ValidateAsync(cancellationToken)", submitIndex, StringComparison.Ordinal);
         int summaryIndex = source.IndexOf("ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation)", validateIndex, StringComparison.Ordinal);
         submitIndex.ShouldBeGreaterThanOrEqualTo(0);
         lifecycleGateIndex.ShouldBeGreaterThan(submitIndex);
         admissionIndex.ShouldBeGreaterThan(lifecycleGateIndex);
         admissionDeniedIndex.ShouldBeGreaterThan(admissionIndex);
         validateIndex.ShouldBeGreaterThan(admissionDeniedIndex);
-        summaryIndex.ShouldBeGreaterThan(validateIndex);
-        Regex.Count(source, @"_editContext\.Validate\(\)").ShouldBe(1);
+        int tokenIndex = source.IndexOf("var cancellationToken = cts.Token;", submitIndex, StringComparison.Ordinal);
+        int lifetimeGuardIndex = source.IndexOf("if (_disposed || cancellationToken.IsCancellationRequested || !ReferenceEquals(_editContext, editContext)) return;", validateIndex, StringComparison.Ordinal);
+        tokenIndex.ShouldBeGreaterThan(admissionDeniedIndex);
+        tokenIndex.ShouldBeLessThan(validateIndex);
+        lifetimeGuardIndex.ShouldBeGreaterThan(validateIndex);
+        summaryIndex.ShouldBeGreaterThan(lifetimeGuardIndex);
+        source.ShouldNotContain("_editContext.Validate()");
+        Regex.Count(source, @"editContext\.ValidateAsync\(cancellationToken\)").ShouldBe(1);
     }
 
     [Fact]
@@ -548,7 +554,7 @@ public class CommandFormEmitterTests {
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
         int validSubmitIndex = source.IndexOf("private async Task SubmitAsync(bool validateBeforeDispatch)", StringComparison.Ordinal);
-        int beforeSubmitIndex = source.IndexOf("await BeforeSubmit().ConfigureAwait(false);", StringComparison.Ordinal);
+        int beforeSubmitIndex = source.IndexOf("await BeforeSubmit().ConfigureAwait(true);", StringComparison.Ordinal);
         int admissionIndex = source.IndexOf("CommandExecutionAdmissionGate.TryAcquire", validSubmitIndex, StringComparison.Ordinal);
         int admissionTryIndex = source.IndexOf("try\n        {\n        if (!admission.IsAdmitted)", admissionIndex, StringComparison.Ordinal);
         int correlationIndex = source.IndexOf("var correlationId = UlidFactory.NewUlid();", StringComparison.Ordinal);
@@ -577,7 +583,7 @@ public class CommandFormEmitterTests {
 
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        int capture = source.IndexOf("var targetResolution = await ResolveCommandTargetAsync(_model, cts.Token)", StringComparison.Ordinal);
+        int capture = source.IndexOf("var targetResolution = await ResolveCommandTargetAsync(_model, cancellationToken)", StringComparison.Ordinal);
         int dispatch = source.IndexOf("var result = await CommandService.DispatchWithLifecycleObservationsAsync(", StringComparison.Ordinal);
         capture.ShouldBeGreaterThan(0);
         dispatch.ShouldBeGreaterThan(capture);
@@ -1257,7 +1263,7 @@ public class CommandFormEmitterTests {
         int submit = source.IndexOf("private async Task SubmitAsync(bool validateBeforeDispatch)", StringComparison.Ordinal);
         int admission = source.IndexOf("if (!admission.IsAdmitted)", submit, StringComparison.Ordinal);
         int reset = source.IndexOf("_serverFormLevelErrors = System.Array.Empty<string>();", admission, StringComparison.Ordinal);
-        int validate = source.IndexOf("!_editContext.Validate()", submit, StringComparison.Ordinal);
+        int validate = source.IndexOf("await editContext.ValidateAsync(cancellationToken)", submit, StringComparison.Ordinal);
         reset.ShouldBeGreaterThan(admission);
         reset.ShouldBeLessThan(validate);
         source.ShouldContain("_serverFormLevelErrors = hasMappedFieldErrors ? rejectionValidation.UnmappedMessages : System.Array.Empty<string>();");
@@ -1436,7 +1442,7 @@ public class CommandFormEmitterTests {
 
         source.ShouldContain("[Parameter] public Func<Task>? BeforeSubmit { get; set; }");
         source.ShouldContain("if (BeforeSubmit is not null)");
-        source.ShouldContain("await BeforeSubmit().ConfigureAwait(false);");
+        source.ShouldContain("await BeforeSubmit().ConfigureAwait(true);");
     }
 
     [Fact]

@@ -161,7 +161,7 @@ public sealed class SkillTypeOrganizationGovernanceTests {
             "Hexalith.FrontComposer.Shell.Tests.Bench",
             "bin",
             configuration,
-            "net10.0");
+            "net11.0");
         Directory.Exists(benchOutputDirectory).ShouldBeTrue(
             "Build the Bench project before running the MCP friend-seam governance test.");
         string[] benchDependencyAssemblies = [.. Directory.EnumerateFiles(benchOutputDirectory, "*.dll")

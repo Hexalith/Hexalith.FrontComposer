@@ -489,7 +489,18 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     protected async Task FocusNavigationAsync() {
         IJSObjectReference? module = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
         if (module is not null) {
-            await module.InvokeVoidAsync("focusVisibleElementById", "fc-nav").ConfigureAwait(false);
+            try {
+                await module.InvokeVoidAsync("focusVisibleElementById", "fc-nav").ConfigureAwait(false);
+            }
+            catch (ObjectDisposedException) {
+                // The cached module can be released while this best-effort focus request is in flight.
+            }
+            catch (JSException) {
+                // Focus is best-effort when the browser target or circuit is no longer available.
+            }
+            catch (OperationCanceledException) {
+                // A circuit ending during focus must not fail the component event.
+            }
         }
     }
 
@@ -538,7 +549,18 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private async Task FocusElementAsync(ElementReference element) {
         IJSObjectReference? module = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
         if (module is not null) {
-            await module.InvokeVoidAsync("focusElement", element).ConfigureAwait(false);
+            try {
+                await module.InvokeVoidAsync("focusElement", element).ConfigureAwait(false);
+            }
+            catch (ObjectDisposedException) {
+                // The cached module can be released while this best-effort focus request is in flight.
+            }
+            catch (JSException) {
+                // Focus is best-effort when the browser target or circuit is no longer available.
+            }
+            catch (OperationCanceledException) {
+                // A circuit ending during focus must not fail the component event.
+            }
         }
     }
 

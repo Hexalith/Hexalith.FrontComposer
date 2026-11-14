@@ -100,7 +100,7 @@ public sealed class PackageBoundaryTests {
                 .Descendants()
                 .Single(element => string.Equals(element.Name.LocalName, "group", StringComparison.Ordinal)
                     && element.Parent?.Name.LocalName == "dependencies");
-            dependencyGroup.Attribute("targetFramework")?.Value.ShouldBe("net10.0");
+            dependencyGroup.Attribute("targetFramework")?.Value.ShouldBe("net11.0");
             string[] dependencies = dependencyGroup
                 .Elements()
                 .Where(element => string.Equals(element.Name.LocalName, "dependency", StringComparison.Ordinal))
@@ -115,7 +115,7 @@ public sealed class PackageBoundaryTests {
                 .Descendants()
                 .Single(element => string.Equals(element.Name.LocalName, "group", StringComparison.Ordinal)
                     && element.Parent?.Name.LocalName == "frameworkReferences");
-            frameworkReferenceGroup.Attribute("targetFramework")?.Value.ShouldBe("net10.0");
+            frameworkReferenceGroup.Attribute("targetFramework")?.Value.ShouldBe("net11.0");
             frameworkReferenceGroup
                 .Elements()
                 .Where(element => string.Equals(element.Name.LocalName, "frameworkReference", StringComparison.Ordinal))
@@ -127,7 +127,7 @@ public sealed class PackageBoundaryTests {
 
         await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors><NuGetAudit>false</NuGetAudit></PropertyGroup>
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net11.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors><NuGetAudit>false</NuGetAudit></PropertyGroup>
   <ItemGroup><PackageReference Include="Hexalith.FrontComposer.Contracts.UI" Version="{{version}}" /></ItemGroup>
 </Project>
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);

@@ -37,7 +37,7 @@ SHA = re.compile(r"[0-9a-f]{40}\Z")
 VERSION = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\Z")
 RUNTIME = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+\Z")
 FIXTURE = Path(__file__).resolve().parents[1] / "samples" / "AdopterProofKit" / "v1"
-SDK_POLICY = {"sdk": {"version": "10.0.100", "rollForward": "latestFeature", "allowPrerelease": False}}
+SDK_POLICY = {"sdk": {"version": "11.0.100", "rollForward": "latestFeature", "allowPrerelease": False}}
 NEGATIVE_DIAGNOSTICS = {
     "missing-quickstart": "FrontComposer bootstrap is incomplete: AddHexalithEventStore(...) was called but AddHexalithFrontComposerQuickstart()",
     "misordered": "FrontComposer bootstrap is mis-ordered: AddHexalithEventStore(...) was called before AddHexalithFrontComposerQuickstart().",
@@ -121,7 +121,11 @@ def verify_runtime(dotnet: str, selected: str, cwd: Path) -> dict[str, str]:
         raise ProofError("runtime-unavailable") from None
     if not RUNTIME.fullmatch(sdk):
         raise ProofError("runtime-identity-invalid")
-    if not sdk.startswith("10."):
+    minimum_sdk = tuple(map(int, SDK_POLICY["sdk"]["version"].split(".")))
+    actual_sdk = tuple(map(int, sdk.split(".")))
+    if actual_sdk[:2] != minimum_sdk[:2] or actual_sdk < minimum_sdk:
+        raise ProofError("runtime-identity-mismatch")
+    if tuple(map(int, selected.split(".")))[:2] != minimum_sdk[:2]:
         raise ProofError("runtime-identity-mismatch")
     for name in ("Microsoft.NETCore.App", "Microsoft.AspNetCore.App"):
         if not re.search(rf"^{re.escape(name)} {re.escape(selected)} \[", listing, re.MULTILINE):
@@ -246,7 +250,7 @@ def execute(args: argparse.Namespace) -> dict:
             root = Path(temp)
             fixture = root / "fixture"
             shutil.copytree(FIXTURE, fixture, ignore=shutil.ignore_patterns("bin", "obj"))
-            # The copy sits outside any consumer global.json, so pin the .NET 10 SDK band here
+            # The copy sits outside any consumer global.json, so pin the .NET 11 SDK band here
             # instead of letting the machine's newest (possibly preview or 11.x) SDK build it.
             (root / "global.json").write_text(json.dumps(SDK_POLICY, indent=2) + "\n", encoding="utf-8")
             result["runtime_identity"] = verify_runtime(args.dotnet, args.runtime_version, fixture)
@@ -280,7 +284,7 @@ def execute(args: argparse.Namespace) -> dict:
             verify_restored_packages(root / "packages", version, archive_hashes)
             result["package_identity"]["archive_sha512"] = archive_hashes
             result["package_identity"]["verified"] = True
-            assembly = fixture / "AdopterProofKit.Web" / "bin" / "Release" / "net10.0" / "AdopterProofKit.Web.dll"
+            assembly = fixture / "AdopterProofKit.Web" / "bin" / "Release" / "net11.0" / "AdopterProofKit.Web.dll"
             pin_host_runtime(assembly, args.runtime_version)
             endpoint = args.eventstore_endpoint
             result["assertions"]["projection_rendered"] = _start_and_probe(

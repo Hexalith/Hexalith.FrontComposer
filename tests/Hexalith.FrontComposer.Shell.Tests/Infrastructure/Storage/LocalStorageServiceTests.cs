@@ -31,6 +31,7 @@ public sealed class LocalStorageServiceTests {
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only mock configuration or controlled fixture completion, not a browser call; interop failures must remain observable by the service assertions.")]
     public async Task GetAsync_ExistingKey_DeserializesValue() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
@@ -42,6 +43,7 @@ public sealed class LocalStorageServiceTests {
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only mock configuration or controlled fixture completion, not a browser call; interop failures must remain observable by the service assertions.")]
     public async Task GetAsync_UsesWebJsonOptionsForCamelCasePayload() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
@@ -53,6 +55,7 @@ public sealed class LocalStorageServiceTests {
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only mock configuration or controlled fixture completion, not a browser call; interop failures must remain observable by the service assertions.")]
     public async Task RemoveAsync_QueuesDeletionUntilFlush() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
@@ -68,6 +71,7 @@ public sealed class LocalStorageServiceTests {
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only mock configuration or controlled fixture completion, not a browser call; interop failures must remain observable by the service assertions.")]
     public async Task SetAsync_FireAndForget_ReturnsImmediatelyThenDrainsToJs() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
@@ -129,6 +133,7 @@ public sealed class LocalStorageServiceTests {
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only mock configuration or controlled fixture completion, not a browser call; interop failures must remain observable by the service assertions.")]
     public async Task GetKeysAsync_FiltersByPrefix() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
@@ -212,6 +217,7 @@ public sealed class LocalStorageServiceTests {
 
         public void SetStoredJson(string key, string? json) => _storedJson[key] = json;
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
             => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
 

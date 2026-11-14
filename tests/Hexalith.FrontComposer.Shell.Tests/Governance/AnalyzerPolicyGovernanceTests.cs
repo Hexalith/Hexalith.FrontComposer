@@ -2141,7 +2141,7 @@ public sealed class AnalyzerPolicyGovernanceTests
 
     private static async Task ValidateEffectiveBuildGraphsAsync(string root)
     {
-        foreach (string targetFramework in new[] { "net10.0", "netstandard2.0" })
+        foreach (string targetFramework in new[] { "net11.0", "netstandard2.0" })
         {
             await AssertRecommendedTwaePropertiesAsync(
                 root,
@@ -2232,7 +2232,7 @@ public sealed class AnalyzerPolicyGovernanceTests
                 """
                 <Project Sdk="Microsoft.NET.Sdk">
                   <PropertyGroup>
-                    <TargetFramework>net10.0</TargetFramework>
+                    <TargetFramework>net11.0</TargetFramework>
                     <IsPackable>false</IsPackable>
                   </PropertyGroup>
                 </Project>

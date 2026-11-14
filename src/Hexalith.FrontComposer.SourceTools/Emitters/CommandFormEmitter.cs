@@ -152,6 +152,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    private IDisposable? _hiddenOutcomeClaim;");
         _ = sb.AppendLine("    private CancellationTokenSource? _cts;");
         _ = sb.AppendLine("    private bool _disposed;");
+        _ = sb.AppendLine("    private long _modelRevision;");
         _ = sb.AppendLine("    private bool _externalSubmitRegistered;");
         _ = sb.AppendLine("    private bool _interactiveReady;");
         if (hasEditableFields) {
@@ -471,6 +472,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) {");
+        _ = sb.AppendLine("        System.Threading.Interlocked.Increment(ref _modelRevision);");
         _ = sb.AppendLine("        IsDirty = true;");
         _ = sb.AppendLine("        // Story 5-2 D5 — clear stale server-side validation for the edited field.");
         _ = sb.AppendLine("        _serverValidationMessages?.Clear(e.FieldIdentifier);");
@@ -1316,6 +1318,9 @@ public static class CommandFormEmitter {
 
         _ = sb.AppendLine("    private async Task SubmitAsync(bool validateBeforeDispatch)");
         _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (_disposed) return;");
+        _ = sb.AppendLine("        await InvokeAsync(async () =>");
+        _ = sb.AppendLine("        {");
         _ = sb.AppendLine("        // Story 2-2 code-review P35 — guard against invocation via RegisterExternalSubmit after form disposal.");
         _ = sb.AppendLine("        if (_disposed) return;");
         _ = sb.AppendLine("        // State-guard against rapid double-click: only allow submit from terminal or idle state.");
@@ -1347,38 +1352,49 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        // Clear the earlier hidden outcome after the synchronous state/admission guards: the awaited parent callback must not precede them. Denials clear it in PresentBlockedSubmissionAsync.");
-        _ = sb.AppendLine("        await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);");
+        _ = sb.AppendLine("        await PresentHiddenOutcomeAsync(null).ConfigureAwait(true);");
         _ = sb.AppendLine("        if (_disposed) return;");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        // Capture the attempt lifetime before any asynchronous validation or host interaction.");
+        _ = sb.AppendLine("        CancellationTokenSource? previous = _cts;");
+        _ = sb.AppendLine("        var cts = new CancellationTokenSource();");
+        _ = sb.AppendLine("        var cancellationToken = cts.Token;");
+        _ = sb.AppendLine("        _cts = cts;");
+        _ = sb.AppendLine("        if (previous is not null)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            try { previous.Cancel(); } catch (ObjectDisposedException) { }");
+        _ = sb.AppendLine("            previous.Dispose();");
+        _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        // This attempt was admitted: withdraw any earlier blocked outcome, and drop form-level text");
         _ = sb.AppendLine("        // from an earlier attempt so it can never feed this attempt's client-validation summary.");
-        _ = sb.AppendLine("        await ClearBlockedOutcomeAsync().ConfigureAwait(false);");
+        _ = sb.AppendLine("        await ClearBlockedOutcomeAsync().ConfigureAwait(true);");
+        _ = sb.AppendLine("        if (_disposed || cancellationToken.IsCancellationRequested) return;");
         _ = sb.AppendLine("        _serverFormLevelErrors = System.Array.Empty<string>();");
         _ = sb.AppendLine("        // Story 13.3 VG5-O1 / E5-06 — a mapped rejection's field messages answered the previous attempt;");
         _ = sb.AppendLine("        // clearing them before validation lets an unchanged retry dispatch (VR-02 retry recovery).");
         _ = sb.AppendLine("        _rejectionValidationMessages?.Clear();");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        // Story 13.3 ECH-05 — validate only after the concurrency outcome is known.");
-        _ = sb.AppendLine("        if (validateBeforeDispatch && _editContext is not null && !_editContext.Validate())");
+        _ = sb.AppendLine("        if (validateBeforeDispatch && _editContext is { } editContext)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            await ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);");
-        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("            long validationRevision = System.Threading.Volatile.Read(ref _modelRevision);");
+        _ = sb.AppendLine("            bool isValid = await editContext.ValidateAsync(cancellationToken).ConfigureAwait(true);");
+        _ = sb.AppendLine("            if (_disposed || cancellationToken.IsCancellationRequested || !ReferenceEquals(_editContext, editContext)) return;");
+        _ = sb.AppendLine("            if (validationRevision != System.Threading.Volatile.Read(ref _modelRevision)) return;");
+        _ = sb.AppendLine("            if (!isValid)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                await ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);");
+        _ = sb.AppendLine("                return;");
+        _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        if (_disposed || cancellationToken.IsCancellationRequested) return;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        if (HasClientParseErrors())");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            _editContext?.NotifyValidationStateChanged();");
         _ = sb.AppendLine("            await ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);");
         _ = sb.AppendLine("            return;");
-        _ = sb.AppendLine("        }");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("        // Story 2-2 code-review P36 — allocate new CTS BEFORE awaiting BeforeSubmit so disposal can cancel it.");
-        _ = sb.AppendLine("        CancellationTokenSource? previous = _cts;");
-        _ = sb.AppendLine("        _cts = new CancellationTokenSource();");
-        _ = sb.AppendLine("        if (previous is not null)");
-        _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            try { previous.Cancel(); } catch (ObjectDisposedException) { }");
-        _ = sb.AppendLine("            previous.Dispose();");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
         if (hasAuthorizationPolicy) {
@@ -1388,8 +1404,8 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        _serverWarning = null;");
             _ = sb.AppendLine("        var authorization = await CommandAuthorizationEvaluator.EvaluateAsync(");
             _ = sb.AppendLine("            CreateAuthorizationRequest(),");
-            _ = sb.AppendLine("            _cts.Token).ConfigureAwait(false);");
-            _ = sb.AppendLine("        if (_disposed || _cts.IsCancellationRequested) return;");
+            _ = sb.AppendLine("            cancellationToken).ConfigureAwait(true);");
+            _ = sb.AppendLine("        if (_disposed || cancellationToken.IsCancellationRequested) return;");
             _ = sb.AppendLine("        if (!authorization.IsAllowed)");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            _ = SetAuthorizationWarning(authorization.Reason, operatorActivation: true);");
@@ -1407,7 +1423,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        // Story 5-2 D5 — clear server-driven validation state from the prior submit (auth has already passed if a policy is in scope).");
         _ = sb.AppendLine("        if (_validationSummary is not null)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            await _validationSummary.HideAsync().ConfigureAwait(false);");
+        _ = sb.AppendLine("            await _validationSummary.HideAsync().ConfigureAwait(true);");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        _serverValidationMessages?.Clear();");
         if (!hasAuthorizationPolicy) {
@@ -1418,8 +1434,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("        if (BeforeSubmit is not null)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            await BeforeSubmit().ConfigureAwait(false);");
-        _ = sb.AppendLine("            if (_disposed || _cts.IsCancellationRequested) return;");
+        _ = sb.AppendLine("            await BeforeSubmit().ConfigureAwait(true);");
+        _ = sb.AppendLine("            if (_disposed || cancellationToken.IsCancellationRequested) return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
         if (hasAuthorizationPolicy) {
@@ -1429,8 +1445,8 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        // Pass 3 P2 — re-authorize after BeforeSubmit returns. Sign-out / tenant switch / policy revocation may have happened mid-await.");
             _ = sb.AppendLine("        var authorizationPostBeforeSubmit = await CommandAuthorizationEvaluator.EvaluateAsync(");
             _ = sb.AppendLine("            CreateAuthorizationRequest(),");
-            _ = sb.AppendLine("            _cts.Token).ConfigureAwait(false);");
-            _ = sb.AppendLine("        if (_disposed || _cts.IsCancellationRequested) return;");
+            _ = sb.AppendLine("            cancellationToken).ConfigureAwait(true);");
+            _ = sb.AppendLine("        if (_disposed || cancellationToken.IsCancellationRequested) return;");
             _ = sb.AppendLine("        if (!authorizationPostBeforeSubmit.IsAllowed)");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            _ = SetAuthorizationWarning(authorizationPostBeforeSubmit.Reason, operatorActivation: true);");
@@ -1449,7 +1465,6 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        var correlationId = UlidFactory.NewUlid();");
         _ = sb.AppendLine("        _submittedCorrelationId = correlationId;");
         _ = sb.AppendLine("        System.Threading.Interlocked.Exchange(ref _acceptedAssociationSucceeded, 0);");
-        _ = sb.AppendLine("        var cts = _cts;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        // Story 2-3 D5 — lazily activate the lifecycle bridge so ILifecycleStateService receives");
         _ = sb.AppendLine("        // the typed Fluxor actions. Idempotent + per-circuit; mirrors Story 2-2 D35.");
@@ -1481,7 +1496,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        {");
         if (form.CommandTarget is not null) {
             _ = sb.AppendLine("            // Story 9.4 — resolve and freeze the explicit target immediately before dispatch.");
-            _ = sb.AppendLine("            var targetResolution = await ResolveCommandTargetAsync(_model, cts.Token).ConfigureAwait(false);");
+            _ = sb.AppendLine("            var targetResolution = await ResolveCommandTargetAsync(_model, cancellationToken).ConfigureAwait(true);");
             _ = sb.AppendLine("            var commandForDispatch = targetResolution.Command;");
             _ = sb.AppendLine("            var commandTarget = targetResolution.Target;");
         }
@@ -1490,7 +1505,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandTargetSnapshot? commandTarget = null;");
         }
 
-        _ = sb.AppendLine("            cts.Token.ThrowIfCancellationRequested();");
+        _ = sb.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
         _ = sb.AppendLine("            // Read the dispatch scope once and compare it with the admission scope, so a switch");
         _ = sb.AppendLine("            // between the check and the capture cannot bind this model to the next scope.");
         _ = sb.AppendLine("            var dispatchScope = validatedScope?.Current();");
@@ -1610,7 +1625,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                        }");
         _ = sb.AppendLine("                    });");
         _ = sb.AppendLine("                },");
-        _ = sb.AppendLine("                cancellationToken: cts.Token);");
+        _ = sb.AppendLine("                cancellationToken: cancellationToken);");
         _ = sb.AppendLine("            // Story 9.4 — only accepted dispatch associates the immutable pre-dispatch target.");
         _ = sb.AppendLine("            global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationResult? pendingRegistration = null;");
         _ = sb.AppendLine("            bool accepted = string.Equals(result.Status, \"Accepted\", StringComparison.OrdinalIgnoreCase);");
@@ -1779,7 +1794,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            // the form does not stay locked while the host handles the redirect.");
         _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
         _ = sb.AppendLine("            if (Logger is not null) { LogAuthRedirectRequired(Logger, correlationId, ex.Message); }");
-        _ = sb.AppendLine("            await AuthRedirector.RedirectAsync(returnUrl: null, cancellationToken: cts.Token).ConfigureAwait(false);");
+        _ = sb.AppendLine("            await AuthRedirector.RedirectAsync(returnUrl: null, cancellationToken: cancellationToken).ConfigureAwait(true);");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (CommandRejectedException ex)");
         _ = sb.AppendLine("        {");
@@ -1849,6 +1864,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            admission.Dispose();");
         _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        });");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
     }

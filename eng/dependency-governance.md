@@ -27,12 +27,12 @@ The 2026-11-11 refresh selects the remote-equal root Builds catalog at
 OpenTelemetry `1.21.0`, Microsoft.NET.Test.Sdk `18.12.0`, and Tenants `7.0.7`.
 The existing catalog audit records the exact compatible selection. FrontComposer
 imports that catalog without local version overrides. The selected-catalog
-policy mirrors now match Localization and TimeProvider.Testing `11.0.0`, Immutable `10.0.15`, and external MCP
+policy mirrors now match Localization and TimeProvider.Testing `11.0.0`, Immutable `11.0.0`, and external MCP
 ASP.NET Core `2.4.0`.
 
-The active SDK is stable .NET `11.0.100`, while package targets remain `net10.0`
-and `netstandard2.0`. Test workflows explicitly install the .NET and ASP.NET Core
-`10.0.15` runtimes; the live source-resource lane retains SDK `10.0.302` alongside
+The active SDK is stable .NET `11.0.100`. Current runtime, sample and test projects
+target `net11.0`; Contracts and Schema also retain `netstandard2.0`, and SourceTools
+remains `netstandard2.0`. Test workflows use matching .NET and ASP.NET Core 11 runtimes; the live source-resource lane retains SDK `10.0.302` alongside
 the root SDK, plus SDK `10.0.404` for dependencies that pin the 10.0.4xx band.
 IDE and hot-reload documentation retains its historical manual
 validation dates and does not claim that SDK 11 manual checks have run.
@@ -75,13 +75,12 @@ Compatibility holds remain explicit:
   deferred; the older cohort does not provide equivalent coverage of that feature.
   Revisit after a released patched Firefox passes the full matrix and native
   reflection regression; see the [recorded compatibility hold](../docs/accessibility-verification/baseline-change-rationale.md).
-- ASP.NET Core authentication/server packages including OpenIdConnect stay at `10.0.15`: their .NET 11
-  assets require `net11.0`. Compatible Microsoft.Extensions and System.Text.Json packages
-  now use `11.0.0`; SignalR Client/Common retain `10.0.15` because the 11.x netstandard fallback lacks the invocation-binder method needed by the net10.0 Blazor server. Immutable retains `10.0.15` because 11.x conflicts with the generator test reference assemblies.
-- Microsoft.Build and Microsoft.Build.Framework stay at `18.9.6`; newer
-  inspected versions require unsupported .NET 11 assets in the `net10.0` consumers.
-- Microsoft.OpenApi stays at `2.13.0` because ASP.NET Core OpenApi 10 requires
-  the 2.x API.
+- ASP.NET Core authentication/server packages, SignalR Client/Common,
+  Microsoft.Extensions, System.Text.Json and Immutable use the current `11.0.0`
+  catalog cohort for the `net11.0` consumers. Retained netstandard2.0 faces use
+  the compatible assets supplied by those packages.
+- Microsoft.Build and Microsoft.Build.Framework use the catalog's `18.12.2`.
+- Microsoft.OpenApi uses `3.11.0` with ASP.NET Core OpenApi `11.0.0`.
 - AngleSharp stays at patched `1.9.1`. The published `1.10.0` fails the Shell
   and Testing suites with a `TypeLoadException`: latest stable bunit `2.13.3`
   wrappers do not implement the new `add_BeforeToggle` member. Upgrade this pin

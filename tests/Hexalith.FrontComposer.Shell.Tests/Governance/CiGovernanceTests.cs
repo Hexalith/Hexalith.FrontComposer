@@ -382,7 +382,7 @@ public sealed class CiGovernanceTests {
         // code plus the uploaded CI report; nothing is written to a committed evidence folder.
         string providerLane = ExtractNamedStep(quality, "Gate 2c: Live EventStore provider verification");
         providerLane.ShouldContain("set -euo pipefail");
-        providerLane.ShouldContain("dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll");
+        providerLane.ShouldContain("dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net11.0/Hexalith.EventStore.ProviderVerification.Tests.dll");
         providerLane.ShouldContain("--verification-mode live-compatibility");
         providerLane.ShouldContain("--report-output \"$GITHUB_WORKSPACE/artifacts/contracts/provider-verification.json\"");
         providerLane.ShouldContain("test -s \"$GITHUB_WORKSPACE/artifacts/contracts/provider-verification.json\"");
@@ -966,7 +966,7 @@ public sealed class CiGovernanceTests {
             "ci.yml must pin domain-ci.yml to an exact 40-hex lowercase Builds commit SHA (never @main).");
         ci.ShouldNotContain("domain-ci.yml@main");
         ci.ShouldContain("solution: Hexalith.FrontComposer.slnx");
-        ci.ShouldContain("additional-sdk-version: '10.0.x'");
+        ci.ShouldNotContain("additional-sdk-version: '10.0.x'");
         ci.ShouldContain("test-platform: microsoft-testing-platform");
         ci.ShouldContain("run-consumer-validation: true");
         ci.ShouldContain("unit-test-projects:");
@@ -1293,11 +1293,7 @@ public sealed class CiGovernanceTests {
             .SelectMany(path => dotnetVersionPin.Matches(File.ReadAllText(path)).Cast<Match>()
                 .Select(match => (
                     Workflow: Path.GetFileName(path),
-                    Version: match.Groups["version"].Value,
-                    RuntimeCompanion: string.Equals(match.Groups["version"].Value, "10.0.x", StringComparison.Ordinal)
-                        && Regex.IsMatch(File.ReadAllText(path)[..match.Index],
-                            @"actions/setup-dotnet@[^\r\n]+\r?\n\s+with:\r?\n\s+global-json-file: global.json\r?\n\s*\z",
-                            RegexOptions.CultureInvariant))))
+                    Version: match.Groups["version"].Value)))
             .ToArray();
         dotnetPins.ShouldNotBeEmpty("active dotnet-version pins must be discovered across every workflow file");
         dotnetPins.Count(pin => string.Equals(pin.Version, sourceResourceCompatibilitySdk, StringComparison.Ordinal))
@@ -1306,22 +1302,21 @@ public sealed class CiGovernanceTests {
             .ShouldBe(1, "only the full source-resource topology may install the dependency 10.0.404 SDK");
         dotnetPins
             .Where(pin => !string.Equals(pin.Version, sourceResourceCompatibilitySdk, StringComparison.Ordinal)
-                && !string.Equals(pin.Version, dependencySourceResourceSdk, StringComparison.Ordinal)
-                && !pin.RuntimeCompanion)
+                && !string.Equals(pin.Version, dependencySourceResourceSdk, StringComparison.Ordinal))
             .ShouldAllBe(pin => string.Equals(pin.Version, expectedDotnetSdk, StringComparison.Ordinal));
 
         foreach (string workflowName in new[] { "quality.yml", "nightly.yml", "mutation-property-nightly.yml", "quarantine-governance-nightly.yml" }) {
             string workflow = File.ReadAllText(Path.Combine(workflowsRoot, workflowName));
             int sdkSetupCount = dotnetVersionPin.Matches(workflow).Cast<Match>()
                 .Count(match => string.Equals(match.Groups["version"].Value, expectedDotnetSdk, StringComparison.Ordinal));
-            Regex.Count(workflow, @"(?m)^      - name: Install \.NET 10 runtimes\r?$", RegexOptions.CultureInvariant)
-                .ShouldBe(sdkSetupCount, $"Every SDK 11 lane in {workflowName} must explicitly install its net10.0 test runtimes.");
-            workflow.ShouldContain("run: ./eng/install-net10-runtime.ps1");
+            Regex.Count(workflow, @"(?m)^      - name: Install \.NET 11 runtimes\r?$", RegexOptions.CultureInvariant)
+                .ShouldBe(sdkSetupCount, $"Every SDK 11 lane in {workflowName} must explicitly install its net11.0 test runtimes.");
+            workflow.ShouldContain("run: ./eng/install-net11-runtime.ps1");
         }
-        string runtimeInstaller = File.ReadAllText(Path.Combine(root, "eng", "install-net10-runtime.ps1"));
+        string runtimeInstaller = File.ReadAllText(Path.Combine(root, "eng", "install-net11-runtime.ps1"));
         runtimeInstaller.ShouldContain("@('dotnet', 'aspnetcore')");
-        runtimeInstaller.ShouldContain("--version '10.0.15'");
-        runtimeInstaller.ShouldContain("-Version '10.0.15'");
+        runtimeInstaller.ShouldContain("--version '11.0.0'");
+        runtimeInstaller.ShouldContain("-Version '11.0.0'");
         runtimeInstaller.ShouldContain("--skip-non-versioned-files");
 
         string quality = File.ReadAllText(Path.Combine(workflowsRoot, "quality.yml"));
@@ -2001,7 +1996,7 @@ public sealed class CiGovernanceTests {
         File.WriteAllText(Path.Combine(unexpectedRoot, "src", "Unexpected", "Unexpected.csproj"), """
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup>
-                <TargetFramework>net10.0</TargetFramework>
+                <TargetFramework>net11.0</TargetFramework>
                 <IsPackable>true</IsPackable>
                 <PackageId>Unexpected.Package</PackageId>
               </PropertyGroup>
@@ -2093,8 +2088,8 @@ public sealed class CiGovernanceTests {
         libraryGate.ShouldMatch(@"-p:BaseOutputPath=""[^""\r\n]*\$name[^""\r\n]*""");
 
         // The inventory is the source of truth for what the gate must cover.
-        JsonElement inventory = JsonDocument.Parse(
-            File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json"))).RootElement;
+        JsonElement inventory = JsonElement.Parse(
+            File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json")));
         List<string> expectedLibraries = [];
         List<string> toolExceptions = [];
         foreach (JsonElement row in inventory.GetProperty("packages").EnumerateArray()) {
@@ -3767,7 +3762,7 @@ public sealed class CiGovernanceTests {
             "--output", repeatOutput,
         ]);
         repeat.ExitCode.ShouldBe(0, repeat.Error);
-        string issueBody = JsonDocument.Parse(File.ReadAllText(repeatOutput)).RootElement.GetProperty("issue_body").GetString() ?? string.Empty;
+        string issueBody = JsonElement.Parse(File.ReadAllText(repeatOutput)).GetProperty("issue_body").GetString() ?? string.Empty;
         issueBody.ShouldContain("Repeat flake");
         issueBody.ShouldContain("recurrence count: 2");
     }

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 
 using Hexalith.FrontComposer.Shell.Options;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -22,7 +23,7 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// <see cref="FrontComposerAuthRedirectOptions.LogoutPath"/>) via a forced full-page navigation so
 /// the OIDC challenge / sign-out completes server-side.
 /// </summary>
-public partial class FcAccountMenu : ComponentBase {
+public partial class FcAccountMenu : ComponentBase, IDisposable {
     // One account menu renders per page, so a constant id is a stable, collision-free anchor for the
     // FluentMenu Trigger (the documented avatar-as-trigger pattern).
     private const string AvatarId = "fc-account-avatar";
@@ -39,6 +40,9 @@ public partial class FcAccountMenu : ComponentBase {
     private const string MenuListStyle = "inset-inline-start: auto; inset-inline-end: anchor(end);";
 
     private ClaimsPrincipal? _user;
+    private long _authenticationRevision;
+    private Task _authenticationObservation = Task.CompletedTask;
+    private bool _disposed;
 
     /// <summary>Injected host authentication-state seam (fail-closed anonymous provider by default).</summary>
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
@@ -93,8 +97,58 @@ public partial class FcAccountMenu : ComponentBase {
 
     /// <inheritdoc />
     protected override async Task OnInitializedAsync() {
-        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        _user = state.User;
+        long revision = Interlocked.Increment(ref _authenticationRevision);
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        _authenticationObservation = ApplyAuthenticationStateAsync(AuthenticationStateProvider.GetAuthenticationStateAsync, revision);
+        await _authenticationObservation;
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> state) {
+        long revision = Interlocked.Increment(ref _authenticationRevision);
+        _authenticationObservation = ObserveAuthenticationStateChangeAsync(state, revision);
+    }
+
+    private async Task ObserveAuthenticationStateChangeAsync(Task<AuthenticationState> state, long revision) {
+        try {
+            await InvokeAsync(async () => {
+                if (_disposed || revision != Volatile.Read(ref _authenticationRevision)) return;
+                // A pending observation cannot continue to present the previous identity.
+                _user = null;
+                StateHasChanged();
+                if (await ApplyAuthenticationStateAsync(() => state, revision)) {
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (Exception exception) {
+            // External provider events do not have Blazor's lifecycle/event exception observer.
+            await DispatchExceptionAsync(exception);
+        }
+    }
+
+    private async Task<bool> ApplyAuthenticationStateAsync(Func<Task<AuthenticationState>> readState, long revision) {
+        ClaimsPrincipal? user;
+        try {
+            // Keep invocation inside the fallback boundary: providers can throw before returning a task.
+            user = (await readState()).User;
+        }
+        catch (Exception exception) when (!ExceptionGuard.IsFatal(exception)) {
+            // Failed or canceled authentication must withdraw the previous account identity.
+            user = null;
+        }
+
+        if (_disposed || revision != Volatile.Read(ref _authenticationRevision)) {
+            return false;
+        }
+        _user = user;
+        return true;
+    }
+
+    /// <inheritdoc />
+    public void Dispose() {
+        _disposed = true;
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        GC.SuppressFinalize(this);
     }
 
     private void SignIn() => NavigateToAuthEndpoint(AuthenticationOptions.Value.Redirect.LoginPath);

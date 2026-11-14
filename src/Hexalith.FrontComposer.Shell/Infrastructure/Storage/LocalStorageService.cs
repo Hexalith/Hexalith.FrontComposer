@@ -94,6 +94,7 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
         Justification = "IStorageService callers persist Fluxor state records with preserved members (ThemeValue, DensityLevel, DataGridNavigationState); the interface's generic T is the contract authorising the reflective path.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "BL0016", Justification = "Storage read failures belong to IStorageService callers; preserving the failed task lets each consumer select its existing recovery policy.")]
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrEmpty(key);
         string? json = await _js.InvokeAsync<string?>("localStorage.getItem", cancellationToken, key)
@@ -137,6 +138,7 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
     }
 
     /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "BL0016", Justification = "Storage enumeration failures belong to IStorageService callers; returning an empty inventory here would incorrectly report successful storage access.")]
     public async Task<IReadOnlyList<string>> GetKeysAsync(string prefix, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(prefix);
         // D16: single round-trip — ask the browser for the full key set and filter on the .NET side.

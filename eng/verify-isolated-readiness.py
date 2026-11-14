@@ -506,7 +506,7 @@ def require_native_channel(directory, application, name, proc_root=Path("/proc")
                 "parties": ("Hexalith.Parties", "src/Hexalith.Parties"),
                 "sample": ("Hexalith.Tenants", "samples/Hexalith.Tenants.Sample")}
     module, project = projects[name]
-    binary = ROOT / "references" / module / project / "bin/Debug/net10.0" / Path(project).name
+    binary = ROOT / "references" / module / project / "bin/Debug/net11.0" / Path(project).name
     port = str(application.get("environment", {}).get("DAPR_HTTP_PORT", ""))
     require(port.isdecimal() and int(port) > 0, "Missing owned SDK port for channel credential verification.")
     config = str(Path(directory) / ("accesscontrol.sample.yaml" if name == "sample" else "accesscontrol.yaml"))

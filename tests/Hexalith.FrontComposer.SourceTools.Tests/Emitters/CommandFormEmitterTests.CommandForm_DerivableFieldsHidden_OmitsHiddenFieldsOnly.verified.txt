@@ -90,6 +90,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     private IDisposable? _hiddenOutcomeClaim;
     private CancellationTokenSource? _cts;
     private bool _disposed;
+    private long _modelRevision;
     private bool _externalSubmitRegistered;
     private bool _interactiveReady;
     private bool _fieldAccessibilityObserved;
@@ -187,6 +188,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     }
 
     private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) {
+        System.Threading.Interlocked.Increment(ref _modelRevision);
         IsDirty = true;
         // Story 5-2 D5 — clear stale server-side validation for the edited field.
         _serverValidationMessages?.Clear(e.FieldIdentifier);
@@ -506,6 +508,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
     private async Task SubmitAsync(bool validateBeforeDispatch)
     {
+        if (_disposed) return;
+        await InvokeAsync(async () =>
+        {
         // Story 2-2 code-review P35 — guard against invocation via RegisterExternalSubmit after form disposal.
         if (_disposed) return;
         // State-guard against rapid double-click: only allow submit from terminal or idle state.
@@ -537,23 +542,43 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             return;
         }
         // Clear the earlier hidden outcome after the synchronous state/admission guards: the awaited parent callback must not precede them. Denials clear it in PresentBlockedSubmissionAsync.
-        await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);
+        await PresentHiddenOutcomeAsync(null).ConfigureAwait(true);
         if (_disposed) return;
+
+        // Capture the attempt lifetime before any asynchronous validation or host interaction.
+        CancellationTokenSource? previous = _cts;
+        var cts = new CancellationTokenSource();
+        var cancellationToken = cts.Token;
+        _cts = cts;
+        if (previous is not null)
+        {
+            try { previous.Cancel(); } catch (ObjectDisposedException) { }
+            previous.Dispose();
+        }
 
         // This attempt was admitted: withdraw any earlier blocked outcome, and drop form-level text
         // from an earlier attempt so it can never feed this attempt's client-validation summary.
-        await ClearBlockedOutcomeAsync().ConfigureAwait(false);
+        await ClearBlockedOutcomeAsync().ConfigureAwait(true);
+        if (_disposed || cancellationToken.IsCancellationRequested) return;
         _serverFormLevelErrors = System.Array.Empty<string>();
         // Story 13.3 VG5-O1 / E5-06 — a mapped rejection's field messages answered the previous attempt;
         // clearing them before validation lets an unchanged retry dispatch (VR-02 retry recovery).
         _rejectionValidationMessages?.Clear();
 
         // Story 13.3 ECH-05 — validate only after the concurrency outcome is known.
-        if (validateBeforeDispatch && _editContext is not null && !_editContext.Validate())
+        if (validateBeforeDispatch && _editContext is { } editContext)
         {
-            await ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);
-            return;
+            long validationRevision = System.Threading.Volatile.Read(ref _modelRevision);
+            bool isValid = await editContext.ValidateAsync(cancellationToken).ConfigureAwait(true);
+            if (_disposed || cancellationToken.IsCancellationRequested || !ReferenceEquals(_editContext, editContext)) return;
+            if (validationRevision != System.Threading.Volatile.Read(ref _modelRevision)) return;
+            if (!isValid)
+            {
+                await ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);
+                return;
+            }
         }
+        if (_disposed || cancellationToken.IsCancellationRequested) return;
 
         if (HasClientParseErrors())
         {
@@ -562,19 +587,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             return;
         }
 
-        // Story 2-2 code-review P36 — allocate new CTS BEFORE awaiting BeforeSubmit so disposal can cancel it.
-        CancellationTokenSource? previous = _cts;
-        _cts = new CancellationTokenSource();
-        if (previous is not null)
-        {
-            try { previous.Cancel(); } catch (ObjectDisposedException) { }
-            previous.Dispose();
-        }
-
         // Story 5-2 D5 — clear server-driven validation state from the prior submit (auth has already passed if a policy is in scope).
         if (_validationSummary is not null)
         {
-            await _validationSummary.HideAsync().ConfigureAwait(false);
+            await _validationSummary.HideAsync().ConfigureAwait(true);
         }
         _serverValidationMessages?.Clear();
         _serverWarning = null;
@@ -582,14 +598,13 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
         if (BeforeSubmit is not null)
         {
-            await BeforeSubmit().ConfigureAwait(false);
-            if (_disposed || _cts.IsCancellationRequested) return;
+            await BeforeSubmit().ConfigureAwait(true);
+            if (_disposed || cancellationToken.IsCancellationRequested) return;
         }
 
         var correlationId = UlidFactory.NewUlid();
         _submittedCorrelationId = correlationId;
         System.Threading.Interlocked.Exchange(ref _acceptedAssociationSucceeded, 0);
-        var cts = _cts;
 
         // Story 2-3 D5 — lazily activate the lifecycle bridge so ILifecycleStateService receives
         // the typed Fluxor actions. Idempotent + per-circuit; mirrors Story 2-2 D35.
@@ -621,7 +636,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         {
             var commandForDispatch = _model;
             global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandTargetSnapshot? commandTarget = null;
-            cts.Token.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
             // Read the dispatch scope once and compare it with the admission scope, so a switch
             // between the check and the capture cannot bind this model to the next scope.
             var dispatchScope = validatedScope?.Current();
@@ -751,7 +766,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                         }
                     });
                 },
-                cancellationToken: cts.Token);
+                cancellationToken: cancellationToken);
             // Story 9.4 — only accepted dispatch associates the immutable pre-dispatch target.
             global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationResult? pendingRegistration = null;
             bool accepted = string.Equals(result.Status, "Accepted", StringComparison.OrdinalIgnoreCase);
@@ -924,7 +939,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             // the form does not stay locked while the host handles the redirect.
             Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
             if (Logger is not null) { LogAuthRedirectRequired(Logger, correlationId, ex.Message); }
-            await AuthRedirector.RedirectAsync(returnUrl: null, cancellationToken: cts.Token).ConfigureAwait(false);
+            await AuthRedirector.RedirectAsync(returnUrl: null, cancellationToken: cancellationToken).ConfigureAwait(true);
         }
         catch (CommandRejectedException ex)
         {
@@ -994,6 +1009,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         {
             admission.Dispose();
         }
+        });
     }
 
     /// <inheritdoc />

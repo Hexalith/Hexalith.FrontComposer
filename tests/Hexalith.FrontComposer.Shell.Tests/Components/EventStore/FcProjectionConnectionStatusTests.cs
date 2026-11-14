@@ -92,6 +92,7 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only mock configuration or controlled fixture completion, not a browser call; interop failures must remain observable by the service assertions.")]
     public async Task HeldInitialConnectivityReadCannotReplaceNewerBrowserEvidenceIncludingAba(bool initialOnline)
     {
         ConnectivityJsRuntime js = new(watchPending: false, holdInitialRead: true);
@@ -432,6 +433,7 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only mock configuration or controlled fixture completion, not a browser call; interop failures must remain observable by the service assertions.")]
     public async Task DisposalWaitsForLateConnectivityWatchAndUnregistersItsId() {
         ConnectivityJsRuntime js = new();
         Services.Replace(ServiceDescriptor.Singleton<IJSRuntime>(js));
@@ -549,6 +551,7 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
         public int ReadCalls => _module.ReadCalls;
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
         public void CompleteInitialRead(bool online) => _module.CompleteInitialRead(online);
 
         public int? UnwatchId => _module.UnwatchId;
@@ -559,10 +562,13 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
         public DotNetObjectReference<FcProjectionConnectionStatus>? Reference => _module.Reference;
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
         public void CompleteWatch(int id) => _module.CompleteWatch(id);
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
         public ValueTask DisposeAsync() => _module.DisposeAsync();
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
             => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
 
@@ -600,6 +606,7 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
             public void CompleteWatch(int id) => _watch.TrySetResult(id);
 
+            [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
             public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
                 => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
 

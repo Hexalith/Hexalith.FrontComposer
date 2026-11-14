@@ -539,11 +539,12 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
             IJSObjectReference module = await EnsureMenuModuleAsync().ConfigureAwait(false);
             _ = await module.InvokeAsync<bool>("openMenu", menuId, anchorId).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is JSDisconnectedException or ObjectDisposedException or OperationCanceledException or InvalidOperationException) {
+        catch (Exception ex) when (ex is JSException or ObjectDisposedException or OperationCanceledException or InvalidOperationException) {
             // The native Fluent keyboard path remains available; ignore circuit teardown races.
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "BL0016", Justification = "OpenContextFlyoutAsync owns the Fluent-menu fallback for this import and its invocation failures.")]
     private async Task<IJSObjectReference> EnsureMenuModuleAsync()
         => _menuModule ??= await JS.InvokeAsync<IJSObjectReference>("import", MenuModulePath).ConfigureAwait(false);
 

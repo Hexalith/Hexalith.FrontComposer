@@ -15,10 +15,12 @@ internal sealed class DelayedHiddenDetailFocusRuntime : IJSRuntime
     public int TimeoutImportsRemaining { get; set; }
 
     /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
         => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
 
     /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
     {
         ImportCalls++;

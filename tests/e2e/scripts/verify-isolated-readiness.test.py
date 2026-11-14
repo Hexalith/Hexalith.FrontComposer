@@ -272,7 +272,7 @@ class ReadinessSafetyTests(unittest.TestCase):
                 private = Path(root) / "private"
                 private.mkdir(mode=0o700)
                 proc = Path(root) / "proc"
-                binary = readiness.ROOT / "references/Hexalith.Tenants/src/Hexalith.Tenants/bin/Debug/net10.0/Hexalith.Tenants"
+                binary = readiness.ROOT / "references/Hexalith.Tenants/src/Hexalith.Tenants/bin/Debug/net11.0/Hexalith.Tenants"
                 app = proc / "12345"
                 peer = proc / "12346"
                 for entry, executable in ((app, binary), (peer, readiness.NATIVE_RUNTIME)):

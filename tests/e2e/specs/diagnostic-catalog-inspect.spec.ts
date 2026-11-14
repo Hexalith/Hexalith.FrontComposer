@@ -46,7 +46,7 @@ test.describe('Story 7.3: diagnostic catalog inspect CLI', () => {
         '--configuration',
         'Debug',
         '--framework',
-        'net10.0',
+        'net11.0',
         '--severity',
         'warning',
       ]);
@@ -74,7 +74,7 @@ test.describe('Story 7.3: diagnostic catalog inspect CLI', () => {
         '--configuration',
         'Debug',
         '--framework',
-        'net10.0',
+        'net11.0',
         '--severity',
         'verbose',
       ]);
@@ -100,7 +100,7 @@ test.describe('Story 7.3: diagnostic catalog inspect CLI', () => {
         '--configuration',
         'Debug',
         '--framework',
-        'net10.0',
+        'net11.0',
         '--format',
         'json',
       ]);
@@ -117,7 +117,7 @@ test.describe('Story 7.3: diagnostic catalog inspect CLI', () => {
         expect.objectContaining({
           id: 'HFCM0002',
           severity: 'Warning',
-          path: 'obj/Debug/net10.0/generated/HexalithFrontComposer/Broken.diagnostics.json',
+          path: 'obj/Debug/net11.0/generated/HexalithFrontComposer/Broken.diagnostics.json',
         }),
       ]);
     } finally {
@@ -159,7 +159,7 @@ const createInspectWorkspace = async (
   const projectDirectory = path.join(root, 'Acme.App');
   const generatedDirectory = path.join(
     projectDirectory,
-    'obj/Debug/net10.0/generated/HexalithFrontComposer',
+    'obj/Debug/net11.0/generated/HexalithFrontComposer',
   );
   const projectPath = path.join(projectDirectory, 'Acme.App.csproj');
 
@@ -170,7 +170,7 @@ const createInspectWorkspace = async (
     [
       '<Project Sdk="Microsoft.NET.Sdk">',
       '  <PropertyGroup>',
-      '    <TargetFramework>net10.0</TargetFramework>',
+      '    <TargetFramework>net11.0</TargetFramework>',
       '  </PropertyGroup>',
       '</Project>',
       '',
@@ -207,7 +207,7 @@ const expectDiagnosticIds = async (
     '--configuration',
     'Debug',
     '--framework',
-    'net10.0',
+    'net11.0',
     '--severity',
     severity,
     '--format',

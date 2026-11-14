@@ -257,7 +257,7 @@ test.describe('Story 13.3: unmapped rejection recovery focus', () => {
 
     const projectDirectory = new URL('../../../samples/Counter/Counter.Web/', import.meta.url);
     const configuration = process.env.FC_E2E_COMMAND_SUBMISSION_CONFIGURATION === 'Debug' ? 'Debug' : 'Release';
-    const assembly = fileURLToPath(new URL(`bin/${configuration}/net10.0/Counter.Web.dll`, projectDirectory));
+    const assembly = fileURLToPath(new URL(`bin/${configuration}/net11.0/Counter.Web.dll`, projectDirectory));
     server = spawnOwnedProcess('dotnet', [assembly, '--urls', REJECTION_BASE_URL], {
       cwd: projectDirectory,
       env: {

@@ -63,13 +63,13 @@ find "$workspace_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
 test "$(find "$provider_test_pact_dir" -maxdepth 1 -type f -name '*.json' | wc -l)" -eq 6
 (
   cd references/Hexalith.EventStore
-  dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
+  dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net11.0/Hexalith.EventStore.ProviderVerification.Tests.dll
 )
 mkdir -p "$(dirname "$report")"
 rm -f "$report"
 (
   cd references/Hexalith.EventStore
-  dotnet "$workspace_root/references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll" \
+  dotnet "$workspace_root/references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/bin/Release/net11.0/Hexalith.EventStore.ProviderVerification.dll" \
     --verification-mode live-compatibility \
     --pact-directory "$workspace_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
     --manifest "$workspace_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json" \

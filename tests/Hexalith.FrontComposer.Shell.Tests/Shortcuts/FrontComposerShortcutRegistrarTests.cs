@@ -221,6 +221,7 @@ public class FrontComposerShortcutRegistrarTests {
     private sealed class FocusReservationJsInterop(bool captured, Exception? captureFailure = null) : IJSRuntime, IJSObjectReference {
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
             => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
 

@@ -638,7 +638,7 @@ public sealed class EventStoreClientTests {
         warning.Kind.ShouldBe(CommandWarningKind.RetryableDispatchFailed);
         handler.Bodies.Count.ShouldBe(1);
         List<string?> messageIds = [.. handler.Bodies
-            .Select(body => JsonDocument.Parse(body).RootElement.GetProperty("messageId").GetString())];
+            .Select(body => JsonElement.Parse(body).GetProperty("messageId").GetString())];
         ulidFactory.Count.ShouldBe(1);
         messageIds.Distinct().Count().ShouldBe(1);
         messageIds[0].ShouldBe("01HVTESTULID00000000000001");

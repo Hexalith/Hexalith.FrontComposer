@@ -246,12 +246,10 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         _pendingTarget = null;
 
         if (string.IsNullOrEmpty(target)) {
-            StateHasChanged();
             return Task.CompletedTask;
         }
 
         _isLeaving = true;
-        StateHasChanged();
         try {
             Nav.NavigateTo(target);
         }

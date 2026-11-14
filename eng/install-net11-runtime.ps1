@@ -1,4 +1,4 @@
-# SDK 11 builds the retained net10.0 targets; their tests and tools still need both .NET 10 runtimes.
+# Prepare both .NET 11 shared frameworks for current tests and tools.
 [CmdletBinding()]
 param(
     [string]$InstallDirectory = $env:DOTNET_ROOT
@@ -15,13 +15,13 @@ try {
     Invoke-WebRequest "https://dot.net/v1/dotnet-install.$extension" -OutFile $installer -TimeoutSec 60 -MaximumRetryCount 3 -RetryIntervalSec 2
     foreach ($runtime in @('dotnet', 'aspnetcore')) {
         if ($IsWindows) {
-            & pwsh -NoProfile -File $installer -Runtime $runtime -Version '10.0.15' -InstallDir $InstallDirectory -NoPath -SkipNonVersionedFiles
+            & pwsh -NoProfile -File $installer -Runtime $runtime -Version '11.0.0' -InstallDir $InstallDirectory -NoPath -SkipNonVersionedFiles
         }
         else {
-            & bash $installer --runtime $runtime --version '10.0.15' --install-dir $InstallDirectory --no-path --skip-non-versioned-files
+            & bash $installer --runtime $runtime --version '11.0.0' --install-dir $InstallDirectory --no-path --skip-non-versioned-files
         }
         if ($LASTEXITCODE -ne 0) {
-            throw ".NET 10 $runtime runtime installation failed with exit code $LASTEXITCODE."
+            throw ".NET 11 $runtime runtime installation failed with exit code $LASTEXITCODE."
         }
     }
 
@@ -35,8 +35,8 @@ try {
         throw ".NET runtime verification failed for $dotnetExecutable with exit code $LASTEXITCODE. $($installedRuntimes -join [Environment]::NewLine)"
     }
     foreach ($runtimeName in @('Microsoft.NETCore.App', 'Microsoft.AspNetCore.App')) {
-        if (-not ($installedRuntimes -match "^$([Regex]::Escape($runtimeName)) 10\.0\.15 ")) {
-            throw "The requested installation at $InstallDirectory is missing $runtimeName 10.0.15."
+        if (-not ($installedRuntimes -match "^$([Regex]::Escape($runtimeName)) 11\.0\.0 ")) {
+            throw "The requested installation at $InstallDirectory is missing $runtimeName 11.0.0."
         }
     }
 }
