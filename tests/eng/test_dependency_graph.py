@@ -2165,6 +2165,14 @@ class PolicyShapeTests(unittest.TestCase):
         ET.indent(root)
         return self._catalog_xml_bytes(root)
 
+    def _ordinary_frontcomposer_property_catalog(self) -> bytes:
+        # These property-shape controls exercise ordinary single defaults, separate
+        # from the bounded retained-role SDK/Memories qualification fixtures.
+        root = ET.fromstring(self._eventstore_qualification_catalog())
+        qualification = list(root.iter("HexalithTenantsVersion"))[1]
+        root.find("PropertyGroup").remove(qualification)
+        return self._catalog_xml_bytes(root)
+
     def test_frontcomposer_profile_accepts_exact_inactive_eventstore_qualification(self) -> None:
         catalog = self._eventstore_qualification_catalog()
         self.assertEqual(self._evaluate_frontcomposer_profile(catalog)["selectors_validated"], 1)
@@ -2623,6 +2631,160 @@ class PolicyShapeTests(unittest.TestCase):
             b"<HexalithEventStoreVersion>5.0.1</HexalithEventStoreVersion>" * 2)
         self._assert_frontcomposer_profile_failure(duplicate, "must define exactly one version property")
 
+    def _current_sdk42_catalog(self) -> bytes:
+        root = ET.fromstring(self._eventstore_qualification_catalog())
+        properties = root.find("PropertyGroup")
+        assert properties is not None
+        for name in ("HexalithEventStoreVersion", "HexalithMemoriesVersion"):
+            for element in list(root.iter(name)):
+                properties.remove(element)
+        fixture = ET.fromstring((ROOT / "tests/ci-governance/fixtures/builds-sdk42-current-qualification.props").read_bytes())
+        for index, element in enumerate(fixture.find("PropertyGroup")):
+            properties.insert(index, copy.deepcopy(element))
+        ET.indent(root)
+        return self._catalog_xml_bytes(root)
+
+    def test_current_sdk42_accepts_exact_subjects_and_defaults(self) -> None:
+        catalog = self._current_sdk42_catalog()
+        self.assertEqual(1, self._evaluate_frontcomposer_profile(catalog)["selectors_validated"])
+        root = ET.fromstring(catalog)
+        self.assertEqual(["4.2.0", "5.1.0"], [element.text for element in root.iter("HexalithEventStoreVersion")])
+        self.assertEqual(["3.0.27", "4.0.0"], [element.text for element in root.iter("HexalithMemoriesVersion")])
+        # Without compatibility rows, the existing ordinary default contract still applies.
+        for name in ("HexalithEventStoreVersion", "HexalithMemoriesVersion"):
+            root.find("PropertyGroup").remove(list(root.iter(name))[0])
+        self.assertEqual(1, self._evaluate_frontcomposer_profile(self._catalog_xml_bytes(root))["selectors_validated"])
+
+    def test_current_sdk42_remains_strict_for_other_profiles_and_properties(self) -> None:
+        catalog = self._current_sdk42_catalog()
+        with self.assertRaises(dg.GraphError):
+            self._evaluate_frontcomposer_profile(catalog, profile_name="strict-catalog-v1")
+        for name in ("HexalithEventStoreVersion", "HexalithMemoriesVersion"):
+            with self.subTest(property=name), self.assertRaises(dg.GraphError):
+                dg.assert_selected_catalog_property_shape(ET.fromstring(catalog), name, "strict helper")
+        root = ET.fromstring(catalog)
+        ET.SubElement(root.find("PropertyGroup"), "HexalithCommonsVersion").text = "3.0.0"
+        self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "HexalithCommonsVersion must define exactly one")
+
+    def test_current_sdk42_rejects_unknown_future_case_or_expression_subjects(self) -> None:
+        names = ("HexalithPartiesSdk42CatalogView", "HexalithPlatformSdk42CatalogView", "HexalithBuildsPackagedHostSdk42CatalogView")
+        for name in names:
+            for change in ("future", "remove", "lowercase", "duplicate", "frontcomposer", "other-module", "prefix", "dynamic", "constant"):
+                with self.subTest(selector=name, change=change):
+                    root = ET.fromstring(self._current_sdk42_catalog())
+                    enabled = list(root.iter(name))[1]
+                    clauses = re.split(r"\s+or\s+", enabled.attrib["Condition"].strip())
+                    if change == "future":
+                        clauses.append("$(MSBuildProjectName.Equals('Hexalith.Platform.Future'))")
+                    elif change == "remove":
+                        clauses.pop()
+                    elif change == "lowercase":
+                        clauses[0] = clauses[0].lower()
+                    elif change == "duplicate":
+                        clauses.append(clauses[0])
+                    elif change == "frontcomposer":
+                        clauses[0] = "$(MSBuildProjectName.Equals('Hexalith.FrontComposer.Shell'))"
+                    elif change == "other-module":
+                        clauses[0] = "$(MSBuildProjectName.Equals('Hexalith.EventStore.Host'))"
+                    elif change == "prefix":
+                        clauses = ["$(MSBuildProjectName.StartsWith('Hexalith.Platform'))"]
+                    elif change == "dynamic":
+                        clauses = ["$(MSBuildProjectName.Equals('$(SelectedProject)'))"]
+                    else:
+                        clauses = ["true"]
+                    enabled.set("Condition", " or ".join(clauses))
+                    self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "current SDK4.2/Memories3.0.27 qualification selector")
+
+    def test_current_sdk42_rejects_selector_writer_shape_and_placement_changes(self) -> None:
+        for name in ("HexalithPartiesSdk42CatalogView", "HexalithPlatformSdk42CatalogView", "HexalithBuildsPackagedHostSdk42CatalogView"):
+            for change in ("missing-default", "duplicate", "true-default", "false-enabled", "case-alias", "conditional", "target", "order"):
+                with self.subTest(selector=name, change=change):
+                    root = ET.fromstring(self._current_sdk42_catalog())
+                    properties = root.find("PropertyGroup")
+                    default, enabled = list(root.iter(name))
+                    if change == "missing-default":
+                        properties.remove(default)
+                    elif change == "duplicate":
+                        properties.append(copy.deepcopy(enabled))
+                    elif change == "true-default":
+                        default.text = "true"
+                    elif change == "false-enabled":
+                        enabled.text = "false"
+                    elif change == "case-alias":
+                        enabled.tag = name.lower()
+                    elif change == "conditional":
+                        properties.remove(enabled)
+                        ET.SubElement(root, "PropertyGroup", {"Condition": "true"}).append(enabled)
+                    elif change == "target":
+                        properties.remove(enabled)
+                        ET.SubElement(root, "Target", {"Name": "HiddenWriter"}).append(enabled)
+                    else:
+                        properties.remove(default)
+                        properties.append(default)
+                    self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "current SDK4.2/Memories3.0.27 qualification")
+
+    def test_current_sdk42_rejects_partial_cohorts_versions_aliases_and_gates(self) -> None:
+        for name in ("HexalithEventStoreVersion", "HexalithMemoriesVersion"):
+            for change in ("missing-override", "duplicate", "wrong-retained", "wrong-default", "dynamic", "case-alias", "remove-gate", "order"):
+                with self.subTest(property=name, change=change):
+                    root = ET.fromstring(self._current_sdk42_catalog())
+                    properties = root.find("PropertyGroup")
+                    override, default = list(root.iter(name))
+                    if change == "missing-override":
+                        properties.remove(override)
+                    elif change == "duplicate":
+                        properties.append(copy.deepcopy(override))
+                    elif change == "wrong-retained":
+                        override.text = "4.2.1" if name == "HexalithEventStoreVersion" else "3.0.28"
+                    elif change == "wrong-default":
+                        default.text = "4.2.0" if name == "HexalithEventStoreVersion" else "3.0.27"
+                    elif change == "dynamic":
+                        override.text = "$(UnreviewedVersion)"
+                    elif change == "case-alias":
+                        default.tag = name.lower()
+                    elif change == "remove-gate":
+                        override.set("Condition", override.attrib["Condition"].replace("'$(HexalithPlatformSdk42CatalogView)' == 'true' or ", ""))
+                    else:
+                        properties.remove(default)
+                        properties.insert(0, default)
+                    with self.assertRaises(dg.GraphError) as failure:
+                        self._evaluate_frontcomposer_profile(self._catalog_xml_bytes(root))
+                    self.assertRegex(str(failure.exception), "SDK4.2|HexalithEventStoreVersion|HexalithMemoriesVersion")
+
+    def test_current_sdk42_rejects_hidden_imports_and_root_overrides(self) -> None:
+        for change in ("root-condition", "local-property", "import", "grouped-import",
+                       "target", "sdk-output", "selector-output", "using-task", "unparented-output",
+                       "target-alias", "using-task-alias", "output-alias",
+                       "nested-target", "nested-using-task", "nested-output"):
+            with self.subTest(change=change):
+                root = ET.fromstring(self._current_sdk42_catalog())
+                if change == "root-condition":
+                    root.set("Condition", "true")
+                elif change == "local-property":
+                    root.set("TreatAsLocalProperty", "HexalithEventStoreVersion")
+                elif change == "import":
+                    ET.SubElement(root, "Import", {"Project": "unreviewed.props"})
+                elif change == "grouped-import":
+                    ET.SubElement(ET.SubElement(root, "ImportGroup"), "Import", {"Project": "unreviewed.props"})
+                elif change in ("using-task", "using-task-alias", "nested-using-task"):
+                    parent = ET.SubElement(root, "PropertyGroup") if change == "nested-using-task" else root
+                    tag = "usingtask" if change == "using-task-alias" else "UsingTask"
+                    ET.SubElement(parent, tag, {"TaskName": "RewriteVersion", "AssemblyFile": "unreviewed.dll"})
+                elif change in ("unparented-output", "output-alias", "nested-output"):
+                    parent = ET.SubElement(root, "PropertyGroup") if change == "nested-output" else root
+                    tag = "output" if change == "output-alias" else "Output"
+                    ET.SubElement(parent, tag, {"TaskParameter": "Value", "PropertyName": "HexalithEventStoreVersion"})
+                else:
+                    parent = ET.SubElement(root, "ItemGroup") if change == "nested-target" else root
+                    tag = "target" if change == "target-alias" else "Target"
+                    target = ET.SubElement(parent, tag, {"Name": "RewriteVersion", "BeforeTargets": "CollectPackageReferences"})
+                    if change in ("sdk-output", "selector-output"):
+                        task = ET.SubElement(target, "CreateProperty", {"Value": "4.2.0" if change == "sdk-output" else "true"})
+                        name = "HexalithEventStoreVersion" if change == "sdk-output" else "HexalithPlatformSdk42CatalogView"
+                        ET.SubElement(task, "Output", {"TaskParameter": "Value", "PropertyName": name})
+                expected = "conditional group" if change == "root-condition" else "current SDK4.2/Memories3.0.27 qualification"
+                self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), expected)
+
     def _immutable_consumer_catalog(self) -> bytes:
         root = ET.fromstring(self._eventstore_qualification_catalog())
         properties = root.find("PropertyGroup")
@@ -2839,7 +3001,7 @@ class PolicyShapeTests(unittest.TestCase):
             "HexalithTenantsVersion",
         )
         catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
-        catalog = self._frontcomposer_catalog()
+        catalog = self._ordinary_frontcomposer_property_catalog()
         for index, name in enumerate(property_names, start=1):
             with self.subTest(property_name=name):
                 mutated_catalog = self._replace_catalog_property_value(
@@ -2851,7 +3013,7 @@ class PolicyShapeTests(unittest.TestCase):
                 self.assertEqual(semantics["selectors_validated"], 1)
 
     def test_frontcomposer_profile_missing_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = self._frontcomposer_catalog()
+        catalog = self._ordinary_frontcomposer_property_catalog()
         property_names = self._frontcomposer_profile()["selected_catalog_required_property_names"]
         self.assertEqual(len(property_names), 6)
         for property_name in property_names:
@@ -2863,7 +3025,7 @@ class PolicyShapeTests(unittest.TestCase):
                 )
 
     def test_frontcomposer_profile_duplicate_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = self._frontcomposer_catalog()
+        catalog = self._ordinary_frontcomposer_property_catalog()
         property_name = "HexalithMemoriesVersion"
         start = catalog.index(f"<{property_name}".encode("ascii"))
         closing = f"</{property_name}>".encode("ascii")
@@ -2881,7 +3043,7 @@ class PolicyShapeTests(unittest.TestCase):
         self.assertIn("found 2 values", message)
 
     def test_frontcomposer_profile_empty_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = self._frontcomposer_catalog()
+        catalog = self._ordinary_frontcomposer_property_catalog()
         property_name = "HexalithMemoriesVersion"
         mutated_catalog = self._replace_catalog_property_value(catalog, property_name, "")
         self._assert_frontcomposer_profile_failure(
@@ -2890,7 +3052,7 @@ class PolicyShapeTests(unittest.TestCase):
         )
 
     def test_frontcomposer_profile_malformed_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = self._frontcomposer_catalog()
+        catalog = self._ordinary_frontcomposer_property_catalog()
         property_name = "HexalithMemoriesVersion"
         mutated_catalog = self._replace_catalog_property_value(catalog, property_name, "$(OtherVersion)")
         self._assert_frontcomposer_profile_failure(
@@ -2899,7 +3061,7 @@ class PolicyShapeTests(unittest.TestCase):
         )
 
     def test_frontcomposer_profile_nested_module_property_value_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = self._frontcomposer_catalog()
+        catalog = self._ordinary_frontcomposer_property_catalog()
         property_name = "HexalithMemoriesVersion"
         start = catalog.index(f"<{property_name}".encode("ascii"))
         opening_end = catalog.index(b">", start) + 1
@@ -2912,7 +3074,7 @@ class PolicyShapeTests(unittest.TestCase):
         )
 
     def test_frontcomposer_profile_noncanonical_condition_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = self._frontcomposer_catalog()
+        catalog = self._ordinary_frontcomposer_property_catalog()
         property_name = "HexalithMemoriesVersion"
         canonical = f"Condition=\"'$({property_name})' == ''\"".encode("ascii")
         noncanonical = b"Condition=\"'$(OtherVersion)' == ''\""
@@ -2921,7 +3083,7 @@ class PolicyShapeTests(unittest.TestCase):
         self._assert_frontcomposer_profile_failure(mutated_catalog, "canonical self-default condition")
 
     def test_frontcomposer_profile_unconditional_module_property_passes(self) -> None:
-        catalog = self._frontcomposer_catalog()
+        catalog = self._ordinary_frontcomposer_property_catalog()
         property_name = "HexalithMemoriesVersion"
         canonical = f" Condition=\"'$({property_name})' == ''\"".encode("ascii")
         self.assertEqual(catalog.count(canonical), 1)
@@ -2930,7 +3092,7 @@ class PolicyShapeTests(unittest.TestCase):
         self.assertEqual(semantics["selectors_validated"], 1)
 
     def test_frontcomposer_profile_conditional_ancestor_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = self._frontcomposer_catalog()
+        catalog = self._ordinary_frontcomposer_property_catalog()
         property_name = "HexalithMemoriesVersion"
         start = catalog.index(f"<{property_name}".encode("ascii"))
         closing = f"</{property_name}>".encode("ascii")
@@ -2946,7 +3108,7 @@ class PolicyShapeTests(unittest.TestCase):
         self._assert_frontcomposer_profile_failure(mutated_catalog, "conditional group")
 
     def test_frontcomposer_profile_choose_selected_property_fails_with_owner_and_catalog_coordinates(self) -> None:
-        catalog = self._frontcomposer_catalog()
+        catalog = self._ordinary_frontcomposer_property_catalog()
         property_name = "HexalithMemoriesVersion"
         start = catalog.index(f"<{property_name}".encode("ascii"))
         closing = f"</{property_name}>".encode("ascii")
@@ -2966,7 +3128,7 @@ class PolicyShapeTests(unittest.TestCase):
         self._assert_frontcomposer_profile_failure(mutated_catalog, "Choose branch")
 
     def test_frontcomposer_profile_target_scoped_property_fails_as_nonglobal(self) -> None:
-        catalog = self._frontcomposer_catalog()
+        catalog = self._ordinary_frontcomposer_property_catalog()
         property_name = "HexalithMemoriesVersion"
         start = catalog.index(f"<{property_name}".encode("ascii"))
         closing = f"</{property_name}>".encode("ascii")

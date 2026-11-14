@@ -1521,6 +1521,165 @@ def _validate_catalog_logging_import(
     require_shape(target, expected)
 
 
+# Exact inactive SDK4.2 subjects in the qualified current catalog; no prefix admission.
+_SDK42_CURRENT_PROJECTS = {
+    "HexalithPartiesSdk42CatalogView": frozenset({
+        "Hexalith.Parties",
+        "Hexalith.Parties.AdminPortal",
+        "Hexalith.Parties.AdminPortal.Tests",
+        "Hexalith.Parties.AppHost",
+        "Hexalith.Parties.Aspire",
+        "Hexalith.Parties.Aspire.Tests",
+        "Hexalith.Parties.Authentication",
+        "Hexalith.Parties.Authentication.Tests",
+        "Hexalith.Parties.Catalog.Tests",
+        "Hexalith.Parties.Ci.Tests",
+        "Hexalith.Parties.Client",
+        "Hexalith.Parties.Client.Tests",
+        "Hexalith.Parties.ConsumerPortal",
+        "Hexalith.Parties.ConsumerPortal.Tests",
+        "Hexalith.Parties.Contracts",
+        "Hexalith.Parties.Contracts.Tests",
+        "Hexalith.Parties.EventStoreAdminUI.TestHost",
+        "Hexalith.Parties.EventStoreExtensions",
+        "Hexalith.Parties.EventStoreGateway.TestHost",
+        "Hexalith.Parties.EventStoreSample.Contracts.TestArtifact",
+        "Hexalith.Parties.EventStoreSample.TestHost",
+        "Hexalith.Parties.IntegrationTests",
+        "Hexalith.Parties.Mcp",
+        "Hexalith.Parties.Mcp.Tests",
+        "Hexalith.Parties.Picker",
+        "Hexalith.Parties.Picker.Tests",
+        "Hexalith.Parties.Platform.AttachedLifecycleTests",
+        "Hexalith.Parties.Platform.IntegrationTests",
+        "Hexalith.Parties.Platform.LifecycleTests",
+        "Hexalith.Parties.Projections",
+        "Hexalith.Parties.Projections.Tests",
+        "Hexalith.Parties.Sample",
+        "Hexalith.Parties.Sample.Tests",
+        "Hexalith.Parties.Security",
+        "Hexalith.Parties.Security.Tests",
+        "Hexalith.Parties.Server.Tests",
+        "Hexalith.Parties.Testing",
+        "Hexalith.Parties.Tests",
+        "Hexalith.Parties.UI",
+        "Hexalith.Parties.UI.Tests",
+    }),
+    "HexalithPlatformSdk42CatalogView": frozenset({
+        "Hexalith.Platform.CatalogBuilder",
+        "Hexalith.Platform.Composition",
+        "Hexalith.Platform.Composition.Tests",
+        "Hexalith.Platform.Custody",
+        "Hexalith.Platform.Custody.Component",
+        "Hexalith.Platform.Custody.Component.Tests",
+        "Hexalith.Platform.Custody.Tests",
+        "Hexalith.Platform.EventStoreHost",
+        "Hexalith.Platform.Identity",
+        "Hexalith.Platform.Identity.Tests",
+        "Hexalith.Platform.OwnerServices.Tests",
+        "Hexalith.Platform.Protection",
+        "Hexalith.Platform.Protection.Qualification.Enrollment",
+        "Hexalith.Platform.Protection.Qualification.Executor",
+        "Hexalith.Platform.Protection.Qualification.Observer",
+        "Hexalith.Platform.Protection.Tests",
+        "Hexalith.Platform.Secrets.ArchiveProcessFixture",
+        "Hexalith.Platform.Secrets.Authority",
+        "Hexalith.Platform.Secrets.Authority.Tests",
+        "Hexalith.Platform.Secrets.Custody",
+        "Hexalith.Platform.Secrets.Custody.Tests",
+        "Hexalith.Platform.Secrets.Inventory",
+        "Hexalith.Platform.Secrets.Inventory.Tests",
+        "Hexalith.Platform.Secrets.Qualification.Enrollment",
+        "Hexalith.Platform.Secrets.Qualification.Executor",
+        "Hexalith.Platform.Secrets.Qualification.Observer",
+        "Hexalith.Platform.Secrets.Runtime",
+        "Hexalith.Platform.Secrets.Runtime.Tests",
+        "Hexalith.Platform.TenantRegistry.Host",
+        "Hexalith.Platform.TestExtension",
+        "Hexalith.Platform.TestExtension.Qualification.Tests",
+        "Hexalith.Platform.Works.Runtime",
+        "Hexalith.Platform.Works.Tests",
+    }),
+    "HexalithBuildsPackagedHostSdk42CatalogView": frozenset({
+        "Hexalith.Builds.Module.AppHost",
+        "Hexalith.Builds.Module.EventStoreHost",
+        "Hexalith.Builds.Module.UiHost",
+    }),
+}
+_SDK42_CURRENT_GATES = " or ".join(f"'$({name})' == 'true'" for name in _SDK42_CURRENT_PROJECTS)
+_SDK42_CURRENT_CONDITION = "'$(HexalithEventStoreVersion)' == '' and (" + _SDK42_CURRENT_GATES + ")"
+_MEMORIES327_CURRENT_CONDITION = (
+    "'$(HexalithMemoriesVersion)' == '' and '$(HexalithEventStoreVersion)' == '4.2.0' and ("
+    + _SDK42_CURRENT_GATES + ")"
+)
+
+
+def _current_sdk42_qualification(
+    root: ET.Element, parents: dict[ET.Element, ET.Element], context: str,
+    catalog_source: tuple[Path, str, int] | None,
+) -> dict[str, ET.Element]:
+    """Prove the closed current SDK4.2/Memories3.0.27 cohort is inactive for FrontComposer."""
+    contract = "current SDK4.2/Memories3.0.27 qualification"
+    if root.tag != "Project" or root.attrib:
+        raise GraphError(f"{context}: {contract} requires an ordinary unconditional Project root")
+    if any(element.tag.casefold() in {"target", "usingtask", "output"} for element in root.iter()):
+        raise GraphError(f"{context}: {contract} rejects executable catalog targets, tasks or outputs")
+    positions = {element: index for index, element in enumerate(root.iter())}
+
+    def require_global(element: ET.Element, name: str) -> None:
+        group = parents.get(element)
+        if (group is None or group.tag != "PropertyGroup" or group.attrib or parents.get(group) is not root):
+            raise GraphError(f"{context}: {contract} {name} must be in an unconditional top-level PropertyGroup")
+
+    overrides: dict[str, ET.Element] = {}
+    defaults: dict[str, ET.Element] = {}
+    for name, condition, retained, current in (
+        ("HexalithEventStoreVersion", _SDK42_CURRENT_CONDITION, "4.2.0", "5.1.0"),
+        ("HexalithMemoriesVersion", _MEMORIES327_CURRENT_CONDITION, "3.0.27", "4.0.0"),
+    ):
+        definitions = [element for element in root.iter() if element.tag.casefold() == name.casefold()]
+        if len(definitions) != 2 or any(element.tag != name for element in definitions):
+            raise GraphError(f"{context}: {contract} {name} requires exactly two canonical declarations")
+        selected = [element for element in definitions if element.attrib == {"Condition": condition}
+                    and element.text == retained and not list(element)]
+        if len(selected) != 1:
+            raise GraphError(f"{context}: {contract} {name} retained row must have its exact literal condition and version")
+        override = selected[0]
+        default = next(element for element in definitions if element is not override)
+        for element in definitions:
+            require_global(element, name)
+        if (default.attrib != {"Condition": f"'$({name})' == ''"}
+                or default.text != current or list(default)):
+            raise GraphError(f"{context}: {contract} {name} must retain canonical default {current}")
+        overrides[name] = override
+        defaults[name] = default
+
+    clause = re.compile(r"\$\(MSBuildProjectName\.Equals\('(?P<project>[A-Za-z0-9._-]+)'\)\)")
+    for name, allowed_projects in _SDK42_CURRENT_PROJECTS.items():
+        definitions = [element for element in root.iter() if element.tag.casefold() == name.casefold()]
+        if len(definitions) != 2 or any(element.tag != name for element in definitions):
+            raise GraphError(f"{context}: {contract} selector {name} requires exactly two canonical declarations")
+        default, enabled = definitions
+        for element in definitions:
+            require_global(element, name)
+        if default.attrib or default.text != "false" or list(default):
+            raise GraphError(f"{context}: {contract} selector {name} requires an unconditional literal false default")
+        if set(enabled.attrib) != {"Condition"} or enabled.text != "true" or list(enabled):
+            raise GraphError(f"{context}: {contract} selector {name} requires one conditional literal true assignment")
+        clauses = re.split(r"\s+or\s+", enabled.attrib["Condition"].strip())
+        parsed = [clause.fullmatch(value) for value in clauses]
+        projects = [match.group("project") for match in parsed if match is not None]
+        if len(projects) != len(clauses) or len(projects) != len(set(projects)) or set(projects) != allowed_projects:
+            raise GraphError(f"{context}: {contract} selector {name} must contain exactly its qualified literal project-name Equals subjects")
+        if not positions[default] < positions[enabled] < positions[overrides["HexalithEventStoreVersion"]]:
+            raise GraphError(f"{context}: {contract} selector {name} must default false then select subjects before the override")
+    if not (positions[overrides["HexalithEventStoreVersion"]] < positions[defaults["HexalithEventStoreVersion"]]
+            < positions[overrides["HexalithMemoriesVersion"]] < positions[defaults["HexalithMemoriesVersion"]]):
+        raise GraphError(f"{context}: {contract} SDK selection must precede the retained Memories row and its default")
+    _validate_catalog_logging_import(root, defaults["HexalithMemoriesVersion"], parents, catalog_source, context, contract)
+    return overrides
+
+
 def _inactive_eventstore_sdk42_override(
     root: ET.Element, matches: list[ET.Element], parents: dict[ET.Element, ET.Element], context: str,
     catalog_source: tuple[Path, str, int] | None,
@@ -1534,6 +1693,8 @@ def _inactive_eventstore_sdk42_override(
     if any(element.tag.casefold() == "hexalitheventstoreversion" and element.tag != "HexalithEventStoreVersion"
            for element in root.iter()):
         raise GraphError(f"{context}: HexalithEventStoreVersion SDK4.2 proof rejects case-insensitive version aliases")
+    if any(element.get("Condition") == _SDK42_CURRENT_CONDITION for element in matches):
+        return _current_sdk42_qualification(root, parents, context, catalog_source)["HexalithEventStoreVersion"]
     condition = (
         "'$(HexalithEventStoreVersion)' == '' and ("
         "'$(HexalithPartiesSdk42CatalogView)' == 'true' or "
@@ -1633,6 +1794,10 @@ def assert_selected_catalog_property_shape(
         override = _inactive_eventstore_sdk42_override(root, matches, parents, context, catalog_source)
         if override is not None:
             matches.remove(override)
+    if allow_eventstore_qualification and prop_name == "HexalithMemoriesVersion":
+        if (any(element.get("Condition") == _SDK42_CURRENT_CONDITION for element in root.iter("HexalithEventStoreVersion"))
+                or any(element.get("Condition") == _MEMORIES327_CURRENT_CONDITION for element in matches)):
+            matches.remove(_current_sdk42_qualification(root, parents, context, catalog_source)[prop_name])
     if len(matches) != 1:
         observed_values = [match.text or "" for match in matches]
         observed = "<missing>" if not observed_values else repr(observed_values)
