@@ -501,9 +501,6 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
             catch (OperationCanceledException) {
                 // A circuit ending during focus must not fail the component event.
             }
-            catch (InvalidOperationException) {
-                // Focus is best effort after the browser circuit or target has disappeared.
-            }
         }
     }
 
@@ -563,9 +560,6 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
             }
             catch (OperationCanceledException) {
                 // A circuit ending during focus must not fail the component event.
-            }
-            catch (InvalidOperationException) {
-                // Focus is best effort after the browser circuit or target has disappeared.
             }
         }
     }
