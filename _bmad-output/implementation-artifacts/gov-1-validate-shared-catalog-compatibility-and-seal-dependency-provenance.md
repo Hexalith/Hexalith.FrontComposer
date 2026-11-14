@@ -864,3 +864,17 @@ subject to AD-12 activation. The story baseline is preserved and status remains
 upstream, publication, role-decision or live conformance requirements. Review
 covered the scoped current correction; the large historical baseline diff was
 preserved separately and was not exhaustively reviewed.
+
+### 2026-11-14 synchronized upstream source projection
+
+The concurrent upstream synchronization at `4c9b5778` advances the selected
+Platform source to `20eecbdd` and Builds source to `0230aefd`. Renew the exact
+owner, inventory, Builds and root-selector coordinates for that committed graph.
+The two linked Platform source files, inventory-only identity set, Compile links,
+consumer configuration and all historical evaluator authorizations are unchanged.
+
+Builds `0230aefd` preserves the compiler ABI for its finite FrontComposer consumer
+view with Immutable `10.0.15`; its ordinary shared default remains `11.0.0`.
+The FrontComposer profile now expects that exact compatibility version. The
+synchronized graph has 69 edges and passes all eight semantic selectors. This
+renewal grants no new repository, module execution, workflow or publication scope.
