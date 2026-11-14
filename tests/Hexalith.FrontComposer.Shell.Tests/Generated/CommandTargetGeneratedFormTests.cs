@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using Bunit;
 
 using Fluxor;
@@ -1282,18 +1283,39 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         await InitializeStoreAsync();
         IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
         IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>();
-        cut.Find("form").Submit();
-        await service.DispatchStarted.Task.WaitAsync(
-            TimeSpan.FromSeconds(2),
-            Xunit.TestContext.Current.CancellationToken);
+        Task submit = Task.CompletedTask;
+        TaskCompletionSource<bool> associatedBeforeSubmitExit = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        void ObserveAssociation(object? sender, EventArgs args) {
+            if (pending.GetByMessageId(AcceptedMessageId) is not null) {
+                associatedBeforeSubmitExit.TrySetResult(!submit.IsCompleted);
+            }
+        }
+        pending.Changed += ObserveAssociation;
+        try {
+            // Capture the generated handler task itself, rather than a renderer/event wrapper.
+            await cut.InvokeAsync(() => {
+                submit = (Task)typeof(TwoFieldCompactCommandForm)
+                    .GetMethod("SubmitAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(cut.Instance, [true])!;
+            });
+            await service.DispatchStarted.Task.WaitAsync(
+                TimeSpan.FromSeconds(2),
+                Xunit.TestContext.Current.CancellationToken);
+            submit.IsCompleted.ShouldBeFalse();
 
-        cut.Instance.Dispose();
-        service.ReturnAccepted.TrySetResult();
+            cut.Instance.Dispose();
+            service.ReturnAccepted.TrySetResult();
 
-        SpinWait.SpinUntil(
-            () => pending.GetByMessageId(AcceptedMessageId) is not null,
-            TimeSpan.FromSeconds(2)).ShouldBeTrue();
-        pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+            (await associatedBeforeSubmitExit.Task.WaitAsync(
+                TimeSpan.FromSeconds(2),
+                Xunit.TestContext.Current.CancellationToken)).ShouldBeTrue("accepted association must occur before the submit handler exits");
+            pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+        }
+        finally {
+            pending.Changed -= ObserveAssociation;
+            service.ReturnAccepted.TrySetResult();
+            await submit.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+        }
     }
 
     [Fact]
