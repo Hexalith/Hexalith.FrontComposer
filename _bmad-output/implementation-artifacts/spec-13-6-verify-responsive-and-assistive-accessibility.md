@@ -2,7 +2,7 @@
 title: 'Story 13.6: Verify Responsive and Assistive Accessibility'
 type: 'feature'
 created: '2026-10-15'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 2
 baseline_commit: '3c8679628ebdb8995afc09f712a04fcde623695c'
@@ -330,6 +330,41 @@ Scope: the pass 7 fix delta `git diff 6f6eb898 HEAD` over seven test files (the 
 - R8-E7 (false): same as the R8-B8 return part.
 - R8-E8 (low): carried R6-B1/E1/E2 and R7-B6.
 - R8-E10 (false): the validator writes one `console.error` line, and the nested-shape regex fails on an inline duplicate prefix.
+
+#### Heading-reflow fix review (2026-11-14)
+
+Scope: the code delta left unreviewed since the 2026-11-04 native-findings review. It is `git diff 44d802b9^ 5905ab89` over `fc-keyboard.js`, `responsive-accessibility.spec.ts`, `FrontComposerTypeSpecimen.razor` and `destructive-command-confirmation.spec.ts`, plus the `5905ab89` hunk of `baseline-change-rationale.md`: 413 diff lines. The 24 PNG baselines are binary and excluded. Blind Hunter, Edge Case Hunter, Verification Gap and Acceptance Auditor returned 40 raw findings: `HBH01–20`, `HEC01–10`, `HVG01–02` with two other findings `HVG-O1/O2`, and `HAA01–06`. Every finding was verified before grouping. Any patch to `fc-keyboard.js` changes the build named by the Owner's 2026-11-14 acceptance (`c24a7a27` only).
+
+- [x] [Review][Decision→Patch, chosen 2026-11-14: option (d)] Non-input scrolling never releases the heading resize watch — While a route heading keeps focus, the ResizeObserver watches every owning box up to the shell root. Only keydown, wheel and pointerdown release it. Screen-reader browse-mode scrolling, find-in-page and app-driven `scrollIntoView` leave it armed. A later ancestor size change, such as projection rows or Home cards loading into `#fc-main-content`, then scrolls back to the heading (HBH02, HEC04, HAA02). The options were: (a) release on any shell scroll the reveal did not cause; (b) arm only from a window resize and release after the tier reflow settles; (c) defer; (d) reveal only a heading that is still on screen. The user chose (d) after a pros/cons comparison. (a) needs timing and self-scroll bookkeeping, because zoom, reflow and focus also fire `scroll`; that risks the accepted zoom reveal and WebKit's ring protection. (b) relies on a timeout and leaves the window-resize re-arm in place. (d) needs no timers and also covers the re-arm and macOS-chord items.
+- [ ] [Review][Patch] Reveal only a focused route heading that is still on screen. Keep an `IntersectionObserver` (default threshold, implicit root) on the focused route heading from `focusin` until focus leaves or the filter is disposed. The ResizeObserver callback and `showResizedFocus` schedule a reveal only if the heading was intersecting before the change. A heading first seen through `showResizedFocus` (focused before registration) counts as visible until the observer reports. Keep the existing key, wheel and pointer releases. Add rows where a heading moved fully out of view by a programmatic scroll, and by PageDown followed by a window resize, gets zero `scrollIntoView` calls, while the existing heading-reflow rows still reveal (decision above; covers HBH01, HEC05, HEC10, HVG-O1, HAA01 and HBH03, HEC01, HVG-O2) [src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-keyboard.js:284]
+- [ ] [Review][Patch] Pointer input leaves an already scheduled reveal running. `recordPointer` calls `stopFocusResizeWatch()` but not `cancelAnimationFrame(element.__fcShellFocusFrame)`, unlike the wheel and key releases. The remaining part of the window-resize re-arm item; its re-arm part is covered by the visible-heading gate (HAA02 sub-claim) [src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-keyboard.js:257]
+- [x] [Review][Patch→Merged into the visible-heading gate, 2026-11-14] macOS scroll chords do not release the watch. The predicate rejects `metaKey` and `altKey`, so Cmd+↑/↓ and Option+↑/↓ on a focused route heading leave it armed. Under the gate, a heading those chords move off screen is never revealed again, so no separate predicate change is needed (HBH03, HEC01, HVG-O2) [src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-keyboard.js:340]
+- [ ] [Review][Patch] Ctrl+wheel zoom is treated as scrolling. `cancelResizedFocus` releases on every wheel event, including Ctrl+wheel browser zoom. A trailing tick with no zoom step cancels the watch before the async Fluent tier reflow, leaving the heading hidden. Ignore `ctrlKey` wheel events (HBH04, HEC06) [src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-keyboard.js:328]
+- [ ] [Review][Patch] The window `resize` path has no test. Deleting `window.addEventListener('resize', showResizedFocus)` fails nothing, yet it is the only arming path for a heading focused before registration or after a release. Add a positive row (heading focused before registration, window resize reveals it) and a window-resize step after each input in the yield loop. The step asserts the visible-heading gate: zero calls once the input moved the heading fully off screen, and a reveal where it stays visible, as in the Linux WebKit Ctrl+Home/End rows (HVG01, HAA03) [tests/e2e/specs/responsive-accessibility.spec.ts:316]
+- [ ] [Review][Patch] The pointer release has no test. Removing `stopFocusResizeWatch()` from `recordPointer` fails nothing. Add a `pointer` row to the yield loop (HVG02, HBH15) [tests/e2e/specs/responsive-accessibility.spec.ts:316]
+- [ ] [Review][Patch] The new rationale entry gives a stale runtime reason. "Because the ordinary .NET 10/AppHost composition remains blocked" held at capture root `1a68cf55`, but `5905ab89` follows the .NET 11 migration (`a7971438`), and the ordinary-runtime comparisons at `4c9b5778` pass unchanged. Append a dated correction (HAA06) [docs/accessibility-verification/baseline-change-rationale.md:413]
+- [ ] [Review][Patch] The baseline table does not say that Light and Dark share heights: its header names six variants, but each row gives three heights. Append a clarification (HBH18) [docs/accessibility-verification/baseline-change-rationale.md:404]
+
+##### Rejected (heading-reflow fix review)
+
+- HBH05/HEC03 (low): Blazor applies `preventDefault` after this bubble listener runs. The only in-repo `@onkeydown:preventDefault` is the modal palette (`FcCommandPalette.razor:16`), which `isRouteHeading` excludes, and a microtask deferral adds machinery.
+- HBH06/HEC07 (false): `JSDisconnectedException` means the renderer is gone, so Blazor never detaches the shell. While the circuit lives, the unregister interop at `FrontComposerShell.razor.cs:742` runs.
+- HBH07/HEC08 (low): an observed detached heading is inert, because `scheduleFocusVisibility` requires `isConnected`, and the next focus or input releases the watch. A `focusout` handler adds lifecycle code.
+- HBH08 (low): the observers on about a dozen ancestors are rebuilt per resize event only while a route heading is focused. Throttling adds state.
+- HBH09 (false): HZ1 scopes the reveal to the focused route heading and keeps one-shot scrolling for ordinary controls, as the result records.
+- HBH10 (false): the Home rows fail 6/6 (two per engine) against the original keyboard module, per the result's heading-reflow attempt table. The rows assert the required visibility, and their names say viewport reflow, not actual zoom.
+- HBH11 (maybe-false, low): the fixture puts the focused start near 252–330 px, below 400. If an engine aligned the heading to the start, only the scroll assertion would weaken; the `__aeResizeScrollCalls` counter still proves cancellation.
+- HBH12 (low): the first half of the same test proves arming, and dropping either disposal call makes the post-unregister counter non-zero.
+- HBH13 (low): during IME composition Chromium and Firefox report `key` as `Process`, which the key list ignores. A separate `keyCode` 229 row would guard against an unlikely regression.
+- HBH14 (low): both releases sit in one branch of the shared predicate, which the held-frame rows already exercise.
+- HBH16 (false): every WebKit lane (CI `quality.yml` and the local WSL host) runs on Linux, so the note is never attached to a non-Linux run.
+- HBH17 (low): the 2026-10-23 evidence policy keeps raw artifacts local, and the approved hunk is in `5905ab89` itself, matching the proposal patch (verified by the Acceptance Auditor).
+- HBH19 (false): a concise landmark name is preferred, the description is the next paragraph, and HZ4 requires the exact approved two-line patch.
+- HBH20 (false): the loop-style note names no harm.
+- HEC02 (low): it needs Ctrl+Home/End or Space on a non-heading within the single frame after that element gains focus. New predicates add complexity.
+- HEC09 (maybe-false, low): it needs an ancestor resize between focus and PageDown on `/counter`. Asserting that the frame is still held before release would settle it. The `PageDown` yield row pins the same predicate with a call counter.
+- HAA04 (low): clicking a non-interactive heading is rare, and until the next input the watch only re-reveals a heading that is already visible. An extra branch adds complexity.
+- HAA05 (maybe-false, low): it depends on the Counter H1 offset relative to the 16 px scroll margin plus padding; a red control would settle it. The `PageDown` yield row already pins the cancellation.
 
 ## Implementation Notes
 
