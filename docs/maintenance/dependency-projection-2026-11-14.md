@@ -156,3 +156,18 @@ must use the landed seal as its immediate parent and actual event base, preservi
 every selector, consumer configuration and policy byte. Hosted acceptance and
 publication are separate requirements. No Release dispatch or finite fallback
 approval window is opened by this source renewal.
+
+## Activation of the qualified current-source seal — 2026-11-15
+
+This documentation-only successor uses landed seal
+`9d2cdc35df604472d580a5984721a1679c5720a7` as its immediate parent and actual
+push event base. All dependency selectors, consumer configuration, policy and
+workflow/tool bytes remain identical to that seal. The active policy is the
+committed blob SHA256
+`afdc24964b26d18dfed300a067df4ced053ed29e8c9fe649ada8002fc509d945`.
+
+Current-source CI/Quality, complete Happy 80 / Error 60 mutation evidence,
+strict problem-mutant disposition and Release/publication checks remain separate
+requirements. Earlier candidates and diagnostic receipts retain their original
+source, conclusion and scope. This activation opens no fallback approval window
+and records no completed publication.
