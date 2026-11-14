@@ -203,6 +203,126 @@ test.describe('Forward skip access after route announcement', () => {
   });
 });
 
+test.describe('Native dialog readiness for overlay entry', () => {
+  for (const scenario of ['entry', 'typing', 'later Tab', 'close', 'replacement'] as const) {
+    test(`delayed opening preserves ${scenario} focus ownership`, async ({ page }) => {
+      await new CounterPage(page).goto();
+      const clockStart = Date.now();
+      await page.clock.install({ time: clockStart });
+      await page.clock.pauseAt(clockStart + 1000);
+      const focusedBeforeOpen = await page.evaluate(async () => {
+        const modulePath = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+        const focus = await import(modulePath);
+        const opener = document.createElement('button');
+        opener.textContent = 'Delayed dialog opener';
+        document.body.append(opener);
+        opener.focus();
+        const dialog = document.createElement('dialog');
+        dialog.id = 'delayed-entry-dialog';
+        dialog.setAttribute('aria-labelledby', 'delayed-entry-heading');
+        dialog.innerHTML = '<button id="delayed-entry-default" autofocus>Native default</button>'
+          + '<h2 id="delayed-entry-heading" tabindex="-1">Delayed entry</h2>'
+          + '<button id="delayed-entry-next">Next dialog action</button>';
+        document.body.append(dialog);
+        const focused = focus.focusOverlayEntry('delayed-entry-heading');
+        setTimeout(() => { if (dialog.isConnected) dialog.showModal(); }, 250);
+        return focused;
+      });
+      expect(focusedBeforeOpen).toBe(false);
+      await page.clock.runFor(200);
+      await expect(page.locator('#delayed-entry-dialog')).not.toHaveAttribute('open', '');
+      if (scenario === 'typing') await page.keyboard.press('a');
+
+      if (scenario === 'replacement') {
+        await page.evaluate(() => {
+          const original = document.querySelector<HTMLDialogElement>('#delayed-entry-dialog')!;
+          const replacement = original.cloneNode(true) as HTMLDialogElement;
+          original.remove();
+          document.body.append(replacement);
+          setTimeout(() => replacement.showModal(), 50);
+        });
+        await page.clock.runFor(60);
+        await expect(page.locator('#delayed-entry-default')).toBeFocused();
+        return;
+      }
+
+      await page.clock.runFor(60);
+      await expect(page.locator('#delayed-entry-heading')).toBeFocused();
+      if (scenario === 'later Tab') {
+        await page.keyboard.press('Tab');
+        await expect(page.locator('#delayed-entry-next')).toBeFocused();
+      } else if (scenario === 'close') {
+        await page.evaluate(() => document.querySelector<HTMLDialogElement>('#delayed-entry-dialog')!.close());
+      }
+      await page.clock.runFor(200);
+      if (scenario === 'entry' || scenario === 'typing') {
+        await expect(page.locator('#delayed-entry-heading')).toBeFocused();
+      } else if (scenario === 'later Tab') {
+        await expect(page.locator('#delayed-entry-next')).toBeFocused();
+      } else {
+        await page.evaluate(() => document.querySelector<HTMLDialogElement>('#delayed-entry-dialog')!.showModal());
+        await expect(page.locator('#delayed-entry-default')).toBeFocused();
+      }
+    });
+  }
+
+  for (const readiness of ['definition', 'shadow attachment'] as const) {
+    test(`entry observes delayed custom-element ${readiness}`, async ({ page }) => {
+      await new CounterPage(page).goto();
+      const clockStart = Date.now();
+      await page.clock.install({ time: clockStart });
+      await page.clock.pauseAt(clockStart + 1000);
+      // A fresh same-origin realm has no pre-registered Fluent element, so both
+      // upgrade and deferred attachShadow paths exercise the actual browser APIs.
+      await page.evaluate(() => {
+        const frame = document.createElement('iframe');
+        frame.name = 'delayed-overlay-realm';
+        frame.srcdoc = '<!doctype html><html><body><button>Opener</button></body></html>';
+        document.body.append(frame);
+      });
+      await expect.poll(() => page.frame({ name: 'delayed-overlay-realm' }) !== null).toBe(true);
+      const frame = page.frame({ name: 'delayed-overlay-realm' })!;
+      await frame.waitForURL('about:srcdoc');
+      await frame.waitForLoadState('domcontentloaded');
+      const focusedBeforeOpen = await frame.evaluate(async ({ origin, readiness }) => {
+        const modulePath = `${origin}/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js`;
+        const focus = await import(modulePath);
+        if (readiness === 'shadow attachment') customElements.define('fluent-dialog', class extends HTMLElement {});
+        const host = document.createElement('fluent-dialog');
+        host.style.visibility = 'hidden';
+        host.innerHTML = '<button autofocus>Native default</button><h2 id="late-shadow-heading" tabindex="-1">Late shadow entry</h2>';
+        document.body.append(host);
+        const attach = () => {
+          const dialog = document.createElement('dialog');
+          dialog.innerHTML = '<slot></slot>';
+          host.attachShadow({ mode: 'open' }).append(dialog);
+          host.style.visibility = 'visible';
+          setTimeout(() => dialog.showModal(), 50);
+        };
+        const focused = focus.focusOverlayEntry('late-shadow-heading');
+        setTimeout(() => {
+          if (readiness === 'definition') {
+            customElements.define('fluent-dialog', class extends HTMLElement {
+              constructor() {
+                super();
+                const dialog = document.createElement('dialog');
+                dialog.innerHTML = '<slot></slot>';
+                this.attachShadow({ mode: 'open' }).append(dialog);
+                setTimeout(() => dialog.showModal(), 50);
+              }
+            });
+            host.style.visibility = 'visible';
+          } else attach();
+        }, 250);
+        return focused;
+      }, { origin: new URL(page.url()).origin, readiness });
+      expect(focusedBeforeOpen).toBe(false);
+      await page.clock.runFor(310);
+      await expect(frame.locator('#late-shadow-heading')).toBeFocused();
+    });
+  }
+});
+
 
 test('landmark skip focus does not override a later programmatic focus move', async ({ page }) => {
   await new CounterPage(page).goto();

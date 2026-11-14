@@ -889,28 +889,113 @@ export function focusOverlayEntry(id, respectOpeningIntent = false) {
     const intent = respectOpeningIntent ? window.__fcOverlayOpenIntent : null;
     if (respectOpeningIntent) window.__fcOverlayOpenIntent = null;
     if (intent?.moved) return false;
+    const target = document.getElementById(id);
+    if (!(target instanceof HTMLElement) || !target.isConnected || target.hasAttribute('disabled')) return false;
     const guard = new AbortController();
+    const modalHost = target.closest('fluent-dialog');
+    const nativeDialog = () => target.closest('dialog') ?? modalHost?.shadowRoot?.querySelector('dialog');
     let inputOrigin = null;
     let moved = false;
+    let entered = false;
+    let placingFocus = false;
+    let retryTimer = null;
+    let expiryTimer = null;
+    let shadowFrame = null;
+    const watchedDialogs = new WeakSet();
+    const watchedRoots = new WeakSet();
     const recordInput = () => { inputOrigin = document.activeElement; };
     document.addEventListener('keydown', recordInput, { capture: true, signal: guard.signal });
     document.addEventListener('pointerdown', recordInput, { capture: true, signal: guard.signal });
-    document.addEventListener('focusin', () => {
-        if (inputOrigin && document.activeElement !== inputOrigin) moved = true;
+    document.addEventListener('focusin', (event) => {
+        if (placingFocus) return;
+        const dialog = nativeDialog();
+        // Native showModal autofocus is part of opening, not an operator focus
+        // move after plain typing on the still-focused opener.
+        if (!entered && dialog instanceof HTMLDialogElement && dialog.open
+            && event.composedPath().includes(dialog)) {
+            inputOrigin = null;
+            return;
+        }
+        if (inputOrigin && document.activeElement !== inputOrigin) {
+            moved = true;
+            guard.abort();
+        }
     }, { capture: true, signal: guard.signal });
     const focus = () => {
-        const target = document.getElementById(id);
-        if (!(target instanceof HTMLElement) || !target.isConnected || target.hasAttribute('disabled')) return false;
-        target.scrollIntoView({ block: 'nearest' });
-        target.focus({ preventScroll: true });
-        return true;
+        if (guard.signal.aborted || moved || !target.isConnected || document.getElementById(id) !== target) return false;
+        const dialog = nativeDialog();
+        if (dialog instanceof HTMLDialogElement && !dialog.open) return false;
+        placingFocus = true;
+        try { return focusTarget(target); }
+        finally { placingFocus = false; }
     };
-    focus();
-    setTimeout(() => {
-        guard.abort();
-        if (!moved) focus();
-    }, 150);
-    return document.activeElement === document.getElementById(id);
+    const enter = () => {
+        if (entered || guard.signal.aborted) return;
+        entered = true;
+        inputOrigin = null;
+        clearTimeout(expiryTimer);
+        focus();
+        retryTimer = setTimeout(() => {
+            focus();
+            guard.abort();
+        }, 150);
+    };
+    const observer = new MutationObserver(() => checkReady());
+    const checkReady = () => {
+        if (guard.signal.aborted) return;
+        if (!target.isConnected || document.getElementById(id) !== target) {
+            guard.abort();
+            return;
+        }
+        const shadow = modalHost?.shadowRoot;
+        if (modalHost && !shadow && shadowFrame === null) {
+            // attachShadow itself emits no document mutation. Check only until
+            // the root exists; native-open observation then owns readiness.
+            shadowFrame = requestAnimationFrame(() => {
+                shadowFrame = null;
+                checkReady();
+            });
+        }
+        if (shadow && !watchedRoots.has(shadow)) {
+            watchedRoots.add(shadow);
+            observer.observe(shadow, { childList: true, subtree: true });
+        }
+        const dialog = nativeDialog();
+        if (dialog instanceof HTMLDialogElement) {
+            if (!watchedDialogs.has(dialog)) {
+                watchedDialogs.add(dialog);
+                observer.observe(dialog, { attributes: true, attributeFilter: ['open'] });
+                dialog.addEventListener('close', () => guard.abort(), { once: true, signal: guard.signal });
+            }
+            if (!dialog.open) {
+                if (entered) guard.abort();
+                return;
+            }
+        } else if (modalHost) {
+            return;
+        }
+        enter();
+    };
+    guard.signal.addEventListener('abort', () => {
+        observer.disconnect();
+        clearTimeout(retryTimer);
+        clearTimeout(expiryTimer);
+        if (shadowFrame !== null) cancelAnimationFrame(shadowFrame);
+    }, { once: true });
+    observer.observe(document.body, { childList: true, subtree: true });
+    modalHost?.addEventListener('toggle', checkReady, { signal: guard.signal });
+    if (modalHost && !modalHost.shadowRoot && !customElements.get(modalHost.localName)) {
+        // Definition/upgrade is asynchronous. Release the callback's target
+        // reference when the request expires or loses focus ownership.
+        const readiness = { check: checkReady };
+        customElements.whenDefined(modalHost.localName).then(() => readiness.check?.());
+        guard.signal.addEventListener('abort', () => { readiness.check = null; }, { once: true });
+    }
+    // Readiness is event-driven, not a render-lifecycle await or a longer sleep.
+    // A modal that never opens releases its listeners with the existing reservation window.
+    expiryTimer = setTimeout(() => guard.abort(), modalReservationRecoveryMs);
+    checkReady();
+    return document.activeElement === target || target.contains(document.activeElement);
 }
 
 export function preserveRouteFocusAfterOverlay(openedRoute) {
