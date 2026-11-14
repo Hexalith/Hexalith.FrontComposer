@@ -33,12 +33,16 @@ Omit `-Replay` for a random nightly-style seed. The script writes the actual see
 Both segment configs are project-scoped: they pin `project`/`test-projects` to the SourceTools graph and build under `Release`, with no umbrella `Hexalith.FrontComposer.slnx` Stryker build (so Stryker's initial build never touches submodule UI projects such as `references/Hexalith.Tenants`). Run Stryker segments from the SourceTools source project directory. Pinned Stryker 5.1 automatically selects solution context when launched beside the root `.slnx`; the config file does not change its working directory. The explicit test-project and output paths below are relative to the source project:
 
 ```bash no-compile reason="mutation run is long-running and environment-specific"
+export UseMicrosoftTestingPlatformRunner=true
 cd src/Hexalith.FrontComposer.SourceTools
-dotnet tool run dotnet-stryker --verbosity debug --break-on-initial-test-failure --project Hexalith.FrontComposer.SourceTools.csproj --test-project ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --config-file ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-happy-path.json --output ../../artifacts/mutation/happy-path
-dotnet tool run dotnet-stryker --verbosity debug --break-on-initial-test-failure --project Hexalith.FrontComposer.SourceTools.csproj --test-project ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --config-file ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-error-handling.json --output ../../artifacts/mutation/error-handling
+dotnet tool run dotnet-stryker --test-runner mtp --verbosity debug --break-on-initial-test-failure --project Hexalith.FrontComposer.SourceTools.csproj --test-project ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --config-file ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-happy-path.json --output ../../artifacts/mutation/happy-path
+dotnet tool run dotnet-stryker --test-runner mtp --verbosity debug --break-on-initial-test-failure --project Hexalith.FrontComposer.SourceTools.csproj --test-project ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --config-file ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-error-handling.json --output ../../artifacts/mutation/error-handling
 cd ../..
+unset UseMicrosoftTestingPlatformRunner
 pwsh ./eng/validate-stryker-reports.ps1
 ```
+
+The runner property builds xUnit 4.0.3 with its MTP entrypoint so Stryker 5.1 can discover native `--filter` support and capture per-test coverage in the test process. Both configs keep their original Category expressions.
 
 The commands retain debug phase and test diagnostics in the console log and stop a segment if its unmutated baseline fails. A baseline failure is not a mutation score; both complete reports must still pass validation.
 
