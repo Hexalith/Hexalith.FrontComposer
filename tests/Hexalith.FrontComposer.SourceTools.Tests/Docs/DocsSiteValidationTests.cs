@@ -498,6 +498,48 @@ public sealed partial class DocsSiteValidationTests {
         await AssertFluentPublicationAsync(scenario);
     }
 
+    [Fact]
+    public async Task FluentProcessClosesInputAndPreservesOutputAndExitStatusAsync()
+    {
+        string root = NewFluentFixtureRoot();
+        try
+        {
+            (int exitCode, string output, string error) = await RunFluentProcessAsync(root, "pwsh", "-NoProfile", "-Command",
+                "if ([Console]::In.ReadToEnd().Length -ne 0) { exit 99 }; [Console]::Out.Write('stdout-after-eof'); [Console]::Error.Write('stderr-after-eof'); exit 7");
+
+            exitCode.ShouldBe(7);
+            output.ShouldBe("stdout-after-eof");
+            error.ShouldBe("stderr-after-eof");
+        }
+        finally { DeleteFluentFixture(root); }
+    }
+
+    [Fact]
+    public async Task FluentProcessTimeoutTerminatesAndReapsChildAsync()
+    {
+        string root = NewFluentFixtureRoot();
+        try
+        {
+            string pidFile = Path.Combine(root, "child.pid");
+            string runner = Path.Combine(root, "wait.ps1");
+            await File.WriteAllTextAsync(runner, "[IO.File]::WriteAllText($args[0], [string]$PID); Start-Sleep -Seconds 120", CancellationToken.None);
+
+            TimeoutException exception = await Should.ThrowAsync<TimeoutException>(() => RunFluentProcessWithTimeoutAsync(
+                root, "pwsh", null, TimeSpan.FromSeconds(10), "-NoProfile", "-File", runner, pidFile));
+
+            exception.Message.ShouldBe("pwsh did not exit within 10 seconds.");
+            File.Exists(pidFile).ShouldBeTrue("the child must have started before the deadline");
+            int childId = int.Parse(await File.ReadAllTextAsync(pidFile, CancellationToken.None), System.Globalization.CultureInfo.InvariantCulture);
+            try
+            {
+                using Process child = Process.GetProcessById(childId);
+                child.HasExited.ShouldBeTrue("the timeout must reap the child before returning");
+            }
+            catch (ArgumentException) { /* A reaped process no longer has a process-table entry. */ }
+        }
+        finally { DeleteFluentFixture(root); }
+    }
+
     private static async Task AssertFluentPublicationAsync(string scenario)
     {
         string root = NewFluentFixtureRoot();
@@ -676,11 +718,15 @@ public sealed partial class DocsSiteValidationTests {
     private static Task<(int ExitCode, string Output, string Error)> RunFluentProcessAsync(string root, string fileName, params string[] arguments)
         => RunFluentProcessWithEnvironmentAsync(root, fileName, null, arguments);
 
-    private static async Task<(int ExitCode, string Output, string Error)> RunFluentProcessWithEnvironmentAsync(string root, string fileName, IReadOnlyDictionary<string, string>? environment, params string[] arguments)
+    private static Task<(int ExitCode, string Output, string Error)> RunFluentProcessWithEnvironmentAsync(string root, string fileName, IReadOnlyDictionary<string, string>? environment, params string[] arguments)
+        => RunFluentProcessWithTimeoutAsync(root, fileName, environment, TimeSpan.FromSeconds(90), arguments);
+
+    private static async Task<(int ExitCode, string Output, string Error)> RunFluentProcessWithTimeoutAsync(string root, string fileName, IReadOnlyDictionary<string, string>? environment, TimeSpan deadline, params string[] arguments)
     {
         ProcessStartInfo start = new(fileName)
         {
             WorkingDirectory = root,
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -691,15 +737,17 @@ public sealed partial class DocsSiteValidationTests {
         }
         foreach (string argument in arguments) { start.ArgumentList.Add(argument); }
         using Process process = Process.Start(start)!;
+        process.StandardInput.Close();
         Task<string> output = process.StandardOutput.ReadToEndAsync();
         Task<string> error = process.StandardError.ReadToEndAsync();
-        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(90));
+        using CancellationTokenSource timeout = new(deadline);
         try { await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false); }
         catch (OperationCanceledException)
         {
-            process.Kill(entireProcessTree: true);
+            if (!process.HasExited) { process.Kill(entireProcessTree: true); }
+            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
             await Task.WhenAll(output, error).ConfigureAwait(false);
-            throw new TimeoutException(fileName + " did not exit within 90 seconds.");
+            throw new TimeoutException(fileName + " did not exit within " + deadline.TotalSeconds + " seconds.");
         }
         return (process.ExitCode, await output.ConfigureAwait(false), await error.ConfigureAwait(false));
     }

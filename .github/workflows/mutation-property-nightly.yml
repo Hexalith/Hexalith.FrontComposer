@@ -47,6 +47,8 @@ jobs:
         working-directory: src/Hexalith.FrontComposer.SourceTools
         run: >-
           dotnet tool run dotnet-stryker
+          --verbosity debug
+          --break-on-initial-test-failure
           --project Hexalith.FrontComposer.SourceTools.csproj
           --test-project ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj
           --config-file ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-happy-path.json
@@ -57,6 +59,8 @@ jobs:
         working-directory: src/Hexalith.FrontComposer.SourceTools
         run: >-
           dotnet tool run dotnet-stryker
+          --verbosity debug
+          --break-on-initial-test-failure
           --project Hexalith.FrontComposer.SourceTools.csproj
           --test-project ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj
           --config-file ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-error-handling.json

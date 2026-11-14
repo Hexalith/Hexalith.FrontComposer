@@ -34,11 +34,13 @@ Both segment configs are project-scoped: they pin `project`/`test-projects` to t
 
 ```bash no-compile reason="mutation run is long-running and environment-specific"
 cd src/Hexalith.FrontComposer.SourceTools
-dotnet tool run dotnet-stryker --project Hexalith.FrontComposer.SourceTools.csproj --test-project ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --config-file ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-happy-path.json --output ../../artifacts/mutation/happy-path
-dotnet tool run dotnet-stryker --project Hexalith.FrontComposer.SourceTools.csproj --test-project ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --config-file ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-error-handling.json --output ../../artifacts/mutation/error-handling
+dotnet tool run dotnet-stryker --verbosity debug --break-on-initial-test-failure --project Hexalith.FrontComposer.SourceTools.csproj --test-project ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --config-file ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-happy-path.json --output ../../artifacts/mutation/happy-path
+dotnet tool run dotnet-stryker --verbosity debug --break-on-initial-test-failure --project Hexalith.FrontComposer.SourceTools.csproj --test-project ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --config-file ../../tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-error-handling.json --output ../../artifacts/mutation/error-handling
 cd ../..
 pwsh ./eng/validate-stryker-reports.ps1
 ```
+
+The commands retain debug phase and test diagnostics in the console log and stop a segment if its unmutated baseline fails. A baseline failure is not a mutation score; both complete reports must still pass validation.
 
 ## Thresholds
 
