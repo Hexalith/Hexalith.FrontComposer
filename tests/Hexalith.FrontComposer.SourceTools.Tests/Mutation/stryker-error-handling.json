@@ -20,7 +20,7 @@
     },
     "coverage-analysis": "perTest",
     "concurrency": 2,
-    "test-case-filter": "Category=MutationErrorHandling&Category!=Performance",
+    "test-case-filter": "(Category=MutationErrorHandling|Category=MutationErrorRegression)&Category!=Performance",
     "mutate": [
       "Parsing/**/*.cs",
       "Transforms/**/*.cs",
