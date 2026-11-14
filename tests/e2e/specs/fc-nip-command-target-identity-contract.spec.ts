@@ -114,13 +114,43 @@ test.describe('FC-NIP explicit command-target identity contract', () => {
       'CascadingParameter',
       'CommandTypeName: typeof(',
       'form.CommandTarget?.ResolutionMode == CommandTargetResolutionMode.SameAsSource',
-      'ResolveCommandTargetAsync(_model, cts.Token)',
+      'ResolveCommandTargetAsync(_model, cancellationToken)',
+      'bool isValid = await editContext.ValidateAsync(cancellationToken).ConfigureAwait(true);',
+      'if (_disposed || cancellationToken.IsCancellationRequested || !ReferenceEquals(_editContext, editContext)) return;',
       'PendingCommandOutcomeResolver.AssociateAccepted',
       'PendingCommandOutcomeResolver.Resolve',
     ]);
     for (const forbidden of ['PendingCommandState.ResolveTerminal', 'PendingCommandState.Register', 'EntityKey: status.AggregateId', 'ResultPayload']) {
       expect(commandFormEmitter).not.toContain(forbidden);
     }
+
+    // One captured attempt token covers validation, target resolution, and dispatch. A field
+    // change or replaced edit context must invalidate validation before a target is resolved.
+    const attemptTokenIndex = commandFormEmitter.indexOf('var cancellationToken = cts.Token;');
+    const validationRevisionIndex = commandFormEmitter.indexOf(
+      'long validationRevision = System.Threading.Volatile.Read(ref _modelRevision);', attemptTokenIndex,
+    );
+    const validationIndex = commandFormEmitter.indexOf('bool isValid = _editContext.Validate();', validationRevisionIndex);
+    const modelRevisionGuardIndex = commandFormEmitter.indexOf(
+      'if (validationRevision != System.Threading.Volatile.Read(ref _modelRevision)) return;', validationIndex,
+    );
+    const targetResolutionIndex = commandFormEmitter.indexOf(
+      'var targetResolution = await ResolveCommandTargetAsync(_model, cancellationToken)', modelRevisionGuardIndex,
+    );
+    const cancellationGuardIndex = commandFormEmitter.indexOf(
+      'cancellationToken.ThrowIfCancellationRequested();', targetResolutionIndex,
+    );
+    const dispatchIndex = commandFormEmitter.indexOf(
+      'var result = await CommandService.DispatchWithLifecycleObservationsAsync(', cancellationGuardIndex,
+    );
+    expect(attemptTokenIndex).toBeGreaterThanOrEqual(0);
+    expect(validationRevisionIndex).toBeGreaterThan(attemptTokenIndex);
+    expect(validationIndex).toBeGreaterThan(validationRevisionIndex);
+    expect(modelRevisionGuardIndex).toBeGreaterThan(validationIndex);
+    expect(targetResolutionIndex).toBeGreaterThan(modelRevisionGuardIndex);
+    expect(cancellationGuardIndex).toBeGreaterThan(targetResolutionIndex);
+    expect(dispatchIndex).toBeGreaterThan(cancellationGuardIndex);
+    expect(commandFormEmitter).not.toContain('ResolveCommandTargetAsync(_model, cts.Token)');
 
     assertContainsAll(pendingState, [
       '_lifecycleConvergenceDeadlines',
