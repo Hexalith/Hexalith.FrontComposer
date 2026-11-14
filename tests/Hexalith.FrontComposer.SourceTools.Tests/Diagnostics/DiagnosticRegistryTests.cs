@@ -698,12 +698,12 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
-        json["currentRelease"]!.GetValue<string>().ShouldBe("v5.0");
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v6.0");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
-        suppressions.ShouldBeEmpty("the published 4.6.0 baseline absorbs all reviewed v4 MCP removals.");
+        suppressions.Count.ShouldBe(32, "only the 28 SDK enum comparisons and four exact framework drops are approved for v6.0.");
 
-        HashSet<string> apiCompatDiagnosticIds = ["CP0001", "CP0002", "CP0008"];
+        HashSet<string> apiCompatDiagnosticIds = ["CP0001", "CP0002", "CP0008", "PKV006"];
         Regex targetReleaseRegex = TargetReleaseRegex();
         HashSet<(string Package, string Tfm, string Diagnostic, string Old)> uniqueness = [];
 
@@ -725,7 +725,7 @@ public sealed partial class DiagnosticRegistryTests {
             item.ContainsKey("hfcId").ShouldBeFalse("manual package moves must not claim an unrelated HFC migration diagnostic.");
             targetReleaseRegex.IsMatch(target).ShouldBeTrue($"targetRelease '{target}' malformed.");
 
-            if (package == "Hexalith.FrontComposer.Contracts") {
+            if (package == "Hexalith.FrontComposer.Contracts" && apiCompatDiagnosticId == "CP0001") {
                 oldSig.ShouldStartWith("T:", customMessage: "Contracts CP0001 suppressions must identify an exact type.");
                 TryParseMovedTypeState(newState, out string? newSignature, out string? newAssembly, out bool namespacePreserved)
                     .ShouldBeTrue($"{oldSig} must identify its exact destination type and assembly.");
@@ -763,7 +763,10 @@ public sealed partial class DiagnosticRegistryTests {
 
         string[] trackedRows = [.. suppressions
             .Select(node => node!.AsObject())
-            .Select(item => $"{item["package"]!.GetValue<string>()}|{item["tfm"]!.GetValue<string>()}|{item["apiCompatDiagnosticId"]!.GetValue<string>()}|{item["oldSignature"]!.GetValue<string>()}")
+            .Select(item => {
+                string key = $"{item["package"]!.GetValue<string>()}|{item["tfm"]!.GetValue<string>()}|{item["apiCompatDiagnosticId"]!.GetValue<string>()}|{item["oldSignature"]!.GetValue<string>()}";
+                return item["comparisonTfm"] is JsonValue comparison ? $"{key}|{comparison.GetValue<string>()}" : key;
+            })
             .OrderBy(value => value, Ordinal)];
 
         var exactApiCompatRows = new List<string>();
@@ -775,8 +778,20 @@ public sealed partial class DiagnosticRegistryTests {
             XDocument apiCompat = XDocument.Load(suppressionPath);
             foreach (XElement item in apiCompat.Root!.Elements("Suppression")) {
                 string diagnosticId = item.Element("DiagnosticId")!.Value;
+                string target = item.Element("Target")!.Value;
+                if (diagnosticId == "PKV006") {
+                    package.ShouldBeOneOf("Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Mcp", "Hexalith.FrontComposer.Shell", "Hexalith.FrontComposer.Testing");
+                    target.ShouldBe("net10.0");
+                    item.Elements().Select(element => element.Name.LocalName).ShouldBe(["DiagnosticId", "Target"]);
+                    exactApiCompatRows.Add($"{package}|net10.0|{diagnosticId}|{target}");
+                    continue;
+                }
                 if (package == "Hexalith.FrontComposer.Contracts") {
-                    diagnosticId.ShouldBe("CP0001", "Contracts suppressions are exact reviewed type moves.");
+                    diagnosticId.ShouldBe("CP0008", "only SDK-recorded inherited Enum interface comparisons are approved.");
+                    target.ShouldStartWith("T:");
+                    Type enumType = typeof(FcDiagnosticIds).Assembly.GetType(target[2..], throwOnError: true)!;
+                    enumType.IsEnum.ShouldBeTrue();
+                    typeof(ISpanFormattable).IsAssignableFrom(enumType).ShouldBeTrue("the net11.0 runtime face must retain the inherited interface.");
                 }
                 else if (package == "Hexalith.FrontComposer.Shell") {
                     ShellApiCompatibilityDiagnosticIds.ShouldContain(
@@ -794,9 +809,17 @@ public sealed partial class DiagnosticRegistryTests {
                 item.Element("IsBaselineSuppression")!.Value.ShouldBe("true");
                 string left = item.Element("Left")!.Value;
                 string right = item.Element("Right")!.Value;
-                right.ShouldBe(left, "a suppression must not widen package-validation comparison scope.");
                 string tfm = left.Split('/')[1];
-                exactApiCompatRows.Add($"{package}|{tfm}|{diagnosticId}|{item.Element("Target")!.Value}");
+                string key = $"{package}|{tfm}|{diagnosticId}|{target}";
+                if (package == "Hexalith.FrontComposer.Contracts" && diagnosticId == "CP0008") {
+                    left.ShouldBe($"lib/net10.0/{package}.dll");
+                    right.ShouldBe($"lib/netstandard2.0/{package}.dll");
+                    key += "|netstandard2.0";
+                }
+                else {
+                    right.ShouldBe(left, "a suppression must not widen package-validation comparison scope.");
+                }
+                exactApiCompatRows.Add(key);
             }
         }
 
@@ -862,6 +885,39 @@ public sealed partial class DiagnosticRegistryTests {
                 break;
         }
 
+        ValidateCompatibilitySuppressionsJson(json).ShouldContain(expectedCategory);
+    }
+
+    [Theory]
+    [InlineData("package", "Hexalith.FrontComposer.Contracts", "suppression-unapproved-framework-record")]
+    [InlineData("package", "Hexalith.FrontComposer.*", "suppression-unapproved-framework-record")]
+    [InlineData("tfm", "net9.0", "suppression-unapproved-framework-record")]
+    [InlineData("tfm", "*", "suppression-unapproved-framework-record")]
+    [InlineData("oldSignature", "net11.0", "suppression-unapproved-framework-record")]
+    [InlineData("newState", "removed", "suppression-unapproved-framework-record")]
+    [InlineData("targetRelease", "v5.0", "suppression-unapproved-framework-record")]
+    [InlineData("expiresAfter", "v6.2", "suppression-unapproved-framework-record")]
+    [InlineData("comparisonTfm", "netstandard2.0", "suppression-unapproved-framework-record")]
+    [InlineData("currentRelease", "v5.0", "suppression-unapproved-framework-record")]
+    [InlineData("currentRelease", "v6.1", "suppression-expired")]
+    public void CompatibilityFrameworkDropValidator_EnforcesExactApprovedScope(string field, string value, string expectedCategory)
+    {
+        JsonObject json = JsonNode.Parse(File.ReadAllText(
+            Path.Combine(ProjectRoot().FullName, "docs", "diagnostics", "compatibility-suppressions.json"),
+            Encoding.UTF8))!.AsObject();
+        JsonObject row = json["suppressions"]!.AsArray()
+            .Select(node => node!.AsObject())
+            .First(item => item["apiCompatDiagnosticId"]!.GetValue<string>() == "PKV006");
+        json["suppressions"] = new JsonArray(row.DeepClone());
+        ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty("the exact checked-in framework drop is approved.");
+        if (field == "currentRelease")
+        {
+            json[field] = value;
+        }
+        else
+        {
+            json["suppressions"]!.AsArray()[0]![field] = value;
+        }
         ValidateCompatibilitySuppressionsJson(json).ShouldContain(expectedCategory);
     }
 
@@ -960,7 +1016,7 @@ public sealed partial class DiagnosticRegistryTests {
             @"<FrontComposerPackageValidationBaselineVersion Condition=""'\$\(FrontComposerPackageValidationBaselineVersion\)' == ''"">(?<version>[^<]+)</FrontComposerPackageValidationBaselineVersion>");
         sharedBaseline.Success.ShouldBeTrue("Directory.Build.targets must default the package-validation baseline.");
         string packageValidationBaseline = sharedBaseline.Groups["version"].Value;
-        packageValidationBaseline.ShouldBe("4.7.2");
+        packageValidationBaseline.ShouldBe("5.0.0");
         directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
         directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\">$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");
@@ -2287,6 +2343,7 @@ public sealed partial class DiagnosticRegistryTests {
             "CP0001",
             "CP0002",
             "CP0008",
+            "PKV006",
         };
         // The approved suppression reason has one source of truth: it is parsed out of
         // `eng/release_compatibility.py::APPROVED_SUPPRESSION_REASON`, not restated here. A wider
@@ -2359,6 +2416,20 @@ public sealed partial class DiagnosticRegistryTests {
 
             if (!allowedReasons.Contains(reason!)) {
                 yield return "suppression-unknown-reason";
+            }
+
+            // PKV006 is approved only for the four exact v6.0 runtime framework drops.
+            // Ordinary CP diagnostics keep their existing independent validation rules.
+            if (apiCompatDiagnosticId == "PKV006"
+                && (package is not ("Hexalith.FrontComposer.Contracts.UI" or "Hexalith.FrontComposer.Mcp"
+                    or "Hexalith.FrontComposer.Shell" or "Hexalith.FrontComposer.Testing")
+                    || tfm != "net10.0" || oldSignature != "net10.0"
+                    || newState != "net11.0 required; net10.0 runtime target removed"
+                    || row["comparisonTfm"] is not null
+                    || targetRelease != "v6.0" || expiresAfter != "v6.1"
+                    || parsedCurrentRelease! < new Version(6, 0)))
+            {
+                yield return "suppression-unapproved-framework-record";
             }
 
             // Story 11.2 code-review P8 + Pass-2 R30: split malformed-version into per-field

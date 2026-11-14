@@ -26,7 +26,8 @@
       "package_id": "Hexalith.FrontComposer.Contracts.UI",
       "packable": true,
       "symbol_required": true,
-      "baseline_override": true
+      "baseline_override": true,
+      "compatibility_suppressions": true
     },
     {
       "project": "src/Hexalith.FrontComposer.UI/Hexalith.FrontComposer.UI.csproj",
@@ -64,7 +65,8 @@
       "project": "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj",
       "package_id": "Hexalith.FrontComposer.Testing",
       "packable": true,
-      "symbol_required": true
+      "symbol_required": true,
+      "compatibility_suppressions": true
     }
   ]
 }

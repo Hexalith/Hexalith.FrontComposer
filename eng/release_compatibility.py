@@ -14,7 +14,7 @@ COMPATIBILITY_SUPPRESSIONS_SCHEMA_VERSION = "2.0"
 # The published package-validation baseline every live pack command applies. It is no longer
 # self-referential: `validate_release_policy` checks it against the release line the candidate (or
 # the checked-in `currentRelease`) declares, so leaving it behind a published line fails closed.
-PUBLISHED_BASELINE_VERSION = "4.7.2"
+PUBLISHED_BASELINE_VERSION = "5.0.0"
 LIFECYCLE_TOKEN = re.compile(
     r"^v(?P<major>0|[1-9][0-9]*)\.(?P<minor>0|[1-9][0-9]*)$"
 )
@@ -28,6 +28,50 @@ CANDIDATE_VERSION = re.compile(
 ASSEMBLY_PATH = re.compile(r"^lib/(?P<tfm>[^/]+)/(?P<assembly>[^/]+\.dll)$")
 DIAGNOSTIC_ID = re.compile(r"^CP[0-9]{4}$")
 APPROVED_SUPPRESSION_REASON = "intentional-major-break"
+
+# Exact SDK 11.0.100 diagnostics for the authorized v6.0 framework migration only.
+# These are not framework exemptions: all other diagnostic/target/comparison shapes fail closed.
+FRAMEWORK_DROP_PACKAGES = frozenset({
+    "Hexalith.FrontComposer.Contracts.UI",
+    "Hexalith.FrontComposer.Mcp",
+    "Hexalith.FrontComposer.Shell",
+    "Hexalith.FrontComposer.Testing",
+})
+FRAMEWORK_ENUM_PACKAGE = "Hexalith.FrontComposer.Contracts"
+FRAMEWORK_ENUM_TARGETS = frozenset({
+    "T:Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot",
+    "T:Hexalith.FrontComposer.Contracts.Attributes.CommandTargetChangeKind",
+    "T:Hexalith.FrontComposer.Contracts.Attributes.CommandTargetResolutionMode",
+    "T:Hexalith.FrontComposer.Contracts.Attributes.DerivedFromSource",
+    "T:Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole",
+    "T:Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind",
+    "T:Hexalith.FrontComposer.Contracts.Communication.QueryFailureKind",
+    "T:Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeStaleReason",
+    "T:Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel",
+    "T:Hexalith.FrontComposer.Contracts.Diagnostics.CustomizationDiagnosticPhase",
+    "T:Hexalith.FrontComposer.Contracts.Diagnostics.CustomizationDiagnosticSeverity",
+    "T:Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState",
+    "T:Hexalith.FrontComposer.Contracts.Lifecycle.CommandMateriality",
+    "T:Hexalith.FrontComposer.Contracts.Mcp.McpProjectionRenderStrategy",
+    "T:Hexalith.FrontComposer.Contracts.Rendering.CommandRenderMode",
+    "T:Hexalith.FrontComposer.Contracts.Rendering.CustomizationContractVersionDecision",
+    "T:Hexalith.FrontComposer.Contracts.Rendering.DensityLevel",
+    "T:Hexalith.FrontComposer.Contracts.Rendering.DensitySurface",
+    "T:Hexalith.FrontComposer.Contracts.Rendering.FcAggregateDetailState",
+    "T:Hexalith.FrontComposer.Contracts.Rendering.FcPageLayoutMode",
+    "T:Hexalith.FrontComposer.Contracts.Rendering.FcRenderMode",
+    "T:Hexalith.FrontComposer.Contracts.Rendering.RenderCapability",
+    "T:Hexalith.FrontComposer.Contracts.Rendering.RenderSurfaceKind",
+    "T:Hexalith.FrontComposer.Contracts.Schema.SchemaCollectionOrder",
+    "T:Hexalith.FrontComposer.Contracts.Schema.SchemaCompatibilityDecision",
+    "T:Hexalith.FrontComposer.Contracts.Schema.SchemaContractFamily",
+    "T:Hexalith.FrontComposer.Contracts.Schema.SchemaDeltaKind",
+    "T:Hexalith.FrontComposer.Contracts.Schema.SchemaMaterialValidationCategory",
+})
+FRAMEWORK_DROP_STATE = "net11.0 required; net10.0 runtime target removed"
+FRAMEWORK_ENUM_STATE = (
+    "netstandard2.0 enum metadata lacks inherited System.ISpanFormattable; net11.0 retains it"
+)
 
 BASELINE_PROPERTY_NAME = "FrontComposerPackageValidationBaselineVersion"
 # The shared property file every packable project inherits the baseline from. Packable projects may
@@ -480,10 +524,10 @@ def _validate_rows(
             raise ReleaseCompatibilityError(
                 f"{ledger_path}: suppression row {index} oldSignature must identify one exact API"
             )
-        if any(marker in diagnostic for marker in ("*", "?")) or DIAGNOSTIC_ID.fullmatch(diagnostic) is None:
+        if diagnostic != "PKV006" and DIAGNOSTIC_ID.fullmatch(diagnostic) is None:
             raise ReleaseCompatibilityError(
                 f"{ledger_path}: suppression row {index} apiCompatDiagnosticId '{diagnostic}' "
-                "must match CP followed by four digits without wildcards"
+                "must match CP followed by four digits or the exact approved PKV006 without wildcards"
             )
         if value["reason"] != APPROVED_SUPPRESSION_REASON:
             raise ReleaseCompatibilityError(
@@ -509,7 +553,27 @@ def _validate_rows(
                 f"{ledger_path}: suppression row {index} expiresAfter {expiry_value} "
                 f"has been reached by {policy_label}"
             )
+        comparison_tfm = value.get("comparisonTfm")
+        framework_record = diagnostic == "PKV006" or comparison_tfm is not None
+        if diagnostic == "PKV006":
+            approved = (
+                package in FRAMEWORK_DROP_PACKAGES and tfm == old_signature == "net10.0"
+                and comparison_tfm is None and value["newState"] == FRAMEWORK_DROP_STATE
+            )
+        elif comparison_tfm is not None:
+            approved = (
+                _is_framework_enum_comparison(package, diagnostic, old_signature, tfm, comparison_tfm)
+                and value["newState"] == FRAMEWORK_ENUM_STATE
+            )
+        else:
+            approved = True
+        if not approved or framework_record and (target_value != "v6.0" or expiry_value != "v6.1"):
+            raise ReleaseCompatibilityError(
+                f"{ledger_path}: suppression row {index} is not an approved exact v6.0 framework record"
+            )
         key = f"{package}|{tfm}|{diagnostic}|{old_signature}"
+        if comparison_tfm is not None:
+            key += f"|{comparison_tfm}"
         if key in tracked:
             raise ReleaseCompatibilityError(f"{ledger_path}: duplicate suppression row '{key}'")
         tracked.add(key)
@@ -623,10 +687,10 @@ def _suppression_xml_rows(
                 f"{path}: Suppressions contains unknown child elements: {unknown_rows}"
             )
         for index, element in enumerate(root):
-            required = ("DiagnosticId", "Target", "Left", "Right", "IsBaselineSuppression")
+            allowed = ("DiagnosticId", "Target", "Left", "Right", "IsBaselineSuppression")
             names = [child.tag.rsplit("}", 1)[-1] for child in element]
             duplicates = sorted({name for name in names if names.count(name) > 1})
-            unknown = sorted(set(names) - set(required))
+            unknown = sorted(set(names) - set(allowed))
             if duplicates:
                 raise ReleaseCompatibilityError(
                     f"{path}: suppression row {index} has duplicate XML fields: {duplicates}"
@@ -639,35 +703,59 @@ def _suppression_xml_rows(
                 child.tag.rsplit("}", 1)[-1]: (child.text or "").strip()
                 for child in element
             }
+            diagnostic = values.get("DiagnosticId", "")
+            required = ("DiagnosticId", "Target") if diagnostic == "PKV006" else allowed
             missing = [field for field in required if not values.get(field)]
             if missing:
                 raise ReleaseCompatibilityError(
                     f"{path}: suppression row {index} has missing XML fields: {missing}"
                 )
-            if values["IsBaselineSuppression"] != "true":
-                raise ReleaseCompatibilityError(
-                    f"{path}: suppression row {index} must set IsBaselineSuppression to true"
-                )
-            if values["Left"] != values["Right"]:
-                raise ReleaseCompatibilityError(
-                    f"{path}: suppression row {index} must not widen its package comparison scope"
-                )
-            assembly_match = ASSEMBLY_PATH.fullmatch(values["Left"])
-            if assembly_match is None:
-                raise ReleaseCompatibilityError(
-                    f"{path}: suppression row {index} Left must identify one lib/<tfm> assembly"
-                )
-            expected_assembly = f"{package}.dll"
-            if assembly_match.group("assembly") != expected_assembly:
-                raise ReleaseCompatibilityError(
-                    f"{path}: suppression row {index} Left/Right assembly must be "
-                    f"{expected_assembly}"
-                )
-            key = (
-                f"{package}|{assembly_match.group('tfm')}|"
-                f"{values['DiagnosticId']}|{values['Target']}"
-            )
+            target = values["Target"]
+            if diagnostic == "PKV006":
+                if package not in FRAMEWORK_DROP_PACKAGES or target != "net10.0" or set(names) != set(required):
+                    raise ReleaseCompatibilityError(
+                        f"{path}: suppression row {index} is not an approved exact PKV006 framework drop"
+                    )
+                key = f"{package}|{target}|{diagnostic}|{target}"
+            else:
+                if DIAGNOSTIC_ID.fullmatch(diagnostic) is None:
+                    raise ReleaseCompatibilityError(f"{path}: unapproved suppression diagnostic '{diagnostic}'")
+                if values["IsBaselineSuppression"] != "true":
+                    raise ReleaseCompatibilityError(
+                        f"{path}: suppression row {index} must set IsBaselineSuppression to true"
+                    )
+                left = ASSEMBLY_PATH.fullmatch(values["Left"])
+                right = ASSEMBLY_PATH.fullmatch(values["Right"])
+                if left is None or right is None:
+                    raise ReleaseCompatibilityError(
+                        f"{path}: suppression row {index} Left/Right must identify one lib/<tfm> assembly"
+                    )
+                expected_assembly = f"{package}.dll"
+                if left.group("assembly") != expected_assembly or right.group("assembly") != expected_assembly:
+                    raise ReleaseCompatibilityError(
+                        f"{path}: suppression row {index} Left/Right assembly must be {expected_assembly}"
+                    )
+                key = f"{package}|{left.group('tfm')}|{diagnostic}|{target}"
+                if values["Left"] != values["Right"]:
+                    if not _is_framework_enum_comparison(
+                        package, diagnostic, target, left.group("tfm"), right.group("tfm")
+                    ):
+                        raise ReleaseCompatibilityError(
+                            f"{path}: suppression row {index} must not widen its package comparison scope"
+                        )
+                    key += f"|{right.group('tfm')}"
             if key in rows:
                 raise ReleaseCompatibilityError(f"{path}: duplicate XML suppression row '{key}'")
             rows.add(key)
     return rows
+
+
+def _is_framework_enum_comparison(
+    package: str, diagnostic: str, target: str, left_tfm: str, right_tfm: object,
+) -> bool:
+    """Recognize only the SDK-recorded enum comparison for the v6.0 framework migration."""
+    return (
+        package == FRAMEWORK_ENUM_PACKAGE and diagnostic == "CP0008"
+        and target in FRAMEWORK_ENUM_TARGETS
+        and left_tfm == "net10.0" and right_tfm == "netstandard2.0"
+    )

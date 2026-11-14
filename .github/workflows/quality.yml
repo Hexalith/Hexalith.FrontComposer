@@ -95,7 +95,7 @@ jobs:
       - name: 'Gate 2a: CLI Tool Package Smoke'
         shell: bash
         run: |
-          dotnet pack src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release --no-build --output ./nupkgs -p:PackageVersion=0.0.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=4.7.2 -p:FrontComposerPackageValidationSkipBaseline=false
+          dotnet pack src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release --no-build --output ./nupkgs -p:PackageVersion=0.0.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=5.0.0 -p:FrontComposerPackageValidationSkipBaseline=false
 
           tool_home="$(mktemp -d)"
           fixture="$(mktemp -d)"
@@ -390,7 +390,7 @@ jobs:
       # given an isolated per-project BaseOutputPath so the shared `bin/` that build produced is
       # left byte-identical -- restamping it mid-job is the known missing-assembly flake. A
       # rebuild is unavoidable here because the solution build stamps assembly version 1.0.0.0
-      # and ApiCompat's CP0003 identity rule rejects that against a 4.x baseline. The governance
+      # and ApiCompat's CP0003 identity rule rejects that against the published baseline. The governance
       # test pins that ordering, so this comment must not contain the flag it searches for.
       # `BaseIntermediateOutputPath` is deliberately NOT
       # redirected: `DefaultItemExcludes` is derived from it, so moving it un-excludes the real
@@ -418,7 +418,7 @@ jobs:
             # sequential packs (and their ProjectReference graphs) intermingle in a single
             # bin/Release/<tfm>/, and ApiCompat could then diff a stale sibling assembly.
             name="$(basename "$project" .csproj)"
-            dotnet pack "$project" --configuration Release --output ./nupkgs-validation -p:Version=4.7.2-ci -p:PackageVersion=4.7.2-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=4.7.2 -p:FrontComposerPackageValidationSkipBaseline=false -p:BaseOutputPath="$GITHUB_WORKSPACE/artifacts/library-package-validation/$name/bin/"
+            dotnet pack "$project" --configuration Release --output ./nupkgs-validation -p:Version=6.0.0-ci -p:PackageVersion=6.0.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=5.0.0 -p:FrontComposerPackageValidationSkipBaseline=false -p:BaseOutputPath="$GITHUB_WORKSPACE/artifacts/library-package-validation/$name/bin/"
           done
 
       # Story 12.1: the adopter proof kit copies Shell markup, diagnostics, and types that the
@@ -436,7 +436,7 @@ jobs:
           fi
           python3 eng/adopter_proof.py \
             --candidate-sha "$(git rev-parse HEAD)" \
-            --package-version 4.7.2-ci \
+            --package-version 6.0.0-ci \
             --package-source ./nupkgs-validation \
             --runtime-version "$runtime" \
             --eventstore-endpoint http://127.0.0.1:1 \

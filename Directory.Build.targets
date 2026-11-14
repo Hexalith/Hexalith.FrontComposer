@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <EnableFrontComposerPackageValidation Condition="'$(EnableFrontComposerPackageValidation)' == ''">false</EnableFrontComposerPackageValidation>
-    <FrontComposerPackageValidationBaselineVersion Condition="'$(FrontComposerPackageValidationBaselineVersion)' == ''">4.7.2</FrontComposerPackageValidationBaselineVersion>
+    <FrontComposerPackageValidationBaselineVersion Condition="'$(FrontComposerPackageValidationBaselineVersion)' == ''">5.0.0</FrontComposerPackageValidationBaselineVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'">
@@ -13,6 +13,58 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
+
+  <!-- PKV006 permits the intentional net10.0 target drop, but package validation can then
+       omit the runtime-to-runtime API comparison. Compare the actual packaged assemblies
+       explicitly, in addition to every existing package and netstandard comparison. -->
+  <Target Name="ValidateFrontComposerRuntimeApiCompatibility"
+          AfterTargets="RunPackageValidation"
+          DependsOnTargets="CollectApiCompatInputs;_GetReferencePathFromInnerProjects"
+          Condition="'$(IsPackable)' == 'true' AND '$(PackAsTool)' != 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true' AND '$(FrontComposerPackageValidationSkipBaseline)' != 'true' AND ('$(TargetFramework)' == 'net11.0' OR $([System.String]::Copy(';$(TargetFrameworks);').Contains(';net11.0;')))">
+    <PropertyGroup>
+      <_FrontComposerRuntimeBaselineName Condition="'$(PackageValidationBaselineName)' == ''">$(PackageId)</_FrontComposerRuntimeBaselineName>
+      <_FrontComposerRuntimeBaselineName Condition="'$(PackageValidationBaselineName)' != ''">$(PackageValidationBaselineName)</_FrontComposerRuntimeBaselineName>
+      <_FrontComposerRuntimeBaselinePackage>$(PackageValidationBaselinePath)</_FrontComposerRuntimeBaselinePackage>
+      <_FrontComposerRuntimeBaselinePackage Condition="'$(_FrontComposerRuntimeBaselinePackage)' == ''">$([MSBuild]::NormalizePath('$(NuGetPackageRoot)', '$(_FrontComposerRuntimeBaselineName.ToLower())', '$(FrontComposerPackageValidationBaselineVersion)', '$(_FrontComposerRuntimeBaselineName.ToLower()).$(FrontComposerPackageValidationBaselineVersion).nupkg'))</_FrontComposerRuntimeBaselinePackage>
+      <_FrontComposerRuntimeComparisonRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'frontcomposer-runtime-apicompat'))</_FrontComposerRuntimeComparisonRoot>
+      <_FrontComposerRuntimeBaselineAssembly>$(_FrontComposerRuntimeComparisonRoot)baseline/lib/net10.0/$(AssemblyName).dll</_FrontComposerRuntimeBaselineAssembly>
+      <_FrontComposerRuntimeCandidateAssembly>$(_FrontComposerRuntimeComparisonRoot)candidate/lib/net11.0/$(AssemblyName).dll</_FrontComposerRuntimeCandidateAssembly>
+    </PropertyGroup>
+    <ItemGroup>
+      <_FrontComposerRuntimeCandidatePackage Include="@(NuGetPackOutput->WithMetadataValue('Extension', '.nupkg'))"
+                                            Condition="!$([System.String]::new('%(Identity)').EndsWith('.symbols.nupkg'))" />
+      <_FrontComposerRuntimeFramework Include="@(PackageValidationReferencePath)" Condition="'%(Identity)' == 'net11.0'" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_FrontComposerRuntimeReferences>@(_FrontComposerRuntimeFramework->'%(ReferencePath)')</_FrontComposerRuntimeReferences>
+    </PropertyGroup>
+    <Error Condition="'@(_FrontComposerRuntimeCandidatePackage)' == '' OR '$(_FrontComposerRuntimeReferences)' == ''"
+           Text="Runtime API validation requires the packed candidate and the collected net11.0 assembly references." />
+    <!-- Clear only this target's extraction directory so stale files can never validate a
+         changed package or hide an absent baseline/candidate runtime face. -->
+    <RemoveDir Directories="$(_FrontComposerRuntimeComparisonRoot)" />
+    <Unzip SourceFiles="$(_FrontComposerRuntimeBaselinePackage)"
+           DestinationFolder="$(_FrontComposerRuntimeComparisonRoot)baseline"
+           Include="lib/net10.0/$(AssemblyName).dll" />
+    <Unzip SourceFiles="@(_FrontComposerRuntimeCandidatePackage)"
+           DestinationFolder="$(_FrontComposerRuntimeComparisonRoot)candidate"
+           Include="lib/net11.0/$(AssemblyName).dll" />
+    <Error Condition="!Exists('$(_FrontComposerRuntimeBaselineAssembly)') OR !Exists('$(_FrontComposerRuntimeCandidateAssembly)')"
+           Text="Runtime API validation requires both the published lib/net10.0/$(AssemblyName).dll and candidate lib/net11.0/$(AssemblyName).dll." />
+    <Message Importance="high" Text="Validating $(PackageId) public runtime API: published net10.0 to candidate net11.0." />
+    <Microsoft.DotNet.ApiCompat.Task.ValidateAssembliesTask
+      LeftAssemblies="$(_FrontComposerRuntimeBaselineAssembly)"
+      RightAssemblies="$(_FrontComposerRuntimeCandidateAssembly)"
+      LeftAssembliesReferences="$(_FrontComposerRuntimeReferences.Replace(',', ';'))"
+      RightAssembliesReferences="$(_FrontComposerRuntimeReferences.Replace(',', ';'))"
+      RoslynAssembliesPath="$(RoslynAssembliesPath)"
+      RespectInternals="$(ApiCompatRespectInternals)"
+      EnableRuleAttributesMustMatch="$(ApiCompatEnableRuleAttributesMustMatch)"
+      ExcludeAttributesFiles="@(ApiCompatExcludeAttributesFile)"
+      EnableRuleCannotChangeParameterName="$(ApiCompatEnableRuleCannotChangeParameterName)"
+      EnableStrictMode="$(EnableStrictModeForBaselineValidation)"
+      GenerateSuppressionFile="false" />
+  </Target>
 
   <!-- Source mode: Tenants forwards its own EventStore version on every EventStore edge.
        Without one root selection, the same EventStore project builds under two Version
