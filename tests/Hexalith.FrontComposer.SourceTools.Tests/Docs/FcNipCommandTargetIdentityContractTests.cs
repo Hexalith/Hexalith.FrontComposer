@@ -79,13 +79,34 @@ public sealed class FcNipCommandTargetIdentityContractTests {
             "CascadingParameter",
             "CommandTypeName: typeof(",
             "form.CommandTarget?.ResolutionMode == CommandTargetResolutionMode.SameAsSource",
-            "ResolveCommandTargetAsync(_model, cts.Token)",
+            "ResolveCommandTargetAsync(_model, cancellationToken)",
+            "bool isValid = await editContext.ValidateAsync(cancellationToken).ConfigureAwait(true);",
+            "if (_disposed || cancellationToken.IsCancellationRequested || !ReferenceEquals(_editContext, editContext)) return;",
             "var commandForDispatch = targetResolution.Command",
             "PendingCommandOutcomeResolver.AssociateAccepted",
             "PendingCommandOutcomeResolver.Resolve");
         foreach (string forbidden in new[] { "PendingCommandState.ResolveTerminal", "PendingCommandState.Register", "EntityKey: status.AggregateId", "ResultPayload" }) {
             commandFormEmitter.ShouldNotContain(forbidden, Case.Sensitive);
         }
+
+        // The captured attempt token spans validation, target resolution, and dispatch. A model
+        // edit or replaced context must invalidate validation before resolving its command target.
+        int previousPosition = -1;
+        foreach (string fragment in new[] {
+            "var cancellationToken = cts.Token;",
+            "long validationRevision = System.Threading.Volatile.Read(ref _modelRevision);",
+            "bool isValid = _editContext.Validate();",
+            "if (validationRevision != System.Threading.Volatile.Read(ref _modelRevision)) return;",
+            "var targetResolution = await ResolveCommandTargetAsync(_model, cancellationToken)",
+            "cancellationToken.ThrowIfCancellationRequested();",
+            "var result = await CommandService.DispatchWithLifecycleObservationsAsync(",
+        }) {
+            int position = commandFormEmitter.IndexOf(fragment, previousPosition + 1, StringComparison.Ordinal);
+            position.ShouldBeGreaterThan(previousPosition, $"Source fragment must follow the preceding submit guard: {fragment}");
+            previousPosition = position;
+        }
+
+        commandFormEmitter.ShouldNotContain("ResolveCommandTargetAsync(_model, cts.Token)", Case.Sensitive);
 
         AssertContainsAll(razorEmitter, "PendingCommandRowIdentityFor(row)", "CascadingValue<global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity?>");
         AssertContainsAll(storyNineTwo, "Status: done", "FrontComposer-owned pending-command row metadata", "Source-level wiring was proven", "Do not hide FC-NIP row identity in optional EventStore/domain-defined `ResultPayload`");

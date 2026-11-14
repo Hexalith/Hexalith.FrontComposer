@@ -2058,6 +2058,11 @@ public sealed class CiGovernanceTests {
         string root = RepositoryRoot();
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
         string publishedBaseline = PublishedPackageValidationBaseline(root);
+        JsonElement compatibility = JsonElement.Parse(File.ReadAllText(
+            Path.Combine(root, "docs/diagnostics/compatibility-suppressions.json")));
+        string currentRelease = compatibility.GetProperty("currentRelease").GetString() ?? string.Empty;
+        currentRelease.ShouldMatch(@"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$");
+        string candidateVersion = currentRelease[1..] + ".0";
 
         string libraryGate = ExtractNamedStep(quality, "Gate 4: Library Package Validation (ApiCompat baseline)");
         libraryGate.ShouldContain("eng/release-package-inventory.json");
@@ -2067,11 +2072,12 @@ public sealed class CiGovernanceTests {
         libraryGate.ShouldNotContain("continue-on-error");
 
         // ApiCompat's CP0003 assembly-identity rule rejects the solution build's default 1.0.0.0
-        // assembly version against a 4.x baseline, so this pack must build with an aligned
-        // version; the isolated BaseOutputPath keeps the shared bin/ the solution build produced
-        // byte-identical for the ~10 downstream `--no-build` steps.
+        // assembly version against the published baseline. The candidate follows the current
+        // release ledger, including a planned major upgrade; the isolated BaseOutputPath keeps
+        // the shared bin/ the solution build produced byte-identical for downstream `--no-build` steps.
         libraryGate.ShouldNotContain("--no-build");
-        libraryGate.ShouldMatch(@"-p:Version=" + Regex.Escape(publishedBaseline) + @"[^\s]*");
+        libraryGate.ShouldMatch(@"-p:Version=" + Regex.Escape(candidateVersion) + @"(?:-[^\s]+)?(?=\s|$)");
+        libraryGate.ShouldMatch(@"-p:PackageVersion=" + Regex.Escape(candidateVersion) + @"(?:-[^\s]+)?(?=\s|$)");
         libraryGate.ShouldContain("-p:BaseOutputPath=");
 
         // The gate must also sit after every `--no-build` consumer in its own job, so a rebuild
