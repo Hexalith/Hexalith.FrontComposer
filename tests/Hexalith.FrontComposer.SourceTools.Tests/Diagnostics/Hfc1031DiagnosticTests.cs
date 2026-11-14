@@ -11,6 +11,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 /// </summary>
 public sealed class Hfc1031DiagnosticTests {
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void FiresOnce_WhenTimelineProjectionDeclaresAnyFieldGroup() {
         IReadOnlyList<Diagnostic> diagnostics = RunGenerator(BuildSource("Timeline", groupedColumns: 2));
 

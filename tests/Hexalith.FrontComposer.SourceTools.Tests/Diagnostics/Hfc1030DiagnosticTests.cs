@@ -58,6 +58,7 @@ namespace TestDomain
 ";
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void FiresOnce_WhenGroupNameCollidesWithReservedCatchAllLabel() {
         IReadOnlyList<Diagnostic> diagnostics = RunGenerator(CollisionSource);
 
@@ -72,6 +73,7 @@ namespace TestDomain
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void DedupesPerProjection_WhenMultiplePropertiesCollideCaseInsensitively() {
         IReadOnlyList<Diagnostic> diagnostics = RunGenerator(CaseInsensitiveCollisionSource);
 

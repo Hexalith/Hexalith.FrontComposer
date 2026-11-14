@@ -78,6 +78,7 @@ namespace TestDomain
 ";
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void FiresForCommandFlagsEnumProperty() {
         IReadOnlyList<Diagnostic> diagnostics = RunGenerator(CommandFlagsSource);
 
@@ -89,6 +90,7 @@ namespace TestDomain
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void FiresForProjectionFlagsEnumWithProjectionBadgeAnnotations() {
         IReadOnlyList<Diagnostic> diagnostics = RunGenerator(ProjectionFlagsWithBadgeSource);
 

@@ -29,6 +29,7 @@ public class CommandDefaultValueTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void HFC1012_Rejects_DefaultValue_TypeString_Overload_ForMismatchedType() {
         string source = """
             using System;

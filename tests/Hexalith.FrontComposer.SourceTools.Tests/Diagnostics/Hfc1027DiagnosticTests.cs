@@ -57,6 +57,7 @@ namespace TestDomain
 ";
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void FiresOnce_WhenProjectionHasCollectionColumn() {
         IReadOnlyList<Diagnostic> diagnostics = RunGenerator(ProjectionWithCollectionSource);
 
@@ -66,6 +67,7 @@ namespace TestDomain
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void PayloadNamesEveryCollectionColumn() {
         IReadOnlyList<Diagnostic> diagnostics = RunGenerator(ProjectionWithMultipleCollectionsSource);
 
@@ -78,6 +80,7 @@ namespace TestDomain
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void DedupesPerProjection_EvenWithManyCollectionColumns() {
         // D20 — one diagnostic per projection regardless of how many Collection columns.
         IReadOnlyList<Diagnostic> diagnostics = RunGenerator(ProjectionWithMultipleCollectionsSource);

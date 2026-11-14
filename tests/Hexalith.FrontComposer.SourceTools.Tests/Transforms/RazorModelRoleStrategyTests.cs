@@ -46,6 +46,7 @@ public class RazorModelRoleStrategyTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void UnknownRoleValueMapsToDefault() {
         // D15 — if Parse ever delivered a non-enum role string (or a numeric payload
         // following an unsafe cast), Transform falls back to Default. HFC1024 already

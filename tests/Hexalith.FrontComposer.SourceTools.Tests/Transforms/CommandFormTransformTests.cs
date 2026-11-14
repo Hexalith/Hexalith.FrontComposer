@@ -34,6 +34,7 @@ public class CommandFormTransformTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Transform_UnsupportedField_MapsToPlaceholder() {
         PropertyModel property = BuildProperty(name: "Unsupported", typeName: "System.Object", isUnsupported: true);
         CommandModel command = BuildCommand(nonDerivable: [property]);
@@ -156,6 +157,7 @@ public class CommandFormTransformTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void HumanizeAndTruncateEnumMember_TruncatesLongNames() {
         string input = "ThisIsAnExtremelyLongEnumMemberName";
 
@@ -181,6 +183,7 @@ public class CommandFormTransformTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void FormFieldModel_IEquatable_DifferentCategory_NotEqual() {
         FormFieldModel a = new("A", "String", FormFieldTypeCategory.TextInput, "A", false, true, null);
         FormFieldModel b = new("A", "String", FormFieldTypeCategory.NumberInput, "A", false, true, null);
@@ -198,6 +201,7 @@ public class CommandFormTransformTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void CommandFormModel_IEquatable_DifferentButtonLabel_NotEqual() {
         CommandFormModel a = BuildFormModel();
         CommandFormModel b = new(a.TypeName, a.Namespace, a.BoundedContext, a.CommandFullyQualifiedName, "Different", a.Fields);
