@@ -313,7 +313,57 @@ for (const spacing of [false, true]) test(`a focused ${surface.name} heading sta
   expect(await page.evaluate(() => (window as typeof window & { __aeHeadingFocusEvents: number }).__aeHeadingFocusEvents), 'reflow reveals the existing focus without another focus event').toBe(0);
 });
 
-for (const input of ['PageDown', 'Space', 'Control+End', 'Control+Home', 'wheel'] as const) test(`resize focus visibility yields to ${input} input and releases its observers on disposal`, async ({ page, browserName }, info) => {
+for (const scenario of ['focused before registration', 'Ctrl+wheel zoom'] as const) test(`window resize reveals a route heading ${scenario}`, async ({ page }) => {
+  await page.goto('/home');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.evaluate(async (scenario) => {
+    const modulePath: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js';
+    const keyboard = await import(modulePath);
+    const root = document.createElement('div');
+    root.id = 'ae-window-resized-shell';
+    root.className = 'fc-shell-root';
+    root.style.cssText = 'position:fixed;inset:100px auto auto 20px;width:240px;height:180px;overflow:auto;z-index:2000;background:Canvas;scroll-padding:8px';
+    root.innerHTML = '<style>#ae-window-resized-shell h1:not(:focus){outline:none!important}</style><div id="fc-main-content"><div style="height:100px"></div><h1 tabindex="-1" style="font-size:20px;line-height:24px;margin:8px;outline:2px solid;scroll-margin:8px">Focused heading</h1><div style="height:1200px"></div></div>';
+    document.body.append(root);
+    const heading = root.querySelector('h1')!;
+    if (scenario === 'focused before registration') heading.focus();
+    keyboard.registerShellKeyFilter(root);
+    if (scenario !== 'focused before registration') heading.focus();
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const nativeScroll = heading.scrollIntoView.bind(heading);
+    (window as typeof window & { __aeWindowResizeCalls: number }).__aeWindowResizeCalls = 0;
+    heading.scrollIntoView = options => {
+      (window as typeof window & { __aeWindowResizeCalls: number }).__aeWindowResizeCalls++;
+      nativeScroll(options);
+    };
+  }, scenario);
+  const root = page.locator('#ae-window-resized-shell');
+  try {
+    if (scenario === 'focused before registration') {
+      await root.evaluate(element => {
+        element.style.height = '90px';
+        window.dispatchEvent(new Event('resize'));
+      });
+    } else {
+      // A trailing browser-zoom wheel tick must leave the later Fluent tier reflow armed.
+      // Synthetic Ctrl+wheel pins cancellation only; it does not claim actual browser zoom.
+      await root.dispatchEvent('wheel', { ctrlKey: true, deltaY: -1, bubbles: true });
+      await root.evaluate(element => { element.style.height = '90px'; });
+    }
+    await expect.poll(() => page.evaluate(() => (window as typeof window & { __aeWindowResizeCalls: number }).__aeWindowResizeCalls)).toBeGreaterThan(0);
+    await expect(root.locator('h1')).toBeFocused();
+    await expectFocusVisible(root.locator('h1'));
+  } finally {
+    await root.evaluate(async element => {
+      const modulePath: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js';
+      const keyboard = await import(modulePath);
+      keyboard.unregisterShellKeyFilter(element);
+      element.remove();
+    });
+  }
+});
+
+for (const input of ['PageDown', 'Space', 'Control+End', 'Control+Home', 'wheel', 'pointer', 'programmatic scroll'] as const) test(`resize focus visibility yields to ${input} input and releases its observers on disposal`, async ({ page, browserName }, info) => {
   await page.goto('/home');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
   await page.evaluate(async () => {
@@ -322,7 +372,9 @@ for (const input of ['PageDown', 'Space', 'Control+End', 'Control+Home', 'wheel'
     const root = document.createElement('div');
     root.id = 'ae-resized-shell';
     root.className = 'fc-shell-root';
-    root.style.cssText = 'position:fixed;inset:100px auto auto 20px;width:240px;height:180px;overflow:auto;z-index:2000;background:Canvas';
+    // Pinned Gecko leaves fixed-scrollport intersections stale after native Ctrl+Home/wheel.
+    // Document positioning retains the native scroll and offscreen geometry preconditions.
+    root.style.cssText = 'position:absolute;inset:100px auto auto 20px;width:240px;height:180px;overflow:auto;z-index:2000;background:Canvas';
     root.innerHTML = '<div id="fc-main-content"><div style="height:400px"></div><h1 tabindex="-1" style="font-size:20px;line-height:24px;margin:8px">Focused route heading</h1><div style="height:1200px"></div></div>';
     document.body.append(root);
     keyboard.registerShellKeyFilter(root);
@@ -343,22 +395,40 @@ for (const input of ['PageDown', 'Space', 'Control+End', 'Control+Home', 'wheel'
   const beforeInput = await root.evaluate(element => element.scrollTop);
   const nativeBoundaryScroll = browserName !== 'webkit' || !input.startsWith('Control+');
   if (!nativeBoundaryScroll) await info.attach('boundary-key-capability', { body: 'Linux WebKit does not scroll this focused-heading scrollport on Ctrl+Home/End. This row proves cancellation only; no native scrolling claim.', contentType: 'text/plain' });
-  if (input === 'wheel') {
+  if (input === 'programmatic scroll') {
+    await root.evaluate(element => { element.scrollTop = 900; });
+  } else if (input === 'pointer') {
+    await root.locator('h1').click();
+  } else if (input === 'wheel') {
     await root.hover();
     await page.mouse.wheel(0, 400);
   } else {
     await page.keyboard.press(input);
+    if (input === 'PageDown' || input === 'Space') await page.keyboard.press(input);
   }
-  if (!nativeBoundaryScroll) {
+  await expect(root.locator('h1')).toBeFocused();
+  if (!nativeBoundaryScroll || input === 'pointer') {
     expect(await root.evaluate(element => element.scrollTop)).toBe(beforeInput);
   } else if (input === 'Control+Home') {
     await expect.poll(() => root.evaluate(element => element.scrollTop)).toBe(0);
   } else {
     await expect.poll(() => root.evaluate(element => element.scrollTop)).toBeGreaterThan(400);
   }
+  await settlePaint(page);
+  const headingOnScreen = await root.locator('h1').evaluate(heading => {
+    const box = heading.getBoundingClientRect();
+    const viewport = heading.closest('#ae-resized-shell')!.getBoundingClientRect();
+    return box.bottom >= viewport.top && box.top <= viewport.bottom;
+  });
+  expect(headingOnScreen, 'only pointer and unsupported native boundary chords leave the heading visible').toBe(input === 'pointer' || !nativeBoundaryScroll);
+  // Wait for the pre-resize intersection delivery, which Firefox may defer past paint.
+  await expect.poll(() => root.locator('h1').evaluate(heading => new Promise<boolean>(resolve => {
+    const observer = new IntersectionObserver(([entry]) => { observer.disconnect(); resolve(entry.isIntersecting); });
+    observer.observe(heading);
+  })), { message: 'native intersection must reflect the completed scroll before resizing' }).toBe(headingOnScreen);
   await root.evaluate(element => { element.style.width = '150px'; });
   await settlePaint(page);
-  if (!nativeBoundaryScroll) {
+  if (!nativeBoundaryScroll || input === 'pointer') {
     expect(await root.evaluate(element => element.scrollTop)).toBe(beforeInput);
   } else if (input === 'Control+Home') {
     expect(await root.evaluate(element => element.scrollTop), 'resizing must not undo Ctrl+Home').toBe(0);
@@ -366,6 +436,11 @@ for (const input of ['PageDown', 'Space', 'Control+End', 'Control+Home', 'wheel'
     expect(await root.evaluate(element => element.scrollTop), 'resizing must not undo the later native scroll').toBeGreaterThan(400);
   }
   expect(await page.evaluate(() => (window as typeof window & { __aeResizeScrollCalls: number }).__aeResizeScrollCalls)).toBe(0);
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await settlePaint(page);
+  const afterWindowResize = await page.evaluate(() => (window as typeof window & { __aeResizeScrollCalls: number }).__aeResizeScrollCalls);
+  if (headingOnScreen) expect(afterWindowResize, 'window resize re-arms visibility for a heading that remains on screen').toBeGreaterThan(0);
+  else expect(afterWindowResize, 'window resize must not reveal a heading scrolled fully off screen').toBe(0);
   await page.evaluate(async () => {
     const modulePath: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js';
     const keyboard = await import(modulePath);
@@ -901,8 +976,8 @@ test('a later native PageDown supersedes a held shell focus visibility frame', a
   }
 });
 
-for (const scenario of ['neutral', 'prevented', 'composing'] as const) {
-  test(`${scenario} keyboard input preserves a held shell focus visibility frame`, async ({ page }) => {
+for (const scenario of ['neutral', 'prevented', 'composing', 'pointer'] as const) {
+  test(`${scenario} ${scenario === 'pointer' ? 'input cancels' : 'keyboard input preserves'} a held shell focus visibility frame`, async ({ page }) => {
     await page.goto('/home');
     await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
     try {
@@ -950,6 +1025,8 @@ for (const scenario of ['neutral', 'prevented', 'composing'] as const) {
       } else if (scenario === 'prevented') {
         await action.evaluate(element => element.addEventListener('keydown', event => event.preventDefault(), { once: true }));
         await page.keyboard.press('PageDown');
+      } else if (scenario === 'pointer') {
+        await action.dispatchEvent('pointerdown', { bubbles: true, pointerType: 'mouse' });
       } else {
         await action.dispatchEvent('keydown', { key: 'PageDown', isComposing: true, keyCode: 229, bubbles: true, cancelable: true });
       }
@@ -958,8 +1035,12 @@ for (const scenario of ['neutral', 'prevented', 'composing'] as const) {
         (window as typeof window & { __fcNeutralFrame?: { release: () => void } }).__fcNeutralFrame!.release();
         await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       });
-      expect(await root.evaluate(element => element.scrollTop), 'the retained visibility adjustment reveals the pending focused control').toBeGreaterThan(0);
-      await expectFocusVisible(action);
+      if (scenario === 'pointer') {
+        expect(await root.evaluate(element => element.scrollTop), 'pointer input cancels the pending visibility adjustment').toBe(0);
+      } else {
+        expect(await root.evaluate(element => element.scrollTop), 'the retained visibility adjustment reveals the pending focused control').toBeGreaterThan(0);
+        await expectFocusVisible(action);
+      }
     } finally {
       await page.evaluate(() => {
         const state = window as typeof window & { __fcNeutralFrame?: { restore: () => void } };

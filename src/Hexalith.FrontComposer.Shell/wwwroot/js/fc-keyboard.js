@@ -254,6 +254,7 @@ export function registerShellKeyFilter(element) {
     let headingLocation = window.location.href;
     let tabFocusPending = false;
     const recordPointer = (event) => {
+        cancelAnimationFrame(element.__fcShellFocusFrame);
         stopFocusResizeWatch();
         announcedHeading = null;
         tabFocusPending = false;
@@ -271,6 +272,29 @@ export function registerShellKeyFilter(element) {
     // the authored scroll-margin/scroll-padding can protect the complete target.
     // Keep this within the mounted shell and never move focus or follow a stale target.
     let resizeTarget = null;
+    let visibleHeading = null;
+    let headingIntersecting = true;
+    // Retain the last intersection across resize-watch releases. A later window resize
+    // must not pull an operator back to a route heading they have scrolled past.
+    const intersectionObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+            if (entry.target === visibleHeading) headingIntersecting = entry.isIntersecting;
+        }
+    });
+    const watchHeadingVisibility = (target) => {
+        if (target === visibleHeading) return;
+        intersectionObserver.disconnect();
+        visibleHeading = isRouteHeading(target) ? target : null;
+        // Focus can predate filter registration; allow the first resize until observed.
+        headingIntersecting = true;
+        if (visibleHeading) intersectionObserver.observe(visibleHeading);
+    };
+    const hideFocusedTarget = (event) => {
+        if (event.target === visibleHeading) watchHeadingVisibility(null);
+    };
+    element.addEventListener('focusout', hideFocusedTarget);
+    element.__fcShellFocusVisibilityExit = hideFocusedTarget;
+    element.__fcShellStopHeadingVisibilityWatch = () => watchHeadingVisibility(null);
     const resizeSizes = new Map();
     const scheduleFocusVisibility = (target) => {
         cancelAnimationFrame(element.__fcShellFocusFrame);
@@ -289,7 +313,7 @@ export function registerShellKeyFilter(element) {
             if (previous && (previous.width !== box.width || previous.height !== box.height)) changed = true;
             resizeSizes.set(entry.target, { width: box.width, height: box.height });
         }
-        if (changed && resizeTarget) scheduleFocusVisibility(resizeTarget);
+        if (changed && resizeTarget && resizeTarget === visibleHeading && headingIntersecting) scheduleFocusVisibility(resizeTarget);
     });
     const stopFocusResizeWatch = () => {
         resizeTarget = null;
@@ -314,6 +338,7 @@ export function registerShellKeyFilter(element) {
         announcedHeading = !tabFocusPending && !wasPointerHeading && isRouteHeading(target) ? target : null;
         tabFocusPending = false;
         if (isRouteHeading(target)) headingLocation = window.location.href;
+        watchHeadingVisibility(target);
         watchFocusResize(target);
         scheduleFocusVisibility(target);
     };
@@ -321,11 +346,13 @@ export function registerShellKeyFilter(element) {
     element.__fcShellFocusVisibility = showFocusedTarget;
     const showResizedFocus = () => {
         const target = document.activeElement;
+        watchHeadingVisibility(target);
         watchFocusResize(target);
-        if (resizeTarget) scheduleFocusVisibility(target);
+        if (resizeTarget && headingIntersecting) scheduleFocusVisibility(target);
     };
     window.addEventListener('resize', showResizedFocus);
-    const cancelResizedFocus = () => {
+    const cancelResizedFocus = (event) => {
+        if (event.ctrlKey) return;
         cancelAnimationFrame(element.__fcShellFocusFrame);
         stopFocusResizeWatch();
     };
@@ -511,11 +538,15 @@ export function unregisterShellKeyFilter(element) {
 
     element.removeEventListener("keydown", element.__fcShellKeyFilter);
     element.removeEventListener('focusin', element.__fcShellFocusVisibility);
+    element.removeEventListener('focusout', element.__fcShellFocusVisibilityExit);
     element.removeEventListener('pointerdown', element.__fcShellSkipPointer, true);
     window.removeEventListener('resize', element.__fcShellFocusResize);
     element.removeEventListener('wheel', element.__fcShellCancelResizedFocus, true);
     element.__fcShellCancelResizedFocus = null;
     element.__fcShellStopFocusResizeWatch?.();
+    element.__fcShellStopHeadingVisibilityWatch?.();
+    element.__fcShellStopHeadingVisibilityWatch = null;
+    element.__fcShellFocusVisibilityExit = null;
     element.__fcShellFocusResize = null;
     element.__fcShellStopFocusResizeWatch = null;
     cancelAnimationFrame(element.__fcShellFocusFrame);
