@@ -878,3 +878,6 @@ view with Immutable `10.0.15`; its ordinary shared default remains `11.0.0`.
 The FrontComposer profile now expects that exact compatibility version. The
 synchronized graph has 69 edges and passes all eight semantic selectors. This
 renewal grants no new repository, module execution, workflow or publication scope.
+
+The separate activation push consumes policy seal `87149d4d7ef042112818d24cec5044368e789d4d`
+as its event base; hosted acceptance remains pending exact-source CI.
