@@ -1,6 +1,15 @@
 # Story 13.6 accessibility result and human checklist
 
 
+## Push integration verification — 2026-11-14
+
+The request to push all changes authorizes publication; it does not extend the pending native-evidence acceptance. The original two local commits were rebased onto remote main `27257028f658cd6fa56f407ed60ce21cf643cfa7`; retained range-diff confirms both patches are unchanged. The tested integrated source is `13b382bc721cbe2f835bf0f724796e6f825175f0`, combining the existing accessibility fixes with upstream native-dialog readiness and route/skip-link work.
+
+Fresh post-rebase verification passes **159 browser cases** (53 per Chromium/Firefox/WebKit, zero retries/failures/skips/flaky cases), **41 banner component tests**, **32 Node evidence/CLI tests**, TypeScript and an individual Debug Shell.Tests/Counter build with **zero warnings/errors**. The browser lane combines the prior 90 affected cases with the full route-skip-links spec. Exact commands, source/served-module hashes, logs and JSON reports are `/home/administrator/.local/state/frontcomposer/push-story13-6-20261114-1794675910261/verification/verification-summary.json` and `/home/administrator/.local/state/frontcomposer/push-story13-6-20261114-1794675910261/verification/commands.json`; browser report SHA-256 is `2c42dc92beea1a0f9b77fa45379fc0ec5263e82b334878c9fb7eab249e5c7c4c`. All jobs use run-with-temp and private TMPDIR artifacts. The owned Counter host is stopped and awaited, and scratch is removed.
+
+Earlier candidate/Owner decisions and 90/41/32 results retain their original input attribution; they are not rewritten to the rebased history. No new native AT, actual zoom, human, full state-artifact/visual, hosted or full-topology qualification is claimed. Primary remains **in-review**, sprint **in-progress**; D2/D3/O2, WebKit capability limits, post-v1 deferrals, independent gates and the final changed-candidate Owner decision remain intact. This integration note changes documentation only; subsequent publication metadata must preserve the tested source inputs.
+
+
 ## Final review patches and parent verification — 2026-11-14
 
 **Candidate and state.** Parent verification binds root `504778cd316fe49f2c02f154200c63f6d09adf10` plus `git diff --binary HEAD -- src tests` SHA-256 `1574521e05b1a157e8d73d3b34e62a8397fd241f3f746f343802f7f86e28c698`. All nine changed source/test raw hashes, exact argv/cwd/exits, served-module hashes and reports are retained in `/home/administrator/.local/state/frontcomposer/review-story13-6-20261114-1794660361406/parent-final/verification-summary.json` and `/home/administrator/.local/state/frontcomposer/review-story13-6-20261114-1794660361406/parent-final/commands.json`. The implementation and independent Build review are complete; primary is `in-review` and sprint remains `in-progress` pending the final changed-candidate evidence decision. The Owner's earlier yes is bound to committed 504778cd, not this changed source.
