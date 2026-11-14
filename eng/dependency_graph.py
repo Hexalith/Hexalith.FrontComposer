@@ -1614,6 +1614,16 @@ _MEMORIES327_CURRENT_CONDITION = (
 )
 
 
+_TENANTS8_CURRENT_CONDITION = (
+    "'$(HexalithTenantsVersion)' == '' and ('$(HexalithEventStoreVersion)' != '4.2.0' or ("
+    + " and ".join(f"'$({name})' != 'true'" for name in _SDK42_CURRENT_PROJECTS) + "))"
+)
+_TENANTS707_CURRENT_CONDITION = (
+    "'$(HexalithTenantsVersion)' == '' and '$(HexalithEventStoreVersion)' == '4.2.0' and ("
+    + _SDK42_CURRENT_GATES + ")"
+)
+
+
 def _current_sdk42_qualification(
     root: ET.Element, parents: dict[ET.Element, ET.Element], context: str,
     catalog_source: tuple[Path, str, int] | None,
@@ -1678,6 +1688,33 @@ def _current_sdk42_qualification(
         raise GraphError(f"{context}: {contract} SDK selection must precede the retained Memories row and its default")
     _validate_catalog_logging_import(root, defaults["HexalithMemoriesVersion"], parents, catalog_source, context, contract)
     return overrides
+
+
+
+def _current_tenants8_qualification(
+    root: ET.Element, parents: dict[ET.Element, ET.Element], context: str,
+    catalog_source: tuple[Path, str, int] | None,
+) -> None:
+    """Prove the exact complementary current8/retained7.0.7 rows under the same SDK4.2 scope."""
+    _current_sdk42_qualification(root, parents, context, catalog_source)
+    contract = "HexalithTenantsVersion SDK4.2/current8 qualification"
+    definitions = [element for element in root.iter() if element.tag.casefold() == "hexalithtenantsversion"]
+    if len(definitions) != 2 or any(element.tag != "HexalithTenantsVersion" for element in definitions):
+        raise GraphError(f"{context}: {contract} requires exactly two canonical declarations")
+    current, retained = definitions
+    for element, condition, version in (
+        (current, _TENANTS8_CURRENT_CONDITION, "8.0.0"),
+        (retained, _TENANTS707_CURRENT_CONDITION, "7.0.7"),
+    ):
+        group = parents.get(element)
+        if (group is None or group.tag != "PropertyGroup" or group.attrib or parents.get(group) is not root
+                or element.attrib != {"Condition": condition} or element.text != version or list(element)):
+            raise GraphError(f"{context}: {contract} requires exact global complementary conditions and versions 8.0.0/7.0.7")
+    positions = {element: index for index, element in enumerate(root.iter())}
+    memories_default = list(root.iter("HexalithMemoriesVersion"))[1]  # Already proved by the shared qualification.
+    if not positions[memories_default] < positions[current] < positions[retained]:
+        raise GraphError(f"{context}: {contract} current then retained rows must follow SDK/Memories selection")
+    _validate_catalog_logging_import(root, retained, parents, catalog_source, context, contract)
 
 
 def _inactive_eventstore_sdk42_override(
@@ -1769,6 +1806,9 @@ def assert_selected_catalog_property_shape(
     matches = list(root.iter(prop_name))
     parents = _parent_map(root)
     if allow_eventstore_qualification and prop_name == "HexalithTenantsVersion":
+        if any(element.get("Condition") in {_TENANTS8_CURRENT_CONDITION, _TENANTS707_CURRENT_CONDITION} for element in matches):
+            _current_tenants8_qualification(root, parents, context, catalog_source)
+            return
         qualification_condition = (
             "'$(CatalogCandidateTenantsVersion)' != '' and '$(UseHexalithProjectReferences)' != 'true' and ("
             "'$(MSBuildProjectName)' == 'Hexalith.EventStore.CatalogConstruction' or "

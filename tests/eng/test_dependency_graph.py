@@ -2785,6 +2785,100 @@ class PolicyShapeTests(unittest.TestCase):
                 expected = "conditional group" if change == "root-condition" else "current SDK4.2/Memories3.0.27 qualification"
                 self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), expected)
 
+    def _current_tenants8_catalog(self) -> bytes:
+        root = ET.fromstring(self._current_sdk42_catalog())
+        properties = root.find("PropertyGroup")
+        for element in list(root.iter("HexalithTenantsVersion")):
+            properties.remove(element)
+        fixture = ET.fromstring((ROOT / "tests/ci-governance/fixtures/builds-sdk42-tenants8-qualification.props").read_bytes())
+        for element in fixture.find("PropertyGroup"):
+            properties.append(copy.deepcopy(element))
+        ET.indent(root)
+        return self._catalog_xml_bytes(root)
+
+    def test_current_tenants8_accepts_exact_complementary_rows_only_in_frontcomposer_profile(self) -> None:
+        catalog = self._current_tenants8_catalog()
+        self.assertEqual(1, self._evaluate_frontcomposer_profile(catalog)["selectors_validated"])
+        self.assertEqual(["8.0.0", "7.0.7"], [element.text for element in ET.fromstring(catalog).iter("HexalithTenantsVersion")])
+        with self.assertRaises(dg.GraphError):
+            self._evaluate_frontcomposer_profile(catalog, profile_name="strict-catalog-v1")
+        with self.assertRaises(dg.GraphError):
+            dg.assert_selected_catalog_property_shape(ET.fromstring(catalog), "HexalithTenantsVersion", "strict helper")
+
+    def test_current_tenants8_rejects_changed_or_broadened_conditions(self) -> None:
+        for index in (0, 1):
+            for change in ("sdk", "selector", "unset", "unconditional", "broaden", "attribute-case"):
+                with self.subTest(row=index, change=change):
+                    root = ET.fromstring(self._current_tenants8_catalog())
+                    row = list(root.iter("HexalithTenantsVersion"))[index]
+                    condition = row.get("Condition")
+                    if change == "sdk":
+                        row.set("Condition", condition.replace("4.2.0", "4.2.1"))
+                    elif change == "selector":
+                        row.set("Condition", condition.replace("HexalithPlatformSdk42CatalogView", "UnreviewedSdk42CatalogView"))
+                    elif change == "unset":
+                        row.set("Condition", condition.replace("== ''", "!= ''", 1))
+                    elif change == "unconditional":
+                        row.attrib.clear()
+                    elif change == "attribute-case":
+                        row.attrib = {"condition": condition}
+                    else:
+                        row.set("Condition", condition + " or '$(MSBuildProjectName)' == 'Hexalith.FrontComposer.Shell'")
+                    with self.assertRaises(dg.GraphError):
+                        self._evaluate_frontcomposer_profile(self._catalog_xml_bytes(root))
+
+    def test_current_tenants8_rejects_version_declaration_placement_or_import_drift(self) -> None:
+        for change in ("missing-current", "missing-retained", "duplicate", "current-version", "retained-version", "dynamic", "alias", "nested", "conditional", "target", "reversed", "before-memories", "import-before-tenants"):
+            with self.subTest(change=change):
+                root = ET.fromstring(self._current_tenants8_catalog())
+                group = root.find("PropertyGroup")
+                current, retained = list(root.iter("HexalithTenantsVersion"))
+                if change == "missing-current": group.remove(current)
+                elif change == "missing-retained": group.remove(retained)
+                elif change == "duplicate": group.append(copy.deepcopy(retained))
+                elif change == "current-version": current.text = "8.0.1"
+                elif change == "retained-version": retained.text = "7.0.8"
+                elif change == "dynamic": current.text = "$(UnreviewedVersion)"
+                elif change == "alias": retained.tag = "hexalithtenantsversion"
+                elif change == "nested": ET.SubElement(current, "HiddenValue")
+                elif change == "conditional":
+                    group.remove(current)
+                    ET.SubElement(root, "PropertyGroup", {"Condition": "true"}).append(current)
+                elif change == "target":
+                    group.remove(retained)
+                    ET.SubElement(ET.SubElement(root, "Target", {"Name": "Later"}), "PropertyGroup").append(retained)
+                elif change == "reversed":
+                    group.remove(current)
+                    group.append(current)
+                elif change == "before-memories":
+                    group.remove(current)
+                    group.insert(0, current)
+                else:
+                    group.remove(current)
+                    group.remove(retained)
+                    ET.SubElement(root, "Import", {"Project": "$(MSBuildThisFileDirectory)Logging.Build.targets", "Condition": "Exists('$(MSBuildThisFileDirectory)Logging.Build.targets')"})
+                    later = ET.SubElement(root, "PropertyGroup")
+                    later.extend([current, retained])
+                with self.assertRaises(dg.GraphError):
+                    self._evaluate_frontcomposer_profile(self._catalog_xml_bytes(root))
+
+    def test_current_tenants8_requires_same_closed_sdk42_and_memories_proof(self) -> None:
+        for change in ("sdk-default", "missing-sdk", "missing-memories", "frontcomposer-enrollment", "output"):
+            with self.subTest(change=change):
+                root = ET.fromstring(self._current_tenants8_catalog())
+                if change == "sdk-default": list(root.iter("HexalithEventStoreVersion"))[1].text = "6.0.0"
+                elif change == "missing-sdk": root.find("PropertyGroup").remove(list(root.iter("HexalithEventStoreVersion"))[0])
+                elif change == "missing-memories": root.find("PropertyGroup").remove(list(root.iter("HexalithMemoriesVersion"))[0])
+                elif change == "frontcomposer-enrollment":
+                    enabled = list(root.iter("HexalithPlatformSdk42CatalogView"))[1]
+                    enabled.set("Condition", enabled.get("Condition") + " or $(MSBuildProjectName.Equals('Hexalith.FrontComposer.Shell'))")
+                else:
+                    ET.SubElement(root, "Output", {"TaskParameter": "Value", "PropertyName": "HexalithTenantsVersion"})
+                with self.assertRaises(dg.GraphError):
+                    self._evaluate_frontcomposer_profile(self._catalog_xml_bytes(root))
+                with self.assertRaises(dg.GraphError):
+                    dg.assert_selected_catalog_property_shape(root, "HexalithTenantsVersion", "shared qualification control", allow_eventstore_qualification=True)
+
     def _immutable_consumer_catalog(self) -> bytes:
         root = ET.fromstring(self._eventstore_qualification_catalog())
         properties = root.find("PropertyGroup")
