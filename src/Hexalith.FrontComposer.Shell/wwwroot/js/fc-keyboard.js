@@ -274,11 +274,64 @@ export function registerShellKeyFilter(element) {
     let resizeTarget = null;
     let visibleHeading = null;
     let headingIntersecting = true;
-    // Retain the last intersection across resize-watch releases. A later window resize
-    // must not pull an operator back to a route heading they have scrolled past.
+    let headingLayout = null;
+    let headingObserved = false;
+    const rememberHeadingLayout = (requireFullyVisible = false) => {
+        if (!visibleHeading) { headingLayout = null; return; }
+        const owners = [];
+        for (let owner = visibleHeading.parentElement; owner; owner = owner.parentElement) {
+            const box = owner.getBoundingClientRect();
+            const style = getComputedStyle(owner);
+            owners.push({
+                owner, left: box.left + owner.clientLeft, top: box.top + owner.clientTop,
+                right: box.left + owner.clientLeft + owner.clientWidth,
+                bottom: box.top + owner.clientTop + owner.clientHeight,
+                clipX: style.overflowX !== 'visible', clipY: style.overflowY !== 'visible',
+                scrollLeft: owner.scrollLeft, scrollTop: owner.scrollTop,
+            });
+        }
+        const box = visibleHeading.getBoundingClientRect();
+        if (requireFullyVisible && (box.left < 0 || box.right > window.innerWidth || box.top < 0 || box.bottom > window.innerHeight
+            || owners.some(previous => previous.clipX && (box.left < previous.left || box.right > previous.right)
+                || previous.clipY && (box.top < previous.top || box.bottom > previous.bottom)))) return;
+        headingLayout = { box, owners, width: window.innerWidth, height: window.innerHeight };
+    };
+    const headingVisibleBeforeResize = () => {
+        if (!headingObserved || !headingLayout) return headingIntersecting;
+        let { left, right, top, bottom } = headingLayout.box;
+        let scrolled = false;
+        // Apply current scroll offsets to the preceding layout, from inner owners out.
+        // This sees same-task application scrolling before IO delivery, without using
+        // post-reflow heading geometry to reject the layout-only reveal it needs.
+        for (const previous of headingLayout.owners) {
+            const dx = previous.owner.scrollLeft - previous.scrollLeft;
+            const dy = previous.owner.scrollTop - previous.scrollTop;
+            scrolled ||= dx !== 0 || dy !== 0;
+            left -= dx; right -= dx; top -= dy; bottom -= dy;
+            if (previous.clipX) { left = Math.max(left, previous.left); right = Math.min(right, previous.right); }
+            if (previous.clipY) { top = Math.max(top, previous.top); bottom = Math.min(bottom, previous.bottom); }
+        }
+        // A zero-threshold IO may not notify when an edge-adjacent heading returns.
+        // Scroll-derived positive area therefore also re-arms that recovery path.
+        return scrolled ? Math.min(right, headingLayout.width) > Math.max(left, 0)
+            && Math.min(bottom, headingLayout.height) > Math.max(top, 0) : headingIntersecting;
+    };
+    // Retain preceding visibility across resize-watch releases, until focus exits.
     const intersectionObserver = new IntersectionObserver((entries) => {
         for (const entry of entries) {
-            if (entry.target === visibleHeading) headingIntersecting = entry.isIntersecting;
+            if (entry.target === visibleHeading) {
+                const visibleArea = entry.isIntersecting && entry.intersectionRect.width > 0 && entry.intersectionRect.height > 0;
+                const reflow = headingObserved && headingLayout && (window.innerWidth !== headingLayout.width || window.innerHeight !== headingLayout.height
+                    || headingLayout.owners.some(previous => previous.owner.clientWidth !== previous.right - previous.left
+                        || previous.owner.clientHeight !== previous.bottom - previous.top));
+                // IO can run between viewport resizing and the later Fluent layout.
+                // Its temporary offscreen result must retain preceding visibility for
+                // layout-only recovery, while scroll deltas still veto a scrolled-away heading.
+                headingIntersecting = visibleArea || !!reflow && headingVisibleBeforeResize();
+                headingObserved = true;
+                if (!reflow) rememberHeadingLayout();
+                else if (visibleArea) rememberHeadingLayout(true);
+            }
         }
     });
     const watchHeadingVisibility = (target) => {
@@ -287,6 +340,8 @@ export function registerShellKeyFilter(element) {
         visibleHeading = isRouteHeading(target) ? target : null;
         // Focus can predate filter registration; allow the first resize until observed.
         headingIntersecting = true;
+        headingObserved = false;
+        headingLayout = null;
         if (visibleHeading) intersectionObserver.observe(visibleHeading);
     };
     const hideFocusedTarget = (event) => {
@@ -300,8 +355,12 @@ export function registerShellKeyFilter(element) {
         cancelAnimationFrame(element.__fcShellFocusFrame);
         element.__fcShellFocusFrame = requestAnimationFrame(() => {
             if (element.isConnected && target instanceof HTMLElement && target.isConnected
-                && (document.activeElement === target || target.matches(':focus-within'))) {
+                && (document.activeElement === target || target.matches(':focus-within'))
+                && (target !== visibleHeading || headingVisibleBeforeResize())) {
                 target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+                // Keep the pre-reflow geometry through transient short scrollports.
+                // Refresh once the reveal can expose the whole heading again.
+                if (target === visibleHeading) rememberHeadingLayout(true);
             }
         });
     };
@@ -313,7 +372,10 @@ export function registerShellKeyFilter(element) {
             if (previous && (previous.width !== box.width || previous.height !== box.height)) changed = true;
             resizeSizes.set(entry.target, { width: box.width, height: box.height });
         }
-        if (changed && resizeTarget && resizeTarget === visibleHeading && headingIntersecting) scheduleFocusVisibility(resizeTarget);
+        if (changed && resizeTarget && resizeTarget === visibleHeading) {
+            headingIntersecting = headingVisibleBeforeResize();
+            if (headingIntersecting) scheduleFocusVisibility(resizeTarget);
+        }
     });
     const stopFocusResizeWatch = () => {
         resizeTarget = null;
@@ -347,10 +409,12 @@ export function registerShellKeyFilter(element) {
     const showResizedFocus = () => {
         const target = document.activeElement;
         watchHeadingVisibility(target);
+        headingIntersecting = headingVisibleBeforeResize();
         watchFocusResize(target);
         if (resizeTarget && headingIntersecting) scheduleFocusVisibility(target);
     };
     window.addEventListener('resize', showResizedFocus);
+    watchHeadingVisibility(document.activeElement);
     const cancelResizedFocus = (event) => {
         if (event.ctrlKey) return;
         cancelAnimationFrame(element.__fcShellFocusFrame);

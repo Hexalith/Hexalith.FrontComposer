@@ -38,6 +38,7 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
     private string? _lastAnnouncedResult;
     private long _hiddenEpisode;
     private string? _activeGroup;
+    private string? _activeFamily;
     private IDisposable? _activeClaim;
     private SurfaceHiddenFocusOwnership? _focusOwnership;
     private string? _focusGroupKey;
@@ -132,6 +133,7 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
                 .ClaimTransitionEpisode(_boundSurface, "missing:" + ViewKey,
                     "missing:" + ViewKey + ":scope:" + ScopeGeneration + ":result:" + ResultIdentity, out string group);
             _activeGroup = group;
+            _activeFamily = "missing:" + ViewKey;
             _focusOwnership = SurfaceHiddenFocusOwnership.For(Announcements);
             _focusGroupKey = group;
             _missingPending = _focusOwnership.Claim(group, this, OnFocusHandoff);
@@ -167,10 +169,11 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
         if (_activeGroup is not null && (!settledHidden || newSettledResult))
         {
             string formerGroup = _activeGroup;
+            string formerFamily = _activeFamily ?? family;
             ReleaseAnnouncement();
-            if (!settledHidden)
+            if (!settledHidden || !string.Equals(formerFamily, family, StringComparison.Ordinal))
             {
-                SurfaceAnnouncementGroupOwnership.For(Announcements).EndTransitionEpisode(_boundSurface, family, formerGroup);
+                SurfaceAnnouncementGroupOwnership.For(Announcements).EndTransitionEpisode(_boundSurface, formerFamily, formerGroup);
             }
         }
         if (newSettledResult)
@@ -180,6 +183,7 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
                     family + ":scope:" + ScopeGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture)
                         + ":result:" + result, out string group);
             _activeGroup = group;
+            _activeFamily = family;
             _awaitingSettlement = false;
         }
         string focusKey = _activeGroup ?? string.Empty;
@@ -400,6 +404,7 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
         _activeClaim?.Dispose();
         _activeClaim = null;
         _activeGroup = null;
+        _activeFamily = null;
     }
 
     private void ReleaseFocusClaim()

@@ -363,6 +363,202 @@ for (const scenario of ['focused before registration', 'Ctrl+wheel zoom'] as con
   }
 });
 
+async function headingOrderingFixture(page: import('@playwright/test').Page, beforeRegistration = false) {
+  await page.goto('/home');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.evaluate(async beforeRegistration => {
+    const modulePath: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js';
+    const keyboard = await import(modulePath);
+    const root = document.createElement('div');
+    root.id = 'ae-heading-ordering';
+    root.className = 'fc-shell-root';
+    root.style.cssText = 'position:absolute;left:20px;top:100px;width:240px;height:180px;overflow:auto;overflow-anchor:none;z-index:2000;background:Canvas';
+    root.innerHTML = '<style>#ae-heading-ordering h1:not(:focus){outline:none!important}</style><div id="fc-main-content"><div id="ae-heading-spacer" style="height:400px"></div><h1 tabindex="-1" style="height:40px;margin:0 8px;font-size:20px;line-height:24px;outline:2px solid;scroll-margin:8px">Focused heading</h1><div style="height:1200px"></div></div>';
+    document.body.append(root);
+    root.scrollTop = 300;
+    const heading = root.querySelector('h1')!;
+    if (beforeRegistration) heading.focus({ preventScroll: true });
+    keyboard.registerShellKeyFilter(root);
+    if (!beforeRegistration) heading.focus({ preventScroll: true });
+    await new Promise<void>(resolve => {
+      const observer = new IntersectionObserver(([entry]) => {
+        if (entry.intersectionRect.width > 0 && entry.intersectionRect.height > 0) {
+          observer.disconnect(); resolve();
+        }
+      });
+      observer.observe(heading);
+    });
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const nativeScroll = heading.scrollIntoView.bind(heading);
+    (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls = 0;
+    heading.scrollIntoView = options => {
+      (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls++;
+      nativeScroll(options);
+    };
+  }, beforeRegistration);
+  return page.locator('#ae-heading-ordering');
+}
+
+async function disposeHeadingOrderingFixture(root: import('@playwright/test').Locator) {
+  await root.evaluate(async element => {
+    const modulePath: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js';
+    const keyboard = await import(modulePath);
+    keyboard.unregisterShellKeyFilter(element);
+    element.remove();
+  });
+}
+
+for (const resize of ['ancestor', 'window'] as const) test(`heading visibility preserves same-task programmatic scroll before ${resize} resize`, async ({ page }) => {
+  const root = await headingOrderingFixture(page);
+  try {
+    // Both mutations run synchronously. No fresh intersection is awaited after scrolling.
+    await root.evaluate((element, resize) => {
+      element.scrollTop = 900;
+      element.style.width = '220px';
+      if (resize === 'window') window.dispatchEvent(new Event('resize'));
+    }, resize);
+    await settlePaint(page);
+    expect(await root.evaluate(element => element.scrollTop)).toBe(900);
+    expect(await page.evaluate(() => (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls)).toBe(0);
+    await expect(root.locator('h1')).toBeFocused();
+  } finally { await disposeHeadingOrderingFixture(root); }
+});
+
+test('heading visibility recovers after a zero-area edge without another threshold crossing', async ({ page }) => {
+  const root = await headingOrderingFixture(page);
+  try {
+    const edge = await root.evaluate(async element => {
+      element.scrollTop = 440;
+      const heading = element.querySelector('h1')!;
+      return new Promise<{ adjacent: boolean; width: number; height: number }>(resolve => {
+        const observer = new IntersectionObserver(([entry]) => {
+          observer.disconnect();
+          resolve({ adjacent: entry.isIntersecting, width: entry.intersectionRect.width, height: entry.intersectionRect.height });
+        });
+        observer.observe(heading);
+      });
+    });
+    expect(edge.adjacent).toBe(true);
+    expect(edge.width).toBeGreaterThan(0);
+    expect(edge.height).toBe(0);
+    await root.evaluate(element => { element.style.width = '220px'; });
+    await settlePaint(page);
+    expect(await root.evaluate(element => element.scrollTop)).toBe(440);
+    expect(await page.evaluate(() => (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls)).toBe(0);
+    // From edge-adjacent to fully visible, default threshold zero need not notify again.
+    await root.evaluate(element => { element.scrollTop = 350; });
+    await settlePaint(page);
+    const reflow = await root.evaluate(element => {
+      const scrollTop = element.scrollTop;
+      (element.querySelector('#ae-heading-spacer') as HTMLElement).style.height = '700px';
+      return { retainedScroll: element.scrollTop === scrollTop, offscreen: element.querySelector('h1')!.getBoundingClientRect().top >= element.getBoundingClientRect().bottom };
+    });
+    expect(reflow).toEqual({ retainedScroll: true, offscreen: true });
+    await expect.poll(() => page.evaluate(() => (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls)).toBeGreaterThan(0);
+    await expect(root.locator('h1')).toBeFocused();
+    await expectFocusVisible(root.locator('h1'));
+  } finally { await disposeHeadingOrderingFixture(root); }
+});
+
+test('heading visibility observes pre-registration focus before its first offscreen window resize', async ({ page }) => {
+  const root = await headingOrderingFixture(page, true);
+  try {
+    await root.evaluate(element => { element.scrollTop = 900; });
+    await settlePaint(page);
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+    await settlePaint(page);
+    expect(await root.evaluate(element => element.scrollTop)).toBe(900);
+    expect(await page.evaluate(() => (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls)).toBe(0);
+    await expect(root.locator('h1')).toBeFocused();
+  } finally { await disposeHeadingOrderingFixture(root); }
+});
+
+test('heading visibility retains layout-only recovery when reflow moves the heading fully offscreen', async ({ page }) => {
+  const root = await headingOrderingFixture(page);
+  try {
+    const reflow = await root.evaluate(element => {
+      const scrollTop = element.scrollTop;
+      (element.querySelector('#ae-heading-spacer') as HTMLElement).style.height = '700px';
+      return { retainedScroll: element.scrollTop === scrollTop, offscreen: element.querySelector('h1')!.getBoundingClientRect().top >= element.getBoundingClientRect().bottom };
+    });
+    expect(reflow).toEqual({ retainedScroll: true, offscreen: true });
+    await expect.poll(() => page.evaluate(() => (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls)).toBeGreaterThan(0);
+    await expect(root.locator('h1')).toBeFocused();
+    await expectFocusVisible(root.locator('h1'));
+  } finally { await disposeHeadingOrderingFixture(root); }
+});
+
+test('queued heading resize recovery yields to a later programmatic scroll', async ({ page }) => {
+  const root = await headingOrderingFixture(page);
+  try {
+    const queued = await root.evaluate(element => {
+      const nativeRequest = window.requestAnimationFrame;
+      const pending = { callback: null as FrameRequestCallback | null };
+      window.requestAnimationFrame = callback => { pending.callback = callback; return -1; };
+      try {
+        window.dispatchEvent(new Event('resize'));
+        const queued = pending.callback !== null;
+        element.scrollTop = 900;
+        // Release the already queued callback before any new intersection delivery.
+        pending.callback?.(performance.now());
+        return queued;
+      } finally { window.requestAnimationFrame = nativeRequest; }
+    });
+    expect(queued).toBe(true);
+    await settlePaint(page);
+    expect(await root.evaluate(element => element.scrollTop)).toBe(900);
+    expect(await page.evaluate(() => (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls)).toBe(0);
+    await expect(root.locator('h1')).toBeFocused();
+  } finally { await disposeHeadingOrderingFixture(root); }
+});
+
+test('dialog Tab wrapping skips hidden Fluent editors and includes visible shadow controls', async ({ page }) => {
+  await page.setContent('<fluent-dialog><div data-testid="ae-hidden-editor-dialog"><fluent-text-input id="before" style="display:block;visibility:hidden"></fluent-text-input><button id="first">First</button><button id="last">Last</button><fluent-text-input id="after" style="display:block;visibility:hidden"></fluent-text-input></div></fluent-dialog>');
+  const source = await readFile(new URL('../../../src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js', import.meta.url), 'utf8');
+  await page.evaluate(async source => {
+    for (const editor of document.querySelectorAll('fluent-text-input')) editor.attachShadow({ mode: 'open' }).innerHTML = '<input aria-label="Editor">';
+    const focus = await import('data:text/javascript;charset=utf-8,' + encodeURIComponent(source));
+    if (!focus.containDialogFocus('ae-hidden-editor-dialog')) throw new Error('dialog containment did not attach');
+  }, source);
+  expect(await page.locator('#before').evaluate(editor => editor.getClientRects().length)).toBeGreaterThan(0);
+  await page.locator('#last').focus();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#first')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('#last')).toBeFocused();
+  await page.evaluate(() => {
+    for (const editor of document.querySelectorAll<HTMLElement>('fluent-text-input')) editor.style.visibility = 'visible';
+    (document.querySelector('#after')!.shadowRoot!.querySelector('input') as HTMLElement).focus();
+  });
+  await page.keyboard.press('Tab');
+  expect(await page.locator('#before').evaluate(editor => editor.shadowRoot!.activeElement?.tagName)).toBe('INPUT');
+  await page.keyboard.press('Shift+Tab');
+  expect(await page.locator('#after').evaluate(editor => editor.shadowRoot!.activeElement?.tagName)).toBe('INPUT');
+});
+
+test('stale grid disposal preserves newer row metrics until the current owner disposes', async ({ page }) => {
+  await rowObserverFixture(page, '<div data-fc-datagrid="view" data-fc-datagrid-instance="one"><table><tbody><tr class="fluent-data-grid-row"><td style="font-size:12px">Row</td></tr></tbody></table></div>');
+  await page.evaluate(() => {
+    const owner = window as any;
+    owner.aeMetrics = [];
+    const reference = { invokeMethodAsync: (method: string, _id: string, height: number) => {
+      if (method === 'HandleRowMetricsAsync') owner.aeMetrics.push(height);
+      return Promise.resolve();
+    } };
+    owner.aeGrid.captureScrollThrottled('view', 0, reference, 2, 'one');
+    owner.aeGrid.observeRowMetrics('view', 'one', reference, 32);
+  });
+  await expect.poll(() => page.evaluate(() => (window as any).aeMetrics)).toEqual([32]);
+  await page.evaluate(() => (window as any).aeGrid.disposeViewKey('view', 1, 'one'));
+  await page.locator('td').evaluate(cell => { cell.style.fontSize = '80px'; });
+  await expect.poll(() => page.evaluate(() => (window as any).aeMetrics.at(-1))).toBeGreaterThan(32);
+  const beforeDisposal = await page.evaluate(() => (window as any).aeMetrics.length);
+  await page.evaluate(() => (window as any).aeGrid.disposeViewKey('view', 2, 'one'));
+  await page.locator('td').evaluate(cell => { cell.style.fontSize = '120px'; });
+  await settlePaint(page);
+  expect(await page.evaluate(() => (window as any).aeMetrics.length)).toBe(beforeDisposal);
+});
+
 for (const input of ['PageDown', 'Space', 'Control+End', 'Control+Home', 'wheel', 'pointer', 'programmatic scroll'] as const) test(`resize focus visibility yields to ${input} input and releases its observers on disposal`, async ({ page, browserName }, info) => {
   await page.goto('/home');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();

@@ -196,6 +196,37 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
         spoken.Where(static message => message.Length > 0).Count().ShouldBe(1);
     }
 
+    /// <summary>A repeated missing identity starts fresh only after its last visible owner leaves.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MissingPresentAndSameMissingIdentityStartsFreshSpeechAfterFinalOwner(bool coMounted)
+    {
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("projection:orders:Orders", spoken.Add);
+        IRenderedComponent<FcExpandedRowHiddenBanner> first = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "same"));
+        IRenderedComponent<FcExpandedRowHiddenBanner>? second = coMounted
+            ? Render<FcExpandedRowHiddenBanner>(p => p
+                .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "same"))
+            : null;
+        spoken.Count(static message => message.Length > 0).ShouldBe(1);
+        first.Render(p => p.Add(c => c.IsMissing, false));
+        if (second is not null)
+        {
+            first.Render(p => p.Add(c => c.IsMissing, true));
+            spoken.Count(static message => message.Length > 0).ShouldBe(1);
+            first.Render(p => p.Add(c => c.IsMissing, false));
+            second.Render(p => p.Add(c => c.IsMissing, false));
+        }
+        first.Render(p => p.Add(c => c.IsMissing, true));
+        second?.Render(p => p.Add(c => c.IsMissing, true));
+        first.Render();
+        spoken.Where(static message => message.Length > 0).ShouldBe([
+            "The expanded item is not in the current results.", "The expanded item is not in the current results."]);
+    }
+
     [Fact]
     public void ContinuouslyHiddenAtoBtoAUsesFreshSpeechEpisodeWithoutRefocus()
     {

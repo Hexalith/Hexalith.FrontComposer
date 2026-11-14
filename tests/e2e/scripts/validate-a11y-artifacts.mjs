@@ -5,7 +5,7 @@ import manifest from '../specimens/frontcomposer-specimen-manifest.json' with { 
 
 const required = [
   join(process.env.FC_E2E_HTML_REPORT_DIR ?? 'playwright-report', 'index.html'),
-  join(process.env.FC_E2E_OUTPUT_DIR ?? 'test-results', 'junit.xml'),
+  process.env.FC_E2E_JUNIT_PATH ?? join(process.env.FC_E2E_OUTPUT_DIR ?? 'test-results', 'junit.xml'),
   process.env.FC_E2E_JSON_PATH ?? join(process.env.FC_E2E_OUTPUT_DIR ?? 'test-results', 'playwright.json'),
 ];
 

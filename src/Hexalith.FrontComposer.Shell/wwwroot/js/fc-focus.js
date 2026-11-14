@@ -348,7 +348,8 @@ export function containDialogFocus(testId, retryOnce = true) {
             .filter((candidate) => candidate instanceof HTMLElement
                 && candidate.isConnected
                 && (candidate.tabIndex >= 0 || candidate.shadowRoot?.querySelector('input:not([disabled]),button:not([disabled]),[tabindex="0"]'))
-                && candidate.getClientRects().length > 0);
+                && candidate.getClientRects().length > 0
+                && getComputedStyle(candidate).visibility !== 'hidden');
         if (tabbables.length === 0) return;
         const first = tabbables[0];
         const last = tabbables[tabbables.length - 1];

@@ -129,7 +129,7 @@ export function validateStateEvidence(files, { unsupportedForcedColorsCapability
     const candidates = rows.filter(({ file, evidence }) => basename(file) === `ae-state-${state}.json` && evidence.state === state);
     if (candidates.length !== 1) { errors.push(`${candidates.length ? 'Duplicate' : 'Missing'} state evidence: ${state} in ${owner}`); continue; }
     for (const { file, evidence } of candidates) {
-      if (evidence.theme !== (state.endsWith('-dark') ? 'Dark' : 'Light') || !Array.isArray(evidence.themePaint?.rgb) || evidence.themePaint.rgb.length !== 3 || (evidence.themePaint.rgb.reduce((sum, channel) => sum + channel, 0) < 384) !== state.endsWith('-dark')) errors.push(`Mismatched actual theme paint: ${file}`);
+      if (evidence.theme !== (state.endsWith('-dark') ? 'Dark' : 'Light') || !Array.isArray(evidence.themePaint?.rgb) || evidence.themePaint.rgb.length !== 3 || evidence.themePaint.rgb.some(channel => !Number.isFinite(channel) || channel < 0 || channel > 255) || (evidence.themePaint.rgb.reduce((sum, channel) => sum + channel, 0) < 384) !== state.endsWith('-dark')) errors.push(`Mismatched actual theme paint: ${file}`);
       if (evidence.state !== state) errors.push(`Mismatched state identity: ${file}`);
       if (evidence.viewport?.width !== (state.startsWith('rail-') ? 1600 : 320) || evidence.viewport?.height !== 900) errors.push(`Missing exact viewport evidence: ${file}`);
       const mediaOnly = evidence.engine === 'webkit' && ownedUnsupportedCapability && evidence.forcedColorsPaint === false && evidence.forcedColorsStatus === FORCED_COLORS_MEDIA_ONLY_STATUS;
@@ -151,7 +151,8 @@ export function validateStateEvidence(files, { unsupportedForcedColorsCapability
       const needsFocus = /^(settings-|theme-menu-|generated-validation-|generated-missing-lost-focus-|tabs-active-|destructive-dialog-|abandonment-)/u.test(state);
       if (!focus || focus.mode !== 'forced-colors' || focus.status === 'none' && (needsFocus || !['BODY','HTML'].includes(focus.target))
         || focus.status === 'measured' && (typeof focus.target !== 'string' || !focus.target.trim() || typeof focus.requireIndicator !== 'boolean'
-          || !Array.isArray(focus.failures) || focus.failures.length || !focus.box || ['left','right','top','bottom'].some(key => !Number.isFinite(focus.box[key])))
+          || !Array.isArray(focus.failures) || focus.failures.length || !focus.box || ['left','right','top','bottom'].some(key => !Number.isFinite(focus.box[key]))
+          || focus.box.right <= focus.box.left || focus.box.bottom <= focus.box.top)
         || !['none','measured'].includes(focus.status)) errors.push(`Invalid forced-color focus geometry: ${file}`);
       if (!mediaOnly) {
         if (!Array.isArray(evidence.systemIcon) || evidence.systemIcon.length !== evidence.icon?.length || evidence.systemIcon.some(sample => !Number.isFinite(sample.ratio) || sample.ratio < 3)) errors.push(`Invalid system icon evidence: ${file}`);

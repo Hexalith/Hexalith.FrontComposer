@@ -11233,3 +11233,25 @@ The user chose to defer the two residuals left after the Story 13.6 corrections 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
   summary: Story 13.6 post-v1 manual AT/device revalidation — after v1, run the JAWS/Chrome, VoiceOver/Safari, physical tablet and physical phone journeys on the then-current candidate.
   evidence: On 2026-11-14 the Owner accepted agent-generated native NVDA/Firefox evidence for build c24a7a27 ("Accept for this build") and recorded these four pairings as post-v1 roadmap (owner Jérôme Piquot; reopen at the v1 release-readiness review, when an adopter needs a pairing, or on a material speech/focus change); this workstation has no JAWS, macOS or physical device. The 2026-10-25/27 Owner-reported Pass applies only to its earlier candidate. See 13-6-accessibility-result.md#owner-acceptance-of-native-nvda-evidence--2026-11-14.
+
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Align the Story 13.7 reusable Equivalent target-size assertion with reachable non-overlapping equivalent-control geometry.
+  evidence: H2-BH09 code inspection confirms UxAccessibilityAssertions.cs accepts distinct ordinals and conforming dimensions without rejecting overlapping target/equivalent bounds. This public adopter helper was introduced by separate Story 13.7 at 7f57da411c3abf8e1d459d0611c49632c07393a7 and predates the heading-reflow continuation; the browser validator already rejects overlap. Add a focused overlapping/valid-equivalent regression in the owning Testing work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Reject negative or inconsistent AE09 audit counts in the Story 13.7 reusable evidence recorder.
+  evidence: H2-BH10 code inspection confirms TestAccessibilityEvidenceRecorder.cs requires FindingCount/CriticalFindingCount/AnnouncementCount presence but permits negatives, including a Passed record, and does not compare critical totals with overall findings. This separate Story 13.7 public helper predates the current continuation; add owning recorder regression cases and reject malformed totals without changing Story 13.6 browser evidence authority.
+
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Define fail-closed reauthentication or shared session credential storage after process-local token-store loss.
+  evidence: H3-BH05 traces an authenticated session cookie with a missing in-memory FrontComposerUserTokenStore entry to a null relay token after restart or rerouting. This belongs to separate session-isolation auth capability f577f958ed1c043eec7feabc4885f59d48428818 and independent backend readiness. Preserve the explicit ban on ambient-cookie credential fallback; qualify restart and multi-instance behavior in the owning auth work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Define and enforce destructive confirmation's terminal Cancel/Escape behavior while OnConfirm is pending.
+  evidence: H3-BH07 confirms InvokeCancelAsync ignores _confirming/_completed, allowing OnCancel after OnConfirm begins. The original baseline also permitted both callbacks, predating this story; this is the Story 2.5/2.14 destructive-interaction contract. Settle whether post-dispatch cancel is allowed, then add a held-confirmation/Escape regression and preserve safe dispatch ownership.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Reconcile the pre-existing DEBUG-gated CI diagnostic lane with the shared Release-only CI baseline.
+  evidence: H3-BH10 verifies quality.yml debug-gated-tests builds/runs Debug while Hexalith LLM guidance requires Release-only CI. Current UI verification does not authorize pipeline or baseline-policy changes. The CI owner must select a compliant diagnostic seam or obtain an explicit baseline exception without presenting Debug outputs as packaged release evidence.

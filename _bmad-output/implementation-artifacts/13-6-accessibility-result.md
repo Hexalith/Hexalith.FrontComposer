@@ -1,5 +1,102 @@
 # Story 13.6 accessibility result and human checklist
 
+
+## Final review patches and parent verification — 2026-11-14
+
+**Candidate and state.** Parent verification binds root `504778cd316fe49f2c02f154200c63f6d09adf10` plus `git diff --binary HEAD -- src tests` SHA-256 `1574521e05b1a157e8d73d3b34e62a8397fd241f3f746f343802f7f86e28c698`. All nine changed source/test raw hashes, exact argv/cwd/exits, served-module hashes and reports are retained in `/home/administrator/.local/state/frontcomposer/review-story13-6-20261114-1794660361406/parent-final/verification-summary.json` and `/home/administrator/.local/state/frontcomposer/review-story13-6-20261114-1794660361406/parent-final/commands.json`. The implementation and independent Build review are complete; primary is `in-review` and sprint remains `in-progress` pending the final changed-candidate evidence decision. The Owner's earlier yes is bound to committed 504778cd, not this changed source.
+
+**Changes.** HR8–HR12 preserve prior layout visibility while reconciling actual scroll offsets, reject zero-area heading intersections, initialize observation for pre-existing focus, and validate positive focus rectangles/numeric RGB channels. The five final direct review patches recheck queued heading visibility at execution, place the existing grid-generation guard before metrics cleanup, exclude visibility:hidden dialog candidates, end the banner's actually claimed transition family, and honor the existing JUnit output override. No public API, canonical accessibility helper/threshold, theme, dependency, approved snapshot or AppHost infrastructure change is made.
+
+**Review.** Both three-layer rounds completed before their findings were triaged individually (12 then 11 findings). All five H3 direct patches are applied and parent-verified. Existing carried verdicts are preserved. Five new independent follow-ups were appended: Story 13.7 equivalent-target geometry and audit counts, session-cache-loss authentication, destructive-confirmation Cancel policy, and the DEBUG-only CI diagnostic/baseline conflict. These are pre-existing independent capabilities; no duplicate carried ledger entry is created. The full original-baseline diffs are retained, but detailed reviewer coverage is selective over the current changes and direct callers, not an exhaustive audit of 2,126 historical files.
+
+| Parent verification | Result |
+| --- | --- |
+| Shell.Tests + referenced Counter Debug build | Exit 0; zero warnings/errors |
+| FcExpandedRowHiddenBannerTests via built xUnit v3 DLL | 41 passed; zero failed/skipped, including single/co-mounted same-identity episode return |
+| Affected heading/input/disposal/dialog/grid browser selection | 90 passed: 30 each Chromium/Firefox/WebKit; zero retries/failures/skips/flaky/runner errors |
+| Full Node evidence/CLI suite | 32 passed; zero failed/skipped |
+| TypeScript | Exit 0 |
+| Independent parent queued-frame reproduction after patch | All three engines preserve 900 and focus; prior probes returned 400 |
+
+The final browser JSON SHA-256 is `b1dc7dea6bc252cfa99efb868d1b8728a24e7e83fcab0d39509bfa397e64d184`. Parent command is `run-with-temp python3 /home/administrator/.local/state/frontcomposer/review-story13-6-20261114-1794660361406/parent-final/verify.py /home/administrator/.local/state/frontcomposer/review-story13-6-20261114-1794660361406/parent-final`, from the repository root. It builds the individual Shell test project with Debug, serialized MSBuild, private TMPDIR artifacts and disabled build servers; invokes its built DLL with `-class *FcExpandedRowHiddenBannerTests -parallel none`; runs the full Node evidence suite and TypeScript; then uses the ordinary net11.0/ASP.NET Core 11.0.0 Counter Test fallback. The three HTTP-served JS modules match source byte-for-byte. The exact focused Playwright regex/argv is in commands.json; it includes the prior 75 cases, three new review regressions per engine, and existing row-metric positives. It uses two workers, zero retries and configured reporters, with raw/HTML output retained externally.
+
+**Controls and attribution.** The implementation follow-up at `/home/administrator/.local/state/frontcomposer/heading-review-fixes-20261114-wzjx3ivv/` retains nine pre-fix browser failures, the custom-JUnit failure, 33 focused browser passes, 41 component passes and seven CLI passes. The earlier refinement's 29/2 Node red, 12 browser defect failures/three positives, 69/6 and 73/2 intermediate preservation failures remain at their original inputs. The parent 90/41/32 results are fresh final-source evidence; earlier 60/75/browser/native/visual/hosted results are not relabelled as new runs.
+
+**Matrix and limits.** Changed focus/scroll behavior has the executed 90-case lane; missing-item single-owner/return behavior has the executed component class; evidence guards have the full Node/CLI lane. Other unchanged AE surface/media/contrast/visual coverage retains its earlier documented candidate attribution. Actual zoom, native NVDA/Firefox, heard speech/human observations, complete state-artifact/visual selection, broad .NET, hosted CI and full topology were not repeated. D2/D3/O2, the WebKit system-palette limitation, historical Firefox fixed-scrollport limitation, post-v1 pairings and independent OI-16/G-4/FLUENT-APP-1/UX/Product/Architect gates retain their meanings. The current native-evidence/zoom/WebKit reuse amendment still needs an explicit Owner extension to this exact changed-source candidate before terminal completion.
+
+**Preservation and cleanup.** The frozen original intent/baseline, historical failed attempts, prior manual reports/waiver, eighteen unchecked detailed human boxes, all 24 approved specimen PNGs and unchanged helper/dependency inputs are preserved. Parent host PID 1307248 is stopped and awaited, port 5070 is closed and its private TMPDIR is removed. All review readers finished before their private diff workspaces were cleaned; useful full diffs and logs remain external. No staging, commit, push or publication was performed for this refinement. The workflow's final status/commit transition remains pending the Owner decision.
+
+## Heading-visibility ordering refinement and bounded verification — 2026-11-14
+
+**Current status.** HR8–HR12 are implemented and their focused checks pass. Primary/sprint remain **in-progress**. The Owner's extension remains bound to committed `504778cd316fe49f2c02f154200c63f6d09adf10`; it does not accept this changed-source candidate. D2/D3/O2 dispositions, post-v1 roadmap items, eighteen unchecked human inventory boxes and independent gates retain their meanings.
+
+**Candidate.** Root `HEAD` is `504778cd316fe49f2c02f154200c63f6d09adf10` plus `git diff --binary HEAD -- src tests` SHA-256 `56da1c9b9acc6947f4d534993c02040dcc53c9ea31de01b9cf45a0d6cd8c243d`. The final served keyboard module equals source byte-for-byte. Raw SHA-256 values:
+
+| Input | SHA-256 |
+| --- | --- |
+| `src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-keyboard.js` | `52ed0ea742ca4a8b9d0b34f0a27a85700633425191650002eecddeb583de72d9` |
+| `tests/e2e/specs/responsive-accessibility.spec.ts` | `ca4245f320a52946f271d6654dd93fee74ab9cabe56a48dd9ad95781bac7d985` |
+| `tests/e2e/scripts/a11y-state-evidence.mjs` | `1371be467253581639675398d42794af41a5bcf32e118da44f7d0f04bb03066d` |
+| `tests/e2e/scripts/a11y-state-evidence.test.mjs` | `acb40c69aef080b50836775e34a15b043180a496f09c889d11d07f7fb91924e8` |
+
+**Implementation.** The existing heading observer records preceding layout/scroll geometry. Both resize paths reconcile actual ancestor scroll deltas against that geometry, preventing same-task application scrolling from being undone before fresh IO arrives. IO requires positive intersection width and height. Returning from an edge through scrolling can re-arm recovery without a zero-threshold notification. Registration starts observing an already focused route heading; the true default remains until first observation. Measured viewport/owner layout changes preserve preceding eligibility through an intermediate offscreen IO delivery, while scroll deltas still veto recovery. A successful fully visible reveal refreshes the geometry; transient short scrollports do not replace it. No timer heuristic or current-heading-geometry-only gate is added. Existing input releases, Ctrl+wheel retention, ordinary-control handling, focus events and disposal boundaries remain covered.
+
+The retained-state validator now requires strictly positive measured systemFocus width/height and exactly three finite numeric RGB channels in [0,255]. Two new Node cases cover malformed/empty/zero/reversed focus bounds and channel shape/type/range, with Chromium/Firefox positives. The existing attributed WebKit media-only capability, authoritative final-attempt attachment/snapshot rules and optional normalFocus/phase handling are preserved.
+
+| Verification | Result |
+| --- | --- |
+| Corrected new fixtures against committed keyboard | **3 passed / 12 expected failures**, four demonstrated defects per engine |
+| New heading cases against initial correction | **15/15** |
+| Final affected heading/focus selection | **75/75**, 25 per engine; two workers, zero retries/failures/skips/flaky cases |
+| Type-heading reflow confirmation before final selection | **6/6** |
+| Node red control / final Node suite | **29 passed / 2 new failures**; then **31/31** |
+| Debug Counter build | Exit 0, **zero warnings/errors** |
+| Final TypeScript | Exit 0 |
+
+**Commands.** All jobs use `run-with-temp`, retain its private TMPDIR/TMP/TEMP, and keep disposable build output/profiles beneath that directory. Useful logs/reports stay local at `/home/administrator/.local/state/frontcomposer/heading-ordering-20261114-syifgkr5/`; `verification-summary.json` contains full report/source/binary hashes and counts, and `setup-attempts.txt` retains harness mistakes. No evidence packet is committed.
+
+From repository root, `run-with-temp bash /home/administrator/.local/state/frontcomposer/heading-ordering-20261114-syifgkr5/baseline.sh` runs exact-target `aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json`, describe and stop with `ArtifactsPath="$TMPDIR/artifacts"`, `UseArtifactsOutput=true` and build servers disabled. Compilation records one MSB3277 warning / zero errors; startup exits **2**, AppHost **134**, because existing redirected metadata resolves missing `/tmp/references/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj`. Describe/stop exit 0 with no running target. This independent metadata limitation is preserved.
+
+`run-with-temp bash /home/administrator/.local/state/frontcomposer/heading-ordering-20261114-syifgkr5/host.sh` runs `dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Debug -m:1 --artifacts-path "$TMPDIR/artifacts" -v:q -nodeReuse:false --disable-build-servers`, then standalone `dotnet run --project samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --artifacts-path "$TMPDIR/artifacts" --no-build --no-launch-profile --urls http://127.0.0.1:5070`. Test environment: `ASPNETCORE_ENVIRONMENT=Test`, specimens enabled, abandonment 5s, timeout 5000ms, reconnect notice 30000ms, confirmation delay 6500ms and default logging Warning. The Debug build precedes the JS edit; static assets served through its source provider byte-match final JS. Runtimeconfig selects net11.0 and Microsoft.NETCore.App/Microsoft.AspNetCore.App 11.0.0 without roll-forward. This is the standalone Counter fallback, not full-topology qualification.
+
+From `tests/e2e`, every browser command uses `run-with-temp env BASE_URL=http://127.0.0.1:5070 PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=<local-root>/<attempt>/out FC_E2E_HTML_REPORT_DIR=<local-root>/<attempt>/html bash -c '<command redirected to its attempt log>'`, with configured reporters. The final command is:
+
+```sh
+npx --no -- playwright test specs/responsive-accessibility.spec.ts --grep 'heading visibility|a focused .* heading stays visible|resize focus visibility|window resize reveals|shell focus scrolling|held shell focus visibility frame|O5 the desktop content scrollport' --workers=2 --retries=0
+```
+
+Red/new-case runs use the same command with `--grep 'heading visibility'`; the six-case confirmation uses `--grep 'a focused type specimen heading stays visible'`. The final attempt is `browser-final-complete`. Node and TypeScript run from repository root as `run-with-temp node --test tests/e2e/scripts/a11y-state-evidence.test.mjs` and `run-with-temp npm --prefix tests/e2e run typecheck`, with output retained in `node-final.log` / `typecheck-final.log`.
+
+**Retained attempts.** Initial fixture execution failed 15/15: twelve product counterexamples plus three layout-only positives whose always-present horizontal ring lacked clearance. The first correction command used the wrong working directory and raised FileNotFoundError, so its following run still failed 15/15. Adding 8px horizontal fixture margin preserves exact vertical edge geometry; the corrected committed-module run is 3 passed / 12 failed. Later additions assert synchronous layout-only offscreen displacement without changing that geometry. An initial TypeScript unused-parameter error was corrected. Diagnostic setup errors are retained separately from product results.
+
+The first expanded implementation run is **69 passed / 6 type-heading failures**: refreshing snapshots during the intermediate 32px shell-content layout misclassified later browser clamping as application scrolling. Retaining geometry until a fully visible reveal improves this to **73 passed / 2 WebKit failures**. Native WebKit diagnostics then show IO can deliver the intermediate offscreen result before the later RO callback. Preserving preceding eligibility across measured layout changes corrects that order. The final six-case and complete 75-case passes above follow that correction. No failed attempt or report is overwritten.
+
+| Attempt | Playwright JSON SHA-256 |
+| --- | --- |
+| `browser-red` | `3af4cd3899ca24e25c02f728159066e79d6021ec72bfce00ec7071efc666f37a` |
+| `browser-red-final-fixture` | `79f77a4806111f2978b2288dbaec64bb80931ea155a2e8a4f23b6b6e9aa1af8a` |
+| `browser-red-corrected` | `9b925592066a5c1229ba24130d5b3416702258ef63482a53684b17a9203bafe9` |
+| `browser-green-initial` | `2b939b22c0efbb4346af83c86c46da06ca5500477caa3a6aa4098b32bfd3c059` |
+| `browser-final` | `8de94d7796c94821c5b7f21fffa7b8f33b1f05120f5b0924028d2c7610726220` |
+| `browser-final-corrected` | `eef18738da091e954f74d4ab8de9730e66359b5d92fd9a981fb27e1b3d36b7f0` |
+| `type-corrected` | `fabc83c954a18e9f4adcea139e249e933fc21b67f52fff9c7662396dec867653` |
+| `browser-final-complete` | `3fa8c8527c0fc618ed7999a79115bcc40377b0881a5f63e22759481c22cbc039` |
+
+**Limits and preservation.** This bounded selection covers Home/type default/combined-spacing geometry with zero extra focus events, application/native scroll precedence, initial focus, edge return, both resize paths and disposal. It supplies no new actual zoom, native AT, human, hosted CI, complete state-artifact/visual, broad .NET or full-topology result. The separately recorded fixed-position Firefox synthetic-scrollport limitation is not certified resolved. Earlier evidence keeps its original attribution, and the current Owner amendment is not extended. Only the four named source/test files and two owning records change; helpers, thresholds, approved PNGs, dependencies, frozen intent/baseline, historical records and human inventory remain preserved. All owned jobs/host are stopped and awaited; private scratch is removed and port 5070 is closed. Nothing is staged, committed, pushed or published.
+
+
+
+
+Final `run-with-temp python3 eng/validate-story-artifacts.py` and `git diff --check` pass. Original-history/frozen-block/five-checkbox-only/CRLF checks, all 24 PNGs, helper/dependency preservation, empty index and primary/sprint in-progress pass. Both private TMPDIR trees are removed, the owned host PID is absent, port 5070 is closed, and exact-target `run-with-temp aspire describe --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json` confirms no running AppHost. No unrelated broad suite was repeated.
+
+## Owner acceptance extended to the committed heading-reflow candidate — 2026-11-14
+
+Jérôme Piquot, Owner, answered **"yes"** to: "Do you extend your previous native-evidence, zoom, and WebKit acceptance to `504778cd`, retaining the existing exceptions and post-v1 deferrals? This would reuse the earlier native evidence." The preceding report identified the current 29 evidence-test passes, TypeScript and story-validation passes, and the recorded 60-case browser selection whose source hashes match the commit.
+
+The accepted candidate is `504778cd316fe49f2c02f154200c63f6d09adf10`. This explicitly extends the earlier c24a7a27 native-evidence/manual-criterion amendment, AE-02/MAN-136-ZOOM evidence acceptance and WebKit system-palette capability exception to that committed candidate. Earlier native NVDA/Firefox and actual-zoom results are reused at their original executed inputs; no new native session, human observation, actual-zoom run, WebKit system-palette paint or hosted result is claimed. D2/D3/O2 dispositions and JAWS/Chrome, VoiceOver/Safari, physical tablet and physical phone post-v1 roadmap items retain their existing meanings. The eighteen detailed human boxes remain unchecked. The frozen original intent and baseline are preserved.
+
+This decision supersedes the latest heading-reflow section's statement that the c24a7a27 amendment had not been extended. It does not resolve the separately recorded Firefox fixed-position synthetic-scrollport intersection limitation or grant independent OI-16/G-4/FLUENT-APP-1/UX/Product/Architect or full-topology approval. The existing 60-case browser result and fresh 29-test/TypeScript/story-validation checks support the heading-reflow implementation; independent Build review follows. Primary status is now `in-review`; sprint remains `in-progress` until the workflow's completion transition. No product source, tests, dependencies, snapshots, staging, commit or push is part of this acceptance record.
+
 ## Heading-reflow review patches and bounded verification — 2026-11-14
 
 **Current status:** the seven pending heading-reflow review patches are implemented and their focused checks pass. The primary spec and sprint remain **in-progress**. The preceding Owner amendment and completed Build record remain historical for `c24a7a2736e03cd157b9ef3f81affed6e669f38e` only; they do not accept this changed keyboard source.

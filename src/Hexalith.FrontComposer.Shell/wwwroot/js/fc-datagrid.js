@@ -96,14 +96,14 @@ export function disposeViewKey(viewKey, generation, instanceId = '') {
     }
 
     const key = instanceId || viewKey;
-    const metrics = rowMetrics.get(key);
-    if (metrics) { metrics.dispose(); rowMetrics.delete(key); }
     const entry = perInstance.get(key);
-    if (!entry) {
+    if (generation !== undefined && entry?.generation !== undefined && entry.generation > generation) {
         return;
     }
 
-    if (generation !== undefined && entry.generation !== undefined && entry.generation > generation) {
+    const metrics = rowMetrics.get(key);
+    if (metrics) { metrics.dispose(); rowMetrics.delete(key); }
+    if (!entry) {
         return;
     }
 

@@ -33,12 +33,12 @@ function rewriteChunk(png, type, edit) {
   throw new Error(`Fixture PNG has no ${type} chunk`);
 }
 
-function runValidator(root, report, engine) {
+function runValidator(root, report, engine, junitPath = join(root, 'junit.xml')) {
   const html = join(root, 'html'); mkdirSync(html, { recursive: true }); writeFileSync(join(html, 'index.html'), 'Fixture report');
-  writeFileSync(join(root, 'junit.xml'), 'Fixture outcomes');
+  writeFileSync(junitPath, 'Fixture outcomes');
   const reportPath = join(root, 'playwright.json'); writeFileSync(reportPath, typeof report === 'string' ? report : JSON.stringify(report));
   for (const artifact of specimenManifest.routes.flatMap(route => route.expectedArtifacts).filter(name => name.startsWith('axe-') || name.startsWith('focus-'))) writeFileSync(join(root, artifact), '{}');
-  return spawnSync(process.execPath, [fileURLToPath(new URL('./validate-a11y-artifacts.mjs', import.meta.url))], { encoding: 'utf8', env: { ...process.env, FC_E2E_OUTPUT_DIR: root, FC_E2E_HTML_REPORT_DIR: html, FC_E2E_JSON_PATH: reportPath, FC_A11Y_EVIDENCE_ENGINE: engine, FC_A11Y_EVIDENCE_RUN_ID: 'fixture-run' } });
+  return spawnSync(process.execPath, [fileURLToPath(new URL('./validate-a11y-artifacts.mjs', import.meta.url))], { encoding: 'utf8', env: { ...process.env, FC_E2E_OUTPUT_DIR: root, FC_E2E_HTML_REPORT_DIR: html, FC_E2E_JSON_PATH: reportPath, FC_E2E_JUNIT_PATH: junitPath, FC_A11Y_EVIDENCE_ENGINE: engine, FC_A11Y_EVIDENCE_RUN_ID: 'fixture-run' } });
 }
 
 function matrix(run) {
@@ -81,6 +81,38 @@ test('requires all owned state, cue, contrast and actual mode evidence', () => m
     [{ systemFocus: undefined }, /Invalid forced-color focus geometry/],
     [{ systemFocus: { ...saved.systemFocus, failures: ['viewport clips target or focus ring'] } }, /Invalid forced-color focus geometry/],
   ]) { update(0, { ...saved, ...patch }); assert.match(validateStateEvidence(all, { report }).join('\n'), expected); }
+}));
+
+test('forced-color focus requires positive finite rectangular bounds', () => matrix(({ report, all, read, update }) => {
+  const saved = read(0);
+  for (const box of [
+    null, {}, { left: 10, top: 10, right: 10, bottom: 34 },
+    { left: 10, top: 10, right: 34, bottom: 10 },
+    { left: 34, top: 10, right: 10, bottom: 34 },
+    { left: 10, top: 34, right: 34, bottom: 10 },
+    { left: '10', top: 10, right: 34, bottom: 34 },
+    { left: 10, top: null, right: 34, bottom: 34 },
+  ]) {
+    update(0, { systemFocus: { ...saved.systemFocus, box } });
+    assert.match(validateStateEvidence(all, { report }).join('\n'), /Invalid forced-color focus geometry/, JSON.stringify(box));
+  }
+  update(0, saved);
+  assert.deepEqual(validateStateEvidence(all, { report }), []);
+}));
+
+test('theme paint requires exactly three finite numeric RGB channels within the byte range', () => matrix(({ report, all, read, update, files }) => {
+  for (const index of [0, files.length / 2]) {
+    const saved = read(index);
+    for (const rgb of [null, [], [255, 255], [255, 255, 255, 255], ['invalid', 255, 255], ['255', 255, 255], [null, 255, 255], [256, 255, 255], [-1, 255, 255], [true, 255, 255]]) {
+      update(index, { themePaint: { rgb } });
+      assert.match(validateStateEvidence(all, { report }).join('\n'), /Mismatched actual theme paint/, JSON.stringify(rgb));
+    }
+    update(index, saved);
+  }
+  for (const engine of ['chromium', 'firefox']) {
+    for (let index = 0; index < files.length; index++) update(index, { engine });
+    assert.deepEqual(validateStateEvidence(all, { report, expectedEngine: engine }), []);
+  }
 }));
 
 test('target evidence requires real finite dimensions, consistent conformity and evidenced exceptions', () => matrix(({ report, all, update }) => {
@@ -396,6 +428,15 @@ test('runner, setup and teardown errors invalidate an otherwise passing report',
     report.errors = [{ message }];
     assert.match(validateStateEvidence(all, { report }).join('\n'), /runner\/setup\/teardown errors/);
   }
+}));
+
+test('CLI honors the configured JUnit artifact destination', () => matrix(({ report, root }) => {
+  const junitPath = join(root, 'custom-junit.xml');
+  const result = runValidator(root, report, 'chromium', junitPath);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /artifact validation passed/);
+  assert.equal(readFileSync(junitPath, 'utf8'), 'Fixture outcomes');
+  assert.throws(() => readFileSync(join(root, 'junit.xml')), { code: 'ENOENT' });
 }));
 
 test('CLI resolves capability from the successful retry while retaining the failed file', () => matrix(({ report, root, files, update }) => {
