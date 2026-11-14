@@ -87,6 +87,7 @@ public sealed class ProjectionTemplateMarkerTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_NonProjectionType_EmitsHfc1033() {
         const string template = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -116,6 +117,7 @@ public sealed class ProjectionTemplateMarkerTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_TemplateMissingContextProperty_EmitsHfc1034() {
         const string template = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -139,6 +141,7 @@ public sealed class ProjectionTemplateMarkerTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_TemplateContextWithoutParameter_EmitsHfc1034AndSuppressesDescriptor() {
         const string template = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -164,6 +167,7 @@ public sealed class ProjectionTemplateMarkerTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_IncompatibleMajorVersion_EmitsHfc1035AndSuppressesDescriptor() {
         const string template = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -193,6 +197,7 @@ public sealed class ProjectionTemplateMarkerTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_MinorVersionDrift_EmitsHfc1036ButKeepsDescriptor() {
         const string template = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -248,6 +253,7 @@ public sealed class ProjectionTemplateMarkerTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_DuplicateMarkers_EmitsHfc1037AndSuppressesAllDuplicates() {
         const string template = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -323,6 +329,7 @@ public sealed class ProjectionTemplateMarkerTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_InvalidProjectionRoleValue_EmitsHfc1024AndSuppressesDescriptor() {
         const string template = """
             using Hexalith.FrontComposer.Contracts.Attributes;

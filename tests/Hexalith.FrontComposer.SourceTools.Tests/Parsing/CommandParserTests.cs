@@ -55,6 +55,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_FixedViewKeyDifferentFromProjectionCanonicalView_ClearsDescriptorAndEmitsHFC1005() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -73,6 +74,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_CommandTargetTypeWithoutProjection_ClearsDescriptorAndEmitsHFC1005() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -96,6 +98,7 @@ public class CommandParserTests {
     [InlineData(CommandTargetChangeKind.Create)]
     [InlineData(CommandTargetChangeKind.StatusMove)]
     [InlineData(CommandTargetChangeKind.Delete)]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_SameAsSourceWithNonUpdateChange_ClearsDescriptorAndEmitsHFC1005(
         CommandTargetChangeKind changeKind) {
         string source = $$"""
@@ -122,6 +125,7 @@ public class CommandParserTests {
     [Theory]
     [InlineData("(CommandTargetResolutionMode)99", "CommandTargetChangeKind.Update")]
     [InlineData("CommandTargetResolutionMode.Provider", "(CommandTargetChangeKind)99")]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_CommandTargetWithUnknownEnumValue_ClearsDescriptorAndEmitsOneHFC1005(
         string resolutionMode,
         string changeKind) {
@@ -169,6 +173,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RecordPositionalCommand_InitOnlyTargetsReportHfc1016AndSuppressModel() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.RecordPositionalCommand, "TestDomain.IncrementCounterCommand");
 
@@ -177,6 +182,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RecordPropertyCommand_InitOnlyTargetsReportHfc1016AndSuppressModel() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.RecordPropertyCommand, "TestDomain.DecrementCounterCommand");
 
@@ -194,6 +200,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_MissingMessageId_EmitsHFC1006() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.MissingMessageIdCommand, "TestDomain.NoMessageIdCommand");
 
@@ -275,6 +282,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_UnsupportedFieldType_EmitsHFC1002() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.UnsupportedFieldCommand, "TestDomain.UnsupportedCommand");
 
@@ -302,6 +310,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RequiresPolicyAttribute_EmptyValue_EmitsHFC1056() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.EmptyPolicyCommand, "TestDomain.EmptyPolicyCommand");
 
@@ -312,6 +321,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RequiresPolicyAttribute_Duplicate_EmitsHFC1057() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.DuplicatePolicyCommand, "TestDomain.DuplicatePolicyCommand");
 
@@ -324,6 +334,7 @@ public class CommandParserTests {
     // Pass 3 / Pass-2 P27 — invalid-character policy-name fixtures.
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RequiresPolicyAttribute_ContainsSpace_EmitsHFC1056() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyWithSpaceCommand, "TestDomain.PolicyWithSpaceCommand");
 
@@ -334,6 +345,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RequiresPolicyAttribute_ContainsSlash_EmitsHFC1056() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyWithSlashCommand, "TestDomain.PolicyWithSlashCommand");
 
@@ -344,6 +356,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RequiresPolicyAttribute_ContainsStar_EmitsHFC1056() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyWithStarCommand, "TestDomain.PolicyWithStarCommand");
 
@@ -354,6 +367,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RequiresPolicyAttribute_TabOnly_EmitsHFC1056() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyWithTabCommand, "TestDomain.PolicyWithTabCommand");
 
@@ -365,6 +379,7 @@ public class CommandParserTests {
     // Pass 3 — punctuation-only names like "::" require at least one alphanumeric character.
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RequiresPolicyAttribute_PunctuationOnly_EmitsHFC1056() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyPunctuationOnlyCommand, "TestDomain.PolicyPunctuationOnlyCommand");
 
@@ -376,6 +391,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_TooManyProperties_WarningThreshold_EmitsHFC1007Warning() {
         string source = CommandTestSources.TooManyPropertiesCommand(CommandParser.NonDerivableWarningThreshold + 1);
         CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.TooManyPropertiesCommand");
@@ -386,6 +402,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_TooManyProperties_ErrorThreshold_EmitsHFC1007Error() {
         string source = CommandTestSources.TooManyPropertiesCommand(CommandParser.NonDerivableErrorThreshold + 1);
         CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.TooManyPropertiesCommand");
@@ -396,6 +413,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_StructCommand_EmitsHFC1004() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.StructCommand, "TestDomain.StructCommand");
 
@@ -403,6 +421,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_SystemNamespaceCommand_EmitsHFC1004() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.SystemNamespaceCommand, "System.FakeNamespace.SystemNamespaceCommand");
 
@@ -413,6 +432,7 @@ public class CommandParserTests {
     [InlineData("public string MessageId { get; } = string.Empty;", "has no public setter")]
     [InlineData("public string MessageId { get; init; } = string.Empty;", "'init' accessor")]
     [InlineData("public string MessageId { get; private set; } = string.Empty;", "non-public setter")]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_InvalidDerivableSetter_ReportsHfc1016AndSuppressesModel(
         string propertyDeclaration,
         string expectedReason) {
@@ -443,6 +463,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_InvalidNonDerivableSetter_ReportsHfc1016AtProperty() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -548,6 +569,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_InvalidSetterWithSizeViolations_AccumulatesAllDiagnosticsBeforeSuppression() {
         var source = new System.Text.StringBuilder();
         _ = source.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
@@ -572,6 +594,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_InvalidSetterWithDestructiveShape_AccumulatesHfc1016AndHfc1021() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
