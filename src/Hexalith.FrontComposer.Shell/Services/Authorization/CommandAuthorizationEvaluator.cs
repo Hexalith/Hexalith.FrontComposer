@@ -38,129 +38,143 @@ public sealed class CommandAuthorizationEvaluator(
             return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
         }
 
-        AuthenticationState? state;
+        int authenticationChanged = 0;
+        void OnAuthenticationStateChanged(Task<AuthenticationState> stateTask)
+            => Interlocked.Exchange(ref authenticationChanged, 1);
+        authenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
         try {
-            state = await authenticationStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) {
-            LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
-            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
-        }
-        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            FrontComposerSecurityLog.AuthorizationAuthenticationStateFailed(
-                logger,
-                request.CommandType.FullName ?? request.CommandType.Name,
-                trimmedPolicy,
-                correlationId,
-                ex.GetType().FullName ?? "Exception");
-            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
-        }
-
-        ClaimsPrincipal? user = state?.User;
-        if (user is null) {
-            // No state resolved yet — typical during prerender / SSR-to-interactive transition.
-            return CommandAuthorizationDecision.Pending(correlationId);
-        }
-
-        if (user.Identity is null || !user.Identity.IsAuthenticated) {
-            LogBlocked(request, CommandAuthorizationReason.Unauthenticated, trimmedPolicy, correlationId);
-            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Unauthenticated, correlationId);
-        }
-
-        TenantContextResult tenant;
-        try {
-            tenant = tenantContextAccessor.TryGetContext(operationKind: "command-authorization");
-        }
-        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            FrontComposerSecurityLog.AuthorizationTenantContextFailed(
-                logger,
-                CommandAuthorizationReason.StaleTenantContext,
-                request.CommandType.FullName ?? request.CommandType.Name,
-                trimmedPolicy,
-                correlationId,
-                ex.GetType().FullName ?? "Exception");
-            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, correlationId);
-        }
-
-        if (!tenant.Succeeded) {
-            LogBlocked(request, CommandAuthorizationReason.StaleTenantContext, trimmedPolicy, tenant.CorrelationId);
-            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, tenant.CorrelationId);
-        }
-
-        var resource = new CommandAuthorizationResource(
-            request.CommandType,
-            trimmedPolicy,
-            request.BoundedContext,
-            request.DisplayLabel,
-            request.SourceSurface,
-            tenant.Context);
-
-        try {
-            AuthorizationResult? result = await authorizationService
-                .AuthorizeAsync(user, resource, resource.PolicyName)
-                .ConfigureAwait(false);
-
-            // Re-check cancellation: the AuthorizeAsync overload used does not accept a token, so an
-            // in-flight handler keeps running even when the caller cancels. Honor cancellation here.
-            if (cancellationToken.IsCancellationRequested) {
+            AuthenticationState? state;
+            try {
+                state = await authenticationStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
                 LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
                 return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
             }
-
-            if (result is null) {
-                FrontComposerSecurityLog.AuthorizationNullResult(
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                FrontComposerSecurityLog.AuthorizationAuthenticationStateFailed(
                     logger,
                     request.CommandType.FullName ?? request.CommandType.Name,
                     trimmedPolicy,
-                    correlationId);
+                    correlationId,
+                    ex.GetType().FullName ?? "Exception");
                 return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
             }
 
-            if (result.Succeeded) {
-                return CommandAuthorizationDecision.Allowed(correlationId);
+            ClaimsPrincipal? user = state?.User;
+            if (user is null) {
+                // No state resolved yet — typical during prerender / SSR-to-interactive transition.
+                return CommandAuthorizationDecision.Pending(correlationId);
             }
 
-            // ASP.NET's AuthorizationFailure distinguishes "policy unconfigured" (no failed
-            // requirements present, no explicit Fail call) from "rule failed normally". A null
-            // Failure or empty FailedRequirements without FailCalled means no requirement actually
-            // evaluated — operators investigate as MissingPolicy. FailCalled or any failed
-            // requirement means a handler explicitly rejected — that's Denied.
-            bool hasFailedRequirement = result.Failure?.FailedRequirements?.Any() ?? false;
-            bool failCalled = result.Failure?.FailCalled ?? false;
-            if (!failCalled && !hasFailedRequirement) {
-                LogBlocked(request, CommandAuthorizationReason.MissingPolicy, trimmedPolicy, correlationId);
+            if (user.Identity is null || !user.Identity.IsAuthenticated) {
+                LogBlocked(request, CommandAuthorizationReason.Unauthenticated, trimmedPolicy, correlationId);
+                return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Unauthenticated, correlationId);
+            }
+
+            TenantContextResult tenant;
+            try {
+                tenant = tenantContextAccessor.TryGetContext(operationKind: "command-authorization");
+            }
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                FrontComposerSecurityLog.AuthorizationTenantContextFailed(
+                    logger,
+                    CommandAuthorizationReason.StaleTenantContext,
+                    request.CommandType.FullName ?? request.CommandType.Name,
+                    trimmedPolicy,
+                    correlationId,
+                    ex.GetType().FullName ?? "Exception");
+                return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, correlationId);
+            }
+
+            if (!tenant.Succeeded) {
+                LogBlocked(request, CommandAuthorizationReason.StaleTenantContext, trimmedPolicy, tenant.CorrelationId);
+                return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, tenant.CorrelationId);
+            }
+
+            var resource = new CommandAuthorizationResource(
+                request.CommandType,
+                trimmedPolicy,
+                request.BoundedContext,
+                request.DisplayLabel,
+                request.SourceSurface,
+                tenant.Context);
+
+            try {
+                AuthorizationResult? result = await authorizationService
+                    .AuthorizeAsync(user, resource, resource.PolicyName)
+                    .ConfigureAwait(false);
+
+                // Re-check cancellation: the AuthorizeAsync overload used does not accept a token, so an
+                // in-flight handler keeps running even when the caller cancels. Honor cancellation here.
+                if (cancellationToken.IsCancellationRequested) {
+                    LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
+                    return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
+                }
+
+                if (result is null) {
+                    FrontComposerSecurityLog.AuthorizationNullResult(
+                        logger,
+                        request.CommandType.FullName ?? request.CommandType.Name,
+                        trimmedPolicy,
+                        correlationId);
+                    return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
+                }
+
+                if (Volatile.Read(ref authenticationChanged) != 0) {
+                    LogBlocked(request, CommandAuthorizationReason.StaleTenantContext, trimmedPolicy, correlationId);
+                    return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, correlationId);
+                }
+
+                if (result.Succeeded) {
+                    return CommandAuthorizationDecision.Allowed(correlationId);
+                }
+
+                // ASP.NET's AuthorizationFailure distinguishes "policy unconfigured" (no failed
+                // requirements present, no explicit Fail call) from "rule failed normally". A null
+                // Failure or empty FailedRequirements without FailCalled means no requirement actually
+                // evaluated — operators investigate as MissingPolicy. FailCalled or any failed
+                // requirement means a handler explicitly rejected — that's Denied.
+                bool hasFailedRequirement = result.Failure?.FailedRequirements?.Any() ?? false;
+                bool failCalled = result.Failure?.FailCalled ?? false;
+                if (!failCalled && !hasFailedRequirement) {
+                    LogBlocked(request, CommandAuthorizationReason.MissingPolicy, trimmedPolicy, correlationId);
+                    return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.MissingPolicy, correlationId);
+                }
+
+                LogBlocked(request, CommandAuthorizationReason.Denied, trimmedPolicy, correlationId);
+                return CommandAuthorizationDecision.Denied(correlationId);
+            }
+            catch (OperationCanceledException) {
+                LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
+                return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
+            }
+            catch (InvalidOperationException ex) {
+                // Most commonly thrown when the requested policy name is not registered with
+                // AuthorizationOptions ("No policy found: …"). Logged at Warning so operators can
+                // diagnose deployment misconfigurations, but the principal/claims/tokens are never
+                // included. Other InvalidOperationException causes (scope-resolution etc.) also fail
+                // closed under MissingPolicy — operators investigate via the log message.
+                FrontComposerSecurityLog.AuthorizationMissingPolicyFailed(
+                    logger,
+                    request.CommandType.FullName ?? request.CommandType.Name,
+                    trimmedPolicy,
+                    correlationId,
+                    ex.GetType().FullName ?? "Exception");
                 return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.MissingPolicy, correlationId);
             }
-
-            LogBlocked(request, CommandAuthorizationReason.Denied, trimmedPolicy, correlationId);
-            return CommandAuthorizationDecision.Denied(correlationId);
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                FrontComposerSecurityLog.AuthorizationHandlerFailed(
+                    logger,
+                    request.CommandType.FullName ?? request.CommandType.Name,
+                    trimmedPolicy,
+                    correlationId,
+                    ex.GetType().FullName ?? "Exception");
+                return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
+            }
         }
-        catch (OperationCanceledException) {
-            LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
-            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
-        }
-        catch (InvalidOperationException ex) {
-            // Most commonly thrown when the requested policy name is not registered with
-            // AuthorizationOptions ("No policy found: …"). Logged at Warning so operators can
-            // diagnose deployment misconfigurations, but the principal/claims/tokens are never
-            // included. Other InvalidOperationException causes (scope-resolution etc.) also fail
-            // closed under MissingPolicy — operators investigate via the log message.
-            FrontComposerSecurityLog.AuthorizationMissingPolicyFailed(
-                logger,
-                request.CommandType.FullName ?? request.CommandType.Name,
-                trimmedPolicy,
-                correlationId,
-                ex.GetType().FullName ?? "Exception");
-            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.MissingPolicy, correlationId);
-        }
-        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            FrontComposerSecurityLog.AuthorizationHandlerFailed(
-                logger,
-                request.CommandType.FullName ?? request.CommandType.Name,
-                trimmedPolicy,
-                correlationId,
-                ex.GetType().FullName ?? "Exception");
-            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
+        finally {
+            authenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         }
     }
 

@@ -5,10 +5,10 @@ import { fileURLToPath } from 'node:url';
 const sourceToolsAlgorithm = 'frontcomposer.schema.sha256.v1.sourcetools-blob';
 const repoRoot = resolve(fileURLToPath(new URL('../../..', import.meta.url)));
 const generatedManifestRelativePaths = [
-  'samples/Counter/Counter.Domain/obj/Release/net10.0/generated/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/FrontComposerMcpManifest.g.cs',
-  'samples/Counter/Counter.Domain/obj/Debug/net10.0/generated/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/FrontComposerMcpManifest.g.cs',
-  'samples/Counter/Counter.Specimens.Domain/obj/Release/net10.0/generated/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/FrontComposerMcpManifest.g.cs',
-  'samples/Counter/Counter.Specimens.Domain/obj/Debug/net10.0/generated/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/FrontComposerMcpManifest.g.cs',
+  'samples/Counter/Counter.Domain/obj/Release/net11.0/generated/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/FrontComposerMcpManifest.g.cs',
+  'samples/Counter/Counter.Domain/obj/Debug/net11.0/generated/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/FrontComposerMcpManifest.g.cs',
+  'samples/Counter/Counter.Specimens.Domain/obj/Release/net11.0/generated/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/FrontComposerMcpManifest.g.cs',
+  'samples/Counter/Counter.Specimens.Domain/obj/Debug/net11.0/generated/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/FrontComposerMcpManifest.g.cs',
 ];
 
 export const staleSourceToolsFingerprintHeader = `${sourceToolsAlgorithm}:${'0'.repeat(64)}`;

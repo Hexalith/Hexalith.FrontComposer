@@ -239,6 +239,8 @@ jobs:
           set -euo pipefail
           dotnet restore references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj -p:Configuration=Release -p:NuGetAudit=false
           dotnet build references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release --no-restore -m:1 -p:NuGetAudit=false
+          provider_test_framework="$(dotnet msbuild references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj -p:Configuration=Release -getProperty:TargetFramework -nologo)"
+          provider_framework="$(dotnet msbuild references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/Hexalith.EventStore.ProviderVerification.csproj -p:Configuration=Release -getProperty:TargetFramework -nologo)"
           provider_test_pact_dir="$GITHUB_WORKSPACE/references/Hexalith.EventStore/references/Hexalith.FrontComposer/tests/Hexalith.FrontComposer.Shell.Tests/Pact"
           mkdir -p "$provider_test_pact_dir"
           find "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
@@ -246,7 +248,7 @@ jobs:
           test "$(find "$provider_test_pact_dir" -maxdepth 1 -type f -name '*.json' | wc -l)" -eq 6
           (
             cd references/Hexalith.EventStore &&
-            dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
+            dotnet "tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/$provider_test_framework/Hexalith.EventStore.ProviderVerification.Tests.dll"
           )
           mkdir -p "$GITHUB_WORKSPACE/artifacts/contracts"
           rm -f "$GITHUB_WORKSPACE/artifacts/contracts/provider-verification.json"
@@ -254,7 +256,7 @@ jobs:
           # Hexalith.EventStore.slnx, so it runs inside the EventStore submodule with absolute paths.
           (
             cd references/Hexalith.EventStore &&
-            dotnet "$GITHUB_WORKSPACE/references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll" \
+            dotnet "$GITHUB_WORKSPACE/references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/bin/Release/$provider_framework/Hexalith.EventStore.ProviderVerification.dll" \
               --verification-mode live-compatibility \
               --pact-directory "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
               --manifest "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json" \

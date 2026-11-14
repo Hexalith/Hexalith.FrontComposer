@@ -44,6 +44,25 @@ public class CommandFormEmitterTests {
             commandTarget);
 
     [Fact]
+    public void ValidationLikeDisplayLabelsRemainLiteralAfterFrameworkSelection() {
+        const string label = "Approve            bool isValid = _editContext.Validate();";
+        CommandFormModel form = new("IncrementCommand", "Counter.Domain", null,
+            "Counter.Domain.IncrementCommand", label,
+            new EquatableArray<FormFieldModel>(ImmutableArray.Create(
+                new FormFieldModel("Name", "String", FormFieldTypeCategory.TextInput, label, false, true, null))));
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("\"" + label + "\"");
+        Regex.Count(source, "#if NET11_0_OR_GREATER").ShouldBe(1);
+        CSharpSyntaxTree.ParseText(source, cancellationToken: TestContext.Current.CancellationToken)
+            .GetDiagnostics(TestContext.Current.CancellationToken).ShouldBeEmpty();
+        CSharpSyntaxTree.ParseText(source, CSharpParseOptions.Default.WithPreprocessorSymbols("NET11_0_OR_GREATER"),
+                cancellationToken: TestContext.Current.CancellationToken)
+            .GetDiagnostics(TestContext.Current.CancellationToken).ShouldBeEmpty();
+    }
+
+    [Fact]
     public void Emit_ProducesValidCSharp() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CommandFormModel form = BuildForm([
@@ -168,7 +187,7 @@ public class CommandFormEmitterTests {
         int submit = source.IndexOf("private async Task SubmitAsync(bool validateBeforeDispatch)", StringComparison.Ordinal);
         int admission = source.IndexOf("if (!admission.IsAdmitted)", submit, StringComparison.Ordinal);
         int clear = source.IndexOf("_rejectionValidationMessages?.Clear();", submit, StringComparison.Ordinal);
-        int validate = source.IndexOf("!_editContext.Validate()", submit, StringComparison.Ordinal);
+        int validate = source.IndexOf("if (validateBeforeDispatch && _editContext is not null)", submit, StringComparison.Ordinal);
         clear.ShouldBeGreaterThan(admission);
         clear.ShouldBeLessThan(validate);
     }
@@ -529,7 +548,7 @@ public class CommandFormEmitterTests {
         int lifecycleGateIndex = source.IndexOf("await PresentBlockedSubmissionAsync(", submitIndex, StringComparison.Ordinal);
         int admissionIndex = source.IndexOf("CommandExecutionAdmissionGate.TryAcquire(CreateAdmissionRequest())", submitIndex, StringComparison.Ordinal);
         int admissionDeniedIndex = source.IndexOf("PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId)", submitIndex, StringComparison.Ordinal);
-        int validateIndex = source.IndexOf("!_editContext.Validate()", submitIndex, StringComparison.Ordinal);
+        int validateIndex = source.IndexOf("if (validateBeforeDispatch && _editContext is not null)", submitIndex, StringComparison.Ordinal);
         int summaryIndex = source.IndexOf("ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation)", validateIndex, StringComparison.Ordinal);
         submitIndex.ShouldBeGreaterThanOrEqualTo(0);
         lifecycleGateIndex.ShouldBeGreaterThan(submitIndex);
@@ -1257,7 +1276,7 @@ public class CommandFormEmitterTests {
         int submit = source.IndexOf("private async Task SubmitAsync(bool validateBeforeDispatch)", StringComparison.Ordinal);
         int admission = source.IndexOf("if (!admission.IsAdmitted)", submit, StringComparison.Ordinal);
         int reset = source.IndexOf("_serverFormLevelErrors = System.Array.Empty<string>();", admission, StringComparison.Ordinal);
-        int validate = source.IndexOf("!_editContext.Validate()", submit, StringComparison.Ordinal);
+        int validate = source.IndexOf("if (validateBeforeDispatch && _editContext is not null)", submit, StringComparison.Ordinal);
         reset.ShouldBeGreaterThan(admission);
         reset.ShouldBeLessThan(validate);
         source.ShouldContain("_serverFormLevelErrors = hasMappedFieldErrors ? rejectionValidation.UnmappedMessages : System.Array.Empty<string>();");

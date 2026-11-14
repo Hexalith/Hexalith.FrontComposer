@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <!-- Story 3-7 D3 — separate BDN project keeps the heavy BDN dependency tree out of the
          default-lane Shell.Tests cold-start. Matches Story 1-8 precedent. -->

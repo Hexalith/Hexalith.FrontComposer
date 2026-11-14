@@ -549,7 +549,7 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
         public int ReadCalls => _module.ReadCalls;
 
-        public void CompleteInitialRead(bool online) => _module.CompleteInitialRead(online);
+        public Action<bool> CompleteInitialRead => _module.CompleteInitialRead;
 
         public int? UnwatchId => _module.UnwatchId;
 
@@ -559,12 +559,24 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
         public DotNetObjectReference<FcProjectionConnectionStatus>? Reference => _module.Reference;
 
-        public void CompleteWatch(int id) => _module.CompleteWatch(id);
+        public Action<int> CompleteWatch => _module.CompleteWatch;
 
-        public ValueTask DisposeAsync() => _module.DisposeAsync();
+        public ValueTask DisposeAsync() {
+            try { return _module.DisposeAsync(); }
+            catch (JSException ex) { return ValueTask.FromException(ex); }
+        }
 
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
-            => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+        {
+            try
+            {
+                return InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+            }
+            catch (Exception ex) when (ex is JSException or InvalidOperationException or OperationCanceledException)
+            {
+                return ValueTask.FromException<TValue>(ex);
+            }
+        }
 
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args) {
             if (identifier != "import") {
@@ -588,7 +600,7 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
             public int ReadCalls { get; private set; }
 
-            public void CompleteInitialRead(bool online) => _initialRead.TrySetResult(online);
+            public Action<bool> CompleteInitialRead => online => _initialRead.TrySetResult(online);
 
             public int? UnwatchId { get; private set; }
 
@@ -598,10 +610,19 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
             public DotNetObjectReference<FcProjectionConnectionStatus>? Reference { get; private set; }
 
-            public void CompleteWatch(int id) => _watch.TrySetResult(id);
+            public Action<int> CompleteWatch => id => _watch.TrySetResult(id);
 
             public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
-                => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+            {
+                try
+                {
+                    return InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+                }
+                catch (Exception ex) when (ex is JSException or InvalidOperationException or OperationCanceledException)
+                {
+                    return ValueTask.FromException<TValue>(ex);
+                }
+            }
 
             public async ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args) {
                 switch (identifier) {

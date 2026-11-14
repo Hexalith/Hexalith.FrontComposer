@@ -382,7 +382,10 @@ public sealed class CiGovernanceTests {
         // code plus the uploaded CI report; nothing is written to a committed evidence folder.
         string providerLane = ExtractNamedStep(quality, "Gate 2c: Live EventStore provider verification");
         providerLane.ShouldContain("set -euo pipefail");
-        providerLane.ShouldContain("dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll");
+        providerLane.ShouldContain("-getProperty:TargetFramework");
+        providerLane.ShouldContain("bin/Release/$provider_test_framework/Hexalith.EventStore.ProviderVerification.Tests.dll");
+        providerLane.ShouldContain("bin/Release/$provider_framework/Hexalith.EventStore.ProviderVerification.dll");
+        providerLane.ShouldNotContain("bin/Release/net10.0/");
         providerLane.ShouldContain("--verification-mode live-compatibility");
         providerLane.ShouldContain("--report-output \"$GITHUB_WORKSPACE/artifacts/contracts/provider-verification.json\"");
         providerLane.ShouldContain("test -s \"$GITHUB_WORKSPACE/artifacts/contracts/provider-verification.json\"");
@@ -2093,8 +2096,8 @@ public sealed class CiGovernanceTests {
         libraryGate.ShouldMatch(@"-p:BaseOutputPath=""[^""\r\n]*\$name[^""\r\n]*""");
 
         // The inventory is the source of truth for what the gate must cover.
-        JsonElement inventory = JsonDocument.Parse(
-            File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json"))).RootElement;
+        JsonElement inventory = JsonElement.Parse(
+            File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json")));
         List<string> expectedLibraries = [];
         List<string> toolExceptions = [];
         foreach (JsonElement row in inventory.GetProperty("packages").EnumerateArray()) {
@@ -3767,7 +3770,7 @@ public sealed class CiGovernanceTests {
             "--output", repeatOutput,
         ]);
         repeat.ExitCode.ShouldBe(0, repeat.Error);
-        string issueBody = JsonDocument.Parse(File.ReadAllText(repeatOutput)).RootElement.GetProperty("issue_body").GetString() ?? string.Empty;
+        string issueBody = JsonElement.Parse(File.ReadAllText(repeatOutput)).GetProperty("issue_body").GetString() ?? string.Empty;
         issueBody.ShouldContain("Repeat flake");
         issueBody.ShouldContain("recurrence count: 2");
     }

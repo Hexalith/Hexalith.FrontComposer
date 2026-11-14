@@ -1,6 +1,7 @@
 using System.Security.Claims;
 
 using Hexalith.FrontComposer.Shell.Options;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -22,7 +23,7 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// <see cref="FrontComposerAuthRedirectOptions.LogoutPath"/>) via a forced full-page navigation so
 /// the OIDC challenge / sign-out completes server-side.
 /// </summary>
-public partial class FcAccountMenu : ComponentBase {
+public partial class FcAccountMenu : ComponentBase, IDisposable {
     // One account menu renders per page, so a constant id is a stable, collision-free anchor for the
     // FluentMenu Trigger (the documented avatar-as-trigger pattern).
     private const string AvatarId = "fc-account-avatar";
@@ -39,6 +40,8 @@ public partial class FcAccountMenu : ComponentBase {
     private const string MenuListStyle = "inset-inline-start: auto; inset-inline-end: anchor(end);";
 
     private ClaimsPrincipal? _user;
+    private bool _disposed;
+    private int _authenticationSequence;
 
     /// <summary>Injected host authentication-state seam (fail-closed anonymous provider by default).</summary>
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
@@ -93,8 +96,40 @@ public partial class FcAccountMenu : ComponentBase {
 
     /// <inheritdoc />
     protected override async Task OnInitializedAsync() {
-        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        _user = state.User;
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        await RefreshAuthenticationStateAsync(AuthenticationStateProvider.GetAuthenticationStateAsync());
+    }
+
+    /// <inheritdoc />
+    public void Dispose() {
+        _disposed = true;
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        GC.SuppressFinalize(this);
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> stateTask) {
+        if (_disposed) return;
+        try {
+            _ = InvokeAsync(async () => {
+                await RefreshAuthenticationStateAsync(stateTask);
+                if (!_disposed) StateHasChanged();
+            });
+        }
+        catch (ObjectDisposedException) {
+            // The circuit may disappear between the event and renderer dispatch.
+        }
+    }
+
+    private async Task RefreshAuthenticationStateAsync(Task<AuthenticationState> stateTask) {
+        int sequence = ++_authenticationSequence;
+        ClaimsPrincipal? user;
+        try {
+            user = (await stateTask).User;
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            user = null;
+        }
+        if (!_disposed && sequence == _authenticationSequence) _user = user;
     }
 
     private void SignIn() => NavigateToAuthEndpoint(AuthenticationOptions.Value.Redirect.LoginPath);

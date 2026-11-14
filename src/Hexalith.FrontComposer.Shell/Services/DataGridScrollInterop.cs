@@ -210,9 +210,15 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
         }
 
         lock (_importGate) {
-            return _moduleTask ??= _jsRuntime
-                .InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath)
-                .AsTask();
+            try {
+                return _moduleTask ??= _jsRuntime
+                    .InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath)
+                    .AsTask();
+            }
+            catch (Exception ex) when (ex is JSException or InvalidOperationException or OperationCanceledException) {
+                // TryGetModuleAsync also handles imports that fail before returning a task.
+                return Task.FromException<IJSObjectReference>(ex);
+            }
         }
     }
 

@@ -748,7 +748,19 @@ public static class CommandFormEmitter {
         // replaced the disable/restore pragma pair that used to bracket this file. If the rewriter
         // ever fails safe and leaves a counter behind it fails the generation, because this output no
         // longer carries a control that would cover the resulting ASP0006 in a consumer build.
-        return RenderTreeSequenceRewriter.AssignLiteralsOrFail(sb.ToString());
+        string source = RenderTreeSequenceRewriter.AssignLiteralsOrFail(sb.ToString());
+        // Number the render tree before inserting this non-rendering conditional. The rewriter
+        // deliberately refuses unseen conditional branches, so its fail-closed policy stays intact.
+        string newLine = new StringBuilder().AppendLine().ToString();
+        return source.Replace(
+            newLine + "            bool isValid = _editContext.Validate();" + newLine,
+            newLine + string.Join(newLine, new[] {
+                "#if NET11_0_OR_GREATER",
+                "            bool isValid = await _editContext.ValidateAsync().ConfigureAwait(true);",
+                "#else",
+                "            bool isValid = _editContext.Validate();",
+                "#endif",
+            }) + newLine);
     }
 
     /// <summary>
@@ -1359,10 +1371,15 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        _rejectionValidationMessages?.Clear();");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        // Story 13.3 ECH-05 — validate only after the concurrency outcome is known.");
-        _ = sb.AppendLine("        if (validateBeforeDispatch && _editContext is not null && !_editContext.Validate())");
+        _ = sb.AppendLine("        if (validateBeforeDispatch && _editContext is not null)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            await ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);");
-        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("            bool isValid = _editContext.Validate();");
+        _ = sb.AppendLine("            if (_disposed || !IsAdmissionScopeCurrent()) return;");
+        _ = sb.AppendLine("            if (!isValid)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                await ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);");
+        _ = sb.AppendLine("                return;");
+        _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        if (HasClientParseErrors())");

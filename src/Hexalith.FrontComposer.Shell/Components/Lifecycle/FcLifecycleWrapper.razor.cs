@@ -752,7 +752,6 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     /// </summary>
     private async Task DismissMappedRejectionAsync() {
         _mappedRejectionDismissed = true;
-        StateHasChanged();
         await FocusEditableFormAsync().ConfigureAwait(true);
     }
 

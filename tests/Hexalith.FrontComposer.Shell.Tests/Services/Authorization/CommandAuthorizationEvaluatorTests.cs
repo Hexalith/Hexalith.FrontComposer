@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -16,6 +17,27 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Services.Authorization;
 
 public sealed class CommandAuthorizationEvaluatorTests {
+    [Fact]
+    public async Task AuthenticationChangesDuringAuthorizationFailClosed() {
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        MutableTestAuthenticationStateProvider provider = new();
+        AuthenticationState state = new(new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, "user-a")], "Test")));
+        provider.Publish(Task.FromResult(state));
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), "OrderApprover")
+            .Returns(_ => {
+                provider.Publish(Task.FromResult(state));
+                return Task.FromResult(AuthorizationResult.Success());
+            });
+        CommandAuthorizationEvaluator sut = new(authorization, provider, DefaultTenant(),
+            NullLogger<CommandAuthorizationEvaluator>.Instance);
+
+        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
+
+        result.IsAllowed.ShouldBeFalse();
+        result.Reason.ShouldBe(CommandAuthorizationReason.StaleTenantContext);
+    }
+
     [Fact]
     public async Task EvaluateAsync_NoPolicy_AllowsWithoutCallingAuthorizationService() {
         IAuthorizationService authorization = Substitute.For<IAuthorizationService>();

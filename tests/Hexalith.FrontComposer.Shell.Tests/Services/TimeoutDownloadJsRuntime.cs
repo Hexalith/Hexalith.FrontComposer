@@ -7,7 +7,16 @@ internal sealed class TimeoutDownloadJsRuntime : IJSRuntime, IJSObjectReference
     public bool Disposed { get; private set; }
 
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
-        => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+    {
+        try
+        {
+            return InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or OperationCanceledException)
+        {
+            return ValueTask.FromException<TValue>(ex);
+        }
+    }
 
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
         => identifier switch

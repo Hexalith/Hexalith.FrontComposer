@@ -8,8 +8,10 @@ namespace Hexalith.FrontComposer.AppHost;
 /// as part of this AppHost).
 /// </summary>
 internal static class ProjectMetadataPaths {
-    public static string GetProjectPath(params string[] path)
-        => Path.Combine(GetRepositoryRoot(), "references", Path.Combine(path));
+    public static string GetProjectPath(params string[] path) {
+        ArgumentNullException.ThrowIfNull(path);
+        return Path.Combine([GetRepositoryRoot(), "references", ..path]);
+    }
 
     private static string GetRepositoryRoot()
         => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));

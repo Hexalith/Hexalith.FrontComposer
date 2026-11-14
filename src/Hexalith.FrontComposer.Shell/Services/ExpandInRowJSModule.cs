@@ -96,8 +96,14 @@ public sealed class ExpandInRowJSModule : IExpandInRowJSModule, IAsyncDisposable
 
     private Task<IJSObjectReference> GetOrStartImport() {
         lock (_importGate) {
-            _moduleTask ??= _js.InvokeAsync<IJSObjectReference>("import", ModulePath).AsTask();
-            return _moduleTask;
+            try {
+                _moduleTask ??= _js.InvokeAsync<IJSObjectReference>("import", ModulePath).AsTask();
+                return _moduleTask;
+            }
+            catch (Exception ex) when (ex is JSException or InvalidOperationException or OperationCanceledException) {
+                // Keep synchronous import failures on the same task-based recovery path.
+                return Task.FromException<IJSObjectReference>(ex);
+            }
         }
     }
 

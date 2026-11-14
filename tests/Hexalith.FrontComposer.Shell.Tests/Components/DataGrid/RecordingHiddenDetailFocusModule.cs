@@ -34,7 +34,16 @@ internal sealed class RecordingHiddenDetailFocusModule : IJSObjectReference
 
     /// <inheritdoc />
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
-        => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+    {
+        try
+        {
+            return InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or OperationCanceledException)
+        {
+            return ValueTask.FromException<TValue>(ex);
+        }
+    }
 
     /// <inheritdoc />
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)

@@ -26,7 +26,16 @@ public sealed class FcBrowserDownloadService(IJSRuntime jsRuntime) : IFcBrowserD
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        IJSObjectReference module = await jsRuntime.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath).ConfigureAwait(false);
+        IJSObjectReference module;
+        try
+        {
+            module = await jsRuntime.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath).ConfigureAwait(false);
+        }
+        catch (JSException)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
+        }
         string operationId = Guid.NewGuid().ToString("N");
         try
         {
@@ -36,6 +45,11 @@ public sealed class FcBrowserDownloadService(IJSRuntime jsRuntime) : IFcBrowserD
             using var reference = new DotNetStreamReference(stream, leaveOpen: true);
             await module.InvokeVoidAsync("downloadStream", cancellationToken, operationId, fileName, contentType, reference).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
+        }
+        catch (JSException)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
         }
         finally
         {
