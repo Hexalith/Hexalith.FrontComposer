@@ -90,3 +90,11 @@ and the 69-edge graph. Its consumer configuration, CI caller, Release caller and
 local Release reusable hashes still equal the renewed values above. These are
 local checks of the proposed policy; the later landed-policy push and exact-run
 hosted CI/Quality proofs remain separate evidence.
+
+## Activation
+
+This documentation-only successor activates landed seal
+`e3b96baa332f100270d86745a16e898e80a25f2b` as its actual push event base.
+Dependency selectors, consumer configuration, policy and local publisher workflow
+bytes are unchanged. Local committed-source replay and hosted CI/Quality are
+separate requirements; this activation records no completed publication.
