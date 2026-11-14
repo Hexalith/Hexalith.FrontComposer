@@ -53,6 +53,7 @@ public class AttributeParserTests {
     // Diagnostic negative-path tests
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_UnsupportedFieldType_EmitsHFC1002() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.UnsupportedFieldProjection);
@@ -68,6 +69,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_PropertySuppressMessage_SuppressesOnlyTargetedHFC1002() {
         const string source = """
             using System.Collections.Generic;
@@ -100,6 +102,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_PropertySuppressMessageForOtherCheckId_StillReportsHFC1002() {
         // Pins the checkId comparison in HasSuppressMessage. Without a property that carries a
         // real [SuppressMessage] for a *different* rule, deleting that comparison so any
@@ -132,6 +135,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_PropertyUnconditionalSuppressMessageForHfc1002_SuppressesDiagnostic() {
         const string source = """
             using System.Collections.Generic;
@@ -160,6 +164,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_PropertyUnconditionalSuppressMessageForOtherCheckId_StillReportsHFC1002() {
         // Mirrors Parse_PropertySuppressMessageForOtherCheckId_StillReportsHFC1002 for the
         // UnconditionalSuppressMessage branch of HasSuppressMessage checkId comparison.
@@ -192,6 +197,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_TypeLevelSuppressMessageForHfc1002_StillReportsHFC1002() {
         const string source = """
             using System.Collections.Generic;
@@ -221,6 +227,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_NonPartialProjection_EmitsHFC1003() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NonPartialProjection);
@@ -234,6 +241,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_StructProjection_EmitsHFC1004() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.StructProjection);
@@ -247,6 +255,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RecordStructProjection_EmitsHFC1004() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.RecordStructProjection);
@@ -260,6 +269,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_GenericProjection_EmitsHFC1004() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.GenericProjection);
@@ -273,6 +283,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_AbstractProjection_EmitsHFC1004() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.AbstractProjection);
@@ -286,6 +297,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_NestedInNonPartialProjection_EmitsHFC1004() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NestedInNonPartialProjection);
@@ -299,6 +311,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_NullBoundedContext_EmitsHFC1005() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NullBoundedContextProjection);
@@ -312,6 +325,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_InvalidProjectionRole_EmitsHFC1024() {
         // Story 4-1 D15 / AC7 — an unsafe cast of an out-of-range value to ProjectionRole
         // now emits HFC1024 (Unknown ProjectionRole value) — split from the old HFC1005
@@ -328,6 +342,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_InvalidBadgeSlot_EmitsHFC1005() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.InvalidBadgeSlotProjection);
@@ -352,6 +367,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_UnsupportedFieldProjection_ProducesPartialIR() {
         ParseResult result = CompilationHelper.ParseProjection(TestSources.UnsupportedFieldProjection, "TestDomain.UnsupportedFieldProjection");
 
@@ -361,6 +377,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_UnsupportedFieldType_DiagnosticsHaveSourceLocation() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.UnsupportedFieldProjection);
@@ -376,6 +393,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_NonIntEnumProjection_EmitsHFC1002() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NonIntEnumProjection);
@@ -389,6 +407,7 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_CompoundUnsupportedTypes_EmitsHFC1002PerField() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string source = @"

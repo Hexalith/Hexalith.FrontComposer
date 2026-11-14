@@ -10,6 +10,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing;
 
 public class CancellationTests {
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_CancelledToken_ReturnsEmptyResult() {
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.BasicProjection);
         INamedTypeSymbol typeSymbol = compilation.GetTypeByMetadataName("TestDomain.CounterProjection")!;

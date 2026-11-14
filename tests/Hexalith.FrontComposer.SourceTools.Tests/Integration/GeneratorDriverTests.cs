@@ -102,6 +102,7 @@ public partial class GeneratorDriverTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_UnsupportedFieldProjection_GeneratedCodeCompiles() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.UnsupportedFieldProjection);
@@ -140,6 +141,7 @@ public partial class GeneratorDriverTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_NoAnnotatedTypes_ReportsHfc1001() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string source = @"
@@ -453,6 +455,7 @@ public partial class SharedProjection
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_OnlyUnsupportedFields_StillGeneratesCode() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string source = @"
@@ -600,6 +603,7 @@ public partial class AllUnsupportedProjection
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_Hfc1011_UsesTotalPropertyLimitWithoutChangingDensityCount() {
         GeneratorDriverRunResult result = RunGenerator(BuildCommandSource(
             "HugeMostlyDerivableCommand",
@@ -752,6 +756,7 @@ public partial class AllUnsupportedProjection
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_CommandShapeDiagnostics_AreReportedAtGeneratorLevel() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation([
@@ -775,6 +780,7 @@ public partial class AllUnsupportedProjection
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void RunGenerators_UnsupportedCommandField_ReportsHfc1002AndEmitsPlaceholderForm() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(CommandTestSources.UnsupportedFieldCommand);
