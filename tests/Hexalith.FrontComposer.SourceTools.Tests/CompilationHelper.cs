@@ -8,7 +8,11 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Hexalith.FrontComposer.SourceTools.Tests;
 
 internal static class CompilationHelper {
-    private static MetadataReference[] GetBaseReferences() {
+    private static readonly MetadataReference[] _baseReferences = CreateBaseReferences();
+
+    private static MetadataReference[] GetBaseReferences() => _baseReferences;
+
+    private static MetadataReference[] CreateBaseReferences() {
         List<MetadataReference> refs =
         [
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
