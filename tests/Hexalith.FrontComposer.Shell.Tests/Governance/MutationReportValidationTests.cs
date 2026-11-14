@@ -33,6 +33,28 @@ public sealed class MutationReportValidationTests {
     [InlineData("survived", false, "untriaged Survived")]
     [InlineData("no-coverage", false, "untriaged NoCoverage")]
     [InlineData("timeout", false, "untriaged Timeout")]
+    [InlineData("cancellation-named", true, "")]
+    [InlineData("token-lambda", true, "")]
+    [InlineData("plain-token", false, "secret-like value")]
+    [InlineData("api-key", false, "secret-like value")]
+    [InlineData("password", false, "secret-like value")]
+    [InlineData("secret", false, "secret-like value")]
+    [InlineData("bearer", false, "secret-like value")]
+    [InlineData("tenant-id", false, "tenant identifier")]
+    [InlineData("machine-path", true, "")]
+    [InlineData("js-reference", true, "")]
+    [InlineData("js-reference-next-property", true, "")]
+    [InlineData("bare-one-letter", false, "secret-like value")]
+    [InlineData("quoted-one-letter", false, "secret-like value")]
+    [InlineData("long-identifier", false, "secret-like value")]
+    [InlineData("js-constructor-reference", true, "")]
+    [InlineData("js-constructor-literal", false, "secret-like value")]
+    [InlineData("client-secret", false, "secret-like value")]
+    [InlineData("database-password", false, "secret-like value")]
+    [InlineData("external-api-key", false, "secret-like value")]
+    [InlineData("access-token", false, "secret-like value")]
+    [InlineData("csharp-token-reference", true, "")]
+    [InlineData("csharp-token-literal", false, "secret-like value")]
     public void PinnedCompilerMetadataPreservesEvidenceAndCannotHideExecutedMutationFailures(string scenario, bool accepted, string diagnostic) {
         string fixture = Path.Combine(Path.GetTempPath(), $"fc-mutation-report-{Guid.NewGuid():N}");
         Directory.CreateDirectory(fixture);
@@ -86,12 +108,37 @@ public sealed class MutationReportValidationTests {
                 case "no-coverage": inside["status"] = "NoCoverage"; break;
                 case "timeout": inside["status"] = "Timeout"; break;
             }
+            string sourceText = scenario switch {
+                "js-constructor-reference" => "var Prism = {Token:a};",
+                "js-constructor-literal" => "var credentials = {Token:\"a\"};",
+                "client-secret" => "clientSecret=fixture-value",
+                "database-password" => "databasePassword=fixture-value",
+                "external-api-key" => "externalApiKey=fixture-value",
+                "access-token" => "accessToken=fixture-value",
+                "csharp-token-reference" => "var deadlineToken = deadline.Token;",
+                "csharp-token-literal" => "var deadlineToken = \"fixture-value\";",
+                "js-reference" => "var Prism = {token:a};",
+                "js-reference-next-property" => "var Prism = {x:0,token:a,y:0};",
+                "bare-one-letter" => "token:a",
+                "quoted-one-letter" => "var credentials = {token:\"a\"};",
+                "long-identifier" => "var credentials = {token:abcdefghijklmnop};",
+                "cancellation-named" => "CSharpSyntaxTree.ParseText(source, cancellationToken: default);",
+                "token-lambda" => "items.Any(token => token.Length > 0);",
+                "plain-token" => "token = fixture-value;",
+                "api-key" => "api_key: fixture-value",
+                "password" => "password = fixture-value",
+                "secret" => "secret: fixture-value",
+                "bearer" => "Bearer abcdefghijklmnop",
+                "tenant-id" => "tenant_id = 0000000000000000",
+                "machine-path" => "/home/fixture-user/private",
+                _ => "namespace Fixture; class Example {}\n",
+            };
             JsonObject report = new() {
                 ["schemaVersion"] = "1.0", ["thresholds"] = new JsonObject { ["high"] = 80, ["low"] = 80 },
                 ["files"] = new JsonObject {
-                    [roots[0] + "/Fixture.cs"] = SourceFile(inside, CompilerMutant("4")),
-                    [roots[1] + "/Fixture.cs"] = SourceFile(scenario == "compile-only" ? CompilerMutant("2") : Mutant("2", "Killed")),
-                    ["src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs"] = SourceFile(outside),
+                    [roots[0] + "/Fixture.cs"] = SourceFile(sourceText, inside, CompilerMutant("4")),
+                    [roots[1] + "/Fixture.cs"] = SourceFile(sourceText, scenario == "compile-only" ? CompilerMutant("2") : Mutant("2", "Killed")),
+                    ["src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs"] = SourceFile(sourceText, outside),
                 },
             };
             WriteJson(fixture, "reports/fixture-report.json", report);
@@ -113,7 +160,10 @@ public sealed class MutationReportValidationTests {
             entry["OutputSha256"]!.GetValue<string>().ShouldBe(Hash(File.ReadAllBytes(reportPath)));
             entry["RawMutantStatuses"]!.AsArray().Count.ShouldBe(4);
             foreach (JsonNode? source in entry["RawSourceHashes"]!.AsArray()) {
-                source!["SourceSha256"]!.GetValue<string>().ShouldBe(Hash(Encoding.UTF8.GetBytes("namespace Fixture; class Example {}\n")));
+                source!["SourceSha256"]!.GetValue<string>().ShouldBe(Hash(Encoding.UTF8.GetBytes(sourceText)));
+            }
+            if (scenario == "machine-path") {
+                after["files"]![roots[0] + "/Fixture.cs"]!["source"]!.GetValue<string>().ShouldBe("<local-user>/private");
             }
             if (accepted) {
                 entry["LiveMutantCount"]!.GetValue<int>().ShouldBe(2);
@@ -135,8 +185,8 @@ public sealed class MutationReportValidationTests {
         return mutant;
     }
 
-    private static JsonObject SourceFile(params JsonObject[] mutants) => new() {
-        ["language"] = "cs", ["source"] = "namespace Fixture; class Example {}\n",
+    private static JsonObject SourceFile(string source, params JsonObject[] mutants) => new() {
+        ["language"] = "cs", ["source"] = source,
         ["mutants"] = new JsonArray(mutants.Select(value => (JsonNode?)value).ToArray()),
     };
 

@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Conformance;
 
@@ -76,13 +77,11 @@ public sealed class IdeParityConformanceUtilityTests {
     [Trait("MatrixRowId", "IDE-MUST-004")]
     [Trait("MatrixRowId", "IDE-MUST-006")]
     public void ReportSanitizer_RedactsControlsSecretsAbsolutePathsAndSpreadsheetFormulas() {
-        string unsafeValue =
-            "=HYPERLINK(\"file:///C:/Users/Ada/AppData/Local/Temp/log.txt\")[31m" +
-            " token=ghp_abcdefghijklmnopqrstuvwxyz1234567890" +
-            " AKIA0123456789ABCDEF" +
-            " bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U" +
-            " /home/jpiquot/.ssh/id_rsa /etc/passwd \\\\fileserver\\share\\secret.txt" +
-            " machine=BUILD-01";
+        string fixturePath = Path.Combine(IdeParityRepositoryRoot.Value, "tests", "Hexalith.FrontComposer.SourceTools.Tests", "IdeParity", "Fixtures", "report-sanitizer-unsafe-input.json");
+        string unsafeValue = JsonSerializer.Deserialize<string>(File.ReadAllText(fixturePath))
+            ?? throw new InvalidOperationException("The sanitizer fixture must contain a JSON string.");
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(unsafeValue))).ToLowerInvariant()
+            .ShouldBe("2fc92c6e0b827246790e597885b51a3b3229a5eb20c8ae86462f1764d56eed60");
 
         string markdown = IdeParityReportSanitizer.Sanitize(unsafeValue, IdeParityReportFormat.Markdown);
         markdown.ShouldNotContain("");
