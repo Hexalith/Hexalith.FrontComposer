@@ -14,6 +14,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 /// </summary>
 public class Hfc1029DiagnosticTests {
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void FiresOnce_WhenProjectionHasMoreThan15Columns_PayloadNamesHiddenDefaults() {
         string source = BuildProjection(columnCount: 20);
 
@@ -41,6 +42,7 @@ public class Hfc1029DiagnosticTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void DedupesPerProjection_OneDiagnosticRegardlessOfColumnCount() {
         // D22 / per-projection dedupe — the diagnostic emits exactly once even when the
         // projection carries many hidden-by-default columns.

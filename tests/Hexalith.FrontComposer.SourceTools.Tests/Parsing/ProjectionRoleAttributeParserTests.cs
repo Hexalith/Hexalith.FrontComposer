@@ -36,6 +36,7 @@ public class ProjectionRoleAttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void UnknownMemberEmitsHFC1022() {
         ParseResult result = CompilationHelper.ParseProjection(
             TestSources.WhenStateUnknownMemberProjection,
@@ -48,6 +49,7 @@ public class ProjectionRoleAttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void UnknownMemberListsValidMembers() {
         // AC9 F6 — diagnostic MUST list valid member names to short-circuit casing typos.
         ParseResult result = CompilationHelper.ParseProjection(
@@ -62,6 +64,7 @@ public class ProjectionRoleAttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void UnknownMembersStillFlowThroughToIR() {
         // D3 — unknown members STILL flow through to the IR (fail-soft).
         ParseResult result = CompilationHelper.ParseProjection(
@@ -95,6 +98,7 @@ public class ProjectionRoleAttributeParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void HFC1022MessageListsUpTo10ValidMembersAlphabetically() {
         // War Room round 3 / D17 cap — enum with 15 members produces message listing first
         // 10 alphabetically + "... and 5 more".

@@ -103,6 +103,7 @@ public class WipeCacheCommand
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_DeleteNamed_WithoutAttribute_EmitsHFC1020Info() {
         CommandParseResult result = CompilationHelper.ParseCommand(DeleteNamedWithoutAttribute, "TestDomain.DeleteOrderCommand");
 
@@ -116,6 +117,7 @@ public class WipeCacheCommand
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_DestructiveWithZeroFields_EmitsHFC1021Error() {
         CommandParseResult result = CompilationHelper.ParseCommand(DestructiveWithZeroFields, "TestDomain.DeleteEverythingCommand");
 
@@ -136,6 +138,7 @@ public class WipeCacheCommand
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_ExpandedDestructivePatternWipe_EmitsHFC1020() {
         // Story 2-5 Red Team Attack-2: expanded regex covers Wipe/Erase/Drop/Truncate.
         CommandParseResult result = CompilationHelper.ParseCommand(ExpandedNameWipeCommand, "TestDomain.WipeCacheCommand");
@@ -152,6 +155,7 @@ public class WipeCacheCommand
     [InlineData("Erase")]
     [InlineData("Drop")]
     [InlineData("Truncate")]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_CurrentDestructiveVerbPattern_EmitsHFC1020Info(string verb) {
         string source = $$"""
 using Hexalith.FrontComposer.Contracts.Attributes;

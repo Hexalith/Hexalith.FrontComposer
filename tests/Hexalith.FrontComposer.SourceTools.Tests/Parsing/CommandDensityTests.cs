@@ -98,6 +98,7 @@ public class CommandDensityTests {
 
     // 5. HFC1011 — 201-property command is rejected with an Error diagnostic.
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void HFC1011_RejectsGreaterThan200Properties() {
         string source = BuildCommandSource("Huge", 201);
         CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.Huge");
@@ -105,6 +106,7 @@ public class CommandDensityTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void HFC1011_TotalPropertyLimit_DoesNotUseNonDerivableDensityCount() {
         string source = BuildCommandSource("HugeMostlyDerivable", 4, derivedFromCount: 201);
         CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.HugeMostlyDerivable");
@@ -118,6 +120,7 @@ public class CommandDensityTests {
 
     // 6. HFC1012 — [DefaultValue("hello")] int Amount is rejected.
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void HFC1012_RejectsDefaultValueTypeMismatch() {
         string source = """
             using System.ComponentModel;
@@ -138,6 +141,7 @@ public class CommandDensityTests {
 
     // 8. HFC1017 — generic [Command] is rejected with Error (Story 2-3 Hindsight H9).
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void HFC1017_RejectsGenericCommand() {
         string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -156,6 +160,7 @@ public class CommandDensityTests {
 
     // 7. HFC1014 — nested [Command] is rejected with Error.
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void HFC1014_RejectsNestedCommand() {
         string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;

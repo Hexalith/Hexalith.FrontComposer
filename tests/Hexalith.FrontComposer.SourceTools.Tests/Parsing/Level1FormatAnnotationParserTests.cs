@@ -54,6 +54,7 @@ public sealed class Level1FormatAnnotationParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_ConflictingFormatAnnotations_EmitOneWarningAndFallbackToDefault() {
         ParseResult result = CompilationHelper.ParseProjection("""
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -84,6 +85,7 @@ public sealed class Level1FormatAnnotationParserTests {
     [Theory]
     [InlineData("[RelativeTime]", "string", "DateTime or DateTimeOffset")]
     [InlineData("[Currency]", "System.DateTime", "decimal, double, or float")]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_InvalidFormatAnnotation_EmitsWarningAndFallbackToDefault(
         string attribute,
         string typeName,
@@ -120,6 +122,7 @@ public sealed class Level1FormatAnnotationParserTests {
     [InlineData(-1)]
     [InlineData(366)]
     [InlineData(int.MaxValue)]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RelativeTimeWithOutOfRangeWindow_EmitsHfc1032AndFallsBackToDefault(int days) {
         ParseResult result = CompilationHelper.ParseProjection($$"""
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -190,6 +193,7 @@ public sealed class Level1FormatAnnotationParserTests {
         """;
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_AddingRelativeTimeAnnotation_ChangesPropertyModel() {
         PropertyModel without = GetProperty(ParseDevLoop(string.Empty), "LastChanged");
         PropertyModel withAnn = GetProperty(ParseDevLoop("[RelativeTime]"), "LastChanged");
@@ -200,6 +204,7 @@ public sealed class Level1FormatAnnotationParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_RemovingRelativeTimeAnnotation_RevertsPropertyModel() {
         PropertyModel withAnn = GetProperty(ParseDevLoop("[RelativeTime]"), "LastChanged");
         PropertyModel without = GetProperty(ParseDevLoop(string.Empty), "LastChanged");
@@ -209,6 +214,7 @@ public sealed class Level1FormatAnnotationParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Parse_ChangingRelativeTimeWindowArgument_InvalidatesPropertyModel() {
         PropertyModel sevenDays = GetProperty(ParseDevLoop("[RelativeTime(7)]"), "LastChanged");
         PropertyModel fourteenDays = GetProperty(ParseDevLoop("[RelativeTime(14)]"), "LastChanged");

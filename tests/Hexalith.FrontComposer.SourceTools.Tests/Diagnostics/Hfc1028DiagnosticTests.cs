@@ -88,6 +88,7 @@ namespace TestDomain
 ";
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void FiresOnce_WhenTwoColumnsSharePriority_PayloadIncludesPropertyNamesAndPriority() {
         IReadOnlyList<Diagnostic> diagnostics = RunGenerator(SinglePriorityCollisionSource);
 
@@ -104,6 +105,7 @@ namespace TestDomain
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void FiresOncePerCollidingPriorityValue_WhenMultipleDistinctPrioritiesCollide() {
         // D15 / D22 — one diagnostic per colliding priority value per projection.
         IReadOnlyList<Diagnostic> diagnostics = RunGenerator(MultipleDistinctCollisionsSource);
