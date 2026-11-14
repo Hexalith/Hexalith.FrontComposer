@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Bunit;
 
 using AngleSharp.Dom;
@@ -39,6 +41,31 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// adopter-supplied override path.
 /// </summary>
 public sealed class FrontComposerShellTests : LayoutComponentTestBase {
+    [Theory]
+    [InlineData("FocusMainContentAsync", "focusElement", false)]
+    [InlineData("FocusNavigationAsync", "focusVisibleElementById", false)]
+    [InlineData("FocusMainContentAsync", "focusElement", true)]
+    [InlineData("FocusNavigationAsync", "focusVisibleElementById", true)]
+    public async Task FocusSettlingAfterKeyboardModuleTeardownHandlesOnlyDisposal(string method, string identifier, bool unrelatedFailure) {
+        EnsureStoreInitialized();
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>();
+        var focus = KeyboardModule.SetupVoid(identifier, _ => true);
+        Task pendingFocus = cut.InvokeAsync(() => (Task)typeof(FrontComposerShell)
+            .GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(cut.Instance, null)!);
+        cut.WaitForAssertion(() => focus.Invocations.Count.ShouldBe(1));
+        await cut.InvokeAsync(() => cut.Instance.DisposeAsync().AsTask());
+        if (unrelatedFailure) {
+            focus.SetException(new InvalidOperationException("Unrelated focus failure"));
+            InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+                () => pendingFocus.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken));
+            exception.Message.ShouldBe("Unrelated focus failure");
+        }
+        else {
+            focus.SetException(new ObjectDisposedException("cached keyboard module"));
+            await pendingFocus.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        }
+    }
+
     [Theory]
     [InlineData(ViewportTier.Desktop)]
     [InlineData(ViewportTier.CompactDesktop)]

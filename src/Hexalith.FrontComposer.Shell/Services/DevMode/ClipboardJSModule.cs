@@ -100,6 +100,7 @@ public sealed class ClipboardJSModule(
         catch (InvalidOperationException) { }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "BL0016", Justification = "GetModuleAsync and the public clipboard operations observe the shared import task and own cancellation, failure recovery, and retry.")]
     private Task<IJSObjectReference> GetOrStartImport() {
         lock (_sync) {
             try {

@@ -30,7 +30,7 @@ public sealed class ContractsPackageBoundaryTests {
 
         await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks><LangVersion>latest</LangVersion><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors><NuGetAudit>false</NuGetAudit></PropertyGroup>
+  <PropertyGroup><TargetFrameworks>net11.0;netstandard2.0</TargetFrameworks><LangVersion>latest</LangVersion><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors><NuGetAudit>false</NuGetAudit></PropertyGroup>
   <ItemGroup><PackageReference Include="Hexalith.FrontComposer.Contracts" Version="{{version}}" /></ItemGroup>
 </Project>
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);

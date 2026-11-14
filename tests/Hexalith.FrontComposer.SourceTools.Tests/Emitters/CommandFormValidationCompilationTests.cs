@@ -24,16 +24,18 @@ public sealed class CommandFormValidationCompilationTests
         CommandFluxorModel fluxor = new("CreateCommand", "Consumer", "CreateState", "CreateFeature", "CreateActions",
             "CreateReducers", "Consumer.CreateCommand", "Consumer.CreateState");
         string emitted = CommandFormEmitter.Emit(form, fluxor);
-        int start = emitted.IndexOf("        if (validateBeforeDispatch && _editContext is not null", StringComparison.Ordinal);
+        int start = emitted.IndexOf("        if (validateBeforeDispatch && _editContext is { } editContext", StringComparison.Ordinal);
         int end = emitted.IndexOf("        if (HasClientParseErrors())", start, StringComparison.Ordinal);
         start.ShouldBeGreaterThanOrEqualTo(0);
         end.ShouldBeGreaterThan(start);
         string source = $$"""
+            using System.Threading;
             using System.Threading.Tasks;
             using Microsoft.AspNetCore.Components.Forms;
             public sealed class Consumer
             {
-                public async Task SubmitAsync(bool validateBeforeDispatch, EditContext? _editContext, bool _disposed)
+                private long _modelRevision = 0;
+                public async Task SubmitAsync(bool validateBeforeDispatch, EditContext? _editContext, bool _disposed, CancellationToken cancellationToken)
                 {
             {{emitted[start..end]}}
                     await Task.CompletedTask;

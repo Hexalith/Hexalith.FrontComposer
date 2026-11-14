@@ -23,6 +23,7 @@ public sealed class DataGridFocusScopeTests {
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only mock configuration or controlled fixture completion, not a browser call; interop failures must remain observable by the service assertions.")]
     public async Task MethodsReuseImportedKeyboardModule_AndDisposeItOnce() {
         try {
             CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
@@ -66,6 +67,7 @@ public sealed class DataGridFocusScopeTests {
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only mock configuration or controlled fixture completion, not a browser call; interop failures must remain observable by the service assertions.")]
     public async Task FaultedImport_IsClearedSoLaterCallCanRetry() {
         try {
             CancellationToken ct = Xunit.TestContext.Current.CancellationToken;

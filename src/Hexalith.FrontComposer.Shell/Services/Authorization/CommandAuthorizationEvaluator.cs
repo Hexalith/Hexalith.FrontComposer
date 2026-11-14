@@ -22,6 +22,7 @@ public sealed class CommandAuthorizationEvaluator(
     IFrontComposerTenantContextAccessor tenantContextAccessor,
     ILogger<CommandAuthorizationEvaluator> logger) : ICommandAuthorizationEvaluator {
     /// <inheritdoc/>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "BL0013", Justification = "This is a one-shot authorization decision: every evaluation resolves a fresh principal and retains no authentication state between calls; dispatch consumers reauthorize immediately before dispatch.")]
     public async Task<CommandAuthorizationDecision> EvaluateAsync(
         CommandAuthorizationRequest request,
         CancellationToken cancellationToken = default) {

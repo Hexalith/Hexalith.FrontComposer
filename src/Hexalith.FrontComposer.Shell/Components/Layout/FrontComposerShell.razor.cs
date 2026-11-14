@@ -492,7 +492,16 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
             try {
                 await module.InvokeVoidAsync("focusVisibleElementById", "fc-nav").ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is JSException or OperationCanceledException or InvalidOperationException) {
+            catch (ObjectDisposedException) {
+                // The cached module can be released while this best-effort focus request is in flight.
+            }
+            catch (JSException) {
+                // Focus is best-effort when the browser target or circuit is no longer available.
+            }
+            catch (OperationCanceledException) {
+                // A circuit ending during focus must not fail the component event.
+            }
+            catch (InvalidOperationException) {
                 // Focus is best effort after the browser circuit or target has disappeared.
             }
         }
@@ -546,7 +555,16 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
             try {
                 await module.InvokeVoidAsync("focusElement", element).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is JSException or OperationCanceledException or InvalidOperationException) {
+            catch (ObjectDisposedException) {
+                // The cached module can be released while this best-effort focus request is in flight.
+            }
+            catch (JSException) {
+                // Focus is best-effort when the browser target or circuit is no longer available.
+            }
+            catch (OperationCanceledException) {
+                // A circuit ending during focus must not fail the component event.
+            }
+            catch (InvalidOperationException) {
                 // Focus is best effort after the browser circuit or target has disappeared.
             }
         }

@@ -31,9 +31,9 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
-      - name: Install .NET 10 runtimes
+      - name: Install .NET 11 runtimes
         shell: pwsh
-        run: ./eng/install-net10-runtime.ps1
+        run: ./eng/install-net11-runtime.ps1
 
       - name: Restore tools and packages
         run: |
@@ -90,9 +90,9 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
-      - name: Install .NET 10 runtimes
+      - name: Install .NET 11 runtimes
         shell: pwsh
-        run: ./eng/install-net10-runtime.ps1
+        run: ./eng/install-net11-runtime.ps1
 
       - name: Restore packages
         run: dotnet restore Hexalith.FrontComposer.slnx

@@ -6,11 +6,11 @@
         {
           "src": "..",
           "files": [
-            "src/Hexalith.FrontComposer.Contracts/bin/Release/net10.0/Hexalith.FrontComposer.Contracts.dll",
-            "src/Hexalith.FrontComposer.Contracts.UI/bin/Release/net10.0/Hexalith.FrontComposer.Contracts.UI.dll",
-            "src/Hexalith.FrontComposer.Shell/bin/Release/net10.0/Hexalith.FrontComposer.Shell.dll",
+            "src/Hexalith.FrontComposer.Contracts/bin/Release/net11.0/Hexalith.FrontComposer.Contracts.dll",
+            "src/Hexalith.FrontComposer.Contracts.UI/bin/Release/net11.0/Hexalith.FrontComposer.Contracts.UI.dll",
+            "src/Hexalith.FrontComposer.Shell/bin/Release/net11.0/Hexalith.FrontComposer.Shell.dll",
             "src/Hexalith.FrontComposer.SourceTools/bin/Release/netstandard2.0/Hexalith.FrontComposer.SourceTools.dll",
-            "src/Hexalith.FrontComposer.Mcp/bin/Release/net10.0/Hexalith.FrontComposer.Mcp.dll"
+            "src/Hexalith.FrontComposer.Mcp/bin/Release/net11.0/Hexalith.FrontComposer.Mcp.dll"
           ]
         }
       ],

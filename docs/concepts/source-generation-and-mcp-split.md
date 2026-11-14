@@ -16,9 +16,9 @@ FrontComposer uses domain attributes as the source of truth, then generates UI, 
 
 The dependency direction is intentionally split:
 
-- `Hexalith.FrontComposer.Contracts` is the UI-clean `net10.0;netstandard2.0` kernel for attributes,
+- `Hexalith.FrontComposer.Contracts` is the UI-clean `net11.0;netstandard2.0` kernel for attributes,
   communication, registration, schema, MCP descriptors, diagnostics, and UI-neutral seams.
-- `Hexalith.FrontComposer.Contracts.UI` is the net10-only package for Blazor/Fluent typography,
+- `Hexalith.FrontComposer.Contracts.UI` is the net11-only package for Blazor/Fluent typography,
   render-fragment customization contexts, and keyboard-event shortcut contracts.
 - `Hexalith.FrontComposer.SourceTools` is a netstandard2.0 analyzer that references and embeds only
   Contracts. Generated UI code is compiled by consumers that reference Contracts.UI and Shell.

@@ -9,6 +9,9 @@ import hashlib
 import http.client
 import importlib.util
 import json
+import os
+import subprocess
+import textwrap
 from pathlib import Path
 import tempfile
 import unittest
@@ -27,7 +30,7 @@ VERSION = "12.1.0-proof"
 
 def args(source: str, result: str = "result.json") -> argparse.Namespace:
     return argparse.Namespace(candidate_sha=CANDIDATE, package_version=VERSION,
-                              package_source=source, runtime_version="10.0.12",
+                              package_source=source, runtime_version="11.0.0",
                               eventstore_endpoint="https://token-secret.example.invalid/tenant-private",
                               result=result, dotnet="dotnet")
 
@@ -85,21 +88,56 @@ class AdopterProofTests(unittest.TestCase):
 
     def test_runtime_identity_failures_are_named(self):
         fixture = Path("/tmp/fixture")
-        listing = "Microsoft.NETCore.App 10.0.12 [/runtime]\nMicrosoft.AspNetCore.App 10.0.11 [/runtime]\n"
-        full = "Microsoft.NETCore.App 10.0.12 [/runtime]\nMicrosoft.AspNetCore.App 10.0.12 [/runtime]\n"
+        full = "Microsoft.NETCore.App 11.0.0 [/runtime]\nMicrosoft.AspNetCore.App 11.0.0 [/runtime]\n"
         cases = [
-            (["10.0.401\n", listing], "runtime-identity-mismatch"),
-            (["11.0.100\n", full], "runtime-identity-mismatch"),
-            (["11.0.100-rc.1.26\n", full], "runtime-identity-invalid"),
-            (proof.subprocess.CalledProcessError(1, ["dotnet"]), "runtime-unavailable"),
-            (FileNotFoundError("dotnet"), "runtime-unavailable"),
+            ("11.0.0", ["10.0.401\n", full], "runtime-identity-mismatch"),
+            ("11.0.0", ["11.0.099\n", full], "runtime-identity-mismatch"),
+            ("11.0.0", ["12.0.100\n", full], "runtime-identity-mismatch"),
+            ("11.0.0", ["11.0.100-rc.1.26\n", full], "runtime-identity-invalid"),
+            ("10.0.15", ["11.0.100\n", "Microsoft.NETCore.App 10.0.15 [/runtime]\nMicrosoft.AspNetCore.App 10.0.15 [/runtime]\n"], "runtime-identity-mismatch"),
+            ("11.0.0", ["11.0.100\n", full.replace("Microsoft.NETCore.App 11.0.0", "Microsoft.NETCore.App 11.0.1")], "runtime-identity-mismatch"),
+            ("11.0.0", ["11.0.100\n", full.replace("Microsoft.AspNetCore.App 11.0.0", "Microsoft.AspNetCore.App 11.0.1")], "runtime-identity-mismatch"),
+            ("11.0.0", ["11.0.100\n", "Microsoft.NETCore.App 11.0.0 [/runtime]\n"], "runtime-identity-mismatch"),
+            ("11.0.0", proof.subprocess.CalledProcessError(1, ["dotnet"]), "runtime-unavailable"),
+            ("11.0.0", FileNotFoundError("dotnet"), "runtime-unavailable"),
         ]
-        for outputs, code in cases:
+        for selected, outputs, code in cases:
             with self.subTest(code=code, outputs=outputs), \
                     mock.patch.object(proof.subprocess, "check_output", side_effect=outputs):
                 with self.assertRaises(proof.ProofError) as error:
-                    proof.verify_runtime("dotnet", "10.0.12", fixture)
+                    proof.verify_runtime("dotnet", selected, fixture)
                 self.assertEqual(code, error.exception.code)
+
+    def test_runtime_identity_accepts_current_sdk_policy_and_matching_frameworks(self):
+        listing = "Microsoft.NETCore.App 11.0.0 [/runtime]\nMicrosoft.AspNetCore.App 11.0.0 [/runtime]\n"
+        for sdk in ("11.0.100", "11.0.201"):
+            with self.subTest(sdk=sdk), mock.patch.object(proof.subprocess, "check_output", side_effect=[sdk, listing]):
+                self.assertEqual({"dotnet_sdk": sdk, "netcore": "11.0.0", "aspnetcore": "11.0.0"},
+                                 proof.verify_runtime("dotnet", "11.0.0", Path("/tmp/fixture")))
+
+    def test_quality_gate_selects_only_current_stable_host_runtime_and_fails_if_absent(self):
+        workflow = (SCRIPT.parents[1] / ".github/workflows/quality.yml").read_text(encoding="utf-8")
+        gate = workflow.split("- name: 'Gate 4a: Adopter proof kit smoke'", 1)[1]
+        script = textwrap.dedent(gate.split("run: |\n", 1)[1].split("          python3 eng/adopter_proof.py", 1)[0])
+        for listing, expected in [
+            ("Microsoft.AspNetCore.App 10.0.15 [/runtime]\n", None),
+            ("Microsoft.AspNetCore.App 11.0.0-rc.1 [/runtime]\n", None),
+            ("Microsoft.AspNetCore.App 10.0.15 [/runtime]\nMicrosoft.AspNetCore.App 11.0.0 [/runtime]\n", "11.0.0"),
+        ]:
+            with self.subTest(listing=listing), tempfile.TemporaryDirectory() as temporary:
+                dotnet = Path(temporary) / "dotnet"
+                dotnet.write_text("#!/bin/sh\nprintf '%s' \"$FIXTURE_RUNTIMES\"\n", encoding="utf-8")
+                dotnet.chmod(0o755)
+                result = subprocess.run(["bash", "-c", script + "printf '%s' \"$runtime\""],
+                                        capture_output=True, text=True, timeout=5,
+                                        env={**os.environ, "PATH": temporary + os.pathsep + os.environ["PATH"],
+                                             "FIXTURE_RUNTIMES": listing})
+                if expected is None:
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn("requires an installed Microsoft.AspNetCore.App 11.0 runtime", result.stdout)
+                else:
+                    self.assertEqual(0, result.returncode, result.stderr)
+                    self.assertEqual(expected, result.stdout)
 
     def test_eventstore_endpoint_matches_host_absolute_uri_rule(self):
         for endpoint in ("HTTPS://EventStore.example.test", "http://127.0.0.1:1"):
@@ -157,10 +195,10 @@ class AdopterProofTests(unittest.TestCase):
     def test_runtime_sdk_identity_is_read_from_fixture_directory(self):
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Path(temporary)
-            listing = "Microsoft.NETCore.App 10.0.12 [/runtime]\nMicrosoft.AspNetCore.App 10.0.12 [/runtime]\n"
-            with mock.patch.object(proof.subprocess, "check_output", side_effect=["10.0.401\n", listing]) as check:
-                identity = proof.verify_runtime("dotnet", "10.0.12", fixture)
-            self.assertEqual("10.0.401", identity["dotnet_sdk"])
+            listing = "Microsoft.NETCore.App 11.0.0 [/runtime]\nMicrosoft.AspNetCore.App 11.0.0 [/runtime]\n"
+            with mock.patch.object(proof.subprocess, "check_output", side_effect=["11.0.100\n", listing]) as check:
+                identity = proof.verify_runtime("dotnet", "11.0.0", fixture)
+            self.assertEqual("11.0.100", identity["dotnet_sdk"])
             self.assertEqual([fixture, fixture], [call.kwargs["cwd"] for call in check.call_args_list])
             self.assertTrue(all(call.kwargs["timeout"] == 15 for call in check.call_args_list))
 
@@ -169,16 +207,16 @@ class AdopterProofTests(unittest.TestCase):
             assembly = Path(temporary) / "Host.dll"
             config_path = assembly.with_suffix(".runtimeconfig.json")
             config_path.write_text(json.dumps({"runtimeOptions": {"frameworks": [
-                {"name": "Microsoft.NETCore.App", "version": "10.0.0"},
-                {"name": "Microsoft.AspNetCore.App", "version": "10.0.0"},
+                {"name": "Microsoft.NETCore.App", "version": "11.0.0"},
+                {"name": "Microsoft.AspNetCore.App", "version": "11.0.0"},
             ]}}), encoding="utf-8")
-            proof.pin_host_runtime(assembly, "10.0.12")
+            proof.pin_host_runtime(assembly, "11.0.0")
             options = json.loads(config_path.read_text(encoding="utf-8"))["runtimeOptions"]
             self.assertEqual("Disable", options["rollForward"])
-            self.assertEqual(["10.0.12", "10.0.12"], [entry["version"] for entry in options["frameworks"]])
+            self.assertEqual(["11.0.0", "11.0.0"], [entry["version"] for entry in options["frameworks"]])
             config_path.write_text('{"runtimeOptions": {"frameworks": []}}', encoding="utf-8")
             with self.assertRaises(proof.ProofError) as error:
-                proof.pin_host_runtime(assembly, "10.0.12")
+                proof.pin_host_runtime(assembly, "11.0.0")
             self.assertEqual("runtime-config-invalid", error.exception.code)
 
     def test_truncated_http_page_is_failed_probe(self):
@@ -210,7 +248,7 @@ class AdopterProofTests(unittest.TestCase):
                     mock.patch.object(proof, "_port", return_value=52345), \
                     mock.patch.object(proof, "_get", return_value=page), \
                     mock.patch.object(proof.subprocess, "Popen", return_value=process) as launch:
-                rendered = proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "10.0.12",
+                rendered = proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "11.0.0",
                                                   "http://127.0.0.1:1", "three-call",
                                                   "/proof/proof-projection", proof.PROJECTION_FRAGMENTS)
                 self.assertEqual(expected, rendered)
@@ -231,14 +269,14 @@ class AdopterProofTests(unittest.TestCase):
                 mock.patch.object(proof, "_get", return_value=None), \
                 mock.patch.object(proof.subprocess, "Popen",
                                   side_effect=launch_with(proof.NEGATIVE_DIAGNOSTICS["missing-quickstart"])):
-            self.assertTrue(proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "10.0.12",
+            self.assertTrue(proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "11.0.0",
                                                   "http://127.0.0.1:1", "missing-quickstart", "/"))
         with mock.patch.object(proof, "_port", return_value=52345), \
                 mock.patch.object(proof, "_get", return_value=None), \
                 mock.patch.object(proof.subprocess, "Popen",
                                   side_effect=launch_with(proof.NEGATIVE_DIAGNOSTICS["misordered"])):
             with self.assertRaises(proof.ProofError) as error:
-                proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "10.0.12",
+                proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "11.0.0",
                                        "http://127.0.0.1:1", "missing-quickstart", "/")
             self.assertEqual("bootstrap-diagnostic-missing", error.exception.code)
         process.poll.return_value = 0
@@ -247,7 +285,7 @@ class AdopterProofTests(unittest.TestCase):
                 mock.patch.object(proof.subprocess, "Popen",
                                   side_effect=launch_with(proof.NEGATIVE_DIAGNOSTICS["missing-quickstart"])):
             with self.assertRaises(proof.ProofError) as error:
-                proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "10.0.12",
+                proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "11.0.0",
                                        "http://127.0.0.1:1", "missing-quickstart", "/")
             self.assertEqual("bootstrap-diagnostic-missing", error.exception.code)
 
@@ -270,11 +308,11 @@ class AdopterProofTests(unittest.TestCase):
                     mock.patch.object(proof, "_get", return_value=None), \
                     mock.patch.object(proof.subprocess, "Popen", side_effect=launch):
                 if code is None:
-                    self.assertTrue(proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "10.0.12",
+                    self.assertTrue(proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "11.0.0",
                                                            "http://127.0.0.1:1", "misordered", "/"))
                     continue
                 with self.assertRaises(proof.ProofError) as error:
-                    proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "10.0.12",
+                    proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "11.0.0",
                                            "http://127.0.0.1:1", "misordered", "/")
                 self.assertEqual(code, error.exception.code)
 
@@ -287,7 +325,7 @@ class AdopterProofTests(unittest.TestCase):
                     mock.patch.object(proof, "_get", return_value="<html>fc-home-empty-no-microservices</html>"), \
                     mock.patch.object(proof.subprocess, "Popen", return_value=process):
                 with self.assertRaises(proof.ProofError) as error:
-                    proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "10.0.12",
+                    proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "11.0.0",
                                            "http://127.0.0.1:1", mode, "/")
                 self.assertEqual("bootstrap-unexpected-render", error.exception.code)
                 process.terminate.assert_called_once()
@@ -300,7 +338,7 @@ class AdopterProofTests(unittest.TestCase):
                 mock.patch.object(proof.time, "monotonic", side_effect=[0, 31]), \
                 mock.patch.object(proof.subprocess, "Popen", return_value=process):
             with self.assertRaises(proof.ProofError) as error:
-                proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "10.0.12",
+                proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "11.0.0",
                                        "http://127.0.0.1:1", "missing-quickstart", "/")
             self.assertEqual("bootstrap-did-not-exit", error.exception.code)
             process.terminate.assert_called_once()
@@ -311,7 +349,7 @@ class AdopterProofTests(unittest.TestCase):
 
         def runtime(_dotnet, _selected, cwd):
             sdk_policies.append(json.loads((cwd.parent / "global.json").read_text(encoding="utf-8")))
-            return {"dotnet_sdk": "10.0.401", "netcore": "10.0.12", "aspnetcore": "10.0.12"}
+            return {"dotnet_sdk": "11.0.100", "netcore": "11.0.0", "aspnetcore": "11.0.0"}
 
         stack.enter_context(mock.patch.object(proof, "verify_packages", return_value=fake_hashes()))
         stack.enter_context(mock.patch.object(proof, "verify_restored_packages", side_effect=restored_error))
@@ -331,12 +369,12 @@ class AdopterProofTests(unittest.TestCase):
             result = proof.execute(namespace)
             return result, launch.call_args_list, run.call_args_list
 
-    def test_copied_fixture_is_pinned_to_the_stable_net10_sdk_band(self):
+    def test_copied_fixture_is_pinned_to_the_stable_net11_sdk_band(self):
         with tempfile.TemporaryDirectory() as temporary, ExitStack() as stack:
             _, _, sdk_policies = self._simulate(stack, [True] * 5)
             self.assertEqual("pass", proof.execute(args(temporary))["result"])
         self.assertEqual([proof.SDK_POLICY], sdk_policies)
-        self.assertEqual({"version": "10.0.100", "rollForward": "latestFeature", "allowPrerelease": False},
+        self.assertEqual({"version": "11.0.100", "rollForward": "latestFeature", "allowPrerelease": False},
                          sdk_policies[0]["sdk"])
 
     def test_restored_mismatch_publishes_no_archive_hashes(self):
@@ -396,7 +434,7 @@ class AdopterProofTests(unittest.TestCase):
             source = Path(temporary) / "private-machine-feed"
             self.assertEqual(0, proof.main([
                 "--candidate-sha", CANDIDATE, "--package-version", VERSION,
-                "--package-source", str(source), "--runtime-version", "10.0.12",
+                "--package-source", str(source), "--runtime-version", "11.0.0",
                 "--eventstore-endpoint", "https://token-secret.example.invalid/tenant-private",
                 "--result", str(output)]))
             serialized = output.read_text(encoding="utf-8")

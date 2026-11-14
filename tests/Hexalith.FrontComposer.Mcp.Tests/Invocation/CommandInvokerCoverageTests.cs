@@ -53,8 +53,8 @@ public sealed class CommandInvokerCoverageTests {
         // Two case-variant keys for the same descriptor parameter trip the OrdinalIgnoreCase
         // duplicate-detection set even though the C# Dictionary stores them as distinct entries.
         Dictionary<string, JsonElement> args = new(StringComparer.Ordinal) {
-            ["Amount"] = JsonDocument.Parse("42").RootElement,
-            ["amount"] = JsonDocument.Parse("9").RootElement,
+            ["Amount"] = JsonElement.Parse("42"),
+            ["amount"] = JsonElement.Parse("9"),
         };
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(

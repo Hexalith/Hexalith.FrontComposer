@@ -204,6 +204,7 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "BL0016", Justification = "TryGetModuleAsync awaits this shared import task and owns JS failure recovery and failed-import reset.")]
     private Task<IJSObjectReference> GetModuleAsync(CancellationToken cancellationToken) {
         if (_moduleTask is not null) {
             return _moduleTask;

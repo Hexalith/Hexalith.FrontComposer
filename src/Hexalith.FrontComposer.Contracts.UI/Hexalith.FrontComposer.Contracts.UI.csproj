@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <PackageId>Hexalith.FrontComposer.Contracts.UI</PackageId>
     <Description>Blazor and Fluent UI rendering contracts for Hexalith FrontComposer.</Description>

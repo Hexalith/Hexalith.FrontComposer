@@ -15,6 +15,7 @@ internal sealed class DelayedHiddenDetailFocusRuntime : IJSRuntime
     public int TimeoutImportsRemaining { get; set; }
 
     /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
     {
         try
@@ -28,15 +29,19 @@ internal sealed class DelayedHiddenDetailFocusRuntime : IJSRuntime
     }
 
     /// <inheritdoc />
-    public async ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
+    public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
     {
         ImportCalls++;
         if (TimeoutImportsRemaining > 0)
         {
             TimeoutImportsRemaining--;
-            throw new TaskCanceledException("interop timeout");
+            return ValueTask.FromException<TValue>(new TaskCanceledException("interop timeout"));
         }
-        return (TValue)await Import.Task.ConfigureAwait(false);
+
+        return new(ImportAsync<TValue>());
     }
 
+    private async Task<TValue> ImportAsync<TValue>()
+        => (TValue)await Import.Task.ConfigureAwait(false);
 }

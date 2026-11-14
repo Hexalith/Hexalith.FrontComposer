@@ -9,6 +9,7 @@ internal sealed class HeldRouteFocusRuntime : IJSRuntime
     public TaskCompletionSource<IJSObjectReference> Import { get; } = new();
 
     /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Blazor", "BL0016", Justification = "Test-only JS fake forwarding; faults and cancellation must propagate unchanged so the component or service caller handles them under test.")]
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
     {
         try

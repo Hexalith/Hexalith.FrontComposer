@@ -11,6 +11,7 @@ public sealed class FcBrowserDownloadService(IJSRuntime jsRuntime) : IFcBrowserD
     private const string ModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-download.js";
 
     /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "BL0016", Justification = "Download callers must observe failed transfers; this method owns cleanup in finally while preserving the original JS exception and caller stream ownership.")]
     public async Task DownloadStreamAsync(Stream stream, string fileName, string contentType, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(stream);

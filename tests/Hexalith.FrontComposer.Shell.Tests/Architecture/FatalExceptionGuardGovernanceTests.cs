@@ -9,7 +9,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.Architecture;
 public sealed class FatalExceptionGuardGovernanceTests {
     // Story 13.4 adds subscriber, page-load, refresh-scheduler and accepted-cleanup shared fatal filters;
     // Story 13.5 adds the fresh-row ledger's fail-closed scope read.
-    private const int ExpectedCatchFilterCount = 79;
+    // .NET 11 account-state observation adds its shared fatal filter for asynchronous authentication failures.
+    private const int ExpectedCatchFilterCount = 80;
     private const string ExceptionGuardPath = "Services/ExceptionGuard.cs";
     private static readonly HashSet<string> FatalTypeNames = new(StringComparer.Ordinal) {
         nameof(OutOfMemoryException),

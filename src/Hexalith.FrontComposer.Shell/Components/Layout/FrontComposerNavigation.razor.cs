@@ -541,20 +541,14 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
                 _ = await module.InvokeAsync<bool>("openMenu", menuId, anchorId).ConfigureAwait(false);
             }
         }
-        catch (Exception ex) when (ex is JSDisconnectedException or ObjectDisposedException or OperationCanceledException or InvalidOperationException) {
+        catch (Exception ex) when (ex is JSException or ObjectDisposedException or OperationCanceledException or InvalidOperationException) {
             // The native Fluent keyboard path remains available; ignore circuit teardown races.
         }
     }
 
-    private async Task<IJSObjectReference?> EnsureMenuModuleAsync() {
-        try {
-            return _menuModule ??= await JS.InvokeAsync<IJSObjectReference>("import", MenuModulePath).ConfigureAwait(false);
-        }
-        catch (JSException) {
-            // The native Fluent menu remains available when the optional module cannot load.
-            return null;
-        }
-    }
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "BL0016", Justification = "OpenContextFlyoutAsync owns the Fluent-menu fallback for this import and its invocation failures.")]
+    private async Task<IJSObjectReference> EnsureMenuModuleAsync()
+        => _menuModule ??= await JS.InvokeAsync<IJSObjectReference>("import", MenuModulePath).ConfigureAwait(false);
 
     private void HandleProjectionMenuItemClicked(string boundedContext, string projectionFqn, string route) {
         HandleNavItemClicked(boundedContext, CapabilityIds.ForProjection(boundedContext, projectionFqn));

@@ -164,6 +164,7 @@ public sealed class DataGridFocusScope : IAsyncDisposable {
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "BL0016", Justification = "TryGetModuleAsync observes this shared import task, handles circuit and JS failures, and clears the failed import for retry.")]
     private Task<IJSObjectReference> GetOrStartImport() {
         lock (_importGate) {
             try {

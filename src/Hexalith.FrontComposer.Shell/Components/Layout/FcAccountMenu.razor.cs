@@ -40,8 +40,9 @@ public partial class FcAccountMenu : ComponentBase, IDisposable {
     private const string MenuListStyle = "inset-inline-start: auto; inset-inline-end: anchor(end);";
 
     private ClaimsPrincipal? _user;
+    private long _authenticationRevision;
+    private Task _authenticationObservation = Task.CompletedTask;
     private bool _disposed;
-    private int _authenticationSequence;
 
     /// <summary>Injected host authentication-state seam (fail-closed anonymous provider by default).</summary>
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
@@ -96,8 +97,55 @@ public partial class FcAccountMenu : ComponentBase, IDisposable {
 
     /// <inheritdoc />
     protected override async Task OnInitializedAsync() {
+        long revision = Interlocked.Increment(ref _authenticationRevision);
         AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
-        await RefreshAuthenticationStateAsync(AuthenticationStateProvider.GetAuthenticationStateAsync());
+        _authenticationObservation = ApplyAuthenticationStateAsync(AuthenticationStateProvider.GetAuthenticationStateAsync, revision);
+        await _authenticationObservation;
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> state) {
+        if (_disposed) return;
+        long revision = Interlocked.Increment(ref _authenticationRevision);
+        _authenticationObservation = ObserveAuthenticationStateChangeAsync(state, revision);
+    }
+
+    private async Task ObserveAuthenticationStateChangeAsync(Task<AuthenticationState> state, long revision) {
+        try {
+            await InvokeAsync(async () => {
+                if (_disposed || revision != Volatile.Read(ref _authenticationRevision)) return;
+                // A pending observation cannot continue to present the previous identity.
+                _user = null;
+                StateHasChanged();
+                if (await ApplyAuthenticationStateAsync(() => state, revision)) {
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (ObjectDisposedException) {
+            // The circuit may disappear between the event and renderer dispatch.
+        }
+        catch (Exception exception) {
+            // External provider events do not have Blazor's lifecycle/event exception observer.
+            await DispatchExceptionAsync(exception);
+        }
+    }
+
+    private async Task<bool> ApplyAuthenticationStateAsync(Func<Task<AuthenticationState>> readState, long revision) {
+        ClaimsPrincipal? user;
+        try {
+            // Keep invocation inside the fallback boundary: providers can throw before returning a task.
+            user = (await readState()).User;
+        }
+        catch (Exception exception) when (!ExceptionGuard.IsFatal(exception)) {
+            // Failed or canceled authentication must withdraw the previous account identity.
+            user = null;
+        }
+
+        if (_disposed || revision != Volatile.Read(ref _authenticationRevision)) {
+            return false;
+        }
+        _user = user;
+        return true;
     }
 
     /// <inheritdoc />
@@ -105,31 +153,6 @@ public partial class FcAccountMenu : ComponentBase, IDisposable {
         _disposed = true;
         AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         GC.SuppressFinalize(this);
-    }
-
-    private void OnAuthenticationStateChanged(Task<AuthenticationState> stateTask) {
-        if (_disposed) return;
-        try {
-            _ = InvokeAsync(async () => {
-                await RefreshAuthenticationStateAsync(stateTask);
-                if (!_disposed) StateHasChanged();
-            });
-        }
-        catch (ObjectDisposedException) {
-            // The circuit may disappear between the event and renderer dispatch.
-        }
-    }
-
-    private async Task RefreshAuthenticationStateAsync(Task<AuthenticationState> stateTask) {
-        int sequence = ++_authenticationSequence;
-        ClaimsPrincipal? user;
-        try {
-            user = (await stateTask).User;
-        }
-        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            user = null;
-        }
-        if (!_disposed && sequence == _authenticationSequence) _user = user;
     }
 
     private void SignIn() => NavigateToAuthEndpoint(AuthenticationOptions.Value.Redirect.LoginPath);

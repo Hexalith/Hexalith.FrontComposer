@@ -54,9 +54,9 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
-      - name: Install .NET 10 runtimes
+      - name: Install .NET 11 runtimes
         shell: pwsh
-        run: ./eng/install-net10-runtime.ps1
+        run: ./eng/install-net11-runtime.ps1
 
       - name: Record full CI lane start
         shell: bash
@@ -106,25 +106,25 @@ jobs:
             dotnet tool install Hexalith.FrontComposer.Cli --add-source "$GITHUB_WORKSPACE/nupkgs" --version 0.0.0-ci --ignore-failed-sources
           )
 
-          mkdir -p "$fixture/Acme.App/obj/Debug/net10.0/generated/HexalithFrontComposer"
+          mkdir -p "$fixture/Acme.App/obj/Debug/net11.0/generated/HexalithFrontComposer"
           cat > "$fixture/Acme.App/Acme.App.csproj" <<'EOF'
           <Project Sdk="Microsoft.NET.Sdk">
             <PropertyGroup>
-              <TargetFramework>net10.0</TargetFramework>
+              <TargetFramework>net11.0</TargetFramework>
             </PropertyGroup>
           </Project>
           EOF
           cat > "$fixture/Acme.App/Program.cs" <<'EOF'
           services.AddFrontComposerDebugOverlay();
           EOF
-          cat > "$fixture/Acme.App/obj/Debug/net10.0/generated/HexalithFrontComposer/Acme.Shipping.ShipmentProjection.g.razor.cs" <<'EOF'
+          cat > "$fixture/Acme.App/obj/Debug/net11.0/generated/HexalithFrontComposer/Acme.Shipping.ShipmentProjection.g.razor.cs" <<'EOF'
           namespace Acme.Shipping { }
           EOF
 
           (
             cd "$tool_home"
             dotnet tool run frontcomposer --help
-            dotnet tool run frontcomposer inspect --project "$fixture/Acme.App/Acme.App.csproj" --configuration Debug --framework net10.0 --format json
+            dotnet tool run frontcomposer inspect --project "$fixture/Acme.App/Acme.App.csproj" --configuration Debug --framework net11.0 --format json
             dotnet tool run frontcomposer migrate --project "$fixture/Acme.App/Acme.App.csproj" --from 9.1.0 --to 9.2.0 --dry-run --format json
             dotnet tool run frontcomposer migrate --project "$fixture/Acme.App/Acme.App.csproj" --from 9.1.0 --to 9.2.0 --apply --format json
           )
@@ -429,7 +429,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          runtime="$(dotnet --list-runtimes | awk '/^Microsoft.AspNetCore.App 10\./ { version = $2 } END { print version }')"
+          runtime="$(dotnet --list-runtimes | awk '$1 == "Microsoft.AspNetCore.App" && $2 ~ /^11[.]0[.][0-9]+$/ { version = $2 } END { print version }')"
+          if [ -z "$runtime" ]; then
+            echo "::error::Adopter proof requires an installed Microsoft.AspNetCore.App 11.0 runtime."
+            exit 1
+          fi
           python3 eng/adopter_proof.py \
             --candidate-sha "$(git rev-parse HEAD)" \
             --package-version 4.7.2-ci \
@@ -650,9 +654,9 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
-      - name: Install .NET 10 runtimes
+      - name: Install .NET 11 runtimes
         shell: pwsh
-        run: ./eng/install-net10-runtime.ps1
+        run: ./eng/install-net11-runtime.ps1
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -784,9 +788,9 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
-      - name: Install .NET 10 runtimes
+      - name: Install .NET 11 runtimes
         shell: pwsh
-        run: ./eng/install-net10-runtime.ps1
+        run: ./eng/install-net11-runtime.ps1
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -886,9 +890,9 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
-      - name: Install .NET 10 runtimes
+      - name: Install .NET 11 runtimes
         shell: pwsh
-        run: ./eng/install-net10-runtime.ps1
+        run: ./eng/install-net11-runtime.ps1
 
       # The root/default remains 11.0.100. This one live source-resource lane also loads
       # remote-equal roots that still pin 10.0.302, so install that SDK side-by-side only here.
@@ -1013,9 +1017,9 @@ jobs:
         with:
           dotnet-version: '11.0.100'
 
-      - name: Install .NET 10 runtimes
+      - name: Install .NET 11 runtimes
         shell: pwsh
-        run: ./eng/install-net10-runtime.ps1
+        run: ./eng/install-net11-runtime.ps1
 
       - name: Build Debug Shell tests
         run: dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Debug --disable-build-servers -m:1
