@@ -251,7 +251,11 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
             spc.AddSource(ProjectionTemplateManifestEmitter.GeneratedHintName, emission.Source);
         });
 
-        context.RegisterSourceOutput(commandResults, static (spc, result) => {
+        IncrementalValueProvider<bool> asyncValidationSupport = context.CompilationProvider.Select(static (compilation, _) =>
+            compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Components.Forms.EditContext")?
+                .GetMembers("ValidateAsync").OfType<IMethodSymbol>().Any(method => !method.IsStatic) == true);
+        context.RegisterSourceOutput(commandResults.Combine(asyncValidationSupport), static (spc, pair) => {
+            var (result, useAsyncValidation) = pair;
             foreach (DiagnosticInfo diagInfo in result.Diagnostics) {
                 spc.ReportDiagnostic(Diagnostic.Create(
                     GetDescriptor(diagInfo.Id, diagInfo.Severity),
@@ -269,7 +273,7 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 // projection-pipeline hints when a type carries both attributes.
                 // (See code-review 2026-04-15, patch P6.)
                 string hintPrefix = GetQualifiedHintPrefix(result.Model.Namespace, result.Model.TypeName) + ".Command";
-                spc.AddSource(hintPrefix + "Form.g.razor.cs", CommandFormEmitter.Emit(formModel, fluxorModel));
+                spc.AddSource(hintPrefix + "Form.g.razor.cs", CommandFormEmitter.Emit(formModel, fluxorModel, useAsyncValidation));
                 spc.AddSource(hintPrefix + "Actions.g.cs", CommandFluxorActionsEmitter.Emit(fluxorModel));
                 spc.AddSource(hintPrefix + "LifecycleFeature.g.cs", CommandFluxorFeatureEmitter.Emit(fluxorModel));
                 spc.AddSource(hintPrefix + "Registration.g.cs", RegistrationEmitter.Emit(registrationModel));

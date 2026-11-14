@@ -232,9 +232,9 @@ def build_consumer(project_file: Path) -> Path:
         ["build", str(project_file), "--no-restore", "--configuration", "Release", "-warnaserror", "-p:WarningsNotAsErrors=NU1603"],
         project_file.parent,
     )
-    framework = ElementTree.parse(project_file).getroot().findtext(".//TargetFramework")
-    if not framework:
-        raise ValueError(f"Consumer project has no explicit TargetFramework: {project_file}")
+    framework = ElementTree.parse(project_file).findtext(".//TargetFramework")
+    if framework not in {"net10.0", "net11.0"}:
+        raise ValueError(f"Unexpected consumer framework: {framework!r}")
     return project_file.parent / "bin" / "Release" / framework
 
 

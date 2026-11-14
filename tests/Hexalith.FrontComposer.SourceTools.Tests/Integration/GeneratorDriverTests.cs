@@ -840,6 +840,37 @@ public partial class AllUnsupportedProjection
             .ShouldBeEmpty("A consumer should be able to compile against a generated renderer with RenderMode override.");
     }
 
+    /// <summary>Chooses validation from the actual consumer compilation and compiles the current API.</summary>
+    /// <param name="hasFormsApi">Whether the consumer references the current Forms API.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CommandValidationFollowsTheConsumerCompilation(bool hasFormsApi) {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(TwoFieldCommandSource);
+        if (!hasFormsApi) {
+            // A compilation without Forms cannot advertise an async validation API to the generator.
+            compilation = compilation.RemoveReferences(compilation.References.Where(reference =>
+                string.Equals(Path.GetFileName(reference.Display), "Microsoft.AspNetCore.Components.Forms.dll", StringComparison.Ordinal)));
+        }
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
+        driver = driver.RunGenerators(compilation, cancellationToken);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+        result.Diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        string form = result.GeneratedTrees.Single(tree => tree.FilePath.EndsWith("CommandForm.g.razor.cs", StringComparison.Ordinal))
+            .GetText(cancellationToken).ToString();
+        if (hasFormsApi) {
+            form.ShouldContain("await editContext.ValidateAsync(cancellationToken)");
+            form.ShouldNotContain("!_editContext.Validate()");
+            compilation.AddSyntaxTrees(result.GeneratedTrees).GetDiagnostics(cancellationToken)
+                .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        }
+        else {
+            form.ShouldContain("bool isValid = _editContext.Validate();");
+            form.ShouldNotContain("await editContext.ValidateAsync(");
+        }
+    }
+
     private static void VerifyCommandArtifacts(
         string source,
         string metadataName,

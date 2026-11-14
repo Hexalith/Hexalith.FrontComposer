@@ -68,7 +68,11 @@ public static class CanonicalSchemaMaterial {
     };
 
     private static readonly System.Text.Json.Serialization.Metadata.JsonTypeInfo<SchemaContractDocument> _canonicalTypeInfo
+#if NET11_0_OR_GREATER
         = _canonicalOptions.GetTypeInfo<SchemaContractDocument>();
+#else
+        = (System.Text.Json.Serialization.Metadata.JsonTypeInfo<SchemaContractDocument>)_canonicalOptions.GetTypeInfo(typeof(SchemaContractDocument));
+#endif
 
     public static SchemaCanonicalPayload CreatePayload(SchemaContractDocument document) {
 #if NET10_0_OR_GREATER

@@ -38,6 +38,64 @@ public sealed class FcAccountMenuAuthenticatedTests : LayoutComponentTestBase {
         }
     }
 
+    /// <summary>Pending and obsolete notifications cannot retain or restore a stale account.</summary>
+    [Fact]
+    public async Task PendingAndOutOfOrderAuthenticationDoesNotExposeAnOldPrincipal() {
+        ClaimsPrincipal alice = new(new ClaimsIdentity([new Claim("name", "Alice")], "oidc"));
+        ClaimsPrincipal bob = new(new ClaimsIdentity([new Claim("name", "Bob")], "oidc"));
+        AccountMenuAuthenticationStateProvider provider = new(alice);
+        Services.Replace(ServiceDescriptor.Scoped<AuthenticationStateProvider>(_ => provider));
+        EnsureStoreInitialized();
+        IRenderedComponent<FcAccountMenu> cut = Render<FcAccountMenu>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Alice"));
+        TaskCompletionSource<AuthenticationState> pending = new();
+        await cut.InvokeAsync(() => provider.PublishState(pending.Task));
+        cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("Alice"));
+        await cut.InvokeAsync(() => provider.PublishUser(bob));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Bob"));
+        await cut.InvokeAsync(() => pending.SetResult(new AuthenticationState(alice)));
+        await cut.InvokeAsync(() => Task.CompletedTask);
+        cut.Markup.ShouldContain("Bob");
+        cut.Markup.ShouldNotContain("Alice");
+        cut.Instance.Dispose();
+        int renders = cut.RenderCount;
+        await cut.InvokeAsync(() => provider.PublishUser(alice));
+        cut.RenderCount.ShouldBe(renders);
+    }
+
+    /// <summary>Provider failures and cancellation withdraw the previous account.</summary>
+    /// <param name="cancelled">Whether the authentication task was cancelled.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnavailableAuthenticationRendersAnonymously(bool cancelled) {
+        ClaimsPrincipal alice = new(new ClaimsIdentity([new Claim("name", "Alice")], "oidc"));
+        AccountMenuAuthenticationStateProvider provider = new(alice);
+        Services.Replace(ServiceDescriptor.Scoped<AuthenticationStateProvider>(_ => provider));
+        EnsureStoreInitialized();
+        IRenderedComponent<FcAccountMenu> cut = Render<FcAccountMenu>();
+        Task<AuthenticationState> unavailable = cancelled
+            ? Task.FromCanceled<AuthenticationState>(new CancellationToken(canceled: true))
+            : Task.FromException<AuthenticationState>(new InvalidOperationException("authentication unavailable"));
+        await cut.InvokeAsync(() => provider.PublishState(unavailable));
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldNotContain("Alice");
+            cut.FindAll("[data-testid='fc-account-sign-in']").Count.ShouldBe(1);
+        });
+    }
+
+    /// <summary>A provider that throws before returning a task also fails closed.</summary>
+    [Fact]
+    public void SynchronousAuthenticationFailureRendersAnonymously() {
+        AccountMenuAuthenticationStateProvider provider = new(new ClaimsPrincipal(new ClaimsIdentity())) {
+            InitialFailure = new InvalidOperationException("authentication unavailable"),
+        };
+        Services.Replace(ServiceDescriptor.Scoped<AuthenticationStateProvider>(_ => provider));
+        EnsureStoreInitialized();
+        IRenderedComponent<FcAccountMenu> cut = Render<FcAccountMenu>();
+        cut.WaitForAssertion(() => cut.FindAll("[data-testid='fc-account-sign-in']").Count.ShouldBe(1));
+    }
+
     private StubAuthenticationStateProvider UseAuthenticatedUser(params Claim[] claims) {
         // authenticationType non-null => IsAuthenticated == true; with no ClaimTypes.Name claim,
         // Identity.Name stays null so the test exercises the claim-fallback resolution.
@@ -46,6 +104,28 @@ public sealed class FcAccountMenuAuthenticatedTests : LayoutComponentTestBase {
         Services.Replace(ServiceDescriptor.Scoped<AuthenticationStateProvider>(_ => provider));
         EnsureStoreInitialized();
         return provider;
+    }
+
+    /// <summary>Refreshes the rendered account after sign-out and a subsequent sign-in.</summary>
+    [Fact]
+    public async Task UpdatesTheRenderedAccountWhenAuthenticationChanges() {
+        ClaimsPrincipal alice = new(new ClaimsIdentity([new Claim("name", "Alice")], "oidc"));
+        var provider = new AccountMenuAuthenticationStateProvider(alice);
+        Services.Replace(ServiceDescriptor.Scoped<AuthenticationStateProvider>(_ => provider));
+        EnsureStoreInitialized();
+        IRenderedComponent<FcAccountMenu> cut = Render<FcAccountMenu>();
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-account-user']").TextContent.ShouldContain("Alice"));
+
+        await cut.InvokeAsync(() => provider.PublishUser(new ClaimsPrincipal(new ClaimsIdentity())));
+        cut.WaitForAssertion(() => {
+            cut.FindAll("[data-testid='fc-account-sign-out']").ShouldBeEmpty();
+            cut.FindAll("[data-testid='fc-account-sign-in']").Count.ShouldBe(1);
+            cut.Markup.ShouldNotContain("Alice");
+        });
+
+        ClaimsPrincipal bob = new(new ClaimsIdentity([new Claim("name", "Bob")], "oidc"));
+        await cut.InvokeAsync(() => provider.PublishUser(bob));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-account-user']").TextContent.ShouldContain("Bob"));
     }
 
     [Fact]

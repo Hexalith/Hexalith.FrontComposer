@@ -168,6 +168,23 @@ public class CommandFormEmitterTests {
         }
     }
 
+    /// <summary>Uses the consumer's validation API while retaining literal render-tree sequences.</summary>
+    /// <param name="useAsyncValidation">Whether the consumer supports asynchronous validation.</param>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ValidationUsesTheAvailableApiAfterAdmission(bool useAsyncValidation) {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Name", "String", FormFieldTypeCategory.TextInput, "Name", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor(), useAsyncValidation);
+        string validation = useAsyncValidation ? "await editContext.ValidateAsync(cancellationToken).ConfigureAwait(true)" : "bool isValid = _editContext.Validate();";
+        source.ShouldContain(validation);
+        source.ShouldNotContain(useAsyncValidation ? "!_editContext.Validate()" : "await editContext.ValidateAsync(");
+        source.IndexOf(validation, StringComparison.Ordinal).ShouldBeGreaterThan(source.IndexOf("if (!admission.IsAdmitted)", StringComparison.Ordinal));
+        RenderTreeSequenceRewriter.ContainsRuntimeSequenceArgument(source).ShouldBeFalse();
+    }
+
     [Fact]
     public void EmitMappedRejectionUsesItsOwnStoreClearedWhenTheNextAttemptIsAdmitted() {
         CommandFormModel form = BuildForm([
