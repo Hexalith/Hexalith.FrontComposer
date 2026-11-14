@@ -98,3 +98,61 @@ This documentation-only successor activates landed seal
 Dependency selectors, consumer configuration, policy and local publisher workflow
 bytes are unchanged. Local committed-source replay and hosted CI/Quality are
 separate requirements; this activation records no completed publication.
+
+## Qualified current sources and evaluator renewal — 2026-11-15
+
+Committed FrontComposer `6d5cdc58b7fa4ab711df11beb6ecc703f20a7564` selects
+qualified Builds `99f7c86072ca7b35e3fbbaee4606a559a847805a` (signed producer
+6.0.3), Platform `9ccbd4c7f8f3b6143e7b4f7b20a0e192de932ac1`, and Tenants
+`d89f234c4f020373aaabe0e3699ecdb5097b1079`. The latter has exactly the same
+tree as the previously selected `0caa7b442eed4baccdb565a6dcdfc1d3a89a89d5`.
+The governed Builds execution identity remains
+`360a2b9c4e96809365a7de785be9a68152d5ac28`, independently of the source catalog.
+
+The actual committed graph has 69 edges and passes eight semantic selectors.
+Exactly five projection fields are regenerated:
+
+| Field | Current value |
+| --- | --- |
+| `owner_commit` | `9ccbd4c7f8f3b6143e7b4f7b20a0e192de932ac1` |
+| `inventory_sha256` | `e858e0eb42cdb086ed24c4550828d076cd1171f01179600d4703ca5cc7f050fb` |
+| `builds_commit` | `99f7c86072ca7b35e3fbbaee4606a559a847805a` |
+| `root_selectors_sha256` | `20ca6341e45b43c848fec62a7934047225050a56b8b4892280d36eadceee18e0` |
+| `consumer_configuration_sha256` | `6b784fc0091868af62a756ff7b29a7696213c796dd7a31de6960ac385b91b76a` |
+
+Both canonical Platform source files, Compile links, inventory-only identities,
+trust and module dispositions are unchanged. Platform stays evidence-only. The
+configuration fingerprint includes the two finite catalog-qualification `.props`
+fixtures. The profile keeps the exact Immutable 10.0.15 compiler expectation for
+the existing 25-project view, while the shared ordinary default stays 11.0.0.
+The strict catalog parser additionally recognizes the proved finite EventStore SDK 4.2 /
+Memories 3.0.27 / Tenants 7.0.7 retained view of the selected current catalog;
+ordinary FrontComposer retains EventStore SDK 5.1.0, Memories 4.0.0 and Tenants
+8.0.0 defaults. Its .NET SDK stays 11.0.100.
+
+The user's explicit delegated maintenance/release instruction authorizes one
+additional exact Release evaluator row. Its caller SHA256 is
+`9e0648901bd842eb9149a29c801c3768b9d71539be42a1b14b014f57ff329eb2` and
+closure SHA256 is
+`64947e9a7bcdfcaf9d36e1a7ff0d19d1a5c67f8a97125be52540cfdd8c64ad1b`.
+The actual caller fixes failed-versus-cancelled disposition classification. The
+same ten action sources and unchanged local publisher blob retain their prior
+immutable reusable coordinate `c97156de9a6472553a6a86270a0a6e893de6e2e0`.
+All prior rows remain; totals are 12 CI, 13 Release and seven post-release rows.
+This records delegated maintenance and exact object comparisons, without a human
+code-review claim or a renewal of the expired unsupported-attestation record.
+
+Local verification includes the actual 118-case current-catalog MSBuild matrix,
+182 graph fixtures, private tool archive/patch/PE checks, 19 permanent helper
+controls and 45+2 native validator controls. The private static-isolation tool's
+finite 121-mutant comparison is diagnostic evidence, bound to source `6a3c2020`
+and its original 147-test Error cohort. It supplies no full current-source score.
+Full current Happy 80 / Error 60 runs, strict raw-report triage and exact-source
+CI/Quality remain required; all prior failed, cancelled and unpublished candidate
+evidence stays historical.
+
+This is the source-policy seal. The separate documentation-only activation push
+must use the landed seal as its immediate parent and actual event base, preserving
+every selector, consumer configuration and policy byte. Hosted acceptance and
+publication are separate requirements. No Release dispatch or finite fallback
+approval window is opened by this source renewal.

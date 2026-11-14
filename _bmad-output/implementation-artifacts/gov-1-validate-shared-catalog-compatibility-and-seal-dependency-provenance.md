@@ -881,3 +881,17 @@ renewal grants no new repository, module execution, workflow or publication scop
 
 The separate activation push consumes policy seal `87149d4d7ef042112818d24cec5044368e789d4d`
 as its event base; hosted acceptance remains pending exact-source CI.
+
+### 2026-11-15 qualified current-source maintenance seal
+
+The current committed source is `6d5cdc58b7fa4ab711df11beb6ecc703f20a7564`.
+The exact qualified 99f7c860 Builds / 9ccbd4c7 Platform / d89f234c Tenants graph
+passes 69 edges and eight semantic selectors. The generated five source projection
+fields and one finite Release caller authorization are recorded in
+[the appended source-renewal receipt](../../docs/maintenance/dependency-projection-2026-11-14.md#qualified-current-sources-and-evaluator-renewal--2026-11-15).
+All prior policy/evaluator evidence and frozen profiles remain intact. The new
+private runner's static activation controls qualify that narrow compatibility
+repair; complete current-source mutation, CI/Quality, publication and GOV-1
+acceptance remain separate requirements. AD-12 still requires a distinct
+landed-policy activation push. This append records no completed Release or human
+code review.
