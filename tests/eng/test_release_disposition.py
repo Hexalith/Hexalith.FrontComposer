@@ -6,8 +6,10 @@ from __future__ import annotations
 import copy
 import json
 import pathlib
+import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -21,6 +23,48 @@ SHA = "a" * 40
 
 def _job(name: str, conclusion: str, status: str = "completed") -> dict:
     return {"name": name, "conclusion": conclusion, "status": status}
+
+
+class ReleaseHandoffConclusionTests(unittest.TestCase):
+    def test_native_emitter_preserves_terminal_job_outcomes(self) -> None:
+        workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+        start = '\n          conclusion="failure"\n'
+        end = "          published=false"
+        self.assertEqual(workflow.count(start), 1)
+        self.assertEqual(workflow.count(end), 1)
+        program = textwrap.dedent(workflow.split(start, 1)[1].split(end, 1)[0])
+        program = 'conclusion="failure"\n' + program
+        keys = ("VERIFY_RESULT", "PLAN_RESULT", "PREPARE_RESULT", "RELEASE_RESULT", "PUBLICATION_RESULT")
+        cases = [
+            ("published-success", ["success"] * 5, "success"),
+            ("no-releasable-commits", ["success", "success", "skipped", "skipped", "skipped"], "success"),
+        ]
+        for terminal in ("failure", "cancelled"):
+            for index, key in enumerate(keys):
+                cases.append((
+                    f"{key}-{terminal}",
+                    ["success"] * index + [terminal] + ["skipped"] * (4 - index),
+                    terminal,
+                ))
+        cases.extend([
+            ("unexpected-prepare-skip", ["success", "success", "skipped", "success", "success"], "failure"),
+            ("unexpected-publisher-skip", ["success", "success", "success", "skipped", "success"], "failure"),
+            ("unexpected-publication-skip", ["success", "success", "success", "success", "skipped"], "failure"),
+            ("invalid-prepare-outcome", ["success", "success", "unknown", "skipped", "skipped"], "failure"),
+        ])
+        for name, outcomes, expected in cases:
+            with self.subTest(case=name):
+                result = subprocess.run(
+                    ["bash", "--noprofile", "--norc", "-e", "-u", "-o", "pipefail", "-c",
+                     program + 'printf "%s\\n" "$conclusion"'],
+                    env=dict(zip(keys, outcomes)),
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), expected)
 
 
 class ReleaseDispositionTests(unittest.TestCase):

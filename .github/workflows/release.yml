@@ -441,11 +441,13 @@ jobs:
               conclusion="success"
             elif [ "$PREPARE_RESULT" = "success" ] && [ "$RELEASE_RESULT" = "success" ] && [ "$PUBLICATION_RESULT" = "success" ]; then
               conclusion="success"
-            elif [ "$PREPARE_RESULT" = "skipped" ] || [ "$RELEASE_RESULT" = "skipped" ] || [ "$PUBLICATION_RESULT" = "skipped" ]; then
+            elif [ "$PREPARE_RESULT" = "cancelled" ] || [ "$RELEASE_RESULT" = "cancelled" ] || [ "$PUBLICATION_RESULT" = "cancelled" ]; then
               conclusion="cancelled"
             else
               conclusion="failure"
             fi
+          elif [ "$VERIFY_RESULT" = "cancelled" ] || [ "$PLAN_RESULT" = "cancelled" ]; then
+            conclusion="cancelled"
           fi
           published=false
           version_json=null
