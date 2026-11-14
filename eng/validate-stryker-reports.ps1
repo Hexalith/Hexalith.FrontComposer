@@ -27,6 +27,7 @@ if (Test-Path -LiteralPath $DotnetToolsManifestPath) {
 }
 $errors = New-Object System.Collections.Generic.List[string]
 $summaryLines = New-Object System.Collections.Generic.List[string]
+$reportAudits = New-Object System.Collections.Generic.List[object]
 
 function Add-Failure([string] $Message) {
   $errors.Add($Message) | Out-Null
@@ -123,19 +124,58 @@ function Get-MutatedFiles($Report) {
 
   if ($null -ne $Report.files -and $Report.files -is [System.Management.Automation.PSCustomObject]) {
     foreach ($property in $Report.files.PSObject.Properties) {
-      $statuses = @()
-      if ($null -ne $property.Value.mutants) {
-        $statuses = @($property.Value.mutants | ForEach-Object { [string] $_.status })
+      $mutants = @(Get-PSObjectPropertyValue $property.Value "mutants")
+      $statuses = New-Object System.Collections.Generic.List[string]
+      $liveStatuses = New-Object System.Collections.Generic.List[string]
+      $invalidCompilerIds = New-Object System.Collections.Generic.List[string]
+      foreach ($mutant in $mutants) {
+        $status = [string] (Get-PSObjectPropertyValue $mutant "status")
+        $id = [string] (Get-PSObjectPropertyValue $mutant "id")
+        $statuses.Add($status) | Out-Null
+        if (@("Killed", "Survived", "Timeout", "CompileError", "Ignored", "NoCoverage") -cnotcontains $status) {
+          Add-Failure "Mutation report has unknown or unhandled status '$status' for '$($property.Name)' mutant '$id'."
+        }
+
+        $invalidCompilerCandidate = $false
+        if ($status -ceq "CompileError") {
+          $coveredBy = $mutant.PSObject.Properties["coveredBy"]
+          $killedBy = $mutant.PSObject.Properties["killedBy"]
+          $reason = Get-PSObjectPropertyValue $mutant "statusReason"
+          # Pinned Stryker 5.1 marks rollback candidates final BEFORE file filtering.
+          # They were never executable. Accept only its exact nonexecuted shape;
+          # preserve the report status and refuse evidence of execution or drift.
+          $invalidCompilerCandidate = $StrykerToolVersion -ceq "5.1.0" `
+            -and $id -cmatch '^\d+$' `
+            -and $reason -is [string] -and $reason -ceq "Mutant caused compile errors" `
+            -and $null -ne $coveredBy -and $coveredBy.Value -is [System.Array] -and $coveredBy.Value.Count -eq 0 `
+            -and $null -ne $killedBy -and $killedBy.Value -is [System.Array] -and $killedBy.Value.Count -eq 0
+          if ($invalidCompilerCandidate) {
+            $invalidCompilerIds.Add($id) | Out-Null
+          }
+          else {
+            Add-Failure "Unqualified CompileError metadata for '$($property.Name)' mutant '$id'; pinned reason and present empty coverage/kills are required."
+          }
+        }
+        if ($status -cne "Ignored" -and !$invalidCompilerCandidate) {
+          $liveStatuses.Add($status) | Out-Null
+        }
       }
 
       $items.Add([pscustomobject]@{
         Path = ([string] $property.Name).Replace('\', '/')
-        Statuses = $statuses
+        Statuses = $statuses.ToArray()
+        LiveStatuses = $liveStatuses.ToArray()
+        InvalidCompilerIds = $invalidCompilerIds.ToArray()
       }) | Out-Null
     }
   }
 
   return $items
+}
+
+function Get-TextSha256([string] $Text) {
+  $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+  return [System.Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
 }
 
 function Get-TriageCount($TriageEntries, [string] $SegmentName, [string] $Status) {
@@ -238,7 +278,9 @@ foreach ($segment in $segments) {
     continue
   }
 
-  $reportText = Normalize-ArtifactText (Get-Content -LiteralPath $jsonReport.FullName -Raw)
+  $inputSha256 = (Get-FileHash -LiteralPath $jsonReport.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+  $rawReportText = Get-Content -LiteralPath $jsonReport.FullName -Raw
+  $reportText = Normalize-ArtifactText $rawReportText
   $reportText | Set-Content -LiteralPath $jsonReport.FullName -Encoding utf8
   $unsafe = Test-UnsafeText $reportText
   if ($unsafe) {
@@ -247,6 +289,7 @@ foreach ($segment in $segments) {
 
   try {
     $report = $reportText | ConvertFrom-Json -Depth 100
+    $rawReport = $rawReportText | ConvertFrom-Json -Depth 100
   }
   catch {
     Add-Failure "Mutation report '$($jsonReport.Name)' is malformed JSON: $($_.Exception.Message)"
@@ -281,7 +324,7 @@ foreach ($segment in $segments) {
     }
 
     $activeStatuses = @($file.Statuses | Where-Object { $_ -ne "Ignored" })
-    if (!$inScope -and $activeStatuses.Count -gt 0) {
+    if (!$inScope -and @($file.LiveStatuses).Count -gt 0) {
       Add-Failure "Mutation report '$($jsonReport.Name)' includes out-of-scope file '$repoPath'."
     }
 
@@ -290,8 +333,9 @@ foreach ($segment in $segments) {
     }
   }
 
-  $statuses = @(Get-JsonValuesByName $report "status" | ForEach-Object { [string] $_ })
-  $mutantCount = @($statuses | Where-Object { $_ -ne "Ignored" }).Count
+  $statuses = @($mutatedFiles | ForEach-Object { $_.Statuses })
+  $invalidCompilerCount = @($mutatedFiles | ForEach-Object { $_.InvalidCompilerIds }).Count
+  $mutantCount = @($mutatedFiles | ForEach-Object { $_.LiveStatuses }).Count
   if ($mutantCount -eq 0) {
     Add-Failure "Mutation report '$($jsonReport.Name)' contains zero mutants."
   }
@@ -309,14 +353,44 @@ foreach ($segment in $segments) {
       @{ Status = "Survived"; Count = $survived },
       @{ Status = "NoCoverage"; Count = $noCoverage },
       @{ Status = "Timeout"; Count = $timeout },
-      @{ Status = "CompileError"; Count = $compileError }
+      @{ Status = "CompileError"; Count = ($compileError - $invalidCompilerCount) }
     )) {
     if ($problem.Count -gt (Get-TriageCount $problemMutantTriage ([string] $segment.name) ([string] $problem.Status))) {
       Add-Failure "Mutation report '$($jsonReport.Name)' has untriaged $($problem.Status) mutants in segment '$($segment.name)': count=$($problem.Count)."
     }
   }
 
-  $summaryLines.Add("- $($segment.name): report $(ConvertTo-RepoPath $jsonReport.FullName), mutants=$mutantCount, survived=$survived, noCoverage=$noCoverage, timeout=$timeout, compileError=$compileError") | Out-Null
+  $rawSources = @()
+  $rawStatuses = @()
+  foreach ($property in $rawReport.files.PSObject.Properties) {
+    $source = Get-PSObjectPropertyValue $property.Value "source"
+    if ($source -is [string]) {
+      $rawSources += [pscustomobject]@{ Path = Normalize-ArtifactText $property.Name; SourceSha256 = Get-TextSha256 $source }
+    }
+    foreach ($mutant in @(Get-PSObjectPropertyValue $property.Value "mutants")) {
+      $rawStatuses += [pscustomobject]@{
+        Path = Normalize-ArtifactText $property.Name
+        Id = [string] (Get-PSObjectPropertyValue $mutant "id")
+        Status = [string] (Get-PSObjectPropertyValue $mutant "status")
+      }
+    }
+  }
+  $reportAudits.Add([pscustomobject]@{
+    Report = ConvertTo-RepoPath $jsonReport.FullName
+    InputSha256 = $inputSha256
+    OutputSha256 = ""
+    RawMutantStatuses = $rawStatuses
+    RawSourceHashes = $rawSources
+    LiveMutantCount = $mutantCount
+    InvalidCompilerCandidates = @($mutatedFiles | ForEach-Object {
+      $path = $_.Path
+      foreach ($id in $_.InvalidCompilerIds) { [pscustomobject]@{ Path = $path; Id = $id } }
+    })
+    StatusCounts = @($statuses | Group-Object -CaseSensitive | Sort-Object Name | ForEach-Object {
+      [pscustomobject]@{ Status = $_.Name; Count = $_.Count }
+    })
+  }) | Out-Null
+  $summaryLines.Add("- $($segment.name): report $(ConvertTo-RepoPath $jsonReport.FullName), liveMutants=$mutantCount, survived=$survived, noCoverage=$noCoverage, timeout=$timeout, compileError=$compileError (nonexecuted invalid candidates=$invalidCompilerCount)") | Out-Null
 }
 
 if (Test-Path -LiteralPath $ReportRootFullPath) {
@@ -332,6 +406,13 @@ if (Test-Path -LiteralPath $ReportRootFullPath) {
       }
     }
 }
+
+foreach ($audit in $reportAudits) {
+  $audit.OutputSha256 = (Get-FileHash -LiteralPath (Join-Path $RepoRoot $audit.Report) -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+$auditPath = Join-Path (Split-Path -Parent $OutputFullPath) "mutation-report-audit.json"
+[pscustomobject]@{ StrykerVersion = $StrykerToolVersion; Reports = $reportAudits.ToArray() } |
+  ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $auditPath -Encoding utf8
 
 if ($hasAllRequiredReports) {
   foreach ($targetFile in $allTargetFiles) {
