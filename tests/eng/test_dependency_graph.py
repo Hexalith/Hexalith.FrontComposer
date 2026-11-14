@@ -2625,13 +2625,18 @@ class PolicyShapeTests(unittest.TestCase):
 
     def _immutable_consumer_catalog(self) -> bytes:
         root = ET.fromstring(self._eventstore_qualification_catalog())
-        actual = ET.fromstring((ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes())
         properties = root.find("PropertyGroup")
         properties.remove(list(root.iter("HexalithTenantsVersion"))[1])  # Isolate this view from the unrelated qualification override.
-        for name in ("HexalithFrontComposerImmutable10CatalogView", "HexalithImmutableVersion"):
-            elements = list(actual.iter(name))
-            self.assertEqual(2, len(elements), name)
-            properties.extend(copy.deepcopy(element) for element in elements)
+        # Keep the legacy selector's hostile-shape cases independent of whether the
+        # current shared catalog still needs that compatibility view.
+        selector = "HexalithFrontComposerImmutable10CatalogView"
+        ET.SubElement(properties, selector).text = "false"
+        condition = " or ".join("$(MSBuildProjectName.Equals('" + name + "'))"
+                                for name in sorted(dg._FRONTCOMPOSER_IMMUTABLE_PROJECTS))
+        ET.SubElement(properties, selector, {"Condition": condition}).text = "true"
+        ET.SubElement(properties, "HexalithImmutableVersion").text = "11.0.0"
+        ET.SubElement(properties, "HexalithImmutableVersion", {"Condition": "'$(" + selector + ")' == 'true'"}).text = (
+            self._frontcomposer_profile()["selected_catalog_required_packages"]["System.Collections.Immutable"])
         next(row for row in root.iter("PackageVersion") if row.get("Include") == "System.Collections.Immutable").set("Version", "$(HexalithImmutableVersion)")
         return self._catalog_xml_bytes(root)
 
@@ -2659,6 +2664,11 @@ class PolicyShapeTests(unittest.TestCase):
         self.assertEqual(inventory, dg._FRONTCOMPOSER_IMMUTABLE_PROJECTS)
         catalog = ET.fromstring((ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes())
         selectors = list(catalog.iter("HexalithFrontComposerImmutable10CatalogView"))
+        if not selectors:
+            expected = self._frontcomposer_profile()["selected_catalog_required_packages"]["System.Collections.Immutable"]
+            dg.assert_frontcomposer_immutable_version(catalog, expected, "current literal consumer catalog", None)
+            self.assertEqual([], list(catalog.iter("HexalithImmutableVersion")))
+            return
         self.assertEqual(2, len(selectors))
         names = re.findall(r"\$\(MSBuildProjectName\.Equals\('([A-Za-z0-9._-]+)'\)\)", selectors[1].get("Condition", ""))
         self.assertEqual(len(inventory), len(names))
@@ -3749,11 +3759,36 @@ class QualityCatalogPreparationWorkflowTests(unittest.TestCase):
 
 
 class ApprovedProjectionExpectationTests(unittest.TestCase):
+    def test_net11_immutable_profile_accepts_exact_literal_and_retains_prior_version_refusal(self) -> None:
+        policy = dg.load_policy(ROOT / "eng/dependency-graph-policy.json")
+        expected = policy["profiles"][policy["semantic_profiles"]["github.com/hexalith/hexalith.frontcomposer"]]["selected_catalog_required_packages"]["System.Collections.Immutable"]
+        self.assertEqual("11.0.0", expected)
+        for version in ("11.0.0", "10.0.15", "11.0.1"):
+            catalog = ET.fromstring('<Project><ItemGroup><PackageVersion Include="System.Collections.Immutable" Version="'
+                                   + version + '" /></ItemGroup></Project>')
+            with self.subTest(version=version):
+                if version == expected:
+                    dg.assert_frontcomposer_immutable_version(catalog, expected, "net11 source profile", None)
+                else:
+                    with self.assertRaisesRegex(dg.GraphError, "expected version"):
+                        dg.assert_frontcomposer_immutable_version(catalog, expected, "net11 source profile", None)
+
+    def test_legacy_immutable_view_retains_exact_previous_policy_value(self) -> None:
+        fixture = PolicyShapeTests("test_immutable_consumer_view_satisfies_existing_policy_without_normalization")
+        catalog = ET.fromstring(fixture._immutable_consumer_catalog())
+        selected = list(catalog.iter("HexalithImmutableVersion"))[1]
+        selected.text = "10.0.15"
+        # An old committed policy can still prove its own exact view. The .NET 11
+        # policy must refuse those same unchanged bytes instead of normalizing them.
+        dg.assert_frontcomposer_immutable_version(catalog, "10.0.15", "legacy source profile", None)
+        with self.assertRaisesRegex(dg.GraphError, "must select policy version"):
+            dg.assert_frontcomposer_immutable_version(catalog, "11.0.0", "net11 source profile", None)
+
     def test_exact_two_policy_expectations_and_older_wrong_missing_catalog_negatives(self) -> None:
         policy = dg.load_policy(ROOT / "eng/dependency-graph-policy.json")
         requirements = policy["profiles"]["frontcomposer-catalog-v1"]["selected_catalog_required_packages"]
         for name, approved, newer in (("Microsoft.Extensions.Localization", "11.0.0", "11.0.1"),
-                                      ("System.Collections.Immutable", "10.0.15", "10.0.16")):
+                                      ("System.Collections.Immutable", "11.0.0", "11.0.1")):
             self.assertEqual(requirements[name], approved)
             for version in (approved, "10.0.14", newer, None):
                 catalog = ET.fromstring('<Project><ItemGroup>' + (
