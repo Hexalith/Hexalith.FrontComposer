@@ -197,7 +197,9 @@ public abstract class GeneratedComponentTestBase : BunitContext {
         MethodInfo callback = virtualizer.GetType()
             .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
             .Single(method => method.Name.EndsWith(".OnBeforeSpacerVisible", StringComparison.Ordinal));
-        _ = await cut.InvokeAsync(() => callback.Invoke(virtualizer, [0f, 0f, 10_000f]))
+        // .NET 11 distinguishes an initial viewport fill from scrolling and content measurements.
+        object viewportFill = Enum.Parse(callback.GetParameters()[3].ParameterType, "ViewportFill");
+        _ = await cut.InvokeAsync(() => callback.Invoke(virtualizer, [0f, 0f, 10_000f, viewportFill]))
             .ConfigureAwait(true);
         await cut.InvokeAsync(() => grid.Instance.RefreshDataAsync(force: true)).ConfigureAwait(true);
         cut.Render();

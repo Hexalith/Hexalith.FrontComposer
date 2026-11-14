@@ -377,7 +377,10 @@ public partial class GeneratorDriverTests {
     }
 
     private static GeneratorDriverRunResult RunGenerator(CSharpCompilation compilation, out CSharpCompilation outputCompilation) {
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
+        // CompilationHelper references the loaded ASP.NET Core 11 assemblies; generated trees
+        // must select the same framework API surface when warnings are promoted to errors.
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
+            .WithUpdatedParseOptions(CSharpParseOptions.Default.WithPreprocessorSymbols("NET11_0_OR_GREATER"));
         driver = driver.RunGenerators(compilation, TestContext.Current.CancellationToken);
         GeneratorDriverRunResult result = driver.GetRunResult();
         outputCompilation = compilation.AddSyntaxTrees(result.GeneratedTrees.ToArray());
