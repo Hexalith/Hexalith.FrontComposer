@@ -290,6 +290,99 @@ test('shell focus scrolling protects the ring and cancels stale or disposed work
   expect(cancelled).toEqual({ moved: true, disposed: true });
 });
 
+for (const surface of [{ name: 'Home', path: '/home' }, { name: 'type specimen', path: '/__frontcomposer/specimens/type' }])
+for (const spacing of [false, true]) test(`a focused ${surface.name} heading stays visible after short viewport reflow${spacing ? ' with text spacing' : ''}`, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(surface.path);
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  const heading = page.locator('#fc-main-content h1').first();
+  if (surface.name === 'type specimen') await expect(heading).toHaveText('Type specimen');
+  if (spacing) await applyTextSpacing(page);
+  await heading.focus();
+  await expect(heading).toBeFocused();
+  await page.evaluate(() => {
+    (window as typeof window & { __aeHeadingFocusEvents?: number }).__aeHeadingFocusEvents = 0;
+    document.querySelector('#fc-main-content h1')!.addEventListener('focus', () => {
+      (window as typeof window & { __aeHeadingFocusEvents: number }).__aeHeadingFocusEvents++;
+    });
+  });
+  await page.setViewportSize({ width: 320, height: 225 });
+  await page.locator('.fluent-layout[global-scrollbar]').waitFor();
+  await expect(heading).toBeFocused();
+  await expectFocusVisible(heading);
+  expect(await page.evaluate(() => (window as typeof window & { __aeHeadingFocusEvents: number }).__aeHeadingFocusEvents), 'reflow reveals the existing focus without another focus event').toBe(0);
+});
+
+for (const input of ['PageDown', 'Space', 'Control+End', 'Control+Home', 'wheel'] as const) test(`resize focus visibility yields to ${input} input and releases its observers on disposal`, async ({ page, browserName }, info) => {
+  await page.goto('/home');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+  await page.evaluate(async () => {
+    const modulePath: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js';
+    const keyboard = await import(modulePath);
+    const root = document.createElement('div');
+    root.id = 'ae-resized-shell';
+    root.className = 'fc-shell-root';
+    root.style.cssText = 'position:fixed;inset:100px auto auto 20px;width:240px;height:180px;overflow:auto;z-index:2000;background:Canvas';
+    root.innerHTML = '<div id="fc-main-content"><div style="height:400px"></div><h1 tabindex="-1" style="font-size:20px;line-height:24px;margin:8px">Focused route heading</h1><div style="height:1200px"></div></div>';
+    document.body.append(root);
+    keyboard.registerShellKeyFilter(root);
+    const heading = root.querySelector('h1')!;
+    heading.focus();
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const nativeScroll = heading.scrollIntoView.bind(heading);
+    (window as typeof window & { __aeResizeScrollCalls: number }).__aeResizeScrollCalls = 0;
+    heading.scrollIntoView = options => {
+      (window as typeof window & { __aeResizeScrollCalls: number }).__aeResizeScrollCalls++;
+      nativeScroll(options);
+    };
+    root.style.width = '180px';
+  });
+  const root = page.locator('#ae-resized-shell');
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __aeResizeScrollCalls: number }).__aeResizeScrollCalls)).toBeGreaterThan(0);
+  await page.evaluate(() => { (window as typeof window & { __aeResizeScrollCalls: number }).__aeResizeScrollCalls = 0; });
+  const beforeInput = await root.evaluate(element => element.scrollTop);
+  const nativeBoundaryScroll = browserName !== 'webkit' || !input.startsWith('Control+');
+  if (!nativeBoundaryScroll) await info.attach('boundary-key-capability', { body: 'Linux WebKit does not scroll this focused-heading scrollport on Ctrl+Home/End. This row proves cancellation only; no native scrolling claim.', contentType: 'text/plain' });
+  if (input === 'wheel') {
+    await root.hover();
+    await page.mouse.wheel(0, 400);
+  } else {
+    await page.keyboard.press(input);
+  }
+  if (!nativeBoundaryScroll) {
+    expect(await root.evaluate(element => element.scrollTop)).toBe(beforeInput);
+  } else if (input === 'Control+Home') {
+    await expect.poll(() => root.evaluate(element => element.scrollTop)).toBe(0);
+  } else {
+    await expect.poll(() => root.evaluate(element => element.scrollTop)).toBeGreaterThan(400);
+  }
+  await root.evaluate(element => { element.style.width = '150px'; });
+  await settlePaint(page);
+  if (!nativeBoundaryScroll) {
+    expect(await root.evaluate(element => element.scrollTop)).toBe(beforeInput);
+  } else if (input === 'Control+Home') {
+    expect(await root.evaluate(element => element.scrollTop), 'resizing must not undo Ctrl+Home').toBe(0);
+  } else {
+    expect(await root.evaluate(element => element.scrollTop), 'resizing must not undo the later native scroll').toBeGreaterThan(400);
+  }
+  expect(await page.evaluate(() => (window as typeof window & { __aeResizeScrollCalls: number }).__aeResizeScrollCalls)).toBe(0);
+  await page.evaluate(async () => {
+    const modulePath: string = '/_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js';
+    const keyboard = await import(modulePath);
+    const root = document.getElementById('ae-resized-shell')!;
+    const heading = root.querySelector('h1')!;
+    heading.blur(); heading.focus();
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    keyboard.unregisterShellKeyFilter(root);
+    (window as typeof window & { __aeResizeScrollCalls: number }).__aeResizeScrollCalls = 0;
+    root.style.width = '120px';
+    window.dispatchEvent(new Event('resize'));
+  });
+  await settlePaint(page);
+  expect(await page.evaluate(() => (window as typeof window & { __aeResizeScrollCalls: number }).__aeResizeScrollCalls), 'disposed shells keep no resize scrolling').toBe(0);
+  await root.evaluate(element => element.remove());
+});
+
 test('delayed overlay disposal preserves an operator Tab after native origin return', async ({ page }) => {
   await page.goto('/counter');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();

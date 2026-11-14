@@ -1,5 +1,157 @@
 # Story 13.6 accessibility result and human checklist
 
+## Approved specimen heading and platform baselines — 2026-11-14
+
+The explicit user “approve” applies to the prepared “Type specimen” heading/description and its affected visual baselines. The exact approved two-line patch SHA-256 bc61d50661e75ad3a3c2b553c6ad198ac34ba762f41fca3ace8af22a20923d35 is now compiled. Home and type heading reflow pass, and all 24 Linux/Windows baseline comparisons pass without snapshot update. This supersedes the preceding unapplied-proposal state. Story 13.6 remains in-progress for the independent failures, runtime and acceptance gates below.
+
+**Candidate:** root 1a68cf5540b6e01848cb6fdb2e37c6d3cd4dd947 plus src/tests/samples patch SHA-256 79a33432312b19a1a65ef47a11dd2ca400b141ca4cc66dbaed97e947bd218928, including the preserved Home correction and the 24 updated PNGs. FrontComposerTypeSpecimen.razor SHA-256 is cf9c4e5b77b8fff291d115f254ae4aa64e4599f107968f1a609097e3e4a47301; responsive-accessibility.spec.ts is 3eacd9353835e386cad9f7bc18fc47f3ac09e566feda9203eef0872f7cfe1f7f; destructive-command-confirmation.spec.ts is eb010c9b7c1342825810082e2b6387de41fcc0aef4cd40602d4c5efb8455a286. Compiled Counter.Specimens.dll is f845dc778913affc4505b98bae10ec8f1522ded1b2907afa50ae92d48850e16a. The sole related locator naming the former long H1 now uses the approved short name; its focus-return behavior remains asserted.
+
+| Verification | Current result |
+| --- | --- |
+| Debug Counter build, including changed specimen | Zero warnings/errors |
+| TypeScript | Exit 0 |
+| Focused heading/reflow/scroll/disposal lane | 45/45 across Chromium/Firefox/WebKit; zero failed/skipped/flaky/retries |
+| Affected specimen lane | 60/60, including eighteen no-update Linux visual comparisons; zero failed/skipped/flaky/retries |
+| Destructive-invoker return to the approved route heading | 3/3 engines |
+| Native Windows Chromium baseline regeneration / no-update comparison | 6/6 and 6/6; zero failed/skipped/flaky/retries |
+| Native Chromium actual 400% zoom | Four of four Home/type default/spacing canonical geometries pass |
+| Requested mobile-grid combined-spacing recheck | 45 focused passes plus six retained failures; same missing badge table in both themes on every engine |
+
+The six mobile-grid checks were run against the rebuilt approved content, so their prior failures were not simply carried forward. After the existing clipping/target probes, table.fc-projection-grid is absent and the table-layout assertion fails. No unrelated implementation correction is included. The previous 93/6 operator run, original-keyboard controls and every older failure retain their original source attribution; this bounded pass does not replace a complete browser/state-artifact/.NET/hosted gate.
+
+### Actual browser zoom and platform capture
+
+The compiled-source headed Chromium observer verifies 1280×900 CSS pixels/DPR 1 → native 320×225/DPR 4 using the extension's automatic per-tab browser zoom API, with outer width 1280, CSS zoom 1 and visual scale 1. All four first canonical measurements pass: Home default/spaced y=124–210 / 118–210; type default/spaced y=42–160 / 23–157. The approved title is read from the compiled component; no DOM title replacement is used. Complete CDP captures are 1280×900 physical pixels. The observer script SHA-256 is 5b28005b17b37daf58ffaf2c3ed7e061d24f836754b151b066549daf3532a70d. These are automated geometry observations, not generated/heard-speech or human AT/device completion.
+
+Linux uses Node 26.4.0 and locked Playwright 1.64.1 with the unchanged native Linux Fontconfig. Windows is genuinely native win32 Node 26.1.0 / OS release 10.0.26300, running the repository's same Playwright 1.64.1 CLI over its WSL UNC path. Its missing pinned Chrome for Testing and Headless Shell 156.0.8078.4 revision 1248 were installed into the normal Windows Playwright cache, without a repository dependency change. Windows Chromium reaches the same explicitly diagnostic Test host through localhost. All six Windows PNGs come from that renderer, not Linux-produced substitutes.
+
+All 24 before/after pairs retain identical dimensions: Chromium Linux/Windows 1280×3826/3894/3962, Firefox Linux 1280×3853/3921/3969, WebKit Linux 1280×3894/3962/4010 for Compact/Comfortable/Roomy in both themes. The title and paragraph are the intended change. Every header matrix and representative full Light/Dark frames were inspected; all lower surfaces remain present. Parent pixel inspection outside header y>=260 finds no channel delta>32 on any image, and WebKit pixels there are identical; that metric is analysis only, with no changed test tolerance. The existing Windows 76,000-pixel allowance, Linux thresholds, font settings, helpers, typography and unrelated PNG/Verify baselines are preserved. The approval/before/after rationale is appended to docs/accessibility-verification/baseline-change-rationale.md.
+
+### Commands, hashes and retained output
+
+Linux raw output, exact scripts, before images, comparison sheets and baseline-comparison.json remain local under /tmp/fc-story13-6-approved-heading-20261114-q_ac1rc9/. That comparison file contains all 24 before/after raw hashes and has SHA-256 1a49ef4cfb743ff7343c3599b7057e84a1a03abe6f26a216314a1875f79d762f. Before PNGs also remain retrievable from the source-owned baseline at root 1a68. Windows reports and exact argv/environment JSON remain under C:\Users\JeromePiquot\AppData\Local\Temp\fc-story13-6-approved-heading-20261114-q_ac1rc9\. The final Windows wrapper SHA-256 is ef9459085d363ed5c647f59c1e6d9b45dd6fabb41af7830701d7a437daa0c797. Parent image/pixel audits are /tmp/fc-story13-6-approved-heading-parent-j35fzub8/baseline-image-audit.json and baseline-pixel-audit.json. No new evidence packet or runtime-identity record is committed.
+
+Repository-root commands:
+
+    aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json
+    dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Debug --no-restore -m:1 -v:q -nodeReuse:false --disable-build-servers
+    npm --prefix tests/e2e run typecheck
+
+The explicit diagnostic host uses the unchanged Test settings: DOTNET_ROLL_FORWARD=LatestMajor, ASPNETCORE_ENVIRONMENT=Test, Hexalith__FrontComposer__Specimens__Enabled=true, Hexalith__Shell__FormAbandonmentThresholdSeconds=5, Hexalith__Shell__TimeoutActionThresholdMs=5000, Hexalith__Shell__ProjectionReconnectedNoticeDurationMs=30000, Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs=6500 and Logging__LogLevel__Default=Warning, followed by:
+
+    dotnet run --project samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --no-build --no-launch-profile --urls http://127.0.0.1:5070
+
+Each Linux Playwright command ran from tests/e2e with BASE_URL=http://127.0.0.1:5070, PLAYWRIGHT_SKIP_WEBSERVER=1, FC_E2E_OUTPUT_DIR=<scratch>/<lane>/out and FC_E2E_HTML_REPORT_DIR=<scratch>/<lane>/html, then the following argv. All use --workers=2 --retries=0:
+
+- linux-update: npx --no -- playwright test specs/specimen-accessibility.spec.ts --grep 'visual baseline' --update-snapshots=all
+- focused-final: npx --no -- playwright test specs/responsive-accessibility.spec.ts --grep 'a focused .* heading stays visible|resize focus visibility|shell focus scrolling|held shell focus visibility frame|O5 the desktop content scrollport'
+- focus-and-mobile: the same focused expression plus '|generated mobile grid columns'. Its six failures are retained.
+- specimen-verify: npx --no -- playwright test specs/specimen-accessibility.spec.ts --grep 'manifest names|type specimen is nonblank|type specimen renders required|theme and density controls|expanded specimen detail|dark generated command|viewport reflow|visual baseline'
+- destructive-heading: npx --no -- playwright test specs/destructive-command-confirmation.spec.ts --grep 'removed destructive invoker restores focus to the route heading'
+
+The native-zoom command from the repository root is:
+
+    xvfb-run -a -s '-screen 0 1600x1200x24' tests/e2e/node_modules/.bin/playwright test --config=/tmp/fc-story13-6-approved-heading-20261114-q_ac1rc9/native-approved/zoom.config.ts
+
+Windows uses the absolute C:\Program Files\nodejs\node.exe. Its CLI install command targets the repository's pinned node_modules/playwright/cli.js with install chromium. The final wrapper windows-visual.cjs runs phases update and verify through that same CLI, existing playwright.config.ts and specimen-accessibility.spec.ts, with --grep 'visual baseline' --project=chromium --workers=2 --retries=0; only update adds --update-snapshots=all. The exact native paths, cwd and output environments are preserved in update-command.json and verify-command.json. Earlier read-only Windows capability-probe and first wrapper syntax failures happened before browser execution and are retained separately; they produced no adopted captures. No failed product comparison is erased by the successful update/verify runs.
+
+Report SHA-256 values:
+
+- Focused 45: a50c03a71692b6a19ce242288f16519d753460efec88a1039e24529552c4cb2d.
+- Affected specimen 60: e2bc608513253240bccb8349c767cf47850acb496b4850c5c00f2b80e69905e7.
+- Destructive 3: 3f289902f7b681b871d2a64e845fe50afd85b0516b71bd7ce5e43b0ce36c5158.
+- Windows update 6 / verify 6: e318308f1521af0059b9dcce343ed9c016f9d0baf9b6b26e84f46bc134688d37 / c9a60cebea2b0963b55e9218c0a97d620c725236bb66946cc01ac786f555105b.
+- Mobile recheck 45/6: 52c5442d9d6f25b0f455b5a9dd46b6aec930480f14ca9a4edbdec74b174a11fc.
+- Native four-geometry runner: d7e4b50b9624c6eae7bfcde5c31257f95cd0441ee080625c26b4dca4a2305cbb.
+
+**Remaining limits.** Exact-target Aspire startup again fails seven net10/net11 NU1201 mismatches. The earlier ordinary net10 MessagePack binding failure remains a separately attributed unresolved failure; no normal-runtime success is inferred from the title change. All current runtime checks use explicit roll-forward, and the loaded libcoreclr path confirms 11.0.0. The six mobile-grid failures, current-candidate human observations, applicable changed-cue WebKit acceptance and independent OI-16/G-4/FLUENT-APP-1/Product/Architect decisions remain open. The historical manual Pass/waiver records, eighteen itemized boxes, original unfinished acceptance tasks, D3/O2 deferrals and frozen criteria are unchanged. HZ3 is resolved by the explicit user decision; only HZ4–HZ7 close on this implementation evidence. No dependency, policy, public API, gitlink, staging, commit, push or hosted run is added; no current-candidate CI link is available.
+
+**Final checks and cleanup.** Visual governance passes for exactly 24 changed snapshots; the global story-artifact validator and git diff --check exit 0. Byte audits confirm the exact approved two-line sample patch, preserved Home module, original frozen/checklist prefix, full preceding result/rationale content, CRLF and every unrelated PNG/Verify baseline. The owned Test host is stopped, port 5070 is closed, native Chromium/Xvfb and Windows Playwright runners exited, and exact-target Aspire reports no running AppHost. Disposable task zoom profiles were removed; reports, before/after captures and raw failures remain local. No index, commit, push or hosted state was changed.
+
+## Focused heading reflow correction and runtime limits — 2026-11-14
+
+Home's already-focused route heading now remains visible after a viewport/zoom reflow without another focus event. No new native generated/heard-speech observation is claimed. AE-05 remains open for the intrinsically oversized type-specimen heading. A concrete content proposal is prepared but unapplied; current acceptance remains incomplete.
+
+**Candidate.** Root 1a68cf5540b6e01848cb6fdb2e37c6d3cd4dd947 plus the two-file src/tests patch SHA-256 0b38ecbfb0678f599375398ce182fffdb8fd88016820524888c2019c4e222fa8. Final fc-keyboard.js SHA-256 is 64dc9446d10219f530fdd8fbe274b1ddeebe4b6a6ebb2aaff1112978347ec06d; responsive-accessibility.spec.ts is dc58ecff44007bd9db992b127b84cc1a40ac6701abb6c5dc1777faff72183f1b. HTTP-served keyboard bytes match source. Pre-existing dirty Builds, Parties and Platform submodule work is preserved. The original frozen baseline/intent and every original checkbox are unchanged.
+
+The parent invocation began at root 5c54d54e740ec5be87e29eabbd311f56831ced64. An external operation advanced it to 1a68cf5540b6e01848cb6fdb2e37c6d3cd4dd947 before this implementation subtask recorded its baseline and executed these checks. This task created neither commit and preserved the external update; all fresh results above use the recorded 1a68 root and their stated patch/runtime limits.
+
+**Correction.** The existing shell focus path watches only the programmatically focused route heading and its owning boxes. Viewport resize and the later Fluent tier reflow can therefore reveal that same heading without refocusing it. Normal controls retain their existing one-shot focus scrolling. Native navigation, pointer input, wheel, heading Space and heading Ctrl+Home/End release the resize watch; disposal removes the observer and listeners. Neutral modifier-only, consumed and IME input preserve pending visibility. The new regressions establish zero extra Home focus events, real native scroll precedence and disposal. Linux WebKit does not scroll this focused-heading scrollport on Ctrl+Home/End; its two rows explicitly prove cancellation only and attach that capability observation.
+
+### Runtime and verification boundaries
+
+The ordinary exact-target Aspire start exits 2 with seven NU1201 errors: selected Tenants/Parties UI, EventStore.Aspire and Builds.Tooling projects target net11.0 while their FrontComposer owners target net10.0. Exact-target describe reports no running AppHost. The narrow Debug Counter build passes with zero warnings/errors, but its ordinary net10.0 Test host closes the Blazor circuit: MessagePack throws MissingMethodException for Microsoft.AspNetCore.SignalR.IInvocationBinder.GetTarget(ReadOnlySpan<byte>). Counter's dependency output selects SignalR 11.0.0 while its runtimeconfig selects ASP.NET Core 10.0.
+
+Browser/operator/visual/native-zoom checks below therefore use an explicitly diagnostic standalone host with DOTNET_ROLL_FORWARD=LatestMajor and the installed ASP.NET Core 11.0.0 runtime. No dependency, target framework, catalog, policy or runtimeconfig file changed. These results do not qualify the ordinary .NET 10 runtime or repair the AppHost graph. A full .NET/state-artifact/hosted gate is not claimed.
+
+| Lane | Result and attribution |
+| --- | --- |
+| Pre-edit scanner/measurement checks | 108/108 across Chromium/Firefox/WebKit; zero skips/flaky/retries; helpers unchanged by this correction |
+| Node evidence / final TypeScript | 29/29 on Linux / exit 0 |
+| New Home reflow regression against original keyboard module | Six expected failures, two per engine |
+| Final affected heading/scroll/keyboard/disposal lane | 39/39, thirteen per engine; zero failures/skips/flaky/retries |
+| Current diagnostic operator-surface lane | 93 passed / six failed / zero skips/flaky/retries; before the final Ctrl-boundary guard/test additions |
+| Original-keyboard control for all six operator failures | Six failures on all engines/themes; exact existing mobile-grid journey with the original module intercepted, so these failures are not introduced by the heading correction |
+| Final native Chromium zoom observations | Home default/spaced: two canonical passes; type default/spaced: two retained canonical failures; the diagnostic runner passes its expected-result assertions |
+| Approved visual comparisons | 18/18 unchanged on the final production source; visual-final-confirmed report SHA-256 9bb645030008dd57c18c7cbcc209ca1256231085b05133b77fb14ecd12601bb4 |
+
+The six broader failures are both themes' existing “generated mobile grid columns retain native cell targets with combined spacing” cases: after the clipping/target probes, the expected badge table is absent and toHaveCSS('table-layout','auto') fails. Both the preceding source and the original-keyboard control reproduce them. Their deeper runtime/virtualization cause is unproven; narrowing the observer was a conservative scope correction, not a demonstrated resolution. The broader operator report belongs to keyboard SHA-256 6c303c7b78b56f6f5f070da95840d4cc0ced4ed5c2a3592bd328062745d70988 and the starting src/tests fingerprint 87764037bc02d0486bde3e5474c39511cbd00f51d8e35e238c3351541239e736. The final changes add Ctrl-boundary cancellation and its focused tests; no broader final-candidate pass is inferred.
+
+### Actual zoom and unapplied specimen proposal
+
+The headed Chromium observer uses a temporary extension's automatic per-tab tabs.setZoom(4)/getZoom with viewport emulation disabled. Each case verifies reference 1280×900 CSS pixels/DPR 1, then 320×225/DPR 4, outer width 1280, CSS zoom 1 and visual scale 1. Complete CDP captures are 1280×900 physical pixels. The final production observer is native-complete/heading-diagnostic.spec.ts, SHA-256 4be80ec1fd7fcd3661fca1cc992099b7c1900d1fa68c04c3a05c3556f14d253a; its report is ae9cac87dc7c9e1bd4fb5d845ff38d6a3f20e27ccf9fd50a3d57777099dbbf34. Later test-only capability notes and the focus-counter assertion-message correction leave production/helper bytes unchanged.
+
+Home's final canonical envelopes are y=124–210 default and y=118–210 with all spacing, with no failures. Its original envelopes were y=184–270 and y=196–288. The type H1 is intrinsically 260px/420px tall; its complete 274px/434px indicator envelope cannot fit the 225px viewport even after explicit nearest/start scrolling. Its failures remain attached unchanged; no threshold or exception is weakened.
+
+The prepared, **unapplied** patch at /tmp/fc-story13-6-current-20261114-76m_fore/oversized-proposal/specimen-heading.patch (SHA-256 bc61d50661e75ad3a3c2b553c6ad198ac34ba762f41fca3ace8af22a20923d35) proposes:
+
+    <h1 id="fc-type-specimen-title">Type specimen</h1>
+    <p>Type, theme, density, lifecycle, and navigation specimen. Generated shell surfaces rendered with deterministic local data.</p>
+
+A DOM-only preview preserves typography, tokens and breakpoints. At actual 400% zoom, its H1 is 104px/120px tall with complete 118px/134px indicator envelopes and zero canonical failures. The full-viewport default and spacing previews are oversized-proposal-fullviewport/heading-type-false.png and heading-type-true.png under the scratch root below; both were inspected. Its script SHA-256 is 79244fe80a0f33bd261ebee7b2ed0da127c4eb121b06dd0161e4901cacee8e7e. Earlier Playwright-sized cropped previews remain separate and are not whole-viewport evidence. Applying this content change would alter approved type-specimen images and needs the pending explicit visual decision. Sample source and every approved image remain untouched. No oversized-heading exception or frozen-criterion amendment is inferred.
+
+### Exact commands and retained attempts
+
+Raw reports, scripts, captures and failed attempts stay outside the checkout at /tmp/fc-story13-6-current-20261114-76m_fore/; no committed evidence packet is added. Node 26.4.0 and locked/installed Playwright 1.64.1 were used. Commands from the repository root:
+
+    aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json
+    aspire describe --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json
+    dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Debug --no-restore -m:1 -v:q -nodeReuse:false --disable-build-servers
+    node --test tests/e2e/scripts/a11y-state-evidence.test.mjs
+    npm --prefix tests/e2e run typecheck
+
+Diagnostic host, with all existing Test timings retained:
+
+    env DOTNET_ROLL_FORWARD=LatestMajor ASPNETCORE_ENVIRONMENT=Test Hexalith__FrontComposer__Specimens__Enabled=true Hexalith__Shell__FormAbandonmentThresholdSeconds=5 Hexalith__Shell__TimeoutActionThresholdMs=5000 Hexalith__Shell__ProjectionReconnectedNoticeDurationMs=30000 Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs=6500 Logging__LogLevel__Default=Warning dotnet run --project samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --no-build --no-launch-profile --urls http://127.0.0.1:5070
+
+All repository Playwright commands ran from tests/e2e with BASE_URL=http://127.0.0.1:5070, PLAYWRIGHT_SKIP_WEBSERVER=1, FC_E2E_OUTPUT_DIR=<scratch>/<lane>/out and FC_E2E_HTML_REPORT_DIR=<scratch>/<lane>/html. Their exact selections were:
+
+| Lane | Command after that environment prefix |
+| --- | --- |
+| browser | npx --no -- playwright test specs/a11y-helper.spec.ts specs/responsive-accessibility.spec.ts --grep 'a11y helper impact partitioning\|default scanner\|R4 \|R5 \|R6 \|R7 ' --workers=2 --retries=0 |
+| focused-final-wording | npx --no -- playwright test specs/responsive-accessibility.spec.ts --grep 'a focused Home heading\|resize focus visibility\|shell focus scrolling\|held shell focus visibility frame\|O5 the desktop content scrollport' --workers=2 --retries=0 |
+| operator-final | npx --no -- playwright test specs/responsive-accessibility.spec.ts --grep 'Story 13.6 responsive operator surfaces' --workers=2 --retries=0 |
+| visual-final-confirmed | npx --no -- playwright test specs/specimen-accessibility.spec.ts --grep 'visual baseline' --workers=2 --retries=0 |
+
+The original-keyboard control used --config=<scratch>/grid-control/playwright.config.ts with the same two workers/no retries and output roots grid-control/out-2 and grid-control/html-2. It copies the existing journey verbatim and serves keyboard-before.bin for only the keyboard-module request. Actual native commands ran from the repository root:
+
+    xvfb-run -a -s '-screen 0 1600x1200x24' tests/e2e/node_modules/.bin/playwright test --config=/tmp/fc-story13-6-current-20261114-76m_fore/native-complete/zoom.config.ts
+    xvfb-run -a -s '-screen 0 1600x1200x24' tests/e2e/node_modules/.bin/playwright test --config=/tmp/fc-story13-6-current-20261114-76m_fore/oversized-proposal-fullviewport/zoom.config.ts
+
+Retained failures and intermediate attempts are not replaced by final focused passes:
+
+- The initial native observer was interrupted (exit 130); the second timed out at 120s waiting for hydration on the ordinary broken runtime. Disk exhaustion was separately observed at 6.8MB free; only this task's disposable browser profile was removed. The empty/failed low-space runtime diagnostic and the detailed MessagePack diagnostic are retained.
+- The first regression command used the wrong working directory and found no tests. The corrected heading-red-2 run fails 6/6 against unchanged product source. The early corrected heading-green lane passes 24/24.
+- The first broad observer run is 119 passed / seven failed: six badge-table failures and one WebKit fixture failure. The later narrowed-observer focused lane is 30 passed / the same six badge failures; neither is a complete pass. The original-keyboard control's first configuration attempt failed ESM import; its corrected run reproduces all six failures.
+- Wheel and Space red controls each fail on all three engines. The Ctrl red control has four actual native rewind failures in Chromium/Firefox plus two unsupported-native-scroll precondition failures in Linux WebKit. The first final Ctrl lane is 37/39 for that same capability distinction; the corrected capability-labelled lane is 39/39. Earlier 33/33 belongs to the preceding Space/wheel candidate.
+- The first tightened native API check fails on floating-point serialization 3.9999999999999996 versus 4 before geometry. The subsequent API check uses ten-decimal numeric agreement; exact viewport/DPR/CSS-zoom checks and all focus thresholds remain unchanged. Initial and corrected reports stay in different directories.
+
+Final focused JSON SHA-256: 25391902966e8bd3afdaee672879e55a3cd22fc68ea41cbdba2fe5c95223dd22. Broader failed JSON: 7b87b756e97e297ef20b1b4e178459f8db460f9d6724a9fe63a01298aa57cb89. Original-keyboard control JSON: c56ecb9a7e662778568b01dc778d98f7a1b45a2d1956b7a51ecf17c43c1d1f0c.
+
+**Repository checks and cleanup.** The global story-artifact validator and git diff --check exit 0. Original-prefix/historical-suffix byte checks preserve all previous spec/result text, frozen intent and original checkbox lines; all four changed files retain CRLF. All 24 tracked specimen PNGs byte-match HEAD, including the 18 executed Linux visual comparisons. The owned Test host is stopped, port 5070 is closed, exact-target Aspire stop/describe report no running AppHost, and all temporary Chromium/Xvfb sessions are closed. Owned disposable zoom profiles were removed; reports, scripts, captures, proposed patch and prior failed output remain retained. No native Windows/AT session was started.
+
+**Acceptance.** The six broader failures, ordinary-runtime/AppHost blockers, oversized specimen, current-candidate human observations, applicable changed-cue WebKit acceptance and independent OI-16/G-4/FLUENT-APP-1/Product/Architect decisions remain open. Historical MAN-136 Pass/waiver records, eighteen itemized boxes, D3/O2 deferrals, original incomplete matrix/result/Evidence tasks and Story/sprint in-progress remain unchanged. No new human observation or approval is inferred. No dependency, policy, baseline, public API, gitlink, staging, commit, push or hosted run is added.
+
 ## Agent-performed accessibility observations — 2026-11-07
 
 The user requested "do observations yourself" and confirmed that Windows was unlocked and would be left idle. The agent ran the available observations against root `e972d0f06a8eec3446db0b2270fdb14eef4c1186`, using the preceding clean Debug Counter build and the same standalone Test-host launch command. HTTP-served `fc-keyboard.js` and `fc-focus.js` byte-match source (`9b4f25a652572658e755a5dc673c08732493aeba6ae3c98e5648eef0f8184f6e` and `885eabb1ead35f829373f7ec3b25d8beecdf36d0514e50558b7a50abebcf2b87`); loaded Shell DLL is `6588d976d9882e713bf0e7022af6940c57ca81f62dd952ca08904565f00e851f`. These are agent-generated observations; generated speech and emulation are not human heard-speech or physical-device completion.

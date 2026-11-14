@@ -254,6 +254,7 @@ export function registerShellKeyFilter(element) {
     let headingLocation = window.location.href;
     let tabFocusPending = false;
     const recordPointer = (event) => {
+        stopFocusResizeWatch();
         announcedHeading = null;
         tabFocusPending = false;
         if (event.target instanceof Element && !event.target.closest(modalContainerSelector)) {
@@ -269,12 +270,9 @@ export function registerShellKeyFilter(element) {
     // scrollport and clip its outer focus ring. Run after that native scroll so
     // the authored scroll-margin/scroll-padding can protect the complete target.
     // Keep this within the mounted shell and never move focus or follow a stale target.
-    const showFocusedTarget = (event) => {
-        const target = event.target;
-        const wasPointerHeading = target === pointerHeading && window.location.href === pointerHeadingLocation;
-        announcedHeading = !tabFocusPending && !wasPointerHeading && isRouteHeading(target) ? target : null;
-        tabFocusPending = false;
-        if (isRouteHeading(target)) headingLocation = window.location.href;
+    let resizeTarget = null;
+    const resizeSizes = new Map();
+    const scheduleFocusVisibility = (target) => {
         cancelAnimationFrame(element.__fcShellFocusFrame);
         element.__fcShellFocusFrame = requestAnimationFrame(() => {
             if (element.isConnected && target instanceof HTMLElement && target.isConnected
@@ -283,20 +281,74 @@ export function registerShellKeyFilter(element) {
             }
         });
     };
+    const resizeObserver = new ResizeObserver((entries) => {
+        let changed = false;
+        for (const entry of entries) {
+            const previous = resizeSizes.get(entry.target);
+            const box = entry.target.getBoundingClientRect();
+            if (previous && (previous.width !== box.width || previous.height !== box.height)) changed = true;
+            resizeSizes.set(entry.target, { width: box.width, height: box.height });
+        }
+        if (changed && resizeTarget) scheduleFocusVisibility(resizeTarget);
+    });
+    const stopFocusResizeWatch = () => {
+        resizeTarget = null;
+        resizeObserver.disconnect();
+        resizeSizes.clear();
+    };
+    const watchFocusResize = (target) => {
+        stopFocusResizeWatch();
+        if (!isRouteHeading(target)) return;
+        resizeTarget = target;
+        // Zoom can preserve focus while both the viewport and the later Fluent tier
+        // layout change. Watch that focused target's owning boxes, without refocusing it.
+        for (let owner = target; owner && element.contains(owner); owner = owner.parentElement) {
+            const box = owner.getBoundingClientRect();
+            resizeSizes.set(owner, { width: box.width, height: box.height });
+            resizeObserver.observe(owner);
+        }
+    };
+    const showFocusedTarget = (event) => {
+        const target = event.target;
+        const wasPointerHeading = target === pointerHeading && window.location.href === pointerHeadingLocation;
+        announcedHeading = !tabFocusPending && !wasPointerHeading && isRouteHeading(target) ? target : null;
+        tabFocusPending = false;
+        if (isRouteHeading(target)) headingLocation = window.location.href;
+        watchFocusResize(target);
+        scheduleFocusVisibility(target);
+    };
     element.addEventListener('focusin', showFocusedTarget);
     element.__fcShellFocusVisibility = showFocusedTarget;
+    const showResizedFocus = () => {
+        const target = document.activeElement;
+        watchFocusResize(target);
+        if (resizeTarget) scheduleFocusVisibility(target);
+    };
+    window.addEventListener('resize', showResizedFocus);
+    const cancelResizedFocus = () => {
+        cancelAnimationFrame(element.__fcShellFocusFrame);
+        stopFocusResizeWatch();
+    };
+    element.addEventListener('wheel', cancelResizedFocus, { passive: true, capture: true });
+    element.__fcShellCancelResizedFocus = cancelResizedFocus;
+    element.__fcShellFocusResize = showResizedFocus;
+    element.__fcShellStopFocusResizeWatch = stopFocusResizeWatch;
 
     const handler = (event) => {
         const key = (event.key ?? "").toLowerCase();
+        const active = document.activeElement;
+        const headingBoundaryScroll = event.ctrlKey && !event.metaKey
+            && ['home', 'end'].includes(key) && isRouteHeading(active);
         // Only superseding native navigation/scrolling invalidates focus visibility.
         // Neutral, consumed and IME input must retain the pending ring protection.
         if (!event.defaultPrevented && !event.isComposing && event.keyCode !== 229
-            && !event.ctrlKey && !event.metaKey && !event.altKey
-            && ['tab', 'pagedown', 'pageup', 'home', 'end', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)
+            && (!event.ctrlKey || headingBoundaryScroll) && !event.metaKey && !event.altKey
+            && (['tab', 'pagedown', 'pageup', 'home', 'end', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)
+                || key === ' ' && isRouteHeading(document.activeElement))
             && (key === 'tab' || !isEditableInComposedPath(event))) {
             cancelAnimationFrame(element.__fcShellFocusFrame);
+            stopFocusResizeWatch();
         }
-        const active = document.activeElement;
         const hasModifier =
             event.ctrlKey || event.metaKey || (event.shiftKey && (key.length !== 1 || /\p{L}/u.test(key))) || event.altKey;
 
@@ -460,6 +512,12 @@ export function unregisterShellKeyFilter(element) {
     element.removeEventListener("keydown", element.__fcShellKeyFilter);
     element.removeEventListener('focusin', element.__fcShellFocusVisibility);
     element.removeEventListener('pointerdown', element.__fcShellSkipPointer, true);
+    window.removeEventListener('resize', element.__fcShellFocusResize);
+    element.removeEventListener('wheel', element.__fcShellCancelResizedFocus, true);
+    element.__fcShellCancelResizedFocus = null;
+    element.__fcShellStopFocusResizeWatch?.();
+    element.__fcShellFocusResize = null;
+    element.__fcShellStopFocusResizeWatch = null;
     cancelAnimationFrame(element.__fcShellFocusFrame);
     element.__fcShellFocusVisibility = null;
     element.__fcShellSkipPointer = null;

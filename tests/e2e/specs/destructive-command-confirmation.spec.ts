@@ -550,7 +550,7 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     await expect(dialog).toHaveCount(0);
     await lifecycle.expectState(COMMAND_ID, 'idle');
     await expect(page.getByRole('heading', {
-      name: 'Type, theme, density, lifecycle, and navigation specimen',
+      name: 'Type specimen',
     })).toBeFocused();
   });
 });
