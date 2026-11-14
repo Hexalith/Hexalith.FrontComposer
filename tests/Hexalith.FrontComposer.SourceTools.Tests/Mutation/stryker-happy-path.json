@@ -19,6 +19,7 @@
       "break": 80
     },
     "coverage-analysis": "perTest",
+    "additional-timeout": 170000,
     "concurrency": 4,
     "test-case-filter": "Category!=MutationErrorHandling&Category!=Performance",
     "mutate": [

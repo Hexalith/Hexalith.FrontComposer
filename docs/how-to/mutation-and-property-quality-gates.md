@@ -46,6 +46,8 @@ The runner property builds xUnit 4.0.3 with its MTP entrypoint so Stryker 5.1 ca
 
 The commands retain debug phase and test diagnostics in the console log and stop a segment if its unmutated baseline fails. A baseline failure is not a mutation score; both complete reports must still pass validation.
 
+The happy-path config sets `additional-timeout` to 170,000 milliseconds. Pinned Stryker 5.1 estimates MTP test durations from the suite average, which gives the package-consumer test a 30-second coverage-capture limit despite its [105.033-second passing Quality result](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43605722548). Applying the tool's 1.5 duration multiplier and existing 10-second allowance gives 167.5495 seconds, rounded to 170 seconds. This setting also adds 160 seconds to every happy-path mutant deadline compared with the default; it is not a capture-only setting. The error-handling segment retains the 10-second default allowance, and the nightly job retains its 90-minute limit.
+
 ## Thresholds
 
 The happy-path SourceTools Parse/Transform segment is blocking at 80 percent. The error-handling segment is blocking at 60 percent. These are separate gates; a blended score is not accepted as evidence.
