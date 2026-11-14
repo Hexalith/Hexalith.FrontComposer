@@ -2,9 +2,9 @@
 title: 'Story 13.6: Verify Responsive and Assistive Accessibility'
 type: 'feature'
 created: '2026-10-15'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
-review_loop_iteration: 1
+review_loop_iteration: 2
 baseline_commit: '3c8679628ebdb8995afc09f712a04fcde623695c'
 context:
   - '{project-root}/AGENTS.md'
@@ -54,12 +54,12 @@ The user approved both recommendations and requested application.
 **Execution:**
 
 - [x] `tests/e2e/helpers/a11y.ts`, `tests/e2e/specs/a11y-helper.spec.ts` — add and prove default `wcag22aa` coverage in both helpers without weakening existing checks.
-- [ ] `tests/e2e/helpers/responsive-accessibility.ts` (new), `tests/e2e/specs/responsive-accessibility.spec.ts` (new) — exercise the matrix with spacing, target exceptions, full focus/occlusion geometry, contrast and media assertions; test geometry failures with synthetic fixtures. Reuse existing journeys/artifacts.
+- [x] `tests/e2e/helpers/responsive-accessibility.ts` (new), `tests/e2e/specs/responsive-accessibility.spec.ts` (new) — exercise the matrix with spacing, target exceptions, full focus/occlusion geometry, contrast and media assertions; test geometry failures with synthetic fixtures. Reuse existing journeys/artifacts.
 - [x] `tests/e2e/specs/specimen-accessibility.spec.ts` — distinguish reflow from real zoom; remove overflow allowance; reuse visual/contrast proof.
 - [x] `src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor{,.css}`, `FcCommandPalette.razor.css`, `FcPaletteResultList.razor.css`, `FcPageToolbar.razor` in that directory — fix clipping and Fluent token ownership; preserve defaults.
 - [x] `src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css`, `src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs`, `RazorEmitter.cs` in that directory — support lossless text spacing and bounded grid scrolling with truthful row sizing; update affected generator approvals and focused density/rendering tests.
 - [x] `src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor{,.cs}`, `src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs`, `CommandFormEmitter.cs` in that directory, `src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js` — implement decisions and focused regressions.
-- [ ] `_bmad-output/implementation-artifacts/13-6-accessibility-result.md` (new) — bind full candidate identity and sanitized references to every AE/surface; record manual journeys/outcomes, unresolved gates and opt-in UX review or authorized skip; disposition every Critical/High finding.
+- [x] `_bmad-output/implementation-artifacts/13-6-accessibility-result.md` (new) — bind full candidate identity and sanitized references to every AE/surface; record manual journeys/outcomes, unresolved gates and opt-in UX review or authorized skip; disposition every Critical/High finding.
 
 ### Resumed implementation tasks — 2026-10-17
 
@@ -69,7 +69,7 @@ The user approved both recommendations and requested application.
 - [x] B4 — same helper/spec: scale the actual indicator envelope or fail closed for demonstrated nontrivial transforms; retain normal translated Fluent controls and existing pseudo-focus clipping positives.
 - [x] B5 — `src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js`, responsive spec, existing missing-detail tests if needed: cancel old captures when query navigation changes the document identity. Trace duplicate ViewKey instances through the real component and group owner. Fix a reproduced physical-instance error with existing internal identity/DOM seams and no new public C# API; otherwise record the exact refutation/remaining uncertainty. Preserve co-mounted single-speech/focus ownership, handoff, cancellation and scope disposal.
 - [x] B6 — `tests/e2e/scripts/a11y-state-evidence.test.mjs`: use node:path basename and node:url fileURLToPath for platform-native paths; retain the existing retry/CLI behavioral assertions and run all twelve Node tests. Do not claim Windows execution on Linux.
-- [ ] Evidence — update this spec's implementation/review notes and `13-6-accessibility-result.md` with current candidate hashes, exact commands/results, every regression disposition and remaining manual/platform/owner/visual/catalog gates. Reuse the existing evidence lane at `evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/`; preserve all historical packets.
+- [x] Evidence — update this spec's implementation/review notes and `13-6-accessibility-result.md` with current candidate hashes, exact commands/results, every regression disposition and remaining manual/platform/owner/visual/catalog gates. Reuse the existing evidence lane at `evidence/story-13-6/2026-10-16-gap-closure/review-current-2026-10-17/`; preserve all historical packets.
 
 Given these reproduced counterexamples, when the helper regressions execute on all three engines, then invalid evidence fails and corresponding valid cases pass without weakening thresholds or approved snapshots. Given component-level reproduction/refutation, when duplicate recovery is assessed, then its disposition cites that proof. These bounded checks supplement the original acceptance criteria; required manual observations and catalog/visual gates stay open.
 
@@ -708,6 +708,71 @@ Groups:
 
 **Completion status (2026-11-04).** Build step 5 would set this spec to `done` and the sprint entry to `review`. Neither change is applied. The frozen intent says "Missing human evidence leaves this story incomplete", and the eighteen human checklist boxes, the owner decisions and the WebKit capability acceptance remain open. The spec therefore returns to `in-progress`, and `sprint-status.yaml` stays `in-progress`.
 
+### Owner-acceptance review — 2026-11-14
+
+**Scope.** Blind Hunter, Edge Case Hunter and Verification Gap reviewed this continuation's delta against HEAD `c24a7a27`: 23,608 bytes across the result, the spec and `deferred-work.md`. The literal `baseline_commit` range is 16.4 MB across 2,125 files, mostly unrelated main-line work. That range is beyond review, and earlier continuations' deltas carry their own triage rows. The AE-02 entry needed the human, so this counts as review loop 2. The decision was obtained in place ("Accept current evidence"), and only documentation was patched.
+
+| Finding | Verdict | Evidence | Route |
+|---|---|---|---|
+| OAVG01 | low | The ticked Evidence task names `evidence/…/review-current-2026-10-17/`, which the 2026-10-23 policy removed. The story-mode validator adds one `checked task lacks evidence` instance; eleven same-class instances exist at HEAD, and the global validator exits 0. | patch OAP12 |
+| OAVG02 | medium | The record said the frozen intent was unchanged while relying on an Owner override of its Never clause and Manual row. | patch OAP1 |
+| OABH01 | medium | Same contradiction; the record did not quote the question that cited the frozen rule. | patch OAP1 |
+| OABH02 | medium | `completed` rows without a human tester contradict the template; the record claimed the template was untouched. | patch OAP2 |
+| OABH03 | medium | The `completed` rows lacked template fields; "Pass with failures" was neither Pass nor Fail; a system path appeared. | patch OAP2 |
+| OABH04 | low | Post-v1 rows copied JAWS-specific release impact onto VoiceOver, tablet and phone. | patch OAP2 |
+| OABH05 | low | The ledger said "before v1 sign-off" against `post-v1`, and the real-device basis was unstated. Its no-DW-id claim is false: the prescribed ledger format has no id. | patch OAP14 |
+| OABH06 | low | The result had no status statement and no recorded validator, diff or preservation checks. The sprint part is false: step 5 syncs sprint status. | patch OAP13 |
+| OABH07 | medium | No current-build CI link. With the Owner's read-only consent, CI success and the cancelled Quality run are now recorded. | patch OAP11 |
+| OABH08 | low | The run could not be reproduced: invocation, runner-file hashes, console and host logs, and the artifacts path were missing, and "preceding" should have been "following". | patch OAP4 |
+| OABH09 | low | "None of its checks are altered" overstated the change. The start guard and cleanup changed; check bodies did not. | patch OAP6 |
+| OABH10 | medium | NVDA kept writing the evidence log after the run, with 35 post-run `Speaking` records, so the hash went stale and private activity was captured. | patch OAP3 |
+| OABH11 | false | The liveness concern does not hold for this run: the last in-run speech is at 10:45:36.644, after both idle windows. Ledger and walkthrough updates for external tooling are rejected; human walkthroughs start NVDA normally. | rejected |
+| OABH12 | low | Matching statuses alone did not show identical failures. The details are verified byte-identical, the D2/FX6 naming is aligned, and O2 stays deferred. | patch OAP7 |
+| OABH13 | low | Only two modules were fetched over HTTP, and hashes were truncated. Full hashes are now recorded; `fc-datagrid.js` identity comes from the pathspec. | patch OAP8 |
+| OABH14 | medium | The AE-02 High was closed without the operation map. Resolved by the Owner ("Accept current evidence"), with the operating journeys attributed to the 2026-11-02 map. | patch OAP9 |
+| OABH15 | low | The AE-07 extension cited no test. The forced-colors `reconciliation outline retains contrast and keyboard focus` test passed in the reused run. | patch OAP10 |
+| OABH16 | low | The identity pathspec omitted `deps.*.props`, `.gitmodules` and `.github`. The extended command exits 0, and a successor rule is added. | patch OAP5 |
+| OAEC01 | false | Spec `in-review` with sprint `in-progress` is the expected state mid-review; step 5 syncs sprint status. | rejected |
+| OAEC02 | medium | The log hash went stale as NVDA appended. | patch OAP3 |
+| OAEC03 | medium | Later Owner speech reached the evidence log. | patch OAP3 |
+| OAEC04 | low | No idle gate was used. The foreground stayed with Firefox: the key server refuses keys otherwise, and every keyed check ran. Owner input inside Firefox is disclosed as unexcludable. | patch OAP6 |
+| OAEC05 | false | The log header shows the runner `nvda-config`, and the log exists only because of the `-f` launch. | rejected |
+| OAEC06 | false | NVDA was alive throughout; see OABH11. | rejected |
+| OAEC07 | false | NAT1a starts with `openPage(scenarioPath)`, which resets the state after the probe Tab. | rejected |
+| OAEC08 | low | The artifacts path, DLL hashes and `fc-datagrid.js` identity were missing. | patch OAP4 |
+| OAEC09 | low | The host environment was cited as "preceding"; it is now cited by anchor with this run's artifacts path. | patch OAP4 |
+| OAEC10 | low | The pathspec omissions; see OABH16. | patch OAP5 |
+| OAEC11 | medium | Template fields missing; see OABH03. | patch OAP2 |
+| OAEC12 | medium | Result is now recorded as Fail on 4/31, with issue references. | patch OAP2 |
+| OAEC13 | medium | MAN-136-ZOOM lacked an explicit decision; decision 4 now provides it. ZERO-FIELD is an AT journey covered by decision 2. | patch OAP9 |
+| OAEC14 | low | The UX-136-REVIEW row still read "three High open"; it is superseded by the leading section. | patch OAP13 |
+| OAEC15 | low | The bounded-check sentence still said manual observations stay open; it is superseded by the amendment. | patch OAP13 |
+| OAEC16 | medium | CI link missing; see OABH07. | patch OAP11 |
+| OAEC17 | low | The new ledger entry sat under the 2026-11-04 code-review heading. | patch OAP14 |
+| OAEC18 | medium | The record's account of AC2 contradicted the Owner override; see OAVG02. | patch OAP1 |
+| OAEC19 | medium | The matrix task closure rests on the D2/FX6 and D3 Owner dispositions; AE-05 and AE-09 are not met by behavior. | patch OAP15 |
+| OAEC20 | medium | AE-02 operation mapping; see OABH14. | patch OAP9 |
+| OAEC21 | low | The native invocation was missing and the build used a placeholder. | patch OAP4 |
+
+Groups, all documentation patches applied by the parent, since there was no implementation subagent:
+
+- **OAP1:** an explicit renegotiation statement quoting the question.
+- **OAP2:** full template fields, Fail 4/31 with issue references, and per-row post-v1 fields.
+- **OAP3:** NVDA log frozen at the run end (`d7c4128a…`), with the post-run tail removed.
+- **OAP4:** commands, file hashes and anchors.
+- **OAP5:** extended pathspec and successor rule.
+- **OAP6:** guard changes, liveness and foreground evidence.
+- **OAP7:** failure identity and naming.
+- **OAP8:** module hashes.
+- **OAP9:** the AE-02/ZOOM decision.
+- **OAP10:** AE-07 test citation.
+- **OAP11:** hosted results.
+- **OAP12:** Evidence-lane supersession.
+- **OAP13:** status, checks and supersession sentences.
+- **OAP14:** ledger wording and heading.
+- **OAP15:** the AE-05/AE-09 disposition basis.
+
+No defer and no code change.
 
 ## Verification
 
@@ -1825,3 +1890,43 @@ Owned host/runners are stopped and awaited; ports 5070/5071/9516 are closed and 
 After storage was independently restored, one exact-target AppHost retry runs at `118f9f046491c2c6236bab4d477dbeb26dfbdda5` inside `run-with-temp`, with all new build output under its private TMPDIR and per-run build servers disabled. Compilation reports one OpenIdConnect MSB3277 warning and zero errors. CLI startup exits 2 / AppHost 134 on a captured missing project path under `/dev/shm/references/...`: existing `ProjectMetadataPaths` resolves its root by ascending from the redirected binary directory. This external-output metadata limitation leaves ordinary-output topology readiness unqualified. Exact-target stop/describe exit 0 with no AppHost, private scratch is removed, and raw commands/logs/exits remain external. The later AppHost attempt is separately attributed; earlier passing Counter/browser evidence retains its `4c9b5778f72822656eb80d56babf3f2d1d11d3c0` build origin.
 
 Final global story validation, visual governance, whitespace and original-byte/checkbox/frozen-block/CRLF/report-preservation checks pass. Only the two owning documents differ; the index is empty and the original baseline and primary/sprint in-progress states remain unchanged.
+
+## Owner acceptance of native NVDA evidence — 2026-11-14
+
+The full primary spec and both frontmatter context files were loaded. The only items left were human gates, so no implementation subagent was dispatched. The Owner chose the recommended path ("apply recommended"), then delegated the NVDA observations ("do it yourself"). The [leading result](13-6-accessibility-result.md#owner-acceptance-of-native-nvda-evidence--2026-11-14) records:
+
+- the Owner's exact decisions and the questions he answered;
+- the commands, hashes and hosted results;
+- the failed first attempt;
+- every disposition.
+
+**Candidate.** `c24a7a2736e03cd157b9ef3f81affed6e669f38e`. Its runtime, browser, build-configuration, `.github`, `.gitmodules` and `references` inputs are identical to `4c9b5778f72822656eb80d56babf3f2d1d11d3c0`, so the [current Counter verification](#current-counter-accessibility-verification--2026-11-14) is reused for the AE-01–AE-09 matrix rows. That run had 1,190 browser passes, four named skips, zero failures, eighteen visual comparisons and four actual-zoom geometries; it was not repeated. A fresh Debug Counter build for the native session reports zero warnings and zero errors. Hosted CI [43578828763](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43578828763) succeeded. Quality 43578828427 is recorded as cancelled, not qualification: its build-and-test job was cancelled, and every browser-regression and accessibility-visual job succeeded.
+
+**Native evidence.** NVDA 2026.2 with Firefox 155.0.1 on Windows 10.0.26300 runs the unchanged 31 NAT checks and passes **27**. The failure details are byte-identical to the 2026-11-04 `fx8-nat` reference. The four failures close only through the 2026-11-04 Owner dispositions, not through passing behavior:
+
+- D2, the Metadata cell at 400%, with and without spacing, is covered by the FX6 disposition under WCAG 2.4.11. AE-05's stricter floor is not met for that cell.
+- D3, the palette dialog context generated twice at 400% with and without spacing, is deferred even though AE-09 forbids duplicate speech.
+
+An earlier same-day attempt launched NVDA from WSL. NVDA stopped at startup with a liblouis `core failure`, so that attempt was stopped and its results are void. The accepted run attaches to an NVDA started from the Windows desktop with the unchanged runner configuration, and waits, without forcing, until Firefox is in the foreground. Check bodies are unchanged. The NVDA log was frozen at the end of the run, and the post-run private tail was removed.
+
+**Owner amendment.** Jérôme Piquot, Owner, selected **"Accept for this build"**, **"Extend to c24a7a27"**, **"Accept current evidence"** (AE-02 and MAN-136-ZOOM) and **"Allow read-only query"**. The first question quoted the frozen rule that missing human evidence leaves the story incomplete, and the template's human-tester requirement. For `c24a7a27` only, this is his explicit renegotiation of three things:
+
+- the frozen Never clause against treating automation as manual evidence;
+- the Manual matrix row's "dated human observations";
+- the epic criterion's manual pass.
+
+The criterion is met by Owner-accepted agent-generated native NVDA/Firefox evidence, plus actual browser zoom on the physical Windows workstation. JAWS/Chrome, VoiceOver/Safari, physical tablet and physical phone are `post-v1 roadmap`, with a dated `deferred-work.md` entry. The frozen text stays verbatim as the original intent and the amendment stands beside it, as the 2026-10-27 amendment did. No other run, template rule or outside approval changes. The eighteen human checklist boxes stay unchecked as observations a human did not make. The bounded-check sentence above, "required manual observations … stay open", is superseded for this build by this amendment.
+
+**Tasks closed.**
+
+- The original helper/spec matrix task closes on the implemented `responsive-accessibility` helper and spec, which pass in the reused complete run. The D2 and D3 residuals keep their Owner dispositions.
+- The result task closes because the result:
+  - binds the candidate and the hosted results;
+  - records the manual outcomes and roadmap rows;
+  - lists the unresolved gates and keeps the opt-in UX review;
+  - dispositions every Critical/High finding (no Critical; three High, by decisions 2–4).
+- The Evidence task closes on this record. Its named local lane, `evidence/story-13-6/…/review-current-2026-10-17/`, was removed under the 2026-10-23 evidence policy, which makes `evidence/` ignored local scratch. The evidence is now this record plus the retained external raw output.
+
+**Gates outside this story.** OI-16, G-4, FLUENT-APP-1, UX, Product and Architect decisions are outside the Story 13.6 acceptance criteria and remain unresolved with their owners. Ordinary-runtime and full-topology AppHost readiness also keep their earlier attribution.
+
+**Cleanup.** All owned Windows processes are stopped and the Owner's NVDA has exited. Ports 5070 and 9516 are closed. Only this spec, the result and `deferred-work.md` change, and nothing is staged, committed or pushed.

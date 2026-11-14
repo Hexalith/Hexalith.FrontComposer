@@ -1,5 +1,185 @@
 # Story 13.6 accessibility result and human checklist
 
+## Owner acceptance of native NVDA evidence — 2026-11-14
+
+**Story 13.6 status:** the Build review closed on 2026-11-14 (see the spec's Owner-acceptance review). The primary spec is `done`, and the sprint entry is `review`. This section supersedes, for candidate `c24a7a27`, the open-gate statements in the sections that follow, including the UX-136-REVIEW gate row's "three unique High findings open".
+
+### Owner decisions and amendment
+
+Jérôme Piquot, Owner, made five explicit decisions in this session:
+
+1. **Recommended path.** He replied **"apply recommended"** to this recommendation:
+   - close the manual criterion with one current-build NVDA/Firefox session covering speech-only behaviors and one actual 400% browser zoom pass;
+   - record JAWS/Chrome, VoiceOver/Safari, physical tablet and physical phone as `post-v1 roadmap`;
+   - record the OI-16, G-4, FLUENT-APP-1 and Product/Architect decisions as open and owned outside Story 13.6.
+
+   When the guided listening session started, he replied **"do it yourself"**.
+2. **Manual AT criterion.** He selected **"Accept for this build"** in answer to this exact question: "Story 13.6's frozen rule says missing human evidence leaves the story incomplete, and the log template says a manual 'completed' row needs a human tester. Today's native NVDA 2026.2 + Firefox 155 run on build c24a7a27 was agent-driven (27/31 passed; the 4 failures are the already-dispositioned Metadata-cell and deferred D3 palette residuals). As Owner, do you accept this agent-generated native evidence as satisfying the manual AT criterion for this build, with JAWS/Chrome, VoiceOver/Safari, physical tablet and phone recorded as post-v1 roadmap items?"
+3. **WebKit cue.** He selected **"Extend to c24a7a27"** in answer to: "The Nov 3 reconciliation-outline fix changed a forced-colors cue, which re-triggers the accepted WebKit limitation: Linux WebKit can't paint the system palette, so that cue has only Chromium/Firefox actual-paint proof plus WebKit media-only checks. Do you extend the existing WebKit capability-limitation acceptance (originally granted for d1236f9e) to the current build c24a7a27?"
+4. **AE-02 zoom.** During the Build review he selected **"Accept current evidence"**. The question explained that:
+   - current-build evidence covers native NVDA/Firefox 400% traversals of Home, Counter and the scenario page, plus the palette, Settings and drawer overlays, with and without spacing;
+   - it adds Chromium actual-400% geometry for Home and the type specimen;
+   - the operating journeys were last mapped at actual 400% on the 2026-11-02 build, and that probe script no longer exists.
+
+   His answer accepts the current evidence for AE-02 and MAN-136-ZOOM, with the operating journeys explicitly attributed to that earlier map.
+5. **CI link.** He selected **"Allow read-only query"** for recording the hosted results of `c24a7a27`.
+
+**What the amendment changes.** This is the Owner's explicit renegotiation of the frozen manual-evidence rule, for candidate `c24a7a2736e03cd157b9ef3f81affed6e669f38e` only. For that candidate it overrides:
+
+- the frozen Never clause against treating automation as manual evidence;
+- the Manual matrix row's "dated human observations";
+- the manual log template's human-tester requirement for the three `completed` rows below.
+
+The frozen text is preserved verbatim as the original intent, and this amendment stands beside it, as the 2026-10-27 amendment did. The amendment does not change the template for any other run, make the agent a tester, or grant OI-16, G-4, FLUENT-APP-1, UX, Product or Architect approval. Every NVDA `Speaking` record below is generated speech, not heard speech.
+
+### Candidate and reused automated evidence
+
+HEAD is `c24a7a2736e03cd157b9ef3f81affed6e669f38e`. This command exits 0:
+
+    git diff --quiet 4c9b5778f72822656eb80d56babf3f2d1d11d3c0 c24a7a2736e03cd157b9ef3f81affed6e669f38e -- src samples tests/e2e 'tests/Hexalith.*' Directory.Build.props Directory.Build.targets Directory.Packages.props deps.local.props deps.nuget.props global.json .gitmodules .github references
+
+Between those commits only governance and documentation files differ. The [current Counter accessibility verification](#current-counter-accessibility-verification--2026-11-14) therefore applies unchanged to this build, and its results are reused, not repeated:
+
+- 1,190 browser passes, four named skips and zero failures;
+- eighteen Linux visual comparisons;
+- four actual-zoom geometries;
+- `reconciliation outline retains contrast and keyboard focus in ${theme}` (`tests/e2e/specs/responsive-accessibility.spec.ts`), with `forcedColors: 'active'`, on all three engines.
+
+A later commit stays covered by this acceptance only if the same command, run from `c24a7a27` to that commit, exits 0.
+
+### Hosted results for c24a7a27
+
+Read with `gh run list --commit <sha>`, `gh run view <id> --json …` and `gh api …/actions/runs/<id> --jq .run_attempt`:
+
+| Workflow | Run (attempt 1) | Result |
+| --- | --- | --- |
+| CI | [43578828763](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43578828763) | **Success.** build-and-test and dependency-governance succeeded; performance-tests and aspire-tests were skipped by configuration. |
+| Quality | [43578828427](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43578828427) | **Cancelled — not qualification.** build-and-test was cancelled, consistent with the workflow's cancel-in-progress group after the later remote push `d7e8f578`, which changes only the mutation workflow and its how-to. debug-gated-tests, epic9-live-acceptance, committed-files, Windows accessibility-visual, and the Chromium, Firefox and WebKit Linux browser regressions all succeeded. |
+| CodeQL / Commitlint | 43578828748 / 43578828663 | **Success.** |
+| Flaky Test Governance | 43579587302 | **Success** (workflow-run event). |
+| Release Evidence | 43579652987 | **Failure** in `verify-published-release` (release chain, workflow-run event). It is unrelated to accessibility and is not attributed here. |
+
+### Prepared host
+
+The runtime host is the Debug Counter build with its explicit artifacts path:
+
+    dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Debug -m:1 --artifacts-path <session scratchpad>/manual-nvda/artifacts -v:q -nodeReuse:false --disable-build-servers
+
+It reports 0 warnings and 0 errors (build log `3fbed58d…`). The host ran the same `dotnet run … --no-build --no-launch-profile --urls http://127.0.0.1:5070` command and Test environment as the [following section](#current-counter-accessibility-verification--2026-11-14), with this run's `--artifacts-path` (host log `885757f7…`). Compiled `Counter.Web.dll` is `926bcb98a398c01ae27d58d2859c508e6d98ae26004691e8c565465504260e80`. `Counter.Specimens.dll` is `b65166db0f7e7fa6082f1866e1d33637d8a232747b42d406506aca95a95e66a4`. `Hexalith.FrontComposer.Shell.dll` is `1693efe443ed51b023ff334b532cd1cbb40a469bf66db5fa0d039ae3b353abe5`.
+
+Windows reached the host at `http://localhost:5070` with HTTP 200. The HTTP-served `fc-keyboard.js` and `fc-focus.js` matched the first 64 bits of the source SHA-256 values `64dc9446d10219f530fdd8fbe274b1ddeebe4b6a6ebb2aaff1112978347ec06d` and `885eabb1ead35f829373f7ec3b25d8beecdf36d0514e50558b7a50abebcf2b87`. `fc-datagrid.js` (`0c60b68c24aa7519d23c0dd52b35e99a1f4d833e6065193beeeddaf9687ca1d3`) was not fetched over HTTP; the identity command above binds it.
+
+### Native NVDA/Firefox run
+
+Environment: Windows 10.0.26300 (build 26300.9974), NVDA 2026.2, Firefox 155.0.1, and geckodriver on port 9516. The reference viewport was 1280×900 CSS pixels at DPR 1.5. All runner files are in `%TEMP%\fc-story13-6-nat-ybWKjtDb\`, which is outside the repository.
+
+**NVDA launch.** The Owner ran `start-nvda-evidence.cmd` (`0e575d368cba48edb8ba44dcf4fec9e2e177bb09a6503a1311c6862309df7494`) from Win+R. It starts `C:\Program Files\NVDA\nvda.exe -c "%~dp0nvda-config" -f "%~dp0current-20261114-c24a7a27-attach\native-nat-nvda.log" -l 12 --disable-addons`. The configuration is the unchanged runner `nvda-config\nvda.ini` (`b2963b75307472ca72891f5381952aea8e68da29bd0d5de365277e745cdd0eef`): English, no say-all on page load, configuration not saved on exit. The log header confirms that configuration directory.
+
+**Runner invocation.** From WSL, after the log reported `NVDA initialized`:
+
+    FC_NAT_OUT=current-20261114-c24a7a27-attach FC_NAT_NVDA_LOG='<runner dir>\current-20261114-c24a7a27-attach\native-nat-nvda.log' WSLENV=FC_NAT_OUT:FC_NAT_NVDA_LOG node.exe '<runner dir>\native-nat-20261114-attach.cjs' '<runner dir>'
+
+**Runner files.**
+
+| File | SHA-256 |
+| --- | --- |
+| `native-nat-20261114-attach.cjs` | `49054e4a9557354d3d914ae2418d61ea4c68cd6590b01d743b74d7d40de47e11` |
+| `common.cjs` | `5bdfdff8feb8d8526e7d9ed6c797660a4596eafdf0d3d2ee2fa2d6fe5ab9e514` |
+| `keyserver.ps1` | `9667e6474865d86d54f6ff8cdbdb36cd9056d0e72e91983e55fb0fadc28bceb7` |
+| Console log | `5d48d46fc7cdf064e4bc6f1fd9f05de04501b1b1b20ae51a4609d10c46b800a0` |
+
+`native-nat-20261114-attach.cjs` derives from the 2026-11-04 `native-nat.cjs` (`4d040174775d135e697307dafc892691ee88c86e92e3ac658803129c51bb5c8e`). The body of every check is unchanged. The changed guards are:
+
+- The start guard now requires an operator-started NVDA instead of refusing one.
+- NVDA is never launched or quit by the runner, and cleanup leaves it running.
+- The runner waits up to 300 seconds, without forcing, for the owned Firefox to become the foreground window. It acquired the foreground after 22 seconds.
+- One native Tab proves speech logging before any check (5 `Speaking` records). The first check, NAT1a, then navigates to its page afresh.
+
+**Validity of this run.**
+
+- NVDA was alive throughout. The last in-run `Speaking` record is at 10:45:36.644, during NAT4, after both silent 10-second windows.
+- The key server sends keys only while the owned Firefox is the foreground window, and every keyed check executed. So the foreground stayed with Firefox for the whole run. The Owner was asked to leave the keyboard and mouse idle; his input inside Firefox cannot be excluded by the runner.
+- The NVDA log was frozen at the runner's finish (09:45:41Z). The 96 later entries were removed, including 35 `Speaking` records generated after the run, before the Owner's NVDA exited at 10:46:50 local. They were private activity, not evidence. An earlier `70293cab…` hash was taken while NVDA was still writing and is superseded.
+
+**Outputs.** The summary is `ce026135243f7677a4117080241eea92376e37932ff90eb697f1b3b155f52f27`. The frozen NVDA log is `d7c4128ac38eb2ebf801a0043b0966dec3c96541c30ec531047991511a25ffd6`, with 989 `Speaking` records.
+
+### Result: 27 passed / 4 failed
+
+The run executes the same 31 checks as the 2026-11-04 `fx8-nat` reference, with the same status for every check. The recorded details of all four failures are byte-identical to that reference, including the single failing stop and the duplicate sequence.
+
+Passing checks:
+
+- NAT1a–NAT1c missing-item sequences (seven checks).
+- NAT2 zero-field persistence, removal, new-attempt clearing and the accepted Batch Increment lifecycle (four checks).
+- NAT3 confirmation, reload, new command, route and blocked headings, and two silent idle windows (seven checks).
+- NAT4:
+  - Home, Counter and scenario traversals at 100%;
+  - actual 400% browser zoom applied with native Ctrl+Plus;
+  - Home and Counter traversals at 400%, with and without combined spacing;
+  - zoom reset.
+
+Failures, each closed only by an earlier Owner disposition:
+
+- **`nat4:traverse-scenario-400` and `nat4:traverse-scenario-400-spaced`.** D2: the Metadata gridcell is wider than the 320-pixel viewport. It is covered by the 2026-11-04 FX6 disposition under WCAG 2.4.11. The stricter AE-05 product floor is not met for this cell.
+- **`nat4:overlays-palette-settings-drawer-400` and `-400-spaced`.** D3: the palette dialog context is generated twice, which AE-09's no-duplicate-speech rule does not allow. It is deferred by the 2026-11-04 Owner decision. The O2 "Skip to content" residual stays deferred too; this run does not re-observe it.
+
+### Failed first attempt
+
+The first run launched NVDA from WSL, as the earlier runs did. NVDA 2026.2 stopped at startup with `core failure … AttributeError: function 'lou_freeTableFile' not found` in its braille library (liblouis). A diagnostic launch from NVDA's own directory failed the same way, while the Owner's desktop-started NVDA initialized normally. The cause is unproven. Two recorded facts may be relevant: Windows updates KB5132061 and KB5132688 were installed on 2026-11-11, and a separate `liblouis.dll` dated 2026-09-24 exists in the Windows system directory. That attempt was stopped at 5 passed / 4 failed. Because NVDA was not running, its speech and silence results are void and are not cited. Its owned processes were stopped.
+
+### Manual records for this build
+
+These fields apply to the three `completed` rows:
+
+| Field | Value |
+| --- | --- |
+| Task / acceptance criteria | Story 13.6. AE-01–AE-09 and the manual assistive-technology/real-device criterion. |
+| Branch / commit | `main` at `c24a7a2736e03cd157b9ef3f81affed6e669f38e`. |
+| Date | 2026-11-14. |
+| Tester | None. The run was agent-generated and is accepted by Owner amendment. Prepared by: Claude Opus 5.5 agent. |
+| Environment | Windows 10.0.26300, Firefox 155.0.1, NVDA 2026.2. |
+| Specimen routes | `/home`, `/counter`, and `/__frontcomposer/specimens/type?generatedGrid=true&accessibilityScenarios=true&density=compact&theme=light`. |
+| Responsive tier | Desktop reference 1280×900 at DPR 1.5, and actual browser zoom 400% on the physical Windows workstation, with and without combined spacing. |
+| Result | **Fail on 4 of 31 checks**, all attributed. Issue references: D2, closed by the FX6 disposition ([spec: residual native findings decision](spec-13-6-verify-responsive-and-assistive-accessibility.md#residual-native-findings-decision--2026-11-04)), and D3 (`deferred-work.md`, "Deferred from: FX8 native rerun … (2026-11-04)"). |
+| Approval | Jérôme Piquot, Owner: decisions 2 and 4 above. |
+| Sanitization | No raw transcript, personal data, tenant/user value, secret or command payload. The post-run log tail was removed. |
+| Evidence | The summary, the frozen NVDA log and the slices named above, retained outside the repository. |
+
+| Gate | Canonical status for `c24a7a27` | Record |
+| --- | --- | --- |
+| MAN-136-NVDA | `completed` — Owner-accepted agent-generated native evidence | The NAT1–NAT4 speech, focus and traversal sequences above. |
+| MAN-136-ZOOM | `completed` — Owner-accepted agent-generated native evidence | Native Firefox actual 400% traversals and overlays, plus the reused Chromium actual-400% geometry. Operating journeys are attributed to the 2026-11-02 28/28 map on `71292997` (decision 4). |
+| MAN-136-ZERO-FIELD | `completed` — Owner-accepted agent-generated native evidence | NAT2, plus the reused browser outcome matrix. |
+| MAN-136-JAWS | `post-v1 roadmap` | Owner: Jérôme Piquot. Reference: `deferred-work.md`, "Deferred from: Owner acceptance of spec-13-6-… (2026-11-14)". Target: after v1; this workstation has no JAWS. Release impact: JAWS/Chrome speech on this build is unverified. Reopen at the v1 release-readiness review, when an adopter needs the pairing, or on a material change to speech or focus. |
+| MAN-136-VO | `post-v1 roadmap` | Owner and reference as for JAWS. Target: after v1; no macOS device is available. Release impact: VoiceOver/Safari rotor, speech and focus on this build are unverified, and WebKit forced-colors paint relies on the accepted limitation. Same reopen events. |
+| MAN-136-TABLET | `post-v1 roadmap` | Owner and reference as for JAWS. Target: after v1; no physical tablet is connected. Release impact: touch targets, rotation, on-screen keyboard and system preferences on a physical tablet are unverified, beyond the emulated touch journeys. Same reopen events. |
+| MAN-136-PHONE | `post-v1 roadmap` | Owner and reference as for JAWS. Target: after v1; no physical phone is connected. Release impact: the physical-phone functional-fallback tier is unverified, beyond the emulated phone journeys. Same reopen events. |
+
+The 2026-10-25/27 Owner-reported Pass records apply only to their earlier candidate. The eighteen itemized checklist boxes below stay unchecked. They describe human-heard observations; decision 2 accepts other evidence in their place for this build but does not create those observations.
+
+### Critical/High dispositions
+
+No Critical finding is open. All three UX-136-REVIEW High findings are dispositioned for this build:
+
+- **AE-07, actual WebKit system-palette paint.** The accepted capability limitation is extended to `c24a7a27` by decision 3. The changed reconciliation-outline cue has actual system-palette proof on Chromium and Firefox and media-only coverage on WebKit, in the reused forced-colors test named above. Revalidate when WebKit capability or a forced-colors cue changes.
+- **AE-02, actual 400% zoom across all operations.** Accepted by decision 4. The current-build evidence is listed in that decision. The operating journeys keep their 2026-11-02 attribution.
+- **Manual criterion versus the supporting-details waiver.** Resolved for this build by decision 2.
+
+Medium and Low findings keep their recorded dispositions. The current-build hosted CI link is now recorded above. D3 and O2 remain deferred.
+
+### Outside Story 13.6
+
+OI-16, G-4, FLUENT-APP-1, UX, Product and Architect approvals remain unresolved and are owned outside this story. Story 13.9 owns the FLUENT-APP-1 posture, and the Story 13.6 epic acceptance criteria do not require these approvals. Ordinary-runtime and full-topology AppHost readiness keep their earlier separate attribution.
+
+### Checks and cleanup
+
+- `python3 eng/validate-story-artifacts.py` exits 0, and `git diff --check` exits 0.
+- The frozen block and every earlier spec and result byte are preserved, apart from the three task checkboxes and the frontmatter status.
+- The story-mode validator's `checked task lacks evidence` class, which already flags eleven checked tasks at HEAD because the 2026-10-23 evidence policy removed the `evidence/` lanes, gains one instance for the Evidence task.
+- Firefox, geckodriver and the key server are stopped, and port 9516 is closed. The Owner's NVDA has exited.
+- The Counter host is stopped and port 5070 is closed.
+- Nothing was staged, committed or pushed.
+
 ## Current Counter accessibility verification — 2026-11-14
 
 The full primary spec and both frontmatter context files were loaded. All specified production/test corrections through HZ7 are already committed. Fresh checks demonstrate normal .NET 11 Counter operation and no longer reproduce the six mobile-grid failures recorded against the earlier diagnostic host. No new product correction is needed; this continuation updates only this result and the primary spec. Story 13.6 remains **in-progress**.
