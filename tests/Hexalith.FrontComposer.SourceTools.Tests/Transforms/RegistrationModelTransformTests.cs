@@ -28,18 +28,21 @@ public class RegistrationModelTransformTests {
         result.DisplayLabel.ShouldBe("Commandes");
     }
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void Transform_NoBoundedContext_EmptyNamespace_FallsBackToGlobal() {
         RegistrationModel result = RegistrationModelTransform.Transform(Model("OrderProjection", "", null));
         result.BoundedContext.ShouldBe("Global");
     }
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void Transform_NoBoundedContext_FallsBackToNamespaceLastSegment() {
         RegistrationModel result = RegistrationModelTransform.Transform(Model("OrderProjection", "MyApp.Orders", null));
         result.BoundedContext.ShouldBe("Orders");
     }
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void Transform_NoBoundedContext_SimpleNamespace() {
         RegistrationModel result = RegistrationModelTransform.Transform(Model("OrderProjection", "Orders", null));
@@ -77,6 +80,7 @@ public class RegistrationModelTransformTests {
         result.HasFullPageRoute.ShouldBeTrue();
     }
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void Equality_FullPageMembershipDiffers_ModelsAreNotEqual() {
         var inline = new RegistrationModel("Orders", "SubmitOrderCommand", "TestDomain", null, isCommand: true);

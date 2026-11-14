@@ -13,6 +13,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Incremental;
 /// re-run.
 /// </summary>
 public class DomainModelCacheEqualityTests {
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void WhenStateFieldIsPartOfEquality() {
         DomainModel a = BuildModel(whenState: "Pending");
@@ -33,6 +34,7 @@ public class DomainModelCacheEqualityTests {
         a.GetHashCode().ShouldBe(b.GetHashCode());
     }
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void RoleChangeIsCacheInvalidating() {
         DomainModel a = BuildModel(role: "ActionQueue");
@@ -52,6 +54,7 @@ public class DomainModelCacheEqualityTests {
         a.GetHashCode().ShouldBe(b.GetHashCode());
     }
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void PreExistingFieldsStillParticipate() {
         // Regression anchor — the ProjectionRoleWhenState addition must not clobber the
@@ -69,6 +72,7 @@ public class DomainModelCacheEqualityTests {
     //   invalidates the incremental-generator cache and re-runs Transform/Emit.
     // ──────────────────────────────────────────────────────────────────────────
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void PropertyModel_DisplayFormatChange_InvalidatesEquality() {
         PropertyModel a = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.Default);
@@ -77,6 +81,7 @@ public class DomainModelCacheEqualityTests {
         a.Equals(b).ShouldBeFalse();
     }
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void PropertyModel_RelativeTimeWindowChange_InvalidatesEquality() {
         PropertyModel a = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.RelativeTime, relativeTimeWindowDays: 7);
@@ -85,6 +90,7 @@ public class DomainModelCacheEqualityTests {
         a.Equals(b).ShouldBeFalse();
     }
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void PropertyModel_DisplayFormatCurrencyVsDefault_InvalidatesEquality() {
         PropertyModel a = BuildProperty("Amount", "Decimal", displayFormat: FieldDisplayFormat.Default);
@@ -103,6 +109,7 @@ public class DomainModelCacheEqualityTests {
         a.GetHashCode().ShouldBe(b.GetHashCode());
     }
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void PropertyModel_SourceTypeNameChange_InvalidatesEquality() {
         PropertyModel a = BuildProperty("Value", "Token", sourceTypeName: "global::Alpha.Token");
@@ -111,6 +118,7 @@ public class DomainModelCacheEqualityTests {
         a.Equals(b).ShouldBeFalse();
     }
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void PropertyModel_ExternAliasChange_InvalidatesEquality() {
         PropertyModel a = BuildProperty("Value", "Token", requiredExternAliases: ["Alpha"]);
@@ -119,6 +127,7 @@ public class DomainModelCacheEqualityTests {
         a.Equals(b).ShouldBeFalse();
     }
 
+    [Trait("Category", "MutationErrorRegression")]
     [Fact]
     public void PropertyModel_StaticAssignmentCapabilityChange_InvalidatesEquality() {
         PropertyModel a = BuildProperty("Value", "Token", supportsStaticAssignment: true);
