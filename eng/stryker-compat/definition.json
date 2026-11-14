@@ -1,0 +1,35 @@
+{
+  "schema": "hexalith.stryker-compatibility.v1",
+  "upstream_version": "5.1.0",
+  "upstream_commit": "7052fa6c646a6bdfb143608e695d11542e2be815",
+  "upstream_tree": "d86c4a3163fe0d1ef91a24624aed176eb3c3a40d",
+  "archive_url": "https://codeload.github.com/stryker-mutator/stryker-net/tar.gz/7052fa6c646a6bdfb143608e695d11542e2be815",
+  "archive_sha256": "0ec3bf04498243ba5d0816754a5a379d19596ca4f2c717387fb96a5d8ce741f2",
+  "archive_size": 1360457,
+  "license_sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+  "patch_sha256": "b631f905b07a85b408ddbbe4b2f0ff062a38538c32d6c0ed5fb47e2b2d3da19c",
+  "custom_version": "5.1.0-hexalith.compat.1",
+  "informational_version": "5.1.0-hexalith.compat.1+upstream.7052fa6c.patch.b631f905b07a",
+  "sdk": "11.0.100",
+  "target_framework": ".NETCoreApp,Version=v10.0",
+  "patched_source_files": {
+    "src/Stryker.TestRunner.MicrosoftTestPlatform/MicrosoftTestingPlatformRunner.cs": {
+      "before": "399f449ff3e0faec4108ae2009f30121d078b86e7a2f33eb264b0fabf113e20f",
+      "after": "028fba0a9f3e5dab5b93aa56dd357c20d6fcc74e1cce196ab0229cc8fe2415fb"
+    },
+    "src/Stryker.TestRunner.MicrosoftTestPlatform.UnitTest/MicrosoftTestingPlatformRunnerTests.cs": {
+      "before": "b5f20f8b8019f79ac333505213859f6cb00af185339a4085b756ecd25b218e72",
+      "after": "8964d70a19e5b55889823225abc813013407ae4d1f4632a43c85e65c0ba31ec2"
+    },
+    "src/Stryker.TestRunner.MicrosoftTestPlatform.UnitTest/MicrosoftTestingPlatformRunnerIsolationCompatibilityTests.cs": {
+      "before": null,
+      "after": "8362021b3e5def95e2ae913558e862611c54fe6dc1f34b69b2b45bfa774b76a0"
+    }
+  },
+  "html_library": {
+    "version": "3.9.0",
+    "metadata_url": "https://data.jsdelivr.com/v1/package/npm/mutation-testing-elements@3.9.0/flat",
+    "asset_url": "https://cdn.jsdelivr.net/npm/mutation-testing-elements@3.9.0/dist/mutation-test-elements.js",
+    "asset_sha256": "751fb010242b0b44e32d84fe7fe0b9ff1da182823b94f59f5c52b001fcfc163b"
+  }
+}

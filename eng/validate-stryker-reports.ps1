@@ -2,7 +2,8 @@ param(
   [string] $ManifestPath = "tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/mutation-target-manifest.json",
   [string] $ReportRoot = "artifacts/mutation",
   [string] $OutputPath = "artifacts/mutation/job-summary.md",
-  [switch] $AllowMissingReports
+  [switch] $AllowMissingReports,
+  [switch] $RequireCompatibilityProvenance
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,6 +26,8 @@ if (Test-Path -LiteralPath $DotnetToolsManifestPath) {
     $StrykerToolVersion = "unknown"
   }
 }
+$OfficialStrykerBaseVersion = $StrykerToolVersion
+$CompilerMetadataQualified = !$RequireCompatibilityProvenance -and $StrykerToolVersion -ceq "5.1.0"
 $errors = New-Object System.Collections.Generic.List[string]
 $summaryLines = New-Object System.Collections.Generic.List[string]
 $reportAudits = New-Object System.Collections.Generic.List[object]
@@ -150,7 +153,7 @@ function Get-MutatedFiles($Report) {
           # Pinned Stryker 5.1 marks rollback candidates final BEFORE file filtering.
           # They were never executable. Accept only its exact nonexecuted shape;
           # preserve the report status and refuse evidence of execution or drift.
-          $invalidCompilerCandidate = $StrykerToolVersion -ceq "5.1.0" `
+          $invalidCompilerCandidate = $CompilerMetadataQualified `
             -and $id -cmatch '^\d+$' `
             -and $reason -is [string] -and $reason -ceq "Mutant caused compile errors" `
             -and $null -ne $coveredBy -and $coveredBy.Value -is [System.Array] -and $coveredBy.Value.Count -eq 0 `
@@ -234,6 +237,29 @@ foreach ($root in $approvedRoots) {
 }
 
 foreach ($segment in $segments) {
+  $toolProvenance = $null
+  $segmentReportRoot = $ReportRootFullPath
+  if ($RequireCompatibilityProvenance) {
+    $CompilerMetadataQualified = $false
+    $expectedRoot = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot "artifacts/mutation"))
+    if ([System.IO.Path]::GetFullPath($ReportRootFullPath) -cne $expectedRoot) {
+      Add-Failure "Compatibility provenance requires the exact repository mutation output root."
+    }
+    else {
+      try {
+        $verifiedText = & python3 (Join-Path $RepoRoot "eng/stryker_compat.py") verify ([string] $segment.name)
+        if ($LASTEXITCODE -ne 0) { throw "Private tool verification refused." }
+        $toolProvenance = ($verifiedText -join "`n") | ConvertFrom-Json -Depth 100
+        $StrykerToolVersion = [string] $toolProvenance.build.informational_version
+        $CompilerMetadataQualified = $true
+      }
+      catch {
+        Add-Failure "Missing or invalid exact private-tool provenance for segment '$($segment.name)'."
+      }
+    }
+    $segmentReportRoot = Join-Path $ReportRootFullPath ([string] $segment.name)
+  }
+
   $configPath = Join-Path $RepoRoot ([string] $segment.config)
   if (!(Test-Path -LiteralPath $configPath)) {
     Add-Failure "Missing Stryker config for segment '$($segment.name)': $($segment.config)"
@@ -267,7 +293,7 @@ foreach ($segment in $segments) {
     Add-Failure "Stryker segment '$($segment.name)' break threshold is below manifest threshold $($segment.threshold)."
   }
 
-  $jsonReport = Get-ChildItem -LiteralPath $ReportRootFullPath -Recurse -File -Filter "*.json" -ErrorAction SilentlyContinue |
+  $jsonReport = Get-ChildItem -LiteralPath $segmentReportRoot -Recurse -File -Filter "*.json" -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -like "*$($segment.artifactPrefix)*" } |
     Sort-Object LastWriteTimeUtc -Descending |
     Select-Object -First 1
@@ -384,6 +410,7 @@ foreach ($segment in $segments) {
   $reportAudits.Add([pscustomobject]@{
     Report = ConvertTo-RepoPath $jsonReport.FullName
     InputSha256 = $inputSha256
+    ToolProvenance = $toolProvenance
     OutputSha256 = ""
     RawMutantStatuses = $rawStatuses
     RawSourceHashes = $rawSources
@@ -417,7 +444,7 @@ foreach ($audit in $reportAudits) {
   $audit.OutputSha256 = (Get-FileHash -LiteralPath (Join-Path $RepoRoot $audit.Report) -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 $auditPath = Join-Path (Split-Path -Parent $OutputFullPath) "mutation-report-audit.json"
-[pscustomobject]@{ StrykerVersion = $StrykerToolVersion; Reports = $reportAudits.ToArray() } |
+[pscustomobject]@{ StrykerVersion = $StrykerToolVersion; OfficialBaseVersion = $OfficialStrykerBaseVersion; CompatibilityProvenanceRequired = [bool] $RequireCompatibilityProvenance; Reports = $reportAudits.ToArray() } |
   ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $auditPath -Encoding utf8
 
 if ($hasAllRequiredReports) {
@@ -431,7 +458,7 @@ if ($hasAllRequiredReports) {
 $summary = @(
   "## Mutation Evidence",
   "",
-  "- Stryker tool: dotnet-stryker $StrykerToolVersion via .config/dotnet-tools.json",
+  "- Stryker tool: $StrykerToolVersion (official base pin $OfficialStrykerBaseVersion; exact private provenance required=$([bool] $RequireCompatibilityProvenance))",
   "- Target manifest: $ManifestPath",
   "- Approved roots: $($approvedRoots -join ', ')",
   "- Target file count: $($allTargetFiles.Count)",
