@@ -20,7 +20,7 @@
     },
     "coverage-analysis": "perTest",
     "additional-timeout": 170000,
-    "concurrency": 4,
+    "concurrency": 2,
     "test-case-filter": "Category!=MutationErrorHandling&Category!=Performance",
     "mutate": [
       "Parsing/**/*.cs",

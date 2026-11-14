@@ -48,6 +48,8 @@ The commands retain debug phase and test diagnostics in the console log and stop
 
 The happy-path config sets `additional-timeout` to 170,000 milliseconds. Pinned Stryker 5.1 estimates MTP test durations from the suite average, which gives the package-consumer test a 30-second coverage-capture limit despite its [105.033-second passing Quality result](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43605722548). Applying the tool's 1.5 duration multiplier and existing 10-second allowance gives 167.5495 seconds, rounded to 170 seconds. This setting also adds 160 seconds to every happy-path mutant deadline compared with the default; it is not a capture-only setting. The error-handling segment retains the 10-second default allowance, and the nightly job retains its 90-minute limit.
 
+Both segments use two concurrent test servers. In [the four-server run](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43612007215), telemetry recorded exhausted available memory and swap, followed by a cgroup OOM-kill counter increase during runner shutdown. The exact victim and signal sender were not identified. Reducing concurrent servers preserves the complete mutation and test cohorts, per-test coverage, thresholds, and strict report validation; it does not establish a passing mutation result.
+
 ## Thresholds
 
 The happy-path SourceTools Parse/Transform segment is blocking at 80 percent. The error-handling segment is blocking at 60 percent. These are separate gates; a blended score is not accepted as evidence.
