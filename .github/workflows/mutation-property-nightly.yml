@@ -48,6 +48,7 @@ jobs:
       - name: Happy-path mutation segment
         working-directory: src/Hexalith.FrontComposer.SourceTools
         run: >-
+          python3 ../../eng/trace-mutation-run.py --
           dotnet tool run dotnet-stryker
           --test-runner mtp
           --verbosity debug
@@ -61,6 +62,7 @@ jobs:
         if: always()
         working-directory: src/Hexalith.FrontComposer.SourceTools
         run: >-
+          python3 ../../eng/trace-mutation-run.py --
           dotnet tool run dotnet-stryker
           --test-runner mtp
           --verbosity debug
