@@ -78,7 +78,7 @@
       "selected_catalog_required_packages": {
         "BenchmarkDotNet": "0.15.8",
         "FsCheck.Xunit.v3": "3.6.0",
-        "Microsoft.CodeAnalysis.Workspaces.Common": "5.9.0",
+        "Microsoft.CodeAnalysis.Workspaces.Common": "5.12.0",
         "Microsoft.Extensions.Localization": "11.0.0",
         "Microsoft.Extensions.TimeProvider.Testing": "11.0.0",
         "ModelContextProtocol.AspNetCore": "2.4.0",
@@ -88,8 +88,8 @@
         "System.ComponentModel.Annotations": "5.0.0",
         "System.Reactive": "7.0.0",
         "System.Threading.Tasks.Extensions": "4.6.3",
-        "Verify": "33.3.4",
-        "Verify.XunitV3": "33.3.4"
+        "Verify": "33.4.0",
+        "Verify.XunitV3": "33.4.0"
       }
     },
     "eventstore-catalog-v1": {
@@ -3527,9 +3527,9 @@
   },
   "consumer_source_projections": {
     "github.com/hexalith/hexalith.platform": {
-      "owner_commit": "9ccbd4c7f8f3b6143e7b4f7b20a0e192de932ac1",
+      "owner_commit": "f6f85032598865b9123f16364448bfd02c0ff5b0",
       "gitmodules_sha256": "6da4f5297d79bfa54afcb8daacda70670af11868ba1738cc185f584db8eb6ab7",
-      "inventory_sha256": "e858e0eb42cdb086ed24c4550828d076cd1171f01179600d4703ca5cc7f050fb",
+      "inventory_sha256": "874d7ff434413ef9e11324fd4ecfae1bd9dda527f8cc405e89ffa5a0e5502fd0",
       "inventory_only_identities": [
         "github.com/hexalith/hexalith.agents",
         "github.com/hexalith/hexalith.chatbot",
@@ -3550,9 +3550,9 @@
         "DaprSelfHostedMtls.cs": "Platform/DaprSelfHostedMtls.cs",
         "DaprSelfHostedMtlsSubscriber.cs": "Platform/DaprSelfHostedMtlsSubscriber.cs"
       },
-      "builds_commit": "99f7c86072ca7b35e3fbbaee4606a559a847805a",
+      "builds_commit": "73e60af8a1fcdf3f06726d5d1b6e1199cce778ee",
       "builds_project": "src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj",
-      "root_selectors_sha256": "20ca6341e45b43c848fec62a7934047225050a56b8b4892280d36eadceee18e0",
+      "root_selectors_sha256": "5632f8e8b96f16d6274597b9c38bdec0aa14fbfa824b7457f99235ab1d7eaeaf",
       "consumer_configuration_sha256": "6b784fc0091868af62a756ff7b29a7696213c796dd7a31de6960ac385b91b76a"
     }
   }
