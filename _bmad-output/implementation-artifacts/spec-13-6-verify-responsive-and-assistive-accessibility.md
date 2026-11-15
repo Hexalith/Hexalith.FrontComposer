@@ -2,7 +2,7 @@
 title: 'Story 13.6: Verify Responsive and Assistive Accessibility'
 type: 'feature'
 created: '2026-10-15'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 3
 baseline_commit: '3c8679628ebdb8995afc09f712a04fcde623695c'
@@ -365,6 +365,52 @@ Scope: the code delta left unreviewed since the 2026-11-04 native-findings revie
 - HEC09 (maybe-false, low): it needs an ancestor resize between focus and PageDown on `/counter`. Asserting that the frame is still held before release would settle it. The `PageDown` yield row pins the same predicate with a call counter.
 - HAA04 (low): clicking a non-interactive heading is rare, and until the next input the watch only re-reveals a heading that is already visible. An extra branch adds complexity.
 - HAA05 (maybe-false, low): it depends on the Counter H1 offset relative to the 16 px scroll margin plus padding; a red control would settle it. The `PageDown` yield row already pins the cancellation.
+
+#### H3 patch-delta review (2026-11-15)
+
+Scope: the H3-P1–P5 fix delta, which the 2026-11-14 iteration-3 review did not cover.
+- **`fc-keyboard.js`, `a11y-state-evidence.test.mjs`, `responsive-accessibility.spec.ts`:** compared against the iteration-3 reviewed source. That source is `b76cfb91` plus the `src`/`tests` sections of the retained `review-story13-6-20261114-1794660361406/iteration-3/current-heading-reflow.diff`, applied to LF blobs, and compared with `13b382bc`.
+- **The five files HR8–HR12 did not touch:** `git diff 40506a19 13b382bc`.
+- **Unchanged:** `a11y-state-evidence.mjs` is byte-identical to the reviewed state. No reviewed file changed between `13b382bc` and HEAD `eee90d53`.
+- **Total:** 8 files, +125/−12, 274 diff lines.
+- **Excluded:** spec, result and ledger narrative, and the upstream `fc-focus.js` changes carried in by the rebase.
+
+Four layers returned 30 raw findings (`H4-BH/EC/VG/AA#`): Blind Hunter 12, Edge Case Hunter 10, Verification Gap 2 (one pre-verified gap and one other finding), Acceptance Auditor 6. Splitting BH02 and AA03 into a delta claim and a pre-existing claim gives 32. No layer failed. The Acceptance Auditor reproduced H4-AA01 against the real module in Chromium, Firefox and WebKit.
+
+Disposition (2026-11-15): the Owner chose to leave the three patches below as action items. The primary spec and its sprint entry move back to `in-progress`. The patches change the source, so the result needs a new Owner extension of the native-evidence/zoom/WebKit acceptance, which is currently bound to `bca9dff2`.
+
+- [ ] [Review][Patch] The H3-P5 execution-time heading recheck also blocks the focusin reveal.
+  - **Cause:** `scheduleFocusVisibility` serves focusin, window resize and the ancestor ResizeObserver.
+  - **Failure path:** `preserveRouteFocusAfterOverlay` (`fc-focus.js:1022`, `:1042`) focuses a route heading with `preventScroll` inside an animation frame. The reveal frame then runs after the newly observed heading's first offscreen IntersectionObserver delivery, so `headingVisibleBeforeResize()` is false and the focused heading stays offscreen. In the auditor's probe the patch drops the reveal from 1 to 0 in all three engines. Task-scheduled focus is unaffected.
+  - **Fix:** apply the recheck only to frames queued by `showResizedFocus` and the ResizeObserver callback (H3-EC01 scope); focusin reveals keep their pre-H3-P5 behavior.
+  - **Regressions:** a three-engine test that frame-scheduled focus of an offscreen heading reveals it once, and a held-frame test queued through the ResizeObserver path, which must pass the same flag (H4-AA01). [src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-keyboard.js:359]
+- [ ] [Review][Patch] The H3-P3 family-change condition is untested, and the tests model filter-hidden differently from production.
+  - **Gap:** `!string.Equals(formerFamily, family, …)` (`FcExpandedRowHiddenBanner.razor.cs:174`) runs only when a settled missing claim changes directly to settled filter-hidden. The new theory toggles only `IsMissing`, so deleting the condition fails nothing.
+  - **Production inputs:** generated grids pass `IsMissing=true` whenever `IsHiddenByFilter=true` (`ProjectionRoleBodyEmitter.cs:151-152`, `:504-505`).
+  - **Fix:** add a single and co-mounted theory with production inputs: missing("same") → hidden (`IsMissing=true`, `IsHiddenByFilter=true`, "other") → present → missing("same"). Assert the missing message twice, and confirm the test fails without the condition (H4-VG01, H4-BH02a, H4-AA03a). [tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs:203]
+- [ ] [Review][Patch] The Node CLI suite no longer exercises the default JUnit destination.
+  - **Gap:** `runValidator` always sets `FC_E2E_JUNIT_PATH`. The `join(FC_E2E_OUTPUT_DIR, 'junit.xml')` fallback that CI uses is now reached only by the `quality.yml` validate step.
+  - **Fix:** set the variable only when a test passes a custom path, so the existing cases cover the default again (H4-BH10, H4-EC07, H4-AA04). [tests/e2e/scripts/a11y-state-evidence.test.mjs:36]
+
+##### Rejected (H3 patch-delta review)
+
+- H4-BH01/H4-EC04/H4-VG-O01/H4-AA02 (low): the settled-missing claim (`FcExpandedRowHiddenBanner.razor.cs:129`) releases a filter claim without ending its family; this is traced and real.
+  - **Why not fixed:** a lost cue needs filter(X) → missing → … → filter(X) with an identical result identity. That identity includes the page/request identity, which changes when the item leaves the unfiltered data. It also needs a fallback already delivered in the first filter episode, because focus ownership resets on release. Ending the family here adds a guarded call on another release path.
+  - The rebind/Dispose part of BH01 is covered under H4-EC05.
+- H4-EC05/H4-AA05 (false): unmount and rebind deliberately do not end an episode. `EndTransitionEpisode` ends one "only after its final mounted claimant hides it", and the canonical UX rules suppress restored announcements. A ViewKey change binds a new surface and a scope change a new key. `EqualInputSurfaceRebindStartsWithFocusOnlyAndWithdrawsOriginal` pins focus-only rebinding.
+- H4-EC10 (low): the "end the actually claimed family" narrative overstates coverage of the H4-BH01 path; correcting it edits the spec under review.
+- H4-BH02b/H4-AA03b (low, pre-existing): `_wasMissing` stays true while filter-hidden, because `IsMissing` is true then, so missing → hidden → missing makes no new missing claim. This is outside the delta. Reaching it needs the expanded key or the data to switch twice between rows that are not rendered, and resetting the flag changes the banner state machine beyond a direct correction.
+- H4-BH03 (false): H3-P3 restores the fallback speech cue, and the speech count is the behavior under test. The H4-VG-O01 trace shows focus ownership resets on release, so the defect never affected `focusReplacementHeading`.
+- H4-BH04/H4-EC08 (low): the fixture registers its filter after page load, so its frame request is the last one during resize dispatch and the one the stub keeps. The 2026-11-14 pre-fix control failed this test, which proves it exercises the recheck. Tracking several callbacks only guards against a hypothetical later listener.
+- H4-BH05/H4-EC01 (low): it needs a resize and a programmatic scroll within the first frame after focus or registration. HR9 keeps the initial true default until first observation, and a baseline snapshot adds state.
+- H4-BH06/H4-EC02 (low): no contained dialog content uses `visibility:collapse`, `inert` or `content-visibility`, or hides a shadow control behind a visible host. Covering these states adds branches.
+- H4-BH07 (low, pre-existing): the delta does not change `isRendered`, and no generated form hides an invalid editor with `visibility:hidden`; collapsed content has no client rects.
+- H4-BH08/H4-EC03/H4-AA06 (low): generated views key row metrics by a per-instance GUID that has a single generation, so no newer owner shares a key. A generation owned by the metrics state would need a new interop parameter.
+- H4-BH09 (low): a regression to "override or default" is hypothetical, since the required list is a plain array.
+- H4-BH11 (low, pre-existing): the validator only checked that JUnit exists before the delta too. The run-bound JSON report remains the authority for outcomes, and parsing JUnit adds machinery.
+- H4-BH12 (low): `npm run` executes both Playwright and the validator from `tests/e2e`, so relative paths resolve the same way. The other `FC_E2E_*` overrides are undocumented already.
+- H4-EC06 (low): an empty or directory `FC_E2E_JUNIT_PATH` is unlikely. The `??` mirrors `playwright.config.ts:14` and `FC_E2E_JSON_PATH`, and stat checks add branches.
+- H4-EC09 (maybe-false, low): an acknowledged height never redelivers (`deliver`), so only a two-step height change between the sample and the disposal could make the test flaky. Calling `settlePaint` before sampling would settle it.
 
 ## Implementation Notes
 
