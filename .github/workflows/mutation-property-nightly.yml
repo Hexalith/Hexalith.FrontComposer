@@ -17,7 +17,8 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: mcr.microsoft.com/dotnet/sdk@sha256:7913685c883a29dd8ba79da96172f5c6b29ed9be706ebe95935e3ef45f19c9c1
-      options: --cpus=2 --memory=10g --memory-swap=10g
+      # Both two-thread mutation workers share the public runner's four available CPUs.
+      options: --cpus=4 --memory=10g --memory-swap=10g
     defaults:
       run:
         shell: bash
