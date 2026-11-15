@@ -46,6 +46,7 @@ jobs:
           mkdir -p "$mutation_packages"
           printf 'NUGET_PACKAGES=%s\n' "$mutation_packages" >> "$GITHUB_ENV"
           git --version
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           pwsh -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
           cat /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory.swap.max /sys/fs/cgroup/cpu.max
 
