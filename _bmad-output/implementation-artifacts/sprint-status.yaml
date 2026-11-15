@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 11-15-2026 18:10
+last_updated: 11-15-2026 22:05
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -275,7 +275,7 @@ development_status:
   epic-16: in-progress
   16-1-i-evt-id-1-capture-the-current-eventstore-runtime-tuple: done
   16-2-a-evt-xfer-1-conditional-transfer-migration-approval-ownersh: backlog
-  16-3-a-evt-app-1-approve-or-reject-the-exact-runtime-migration: backlog
+  16-3-a-evt-app-1-approve-or-reject-the-exact-runtime-migration: in-progress
   epic-16-retrospective: optional
 
   epic-17: backlog
@@ -1275,3 +1275,46 @@ approved_change_backlog:
         - {id: "REL-A3-APP-1", kind: "approval", status: "open"}
         - {id: "E9-APP-1", kind: "approval", status: "done", closed: "2026-10-20",
           ref: "_bmad-output/implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt"}
+
+# Epic 16 decision preparation — 2026-11-15:
+# Owning draft: spec-16-3-approve-or-reject-the-exact-runtime-migration.md.
+# Historical jpiquot/Administrator role evidence found; current role remits/availability need confirmation.
+# 16.2 not invoked: transfer necessity unconfirmed; do not infer role equivalence or mark complete.
+# Tested e0eef14ddbbcd03823863a4f417a4b07f6f5bafc differs from capture/main 695d23149c56a6104e81d23a54116b4fb914df95.
+# Release Owner/Architect incident disposition due2026-11-15T21:49:35Z; outer deadline2026-11-16T17:27:10Z unchanged.
+# Coordination/lineage disposition and all three exact-tuple migration decisions pending; G-3 open.
+# Approval stories remain backlog while their preparation draft has unresolved human decisions.
+
+# Epic 16 human response — 2026-11-15:
+# jpiquot explicitly confirmed separately in all five roles; EventStore authority available;16.2 not invoked.
+# Three exact-C approve statements received and recorded in16.3; prerequisite validity blocked, no operative G-3 approval.
+# Release Owner/Architect amendment-request disposition recorded2026-11-15T21:49:02Z before incident due21:49:35Z.
+# Proposed text: planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-approval-lineage.md.
+# Actual amendment adoption and automation-owner/session coordination remain pending; outer deadline unchanged.
+# Story16.3 remains draft/backlog on prerequisites; Story16.1 done; Epic16/G-3 open.
+
+# Epic 16 approved planning adoption — 2026-11-15:
+# Receipt: planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-approval-lineage.md#planning-approval-receipt--2026-11-15.
+# jpiquot separately approves as Product Owner, Architect and Release Owner; received2026-11-15T21:58:49Z.
+# Additional workspace automation-owner identity and actual session/automation coordination are owner-attested.
+# Prospective effectiveness2026-11-15T21:58:49Z; max end2026-11-16T17:27:10Z, earlier on decision/drift/urgent fix.
+# No earlier hold, individual roster or independently observed acknowledgments are supplied.
+# Story16.1 done;16.2 backlog/not invoked because original EventStore authority is available; no transfer.
+# Story16.3 in-progress; earlier draft/backlog and pending-identity/amendment/coordination notes are historical.
+# C approvals remain nonoperative and do not activate/transfer to R through this adoption or coordination.
+# R/different current candidate needs independent exact capture and valid named migration receipts in an authorized window.
+# jpiquot as Release Owner with Architect owns readiness or terminal blocker/next action by unchanged outer deadline.
+# No fresh attempt/publication authorized; no automatic recapture loop. Epic16 and G-3 remain open.
+
+# Epic 16 review clarifications — 2026-11-15:
+# Source: planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-approval-lineage.md#review-clarifications--2026-11-15.
+# jpiquot identity/coordination attestation accepted; active-session roster/acknowledgments remain undocumented/required.
+# Owner-attested start2026-11-15T21:58:49Z; decision termination means final migration or named terminal blocker disposition.
+# Drift/urgent fix/original maximum2026-11-16T17:27:10Z also terminate; planning approval at start is not final disposition.
+# Structural capture/receipt-descendant versus current-main cycle remains blocked; another capture alone is insufficient.
+# jpiquot Release Owner with Architect must bound resolution under unchanged gates or record terminal blocker/next action by outer deadline.
+# Supplied parent GitHub main+C/R run queries completed by2026-11-15T21:59:14Z; no fresh remote check here.
+# Separate parent review observation2026-11-15T22:13:43Z: R last required success2026-11-15T20:57:29Z.
+# R two-hour capture deadline2026-11-15T22:57:29Z: time-only eligibility then; outer deadline cannot extend it.
+# No capture/receipt transfer, extension, recapture, retry or new-attempt authorization.16.3 in-progress; G-3 open.
+# Story16.1 done;16.2 backlog/not invoked; Epic16 in-progress. Earlier sections and approved rules remain intact.
