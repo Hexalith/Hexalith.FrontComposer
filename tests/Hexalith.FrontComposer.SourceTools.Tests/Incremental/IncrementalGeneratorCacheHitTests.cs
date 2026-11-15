@@ -72,6 +72,7 @@ public class IncrementalGeneratorCacheHitTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void EditingWhenStateInvalidatesCache() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string source1 = BuildProjection("Pending");
@@ -110,6 +111,7 @@ public class IncrementalGeneratorCacheHitTests {
 
     [Theory]
     [MemberData(nameof(CommandTargetChanges))]
+    [Trait("Category", "MutationErrorRegression")]
     public void EditingCommandTargetDescriptor_InvalidatesCacheAndUpdatesGeneratedForm(
         string initialSource,
         string changedSource,

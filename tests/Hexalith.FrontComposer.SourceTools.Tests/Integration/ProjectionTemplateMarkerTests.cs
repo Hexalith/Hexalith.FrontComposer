@@ -16,6 +16,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 /// </summary>
 public sealed class ProjectionTemplateMarkerTests {
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void ProjectionTemplateMarkerInfo_ValueEquality_UsesEveryCacheKeyField() {
         ProjectionTemplateMarkerInfo baseline = Marker();
         ProjectionTemplateMarkerInfo identical = Marker();
@@ -42,6 +43,7 @@ public sealed class ProjectionTemplateMarkerTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void ProjectionTemplateMarkerResult_ValueEquality_UsesMarkerAndDiagnostics() {
         ProjectionTemplateMarkerResult baseline = Result(Marker(), Diagnostic("HFC1034"));
         ProjectionTemplateMarkerResult identical = Result(Marker(), Diagnostic("HFC1034"));

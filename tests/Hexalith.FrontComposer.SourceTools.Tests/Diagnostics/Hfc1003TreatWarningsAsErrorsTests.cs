@@ -30,6 +30,7 @@ public class Hfc1003TreatWarningsAsErrorsTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void NonPartialProjection_ReportsHfc1003_AsWarning() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NonPartialProjection);
@@ -44,6 +45,7 @@ public class Hfc1003TreatWarningsAsErrorsTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void NonPartialProjection_Hfc1003_IsPromotedToError_UnderTreatWarningsAsErrors() {
         // TWAE is the compiler's general diagnostic option = Error. The generator driver applies the
         // compilation's diagnostic options to generator-reported diagnostics, so under TWAE the

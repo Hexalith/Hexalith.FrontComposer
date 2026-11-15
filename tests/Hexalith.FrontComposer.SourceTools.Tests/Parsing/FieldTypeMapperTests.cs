@@ -67,6 +67,7 @@ public class FieldTypeMapperTests {
     [InlineData("System.Collections.Generic.Dictionary")]
     [InlineData("System.Object")]
     [InlineData("SomeUnknown.CustomType")]
+    [Trait("Category", "MutationErrorRegression")]
     public void MapType_UnsupportedTypes_ReturnsNull(string typeName) {
         string? result = FieldTypeMapper.MapType(typeName, isEnum: false);
 
@@ -87,6 +88,7 @@ public class FieldTypeMapperTests {
     [InlineData("System.String")]
     [InlineData("System.Int32")]
     [InlineData("System.Collections.Generic.Dictionary<System.String, System.Int32>")]
+    [Trait("Category", "MutationErrorRegression")]
     public void IsCollectionType_NonCollections_ReturnsFalse(string typeName) {
         bool result = FieldTypeMapper.IsCollectionType(typeName);
 

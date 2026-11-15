@@ -25,5 +25,6 @@ public class CamelCaseHumanizerTests {
     public void Humanize_KnownInputs_ReturnsExpected(string input, string expected) => CamelCaseHumanizer.Humanize(input).ShouldBe(expected);
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Humanize_Null_ReturnsNull() => CamelCaseHumanizer.Humanize(null).ShouldBeNull();
 }

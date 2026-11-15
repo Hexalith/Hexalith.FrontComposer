@@ -16,6 +16,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
 public partial class GeneratorDriverTests {
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public async Task GeneratedRenderer_ExecutesConversionMatrixAndContinuesProviderChain() {
         const string source = """
             using System;
@@ -181,6 +182,7 @@ public partial class GeneratorDriverTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void GeneratedRenderer_MetadataOnlyUnnameablePropertiesUseSoftFailArmsUnderWarningsAsErrors() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -215,6 +217,7 @@ public partial class GeneratorDriverTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public async Task GeneratedRenderer_UnsafeTypesUseSoftFailArmsAndKeywordMemberCompiles() {
         const string source = """
             using System;
@@ -333,6 +336,7 @@ public partial class GeneratorDriverTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void SuppressedHfc1016_RemainsInvalidAndProducesNoCommandArtifacts() {
         const string source = """
             using System.Diagnostics.CodeAnalysis;

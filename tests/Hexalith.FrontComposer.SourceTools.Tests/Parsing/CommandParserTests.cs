@@ -657,6 +657,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void CommandModel_IEquatable_DifferentTypeName_NotEqual() {
         CommandModel left = BuildModel("A");
         CommandModel right = BuildModel("B");
@@ -675,6 +676,7 @@ public class CommandParserTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void CommandModel_IEquatable_DifferentAuthorizationPolicyName_NotEqual() {
         CommandModel left = BuildModel("A", authorizationPolicyName: "Orders.Approve");
         CommandModel right = BuildModel("A", authorizationPolicyName: "Orders.Review");

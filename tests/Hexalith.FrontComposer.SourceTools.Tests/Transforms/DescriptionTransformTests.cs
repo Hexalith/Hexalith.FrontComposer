@@ -25,6 +25,7 @@ public sealed class DescriptionTransformTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Transform_UnsupportedPropertyDescription_FlowsToColumnDescription() {
         RazorModel result = RazorModelTransform.Transform(Model(Prop(
             "Metadata",
@@ -49,6 +50,7 @@ public sealed class DescriptionTransformTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Transform_DescriptionParticipatesInColumnEquality() {
         ColumnModel described = RazorModelTransform.Transform(Model(Prop("Name", "String", description: "Description A"))).Columns[0];
         ColumnModel other = RazorModelTransform.Transform(Model(Prop("Name", "String", description: "Description B"))).Columns[0];

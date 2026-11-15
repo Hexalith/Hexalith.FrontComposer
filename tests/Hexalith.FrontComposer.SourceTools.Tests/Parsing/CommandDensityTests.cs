@@ -62,6 +62,7 @@ public class CommandDensityTests {
 
     // 3. Equality: two CommandModels differing only by Density / IconName must be non-equal.
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void CommandModel_Equality_IncludesDensityAndIconName() {
         var props = new EquatableArray<PropertyModel>(ImmutableArray<PropertyModel>.Empty);
         var zero = new EquatableArray<PropertyModel>(ImmutableArray<PropertyModel>.Empty);

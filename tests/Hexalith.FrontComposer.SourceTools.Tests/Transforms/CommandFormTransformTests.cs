@@ -210,6 +210,7 @@ public class CommandFormTransformTests {
     }
 
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void FieldGroupDescriptionChangesInvalidateGeneratorModels() {
         PropertyModel first = BuildProperty("Name", "String", fieldGroup: "Details", fieldGroupDescription: "First help.");
         PropertyModel same = BuildProperty("Name", "String", fieldGroup: "Details", fieldGroupDescription: "First help.");
