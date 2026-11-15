@@ -215,6 +215,7 @@ jobs:
           python3 -m unittest tests/eng/test_release_contract.py
           python3 -m unittest tests/eng/test_release_disposition.py
           python3 -m unittest tests/eng/test_stryker_compat.py
+          python3 -m unittest tests/eng/test_trace_mutation_run.py
           python3 -m unittest tests/eng/test_release_evidence_v2.py
           python3 -m unittest tests/eng/test_validate_contract_artifacts.py
 

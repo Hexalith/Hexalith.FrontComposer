@@ -1,22 +1,15 @@
-"""Temporary Linux mutation diagnostics; preserve the wrapped command's result."""
-import hashlib
+"""Linux mutation resource sampling; preserve the wrapped command's result."""
+import ctypes
 import json
 import os
 from pathlib import Path
-import re
-import selectors
-import shutil
 import signal
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 
 
-TRACE_OPTIONS = ["-f", "--seccomp-bpf", "-ttt", "-qq", "-e",
-                 "trace=kill,tkill,tgkill,rt_sigqueueinfo,rt_tgsigqueueinfo",
-                 "-e", "signal=SIGTERM,SIGINT,SIGHUP", "--"]
 RUNNER_NAMES = {"Runner.Listener", "Runner.Worker"}
 
 
@@ -24,76 +17,44 @@ def emit(event, **values):
     print("mutation-diagnostics " + json.dumps({"event": event, "unix_time": time.time(), **values}), flush=True)
 
 
-def acquire_tracer(work):
-    installed = shutil.which("strace")
-    if installed:
-        tracer = Path(installed)
-    else:
-        # Download/extract into owned temporary storage, without installing a
-        # package or changing host privileges/settings. APT's existing signed
-        # package index supplies the exact version and archive SHA256.
-        policy = subprocess.check_output(["apt-cache", "policy", "strace"], text=True, timeout=15)
-        candidate = re.search(r"Candidate: (\S+)", policy)
-        if not candidate or candidate[1] == "(none)":
-            raise RuntimeError("No strace candidate in the host package index.")
-        version = candidate[1]
-        metadata = subprocess.check_output(["apt-cache", "show", "strace=" + version], text=True, timeout=15)
-        digest = re.search(r"^SHA256: ([0-9a-f]{64})$", metadata, re.MULTILINE)
-        if not digest:
-            raise RuntimeError("The strace package index has no SHA256.")
-        subprocess.run(["apt-get", "download", "strace=" + version], cwd=work,
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, timeout=60)
-        packages = list(work.glob("strace_*.deb"))
-        if len(packages) != 1 or hashlib.sha256(packages[0].read_bytes()).hexdigest() != digest[1]:
-            raise RuntimeError("The downloaded strace package differs from its index digest.")
-        subprocess.run(["dpkg-deb", "--extract", str(packages[0]), str(work / "tool")], check=True, timeout=15)
-        tracer = work / "tool/usr/bin/strace"
-        emit("private-tool", package_version=version, archive_sha256=digest[1])
-    version = subprocess.check_output([str(tracer), "--version"], text=True, timeout=10).splitlines()[0]
-    emit("tracer", version=version, binary_sha256=hashlib.sha256(tracer.read_bytes()).hexdigest())
-    return tracer
+def enable_child_reaping():
+    # Adopt only descendants of this wrapper when their parents exit. This is
+    # local process state; the actual command keeps its original group/session.
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.prctl(36, 1, 0, 0, 0) != 0:  # PR_SET_CHILD_SUBREAPER
+        raise OSError(ctypes.get_errno(), "Cannot own orphaned mutation children")
 
 
-def verify_tracer(tracer):
-    # Refuse unsupported tracing before starting Stryker. In particular, never
-    # silently fall back to stopping every syscall if seccomp-bpf is unavailable.
-    process = sender = None
-    try:
-        process = subprocess.Popen([str(tracer), *TRACE_OPTIONS, sys.executable, "-c",
-                                    "import os,time;print(os.getpid(),flush=True);time.sleep(30)"],
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
-        with selectors.DefaultSelector() as selector:
-            selector.register(process.stdout, selectors.EVENT_READ)
-            if not selector.select(5):
-                raise RuntimeError("The strace control did not start within five seconds.")
-            target_text = process.stdout.readline().strip()
-            if not target_text.isdecimal():
-                _, trace = process.communicate(timeout=5)
-                raise RuntimeError("The strace control could not launch its tracee: " + trace)
-            target = int(target_text)
-        sender = subprocess.Popen([sys.executable, "-c",
-                                   "import os,signal,sys;os.kill(int(sys.argv[1]),signal.SIGTERM)", str(target)])
-        if sender.wait(timeout=5) != 0:
-            raise RuntimeError("The known signal sender failed.")
-        _, trace = process.communicate(timeout=5)
-        if process.returncode != -signal.SIGTERM or "strace:" in trace or not re.search(
-                r"SIGTERM.*si_pid=" + str(sender.pid) + r", si_uid=" + str(os.getuid()), trace):
-            raise RuntimeError("The known-sender/seccomp control failed: " + trace)
-        emit("known-sender-control", target_pid=target, sender_pid=sender.pid,
-             sender_uid=os.getuid(), exit_code=process.returncode)
-    finally:
-        for child in (sender, process):
-            if child is not None:
-                if child.poll() is None:
-                    child.kill()
-                child.wait()
-        if process is not None:
-            # The synthetic probe alone has an owned group, so even failed
-            # seccomp setup cannot leave its disposable tracee behind.
+def finish_children():
+    deadline = time.monotonic() + 5
+    cleaned = set()
+    while True:
+        while True:
             try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+                pid, _status = os.waitpid(-1, os.WNOHANG)
+            except ChildProcessError:
+                return cleaned
+            if pid == 0:
+                break
+        children = set()
+        for path in Path("/proc/self/task").glob("*/children"):
+            try:
+                children.update(int(value) for value in path.read_text().split())
+            except FileNotFoundError:
+                continue
+        for pid in children:
+            # These are unreaped direct children: their PIDs cannot be reused
+            # before this wrapper waits for them. Never signal the shared group.
+            number = signal.SIGTERM if time.monotonic() < deadline else signal.SIGKILL
+            if pid not in cleaned or number == signal.SIGKILL:
+                try:
+                    os.kill(pid, number)
+                except ProcessLookupError:
+                    pass
+                cleaned.add(pid)
+        if time.monotonic() > deadline + 5:
+            raise RuntimeError("Owned mutation children remained after cleanup")
+        time.sleep(0.05)
 
 
 def process_snapshot():
@@ -146,7 +107,7 @@ def resource_sample(root_pid):
     emit("resources", **sample)
 
 
-def run_command(tracer, arguments):
+def run_command(arguments):
     stop = threading.Event()
     process = None
     received_signal = None
@@ -166,9 +127,9 @@ def run_command(tracer, arguments):
     previous = {number: signal.signal(number, on_signal) for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
     sampler = None
     try:
-        # Keep the original process group/session: changing those would obscure
-        # a process-group signal. strace streams signal sender PID/UID to stderr.
-        process = subprocess.Popen([str(tracer), *TRACE_OPTIONS, *arguments])
+        # Execute the actual command directly, without ptrace or another tool
+        # between its exit status and this wrapper. Keep its group/session.
+        process = subprocess.Popen(arguments)
         sampler = threading.Thread(target=sample, name="mutation-resource-sampler")
         sampler.start()
         while received_signal is None:
@@ -200,8 +161,13 @@ def run_command(tracer, arguments):
         stop.set()
         if sampler is not None:
             sampler.join()
-        for number, handler in previous.items():
-            signal.signal(number, handler)
+        try:
+            cleaned = finish_children()
+            if cleaned:
+                emit("owned-children-cleaned", count=len(cleaned))
+        finally:
+            for number, handler in previous.items():
+                signal.signal(number, handler)
         # Also cover a signal delivered after wait's result was computed but
         # before the handlers were restored. Setup's restored handler raises
         # the same nonzero exit if a later signal arrives during function exit.
@@ -217,13 +183,10 @@ def main():
 
     for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         signal.signal(number, cancel_setup)
-    with tempfile.TemporaryDirectory(prefix="mutation-trace-", dir=os.environ.get("RUNNER_TEMP")) as name:
-        tracer = acquire_tracer(Path(name))
-        verify_tracer(tracer)
-        # seccomp-bpf implies strace kill-on-exit: if the tracer itself dies,
-        # its tracees are killed. This is diagnostic evidence, never a score.
-        emit("diagnostic-scope", seccomp_bpf=True, tracer_kill_on_exit=True, sample_interval_seconds=5)
-        return run_command(tracer, sys.argv[2:])
+    enable_child_reaping()
+    emit("diagnostic-scope", execution="direct", resource_sampling=True,
+         ptrace=False, sample_interval_seconds=5)
+    return run_command(sys.argv[2:])
 
 
 if __name__ == "__main__":
