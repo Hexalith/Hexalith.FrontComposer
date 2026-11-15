@@ -81,6 +81,12 @@ public sealed class CommandErrorRecoveryTests {
         field.IsRequired.ShouldBeFalse();
         fallback.Fields.Select(item => item.PropertyName).ShouldBe(PayloadNames);
         McpManifestTransform.TransformCommand(model).Parameters.Single(item => item.Name == "Raw").IsUnsupported.ShouldBeTrue();
+        McpParameterDescriptorModel rejectedField = McpManifestTransform.TransformCommand(model).Parameters.Single(item => item.Name == "Raw");
+        rejectedField.JsonType.ShouldBe("object");
+        rejectedField.IsRequired.ShouldBeFalse();
+        rejectedField.IsNullable.ShouldBeFalse();
+        rejectedField.Title.ShouldBe("Recovered payload");
+        rejectedField.Description.ShouldBe("Payload narrative");
 
         GeneratorDriver driver = Driver().RunGenerators(compilation, TestContext.Current.CancellationToken);
         string[] unaffected = Output(driver.GetRunResult(), "HealthyCommand");
@@ -144,7 +150,7 @@ public sealed class CommandErrorRecoveryTests {
     private static void AssertCompleteRecoveredContract(CommandModel model) {
         model.TypeName.ShouldBe("AffectedCommand");
         model.Namespace.ShouldBe("Recovery");
-        model.BoundedContext.ShouldBe("Recovery");
+        model.BoundedContext.ShouldBe("Recovery.Commands");
         model.AuthorizationPolicyName.ShouldBe("Recovery.Manage");
         model.Density.ShouldBe(CommandDensity.FullPage);
         model.NonDerivableProperties.Select(property => property.Name).ShouldBe(PayloadNames);
@@ -160,10 +166,18 @@ public sealed class CommandErrorRecoveryTests {
         form.Fields.Single(field => field.PropertyName == "Notes").IsRequired.ShouldBeFalse();
         form.Fields.Single(field => field.PropertyName == "Quantity").IsRequired.ShouldBeTrue();
         form.AuthorizationPolicyName.ShouldBe("Recovery.Manage");
+        form.CommandFullyQualifiedName.ShouldBe("Recovery.AffectedCommand");
+        FormFieldModel rawField = form.Fields.Single(item => item.PropertyName == "Raw");
+        rawField.StaticLabel.ShouldBe("Recovered payload");
+        rawField.HasExplicitDisplayName.ShouldBeTrue();
+        rawField.Description.ShouldBe("Payload narrative");
         RegistrationModelTransform.TransformCommand(model).AuthorizationPolicyName.ShouldBe("Recovery.Manage");
         CommandRendererModel renderer = CommandRendererTransform.Transform(model, CommandFluxorTransform.Transform(model));
         renderer.NonDerivablePropertyNames.ShouldBe(new EquatableArray<string>([.. PayloadNames]));
         renderer.CommandFullyQualifiedName.ShouldBe("Recovery.AffectedCommand");
+        renderer.BoundedContext.ShouldBe("Recovery.Commands");
+        renderer.FullPageRoute.ShouldBe("/commands/Recovery.Commands/AffectedCommand");
+        renderer.DisplayLabel.ShouldBe("Affected");
         renderer.AuthorizationPolicyName.ShouldBe("Recovery.Manage");
         renderer.StateName.ShouldBe("AffectedCommandLifecycleState");
         renderer.ActionsWrapperName.ShouldBe("AffectedCommandActions");
@@ -172,16 +186,31 @@ public sealed class CommandErrorRecoveryTests {
         CommandFluxorModel state = CommandFluxorTransform.Transform(model);
         state.FeatureName.ShouldBe("AffectedCommandLifecycleFeature");
         state.ReducersClassName.ShouldBe("AffectedCommandReducers");
+        state.CommandFullyQualifiedName.ShouldBe("Recovery.AffectedCommand");
+        state.FeatureQualifiedName.ShouldBe("Recovery.AffectedCommandLifecycleState");
         RegistrationModel registration = RegistrationModelTransform.TransformCommand(model);
         registration.IsCommand.ShouldBeTrue();
         registration.HasFullPageRoute.ShouldBeTrue();
-        registration.BoundedContext.ShouldBe("Recovery");
+        registration.BoundedContext.ShouldBe("Recovery.Commands");
         McpCommandDescriptorModel descriptor = McpManifestTransform.TransformCommand(model);
         descriptor.Parameters.Select(parameter => parameter.Name).ShouldBe(PayloadNames);
         descriptor.DerivablePropertyNames.ShouldBe(["MessageId", "CommandId", "CorrelationId", "TenantId", "UserId", "Timestamp", "CreatedAt", "ModifiedAt"]);
         descriptor.CommandTypeName.ShouldBe("Recovery.AffectedCommand");
-        descriptor.ProtocolName.ShouldBe("Recovery.AffectedCommand.Execute");
+        descriptor.ProtocolName.ShouldBe("Recovery.Commands.AffectedCommand.Execute");
         descriptor.AuthorizationPolicyName.ShouldBe("Recovery.Manage");
+        descriptor.BoundedContext.ShouldBe("Recovery.Commands");
+        descriptor.Title.ShouldBe("Affected");
+        descriptor.Parameters.Select(parameter => parameter.TypeName)
+            .ShouldBe(["String", "Int32", "Decimal", "Boolean", "DateTimeOffset", "String", "String"]);
+        descriptor.Parameters.Select(parameter => parameter.JsonType)
+            .ShouldBe(["string", "number", "number", "boolean", "string", "string", "string"]);
+        descriptor.Parameters.Select(parameter => parameter.IsRequired).ShouldBe([true, true, true, true, true, false, true]);
+        descriptor.Parameters.Select(parameter => parameter.IsNullable).ShouldBe([false, false, false, false, false, true, false]);
+        descriptor.Parameters.ShouldAllBe(parameter => !parameter.IsUnsupported);
+        descriptor.Parameters.Single(parameter => parameter.Name == "Raw").Title.ShouldBe("Recovered payload");
+        descriptor.Parameters.Single(parameter => parameter.Name == "Raw").Description.ShouldBe("Payload narrative");
+        McpManifestTransform.TransformCommand(model, disambiguateProtocolName: true).ProtocolName
+            .ShouldBe("Recovery.Commands.Recovery.AffectedCommand.Execute");
     }
 
     private static CSharpGeneratorDriver Driver() => CSharpGeneratorDriver.Create(new FrontComposerGenerator());
@@ -197,10 +226,12 @@ public sealed class CommandErrorRecoveryTests {
     private static string Source(string name, string? policy, string rawType = "string", string messageIdSetter = "set;") => $$"""
         using System;
         using System.Collections.Generic;
+        using System.ComponentModel;
+        using System.ComponentModel.DataAnnotations;
         using Hexalith.FrontComposer.Contracts.Attributes;
         namespace Recovery;
         [Command]
-        [BoundedContext("Recovery")]
+        [BoundedContext("Recovery.Commands")]
         [RequiresPolicy({{JsonSerializer.Serialize(policy)}})]
         public sealed class {{name}} {
             public string MessageId { get; {{messageIdSetter}} } = "";
@@ -217,6 +248,8 @@ public sealed class CommandErrorRecoveryTests {
             public bool Enabled { get; set; }
             public DateTimeOffset UpdatedAt { get; set; }
             public string? Notes { get; set; }
+            [Display(Name = "Recovered payload", Description = "Display fallback")]
+            [Description("Payload narrative")]
             public {{rawType}} Raw { get; set; } = default!;
         }
         """;

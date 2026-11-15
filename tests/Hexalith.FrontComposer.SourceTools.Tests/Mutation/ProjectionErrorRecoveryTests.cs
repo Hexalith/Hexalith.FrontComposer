@@ -54,6 +54,13 @@ public sealed class ProjectionErrorRecoveryTests {
         fallback.Columns.Single(column => column.PropertyName == "Raw").TypeCategory.ShouldBe(TypeCategory.Unsupported);
         McpResourceDescriptorModel resource = McpManifestTransform.TransformProjection(model);
         resource.Fields.Single(field => field.Name == "Raw").IsUnsupported.ShouldBeTrue();
+        McpParameterDescriptorModel rejectedField = resource.Fields.Single(field => field.Name == "Raw");
+        rejectedField.TypeName.ShouldBe("Unsupported");
+        rejectedField.JsonType.ShouldBe("object");
+        rejectedField.IsRequired.ShouldBeFalse();
+        rejectedField.IsNullable.ShouldBeFalse();
+        rejectedField.Title.ShouldBe("Recovered payload");
+        rejectedField.Description.ShouldBe("Payload narrative");
 
         GeneratorDriver driver = Driver().RunGenerators(compilation, TestContext.Current.CancellationToken);
         GeneratorDriverRunResult brokenResult = driver.GetRunResult();
@@ -75,18 +82,41 @@ public sealed class ProjectionErrorRecoveryTests {
         recoveredRaw.IsNullable.ShouldBe(repaired.EndsWith('?'));
         recoveredModel.TypeName.ShouldBe("AffectedProjection");
         recoveredModel.Namespace.ShouldBe("Recovery");
-        recoveredModel.BoundedContext.ShouldBe("Recovery");
+        recoveredModel.BoundedContext.ShouldBe("Recovery.Views");
         RazorModel recoveredView = RazorModelTransform.Transform(recoveredModel);
         recoveredView.Columns.Single(column => column.PropertyName == "Raw").TypeCategory.ShouldBe(expectedCategory);
         recoveredView.Columns.Single(column => column.PropertyName == "Amount").Header.ShouldBe("Recovery amount");
         RegistrationModel registration = RegistrationModelTransform.Transform(recoveredModel);
         registration.TypeName.ShouldBe("AffectedProjection");
         registration.Namespace.ShouldBe("Recovery");
-        registration.BoundedContext.ShouldBe("Recovery");
+        registration.BoundedContext.ShouldBe("Recovery.Views");
         FluxorModel state = FluxorModelTransform.Transform(recoveredModel);
         state.StateName.ShouldBe("AffectedProjectionState");
         state.FeatureName.ShouldBe("AffectedProjectionFeature");
         McpManifestTransform.TransformProjection(recoveredModel).ProjectionTypeName.ShouldBe("Recovery.AffectedProjection");
+        McpResourceDescriptorModel recoveredResource = McpManifestTransform.TransformProjection(recoveredModel);
+        recoveredResource.BoundedContext.ShouldBe("Recovery.Views");
+        recoveredResource.Name.ShouldBe("AffectedProjection");
+        recoveredResource.Title.ShouldBe("Affected");
+        recoveredResource.ProtocolUri.ShouldBe("frontcomposer://Recovery.Views/projections/AffectedProjection");
+        McpManifestTransform.TransformProjection(recoveredModel, disambiguateProtocolUri: true).ProtocolUri
+            .ShouldBe("frontcomposer://Recovery.Views/projections/Recovery.AffectedProjection");
+        McpParameterDescriptorModel recoveredField = recoveredResource.Fields.Single(field => field.Name == "Raw");
+        string expectedJsonType = expectedCategory switch
+        {
+            TypeCategory.Numeric => "number",
+            TypeCategory.Boolean => "boolean",
+            TypeCategory.Collection => "array",
+            _ => "string",
+        };
+        recoveredField.TypeName.ShouldBe(expectedCategory.ToString());
+        recoveredField.JsonType.ShouldBe(expectedJsonType);
+        recoveredField.IsUnsupported.ShouldBeFalse();
+        recoveredField.IsNullable.ShouldBe(repaired.EndsWith('?'));
+        recoveredField.IsRequired.ShouldBe(!repaired.EndsWith('?'));
+        recoveredField.Title.ShouldBe("Recovered payload");
+        recoveredField.Description.ShouldBe("Payload narrative");
+        recoveredField.EnumValues.ShouldBe(repaired == "Stage" ? ["Open", "Closed"] : Array.Empty<string>());
         recoveredModel.ShouldNotBe(model);
         DomainModel fresh = CompilationHelper.ParseProjection(recovered, "Recovery.AffectedProjection").Model.ShouldNotBeNull();
         recoveredModel.ShouldBe(fresh);
@@ -156,11 +186,12 @@ public sealed class ProjectionErrorRecoveryTests {
     private static string Source(string name, string rawType) => $$"""
         using System;
         using System.Collections.Generic;
+        using System.ComponentModel;
         using System.ComponentModel.DataAnnotations;
         using Hexalith.FrontComposer.Contracts.Attributes;
         namespace Recovery;
         [Projection]
-        [BoundedContext("Recovery")]
+        [BoundedContext("Recovery.Views")]
         public partial class {{name}} {
             public string Id { get; set; } = "";
             public string? Note { get; set; }
@@ -169,6 +200,8 @@ public sealed class ProjectionErrorRecoveryTests {
             public decimal Amount { get; set; }
             public bool Enabled { get; set; }
             public DateTimeOffset UpdatedAt { get; set; }
+            [Display(Name = "Recovered payload", Description = "Display fallback")]
+            [Description("Payload narrative")]
             public {{rawType}} Raw { get; set; } = default!;
         }
         """ + (rawType == "Stage" ? "\npublic enum Stage { Open, Closed }" : "");
