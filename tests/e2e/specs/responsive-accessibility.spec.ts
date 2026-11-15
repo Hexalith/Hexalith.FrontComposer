@@ -549,6 +549,55 @@ test('queued heading ancestor resize recovery yields to a later programmatic scr
   } finally { await disposeHeadingOrderingFixture(root); }
 });
 
+for (const input of ['pointer', 'wheel', 'PageDown'] as const) test(`${input} cancellation of a held initial heading frame keeps later window resize recovery`, async ({ page }) => {
+  const root = await headingOrderingFixture(page);
+  try {
+    const held = await root.evaluate((element, input) => {
+      const shell = element as HTMLElement & { __fcShellFocusVisibility: EventListener };
+      const heading = element.querySelector('h1')!;
+      heading.blur();
+      const originalFocus = shell.__fcShellFocusVisibility;
+      const nativeRequest = window.requestAnimationFrame;
+      const nativeCancel = window.cancelAnimationFrame;
+      const token = -1;
+      let pending: FrameRequestCallback | null = null;
+      let captured = 0;
+      // Hold only the initial frame issued synchronously by the real focus handler.
+      const capture: EventListener = event => {
+        window.requestAnimationFrame = callback => { pending = callback; captured++; return token; };
+        try { originalFocus.call(element, event); }
+        finally { window.requestAnimationFrame = nativeRequest; }
+      };
+      window.cancelAnimationFrame = id => { if (id === token) pending = null; else nativeCancel(id); };
+      element.removeEventListener('focusin', originalFocus);
+      element.addEventListener('focusin', capture);
+      try {
+        heading.focus({ preventScroll: true });
+        const queued = captured === 1 && pending !== null;
+        // Synthetic input reaches each cancellation listener without native scrolling,
+        // so the heading stays on screen for the later window resize.
+        if (input === 'pointer') element.querySelector('#ae-heading-spacer')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+        else if (input === 'wheel') element.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: 1 }));
+        else heading.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true }));
+        return { queued, cancelled: pending === null };
+      } finally {
+        window.requestAnimationFrame = nativeRequest;
+        window.cancelAnimationFrame = nativeCancel;
+        element.removeEventListener('focusin', capture);
+        element.addEventListener('focusin', originalFocus);
+      }
+    }, input);
+    expect(held).toEqual({ queued: true, cancelled: true });
+    await settlePaint(page);
+    expect(await page.evaluate(() => (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls)).toBe(0);
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+    await expect.poll(() => page.evaluate(() => (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls),
+      { message: 'window resize re-arms visibility after input cancelled the initial frame' }).toBeGreaterThan(0);
+    await expect(root.locator('h1')).toBeFocused();
+    await expectFocusVisible(root.locator('h1'));
+  } finally { await disposeHeadingOrderingFixture(root); }
+});
+
 test('queued heading resize recovery yields to a later programmatic scroll', async ({ page }) => {
   const root = await headingOrderingFixture(page);
   try {

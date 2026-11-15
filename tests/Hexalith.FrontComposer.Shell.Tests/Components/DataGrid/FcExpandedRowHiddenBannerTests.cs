@@ -244,6 +244,14 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
                 .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "same"))
             : null;
         spoken.Count(message => message == missingMessage).ShouldBe(1);
+        if (second is not null)
+        {
+            // A non-final owner's family change keeps the shared missing episode open.
+            first.Render(p => p.Add(c => c.IsMissing, true).Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "other"));
+            first.Render(p => p.Add(c => c.IsMissing, false).Add(c => c.IsHiddenByFilter, false));
+            first.Render(p => p.Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "same"));
+            spoken.Count(message => message == missingMessage).ShouldBe(1);
+        }
 
         // Generated grids keep IsMissing true while the expanded item is filter-hidden.
         first.Render(p => p.Add(c => c.IsMissing, true).Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "other"));

@@ -412,6 +412,62 @@ Disposition (2026-11-15): the Owner chose to leave the three patches below as ac
 - H4-EC06 (low): an empty or directory `FC_E2E_JUNIT_PATH` is unlikely. The `??` mirrors `playwright.config.ts:14` and `FC_E2E_JSON_PATH`, and stat checks add branches.
 - H4-EC09 (maybe-false, low): an acknowledged height never redelivers (`deliver`), so only a two-step height change between the sample and the disposal could make the test flaky. Calling `settlePaint` before sampling would settle it.
 
+#### H4-correction delta review (2026-11-15)
+
+Scope: the fix delta `git diff 0d065fce b22be84b -- src tests`. It contains the three reopened H3 patch-delta action items plus Build's H5-P1 pending-initial-focus marker (4 files, +116/−8, 212 diff lines). Its binary diff is the Owner-accepted candidate `0d065fce + ca8ee810`. Spec, result, ledger and sprint narrative are excluded.
+
+Four layers returned 20 raw findings (`H6-BH/EC/VG/AA#`): Blind Hunter 10, Edge Case Hunter 5, Verification Gap 1 (pre-verified gap) and Acceptance Auditor 4. Splitting BH07, BH09 and AA03 gives 23. No layer failed. The Acceptance Auditor found no acceptance-criterion violation; it confirmed every reopened item and H5-P1 against the spec and confirmed the reviewed diff hash. Both patches change tests only, but an applied patch changes the `src`/`tests` hash bound to the Owner acceptance and would need a new Owner extension.
+
+Disposition (2026-11-15): the Owner chose to apply both patches. Both change test files only and are verified below (see [H6 review patches and bounded verification](#h6-review-patches-and-bounded-verification--2026-11-15)). The candidate is now `b22be84b` plus `src`/`tests` patch SHA-256 `31b7fe31ff295d858b8da204f17f81eb9b8d3d09790bbb735f88db64faaab7f5`, so the existing Owner acceptance of `0d065fce + ca8ee810` does not cover it.
+
+- [x] [Review][Patch] No test pins the new marker resets on input cancellation.
+  - **Gap:** `recordPointer` (`:259`), non-Ctrl `cancelResizedFocus` (`:432`) and the navigation-key branch (`:453`) clear `pendingInitialFocus` when they cancel a pending initial frame. Deleting any one of these clears fails no test:
+    - the held-frame PageDown and pointer tests (`responsive-accessibility.spec.ts:1170`, `:1236`) never resize afterwards;
+    - the `resize focus visibility yields to ${input}` loop (`:623`) sends its input only after the initial frame has run.
+
+    The disposal clear (`:355`) is unobservable (H6-BH06).
+  - **Consequence if regressed:** input in the one-frame gap after overlay route recovery would leave the marker on the still-focused heading. The guard at `:363` would then silently drop every later window-resize recovery for that heading until focus moves, and the `:699` re-arm contract would break unnoticed.
+  - **Fix:** add a looped e2e test over `pointer`, plain `wheel` and `PageDown` on `headingOrderingFixture`:
+    1. Hold the heading's initial focus frame and send the input.
+    2. Restore `requestAnimationFrame`, then dispatch a window `resize` while the heading remains on screen. Use a window resize because input cancellation also stops the ancestor watch.
+    3. Assert `__aeOrderingCalls > 0`.
+
+    Confirm each row fails with its clear deleted (H6-VG01, H6-BH05, H6-AA01). [src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-keyboard.js:363]
+- [x] [Review][Patch] The co-mounted row of the new banner theory cannot detect a premature family end.
+  - **Gap:** the test name and summary claim the missing family ends "after its final claimant leaves", but `first` and `second` change family one right after the other. If the family-change `EndTransitionEpisode` ended the episode at the first, non-final claimant, both rows would still record exactly two missing cues.
+  - **Fix:** mirror the sibling theory's `if (second is not null)` block (`:216-222`):
+    1. While `second` stays missing("same"), move `first` through filter-hidden (`IsMissing=true`, `IsHiddenByFilter=true`, "other") → present → missing("same").
+    2. Assert the missing cue count is still 1.
+    3. Continue the existing sequence for both banners.
+
+    Confirm the co-mounted row fails when the episode ends on any claimant's exit (H6-BH01, H6-EC05, H6-AA03a). [tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs:249]
+
+##### Rejected (H4-correction delta review)
+
+- **H6-BH02/H6-AA03b (low):** the theory counts only the missing cue, so filter-hidden speech and focus in the missing → filter step are unasserted.
+  - **Why not fixed:** existing tests already pin these rules:
+    - first-hidden focus-only: `DirectHiddenNoticeKeepsOnePoliteNodeAndFirstResultUsesFocusAlone`;
+    - co-mounted single focus: `CoMountedFirstHiddenResultFocusesOnlyOnce`;
+    - shared speech: `CoMountedHiddenNoticesRetainSharedSpeechUntilLastOwnerLeaves`.
+
+    The missing entry reaches the same branches after the family release. Asserting the full sequence would need focus-interop setup in this theory.
+- **H6-BH03/H6-EC03 (low, carried H4-BH02b/H4-AA03b/H5-BH01):** `_wasMissing` stays true during production filter-hidden inputs, so filter-hidden → missing makes no new missing claim.
+  - **New detail:** the trace also confirms that the early `settledMissing` return keeps the filter claim until the next present render.
+  - **Why not fixed:** this is the pre-existing state-machine defect already rejected twice, and the test-only delta does not change it.
+- **H6-BH04/H6-AA02 (low):** the frame-focus merge has no window-resize variant.
+  - **Why not fixed:** the guard sits in the shared scheduler, which the ancestor variant pins. A real `resize` event fires before the frame's animation callbacks. Once the offscreen heading's first IntersectionObserver result has arrived, `showResizedFocus` returns before reaching the guard. Only a hypothetical refactor that moved the guard would expose the window caller.
+- **H6-BH06 (false):** the hook's only caller, `unregisterShellKeyFilter`, removes the resize listener and disconnects the ResizeObserver before calling it, then cancels the frame. Nothing can schedule a recovery after the clear, and no non-teardown caller exists.
+- **H6-BH07a/H6-EC02 (low):** the ancestor-held test's stub holds unrelated animation-frame callbacks for one rendering update and never replays them.
+  - **Why not fixed:** each Playwright test has its own page, and the `/home` fixture has already settled (IntersectionObserver result plus two frames). The recorded 168-case run has no flaky or retried case. Replaying held callbacks would add machinery to the test.
+- **H6-BH07b (false):** a recovery that always skipped the reveal would fail the existing positive controls: `heading visibility retains layout-only recovery…` (`responsive-accessibility.spec.ts:485`) and the window re-arm assertion (`:699`).
+- **H6-BH08 (false):** the same-frame ancestor variant failed in all three engines before H5-P1, with zero reveals. That red control shows the module's ResizeObserver delivery merges before the reveal frame.
+- **H6-BH09a (low, pre-existing, H4-BH11 lineage):** no CLI case omits JUnit to prove the validator requires it. The `required` check (`validate-a11y-artifacts.mjs:6-21`) is unchanged, and it had no such negative case before the delta either.
+- **H6-BH09b/H6-EC04 (false):** every `runValidator` caller either omits `junitPath` or passes a string (`:438`), so `null` never reaches the helper.
+- **H6-BH10 (low, carried H4-EC06):** an empty or directory `FC_E2E_JUNIT_PATH` is unlikely, `??` mirrors `playwright.config.ts`, and the validator is unchanged.
+- **H6-EC01 (low, traced, not probed):** after a forced reveal of an offscreen heading, `headingIntersecting` stays false until the next IntersectionObserver delivery. A ResizeObserver change in that same frame therefore skips recovery.
+  - **Why not fixed:** the triggering change has to come from a later animation-frame callback in the reveal frame. Layout that flushed before `scrollIntoView` is already covered by the reveal, and the next IntersectionObserver result restores true. The fix would update the flag after an accepted `rememberHeadingLayout(true)`, adding another branch to the heading-visibility state machine.
+- **H6-AA04 (low, carried H5-BH02):** H5-P1 keeps the unconditional initial reveal when a same-target resize also arrives before the first frame. A same-task application scroll in that frame is therefore overwritten. This is the initial-focus versus application-scroll trade-off already rejected as H5-BH02.
+
 ## Implementation Notes
 
 ### Completion follow-up, 2026-10-16
@@ -2243,3 +2299,45 @@ The Owner answered **"yes"** to: "Do you extend prior native-evidence, zoom and 
 The three reopened actions and H5-P1 are complete, and independent review and final verification pass: **168 browser / 43 banner component / 32 Node evidence tests**, TypeScript, zero-warning/error Debug Shell.Tests/Counter build, story validation and whitespace checks. Two separate Story 13.7 inventory follow-ups remain recorded. Earlier native AT, actual zoom, human, full-matrix/visual, hosted and full-topology evidence retains its executed inputs; no new such run is claimed. D2/D3/O2, existing exceptions, post-v1 deferrals, eighteen unchecked human boxes and independent OI-16/G-4/FLUENT-APP-1/UX/Product/Architect gates retain their meanings.
 
 This decision supersedes the preceding pending-acceptance statements for the exact candidate above. Primary status is **done**; the sprint entry moves to **review** under Build step 5. The frozen original intent and baseline, historical evidence and earlier decisions are preserved. Completion metadata does not change the accepted source inputs. The workflow creates a local completion commit and performs no push.
+
+## H6 review patches and bounded verification — 2026-11-15
+
+The H4-correction delta review's two patches are applied; both change test files only, and no production C# or JS changes.
+- **H6-VG01/H6-BH05/H6-AA01:** `responsive-accessibility.spec.ts` adds a looped `${input} cancellation of a held initial heading frame keeps later window resize recovery` test over `pointer`, `wheel` and `PageDown`.
+  - It holds only the initial frame the real focus handler issues and sends synthetic input, so the heading stays on screen without native scrolling.
+  - It asserts that the held frame was cancelled and nothing was revealed. A window `resize` must then re-arm a reveal.
+- **H6-BH01/H6-EC05/H6-AA03a:** the co-mounted row of `MissingFilterHiddenPresentAndSameMissingIdentityStartsFreshSpeechAfterFinalOwner` now moves the non-final owner through filter-hidden → present → missing("same") while `second` stays missing. It asserts the missing cue is still spoken only once.
+
+**Candidate:** root `b22be84bdbb23d9263a8835496ad0c95adf1843f` plus `git diff --binary HEAD -- src tests` SHA-256 `31b7fe31ff295d858b8da204f17f81eb9b8d3d09790bbb735f88db64faaab7f5`. `fc-keyboard.js` is unchanged (SHA-256 `1b464873…`), and the Counter Test host served it, `fc-focus.js` and `fc-datagrid.js` byte-identical to source.
+
+**Green results:**
+- **Browser:** 177 cases, 59 each in Chromium, Firefox and WebKit, with zero failures, retries, skips or flaky results. The lane is the prior parent-final heading/resize/input/disposal, dialog, grid and route-skip-link lane plus the three new rows. Browser JSON SHA-256: `b287144d1bddf78fa0e324c82394c816f8cb0e64177518205ea1008e3dc2ef18`.
+- **Banner component:** 43 cases pass.
+- **Node evidence/CLI:** passes.
+- **TypeScript:** exit 0.
+- **Build:** the individual Debug Shell.Tests build, which includes Counter.Web, exits 0.
+
+**Red controls** never mutate the checkout:
+- **Ownership mutant:** a private compile override drops `!_claims.ContainsKey(...)` from `EndTransitionEpisode`, so an episode ends at any claimant's exit.
+  - With the patched test, the co-mounted row fails (2 missing cues instead of 1) and the single row passes.
+  - With the HEAD test, both rows pass, which confirms the pre-patch gap.
+- **Keyboard mutants:** a private copy of `tests/e2e` serves the module through Playwright route interception.
+  - A control run serving the unmodified module passes 9/9.
+  - Deleting only the `recordPointer`, `cancelResizedFocus` or navigation-key `pendingInitialFocus = null` makes that row fail in all three engines at the re-arm assertion (3/3 each).
+  - Every red row was served through the interception.
+
+**Command:** run from the repository root, `run-with-temp python3 /home/administrator/.local/state/frontcomposer/h6-review-patches-20261115/verify.py /home/administrator/.local/state/frontcomposer/h6-review-patches-20261115`. That directory's `commands.json` and `verification-summary.json` record the exact child argv, cwd, exit codes and hashes; the reports and logs stay there.
+- **First attempt:** it stopped when the HEAD-test red build hit CA1707. The scratch copy sits outside the repository's `[tests/**.cs]` CA1707 `none` glob. The retained `attempt-1/` records this; the rerun mirrors that suppression for the private build only.
+- **Cleanup:** the Counter host was stopped and awaited (exit 0), port 5070 is closed, and both private TMPDIR trees are removed.
+
+**Not claimed:** no new native AT, actual zoom, human observation, full state-artifact/visual, broad .NET, hosted CI or full-topology run. All earlier evidence, dispositions, exceptions, post-v1 deferrals, the eighteen unchecked human boxes and the independent gates keep their meanings.
+
+The earlier Owner acceptance is bound to `0d065fce + ca8ee810` and does not cover this changed-test candidate. Nothing has been staged, committed or pushed.
+
+## Owner acceptance of the H6 review patches and code-review completion — 2026-11-15
+
+The Owner answered **"Yes, extend"** to: "Do you extend your previous native-evidence, zoom and WebKit acceptance to b22be84b + 31b7fe31, keeping the existing exceptions and post-v1 deferrals?"
+
+This extends the existing native-evidence/manual-criterion, AE-02/MAN-136-ZOOM reuse and WebKit capability acceptance to root `b22be84bdbb23d9263a8835496ad0c95adf1843f` plus `src`/`tests` patch SHA-256 `31b7fe31ff295d858b8da204f17f81eb9b8d3d09790bbb735f88db64faaab7f5`. Production sources are byte-identical to the previously accepted candidate, and the change adds test assertions only.
+
+Both H6 patches are fixed and verified. No decision-needed, deferred, or unresolved high/medium finding remains, and the 17 rejected findings keep their recorded verdicts. The primary status remains **done**, and the sprint entry moves from **review** to **done** under code-review step 6. Earlier evidence, D2/D3/O2, existing exceptions, post-v1 deferrals, the eighteen unchecked human boxes and the independent OI-16/G-4/FLUENT-APP-1/UX/Product/Architect gates keep their meanings. Nothing has been staged, committed or pushed.
