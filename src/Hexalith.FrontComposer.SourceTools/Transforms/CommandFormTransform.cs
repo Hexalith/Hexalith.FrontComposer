@@ -80,7 +80,7 @@ public static class CommandFormTransform {
             "Decimal" or "Double" or "Single" => FormFieldTypeCategory.DecimalInput,
             "Boolean" => FormFieldTypeCategory.Switch,
             "DateTime" or "DateTimeOffset" or "DateOnly" => FormFieldTypeCategory.DatePicker,
-            // Task 3B.1: TimeOnly renders as FluentTextInput with TextInputType.Time + HH:mm placeholder (patch 2026-04-16 P-06).
+            // TimeOnly binds the typed FluentTimePicker<TValue> in native time-input mode.
             "TimeOnly" => FormFieldTypeCategory.TimeInput,
             "Enum" => FormFieldTypeCategory.Select,
             "Guid" => FormFieldTypeCategory.MonospaceText,

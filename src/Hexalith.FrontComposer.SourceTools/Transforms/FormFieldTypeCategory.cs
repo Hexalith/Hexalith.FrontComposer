@@ -27,12 +27,12 @@ public enum FormFieldTypeCategory {
     /// <summary><c>FluentSelect&lt;TEnum, TEnum&gt;</c> populated with enum members (humanized labels truncated to 30 chars).</summary>
     Select,
 
-    /// <summary><c>FluentTextInput</c> styled with a monospace CSS class for identifier values (Guid, ULID).</summary>
+    /// <summary><c>FluentTextInput</c> styled with a monospace CSS class for Guid identifier values, with a string-backing converter.</summary>
     MonospaceText,
 
     /// <summary>
-    /// <c>FluentTextInput</c> with <c>TextInputType.Time</c> and an <c>HH:mm</c> placeholder,
-    /// mapped from <see cref="System.TimeOnly"/>. Task 3B.1. Patch 2026-04-16 P-06.
+    /// <c>FluentTimePicker&lt;TValue&gt;</c> with a typed <see cref="System.TimeOnly"/> binding
+    /// and native time-input rendering.
     /// </summary>
     TimeInput,
 

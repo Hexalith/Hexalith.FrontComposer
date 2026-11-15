@@ -265,8 +265,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 }));
                 b.CloseComponent();
             }
-            b.OpenComponent<FluentLabel>(806);
-            b.AddAttribute(807, "Typography", Typography.Caption);
+            b.OpenComponent<FluentText>(806);
+            b.AddAttribute(807, "Size", TextSize.Size200);
             b.AddAttribute(808, "Class", "fc-field-description");
             b.AddAttribute(809, "ChildContent", (RenderFragment)((RenderTreeBuilder descBuilder) =>
             {
@@ -1285,8 +1285,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 }));
                 b.CloseComponent();
             }
-            b.OpenComponent<FluentLabel>(806);
-            b.AddAttribute(807, "Typography", Typography.Caption);
+            b.OpenComponent<FluentText>(806);
+            b.AddAttribute(807, "Size", TextSize.Size200);
             b.AddAttribute(808, "Class", "fc-field-description");
             b.AddAttribute(809, "ChildContent", (RenderFragment)((RenderTreeBuilder descBuilder) =>
             {

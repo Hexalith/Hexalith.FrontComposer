@@ -748,6 +748,7 @@ public static class CommandFormEmitter {
         EmitBuildRenderTree(sb, form, fluxor, escapedButtonLabel);
         EmitRejectionCopyHelpers(sb, escapedButtonLabel);
         EmitNumericConverters(sb, form);
+        EmitGuidConverters(sb, form);
         _ = sb.AppendLine();
         EmitLogMethods(sb, hasAuthorizationPolicy, form.CommandTarget is not null);
 
@@ -941,7 +942,8 @@ public static class CommandFormEmitter {
     private static void EmitFieldBackingFields(StringBuilder sb, CommandFormModel form) {
         foreach (FormFieldModel field in form.Fields) {
             if (field.TypeCategory is FormFieldTypeCategory.NumberInput
-                or FormFieldTypeCategory.DecimalInput) {
+                or FormFieldTypeCategory.DecimalInput
+                or FormFieldTypeCategory.MonospaceText) {
                 _ = sb.AppendLine("    private string? _" + field.PropertyName + "String;");
                 _ = sb.AppendLine("    private string? _" + field.PropertyName + "ParseError;");
             }
@@ -959,7 +961,7 @@ public static class CommandFormEmitter {
 
     private static void EmitClientParseErrorHelper(StringBuilder sb, CommandFormModel form) {
         string[] parseErrorFields = [.. form.Fields
-            .Where(field => field.TypeCategory is FormFieldTypeCategory.NumberInput or FormFieldTypeCategory.DecimalInput)
+            .Where(field => field.TypeCategory is FormFieldTypeCategory.NumberInput or FormFieldTypeCategory.DecimalInput or FormFieldTypeCategory.MonospaceText)
             .Select(field => field.PropertyName)];
 
         // Story 11.21 CA1822 — with no parse-error backing fields the helper reads no instance state.
@@ -2283,7 +2285,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"class\", \"fc-command-field\");");
         switch (field.TypeCategory) {
             case FormFieldTypeCategory.TextInput:
-                EmitTextInput(sb, propertyName, staticLabel, isRequired, hasExplicitDisplay, field.IsNullable, field.Description, inputType: null, placeholder: null, monospace: false);
+                EmitTextInput(sb, propertyName, staticLabel, isRequired, hasExplicitDisplay, field.IsNullable, field.Description, placeholder: null, monospace: false);
                 break;
             case FormFieldTypeCategory.NumberInput:
                 EmitNumericInput(sb, field, decimalMode: false);
@@ -2301,11 +2303,10 @@ public static class CommandFormEmitter {
                 EmitEnumSelect(sb, field);
                 break;
             case FormFieldTypeCategory.MonospaceText:
-                EmitTextInput(sb, propertyName, staticLabel, isRequired, hasExplicitDisplay, field.IsNullable, field.Description, inputType: null, placeholder: null, monospace: true);
+                EmitGuidInput(sb, field);
                 break;
             case FormFieldTypeCategory.TimeInput:
-                // Task 3B.1: TimeOnly renders as FluentTextInput with TextInputType.Time + HH:mm placeholder (patch 2026-04-16 P-06).
-                EmitTextInput(sb, propertyName, staticLabel, isRequired, hasExplicitDisplay, field.IsNullable, field.Description, inputType: "Time", placeholder: "HH:mm", monospace: false);
+                EmitTimePicker(sb, field);
                 break;
             case FormFieldTypeCategory.Placeholder:
                 EmitPlaceholder(sb, field);
@@ -2325,7 +2326,6 @@ public static class CommandFormEmitter {
         string hasExplicitDisplay,
         bool isNullable,
         string? description,
-        string? inputType,
         string? placeholder,
         bool monospace) {
         string classAttribute = monospace
@@ -2349,10 +2349,6 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Name\", \"" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + isRequired + ");");
         EmitFieldAccessibility(sb, propertyName, description, hasParseError: false);
-
-        if (string.Equals(inputType, "Time", StringComparison.Ordinal)) {
-            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"TextInputType\", TextInputType.Time);");
-        }
 
         if (placeholder is not null) {
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Placeholder\", \"" + EscapeString(placeholder) + "\");");
@@ -2389,6 +2385,53 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + isRequired + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"InputMode\", " + (decimalMode ? "TextInputMode.Decimal" : "TextInputMode.Numeric") + ");");
         EmitFieldAccessibility(sb, propertyName, field.Description, hasParseError: true);
+        _ = sb.AppendLine("            __b.CloseComponent();");
+    }
+
+    private static void EmitGuidInput(StringBuilder sb, FormFieldModel field) {
+        string propertyName = field.PropertyName;
+        string valueType = field.IsNullable ? "Guid?" : "Guid";
+        string modelValue = "_model." + propertyName + (field.IsNullable ? "?.ToString()" : ".ToString()");
+        _ = sb.AppendLine("            string " + propertyName + "Label = ResolveLabel(\"" + propertyName + "\", \"" + EscapeString(field.StaticLabel) + "\", " + (field.HasExplicitDisplayName ? "true" : "false") + ");");
+        _ = sb.AppendLine("            __b.OpenComponent<FluentTextInput>(cseq++);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + propertyName + "\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-validation-field\", \"true\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Class\", \"fc-command-input fc-monospace\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _" + propertyName + "String ?? " + modelValue + ");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<string?>(this, On" + propertyName + "Changed));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<string?>>)(() => _" + propertyName + "String));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<" + valueType + ">>)(() => _model." + propertyName + "));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Immediate\", true);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Name\", \"" + propertyName + "\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + (field.IsRequired ? "true" : "false") + ");");
+        EmitFieldAccessibility(sb, propertyName, field.Description, hasParseError: true);
+        _ = sb.AppendLine("            __b.CloseComponent();");
+    }
+
+    private static void EmitTimePicker(StringBuilder sb, FormFieldModel field) {
+        string propertyName = field.PropertyName;
+        string valueType = field.IsNullable ? "TimeOnly?" : "TimeOnly";
+        _ = sb.AppendLine("            string " + propertyName + "Label = ResolveLabel(\"" + propertyName + "\", \"" + EscapeString(field.StaticLabel) + "\", " + (field.HasExplicitDisplayName ? "true" : "false") + ");");
+        _ = sb.AppendLine("            __b.OpenComponent<FluentTimePicker<" + valueType + ">>(cseq++);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + propertyName + "\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-validation-field\", \"true\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Class\", \"fc-command-input\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + valueType + ">(this, value => { _model." + propertyName + " = value; NotifyClientFieldChanged(\"" + propertyName + "\"); }));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<" + valueType + ">>)(() => _model." + propertyName + "));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"RenderStyle\", DatePickerRenderStyle.Native);");
+        // Preserve the unrestricted time input instead of the picker's default 08:00-18:00 range.
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"StartHour\", 0);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"EndHour\", 24);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Increment\", 0);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Placeholder\", \"HH:mm\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Name\", \"" + propertyName + "\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + (field.IsRequired ? "true" : "false") + ");");
+        EmitFieldAccessibility(sb, propertyName, field.Description, hasParseError: false);
         _ = sb.AppendLine("            __b.CloseComponent();");
     }
 
@@ -2572,6 +2615,43 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            LifecycleState.Value.RejectionResolution);");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+    }
+
+    private static void EmitGuidConverters(StringBuilder sb, CommandFormModel form) {
+        foreach (FormFieldModel field in form.Fields) {
+            if (field.TypeCategory != FormFieldTypeCategory.MonospaceText) {
+                continue;
+            }
+
+            string propertyName = field.PropertyName;
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private void On" + propertyName + "Changed(string? value)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        _" + propertyName + "String = value;");
+            _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(value))");
+            _ = sb.AppendLine("        {");
+            if (field.IsNullable) {
+                _ = sb.AppendLine("            _model." + propertyName + " = null;");
+                _ = sb.AppendLine("            _" + propertyName + "ParseError = null;");
+            }
+            else {
+                _ = sb.AppendLine("            _" + propertyName + "ParseError = \"An identifier is required.\";");
+            }
+
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        else if (Guid.TryParse(value, out var parsed))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _model." + propertyName + " = parsed;");
+            _ = sb.AppendLine("            _" + propertyName + "ParseError = null;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        else");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _" + propertyName + "ParseError = \"Invalid identifier format.\";");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        NotifyClientFieldChanged(\"" + propertyName + "\");");
+            _ = sb.AppendLine("        UpdateClientParseError(\"" + propertyName + "\", _" + propertyName + "ParseError);");
+            _ = sb.AppendLine("    }");
+        }
     }
 
     private static void EmitNumericConverters(StringBuilder sb, CommandFormModel form) {

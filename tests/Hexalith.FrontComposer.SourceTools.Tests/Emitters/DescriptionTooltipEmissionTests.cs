@@ -40,7 +40,8 @@ public sealed class DescriptionTooltipEmissionTests {
             TypeCategory.Text,
             description: "Order number for audit trail")));
 
-        output.ShouldContain("Typography.Caption");
+        output.ShouldContain("OpenComponent<FluentText>");
+        output.ShouldContain("TextSize.Size200");
         output.ShouldContain("fc-field-description");
         output.ShouldContain("Order number for audit trail");
     }

@@ -935,8 +935,8 @@ public static class ProjectionRoleBodyEmitter {
             return;
         }
 
-        _ = sb.AppendLine(indent + builderName + ".OpenComponent<FluentLabel>(" + seqName + "++);");
-        _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"Typography\", Typography.Caption);");
+        _ = sb.AppendLine(indent + builderName + ".OpenComponent<FluentText>(" + seqName + "++);");
+        _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"Size\", TextSize.Size200);");
         _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"Class\", \"fc-field-description\");");
         _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder descBuilder) =>");
         _ = sb.AppendLine(indent + "{");
