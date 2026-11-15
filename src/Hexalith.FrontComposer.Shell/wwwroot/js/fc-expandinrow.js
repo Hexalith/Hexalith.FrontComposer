@@ -1,7 +1,10 @@
 // Story 2-2 Task 7 — expand-in-row scroll stabilization for CompactInline command renderers.
-// Contract: `initializeExpandInRow(elementRef)` scrolls the element into view and, when the
-// user has NOT requested reduced motion, applies a follow-up requestAnimationFrame measurement
-// to correct for late-arriving layout shifts. Module-scoped import (./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js)
+// Contract: `initializeExpandInRow(elementRef, deferToRouteFocus = false)` scrolls the element
+// into view unless a route heading owns focus. Generated CompactInline initialization passes true
+// to also skip scrolling while focus is absent or on body; skipping returns without a queued retry.
+// User-triggered row expansion keeps the default false. Without reduced motion, a follow-up
+// requestAnimationFrame measurement corrects late-arriving layout shifts.
+// Module-scoped import (./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js)
 // avoids global namespace pollution (Decision D11). Module is loaded lazily via
 // `IExpandInRowJSModule` (Decision D25) and disposed on circuit teardown.
 

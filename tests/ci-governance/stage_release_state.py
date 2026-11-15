@@ -139,6 +139,11 @@ def main() -> int:
     builds_workflow = builds_root / ".github/workflows/domain-release.yml"
     builds_workflow.parent.mkdir(parents=True, exist_ok=True)
     builds_workflow.write_text("name: staged domain release\n", encoding="utf-8")
+    # The raw dependency graph authenticates the selected catalog even for this
+    # evidence-only profile. Keep that catalog inside the committed fixture.
+    builds_catalog = builds_root / "Props/Directory.Packages.props"
+    builds_catalog.parent.mkdir(parents=True, exist_ok=True)
+    builds_catalog.write_text("<Project />\n", encoding="utf-8")
     for command in (
         ["git", "init", "-q"],
         ["git", "config", "user.email", "release-state@example.test"],

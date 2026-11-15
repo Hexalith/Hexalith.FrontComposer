@@ -1399,9 +1399,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        _rejectionValidationMessages?.Clear();");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        // Story 13.3 ECH-05 — validate only after the concurrency outcome is known.");
-        _ = sb.AppendLine("        if (validateBeforeDispatch && _editContext is { } editContext)");
+        _ = sb.AppendLine("        var validatedEditContext = _editContext;");
+        _ = sb.AppendLine("        long validationRevision = System.Threading.Volatile.Read(ref _modelRevision);");
+        _ = sb.AppendLine("        if (validateBeforeDispatch && validatedEditContext is { } editContext)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            long validationRevision = System.Threading.Volatile.Read(ref _modelRevision);");
         _ = sb.AppendLine("            bool isValid = _editContext.Validate();");
         _ = sb.AppendLine("            if (_disposed || cancellationToken.IsCancellationRequested || !ReferenceEquals(_editContext, editContext)) return;");
         _ = sb.AppendLine("            if (validationRevision != System.Threading.Volatile.Read(ref _modelRevision)) return;");
@@ -1486,6 +1487,11 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine();
         }
 
+        _ = sb.AppendLine("        // Authorization and host confirmation may yield while editors remain active.");
+        _ = sb.AppendLine("        // A changed model needs a fresh validation attempt before entering the submitted state.");
+        _ = sb.AppendLine("        if (validateBeforeDispatch && (!ReferenceEquals(_editContext, validatedEditContext)");
+        _ = sb.AppendLine("            || validationRevision != System.Threading.Volatile.Read(ref _modelRevision))) return;");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("        var correlationId = UlidFactory.NewUlid();");
         _ = sb.AppendLine("        _submittedCorrelationId = correlationId;");
         _ = sb.AppendLine("        System.Threading.Interlocked.Exchange(ref _acceptedAssociationSucceeded, 0);");

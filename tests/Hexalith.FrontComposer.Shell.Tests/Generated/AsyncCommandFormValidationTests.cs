@@ -4,6 +4,7 @@ using Bunit;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.AspNetCore.Components;
@@ -175,6 +176,83 @@ public sealed class AsyncCommandFormValidationTests : CommandRendererTestBase {
         await InvokeSubmitAsync(cut).WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
         validatedNames.ShouldBe(["Original valid name", "Changed valid name"]);
         _ = service.Received(1).DispatchAsync(Arg.Is<TwoFieldCompactCommand>(command => command.Name == "Changed valid name"),
+            Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("first-authorization")]
+    [InlineData("before-submit")]
+    [InlineData("second-authorization")]
+    public async Task FieldChangeAfterValidationRequiresFreshRetry(string boundary) {
+        ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
+        _ = service.DispatchAsync(Arg.Any<ProtectedTwoFieldCompactCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<CommandResult>(new CommandWarningException(
+                CommandWarningKind.RateLimited, ProblemDetailsPayload.Empty, TimeSpan.FromSeconds(1))));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool submitting = false;
+        int authorizationCalls = 0;
+        int beforeSubmitCalls = 0;
+        ICommandAuthorizationEvaluator authorization = Substitute.For<ICommandAuthorizationEvaluator>();
+        _ = authorization.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(async _ => {
+                if (submitting) {
+                    authorizationCalls++;
+                    if (boundary == "first-authorization" && authorizationCalls == 1
+                        || boundary == "second-authorization" && authorizationCalls == 2) {
+                        entered.TrySetResult();
+                        await release.Task.ConfigureAwait(false);
+                    }
+                }
+                return CommandAuthorizationDecision.Allowed("current-attempt");
+            });
+        Services.Replace(ServiceDescriptor.Scoped(_ => authorization));
+        await InitializeStoreAsync();
+        ProtectedTwoFieldCompactCommand model = new() { Name = "Original valid name", Amount = 7 };
+        EditContext? editContext = null;
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
+            .Add(component => component.InitialValue, model)
+            .Add(component => component.OnEditContextReady,
+                EventCallback.Factory.Create<EditContext>(this, readyContext => editContext = readyContext))
+            .Add(component => component.BeforeSubmit, async () => {
+                beforeSubmitCalls++;
+                if (boundary == "before-submit" && beforeSubmitCalls == 1) {
+                    entered.TrySetResult();
+                    await release.Task.ConfigureAwait(false);
+                }
+            }));
+        EditContext context = editContext.ShouldNotBeNull();
+        List<string?> validatedNames = [];
+        context.OnValidationRequested += (_, args) => args.AddAsyncValidator(_ => {
+            validatedNames.Add(model.Name);
+            return Task.CompletedTask;
+        });
+        MethodInfo submitMethod = typeof(ProtectedTwoFieldCompactCommandForm)
+            .GetMethod("SubmitAsync", BindingFlags.Instance | BindingFlags.NonPublic).ShouldNotBeNull();
+        submitting = true;
+        Task first = cut.InvokeAsync(() => (Task)submitMethod.Invoke(cut.Instance, [true])!);
+        try {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+            validatedNames.ShouldBe(["Original valid name"]);
+            await cut.InvokeAsync(() => {
+                model.Name = "Changed valid name";
+                context.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.Name)));
+            });
+        }
+        finally {
+            release.TrySetResult();
+        }
+        await first.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        _ = service.DidNotReceive().DispatchAsync(Arg.Any<ProtectedTwoFieldCompactCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+        using (CommandExecutionAdmission admission = Services.GetRequiredService<ICommandExecutionAdmissionGate>()
+            .TryAcquire(new CommandExecutionAdmissionRequest("next-command", "Next command"))) {
+            admission.IsAdmitted.ShouldBeTrue("a superseded validation must release admission for a fresh attempt");
+        }
+        await cut.InvokeAsync(() => (Task)submitMethod.Invoke(cut.Instance, [true])!)
+            .WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        validatedNames.ShouldBe(["Original valid name", "Changed valid name"]);
+        _ = service.Received(1).DispatchAsync(Arg.Is<ProtectedTwoFieldCompactCommand>(command => command.Name == "Changed valid name"),
             Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
     }
 

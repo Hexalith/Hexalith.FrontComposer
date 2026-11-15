@@ -1236,7 +1236,12 @@ public sealed class CiGovernanceTests {
             "Hexalith.Commons.Aspire",
             customMessage: "Hexalith.Commons.Aspire is not published as a NuGet package, so AppHost Release builds must not depend on it.");
 
-        XDocument packages = XDocument.Load(Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props"));
+        string catalogPath = new[] {
+            Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props"),
+            Path.Combine(root, "..", "Hexalith.Builds", "Props", "Directory.Packages.props"),
+            Path.Combine(root, "..", "..", "Hexalith.Builds", "Props", "Directory.Packages.props"),
+        }.First(File.Exists);
+        XDocument packages = XDocument.Load(catalogPath);
         XElement eventStoreAspire = packages
             .Descendants("PackageVersion")
             .Single(e => string.Equals((string?)e.Attribute("Include"), "Hexalith.EventStore.Aspire", StringComparison.Ordinal));
