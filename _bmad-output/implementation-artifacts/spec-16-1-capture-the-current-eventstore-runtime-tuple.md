@@ -166,12 +166,42 @@ These rows explain the commits after the baseline that touch a listed path witho
 - `b22be84bdbb23d9263a8835496ad0c95adf1843f` | `shared` | Concurrent Story 13.6 work changed its own row, comments and `last_updated` in the shared `sprint-status.yaml`; no Epic 16 line changed.
 - `60d2088c26e5cedb7c61471d2e4b813a86996ea2` | `shared` | Concurrent Story 13.6 work changed its own row, comments and `last_updated` in the shared `sprint-status.yaml`; no Epic 16 line changed.
 
+
+The 2026-11-15 final provenance audit also records the following shared/companion document touches. Each commit was checked against its actual changed-file list; none changes the historical D1 verdict or claims unrelated source ownership.
+
+- `e07e2f42605ffde307606f4ee027c382ef1e8aa4` | `shared` | Story 15.5 updated the shared deferred ledger and its own release/precursor records; its Platform pointer is not Story 16.1 work.
+- `e9995e31b054267ca053c45829ba6806cee144cf` | `shared` | Story 15.5 review recorded its findings in the shared deferred ledger; no tuple capture or approval belongs to this commit.
+- `11d31d446c7b86b5e810f468bda4c2a74f01683f` | `shared` | Story 15.5 hosted governance qualification updated its own story and the shared deferrals; no Story 16.1 tuple changed.
+- `7fd0d09f36e38dfeb044bf54402cf360fe7a11b6` | `shared` | Owning CI work resolved an invalid-bearer regression deferral in the shared ledger, independent of the tuple capture.
+- `bd54321b716f5cd553e930b78f88578367cbeff4` | `shared` | Story 13.6 accessibility acceptance updated its records, walkthrough and shared deferrals; source ownership is separate.
+- `9724c7e5db5f744366f10e7ee175723cf1ae134c` | `shared` | Story 13.6 locator qualification updated its accessibility records and the shared deferred ledger.
+- `e4df7256be0e89b48c830c0792033ecfeabec9ad` | `shared` | Story 13.6 palette verification updated its browser test, acceptance records and shared deferrals; no Story 16.1 source ownership is claimed.
+- `fbe01c913cb863abb0fd4a317d370d36fff593b3` | `shared` | The perceptible-outline accessibility fix updated Story 13.6 records, its CSS/browser checks and the shared ledger.
+- `369e69efed76e91eb6d798407b448306bc036d52` | `process` | The unrelated workspace sync recorded accessibility work and shared deferrals with six dependency pointers; those gitlink and source moves are not Story 16.1 work.
+- `85d223d6cf799b530e7ef68b3e77663c5a5ef84a` | `shared` | Story 13.6 updated accessibility acceptance and shared deferrals; no tuple capture or approval is inferred.
+- `b70627f649826b1a2338ccc13295ba02b71f7424` | `shared` | The native-NVDA accessibility fix updated its own shell/browser source, Story 13.6 records and shared deferrals.
+- `8a51e0a1891f08bbfb51e168b69f766c787b1f46` | `shared` | The owning dependency-refresh repair updated its policy, gitlinks, manifests and shared deferrals; none of its source or pointer moves is attributed to Story 16.1.
+- `5c54d54e740ec5be87e29eabbd311f56831ced64` | `shared` | The GOV-1 implementation updated its workflows, governance engine/tests and shared ledger; no runtime or policy ownership is transferred to this capture.
+- `13b382bc721cbe2f835bf0f724796e6f825175f0` | `shared` | Accessibility focus recovery updated Story 13.6 source, evidence helpers and the shared ledger; it is separate from the tuple capture.
+- `50def1fe238787e9365c93991e3dc83af8c2e299` | `process` | The approved companion dependency-governance build created its audit spec and resealed policy. This accounts for the shared audit document only; eng policy remains outside Story 16.1 capture ownership.
+
+- `902fe13fc411c9eb7cd3786180761a904a3b47fb` | `shared` | The approved companion governance/correct-course delivery records seal proof, planning cadence, scoped property audit and shared deferrals. The new tuple capture and sprint acceptance are isolated in the following Story 16.1 delivery; no runtime code, policy, workflow or gitlink ownership is assigned here.
+
 ## File List
+
+The approved 2026-11-15 companion dependency-governance/correct-course build also updates the shared planning records below. They are listed for complete attribution of the activation commit, not as ownership of runtime code, policy, workflows or gitlinks. The final tuple-capture delivery is isolated to this spec and sprint-status.yaml; companion planning is committed separately.
+
+- `_bmad-output/implementation-artifacts/spec-restore-quality-gate-2c-current-tuple.md` — companion seal/activation verification, scheduling change, independent review and scoped property-evaluation audit. This is a pre-existing shared companion record delivered before the final two-file capture; unchanged by this capture commit.
+- `_bmad-output/planning-artifacts/prd.md` — approved G-3/D-12 cadence, escalation and exact-candidate boundary. This is a pre-existing shared companion record delivered before the final two-file capture; unchanged by this capture commit.
+- `_bmad-output/planning-artifacts/epics.md` — approved Epic 16 qualification cadence and candidate lineage. This is a pre-existing shared companion record delivered before the final two-file capture; unchanged by this capture commit.
+- `_bmad-output/planning-artifacts/architecture.md` — approved scheduling and exact-tested-commit interpretation. This is a pre-existing shared companion record delivered before the final two-file capture; unchanged by this capture commit.
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-tuple-freeze.md` — approved companion proposal, incident due time and outcomes. This is a pre-existing shared companion record delivered before the final two-file capture; unchanged by this capture commit.
+
 
 - `_bmad-output/implementation-artifacts/epic-16-context.md` — pre-existing context created by planning commit `312af896e57821e26ae654b1817f14914f3371f7` before implementation; read in full and unchanged by this story.
 - `_bmad-output/implementation-artifacts/spec-16-1-capture-the-current-eventstore-runtime-tuple.md` — tuple identities, same-attempt step conclusions, counts and commands, plus the completion-pass drift check, commit-scope dispositions and story verification.
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — current Story 16.1 capture progress and completion-pass drift note; Epic 16 remains in progress and G-3 remains open.
-- `_bmad-output/implementation-artifacts/deferred-work.md` — four review-iteration-1 deferrals (D1–D4) appended at the end of the ledger; no existing entry changed.
+- `_bmad-output/implementation-artifacts/deferred-work.md` — four review-iteration-1 deferrals (D1–D4) appended at the end of the ledger; no existing entry changed. This is a pre-existing shared companion record delivered before the final two-file capture; unchanged by this capture commit.
 
 ## Documented Unrelated Changes
 
@@ -311,3 +341,361 @@ gh api repos/Hexalith/Hexalith.FrontComposer/actions/artifacts/13469365738/zip
 the read-only job-logs API supplied the counts instead. The existing artifact ZIP
 was parsed in memory for its summary fields; no evidence file was added to the
 repository. No runtime, package preset, source gitlink or catalog was changed.
+
+## Tuple Record — 2026-11-15
+
+**Migration approval: not claimed · Sign-off: none · G-3: open**
+
+**Overall Quality: failure.** Its later default unit/bUnit lane reported **5 failed, 6,680 succeeded, 0 skipped**. This record qualifies only under the frozen individual-step rule: catalog preparation, all four Gate 2c steps and every `epic9-live-acceptance` step succeeded together in attempt 1. No overall-green Quality run or engineering acceptance is claimed here; the five bounded residuals below remain for their owning maintainers and parent review.
+
+### Identities and current selection
+
+Captured `2026-11-15T18:44:11Z`, within two hours of the final required success at `2026-11-15T18:26:36Z` (capture deadline `2026-11-15T20:26:36Z`). Local HEAD, `origin/main` and a fresh `git ls-remote origin refs/heads/main` all selected the following exact tested commit immediately before writing. This follows two cancelled observations, documented in the repair spec; neither supplies this record's counts.
+
+| Identity | Recorded value |
+|---|---|
+| FrontComposer commit tested by Quality | `8ce46cfc1293925459c8b6af15ef7719cf0fc071` |
+| EventStore source gitlink | `fdb59895975e86a1e234325a01237f259cdbd53b` |
+| Builds gitlink | `73e60af8a1fcdf3f06726d5d1b6e1199cce778ee` |
+| Catalog-owned default `HexalithEventStoreVersion` | `5.1.0` |
+| Root `Directory.Packages.props` preset | None; the selected Builds catalog is imported without an EventStore version preset. |
+| Per-project evaluated package selection | `5.1.0` in all six contexts below; no divergence from the catalog-owned default. |
+| Provider source assembly informational version | `5.1.0+fdb59895975e86a1e234325a01237f259cdbd53b`; its source and Builds identities match the gitlinks above. |
+
+The later record/receipt commit is a distinct commit, not this tested tuple. Approval covers only the exact tested commit; no receipt transfers automatically to a descendant. Any latest-main mismatch needs new evidence or an explicitly approved planning resolution. The original outer qualification deadline remains `2026-11-16T17:27:10Z`; named migration authority and Release Owner/Architect escalation dispositions are not invented by this capture.
+
+### Quality attempt and required steps
+
+[Quality 43744582233, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43744582233/attempts/1), triggered by a main push at `8ce46cfc1293925459c8b6af15ef7719cf0fc071`, reports that exact `head_sha`. Both required jobs independently report the same SHA. Its overall conclusion is `failure`, from the later default lane; qualification uses the following individual conclusions.
+
+[build-and-test 132905063083](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43744582233/job/132905063083):
+
+| Step | Exact step name | Conclusion |
+|---|---|---|
+| 14 | Prepare exact governance catalog objects | `success` |
+| 24 | Gate 2c: Contract pacts | `success` |
+| 25 | Gate 2c: Live EventStore provider verification | `success` |
+| 26 | Gate 2c: Validate contract artifacts | `success` |
+| 27 | Gate 2c: Fail on stale pact diff | `success` |
+
+Contract pacts: **3 succeeded, 0 failed, 0 skipped**. Provider verification tests: **80 passed, 0 errors, 0 failed, 0 skipped, 0 not run**, read from this job's log. The live report confirms **19 requested / 19 reported / 19 passed / 0 failed interactions**, 19 requested provider states, 19 setup events and 19 teardown events. Completeness, host startup, readiness, host shutdown and port closure are all true; reason codes are empty. Contract artifact validation and stale-pact checks concluded success.
+
+These live counts come from this same attempt's existing [contract-diagnostics artifact 14174636740](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43744582233/artifacts/14174636740), expiring `2026-11-29T18:26:36Z`. The matching [contract-artifacts 14174262464](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43744582233/artifacts/14174262464) expires `2026-11-29T18:26:37Z`. Job logs have the existing 90-day retention. Only safe counts and identities are recorded; no report, raw payload or log is committed.
+
+### Every Epic 9 live acceptance step
+
+[epic9-live-acceptance 132905062942](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43744582233/job/132905062942), attempt 1: all **27 API-reported steps** concluded success; zero failed or skipped.
+
+| Step | Exact step name | Conclusion |
+|---|---|---|
+| 1 | Set up job | `success` |
+| 2 | Run actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 | `success` |
+| 3 | Initialize build submodules | `success` |
+| 4 | Run Hexalith/Hexalith.Builds/Github/initialize-dotnet@6e77e79e8914a375b0c43b0af3bd142405675ecd | `success` |
+| 5 | Install .NET 11 runtimes | `success` |
+| 6 | Install source-resource compatibility SDK | `success` |
+| 7 | Install dependency source-resource SDK | `success` |
+| 8 | Verify root and source-resource SDKs | `success` |
+| 9 | Run actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e | `success` |
+| 10 | Install Playwright workspace dependencies | `success` |
+| 11 | Initialize Ubuntu APT for browser dependencies | `success` |
+| 12 | Use the Ubuntu HTTPS archive for browser dependencies | `success` |
+| 13 | Install Chromium browser | `success` |
+| 14 | Install Aspire CLI | `success` |
+| 15 | Install Dapr CLI | `success` |
+| 16 | Initialize Dapr runtime | `success` |
+| 17 | Typecheck Epic 9 browser proof | `success` |
+| 18 | Test Epic 9 evidence tooling | `success` |
+| 19 | Run AppHost-discovered Epic 9 live proof | `success` |
+| 20 | AppHost rejects invalid bearer tokens | `success` |
+| 21 | Upload Epic 9 acceptance artifacts | `success` |
+| 38 | Post Run actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e | `success` |
+| 39 | Post Install dependency source-resource SDK | `success` |
+| 40 | Post Install source-resource compatibility SDK | `success` |
+| 41 | Post Run Hexalith/Hexalith.Builds/Github/initialize-dotnet@6e77e79e8914a375b0c43b0af3bd142405675ecd | `success` |
+| 42 | Post Run actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 | `success` |
+| 43 | Complete job | `success` |
+
+The same-attempt [Epic 9 artifact 14173977718](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43744582233/artifacts/14173977718), expiring `2026-11-29T18:16:58Z`, binds `candidateCommit` to `8ce46cfc1293925459c8b6af15ef7719cf0fc071`, `workingTreeDirty=false` and final evidence mode. Its browser JUnit report has **1 test, 0 failures, 0 skips, 0 errors**; Playwright reports 1 expected result, 0 unexpected, 0 skipped and **0 flaky**. The invalid-bearer job log records HTTP **401** for command submission, command status, query and projection-hub negotiation. Verification exit is zero.
+
+### Per-project property evaluation and lane identities (D4)
+
+After the current required steps passed, `dotnet msbuild -getProperty:HexalithEventStoreVersion` was repeated for every direct/hosted FrontComposer EventStore-consuming project, explicitly selecting configuration, `TargetFramework=net11.0` and source/package mode. Root configuration files match committed objects; the selected Builds/EventStore/module configurations and checkout SHAs are clean and exact.
+
+| Consuming project | Configuration / mode | Target framework | Evaluated `HexalithEventStoreVersion` |
+|---|---|---|---|
+| `src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj` | Release / package | `net11.0` | `5.1.0` |
+| `src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj` | Debug / source | `net11.0` | `5.1.0` |
+| `src/Hexalith.FrontComposer.UI/Hexalith.FrontComposer.UI.csproj` | Release / package | `net11.0` | `5.1.0` |
+| `src/Hexalith.FrontComposer.UI/Hexalith.FrontComposer.UI.csproj` | Debug / source | `net11.0` | `5.1.0` |
+| `tests/Hexalith.FrontComposer.CounterFixture/Hexalith.FrontComposer.CounterFixture.csproj` | Release / package | `net11.0` | `5.1.0` |
+| `tests/Hexalith.FrontComposer.CounterFixture/Hexalith.FrontComposer.CounterFixture.csproj` | Debug / source | `net11.0` | `5.1.0` |
+
+Release queries use `UseNuGetDeps=true` (`UseHexalithProjectReferences=false`, EventStore/FrontComposer source flags false). Debug queries use `UseNuGetDeps=false` (the inverse flags true), matching the AppHost live source graph. All three SDK 4.2 catalog-view properties evaluate false in every row. The catalog's opt-in `4.2.0` branch therefore does not describe any of these contexts. These are property evaluations; they do not add package-mode runtime coverage.
+
+| Exercised lane | EventStore identity and scope |
+|---|---|
+| Gate 2c provider | Release-built ProviderVerification and its 80-test suite execute the selected EventStore source checkout `fdb59895975e86a1e234325a01237f259cdbd53b`; report source/Builds identities match and source informational version is recorded above. |
+| Epic 9 live proof and invalid-bearer check | Debug source graph, `HexalithFrontComposerFromSource=true`, exact FrontComposer `8ce46cfc1293925459c8b6af15ef7719cf0fc071` and selected EventStore source gitlink `fdb59895975e86a1e234325a01237f259cdbd53b`; existing scripts build and launch the same source AppHost. |
+| Release/package evaluation and shared CI | Catalog property `5.1.0` is selected; [CI 43744582708](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43744582708) succeeded at this exact commit. The two live lanes above exercise source; no EventStore NuGet `5.1.0` package-mode runtime compatibility is claimed. |
+
+### Later default-lane failures and bounded residuals
+
+The existing [test-results artifact 14175076344](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43744582233/artifacts/14175076344) contains exactly five failed `UnitTestResult` entries. The repair spec and append-only `deferred-work.md` entries route them separately; this capture changes no guard or unrelated source/test code and calls neither observed timeout flaky.
+
+| Failed test invocation | Observed cause / attribution |
+|---|---|
+| `Hexalith.FrontComposer.Shell.Tests.Generated.CommandTargetGeneratedFormTests.SynchronouslyBlockingProvider_DeadlineStillAllowsDispatch` | Observed `TimeoutException` waiting up to two seconds for `provider.Started`; causal origin is unproven. The test file predates and is unchanged by both concurrent commits. |
+| `Hexalith.FrontComposer.SourceTools.Tests.Emitters.CommandFormValidationCompilationTests.EmittedValidationCompilesWithoutWarningsAgainstTheSupportedFramework(frameworkMajor: 11)` | `ArgumentOutOfRangeException(startIndex)`: the fixture searches the old emitted `_editContext` validation marker, then calls `IndexOf` with -1. Concurrent `923988d855cd6131b4287e3da763f12baf60ab22` renamed that marker to `validatedEditContext`; the fixture was not updated. |
+| `Hexalith.FrontComposer.SourceTools.Tests.Emitters.CommandFormValidationCompilationTests.EmittedValidationCompilesWithoutWarningsAgainstTheSupportedFramework(frameworkMajor: 10)` | Same proven stale-marker failure introduced by the concurrent forms change; no framework compilation verdict was reached. |
+| `Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle.UlidFactoryTests.ProductionCommandIdentityPaths_DoNotUseGuidIdentityApis` | Broad source-token assertion finds `Guid.TryParse(` in the emitter's GUID-valued field parsing. Both that occurrence and the test already exist at baseline `22f76488e8878e3f879c1dd1b6d7bf75534b2b1b`; no command-identity use is inferred from this scan. |
+| `Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.GeneratedForm_SubmitAccepted_RendersLifecyclePhasesAndKeepsFormPresent` | Observed bUnit assertion timeout: expected wrapper class `fc-lifecycle-pulse`, actual `fc-lifecycle-wrapper `. The test file is unchanged by both concurrent commits; causality and repeatability are unproven. |
+
+### Capture and execution commands
+
+Identity reads use committed objects, independent of checkout drift. Metadata, log counts and artifact summaries were inspected read-only; all disposable verification uses `run-with-temp`.
+
+```bash
+git rev-parse HEAD origin/main
+git ls-remote origin refs/heads/main
+git ls-tree 8ce46cfc1293925459c8b6af15ef7719cf0fc071 references/Hexalith.EventStore references/Hexalith.Builds
+git show 8ce46cfc1293925459c8b6af15ef7719cf0fc071:Directory.Packages.props
+git -C references/Hexalith.Builds show 73e60af8a1fcdf3f06726d5d1b6e1199cce778ee:Props/Directory.Packages.props
+gh run list --workflow quality.yml --commit 8ce46cfc1293925459c8b6af15ef7719cf0fc071
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/43744582233
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/43744582233/attempts/1/jobs --paginate
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/jobs/132905063083/logs
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/jobs/132905062942/logs
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/artifacts/14174636740/zip
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/artifacts/14173977718/zip
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/artifacts/14175076344/zip
+```
+
+For each full project path in the evaluation table, both commands below were run under `run-with-temp`; the actual query also requested the mode and three SDK 4.2-view properties shown above.
+
+```bash
+dotnet msbuild <project> -nologo -p:Configuration=Release -p:TargetFramework=net11.0 -p:UseNuGetDeps=true -getProperty:HexalithEventStoreVersion,TargetFramework,UseHexalithProjectReferences,UseNuGetDeps,HexalithEventStoreFromSource,HexalithFrontComposerFromSource,HexalithPartiesSdk42CatalogView,HexalithPlatformSdk42CatalogView,HexalithBuildsPackagedHostSdk42CatalogView
+dotnet msbuild <project> -nologo -p:Configuration=Debug -p:TargetFramework=net11.0 -p:UseNuGetDeps=false -getProperty:HexalithEventStoreVersion,TargetFramework,UseHexalithProjectReferences,UseNuGetDeps,HexalithEventStoreFromSource,HexalithFrontComposerFromSource,HexalithPartiesSdk42CatalogView,HexalithPlatformSdk42CatalogView,HexalithBuildsPackagedHostSdk42CatalogView
+```
+
+CI's provider step restored and built `references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj` in Release, ran its test assembly, then ran ProviderVerification with `--verification-mode live-compatibility`, the existing Pact directory/manifest/state catalog and `--report-output artifacts/contracts/provider-verification.json`. Its target frameworks were obtained with `dotnet msbuild -getProperty:TargetFramework`. The AppHost step ran `./eng/run-epic9-live-proof.sh` with `FC_EPIC9_EXPECTED_COMMIT=8ce46cfc1293925459c8b6af15ef7719cf0fc071` and `FC_EPIC9_REQUIRE_CLEAN=true`; it built Debug source with `--disable-build-servers -m:1 -p:BuildInParallel=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`, then launched via `aspire start --isolated --no-build`. The invalid-bearer step ran `./eng/verify-apphost-invalid-bearer.sh` with `HexalithFrontComposerFromSource=true`. No package version, gitlink, execution pin or guard was changed for this capture.
+
+## Review Addendum — D4 context correction, 2026-11-15
+
+This append-only addendum corrects the scope interpretation in the 2026-11-15 Tuple Record. Both written Tuple Records remain byte-identical. The earlier six top-level property queries did not prove all hosted referenced catalog contexts; the prior blanket D4-completeness interpretation is withdrawn.
+
+**CounterFixture correction.** The standalone Release query with `UseNuGetDeps=true` returns property `5.1.0`, but `EventStorePath` is empty and the unconditional `ProjectReference` resolves to `/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj`. That dangling source reference supplies no valid Release/package consumer context. The Release package-context interpretation is withdrawn; its returned literal proves only a property value. CounterFixture's valid Debug/source context, evaluated through AppHost's forwarded edge, has `HexalithEventStoreFromSource=true`, `HexalithEventStoreVersion=5.1.0` and the existing root-selected `references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj` path.
+
+**Actual forwarded source contexts.** Targeted `run-with-temp dotnet msbuild` evaluations reproduce the live source build's global properties: `Configuration=Debug`, `BuildInParallel=false`, `NuGetAudit=false`, `CentralPackageTransitivePinningEnabled=false`, with `HexalithFrontComposerFromSource=true` in the environment. AppHost's evaluated `ProjectReference.AdditionalProperties` are passed as child global properties after `GlobalPropertiesToRemove`; UI is first evaluated under its AppHost edge, then its child edges inherit those globals plus their own evaluated additions/removals. In particular, the edges forward `HexalithEventStoreVersion=5.1.0`, the selected module roots/source flags, `CustomAfterDirectoryBuildTargets` pointing to `eng/FrontComposer.SourceReferences.targets`, and UI's `CustomAfterMicrosoftCommonTargets` pointing to `DropPublishedFrontComposerAssemblies.targets` where present. No version is supplied from a hand-selected replacement value.
+
+Each table row was evaluated with `-getProperty:Configuration,TargetFramework,HexalithEventStoreVersion,EventStorePath,UseHexalithProjectReferences,HexalithEventStoreFromSource,HexalithPartiesSdk42CatalogView,HexalithPlatformSdk42CatalogView,HexalithBuildsPackagedHostSdk42CatalogView -getItem:ProjectReference,PackageReference`. The standalone control uses only `Configuration=Debug`, with no forwarded globals or ambient module-source flags. The referenced Builds/EventStore/Parties/Tenants checkouts match the committed gitlinks selected by captured `8ce46cfc1293925459c8b6af15ef7719cf0fc071`, and evaluated configuration/source files are unchanged. All inherited rows target `net11.0` and have EventStore source mode true. No `TargetFramework` global is passed: each child evaluates its own framework. Evaluated `SetTargetFramework`, `SetConfiguration` and `SetPlatform` metadata is empty on these edges; no synthetic framework is inherited. Build-target-generated framework negotiation is not exercised by property/item evaluation and remains part of the completeness gap.
+
+| Parent source edge | Referenced project | SDK 4.2 Parties view | Standalone Debug selection | Inherited effective selection |
+|---|---|---|---|---|
+| AppHost | `references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj` | `false` | `5.1.0` | `5.1.0` |
+| AppHost | `tests/Hexalith.FrontComposer.CounterFixture/Hexalith.FrontComposer.CounterFixture.csproj` | `false` | `5.1.0` | `5.1.0` |
+| AppHost | `references/Hexalith.Builds/src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj` | `false` | `5.1.0` | `5.1.0` |
+| AppHost | `references/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj` | `false` | `5.1.0` | `5.1.0` |
+| AppHost | `references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj` | `false` | `5.1.0` | `5.1.0` |
+| AppHost | `references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj` | `false` | `5.1.0` | `5.1.0` |
+| AppHost | `references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj` | `false` | `5.1.0` | `5.1.0` |
+| AppHost | `references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj` | `false` | `5.1.0` | `5.1.0` |
+| AppHost | `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Hexalith.Tenants.UI.csproj` | `false` | `5.1.0` | `5.1.0` |
+| AppHost | `references/Hexalith.Tenants/samples/Hexalith.Tenants.Sample/Hexalith.Tenants.Sample.csproj` | `false` | `5.1.0` | `5.1.0` |
+| AppHost | `references/Hexalith.Parties/src/Hexalith.Parties/Hexalith.Parties.csproj` | `true` | `4.2.0` | `5.1.0` |
+| AppHost | `references/Hexalith.Parties/src/Hexalith.Parties.UI/Hexalith.Parties.UI.csproj` | `true` | `4.2.0` | `5.1.0` |
+| UI via AppHost | `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Hexalith.Tenants.UI.csproj` | `false` | `5.1.0` | `5.1.0` |
+| UI via AppHost | `references/Hexalith.Parties/src/Hexalith.Parties.UI/Hexalith.Parties.UI.csproj` | `true` | `4.2.0` | `5.1.0` |
+| UI via AppHost | `references/Hexalith.Parties/src/Hexalith.Parties.AdminPortal/Hexalith.Parties.AdminPortal.csproj` | `true` | `4.2.0` | `5.1.0` |
+| UI via AppHost | `references/Hexalith.Parties/src/Hexalith.Parties.ConsumerPortal/Hexalith.Parties.ConsumerPortal.csproj` | `true` | `4.2.0` | `5.1.0` |
+
+**Divergence.** The Parties, Parties.UI, AdminPortal and ConsumerPortal standalone Debug controls select SDK 4.2 view `4.2.0`; those project-specific views differ from the root default `5.1.0`. Their inherited hosted contexts still have the SDK 4.2 view true, but the AppHost/UI global `HexalithEventStoreVersion=5.1.0` prevents the catalog's empty-value `4.2.0` default from taking effect. Thus “all SDK 4.2 views are false” describes only the earlier top-level queries, not the actual referenced contexts. No inherited row diverged from the forwarded/root `5.1.0` selection; standalone `4.2.0` must not be substituted for that inherited value.
+
+**Bounded D4 status.** Sixteen immediate AppHost/UI edge contexts across fourteen distinct child projects, their sixteen standalone controls, and CounterFixture's valid source path are evaluated. This closes only those specific property-context questions. A complete recursive restore/build graph, all transitive `GlobalPropertiesToRemove`/edge overrides, every path-only resource-launch context, and package-mode runtime coverage are not proved by these queries. D4 remains open for that completeness gap; earlier blanket closure statements in the immutable record and tracking are superseded by this scoped addendum. No CounterFixture Release/package validity, migration approval or sign-off is inferred.
+
+**Release gate and incident.** The capture meets only Story 16.1's individual-step evidence rule. Overall Quality `43744582233` remains failed, so G-3's unchanged passing-overall-Quality workflow condition is unmet. Repository-wide coordination of all active sessions and the workspace automation owner was not achieved; it remains an open prerequisite/Release Owner action, despite the observed session-only hold. No business calendar was supplied for “four working hours.” For the current incident, first drift at `2026-11-15T17:49:35Z` has conservative UTC disposition due time **`2026-11-15T21:49:35Z`**, four elapsed hours later, without extending the original outer deadline `2026-11-16T17:27:10Z` or claiming a named owner receipt. Failure escalation concerns a successor's required qualification steps; the planned seal-transition refusal under its previous event-base policy is not itself failed successor qualification. Other drift/authority/timeout triggers remain unchanged.
+
+## Tuple Record — 2026-11-15
+
+**Later green successor — captured `2026-11-15T20:32:40Z` · FrontComposer `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc` · primary automatic main-push Quality `43755163930`, attempt 1.** This is the later same-day record, distinct from the earlier failed 2026-11-15 record and its Review Addendum. Those records and the addendum remain immutable history.
+
+**Migration approval: not claimed · Sign-off: none · G-3: open**
+
+### Exact identities, current selection and cadence
+
+Immediately before writing, fresh `git fetch origin main`, `git rev-parse HEAD origin/main` and `git ls-remote origin refs/heads/main` all selected `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc`. Identity reads use explicit committed objects; no gitlink, dependency version, source file or workflow is changed by this record.
+
+| Identity | Green successor value |
+|---|---|
+| FrontComposer tested commit | `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc` |
+| EventStore source gitlink | `fdb59895975e86a1e234325a01237f259cdbd53b` |
+| Builds gitlink | `73e60af8a1fcdf3f06726d5d1b6e1199cce778ee` |
+| Catalog-owned default `HexalithEventStoreVersion` | `5.1.0` |
+| Root package preset | None; `Directory.Packages.props` imports the selected Builds catalog without an EventStore version preset. |
+| Effective source-consumer property | `5.1.0` in all 35 actual source-consuming contexts across 27 projects below. |
+| Provider observed source informational version | `5.1.0+fdb59895975e86a1e234325a01237f259cdbd53b`; expected/observed source and Builds identities match the selected gitlinks. |
+
+The last required primary success was `2026-11-15T20:12:06Z`. Capture at `2026-11-15T20:32:40Z` is within its two-hour deadline `2026-11-15T22:12:06Z` and the unchanged outer deadline `2026-11-16T17:27:10Z`. Repository-wide coordination and named Release Owner/Architect disposition are not claimed by this successful observation. The existing conservative incident due time remains `2026-11-15T21:49:35Z`; no business calendar or named owner receipt is invented.
+
+The documentation commit that will add this record is a different commit. No receipt or evidence transfers automatically to that descendant; release review must resolve the exact candidate/record lineage under the existing rules.
+
+### Primary automatic run and same-attempt counts
+
+[Primary Quality 43755163930, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43755163930/attempts/1) is a main push at `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc`, started `2026-11-15T19:56:02Z`, completed successfully by `2026-11-15T20:21:26Z`. **All eight Quality jobs concluded success.** This record's job metadata, log counts and artifact summaries come only from that primary attempt. No count is copied from a cancelled/failed run or the supplemental manual run.
+
+[Primary build-and-test job 132937646575](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43755163930/job/132937646575) and [primary Epic 9 job 132937646633](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43755163930/job/132937646633) both report the exact tested SHA and success.
+
+| Step | Exact primary build-and-test step | Conclusion |
+|---|---|---|
+| 14 | Prepare exact governance catalog objects | `success` |
+| 24 | Gate 2c: Contract pacts | `success` |
+| 25 | Gate 2c: Live EventStore provider verification | `success` |
+| 26 | Gate 2c: Validate contract artifacts | `success` |
+| 27 | Gate 2c: Fail on stale pact diff | `success` |
+
+Primary log counts: Contract pacts **3 succeeded, 0 failed, 0 skipped**; provider-verification tests **80 passed, 0 errors, 0 failed, 0 skipped, 0 not run**; default unit/bUnit lane **6,685 succeeded, 0 failed, 0 skipped**. Other advisory/quarantine lanes retain their own reported skip accounting; this is not a claim that every lane contains zero skips.
+
+The same-attempt [contract-diagnostics artifact 14178432272](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43755163930/artifacts/14178432272), expiring `2026-11-29T20:12:06Z`, reports `live-compatibility`, verdict `passed`, **19 requested / 19 reported / 19 passed / 0 failed interactions**, 19 requested states, 19 setup events and 19 teardown events. Completeness, startup, readiness, shutdown and port closure are all true; reason codes are empty. The matching [contract-artifacts 14178258122](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43755163930/artifacts/14178258122) expires `2026-11-29T20:12:07Z`. Job logs retain the existing 90-day policy; no raw log, report, token or payload is committed.
+
+### Every primary Epic 9 step
+
+All **27 API-reported primary Epic 9 steps** succeeded, including invalid-bearer verification and cleanup:
+
+| Step | Exact primary Epic 9 step | Conclusion |
+|---|---|---|
+| 1 | Set up job | `success` |
+| 2 | Run actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 | `success` |
+| 3 | Initialize build submodules | `success` |
+| 4 | Run Hexalith/Hexalith.Builds/Github/initialize-dotnet@6e77e79e8914a375b0c43b0af3bd142405675ecd | `success` |
+| 5 | Install .NET 11 runtimes | `success` |
+| 6 | Install source-resource compatibility SDK | `success` |
+| 7 | Install dependency source-resource SDK | `success` |
+| 8 | Verify root and source-resource SDKs | `success` |
+| 9 | Run actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e | `success` |
+| 10 | Install Playwright workspace dependencies | `success` |
+| 11 | Initialize Ubuntu APT for browser dependencies | `success` |
+| 12 | Use the Ubuntu HTTPS archive for browser dependencies | `success` |
+| 13 | Install Chromium browser | `success` |
+| 14 | Install Aspire CLI | `success` |
+| 15 | Install Dapr CLI | `success` |
+| 16 | Initialize Dapr runtime | `success` |
+| 17 | Typecheck Epic 9 browser proof | `success` |
+| 18 | Test Epic 9 evidence tooling | `success` |
+| 19 | Run AppHost-discovered Epic 9 live proof | `success` |
+| 20 | AppHost rejects invalid bearer tokens | `success` |
+| 21 | Upload Epic 9 acceptance artifacts | `success` |
+| 38 | Post Run actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e | `success` |
+| 39 | Post Install dependency source-resource SDK | `success` |
+| 40 | Post Install source-resource compatibility SDK | `success` |
+| 41 | Post Run Hexalith/Hexalith.Builds/Github/initialize-dotnet@6e77e79e8914a375b0c43b0af3bd142405675ecd | `success` |
+| 42 | Post Run actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 | `success` |
+| 43 | Complete job | `success` |
+
+The primary [Epic 9 artifact 14178247242](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43755163930/artifacts/14178247242), expiring `2026-11-29T20:07:35Z`, binds `candidateCommit` to `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc`, `workingTreeDirty=false`, final evidence mode and the isolated source-graph launch. Its JUnit report has **1 final passing test, 0 failures, 0 skips, 0 errors**. Playwright classifies that test as **1 flaky result**: retry 0 failed and retry 1 passed. This is a final successful configured-retry result, not a first-attempt browser pass. The primary job log confirms HTTP **401** on all four invalid-bearer surfaces: command submission, command status, query and projection-hub negotiation; verification exit is zero.
+
+### Current per-consumer source contexts (D4)
+
+The saved recursive ProjectReference evaluation reached 79 contexts / 51 projects / 177 edges with no queued contexts; 44 contexts merely had an incidental EventStore property and are excluded from the consuming-project count. The **35 contexts / 27 projects** below have active direct EventStore source ProjectReferences. All 35 were freshly re-evaluated on `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc` with three read-only workers under `run-with-temp`, from their exact inherited argv/globals. Fresh actual AppHost/UI root properties, inherited UI globals and relevant ProjectReference metadata match the saved graph with **zero discrepancies and zero query errors**. The selected owner configurations and gitlink checkouts remain exact and clean.
+
+The actual source build globals are `Configuration=Debug`, `BuildInParallel=false`, `NuGetAudit=false`, `CentralPackageTransitivePinningEnabled=false`, with `HexalithFrontComposerFromSource=true` in the environment. Per-edge AdditionalProperties, GlobalPropertiesToRemove and evaluated Set metadata are honored. No synthetic TargetFramework global is passed to these consumers; each evaluates its own `net11.0` framework. The root-forwarded EventStore version is `5.1.0`. All Platform and Builds SDK42 view flags are false; Parties SDK42 is true in eight contexts and false in 27.
+
+| Actual source-consuming project | Distinct inherited contexts | Own framework | Effective EventStore | EventStore source | Parties SDK42 view |
+|---|---|---|---|---|---|
+| `references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj` | 3 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj` | 2 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj` | 2 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj` | 2 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.Parties/src/Hexalith.Parties.Client/Hexalith.Parties.Client.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `true` |
+| `references/Hexalith.Parties/src/Hexalith.Parties.Contracts/Hexalith.Parties.Contracts.csproj` | 2 | `net11.0` | `5.1.0` | `true` | `true` |
+| `references/Hexalith.Parties/src/Hexalith.Parties.EventStoreExtensions/Hexalith.Parties.EventStoreExtensions.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `true` |
+| `references/Hexalith.Parties/src/Hexalith.Parties.Projections/Hexalith.Parties.Projections.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `true` |
+| `references/Hexalith.Parties/src/Hexalith.Parties.Security/Hexalith.Parties.Security.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `true` |
+| `references/Hexalith.Parties/src/Hexalith.Parties.UI/Hexalith.Parties.UI.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `true` |
+| `references/Hexalith.Parties/src/Hexalith.Parties/Hexalith.Parties.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `true` |
+| `references/Hexalith.Tenants/samples/Hexalith.Tenants.Sample/Hexalith.Tenants.Sample.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.Tenants/src/Hexalith.Tenants.Client/Hexalith.Tenants.Client.csproj` | 2 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj` | 2 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.Tenants/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+| `tests/Hexalith.FrontComposer.CounterFixture/Hexalith.FrontComposer.CounterFixture.csproj` | 1 | `net11.0` | `5.1.0` | `true` | `false` |
+
+The current standalone controls below use Debug with no forwarded source globals or ambient module-source flags. These **seven project-specific SDK42 controls select `4.2.0`**, while the hosted inherited contexts select `5.1.0` because the global property is already supplied before the catalog's empty-value default. This context divergence is explicit; the standalone value is not substituted for the hosted value, and “all SDK42 views false” is not claimed.
+
+| Standalone Debug project | SDK42 view | Standalone EventStore | Hosted inherited EventStore |
+|---|---|---|---|
+| `references/Hexalith.Parties/src/Hexalith.Parties.Client/Hexalith.Parties.Client.csproj` | `true` | `4.2.0` | `5.1.0` |
+| `references/Hexalith.Parties/src/Hexalith.Parties.Contracts/Hexalith.Parties.Contracts.csproj` | `true` | `4.2.0` | `5.1.0` |
+| `references/Hexalith.Parties/src/Hexalith.Parties.EventStoreExtensions/Hexalith.Parties.EventStoreExtensions.csproj` | `true` | `4.2.0` | `5.1.0` |
+| `references/Hexalith.Parties/src/Hexalith.Parties.Projections/Hexalith.Parties.Projections.csproj` | `true` | `4.2.0` | `5.1.0` |
+| `references/Hexalith.Parties/src/Hexalith.Parties.Security/Hexalith.Parties.Security.csproj` | `true` | `4.2.0` | `5.1.0` |
+| `references/Hexalith.Parties/src/Hexalith.Parties.UI/Hexalith.Parties.UI.csproj` | `true` | `4.2.0` | `5.1.0` |
+| `references/Hexalith.Parties/src/Hexalith.Parties/Hexalith.Parties.csproj` | `true` | `4.2.0` | `5.1.0` |
+
+### Valid Release/package property contexts and exercised lane identities
+
+| Root query / exercised lane | Identity, value and scope |
+|---|---|
+| AppHost Release with `UseNuGetDeps=true` | Own `net11.0` property `5.1.0`; source flags false, project-reference mode false, direct `Hexalith.EventStore.Aspire` PackageReference centrally selects `5.1.0`. Direct project paths exist. This is a valid own property/item query, not proof of the entire Release reference graph or package runtime. |
+| UI Release with `UseNuGetDeps=true` | Own `net11.0` property `5.1.0`; source flags false, project-reference mode false. There is **no direct EventStore PackageReference** and `FrontComposerUiUsePublishedModulePackages=false`; it is a property-only context, not an additional EventStore package consumer. |
+| CounterFixture | Valid inherited Debug/source context resolves the selected EventStore.DomainService source path. Its standalone Release/package interpretation remains invalid and excluded: empty EventStorePath plus dangling unconditional source edge. |
+| Gate 2c live provider | Release-built provider and its 80-test suite exercise EventStore source `fdb59895975e86a1e234325a01237f259cdbd53b`; observed source assembly and Builds identities match above. |
+| Epic 9 / invalid bearer | Existing scripts build Debug source at exact FrontComposer `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc`, then launch the same source AppHost with the selected EventStore source gitlink. |
+| Shared CI | [CI 43755164227](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43755164227) completed success at this exact commit. No EventStore NuGet `5.1.0` package-mode runtime compatibility is inferred from the source live lanes or property queries. |
+
+**Scoped property conclusion and explicit limits.** The 35 actual source-consumer property contexts, their seven standalone SDK42 controls, and the two valid own Release root queries are directly evidenced. Four unresolved **nonconsumer** outer Contracts/Schema negotiation contexts remain (Contracts contexts 26/37, Schema 60/73), each declaring `net11.0;netstandard2.0`; their four dependent Schema-inner edges to Contracts (172/173/175/176) are not asserted to have build-selected frameworks. Eight declared inner candidates were evaluated only within their own projects, never propagated as invented child framework globals. No build/restore/GetNearestTargetFramework task was run. These nonconsumer negotiation cases do not inflate the 35 consuming contexts. Aspire path-only launch contexts, unmodeled launch-time globals, restore-selected package assets and package-mode runtime coverage remain outside the property-evaluation conclusion. D4 is complete only to this stated property scope; no blanket framework, launch or runtime completeness is claimed.
+
+### Source-fix and protected-manual outcomes
+
+The prior failed 8ce record remains failed history. Source fixes `984b6be79a09e5e5796f75c9c0eb35ab4ccc2707` and `a6ed4b94b74aacf833c76ba1391a51e383bd6478` are now ancestors of this green successor. The former uses the captured non-null EditContext in both framework branches, aligns the async replacement/extraction anchors, and repairs the scoped identity-scan/test cleanup/wait behavior; the latter aligns the captured validation contract assertions across C#, integration and browser checks. The primary [test-results artifact 14179161540](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43755163930/artifacts/14179161540), expiring `2026-11-29T20:21:03Z`, reports each formerly failed invocation Passed:
+
+| Previously failed invocation | Primary default-lane outcome on green successor |
+|---|---|
+| `Hexalith.FrontComposer.SourceTools.Tests.Emitters.CommandFormValidationCompilationTests.EmittedValidationCompilesWithoutWarningsAgainstTheSupportedFramework(frameworkMajor: 11)` | `Passed` |
+| `Hexalith.FrontComposer.SourceTools.Tests.Emitters.CommandFormValidationCompilationTests.EmittedValidationCompilesWithoutWarningsAgainstTheSupportedFramework(frameworkMajor: 10)` | `Passed` |
+| `Hexalith.FrontComposer.Shell.Tests.Generated.CommandTargetGeneratedFormTests.SynchronouslyBlockingProvider_DeadlineStillAllowsDispatch` | `Passed` |
+| `Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle.UlidFactoryTests.ProductionCommandIdentityPaths_DoNotUseGuidIdentityApis` | `Passed` |
+| `Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.GeneratedForm_SubmitAccepted_RendersLifecyclePhasesAndKeepsFormPresent` | `Passed` |
+
+Protected manual concurrency is committed in `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc`. It keeps the automatic group `quality-<github.ref>` and isolates each manual run as `quality-manual-<github.run_id>`. The main-only acquisition guard, event-base policy, job/step gates, permissions, gitlinks and execution pins are unchanged by that scheduling change. The primary automatic run and [supplemental isolated main manual run 43755164106](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43755164106) both completed success on the exact same commit. The supplemental run is corroborating scheduler evidence only; none of its job counts or artifacts enter this record.
+
+### Capture commands and retained scope
+
+All capture identity reads use the explicit committed tuple and catalog, and run-bound summaries come from the primary automatic attempt only:
+
+```bash
+git fetch origin main
+git rev-parse HEAD origin/main
+git ls-remote origin refs/heads/main
+git ls-tree e0eef14ddbbcd03823863a4f417a4b07f6f5bafc references/Hexalith.EventStore references/Hexalith.Builds
+git show e0eef14ddbbcd03823863a4f417a4b07f6f5bafc:Directory.Packages.props
+git -C references/Hexalith.Builds show 73e60af8a1fcdf3f06726d5d1b6e1199cce778ee:Props/Directory.Packages.props
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/43755163930
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/runs/43755163930/attempts/1/jobs --paginate
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/jobs/132937646575/logs
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/jobs/132937646633/logs
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/artifacts/14178432272/zip
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/artifacts/14178247242/zip
+gh api repos/Hexalith/Hexalith.FrontComposer/actions/artifacts/14179161540/zip
+```
+
+The read-only source queries reproduce each evaluated edge's globals using `dotnet msbuild <project> -nologo -nr:false -m:1 <inherited -p:Name=Value arguments> -getProperty:Configuration,TargetFramework,TargetFrameworks,HexalithEventStoreVersion,HexalithEventStoreFromSource,UseHexalithProjectReferences,UseNuGetDeps,HexalithPartiesSdk42CatalogView,HexalithPlatformSdk42CatalogView,HexalithBuildsPackagedHostSdk42CatalogView -getItem:ProjectReference,PackageReference`. The saved queries also requested full path and SDK global-removal metadata; exact argv and safe grouped results remain ignored local scratch under `d4-current-e0eef14d-*`. Release root controls add `-p:Configuration=Release -p:UseNuGetDeps=true` and query `EventStorePath`, UI package-mode flag and central PackageVersion items. Standalone controls supply only Debug configuration. No build/restore was run for property evaluation.
+
+Primary runtime execution uses the unchanged workflow commands: provider restore/build/test in Release followed by ProviderVerification `--verification-mode live-compatibility` against the tracked Pact inputs; `FC_EPIC9_EXPECTED_COMMIT=e0eef14ddbbcd03823863a4f417a4b07f6f5bafc FC_EPIC9_REQUIRE_CLEAN=true ./eng/run-epic9-live-proof.sh`; then `HexalithFrontComposerFromSource=true ./eng/verify-apphost-invalid-bearer.sh`. Only safe identities/counts/commands/URLs are committed; existing CI artifacts/logs retain their own expiry limits.
+
+## Engineering Acceptance Receipt — 2026-11-15
+
+At `2026-11-15T20:32:40Z`, the parent accepts Story 16.1's evidence-capture implementation under its approved criteria, using the later green successor `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc` and primary Quality `43755163930` attempt 1. This engineering acceptance includes the requesting-user-approved bounded D1 historical scope exception (“approve both and continue”). Historical AC 3 and strict-attribution failures remain disclosed; both earlier Tuple Records and the D4 Review Addendum are unchanged. Story 16.1 is `done` for engineering capture, with D4 limited to the explicit evaluated property scope.
+
+This is not EventStore/FrontComposer/Release migration approval, role equivalence, transfer of authority, a named-owner scheduling disposition, or publication authorization. No migration receipt is fabricated; Stories 16.2/16.3 and their pending role decisions remain unchanged. G-3 stays open on its named approvals and exact candidate/record-descendant lineage requirements. The passing-workflow evidence applies only to `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc`; the later documentation commit receives no automatic evidence or approval transfer.
+
+Remaining bounded review work is tracked separately: pre-existing derived-value BeforeSubmit/revision semantics (BH2); the mutable-model window associated with the concurrent freshness check from `923988d855cd6131b4287e3da763f12baf60ab22` (BH3); future durable CI execution of the manual-concurrency expression regression checks from `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc` (QC-BH1/QC-VG1); the primary Epic 9 configured retry; and the explicit nonconsumer framework/launch/restored-package/runtime limits above. A green run does not prove these untested scenarios or relabel earlier failures as successful.
