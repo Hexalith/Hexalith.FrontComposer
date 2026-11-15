@@ -872,7 +872,7 @@ public partial class AllUnsupportedProjection
                 .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
         }
         else {
-            form.ShouldContain("bool isValid = _editContext.Validate();");
+            form.ShouldContain("bool isValid = editContext.Validate();");
             form.ShouldNotContain("await editContext.ValidateAsync(");
         }
     }

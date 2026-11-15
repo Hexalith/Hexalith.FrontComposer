@@ -130,7 +130,7 @@ test.describe('FC-NIP explicit command-target identity contract', () => {
     const validationRevisionIndex = commandFormEmitter.indexOf(
       'long validationRevision = System.Threading.Volatile.Read(ref _modelRevision);', attemptTokenIndex,
     );
-    const validationIndex = commandFormEmitter.indexOf('bool isValid = _editContext.Validate();', validationRevisionIndex);
+    const validationIndex = commandFormEmitter.indexOf('bool isValid = editContext.Validate();', validationRevisionIndex);
     const modelRevisionGuardIndex = commandFormEmitter.indexOf(
       'if (validationRevision != System.Threading.Volatile.Read(ref _modelRevision)) return;', validationIndex,
     );

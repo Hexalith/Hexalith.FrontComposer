@@ -95,7 +95,7 @@ public sealed class FcNipCommandTargetIdentityContractTests {
         foreach (string fragment in new[] {
             "var cancellationToken = cts.Token;",
             "long validationRevision = System.Threading.Volatile.Read(ref _modelRevision);",
-            "bool isValid = _editContext.Validate();",
+            "bool isValid = editContext.Validate();",
             "if (validationRevision != System.Threading.Volatile.Read(ref _modelRevision)) return;",
             "var targetResolution = await ResolveCommandTargetAsync(_model, cancellationToken)",
             "cancellationToken.ThrowIfCancellationRequested();",
