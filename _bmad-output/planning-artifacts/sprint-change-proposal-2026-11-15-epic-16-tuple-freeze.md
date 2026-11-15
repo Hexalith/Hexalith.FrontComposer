@@ -14,7 +14,7 @@ g_3: 'open'
 
 Story 16.1 review deferrals D1–D4 expose a coordination gap: workspace commits move gitlinks before an exact tuple can receive evidence and approval. Platform seal transitions make Quality red. Runs [43702436144](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43702436144), [43710270227](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43710270227), [43728107585](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43728107585), and [43736184654](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/43736184654) fail `build-and-test` step 14 with `consumer source projection owner pin changed`, skipping Gate 2c. A green AppHost lane alone does not qualify.
 
-The technical record and three named migration decisions remain separate. This proposal changes no policy, gitlink, workflow, acceptance criterion, or story status. The Story 16.1 file currently says `done`; that status establishes no migration approval or historical-scope waiver.
+The technical record and three named migration decisions remain separate. This proposal changes no policy, gitlink, workflow, acceptance criterion, or story status. At proposal drafting, the Story 16.1 file said `done`; that historical status established no migration approval or historical-scope waiver. Review now sets it to `in-review`.
 
 ## Impact
 
@@ -66,3 +66,27 @@ The requesting user approved this proposal and the repair spec together: “appr
 ## Implementation handoff — 2026-11-15
 
 The approved scheduling and candidate-lineage rules are applied to PRD G-3/D-12, Epic 16, architecture and epic context. Story 16.1 contains the bounded D1 exception receipt; historical AC 3 still failed. D2/D4 remain evidence-gated. The qualification window starts `2026-11-15T17:27:10Z` and ends `2026-11-16T17:27:10Z`. Only this session's unrelated commits are held; no external automation was disabled or coordination message sent. Named migration authority and latest-main lineage resolution remain open to the Release Owner with Architect involvement.
+
+## Execution outcome — 2026-11-15
+
+The original attempt and one fresh observation were cancelled by unrelated concurrent commits `923988d855cd6131b4287e3da763f12baf60ab22` and `8ce46cfc1293925459c8b6af15ef7719cf0fc071`; both remain outside repair scope. The parent authorized bounded read-only observation of the already-running current run within the original deadline, without a new seal/push or a named owner rescheduling receipt.
+
+The current `8ce46cfc1293925459c8b6af15ef7719cf0fc071` capture at `2026-11-15T18:44:11Z` follows all required successes in Quality 43744582233 attempt 1 (last `18:26:36Z`). Overall Quality fails later default tests: five failed, 6,680 succeeded, zero skipped. This is explicitly not an overall-green run. D2 repair evidence is complete; D4 is scoped to evaluated immediate hosted contexts and remains open for completeness, as corrected by the append-only Story 16.1 Review Addendum. The separate bounded residuals and Story 16.1 acceptance remain for parent review. G-3, named migration authority/receipts and latest-main/record-descendant lineage resolution remain open. The original outer deadline is still `2026-11-16T17:27:10Z`; no external automation was disabled and no approval is transferred to a descendant.
+
+## Coordination and incident clarification — 2026-11-15
+
+The approved repository-wide coordination of all active sessions and the workspace automation owner was **not achieved**. The observed session-only hold did not implement, waive or silently remove that prerequisite. Global coordination remains an open Release Owner action, with Architect involvement, before claiming a coordinated capture/approval freeze. No external automation was disabled and no named owner coordination/disposition receipt is invented.
+
+The approved 24-hour outer deadline `2026-11-16T17:27:10Z`, two-hour capture cadence and owner roles remain unchanged. No business calendar was supplied for four working hours. The current incident therefore has conservative UTC disposition due **`2026-11-15T21:49:35Z`**, no later than four elapsed hours after first drift at `2026-11-15T17:49:35Z`. This supplies an explicit incident due time without redefining working hours or asserting a receipt. “Failed qualification” means failed successor required steps; expected refusal during the planned old-policy seal transition is not itself failed successor qualification. Drift, missing authority, timeout and lineage triggers still apply.
+
+Story 16.1's capture meets only its individual-step evidence rule. Overall Quality remains failed, and G-3's unchanged passing-overall-Quality release condition remains unmet. D4's earlier blanket closure is withdrawn in the append-only review addendum: inherited hosted source contexts and standalone SDK 4.2 views are distinguished, the CounterFixture Release/package interpretation is invalid, and transitive/launch completeness remains open.
+
+## Later green successor and engineering outcome — 2026-11-15
+
+The later main successor is `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc`. Primary automatic Quality43755163930 attempt1, supplemental isolated main manual Quality43755164106 and shared CI43755164227 all succeed at that exact commit. The new immutable same-day record is labeled the later green successor and uses only primary run metadata/counts/artifacts. The prior failed/cancelled records and D4 Review Addendum remain unchanged.
+
+The source-fix outcomes from984b6be79a09e5e5796f75c9c0eb35ab4ccc2707/a6ed4b94b74aacf833c76ba1391a51e383bd6478 are verified by the primary default lane's6685 passes and Passed outcomes for all five formerly failed invocations. Protected manual concurrency in e0 preserves the automatic group, main-only acquisition, event-base policy and execution pins/gates. Primary/supplemental success demonstrates current hosted behavior; durable regression-harness integration remains separate future work.
+
+Parent engineering acceptance of Story16.1 capture and the requesting-user-approved D1 historical exception is recorded outside immutable records; Story16.1 and the repair spec are done for their engineering scope. D4 has current scoped35-source-consumer/27-project evidence, seven standalone4.2 controls versus inherited5.1, and valid own AppHost/UI Release controls; CounterFixture Release remains excluded. Nonconsumer framework negotiations, launch-time contexts, restored package assets and package-mode runtime coverage stay explicit limits. The primary browser's configured retry is disclosed rather than replaced with another run's outcome.
+
+Repository-wide coordination remains unachieved/open; no named Release Owner/Architect scheduling receipt or approval transfer is fabricated. Original incident/outer deadlines are unchanged. Migration authority, role-transfer decisions, named migration receipts and candidate/record-descendant lineage remain separate requirements; G-3 remains open. The green-workflow condition is now evidenced only for the exact tested tuple, without weakening the release gate.

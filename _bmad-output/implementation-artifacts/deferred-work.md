@@ -11289,3 +11289,77 @@ The original four entries above remain historical findings. The approved repair 
 - D2 (BH09): assigned to this dependency-governance repair. Seal `50def1fe238787e9365c93991e3dc83af8c2e299` passes both exact committed-object proofs; hosted activation qualification is pending. This entry remains open until catalog preparation and every required same-attempt runtime step succeed.
 - D3 (BH16c): the approved 24-hour qualification window, two-hour capture cadence, four-working-hour Release Owner/Architect escalation and exact-tested-commit lineage rule are adopted in the active PRD, Epic 16, architecture and epic context. Current approver identities and any latest-main lineage conflict still require the named owners; G-3 stays open.
 - D4 (BH08): per-project/configuration/target-framework/mode MSBuild evaluation and lane identities are required for the successor capture. Remains open until evaluation against the hosted green candidate is recorded.
+
+## Verified follow-up outcomes — Story 16.1 D1–D4, 2026-11-15
+
+- D1: the approved bounded historical engineering exception remains in the dated Story 16.1 receipt. Historical AC 3 and strict attribution still failed; no role or migration approval is inferred.
+- D2: technical blocker resolved at current `8ce46cfc1293925459c8b6af15ef7719cf0fc071`, Quality 43744582233 attempt 1: catalog preparation plus all four Gate 2c steps succeeded and all 27 Epic 9 steps succeeded. The later default-lane failure is separate and remains recorded below.
+- D3: cadence/lineage policy is adopted, with outer deadline `2026-11-16T17:27:10Z`. Two concurrent pushes ended earlier observations. Named Release Owner/Architect escalation disposition and migration authority remain open; no rescheduling receipt or approval transfer is fabricated.
+- D4: technical evaluation gap resolved by the immutable current capture: all six AppHost/UI/CounterFixture Release-package/Debug-source net11.0 contexts select EventStore 5.1.0, all SDK 4.2 views false. Source/package lane identities and coverage limits are explicit.
+
+## Deferred from: current tuple qualification default lane (2026-11-15)
+
+The current tuple's required steps pass, but Quality 43744582233 overall fails with exactly five failed TRX invocations (artifact 14175076344), 6,680 successes and zero skips. These bounded residuals receive no guard bypass or unrelated source fix in the dependency-governance repair.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-restore-quality-gate-2c-current-tuple.md`
+  summary: Restore default-lane test `Hexalith.FrontComposer.Shell.Tests.Generated.CommandTargetGeneratedFormTests.SynchronouslyBlockingProvider_DeadlineStillAllowsDispatch` through its owning SourceTools/generated-form/lifecycle work.
+  evidence: Current Quality 43744582233 attempt 1, build-and-test 132905063083, artifact 14175076344. Observed `TimeoutException` waiting up to two seconds for `provider.Started`; causal origin is unproven. The test file predates and is unchanged by both concurrent commits. Preserve the existing assertions and establish a focused/full-lane reproduction before changing behavior or wait budgets; no flakiness or seven-policy-change causality is claimed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-restore-quality-gate-2c-current-tuple.md`
+  summary: Restore default-lane test `Hexalith.FrontComposer.SourceTools.Tests.Emitters.CommandFormValidationCompilationTests.EmittedValidationCompilesWithoutWarningsAgainstTheSupportedFramework(frameworkMajor: 11)` through its owning SourceTools/generated-form/lifecycle work.
+  evidence: Current Quality 43744582233 attempt 1, build-and-test 132905063083, artifact 14175076344. `ArgumentOutOfRangeException(startIndex)`: the fixture searches the old emitted `_editContext` validation marker, then calls `IndexOf` with -1. Concurrent `923988d855cd6131b4287e3da763f12baf60ab22` renamed that marker to `validatedEditContext`; the fixture was not updated. Preserve the existing assertions and establish a focused/full-lane reproduction before changing behavior or wait budgets; no flakiness or seven-policy-change causality is claimed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-restore-quality-gate-2c-current-tuple.md`
+  summary: Restore default-lane test `Hexalith.FrontComposer.SourceTools.Tests.Emitters.CommandFormValidationCompilationTests.EmittedValidationCompilesWithoutWarningsAgainstTheSupportedFramework(frameworkMajor: 10)` through its owning SourceTools/generated-form/lifecycle work.
+  evidence: Current Quality 43744582233 attempt 1, build-and-test 132905063083, artifact 14175076344. Same proven stale-marker failure introduced by the concurrent forms change; no framework compilation verdict was reached. Preserve the existing assertions and establish a focused/full-lane reproduction before changing behavior or wait budgets; no flakiness or seven-policy-change causality is claimed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-restore-quality-gate-2c-current-tuple.md`
+  summary: Restore default-lane test `Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle.UlidFactoryTests.ProductionCommandIdentityPaths_DoNotUseGuidIdentityApis` through its owning SourceTools/generated-form/lifecycle work.
+  evidence: Current Quality 43744582233 attempt 1, build-and-test 132905063083, artifact 14175076344. Broad source-token assertion finds `Guid.TryParse(` in the emitter's GUID-valued field parsing. Both that occurrence and the test already exist at baseline `22f76488e8878e3f879c1dd1b6d7bf75534b2b1b`; no command-identity use is inferred from this scan. Preserve the existing assertions and establish a focused/full-lane reproduction before changing behavior or wait budgets; no flakiness or seven-policy-change causality is claimed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-restore-quality-gate-2c-current-tuple.md`
+  summary: Restore default-lane test `Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.GeneratedForm_SubmitAccepted_RendersLifecyclePhasesAndKeepsFormPresent` through its owning SourceTools/generated-form/lifecycle work.
+  evidence: Current Quality 43744582233 attempt 1, build-and-test 132905063083, artifact 14175076344. Observed bUnit assertion timeout: expected wrapper class `fc-lifecycle-pulse`, actual `fc-lifecycle-wrapper `. The test file is unchanged by both concurrent commits; causality and repeatability are unproven. Preserve the existing assertions and establish a focused/full-lane reproduction before changing behavior or wait budgets; no flakiness or seven-policy-change causality is claimed.
+
+## Deferred from: independent owner-pin repair review (2026-11-15)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-restore-quality-gate-2c-current-tuple.md`
+  summary: Repair concurrent SourceTools framework-compilation extraction after the validatedEditContext rename (BH1/EC2/VG1).
+  evidence: All three review lenses independently confirm the stale marker returns -1 before compilation in both net10/net11 cases; current Quality 43744582233 records both failures. This source change belongs to concurrent 923988d855cd6131b4287e3da763f12baf60ab22 and is preserved by the policy/capture repair. Include moved local declarations and validate extraction bounds in the owning fix.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-restore-quality-gate-2c-current-tuple.md`
+  summary: Reconcile derived-value BeforeSubmit assignments with validation freshness (BH2).
+  evidence: CommandRendererEmitter.RefreshDerivedValuesBeforeSubmitAsync assigns the shared model through TrySetPropertyValue without notifying EditContext; revision checks do not detect those writes. This flow predates the owner-pin repair. Owning generated-form maintainers must cover post-validation derived-value changes and preserve dispatch admission.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-restore-quality-gate-2c-current-tuple.md`
+  summary: Close the mutable-model window after final validation freshness checking (BH3).
+  evidence: Concurrent emitter guard precedes awaited StateHasChanged and target resolution; the command is still derived from the shared model afterward. Owning generated-form work must prove behavior when the model changes during these awaits, without removing validation or target guards.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-restore-quality-gate-2c-current-tuple.md`
+  summary: Restore nullable-clean net10 generated validation after the concurrent alias guard (EC1, high).
+  evidence: The validatedEditContext alias is narrowed, while the synchronous branch dereferences nullable _editContext. Independent reviewer reproduced CS8602 against Microsoft.AspNetCore.App with nullable warnings as errors. No earlier field guard exists in SubmitAsync. The stale extraction fixture currently masks this compilation regression; fix the owning emitter and its async replacement anchor together.
+
+## Review correction — D4 remains scoped/open (2026-11-15)
+
+The earlier “D4 technical evaluation gap resolved” entry describes insufficient top-level queries and is superseded by Story 16.1's append-only Review Addendum. CounterFixture's standalone Release query has an empty EventStorePath and dangling unconditional source edge, so its package-context interpretation is withdrawn. Its inherited Debug/source context is valid. Sixteen evaluated immediate AppHost/UI source edges (fourteen projects) inherit effective EventStore 5.1.0; Parties SDK 4.2 views are true and standalone Debug controls select 4.2.0. This closes only those evaluated context questions. D4 remains open for unenumerated transitive/restore/build and path-only launch contexts; package-runtime coverage is not proved. Both Tuple Records remain byte-identical.
+
+Repository-wide coordination remains an unmet prerequisite/open Release Owner action. With no supplied working calendar, the current incident uses conservative UTC disposition due `2026-11-15T21:49:35Z`, four elapsed hours after first drift, while retaining the original outer deadline and Architect involvement. No named owner receipt is claimed. Expected seal-transition refusal alone is not failed successor qualification. Overall Quality failure still leaves G-3's passing-workflow release gate unmet.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-restore-quality-gate-2c-current-tuple.md`
+  summary: Consider durable workflow-expression regression execution for manual Quality concurrency (QC-BH1/QC-VG1).
+  evidence: Existing CI governance tests protect the main-ref acquisition script and trigger layout but do not execute the concurrency expression. Current change is verified through eight assertions and two negative controls using temporary GitHub-maintained @actions/expressions@0.3.61; all pass, with no repository dependencies added. A future CI harness should preserve automatic ref-based cancellation and distinct manual run-ID groups without mirroring expression text.
+
+## Green-successor dispositions — Story 16.1 and owner-pin repair (2026-11-15)
+
+At `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc`, primary automatic Quality 43755163930 attempt 1 is fully successful in all eight jobs; shared CI 43755164227 and supplemental isolated main manual Quality 43755164106 also succeed. The later green Tuple Record uses primary counts only. Earlier failed/cancelled entries remain historical observations.
+
+- D1: the requesting-user-approved bounded historical scope exception is included in the separate engineering acceptance receipt. Historical AC 3/strict-attribution failures remain failures; no future scope waiver or role credential is invented.
+- D2: exact reseal and later active-policy qualification are complete; catalog and all Gate 2c / Epic 9 required steps succeed on the current full-green tuple.
+- D3: protected main manual scheduling in e0 preserves automatic cancellation groups, main-only acquisition and all guards/pins; both full runs succeed. Repository-wide coordination and a named Release Owner/Architect incident/lineage disposition remain open. The due times and exact-tuple approval requirements are unchanged.
+- D4: direct scoped property questions are evidenced for 35 actual source consumer contexts / 27 projects, seven standalone SDK42 controls and two own Release root controls. Effective source selection is 5.1.0; standalone Parties 4.2.0 divergence, UI property-only mode and invalid CounterFixture Release are explicit. Four nonconsumer framework negotiations plus four dependent edges, launch-time contexts, restored assets and package-runtime coverage remain limits; no blanket coverage closure is claimed.
+- The five failed default invocations from Quality 43744582233 now each report Passed in primary artifact 14179161540 after source fixes 984b6be79a09e5e5796f75c9c0eb35ab4ccc2707 and a6ed4b94b74aacf833c76ba1391a51e383bd6478. This closes those current failure/extraction/nullable-alias cases (BH1/EC1/EC2/VG1) without rewriting their historical result.
+- Remaining BH2 derived-value/revision behavior predates the policy repair and remains with generated-form ownership. BH3's unproved post-check mutation window is scoped to the concurrent check lineage from 923988d855cd6131b4287e3da763f12baf60ab22 and remains separate; source-fix/default-test success does not prove these scenarios.
+- QC-BH1/QC-VG1 durable workflow-expression CI integration remains future work for scheduling change e0. The temporary eight assertions/two negatives and completed hosted runs are real current evidence, not a committed permanent regression harness.
+- Primary Epic 9 has one final passing JUnit test and one Playwright-flaky result: first execution failed, configured retry 1 passed. Preserve that outcome; do not copy another run's zero-flaky result or claim first-attempt browser success.
+
+Story 16.1 engineering acceptance is recorded separately and state is done. Migration approval, role transfer, named migration receipts and G-3 closure are not supplied; Stories 16.2/16.3 remain pending.
