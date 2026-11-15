@@ -1,5 +1,23 @@
 # Story 13.6 accessibility result and human checklist
 
+## Owner acceptance and workflow completion — 2026-11-15
+
+The Owner answered **"yes"** to extending the previous native-evidence, zoom and WebKit acceptance to `bca9dff2`, retaining existing exceptions and deferrals. Accepted candidate: `bca9dff291ce42c57516598732340a80703dfb6d`. This extends the earlier native-evidence/manual-criterion, AE-02/MAN-136-ZOOM reuse and WebKit capability amendments to that exact candidate. Fresh bounded results remain **159 browser + 41 component + 32 evidence/CLI + 10 generated-field tests**, passing TypeScript and zero-warning/error Debug builds; commands and attribution are immediately below.
+
+The [primary completion record](spec-13-6-verify-responsive-and-assistive-accessibility.md#owner-acceptance-and-workflow-completion--2026-11-15) records the question and disposition. Earlier native/full-matrix/visual/hosted evidence retains its executed inputs. D2/D3/O2, existing post-v1 deferrals, eighteen unchecked human boxes and independent gates remain preserved. No new manual/native/zoom/hosted/topology pass is claimed. This supersedes earlier pending-acceptance statements for this candidate. Primary is **done**; sprint is **review** under Build step 5. Completion metadata does not alter accepted product inputs; publication is not part of this completion.
+
+
+## Current committed-candidate verification — 2026-11-15
+
+Candidate: `bca9dff291ce42c57516598732340a80703dfb6d` on initially clean main. The previous ten accessibility correction/test inputs are byte-identical to verified 13b382bc; committed generator/build/dependency changes are recorded separately in the local input comparison.
+
+Fresh results: **159/159 browser cases** (53 per engine, no retries/skips/flaky cases), **41/41 banner component tests**, **32/32 Node evidence/CLI tests**, **10/10 generated typed-field/description tests**, TypeScript and individual Shell.Tests/Counter and SourceTools.Tests Debug builds (zero warnings/errors). Browser report SHA-256: `9231ae2f7a335cf40471f8f4922ff6223945942a43f0f954a95af64b87bf5beb`.
+
+Main command: `run-with-temp python3 /home/administrator/.local/state/frontcomposer/resume-story13-6-20261115T100853Z/verify.py /home/administrator/.local/state/frontcomposer/resume-story13-6-20261115T100853Z`. The additional focused command is `run-with-temp bash -c 'dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Debug -m:1 --artifacts-path "$TMPDIR/artifacts" -v:q -nodeReuse:false --disable-build-servers && dotnet "$TMPDIR/artifacts/bin/Hexalith.FrontComposer.SourceTools.Tests/debug/Hexalith.FrontComposer.SourceTools.Tests.dll" -class "*FluentTypedFieldRuntimeTests" -class "*DescriptionTooltipEmissionTests" -parallel none -xml /home/administrator/.local/state/frontcomposer/resume-story13-6-20261115T100853Z/typed-field-tests.xml'`. Commands, source/served-module hashes, logs, reports and input comparisons remain at `/home/administrator/.local/state/frontcomposer/resume-story13-6-20261115T100853Z`.
+
+These are bounded current-source checks. Existing review dispositions are retained for the unchanged accessibility fixes. Earlier native/full-matrix/visual/hosted evidence remains attributed to its executed inputs; no new native speech, human, actual-zoom, complete artifact/visual or full-topology result is claimed. Hosted CI was not queried or triggered. The stopped/awaited Counter host, removed private TMPDIR and closed port 5070 are verified. The current-candidate native-evidence/zoom/WebKit reuse decision remains pending; D2/D3/O2, post-v1 deferrals, eighteen unchecked human boxes and independent gates remain preserved. Primary in-review; sprint in-progress.
+
+
 
 ## Push integration verification — 2026-11-14
 

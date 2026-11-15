@@ -2,7 +2,7 @@
 title: 'Story 13.6: Verify Responsive and Assistive Accessibility'
 type: 'feature'
 created: '2026-10-15'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 3
 baseline_commit: '3c8679628ebdb8995afc09f712a04fcde623695c'
@@ -2115,3 +2115,21 @@ The request to push all changes authorizes publication; it does not extend the p
 Fresh post-rebase verification passes **159 browser cases** (53 per Chromium/Firefox/WebKit, zero retries/failures/skips/flaky cases), **41 banner component tests**, **32 Node evidence/CLI tests**, TypeScript and an individual Debug Shell.Tests/Counter build with **zero warnings/errors**. The browser lane combines the prior 90 affected cases with the full route-skip-links spec. Exact commands, source/served-module hashes, logs and JSON reports are `/home/administrator/.local/state/frontcomposer/push-story13-6-20261114-1794675910261/verification/verification-summary.json` and `/home/administrator/.local/state/frontcomposer/push-story13-6-20261114-1794675910261/verification/commands.json`; browser report SHA-256 is `2c42dc92beea1a0f9b77fa45379fc0ec5263e82b334878c9fb7eab249e5c7c4c`. All jobs use run-with-temp and private TMPDIR artifacts. The owned Counter host is stopped and awaited, and scratch is removed.
 
 Earlier candidate/Owner decisions and 90/41/32 results retain their original input attribution; they are not rewritten to the rebased history. No new native AT, actual zoom, human, full state-artifact/visual, hosted or full-topology qualification is claimed. Primary remains **in-review**, sprint **in-progress**; D2/D3/O2, WebKit capability limits, post-v1 deferrals, independent gates and the final changed-candidate Owner decision remain intact. This integration note changes documentation only; subsequent publication metadata must preserve the tested source inputs.
+
+
+## Current committed-candidate verification — 2026-11-15
+
+Resumed the completed implementation/review at clean main `bca9dff291ce42c57516598732340a80703dfb6d`. All ten source/test inputs in the previous 13b382bc verification receipt still match byte-for-byte. Later committed generator, build and dependency changes remain separately identified; previous native, full-matrix, visual and hosted results keep their original attribution. No implementation patch or new review finding is introduced.
+
+Fresh verification passes **159 browser cases** (53 each Chromium/Firefox/WebKit; zero failures/retries/skips/flaky cases), **41 banner component tests**, **32 Node evidence/CLI tests**, **10 generated typed-field/description tests**, TypeScript and both individual Debug builds with zero warnings/errors. Exact commands, hashes, reports and cleanup are in `/home/administrator/.local/state/frontcomposer/resume-story13-6-20261115T100853Z`; the [leading result](13-6-accessibility-result.md#current-committed-candidate-verification--2026-11-15) records the scope.
+
+The owned Counter host is stopped and awaited, its private TMPDIR is removed and port 5070 is closed. Existing independent review dispositions are reused for the unchanged accessibility correction. The final native-evidence/zoom/WebKit reuse extension remains an explicit Owner decision for this current candidate; no new native AT, actual zoom, human observation, full state-artifact/visual, hosted or topology qualification is claimed. D2/D3/O2, post-v1 deferrals, eighteen unchecked human boxes and independent gates are preserved. Primary remains in-review and sprint in-progress. Nothing is staged, committed or pushed.
+
+
+## Owner acceptance and workflow completion — 2026-11-15
+
+The Owner answered **"yes"** to: "Do you extend your previous native-evidence, zoom, and WebKit acceptance to `bca9dff2`, retaining existing exceptions and deferrals?" The accepted candidate is `bca9dff291ce42c57516598732340a80703dfb6d`. This explicitly extends the earlier native-evidence/manual-criterion amendment, AE-02/MAN-136-ZOOM evidence reuse and WebKit system-palette capability exception to this candidate. The preceding current-candidate verification supplies 159 browser, 41 banner component, 32 evidence/CLI and 10 generated-field/description passes, passing TypeScript and zero-warning/error Debug builds.
+
+Earlier native NVDA/Firefox, actual-zoom, full-matrix, visual and hosted results retain their original executed inputs. No new human observation, native session, actual-zoom run or unsupported WebKit paint is asserted. D2/D3/O2 dispositions, JAWS/Chrome, VoiceOver/Safari, physical tablet/phone post-v1 deferrals and eighteen unchecked human-observation boxes remain preserved. OI-16/G-4/FLUENT-APP-1/UX/Product/Architect and full-topology decisions retain their separate owners and meanings.
+
+This decision supersedes the preceding current-candidate acceptance-pending statements. The implementation and independent Build review were already complete; primary status is now **done**, with the sprint entry moved to **review** as required by Build step 5. Epic 13 and independent gates are unchanged. This completion changes only the two owning records and sprint metadata; accepted product/build/dependency inputs are unchanged. The workflow creates a local completion commit and performs no push.
