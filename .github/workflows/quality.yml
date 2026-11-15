@@ -25,7 +25,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: quality-${{ github.ref }}
+  # Manual main diagnostics must finish even while automatic main runs are superseded.
+  group: ${{ github.event_name == 'workflow_dispatch' && format('quality-manual-{0}', github.run_id) || format('quality-{0}', github.ref) }}
   cancel-in-progress: true
 
 permissions:
