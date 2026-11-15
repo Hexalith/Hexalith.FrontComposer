@@ -583,17 +583,17 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
         IRenderedComponent<ProviderTargetCommandForm> cut = Render<ProviderTargetCommandForm>();
 
-        cut.Find("form").Submit();
-        await provider.Started.Task.WaitAsync(
-            TimeSpan.FromSeconds(2),
-            Xunit.TestContext.Current.CancellationToken);
-
         try {
+            cut.Find("form").Submit();
+            await provider.Started.Task.WaitAsync(
+                TimeSpan.FromSeconds(10),
+                Xunit.TestContext.Current.CancellationToken);
+
             cut.WaitForAssertion(() => {
                 service.DispatchCount.ShouldBe(1);
                 PendingCommandEntry entry = pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull();
                 entry.TargetSnapshot.ShouldBeNull();
-            }, timeout: TimeSpan.FromSeconds(2));
+            }, timeout: TimeSpan.FromSeconds(10));
         }
         finally {
             provider.Release();

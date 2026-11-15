@@ -328,6 +328,8 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
 
     [Fact]
     public async Task GeneratedForm_SubmitAccepted_RendersLifecyclePhasesAndKeepsFormPresent() {
+        FakeTimeProvider time = new(DateTimeOffset.UtcNow);
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
         ControlledCommandService service = new();
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
         Services.Configure<FcShellOptions>(o => {
@@ -362,6 +364,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
 
         string correlationId = state.Value.CorrelationId.ShouldNotBeNull();
         await cut.InvokeAsync(() => dispatcher.Dispatch(new TwoFieldCompactCommandActions.SyncingAction(correlationId)));
+        time.Advance(TimeSpan.FromMilliseconds(100));
         cut.WaitForAssertion(() => {
             cut.Find(".fc-lifecycle-wrapper").GetAttribute("class")!.ShouldContain("fc-lifecycle-pulse");
             cut.Find("form").ShouldNotBeNull();

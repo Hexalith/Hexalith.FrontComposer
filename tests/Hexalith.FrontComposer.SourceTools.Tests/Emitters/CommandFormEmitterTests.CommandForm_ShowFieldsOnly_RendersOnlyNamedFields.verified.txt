@@ -573,7 +573,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 #if NET11_0_OR_GREATER
             bool isValid = await editContext.ValidateAsync(cancellationToken).ConfigureAwait(true);
 #else
-            bool isValid = _editContext.Validate();
+            bool isValid = editContext.Validate();
 #endif
             if (_disposed || cancellationToken.IsCancellationRequested || !ReferenceEquals(_editContext, editContext)) return;
             if (validationRevision != System.Threading.Volatile.Read(ref _modelRevision)) return;

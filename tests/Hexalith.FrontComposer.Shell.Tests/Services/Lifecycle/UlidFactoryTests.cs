@@ -3,6 +3,9 @@ using System.Text.RegularExpressions;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.DependencyInjection;
 
 using NUlid.Rng;
@@ -86,7 +89,19 @@ public class UlidFactoryTests {
         foreach (string relativePath in relativePaths) {
             string text = File.ReadAllText(Path.Combine(root, relativePath));
             foreach (string token in forbidden) {
-                text.ShouldNotContain(token, Case.Sensitive, $"{relativePath} must not use {token} for command MessageId/CorrelationId identity.");
+                string identitySource = text;
+                if (token == "Guid.TryParse(" && relativePath.EndsWith("/CommandFormEmitter.cs", StringComparison.Ordinal)) {
+                    // An adopter's Guid-valued form field is parsed separately from command identity.
+                    // Keep every other emitter method and every other forbidden API under this guard.
+                    SyntaxNode source = CSharpSyntaxTree.ParseText(text, cancellationToken: TestContext.Current.CancellationToken)
+                        .GetRoot(TestContext.Current.CancellationToken);
+                    MethodDeclarationSyntax fieldConverter = source.DescendantNodes()
+                        .OfType<MethodDeclarationSyntax>()
+                        .Single(method => method.Identifier.ValueText == "EmitGuidConverters");
+                    identitySource = source.RemoveNode(fieldConverter, SyntaxRemoveOptions.KeepNoTrivia)!.ToFullString();
+                }
+
+                identitySource.ShouldNotContain(token, Case.Sensitive, $"{relativePath} must not use {token} for command MessageId/CorrelationId identity.");
             }
         }
     }

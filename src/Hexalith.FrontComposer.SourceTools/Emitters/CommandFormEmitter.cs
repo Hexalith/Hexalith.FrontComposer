@@ -765,12 +765,12 @@ public static class CommandFormEmitter {
         // deliberately refuses unseen conditional branches, so its fail-closed policy stays intact.
         string newLine = new StringBuilder().AppendLine().ToString();
         return source.Replace(
-            newLine + "            bool isValid = _editContext.Validate();" + newLine,
+            newLine + "            bool isValid = editContext.Validate();" + newLine,
             newLine + string.Join(newLine, new[] {
                 "#if NET11_0_OR_GREATER",
                 "            bool isValid = await editContext.ValidateAsync(cancellationToken).ConfigureAwait(true);",
                 "#else",
-                "            bool isValid = _editContext.Validate();",
+                "            bool isValid = editContext.Validate();",
                 "#endif",
             }) + newLine);
     }
@@ -1403,7 +1403,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        long validationRevision = System.Threading.Volatile.Read(ref _modelRevision);");
         _ = sb.AppendLine("        if (validateBeforeDispatch && validatedEditContext is { } editContext)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            bool isValid = _editContext.Validate();");
+        _ = sb.AppendLine("            bool isValid = editContext.Validate();");
         _ = sb.AppendLine("            if (_disposed || cancellationToken.IsCancellationRequested || !ReferenceEquals(_editContext, editContext)) return;");
         _ = sb.AppendLine("            if (validationRevision != System.Threading.Volatile.Read(ref _modelRevision)) return;");
         _ = sb.AppendLine("            if (!IsAdmissionScopeCurrent()) return;");

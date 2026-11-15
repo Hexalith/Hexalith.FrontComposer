@@ -45,7 +45,7 @@ public class CommandFormEmitterTests {
 
     [Fact]
     public void ValidationLikeDisplayLabelsRemainLiteralAfterFrameworkSelection() {
-        const string label = "Approve            bool isValid = _editContext.Validate();";
+        const string label = "Approve            bool isValid = editContext.Validate();";
         CommandFormModel form = new("IncrementCommand", "Counter.Domain", null,
             "Counter.Domain.IncrementCommand", label,
             new EquatableArray<FormFieldModel>(ImmutableArray.Create(
@@ -178,9 +178,9 @@ public class CommandFormEmitterTests {
             new FormFieldModel("Name", "String", FormFieldTypeCategory.TextInput, "Name", false, true, null),
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor(), useAsyncValidation);
-        string validation = useAsyncValidation ? "await editContext.ValidateAsync(cancellationToken).ConfigureAwait(true)" : "bool isValid = _editContext.Validate();";
+        string validation = useAsyncValidation ? "await editContext.ValidateAsync(cancellationToken).ConfigureAwait(true)" : "bool isValid = editContext.Validate();";
         source.ShouldContain(validation);
-        source.ShouldNotContain(useAsyncValidation ? "!_editContext.Validate()" : "await editContext.ValidateAsync(");
+        source.ShouldNotContain(useAsyncValidation ? "!editContext.Validate()" : "await editContext.ValidateAsync(");
         source.IndexOf(validation, StringComparison.Ordinal).ShouldBeGreaterThan(source.IndexOf("if (!admission.IsAdmitted)", StringComparison.Ordinal));
         RenderTreeSequenceRewriter.ContainsRuntimeSequenceArgument(source).ShouldBeFalse();
     }
@@ -579,10 +579,10 @@ public class CommandFormEmitterTests {
         lifetimeGuardIndex.ShouldBeGreaterThan(validateIndex);
         summaryIndex.ShouldBeGreaterThan(lifetimeGuardIndex);
         // .NET 11 awaits cancellable validation. The synchronous call remains only in the older-framework branch.
-        int syncIndex = source.IndexOf("_editContext.Validate()", StringComparison.Ordinal);
+        int syncIndex = source.IndexOf("editContext.Validate()", StringComparison.Ordinal);
         syncIndex.ShouldBeGreaterThan(source.IndexOf("#else", validateIndex, StringComparison.Ordinal));
         syncIndex.ShouldBeLessThan(source.IndexOf("#endif", validateIndex, StringComparison.Ordinal));
-        Regex.Count(source, @"_editContext\.Validate\(\)").ShouldBe(1);
+        Regex.Count(source, @"editContext\.Validate\(\)").ShouldBe(1);
         Regex.Count(source, @"editContext\.ValidateAsync\(cancellationToken\)").ShouldBe(1);
     }
 

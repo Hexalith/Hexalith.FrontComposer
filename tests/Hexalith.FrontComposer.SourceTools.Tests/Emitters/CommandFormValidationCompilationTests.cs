@@ -24,9 +24,9 @@ public sealed class CommandFormValidationCompilationTests
         CommandFluxorModel fluxor = new("CreateCommand", "Consumer", "CreateState", "CreateFeature", "CreateActions",
             "CreateReducers", "Consumer.CreateCommand", "Consumer.CreateState");
         string emitted = CommandFormEmitter.Emit(form, fluxor);
-        int start = emitted.IndexOf("        if (validateBeforeDispatch && _editContext is { } editContext", StringComparison.Ordinal);
-        int end = emitted.IndexOf("        if (HasClientParseErrors())", start, StringComparison.Ordinal);
+        int start = emitted.IndexOf("        var validatedEditContext = _editContext;", StringComparison.Ordinal);
         start.ShouldBeGreaterThanOrEqualTo(0);
+        int end = emitted.IndexOf("        if (HasClientParseErrors())", start, StringComparison.Ordinal);
         end.ShouldBeGreaterThan(start);
         string source = $$"""
             using System.Threading;
