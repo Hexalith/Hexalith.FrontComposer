@@ -227,6 +227,37 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
             "The expanded item is not in the current results.", "The expanded item is not in the current results."]);
     }
 
+    /// <summary>A production filter transition ends the missing family after its final claimant leaves.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MissingFilterHiddenPresentAndSameMissingIdentityStartsFreshSpeechAfterFinalOwner(bool coMounted)
+    {
+        const string missingMessage = "The expanded item is not in the current results.";
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("projection:orders:Orders", spoken.Add);
+        IRenderedComponent<FcExpandedRowHiddenBanner> first = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "same"));
+        IRenderedComponent<FcExpandedRowHiddenBanner>? second = coMounted
+            ? Render<FcExpandedRowHiddenBanner>(p => p
+                .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "same"))
+            : null;
+        spoken.Count(message => message == missingMessage).ShouldBe(1);
+
+        // Generated grids keep IsMissing true while the expanded item is filter-hidden.
+        first.Render(p => p.Add(c => c.IsMissing, true).Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "other"));
+        second?.Render(p => p.Add(c => c.IsMissing, true).Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "other"));
+        spoken.Count(message => message == missingMessage).ShouldBe(1);
+        first.Render(p => p.Add(c => c.IsMissing, false).Add(c => c.IsHiddenByFilter, false));
+        second?.Render(p => p.Add(c => c.IsMissing, false).Add(c => c.IsHiddenByFilter, false));
+        first.Render(p => p.Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "same"));
+        second?.Render(p => p.Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "same"));
+        first.Render();
+
+        spoken.Where(message => message == missingMessage).ShouldBe([missingMessage, missingMessage]);
+    }
+
     [Fact]
     public void ContinuouslyHiddenAtoBtoAUsesFreshSpeechEpisodeWithoutRefocus()
     {

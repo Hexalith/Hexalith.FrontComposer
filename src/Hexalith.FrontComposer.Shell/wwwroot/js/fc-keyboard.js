@@ -253,8 +253,10 @@ export function registerShellKeyFilter(element) {
     let pointerHeadingLocation = null;
     let headingLocation = window.location.href;
     let tabFocusPending = false;
+    let pendingInitialFocus = null;
     const recordPointer = (event) => {
         cancelAnimationFrame(element.__fcShellFocusFrame);
+        pendingInitialFocus = null;
         stopFocusResizeWatch();
         announcedHeading = null;
         tabFocusPending = false;
@@ -349,14 +351,23 @@ export function registerShellKeyFilter(element) {
     };
     element.addEventListener('focusout', hideFocusedTarget);
     element.__fcShellFocusVisibilityExit = hideFocusedTarget;
-    element.__fcShellStopHeadingVisibilityWatch = () => watchHeadingVisibility(null);
+    element.__fcShellStopHeadingVisibilityWatch = () => {
+        pendingInitialFocus = null;
+        watchHeadingVisibility(null);
+    };
     const resizeSizes = new Map();
-    const scheduleFocusVisibility = (target) => {
+    // Initial focus must reveal even an offscreen heading; only queued resize recovery
+    // rechecks visibility to yield to a later application or operator scroll.
+    const scheduleFocusVisibility = (target, resizeRecovery = false) => {
+        // Reflow in the focus frame must not replace its pending initial reveal.
+        if (resizeRecovery && pendingInitialFocus === target) return;
         cancelAnimationFrame(element.__fcShellFocusFrame);
+        pendingInitialFocus = resizeRecovery ? null : target;
         element.__fcShellFocusFrame = requestAnimationFrame(() => {
+            pendingInitialFocus = null;
             if (element.isConnected && target instanceof HTMLElement && target.isConnected
                 && (document.activeElement === target || target.matches(':focus-within'))
-                && (target !== visibleHeading || headingVisibleBeforeResize())) {
+                && (!resizeRecovery || target !== visibleHeading || headingVisibleBeforeResize())) {
                 target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
                 // Keep the pre-reflow geometry through transient short scrollports.
                 // Refresh once the reveal can expose the whole heading again.
@@ -374,7 +385,7 @@ export function registerShellKeyFilter(element) {
         }
         if (changed && resizeTarget && resizeTarget === visibleHeading) {
             headingIntersecting = headingVisibleBeforeResize();
-            if (headingIntersecting) scheduleFocusVisibility(resizeTarget);
+            if (headingIntersecting) scheduleFocusVisibility(resizeTarget, true);
         }
     });
     const stopFocusResizeWatch = () => {
@@ -411,13 +422,14 @@ export function registerShellKeyFilter(element) {
         watchHeadingVisibility(target);
         headingIntersecting = headingVisibleBeforeResize();
         watchFocusResize(target);
-        if (resizeTarget && headingIntersecting) scheduleFocusVisibility(target);
+        if (resizeTarget && headingIntersecting) scheduleFocusVisibility(target, true);
     };
     window.addEventListener('resize', showResizedFocus);
     watchHeadingVisibility(document.activeElement);
     const cancelResizedFocus = (event) => {
         if (event.ctrlKey) return;
         cancelAnimationFrame(element.__fcShellFocusFrame);
+        pendingInitialFocus = null;
         stopFocusResizeWatch();
     };
     element.addEventListener('wheel', cancelResizedFocus, { passive: true, capture: true });
@@ -438,6 +450,7 @@ export function registerShellKeyFilter(element) {
                 || key === ' ' && isRouteHeading(document.activeElement))
             && (key === 'tab' || !isEditableInComposedPath(event))) {
             cancelAnimationFrame(element.__fcShellFocusFrame);
+            pendingInitialFocus = null;
             stopFocusResizeWatch();
         }
         const hasModifier =

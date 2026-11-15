@@ -33,12 +33,15 @@ function rewriteChunk(png, type, edit) {
   throw new Error(`Fixture PNG has no ${type} chunk`);
 }
 
-function runValidator(root, report, engine, junitPath = join(root, 'junit.xml')) {
+function runValidator(root, report, engine, junitPath) {
   const html = join(root, 'html'); mkdirSync(html, { recursive: true }); writeFileSync(join(html, 'index.html'), 'Fixture report');
-  writeFileSync(junitPath, 'Fixture outcomes');
+  writeFileSync(junitPath ?? join(root, 'junit.xml'), 'Fixture outcomes');
   const reportPath = join(root, 'playwright.json'); writeFileSync(reportPath, typeof report === 'string' ? report : JSON.stringify(report));
   for (const artifact of specimenManifest.routes.flatMap(route => route.expectedArtifacts).filter(name => name.startsWith('axe-') || name.startsWith('focus-'))) writeFileSync(join(root, artifact), '{}');
-  return spawnSync(process.execPath, [fileURLToPath(new URL('./validate-a11y-artifacts.mjs', import.meta.url))], { encoding: 'utf8', env: { ...process.env, FC_E2E_OUTPUT_DIR: root, FC_E2E_HTML_REPORT_DIR: html, FC_E2E_JSON_PATH: reportPath, FC_E2E_JUNIT_PATH: junitPath, FC_A11Y_EVIDENCE_ENGINE: engine, FC_A11Y_EVIDENCE_RUN_ID: 'fixture-run' } });
+  const env = { ...process.env, FC_E2E_OUTPUT_DIR: root, FC_E2E_HTML_REPORT_DIR: html, FC_E2E_JSON_PATH: reportPath, FC_A11Y_EVIDENCE_ENGINE: engine, FC_A11Y_EVIDENCE_RUN_ID: 'fixture-run' };
+  if (junitPath === undefined) delete env.FC_E2E_JUNIT_PATH;
+  else env.FC_E2E_JUNIT_PATH = junitPath;
+  return spawnSync(process.execPath, [fileURLToPath(new URL('./validate-a11y-artifacts.mjs', import.meta.url))], { encoding: 'utf8', env });
 }
 
 function matrix(run) {

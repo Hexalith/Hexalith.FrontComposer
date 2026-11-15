@@ -488,6 +488,67 @@ test('heading visibility retains layout-only recovery when reflow moves the head
   } finally { await disposeHeadingOrderingFixture(root); }
 });
 
+for (const ancestorResize of [false, true]) test(`frame-scheduled focus${ancestorResize ? ' with same-frame ancestor resize' : ''} reveals an offscreen route heading once`, async ({ page }) => {
+  const root = await headingOrderingFixture(page);
+  try {
+    const before = await root.evaluate(element => {
+      const heading = element.querySelector('h1')!;
+      heading.blur();
+      element.scrollTop = 900;
+      return { scroll: element.scrollTop, offscreen: heading.getBoundingClientRect().bottom <= element.getBoundingClientRect().top };
+    });
+    expect(before).toEqual({ scroll: 900, offscreen: true });
+    await settlePaint(page);
+    // Overlay route recovery focuses with preventScroll from an animation frame.
+    await root.evaluate((element, ancestorResize) => new Promise<void>(resolve => requestAnimationFrame(() => {
+      element.querySelector('h1')!.focus({ preventScroll: true });
+      if (ancestorResize) element.style.width = '220px';
+      resolve();
+    })), ancestorResize);
+    await expect.poll(() => page.evaluate(() => (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls)).toBe(1);
+    await settlePaint(page);
+    expect(await page.evaluate(() => (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls)).toBe(1);
+    await expect(root.locator('h1')).toBeFocused();
+    await expectFocusVisible(root.locator('h1'));
+  } finally { await disposeHeadingOrderingFixture(root); }
+});
+
+test('queued heading ancestor resize recovery yields to a later programmatic scroll', async ({ page }) => {
+  const root = await headingOrderingFixture(page);
+  try {
+    const queued = await root.evaluate(async element => {
+      const nativeRequest = window.requestAnimationFrame;
+      const nativeCancel = window.cancelAnimationFrame;
+      const pending = new Map<number, FrameRequestCallback>();
+      let nextId = -1;
+      window.requestAnimationFrame = callback => { const id = nextId--; pending.set(id, callback); return id; };
+      window.cancelAnimationFrame = id => { if (!pending.delete(id)) nativeCancel(id); };
+      try {
+        // Native delivery queues recovery through the module's ancestor ResizeObserver.
+        await new Promise<void>(resolve => {
+          const observer = new ResizeObserver(() => { observer.disconnect(); resolve(); });
+          observer.observe(element);
+          element.style.width = '220px';
+        });
+        const frame = (element as HTMLElement & { __fcShellFocusFrame: number }).__fcShellFocusFrame;
+        const callback = pending.get(frame);
+        element.scrollTop = 900;
+        // Run the held recovery before another intersection observation can settle.
+        callback?.(performance.now());
+        return callback !== undefined;
+      } finally {
+        window.requestAnimationFrame = nativeRequest;
+        window.cancelAnimationFrame = nativeCancel;
+      }
+    });
+    expect(queued).toBe(true);
+    await settlePaint(page);
+    expect(await root.evaluate(element => element.scrollTop)).toBe(900);
+    expect(await page.evaluate(() => (window as typeof window & { __aeOrderingCalls: number }).__aeOrderingCalls)).toBe(0);
+    await expect(root.locator('h1')).toBeFocused();
+  } finally { await disposeHeadingOrderingFixture(root); }
+});
+
 test('queued heading resize recovery yields to a later programmatic scroll', async ({ page }) => {
   const root = await headingOrderingFixture(page);
   try {

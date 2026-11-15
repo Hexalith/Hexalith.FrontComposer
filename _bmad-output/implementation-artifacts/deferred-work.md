@@ -11255,3 +11255,12 @@ The user chose to defer the two residuals left after the Story 13.6 corrections 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
   summary: Reconcile the pre-existing DEBUG-gated CI diagnostic lane with the shared Release-only CI baseline.
   evidence: H3-BH10 verifies quality.yml debug-gated-tests builds/runs Debug while Hexalith LLM guidance requires Release-only CI. Current UI verification does not authorize pipeline or baseline-policy changes. The CI owner must select a compliant diagnostic seam or obtain an explicit baseline exception without presenting Debug outputs as packaged release evidence.
+
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Reject duplicate target ordinals in the Story 13.7 reusable AE04 evidence recorder.
+  evidence: H5-BH09 confirms TestAccessibilityEvidenceRecorder.Validate checks each target independently and accepts two distinct targets with TargetNumber=1. This separate adopter-helper capability predates the current heading correction. Add an owning full-inventory uniqueness regression so recorded target references are unambiguous.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
+  summary: Cross-check spacing exceptions against the complete Story 13.7 AE04 target inventory.
+  evidence: H5-BH10 confirms a 12x12 Spacing target with Neighbors=[] passes even when another recorded 24x24 target overlaps it. UxAccessibilityAssertions trusts the supplied neighbor list and the recorder does not compare the full inventory. This separate adopter-helper capability predates the current heading correction; prove overlapping omitted-neighbor rejection and a valid separated-inventory positive in the owning work.
