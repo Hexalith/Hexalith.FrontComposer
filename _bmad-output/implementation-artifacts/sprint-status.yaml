@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 11-15-2026 17:31
+last_updated: 11-15-2026 17:46
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -254,6 +254,8 @@ development_status:
 
   # 2026-11-06: Story 16.1 captures the current main tuple with passing Gate 2c and Epic 9 steps.
   # Capture awaits review; migration approval is not claimed, sign-off is none and G-3 remains open.
+  # 2026-11-15: completion pass. HEAD's EventStore, Builds and catalog (5.1.0) identities have drifted, and Gate 2c
+  # is skipped there, so no new record is possible. The 2026-11-06 record (aa857831) remains the 16.1 tuple.
   epic-16: in-progress
   16-1-i-evt-id-1-capture-the-current-eventstore-runtime-tuple: in-progress
   16-2-a-evt-xfer-1-conditional-transfer-migration-approval-ownersh: backlog
