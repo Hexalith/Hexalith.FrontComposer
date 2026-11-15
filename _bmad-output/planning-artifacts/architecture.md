@@ -395,6 +395,10 @@ recorded tuple with the candidate gitlinks and catalog contents; a missing recor
 failing provider run, or absent required signature blocks the release (G-3). Historical SHAs are not
 embedded as unexplained current compatibility constants.
 
+**Approved scheduling rule (2026-11-15).** Reserve one qualification/decision window of at most 24 hours, starting immediately before the separate seal push. Capture within two hours of the required same-attempt green results and schedule the three named migration decisions within that window. Hold this session's unrelated commits and dependency/catalog/policy changes; external automation or coordination requires its owner's explicit authorization. An urgent fix ends the attempt. The Release Owner, with Architect involvement, records a bounded disposition within four working hours of drift, missing authority, failed qualification, timeout or a latest-main lineage conflict: schedule one fresh attempt, reject with corrective work, or request an explicit planning amendment. End the hold at decision or deadline; never extend it silently. G-3 stays open without exact evidence and the required decisions.
+
+**Candidate lineage.** Approval covers only the exact tested commit C. Record/receipt descendants are distinct commits. A latest-main mismatch requires evidence or an explicitly approved planning resolution; no prior receipt transfers automatically. The record commit is not the tested tuple. No documentation exemption, semantic-compatibility exception or release-selector change is authorized.
+
 ### Approved Residual Architecture Handoff
 
 The approved 2026-09-22 course correction keeps these boundaries explicit for downstream story

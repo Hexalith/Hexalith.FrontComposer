@@ -79,6 +79,14 @@ context:
   - R9: qualification uses per-step conclusions.
   - R10: the record binds attempt 1 and both job IDs.
 
+## Historical scope exception receipt — 2026-11-15
+
+The requesting user approved the repair spec and the Epic 16 course-correction proposal with “approve both and continue.” This is the recorded approval of the bounded historical engineering exception D1; no role credentials are inferred from that request.
+
+AC 3 did not pass historically. Pushed `dd575b67c82c377bd17c34fb3d14366277d2ac62` moved Platform `8ff6db8feb5b3165bdaaf90899778199823bc59e` → `9e01ffacc45cb6a5ee12853d44f4b7f6e1f4084c`. Pushed `fbb9c3822dfa407e72739238cd472567f45f1e82` landed the record with six gitlink moves, including EventStore `1be8dcf43347efaf007538f1cd652fc5488bc6e6` → `eff9f6947a3762da61d10642f20d002123ccbe6a` and Builds `06a51f55bfe2e03a06e1121d94a41e98f1e3e251` → `7c7c1b9646821174e013f6fffe75bb36ebf09c77`. Their pushed history and the strict attribution failure remain intact; no validator bypass is supplied. New capture commits must contain only the declared documentation paths and must preserve the old Tuple Record byte-for-byte.
+
+This receipt disposes only of that historical scope violation for engineering acceptance. It does not establish FrontComposer-maintainer, Architect, EventStore-maintainer or Release Owner credentials, grant migration approval, transfer approval authority, approve a descendant commit, or close G-3. Story 16.1 engineering acceptance of the new capture follows verification. The scheduling and candidate-lineage rules are adopted in the PRD, Epic 16, architecture and epic context under the approved proposal.
+
 ## Spec Change Log
 
 ## Review Triage Log

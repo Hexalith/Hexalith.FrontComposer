@@ -257,6 +257,9 @@ development_status:
   # 2026-11-15: completion pass. HEAD 60d2088c26e5cedb7c61471d2e4b813a86996ea2 has drifted from tuple
   # aa8578318971da04ce7d7bd07928d08c6b95bc1a (EventStore, Builds, catalog 5.1.0) and skips Gate 2c, so no new record
   # is possible. The 2026-11-06 record stays unchanged, and 16.3 waits for a new, later-dated capture.
+  # 2026-11-15: requesting user approved the bounded D1 historical engineering exception and D3 planning rule.
+  # D2 is owned by spec-restore-quality-gate-2c-current-tuple.md; seal proofs pass, hosted activation pending.
+  # D4 remains open until project/mode evaluations accompany a qualifying current capture. G-3 stays open.
   epic-16: in-progress
   16-1-i-evt-id-1-capture-the-current-eventstore-runtime-tuple: review
   16-2-a-evt-xfer-1-conditional-transfer-migration-approval-ownersh: backlog

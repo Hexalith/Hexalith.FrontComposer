@@ -11280,3 +11280,12 @@ The user chose to defer the two residuals left after the Story 13.6 corrections 
 - source_spec: `_bmad-output/implementation-artifacts/spec-16-1-capture-the-current-eventstore-runtime-tuple.md`
   summary: The next tuple capture must decide which evaluated `HexalithEventStoreVersion` counts when the Builds catalog selects versions per project view (low).
   evidence: Review 16.1 iteration 1 (BH08): at Builds 73e60af8a1fcdf3f06726d5d1b6e1199cce778ee, `Props/Directory.Packages.props:148-149` selects 4.2.0 for the Parties, Platform and Builds packaged-host SDK 4.2 views (opt-in projects listed in `eng/dependency_graph.py:1526,1568`) and 5.1.0 otherwise. The frozen 16.1 decision names only the catalog default; evaluate FrontComposer's consuming projects with `dotnet msbuild -getProperty:HexalithEventStoreVersion` and flag any divergence in the new record.
+
+## Follow-up outcomes — Story 16.1 review D1–D4, 2026-11-15
+
+The original four entries above remain historical findings. The approved repair is `spec-restore-quality-gate-2c-current-tuple.md`.
+
+- D1 (BH05/BH11/ECH02/ECH05): bounded historical engineering exception accepted by the requesting user (“approve both and continue”), recorded in Story 16.1's dated exception receipt. AC 3's historical failure and the strict validator failure are preserved. No role credentials, migration decision, guard waiver for future captures or G-3 closure are inferred.
+- D2 (BH09): assigned to this dependency-governance repair. Seal `50def1fe238787e9365c93991e3dc83af8c2e299` passes both exact committed-object proofs; hosted activation qualification is pending. This entry remains open until catalog preparation and every required same-attempt runtime step succeed.
+- D3 (BH16c): the approved 24-hour qualification window, two-hour capture cadence, four-working-hour Release Owner/Architect escalation and exact-tested-commit lineage rule are adopted in the active PRD, Epic 16, architecture and epic context. Current approver identities and any latest-main lineage conflict still require the named owners; G-3 stays open.
+- D4 (BH08): per-project/configuration/target-framework/mode MSBuild evaluation and lane identities are required for the successor capture. Remains open until evaluation against the hosted green candidate is recorded.

@@ -4056,6 +4056,10 @@ So that updated checkouts shrink while accepted accessibility proof and attempt 
 
 FrontComposer, EventStore, and Release maintainers can bind one exact runtime tuple to live compatibility evidence and named approval without rewriting historical identities.
 
+**Approved scheduling rule (2026-11-15).** Reserve one qualification/decision window of at most 24 hours, starting immediately before the separate seal push. Capture within two hours of the required same-attempt green results and schedule the three named migration decisions within that window. Hold this session's unrelated commits and dependency/catalog/policy changes; external automation or coordination requires its owner's explicit authorization. An urgent fix ends the attempt. The Release Owner, with Architect involvement, records a bounded disposition within four working hours of drift, missing authority, failed qualification, timeout or a latest-main lineage conflict: schedule one fresh attempt, reject with corrective work, or request an explicit planning amendment. End the hold at decision or deadline; never extend it silently. G-3 stays open without exact evidence and the required decisions.
+
+**Candidate lineage.** Approval covers only the exact tested commit C. Record/receipt descendants are distinct commits. A latest-main mismatch requires evidence or an explicitly approved planning resolution; no prior receipt transfers automatically. The record commit is not the tested tuple. No documentation exemption, semantic-compatibility exception or release-selector change is authorized.
+
 ### Story 16.1: [I · EVT-ID-1] Capture the Current EventStore Runtime Tuple
 
 As a FrontComposer runtime maintainer,
