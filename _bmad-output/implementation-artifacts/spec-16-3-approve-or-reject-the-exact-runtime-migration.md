@@ -762,3 +762,132 @@ The owning-story command `run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTION
 Disposable read-only assertions under `run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTIONAL_LOCKS=0 python3 -` passed: exact 11-path adoption scope under `_bmad-output/`; nine tracked Markdown files append-only from HEAD; prepared proposal preserved except approved status/decision plus append; all historical sprint comments retained; parsed YAML differs only in `last_updated` and approved E11R-AI-1 action wording, with every status and E12R-AI-2 action unchanged. The tuple-freeze addition was moved after its final historical paragraph when the first prefix check detected its placement. An initial scratch-checker assumption that every YAML action has an `id` was corrected without changing repository data.
 
 Story 16.1 and 16.2 remain byte-identical to HEAD; the Story 16.1 SHA-256 is `f2754e0e24d56913ea757054f54ea77604eeba3000317abfe1040c73a61b651c`. This spec's entire HEAD prefix, including frozen intent and frontmatter workflow fields, is preserved. CRLF/final newlines/new-text whitespace and all 18 added relative links (6 unique target/anchor pairs) pass. HEAD/main remain `f26304dabf7153c7075fa8c4a82dc8fc537c5ed0`, index/nine gitlinks are unchanged and nothing is staged. No runtime test, remote read, contact, Git mutation, workflow dispatch or qualification occurred. **Planning adoption complete; execution prerequisites remain open; Story 16.3 in-progress; G-3 open.**
+
+
+## Delegated prospective preflight — 2026-11-16
+
+**Instruction and scope.** The user answered the request for execution details with “supply them yourself”. The first post-answer clock observation was `2026-11-16T14:02:23Z`, not a supplied authoring timestamp. This authorizes selecting and preparing concrete choices here. It supplies no individual writer acknowledgment, future availability confirmation, migration decision or new publication permission. Preserve the previously confirmed no-staging/no-commit/no-push execution scope. No further generic request for the user to design this preflight is needed.
+
+This section is the concrete prospective handoff under the [approved §§3.2–3.5](../planning-artifacts/sprint-change-proposal-2026-11-16.md#32-proposed-readiness-gate-before-qualification). **Readiness: no-go.** The choices below are selected for preparation; appointments, holds and Git operations are not represented as performed. Nothing schedules a background job or starts qualification. Missing real-world receipts remain explicit rather than being signed by an agent on another owner's behalf.
+
+### Candidate and push sequence
+
+Local HEAD/main and local `origin/main` were observed at `bc9dbedc6141b750ca92f01b40ac840dc2066704`, with a clean checkout. This is local remote-tracking evidence, not a fresh live-main read. The already-pushed revision's runs cannot satisfy prospective admission.
+
+Choose the following exact **planned, uncreated** commit as T: `ffb75718c02dafd9b7f0ae777e937d34893962da`. Its object ID was calculated with `git hash-object -t commit --stdin`, without `-w`; no commit object, ref or signature was created. This is a reproducible planned identity, not an existing or qualified candidate. Its complete UTF-8 commit payload, with LF lines and a final LF, is:
+
+```text
+tree c8aa041081065627e8320bb7dfd99f5950b92a10
+parent bc9dbedc6141b750ca92f01b40ac840dc2066704
+author Jérôme Piquot <jpiquot@itaneo.com> 1794837958 +0000
+committer Jérôme Piquot <jpiquot@itaneo.com> 1794837958 +0000
+
+chore(16.3): prepare prospective runtime qualification
+```
+
+The author/committer fields use the repository's current configured identity and a fixed preparation timestamp, `2026-11-16T14:05:58Z`; they are proposed Git metadata, not a human signature or decision. T has the exact tree of the observed base, with no source or dependency change. Its tree selects EventStore `97c02f7bf99a694528a2b15f0b3b0a6e5fb10e9d`, Builds `65fd22f37b9fad64b595841923cdbe050563ab99` and default EventStore `5.1.1`, with no root preset. The committed catalog also retains conditional SDK42/package-mode `4.2.0`; the future capture must evaluate actual contexts. No package-runtime compatibility is asserted.
+
+Proposed order, executable only after all readiness and separate operational authority are established:
+
+1. Verify live main is still the exact base, required source/dependency work is complete and the existing seal protocol needs no new source transition. If prerequisite work changes the tree or main advances, stop this plan; never silently replace T. G-8 and all independent release-blocking work remain unresolved unless their own evidence says otherwise.
+2. After actual Git authorization, materialize the exact planned T object; verify its full SHA. Create the record worktree/ref based on T. Because T has the base tree, carry the full new preparation additions in this owning 16.3 spec, Epic 16 context, deferred ledger and sprint records onto that separately authorized record ref, preserving all historical content. Store the actual preflight receipts alongside those additions and make the complete preparation and receipts durably reachable before the window starts. None of these records is integrated into main. Inspect live branch existence, rules and triggers before any push.
+3. Immediately before the named start, verify coverage, appointments, storage and live main again. Run the required successful `python3 references/Hexalith.Builds/check.py` before each proposed push, without weakening any gate. Immediately after window start, perform one ordinary fast-forward push of T to main; no seal transition is presently proposed. Immediately after that push and before admitting either qualifying run, verify live `refs/heads/main` equals planned T; stop on mismatch. If a seal transition is required, stop and prepare its exact sequence separately.
+4. Admit only the first push-event runs of the committed `.github/workflows/ci.yml` and `.github/workflows/quality.yml` at exact T, for `refs/heads/main`, full candidate SHA T and attempt 1, created by that future push. Verify each run's workflow identity against those exact committed paths at T alongside its push event, main ref, full SHA and attempt. No old-base run, manual dispatch, rerun, failed-run replacement or C/R/M result qualifies. Record actual run IDs and primary attempt at execution; none exists for planned T now. Require successful overall CI/Quality and every required same-attempt step. Duplicate/ambiguous success or a failed/mismatched run ends the attempt.
+5. Append capture Q in owning Story 16.1 on the record ref; validate, commit, push and verify immutable reachability by `min(last required Quality-step success + 2 hours, window end)`. Obtain the three actual role decisions citing Q and T; store S and actual final review F on that ref by window end. Resolve immutable links after each commit, then recheck live main/UTC after F. Prohibit merge, cherry-pick, auto-sync and any other integration of preflight/Q/S/F records onto main until T consumption, even if the qualification hold has ended. Keep those records durably reachable in this same repository afterwards until a separately authorized preservation disposition verifies another durable same-repository reference to every record. No publication follows this preparation.
+
+**Terminal handling.** On any failure, rejection, expiry, drift, unmet cutoff or record-storage failure, preserve all accumulated records, keep G-3 open and end the hold. Record the actual terminal blocker and next owner action in the owning 16.3 spec and its context/ledger/sprint records on the authorized record ref when reachable, and obtain the named jpiquot Release Owner/Architect disposition by the already selected incident due rule below. If record storage is unavailable, preserve locally available records and any still-reachable committed records, report the storage and durability blocker in the existing decision channel, and do not claim unreachable storage is durable. No automatic retry, renewed deadline or substitute evidence follows.
+
+### Selected operating choices
+
+| Item | Concrete selection | Actual readiness limitation |
+| --- | --- | --- |
+| Qualification window | `2026-11-17T08:00:00Z`–`2026-11-17T16:00:00Z` (09:00–17:00 Europe/Paris), eight hours; complete durable preflight by 07:45Z. | Prospective chosen slot; no timer, workflow, booking or confirmed attendance. If readiness is incomplete at 07:45Z, no attempt starts and this slot lapses without renewal. |
+| Capture capacity | Codex prepares records and validation; jpiquot as FrontComposer maintainer with Architect involvement reviews capture, with a 09:30Z review target and continuous deadline monitoring. | Availability and actual delegation for runtime/Git execution must be established. The two-hour deadline overrides the appointment; if the result is late or a reviewer unavailable, stop. |
+| Role appointments | jpiquot separately as EventStore maintainer at 10:30Z, FrontComposer maintainer at 10:45Z and Release Owner at 11:00Z; final review target 11:30Z. | Previously confirmed roles are reused, but these are proposed appointments, not accepted calendar events or decisions. Evidence must exist first; absent capacity is no-go. All durable decisions/review remain capped at 16:00Z. |
+| Record ref | `refs/heads/docs/epic-16-ffb75718-records` in `origin`, repository `Hexalith/Hexalith.FrontComposer`. | Exact chosen new name; local/remote collision and repository-rule checks still required. It has not been created or pushed. Do not reuse M's ref. |
+| Persistent isolated worktree | `/home/administrator/projects/hexalith/.frontcomposer-records/epic-16-ffb75718`, based on T. | Chosen persistent destination, outside disposable TMPDIR; creation is unperformed. Disposable tests still use `run-with-temp`. |
+| Requested Git scope | Create planned T and the named isolated record ref/worktree; commit only owning 16.1/16.3, Epic 16 context, deferred ledger and sprint records; ordinary fast-forward pushes of exact T/main and that record ref only. Proposed operator/retention owner: jpiquot; Codex may execute only under actual scoped authority. | This is the concrete authorization scope prepared for the repository/Git owner, not a self-issued permission receipt. No force push, merge, deletion, dependency/gitlink update, workflow edit or publication is included. Existing no-commit scope remains in force. |
+| Retention | jpiquot owns retaining preflight/Q/S/F in this same repository through and after consumption; no deletion until a separately authorized preservation disposition verifies another durable reference to every record. | Proposed responsibility; repository ownership/remit and accepted retention responsibility must be real, not inferred from migration roles. |
+| Decision channel | This current owner conversation, Codex thread `01a1e495-7a17-7bf1-992e-92a6b748a87e`, with durable records in the owning 16.3 spec on the chosen ref. | This identifies an existing actual channel; it sends no message to another session. |
+| Working calendar | Choose Monday–Friday 09:00–17:00, Europe/Paris, for this future attempt only; incident owner jpiquot as Release Owner with Architect involvement. | Agent-selected prospective calendar under the user's delegation, not a claim about historical working hours or personal availability. |
+| Incident due rule | Add four working hours on that calendar from the observed incident, capped at `2026-11-17T16:00:00Z`. Example: incident at 09:00Z is due 13:00Z; incident at 14:00Z is capped at 16:00Z. | At execution, record actual observation/due times. This supplies no retrospective due time or extension of C/R/M deadlines. |
+
+### Writer coverage findings and hold text
+
+The session, worktree, process and local-index observations below belong only to this turn, between the parent's UTC reads `2026-11-16T14:02:23Z` and `2026-11-16T14:05:10Z`. Sources were `mcp__codex_tui.list_threads` with limit 50 (truncated), `list_worktrees` (empty), `read_thread` for the cicd session with `turnLimit=1` (empty/truncated), a `/proc` cwd/comm scan, a read-only `state_5.sqlite` threads id/cwd join, and `git worktree list`. These observed sources supply no acknowledgments and establish no complete writer inventory. Execution requires a fresh, complete inventory of actual FrontComposer-main writers, hosts, sessions/children, processes, humans, apps, scheduled jobs, synchronization and `/pushall`, with actual scope assessments and dated owner acknowledgments before start.
+
+Within that observation interval, the active-session listing returned 50 entries and was truncated; it reported no unavailable hosts/sources, which does not establish completeness. The read-only local session-index query linked these active leads to workspaces:
+
+| Session lead | Workspace | Coverage treatment |
+| --- | --- | --- |
+| `01a1e495-7a17-7bf1-992e-92a6b748a87e` | frontcomposer | This executor; no main mutation will be performed by this preparation. |
+| `01a1e43d-5f43-71a2-a044-14fd8b078f48` | eventstore | Potential workspace/sync influence; no direct FrontComposer-main scope proven. |
+| `01a1e499-eeb0-7623-abd9-c16f714fd0e9` | folders | Same scope check required. |
+| `01a1e450-5cc6-7b93-94da-9121cc1354c0` | conversations | Same scope check required. |
+| `01a1e494-3a92-70f3-8aec-5092e973ca15` | cicd | Potential workflow/sync influence; no hold acknowledgment available from the attempted read. |
+| `01a1e4a4-fd45-7bb3-b27b-a21258575ecf` | platform | Potential workspace/sync influence. |
+| `01a1e033-c7ef-77f2-9d9c-8549e82613ba` | tenants | Potential workspace/sync influence. |
+| `01a1e491-a25f-7533-81a3-642d8f17cf37` | mcpcli | Potential workspace/sync influence. |
+| `01a1e433-7040-7171-8290-a83e9b971e68` | agents | Potential workspace/sync influence. |
+| `01a1e3e8-b603-76b1-bc31-0061c1ba8da6` | parties | Potential workspace/sync influence. |
+| `01a1e4a5-b0fb-7a62-b6e3-49e901e6cebe` | projects | Potential workspace/sync influence. |
+| `01a1e4a4-8ffa-76d3-b88b-f2286af166f2` | memories | Potential workspace/sync influence. |
+
+Sibling location alone excludes no session with workspace-wide `/pushall` authority. Assess that scope before excluding it. The local index also contains older unarchived FrontComposer tasks; unarchived does not mean active. The managed-worktree list was empty; local `git worktree list` showed only this main checkout. Local process observation found `lazygit`, `micro`, `codex`, shells and editor/runtime processes with this repository as cwd. They are potential human/editor write surfaces, not proof of writes or owner acknowledgments. Other hosts, human sessions, scheduled jobs and installed apps remain outside this observation's proven coverage.
+
+Tracked workflow inspection at the base shows CI, Quality, Commitlint and CodeQL automatic push triggers restricted to main; Release is manual, its publisher reusable, and Release Evidence push is main plus its recovery-file path. An ordinary push of the proposed record branch therefore does not select these automatic qualification/release triggers. This does not replace live repository-rule/app checks; never open a record-ref PR or manually dispatch from it. Flaky/quarantine governance has write permissions but its checked-in apply paths push proposal branches and open PRs rather than directly updating main. PR merge actors and workspace `/pushall` remain potential main writers; do not suspend unrelated sibling work merely because it exists.
+
+Choose a prospective hold interval `2026-11-17T07:45:00Z`–`2026-11-17T16:00:00Z`, ending earlier at final/terminal disposition, urgent fix or drift. For each actual writer, obtain a dated, retrievable acknowledgment naming its owner, FrontComposer-main write scope, authorized hold action and that interval. Explicitly cover main commits/pushes, dependency/gitlink/catalog/policy changes, PR merges and `/pushall` syncs. The acknowledgment must describe actual owner action; the selected hold text is not evidence that an action occurred. No contact or suspension is performed here.
+
+### Readiness result and acceptance
+
+Prepared choices now replace the need for the user to invent the candidate plan, schedule, ref, locations, appointments or calendar. Remaining no-go evidence is specific: live candidate/integration/rules checks; complete writer/app/job coverage and actual dated acknowledgments; actual reviewer capacity; scoped Git authorization and completed remotely durable record storage. No one is represented as having acknowledged or approved something they did not state. A proposed Git object or appointment cannot satisfy those rows. G-8's independent production halt remains, and source changes needed by any prerequisite invalidate the planned candidate.
+
+Given delegation, when preparing this handoff, then all selectable details above are concrete and reproducible. Given missing actual receipts or an unmaterialized candidate, when assessing execution, then no qualification starts. Given any changed base, required tree change, expired slot or unmet preflight cutoff, then stop without a replacement candidate, automatic retry, deadline renewal or inherited evidence. Given later actual successful capture and decisions, then the approved exact-T/Q/S/F controls still govern. This turn supplies no migration decision; C's three statements remain nonoperative. Story 16.1/16.2 remain done, 16.3/Epic 16 in-progress and G-3 open.
+
+## Tasks & Acceptance — delegated preflight preparation
+
+- [x] Select and record a reproducible planned candidate, exact push ordering, future window, role appointments, record-ref/worktree, retention proposal, decision channel and incident calendar/rule.
+- [x] Inspect available session/worktree/process and tracked workflow scope; distinguish observed leads from complete coverage and actual acknowledgments.
+- [x] Append preparation pointers to Epic 16 context, deferred work and sprint comments, preserving prior bytes, frozen intent, baseline, story states, code and gitlinks.
+- [x] Verify current-round artifact checks, planned commit identity, whitespace, links, CRLF and preservation; record only actual results.
+
+## File List
+
+- `_bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md`
+- `_bmad-output/implementation-artifacts/epic-16-context.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+
+### Delegated preflight verification — 2026-11-16
+
+The owning artifact command `run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTIONAL_LOCKS=0 python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md --base f26304dabf7153c7075fa8c4a82dc8fc537c5ed0` passed, as did the global form without `--story`/`--base` and `git diff --check`. That explicit base includes the already committed adoption; separate current-round assertions checked exactly four changed implementation-artifact paths against current HEAD `bc9dbedc6141b750ca92f01b40ac840dc2066704`.
+
+Disposable read-only assertions under `run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTIONAL_LOCKS=0 python3 -` passed: three full Markdown HEAD prefixes preserved; unchanged frozen/prior spec bytes and Stories 16.1/16.2; Story 16.1 SHA-256 still `f2754e0e24d56913ea757054f54ea77604eeba3000317abfe1040c73a61b651c`; sprint YAML unchanged except ordinary `last_updated`; CRLF/final newlines; all three added relative links/anchors resolve; HEAD and staged entries unchanged, with no gitlink changes. Rehashing the documented exact LF commit payload produces planned T `ffb75718c02dafd9b7f0ae777e937d34893962da`; `git cat-file -e` confirms that object does not exist. The pinned local commitlint CLI 21.2.4 accepted the exact candidate message using `node_modules/.bin/commitlint --verbose`, reporting zero problems and zero warnings. No bypass or dependency installation was used.
+
+This verifies preparation and preservation only. No runtime code changed, and no runtime test, new test, Git object/ref mutation, push, workflow dispatch, calendar booking, external coordination message, hold/suspension or human migration decision occurred. Actual execution prerequisites remain no-go; 16.3/Epic 16 remain in-progress and G-3 open.
+
+
+## Review Triage Log — delegated preflight preparation
+
+All three layers completed on the current preparation delta from HEAD `bc9dbedc6141b750ca92f01b40ac840dc2066704`: Blind Hunter floor 6, six findings; Edge Case Hunter returned no findings; Verification Gap returned no gaps. The preserved historical-baseline diff was also generated, but its 54 files include unrelated already committed delivery; this review assesses the four current preparation paths. No unrelated historical source is attributed to this turn.
+
+| Finding | Verdict and route | Verified evidence |
+| --- | --- | --- |
+| DP-BH-1 | low; patch | Proposed step 3 checks live main before the push, while step 4 does not explicitly check T before admission. Approved §3.3 requires that post-push comparison. Add it directly to the operational handoff. |
+| DP-BH-2 | low; patch | Step 4 names CI/Quality without their committed workflow paths. Approved §3.5 requires full workflow identity; bind to `.github/workflows/ci.yml` and `.github/workflows/quality.yml` at T as well as exact event/ref/SHA/attempt. |
+| DP-BH-3 | low; patch | The handoff forbids a main record merge but does not explicitly name cherry-pick/automatic synchronization after hold termination. Approved §3.4 keeps every integration path off main through consumption. State that existing retention rule in full. |
+| DP-BH-4 | low; patch | The handoff stops on failure and gives a due rule, but omits its terminal-record action. Approved §3.3 already requires a named bounded disposition, retained records and hold termination. Add those existing actions without inventing a decision. |
+| DP-BH-5 | low; patch | Planned T has the base tree, so its worktree omits this new uncommitted handoff. Step 2 must explicitly copy the complete preparation additions plus actual receipts onto the record ref before start, preserving histories and keeping them off main. |
+| DP-BH-6 | low; patch | Session/process/worktree leads are transient and the prose has no observation boundary/source commands. Cite this turn's read-only tools and local-index query with the actual clock bounds; require a fresh execution-time inventory. |
+
+All are direct corrections to the deliverable operational handoff, preserving the approved rules and frozen requirements. Grouping after the individual verdicts: admission detail (1/2), record lifecycle (3/4/5), observation provenance (6). No requirement changes, new approval, test framework or unrelated deferred item are needed.
+
+
+### Delegated preflight review completion
+
+The six retained direct handoff corrections are applied: immediate post-push main/T check, committed workflow identities, complete transfer of this preparation to the record ref, all-path record integration prohibition, terminal record/disposition actions including storage failure, and dated observation sources with fresh execution inventory. Edge Case Hunter returned no findings and Verification Gap found no gaps. Nothing is deferred. The final story state remains in-progress because preparation supplies no actual qualification or operative migration approval; no Git action is performed under the generic workflow's completion instructions.
+
+
+Final parent verification after the six review corrections passed the owning/global artifact validators and whitespace checks, and the disposable preservation/identity/link assertions passed again with the final in-progress state restored. The parent directly read all six patched provisions. A first disposable phrase assertion expected “Immediately after the push”; the handoff correctly says “Immediately after that push”, so the unnecessary phrase check was removed without changing the document. All four current files remain unstaged and code, HEAD, gitlinks, the frozen block and historical bytes remain unchanged. Preparation is complete; actual qualification and migration acceptance remain unperformed.
