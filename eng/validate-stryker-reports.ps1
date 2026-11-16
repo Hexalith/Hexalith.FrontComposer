@@ -100,6 +100,25 @@ function Test-ExplicitlyExcluded([string] $Path, $Exclusions) {
         Add-Failure "Exclusion '$($exclusion.path)' must include reason and owner."
       }
 
+      $sourceBoundEnums = @(
+        "src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldTypeCategory.cs",
+        "src/Hexalith.FrontComposer.SourceTools/Transforms/ProjectionRenderStrategy.cs",
+        "src/Hexalith.FrontComposer.SourceTools/Transforms/TypeCategory.cs"
+      )
+      if ($sourceBoundEnums -contains $Path) {
+        $expected = [string] (Get-PSObjectPropertyValue $exclusion "canonicalSourceSha256")
+        if ([string] $exclusion.path -cne $Path -or $expected -cnotmatch '^[0-9a-f]{64}$') {
+          Add-Failure "Finite enum exclusion '$Path' requires its exact path and canonical source SHA256."
+        }
+        else {
+          # ReadAllText consumes the BOM. Canonicalize line endings in memory only.
+          $source = [System.IO.File]::ReadAllText((Join-Path $RepoRoot $Path)).Replace("`r`n", "`n").Replace("`r", "`n")
+          if ((Get-TextSha256 $source) -cne $expected) {
+            Add-Failure "Canonical source hash mismatch for finite enum exclusion '$Path'."
+          }
+        }
+      }
+
       return $true
     }
   }

@@ -1608,6 +1608,11 @@ _SDK42_CURRENT_PROJECTS = {
 }
 _SDK42_CURRENT_GATES = " or ".join(f"'$({name})' == 'true'" for name in _SDK42_CURRENT_PROJECTS)
 _SDK42_CURRENT_CONDITION = "'$(HexalithEventStoreVersion)' == '' and (" + _SDK42_CURRENT_GATES + ")"
+_SDK42_PACKAGE_CURRENT_CONDITION = (
+    "'$(HexalithEventStoreVersion)' == '' and ("
+    "'$(UseHexalithProjectReferences)' != 'true' or '$(HexalithEventStoreFromSource)' == 'false') and ("
+    + _SDK42_CURRENT_GATES + ")"
+)
 _MEMORIES327_CURRENT_CONDITION = (
     "'$(HexalithMemoriesVersion)' == '' and '$(HexalithEventStoreVersion)' == '4.2.0' and ("
     + _SDK42_CURRENT_GATES + ")"
@@ -1643,10 +1648,17 @@ def _current_sdk42_qualification(
 
     overrides: dict[str, ET.Element] = {}
     defaults: dict[str, ET.Element] = {}
-    for name, condition, retained, current in (
+    cohort_rows = (
         ("HexalithEventStoreVersion", _SDK42_CURRENT_CONDITION, "4.2.0", "5.1.0"),
         ("HexalithMemoriesVersion", _MEMORIES327_CURRENT_CONDITION, "3.0.27", "4.0.0"),
-    ):
+    )
+    if any(element.attrib == {"Condition": _SDK42_PACKAGE_CURRENT_CONDITION}
+           for element in root.iter("HexalithEventStoreVersion")):
+        cohort_rows = (
+            ("HexalithEventStoreVersion", _SDK42_PACKAGE_CURRENT_CONDITION, "4.2.0", "5.1.1"),
+            cohort_rows[1],
+        )
+    for name, condition, retained, current in cohort_rows:
         definitions = [element for element in root.iter() if element.tag.casefold() == name.casefold()]
         if len(definitions) != 2 or any(element.tag != name for element in definitions):
             raise GraphError(f"{context}: {contract} {name} requires exactly two canonical declarations")
@@ -1730,7 +1742,7 @@ def _inactive_eventstore_sdk42_override(
     if any(element.tag.casefold() == "hexalitheventstoreversion" and element.tag != "HexalithEventStoreVersion"
            for element in root.iter()):
         raise GraphError(f"{context}: HexalithEventStoreVersion SDK4.2 proof rejects case-insensitive version aliases")
-    if any(element.get("Condition") == _SDK42_CURRENT_CONDITION for element in matches):
+    if any(element.get("Condition") in {_SDK42_CURRENT_CONDITION, _SDK42_PACKAGE_CURRENT_CONDITION} for element in matches):
         return _current_sdk42_qualification(root, parents, context, catalog_source)["HexalithEventStoreVersion"]
     condition = (
         "'$(HexalithEventStoreVersion)' == '' and ("
@@ -1835,7 +1847,7 @@ def assert_selected_catalog_property_shape(
         if override is not None:
             matches.remove(override)
     if allow_eventstore_qualification and prop_name == "HexalithMemoriesVersion":
-        if (any(element.get("Condition") == _SDK42_CURRENT_CONDITION for element in root.iter("HexalithEventStoreVersion"))
+        if (any(element.get("Condition") in {_SDK42_CURRENT_CONDITION, _SDK42_PACKAGE_CURRENT_CONDITION} for element in root.iter("HexalithEventStoreVersion"))
                 or any(element.get("Condition") == _MEMORIES327_CURRENT_CONDITION for element in matches)):
             matches.remove(_current_sdk42_qualification(root, parents, context, catalog_source)[prop_name])
     if len(matches) != 1:

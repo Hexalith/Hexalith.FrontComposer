@@ -298,4 +298,165 @@ class FiniteTriageTests(unittest.TestCase):
         self.assertIn("if: always() && steps.publication.outcome == 'success'",workflow)
         self.assertNotIn('continue-on-error',workflow)
 
+class MutationInventoryTests(unittest.TestCase):
+    """Exact enum inventory accounting without excluding executable mutation targets."""
+
+    ENUM_ROOT='src/Hexalith.FrontComposer.SourceTools/Transforms/'
+    ENUM_NAMES=('FormFieldTypeCategory','ProjectionRenderStrategy','TypeCategory')
+
+    @staticmethod
+    def implicit_enum(source):
+        source=re.sub(r'//[^\r\n]*|/\*.*?\*/','',source,flags=re.S)
+        return re.fullmatch(r'\s*namespace\s+[\w.]+;\s*public\s+enum\s+\w+\s*\{\s*(?:\w+\s*,\s*)+\}\s*',source) is not None
+
+    def testOnlyTheThreeImplicitEnumFilesReceiveFiniteInventoryAccounting(self):
+        manifest=json.loads((OWNER/(check.REL+'mutation-target-manifest.json')).read_text())
+        expected={self.ENUM_ROOT+name+'.cs' for name in self.ENUM_NAMES}
+        actual={entry['path'] for entry in manifest['explicitExclusions'] if entry['path'].startswith(self.ENUM_ROOT)}
+        self.assertEqual(actual,expected)
+        for entry in manifest['explicitExclusions']:
+            if entry['path'] in expected:
+                self.assertEqual(entry['owner'],'Story 10-4 SourceTools quality/release-automation')
+                self.assertIn('implicit ordinals only',entry['reason'])
+                self.assertTrue(self.implicit_enum((OWNER/entry['path']).read_text()),entry['path'])
+                canonical=(OWNER/entry['path']).read_bytes().decode('utf-8-sig').replace('\r\n','\n').replace('\r','\n')
+                self.assertEqual(entry['canonicalSourceSha256'],hashlib.sha256(canonical.encode()).hexdigest())
+        self.assertFalse(self.implicit_enum('namespace Fixture; public enum E { One = 1, Two, }'))
+        self.assertFalse(self.implicit_enum('namespace Fixture; public enum E { One, } class C { int M() => 1; }'))
+
+    def fixture(self,root,remove_enums=False,extra_executable=False):
+        for relative in ('eng/validate-stryker-reports.ps1','eng/mutation-artifact-policy.ps1','.config/dotnet-tools.json'):
+            target=root/relative;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(OWNER/relative,target)
+        manifest=json.loads((OWNER/(check.REL+'mutation-target-manifest.json')).read_text())
+        if remove_enums:
+            manifest['explicitExclusions']=[entry for entry in manifest['explicitExclusions'] if entry['path'] not in {self.ENUM_ROOT+name+'.cs' for name in self.ENUM_NAMES}]
+        for name in self.ENUM_NAMES:
+            relative=self.ENUM_ROOT+name+'.cs';target=root/relative;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(OWNER/relative,target)
+        files={}
+        for index,target_root in enumerate(manifest['approvedTargetRoots']):
+            relative=target_root+'/LiveFixture.cs';target=root/relative;target.parent.mkdir(parents=True,exist_ok=True)
+            source='namespace Fixture; class Live'+str(index)+' { int Value() => 1; }\n'
+            target.write_text(source)
+            files[relative]={'language':'cs','source':source,'mutants':[{'id':str(index),'status':'Killed','location':{}}]}
+        for name in self.ENUM_NAMES:
+            relative=self.ENUM_ROOT+name+'.cs'
+            files[relative]={'language':'cs','source':(root/relative).read_text(),'mutants':[]}
+        if extra_executable:
+            (root/self.ENUM_ROOT/'FutureExecutable.cs').write_text('namespace Fixture; class FutureExecutable { int Value() => 2; }\n')
+        reports=root/'reports';reports.mkdir()
+        for segment in manifest['segments']:
+            target=root/segment['config'];target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(OWNER/segment['config'],target)
+            (reports/(segment['artifactPrefix']+'.json')).write_text(json.dumps({'files':files}))
+        (root/'manifest.json').write_text(json.dumps(manifest))
+
+    def validate(self,root):
+        result=subprocess.run(['pwsh','-NoProfile','-File',str(root/'eng/validate-stryker-reports.ps1'),
+            '-ManifestPath','manifest.json','-ReportRoot','reports','-OutputPath','reports/job-summary.md'],cwd=root,capture_output=True,text=True)
+        refusal=root/'reports/mutation-validation-errors.txt'
+        return result,refusal.read_text() if refusal.exists() else ''
+
+    def testNativeValidatorRetainsTheOriginalThreeTargetDriftRefusals(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);self.fixture(root,remove_enums=True)
+            result,refusal=self.validate(root)
+            self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
+            self.assertEqual(refusal.count('Target drift:'),3,refusal)
+            for name in self.ENUM_NAMES:self.assertIn(self.ENUM_ROOT+name+'.cs',refusal)
+
+    def testNativeValidatorAcceptsTheseExactNonMutatableInventoryOmissions(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);self.fixture(root)
+            result,refusal=self.validate(root)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr+refusal)
+
+    def testNativeValidatorStillRefusesAnUnreportedExecutableTarget(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);self.fixture(root,extra_executable=True)
+            result,refusal=self.validate(root)
+            self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
+            self.assertEqual(refusal.count('Target drift:'),1,refusal)
+            self.assertIn(self.ENUM_ROOT+'FutureExecutable.cs',refusal)
+
+
+    def testNativeValidatorRefusesSamePathEnumSourceChangesWithUnchangedBindings(self):
+        for name in self.ENUM_NAMES:
+            with self.subTest(enum=name), tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary);self.fixture(root)
+                manifest=(root/'manifest.json').read_bytes()
+                source=root/self.ENUM_ROOT/(name+'.cs')
+                changed=('namespace Fixture; public enum '+name+' { One = 1, Two, }\n').encode()
+                source.write_bytes(changed)
+                result,refusal=self.validate(root)
+                self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
+                self.assertIn("Canonical source hash mismatch for finite enum exclusion '"+self.ENUM_ROOT+name+'.cs',refusal)
+                self.assertEqual((root/'manifest.json').read_bytes(),manifest)
+                self.assertEqual(source.read_bytes(),changed)
+
+    def testNativeValidatorCanonicalizesBomAndLineEndingsWithoutRewritingSources(self):
+        for bom,eol in ((b'',b'\n'),(b'',b'\r\n'),(b'\xef\xbb\xbf',b'\n'),(b'\xef\xbb\xbf',b'\r\n')):
+            with self.subTest(bom=bool(bom),eol=eol), tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary);self.fixture(root)
+                originals={}
+                for name in self.ENUM_NAMES:
+                    source=root/self.ENUM_ROOT/(name+'.cs')
+                    canonical=source.read_bytes().decode('utf-8-sig').replace('\r\n','\n').replace('\r','\n').encode()
+                    originals[source]=bom+canonical.replace(b'\n',eol)
+                    source.write_bytes(originals[source])
+                result,refusal=self.validate(root)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr+refusal)
+                for source,original in originals.items():self.assertEqual(source.read_bytes(),original)
+
+    def testNativeValidatorRequiresEachFiniteExceptionToHaveAValidBinding(self):
+        for value in (None,'invalid','0'*64):
+            with self.subTest(hash=value), tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary);self.fixture(root)
+                manifest=json.loads((root/'manifest.json').read_text())
+                row=next(row for row in manifest['explicitExclusions'] if row['path']==self.ENUM_ROOT+self.ENUM_NAMES[0]+'.cs')
+                if value is None:row.pop('canonicalSourceSha256')
+                else:row['canonicalSourceSha256']=value
+                (root/'manifest.json').write_text(json.dumps(manifest))
+                result,refusal=self.validate(root)
+                self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
+                self.assertIn('finite enum exclusion' if value=='0'*64 else 'requires its exact path and canonical source SHA256',refusal)
+
+    def testActiveEnumResultsRemainInLiveAndAuditCountsAndUntriagedProblemsRefuse(self):
+        relative=self.ENUM_ROOT+self.ENUM_NAMES[0]+'.cs'
+        for status in ('Killed','Survived','NoCoverage'):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary);self.fixture(root)
+                manifest=json.loads((root/'manifest.json').read_text())
+                # This synthetic entry-point case intentionally has no problem triage.
+                # Its three reported results are data, not a native mutation score.
+                manifest['problemMutantTriage']=[]
+                (root/'manifest.json').write_text(json.dumps(manifest))
+                for report in (root/'reports').glob('source-tools-*.json'):
+                    document=json.loads(report.read_text())
+                    document['files'][relative]['mutants']=[{'id':'90000001','status':status,'location':{}}]
+                    report.write_text(json.dumps(document))
+                result,refusal=self.validate(root)
+                if status=='Killed':self.assertEqual(result.returncode,0,result.stdout+result.stderr+refusal)
+                else:
+                    self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
+                    self.assertIn('untriaged '+status,refusal)
+                audit=json.loads((root/'reports/mutation-report-audit.json').read_text())
+                self.assertEqual(len(audit['Reports']),2)
+                for entry in audit['Reports']:
+                    self.assertEqual(entry['LiveMutantCount'],3)
+                    self.assertEqual(len(entry['RawMutantStatuses']),3)
+                    self.assertEqual([row for row in entry['RawMutantStatuses'] if row['Id']=='90000001'],
+                                     [{'Path':relative,'Id':'90000001','Status':status}])
+                    counts={row['Status']:row['Count'] for row in entry['StatusCounts']}
+                    self.assertEqual(counts,{'Killed':3} if status=='Killed' else {'Killed':2,status:1})
+
+
+    def testNativeValidatorRequiresCanonicalCaseForFiniteEnumPaths(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);self.fixture(root)
+            source=root/self.ENUM_ROOT/(self.ENUM_NAMES[0]+'.cs')
+            source.rename(source.with_name(source.name.lower()))
+            result,refusal=self.validate(root)
+            self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
+            self.assertIn('requires its exact path and canonical source SHA256',refusal)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)

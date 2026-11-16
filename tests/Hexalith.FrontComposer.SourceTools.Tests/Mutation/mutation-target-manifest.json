@@ -36,6 +36,24 @@
       "path": "src/Hexalith.FrontComposer.SourceTools/**/*.g.cs",
       "reason": "Generated source must not be mutated.",
       "owner": "Story 10-4"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldTypeCategory.cs",
+      "reason": "Enum declarations with implicit ordinals only; no executable expressions or Stryker mutation sites. Native reports contain no active mutants for this inventory file. Executable uses remain in the unchanged mutation targets.",
+      "owner": "Story 10-4 SourceTools quality/release-automation",
+      "canonicalSourceSha256": "47ed9636146e17c60ea855a6e20d2a2417757458280d12480d844e5aff5e662b"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/ProjectionRenderStrategy.cs",
+      "reason": "Enum declarations with implicit ordinals only; no executable expressions or Stryker mutation sites. Native reports contain no active mutants for this inventory file. Executable uses remain in the unchanged mutation targets.",
+      "owner": "Story 10-4 SourceTools quality/release-automation",
+      "canonicalSourceSha256": "645d4104796d9777b42a4c1f3f33c0c7769f855427d429c87ab7972946a96aaf"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/TypeCategory.cs",
+      "reason": "Enum declarations with implicit ordinals only; no executable expressions or Stryker mutation sites. Native reports contain no active mutants for this inventory file. Executable uses remain in the unchanged mutation targets.",
+      "owner": "Story 10-4 SourceTools quality/release-automation",
+      "canonicalSourceSha256": "8d2afc4617bda507cfced3c1178d959646ef6a3bba51e8ef92e469ec5203cefd"
     }
   ],
   "triageActions": [
