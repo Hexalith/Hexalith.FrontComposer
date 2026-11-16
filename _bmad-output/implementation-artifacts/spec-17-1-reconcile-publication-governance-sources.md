@@ -2,7 +2,7 @@
 title: 'Story 17.1: Reconcile Publication-Governance Sources'
 type: 'chore'
 created: '2026-11-16'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 story_id: '17.1'
 story_key: '17-1-i-gov-src-1-reconcile-publication-governance-sources'
@@ -92,6 +92,41 @@ context:
 **Acceptance Criteria:**
 - Given all reconciled sources, when they are compared, then every identity, halt and exception claim agrees, and none calls the caller G-8 conformant.
 - Given the existing checks, when the story is verified, then they pass, and only this spec records the digests.
+
+### Review Findings
+
+Review pass 2, 2026-11-16. Layers: Blind Hunter (BH), Edge Case Hunter (ECH), Verification Gap (VG) and Acceptance Auditor (AA), over `eddca353d566554af527064925798ec827e07c36..5a7e2a2ad0de47ddb566b7d23ac58ccee666e834`, excluding this spec and `epic-17-context.md`. At `5a7e2a2a` all nine Source Digest Record rows reproduce, by SHA-256 and by blob ID. `tests/eng/test_release_contract.py` runs 37 tests, all passing, and the live `builds` command exits 0.
+
+- [x] [Review][Defer] No test runs the hardened `builds` gate against the committed `release.yml`/`release-publish.yml` pair — VG-1, BH-14 (medium) [tests/eng/test_release_contract.py] — deferred: it guards a path that must stay halted. Add the committed-caller acceptance test with the Epic 17 caller switch (GOV-B to GOV-H). Human decision, 2026-11-16 (option 1 of 3). A break today fails closed in `verify-source`, before `production` approval or any side effect. A committed-caller test also departs from the Hexalith baseline "Do not write tests that assert workflow YAML".
+- [ ] [Review][Patch] FC-DEP-1 Consequences still states "Production publication remains halted" as fact, and the G2 request says "During the current halt" — AA-1 (medium) [_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md:239]
+- [ ] [Review][Patch] v4.5.0 (2026-09-19) is missing from every "Observed nonconformance" paragraph, and PRD FR-24 and G-8 place it outside the halt. This contradicts NC-36 and PRD G-1 — ECH-6, BH-6, AA-2 (medium) [_bmad-output/planning-artifacts/prd.md:487]
+- [ ] [Review][Patch] Resolution diagnostics omit the actual value. The non-160000 branch drops the `ls-tree` output, and both `git show` failures drop git's stderr — ECH-7, BH-3 (low) [eng/release_contract.py:506]
+- [ ] [Review][Patch] The identity register omits the post-release execution pin: the `release-evidence.yml` `.hexalith/builds-execution` checkout `ref:`, authorized by the `post_release` rows. Row 2b also names no authorization authority (the `ci` rows) — BH-4 (low) [_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md:41]
+- [ ] [Review][Patch] Row 2a, `architecture.md` and FC-DEP-1 say `CiGovernanceTests.ReleaseWorkflow_DelegatesToCallerOwnedPublisherAfterCiGate` enforces the full equality set. It compares only `\b`-terminated exact 40-hex matches, so a non-SHA or `-suffix` member goes undetected there — BH-2 (low) [_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md:41]
+- [ ] [Review][Patch] The policy-row values copied into row 2a's Authority cell carry no dated-snapshot label — AA-4 (low) [_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md:41]
+- [ ] [Review][Patch] Added text uses 12 abbreviated SHAs, and `3f0e3595…` never appears in full. This breaks the frozen "full lowercase 40-hex SHAs" rule — AA-3 (low) [_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md:47]
+- [ ] [Review][Patch] Stale caller wording sits beside the rewritten text: the addendum Activation bullet's "Flipping the current mode flag first", the §1 lead-in "after the 2026-09-09 GOV-1 validation", and PRD D-6 "Amended 2026-09-09 to current execution truth". Each credits 2026-10-04 and 2026-11-16 state to 2026-09-09 — AA-6 (low) [_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md:18]
+- [ ] [Review][Patch] The PRD G-2 pass condition hard-codes the legacy `prepare-domain-release@` field as a pin authority. It should defer to the identity register instead — AA-5 (low) [_bmad-output/planning-artifacts/prd.md:34]
+- [ ] [Review][Patch] The addendum frontmatter still reads `updated: 2026-09-09`, and the §8 change map has no 2026-11-16 Story 17.1 row — BH-11 (low) [_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md:4]
+- [ ] [Review][Patch] The REL-AI-1 `release_control` text still says the `HEXALITH_RELEASE_PUBLISH_ENABLED` path "is retired", which contradicts NC-35. Append a dated progress entry rather than rewriting the text — BH-10 (low) [_bmad-output/implementation-artifacts/sprint-status.yaml:427]
+- [ ] [Review][Patch] The rewritten docs prerequisites name "green exact-source push CI" but omit the successful push Quality run that `release.yml` authenticates — BH-8b (low) [docs/release-trusted-publishing.md:61]
+- [ ] [Review][Patch] `_PUBLISHER_DELEGATION_LINE` and the path constants are used only in diagnostics. The gate regex and the `git ls-tree`/`git show` arguments in `main()` repeat the literals, so a topology change can update one without the other — BH-15 (low) [eng/release_contract.py:358]
+- [x] [Review][Defer] Eight `evaluator_authorizations.release` rows still authorize older `release.yml` blobs that delegate to the Builds `domain-release.yml` reusable, at `4eb33928…`, `0a3508b3…`, `99d5a46c…`, `a8a50859…` and `3f0e3595…`. NC-34 and row 2a cite only the `release-publish.yml` rows — BH-5 [eng/dependency-graph-policy.json] — deferred: pre-existing policy state (NC-16 covers only the `0a3508b3…` rows). Pruning or recording these rows needs a Release Owner decision and a policy change, which Story 17.1 may not make.
+
+Rejected:
+- ECH-1, ECH-2, BH-1 (low): case-variant or quoted `prepare-domain-release@`/`builds-execution-sha` decoys pass the gate; a lowercase `@main` decoy reproduced this. The gate is defense in depth: any edit to either workflow changes a blob pinned by `evaluator_authorizations`, so it needs a separate reviewed policy change. `CiGovernanceTests` is equally case-sensitive. The fix needs quote and case handling across both patterns and `_pin_value`.
+- ECH-3 (low): a 40-hex tree or annotated-tag id passes `--commit`. `release.yml` passes `${{ github.sha }}`, and the fix would add a `cat-file -t` guard.
+- ECH-4 (carried, pass 1 ECH-8): a non-UTF-8 blob raises a traceback.
+- ECH-5 (low): fixtures inherit `GIT_DIR` and `GIT_INDEX_FILE`. The pattern predates this story (baseline L333–353), no hook runs this suite, and the fix would add environment scrubbing.
+- BH-7 (false/low): the companion bullet already names each new row's closure path, and the gate's closed-register requirement covers them. Retitling the file or editing the bundle table would break "append rows only".
+- BH-8a (carried, pass 1 BH-11 defer): there is no "do not dispatch" containment instruction.
+- BH-9 (low): the published docs page cannot link into `_bmad-output`, and its snapshot is already dated.
+- BH-12 (low): the raw API read is recorded in Implementation Notes. Who changed the variable is incident investigation, owned by Story 17.2, and this spec forbids new evidence packets.
+- BH-13 (false): the PRD frontmatter already reads `product_approval: pending-reapproval`, G-2 states that Story 17.1 is not acceptance, and GOV-ACCEPT-2 (Story 17.12) is the acceptance step.
+- BH-11, FC-DEP-1 part (false): its new section "amends none of the decisions above", so `amended: 2026-10-28` stays accurate.
+- BH-16 (false): the ledger format has no owner field, and the bmad-loop sweep triages every open entry.
+- BH-17, AA-8 (rejected, because the fix edits this spec): the frontmatter and File List statuses disagree with `sprint-status.yaml`. This is carried from pass 1 BH-17/ECH-12, and the review's status sync resolves it.
+- AA-7 (false): the appended companion bullet rewrites no existing row. The frozen rule forbids rewriting rows, not adding a bullet, and pass 1 BH-15 already patched it.
 
 ## Spec Change Log
 
