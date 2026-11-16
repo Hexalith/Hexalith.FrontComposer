@@ -7,7 +7,7 @@ route: 'dispatch'
 story_id: '16.3'
 story_key: '16-3-a-evt-app-1-approve-or-reject-the-exact-runtime-migration'
 baseline_commit: '695d23149c56a6104e81d23a54116b4fb914df95'
-review_loop_iteration: 0
+review_loop_iteration: 1
 g_3: 'open'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
@@ -343,3 +343,372 @@ Passed after these corrections and the final metadata observation:
 - `run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTIONAL_LOCKS=0 python3 -` parent read-only assertions — five changed/untracked paths, all under `_bmad-output/`; four complete baseline-M prefixes preserved; full Story 16.1 SHA-256 `f2754e0e24d56913ea757054f54ea77604eeba3000317abfe1040c73a61b651c`; unchanged sprint YAML semantics and open/in-progress states; HEAD/main M; empty staged diff and unchanged selected gitlink entries; CRLF/final newlines/no added trailing whitespace; eight new relative links/anchors valid; exact deadlines and durable record destinations present.
 
 The nine earlier focused release-contract tests remain the passed control evidence; no runtime/release-control source changed, so those tests were not repeated for prose corrections. Review used a read-only unified diff from the preserved baseline plus the new file, with a separate current-preparation diff to distinguish already adopted history; no staging occurred. The user-authorized preparation is complete and reviewable. This completion does not change Story 16.3's in-progress status, G-3's open state, the original deadlines or any tuple/approval scope, and authorizes no branch, commit, push, capture, workflow or release.
+
+
+## Authorized terminal disposition handoff — 2026-11-16
+
+This section was amended in review loop 1. The [change log](#spec-change-log--terminal-disposition-loop-1) records the amendments and the KEEP instructions.
+
+**Receipt.** At the parent's first UTC clock read after the answer arrived, `2026-11-16T10:10:24Z` (receipt observation, not an authoring time), the requesting user jpiquot, acting as Release Owner with Architect involvement under provision 5 of the [approved amendment](../planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-approval-lineage.md#planning-approval-receipt--2026-11-15), answered two parent questions. The parent wrote every option label and description.
+
+1. **Disposition — “End; correct course”.** End the M attempt and record the terminal blocker. The accountable next action is a `bmad-correct-course` on G-3 candidate identity. The selected description summarized the blocker as “three candidates (C, R, M) were each lost to main drift within hours, so exact-FrontComposer-main identity can't be met in this auto-committing workspace.” Preserve that quote as the answered text. Then record the factual correction from the observations below: the summary is wrong for M and imprecise for C and R. The correction leaves the selected disposition and next action unchanged, because the correct course's scope covers both actual causes. The description offered one example direction, “approve the runtime tuple (EventStore/Builds/catalog) and have release verify it”. It is input to that correct course only, never an adopted rule. The question stated that every option keeps G-3 open, keeps 16.3 in-progress and leaves all C/R/M history unchanged. No due date, calendar, escalation trigger or schedule was supplied.
+2. **Git target — “Current branch, no commit”.** Edit in place; no staging, commit or push; the user decides Git afterwards. The question stated that the procedure's keep-off-main rule existed only to protect M's candidacy, which drift had already ended. When the question was posed, after the parent's `2026-11-16T08:43:16Z` reads, the checkout was `docs/story-16-2-not-invoked` with unpushed `c215a54ecfde7e18d3e80b81da2994a0e64979b1`. Before the answer arrived, workspace `/pushall` merged that branch into main as `ebd3f76dc0b320d455917c593ff86526b58d0c77` (commit time `2026-11-16T08:48:14Z`) and left this checkout on a clean `main`. Applying the answer to this `main` working tree is the **parent's interpretation**: it involves no checkout switch and no Git action by this build. The parent presents that interpretation to the user for confirmation at completion. Workspace `/pushall` may commit these edits straight to main, and that would be the user's Git action.
+
+### Parent observations supplied to this disposition
+
+The parent's read-only checks completed by `2026-11-16T10:29:40Z`. The implementation agent makes no remote call and never substitutes these observations for a capture. Times are commit times unless stated otherwise.
+
+- **C and R were superseded by their own record lineage.** C `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc` (19:53:48Z) was followed on first-parent main by `902fe13fc411c9eb7cd3786180761a904a3b47fb` (20:39:25Z, governance/cadence docs). Next came R `695d23149c56a6104e81d23a54116b4fb914df95` (20:41:28Z), the commit that records C's own 16.1 capture. R was followed by M `b34be9245443d21b72a6076cf205bbbc8a8c521f` (22:50:16Z, “fix: story 16.3”), which records R-time amendment adoption and review. This is the self-record cycle named in the amendment's [review clarification 2](../planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-approval-lineage.md#review-clarifications--2026-11-15).
+- **M expired while still main.** M stayed main until `11c8377a858a756c4e4069bf08e62db1f58e1733` (2026-11-16T05:01:35Z), unrelated mutation work; that is about six hours. M's capture deadline `2026-11-16T01:11:05Z` expired while M was still main. M was not lost to drift. Its capture never ran because the procedure's preconditions were never supplied: an M-specific admission and schedule, a complete writer roster with dated acknowledgments, and Git authorization for the record ref. The non-adopted `2026-11-16T02:50:16Z` handling target also passed. M Quality 43771512600 attempt 1 completed `success` (last updated `2026-11-15T23:19:08Z`) and CI 43771512961 attempt 1 succeeded. No M Tuple Record or M decision exists.
+- **Drift after M, first-parent order.**
+  - `11c8377a…` (unrelated; push Quality 43807619578 and CI 43807620376 succeeded).
+  - `51d13970384597fc92dd3c5790c20e1dc11dcee7` (16.3 lineage-preparation records).
+  - `fb454047dbf45f2bbd1a58bd6b84bb7ef056a3e2` (16.2 records).
+  - `33e71036c04f2b99955376e9c90cbb1fc3a81e64` (08:07:01Z, `/pushall` gitlink sync).
+  - Merge `ebd3f76dc0b320d455917c593ff86526b58d0c77` (08:48:14Z). Its second parent `c6233bdaf445d6a87e465a1e67f9eb266b0e322f` is a `/pushall` gitlink sync on `docs/story-16-2-not-invoked`, whose parent is the 16.2 closure `c215a54e…`. It brought the second gitlink move to main, so on first-parent history that move appears at `ebd3f76d…`.
+- **Tuple drift.**
+  - EventStore moved `fdb59895975e86a1e234325a01237f259cdbd53b` → `eecc0e4da70a0d64aaeff4fb75cdc06f94eb7563` (`33e71036…`) → `97c02f7bf99a694528a2b15f0b3b0a6e5fb10e9d` (`c6233bda…`, reaching main at `ebd3f76d…`).
+  - Builds moved `73e60af8a1fcdf3f06726d5d1b6e1199cce778ee` → `801f268cd1b37ecae41d4fb20d115c055b4c5793` → `65fd22f37b9fad64b595841923cdbe050563ab99` in the same commits.
+  - Catalog `Props/Directory.Packages.props`:
+    - At `73e60af8…`: empty-property default `5.1.0`; the SDK42-view selector yields `4.2.0`.
+    - At `801f268c…`, the first move: the default is already `5.1.1`, and the SDK42 selector line gains `('$(UseHexalithProjectReferences)' != 'true' or '$(HexalithEventStoreFromSource)' == 'false')` gating. The selection logic changed, not only the value.
+    - At `65fd22f3…`: default `5.1.1`, with the same gating.
+  - The root `Directory.Packages.props` at HEAD sets no `HexalithEventStoreVersion`.
+  - All four coordinates differ from C, R and M. This is an observation, not a Tuple Record.
+- **Red current main.** All four push runs failed at attempt 1: `33e71036…` CI 43828712114 and Quality 43828712236, and `ebd3f76d…` CI 43834275373 and Quality 43834274896. They fail at the same steps:
+  - CI job dependency-governance, at “Collect exact graph diff and affected-module proof” and “Enforce dependency-governance result”.
+  - Quality job build-and-test, at “Prepare exact governance catalog objects”, then “Quarantine Summary” and “Coverage Summary”.
+
+  The pattern matches a gitlink-bump seal transition; this disposition does not diagnose it. No current candidate is green.
+- **Release 43810326251** (`workflow_dispatch` on `11c8377a…`, actor jpiquot, created `2026-11-16T05:27:14Z`) was waiting on `production` at `08:43Z`.
+  - Its `prepare-candidate` job was cancelled at `09:47:35Z`, `release` was skipped and `verify-publication` was cancelled. The run was last updated `09:48:18Z`, before the receipt.
+  - No release job ran, and the read does not expose who cancelled it.
+  - It targeted a non-candidate commit while G-3 was open and the independent G-8 production halt remained. It is an observation only, not a G-3 action.
+- ListAgents near `08:44Z` showed peer sessions conversations, platform, memories and mcpcli, none named for FrontComposer. That is not writer-coverage evidence.
+
+## Tasks & Acceptance — terminal disposition
+
+- [x] `_bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md` — append `## M terminal disposition — 2026-11-16` with:
+  - signer/capacity, the receipt observation and the selected options quoted;
+  - the correction of the parent-authored summary;
+  - the ended M attempt and the end of any remaining hold reliance;
+  - the per-candidate concrete blocker: C/R self-record supersession, M expiring while still main because preconditions were never supplied, later main/gitlink/catalog drift including the selection-logic change, and red current main with its failing steps;
+  - the accountable next action, closure condition and “No due date supplied”;
+  - the downstream effect and the post-rejection rule;
+  - G-8 and the release observation;
+  - the durability status and the Git interpretation.
+
+  Then reconcile these checkboxes and record the actual verification. Leave the frontmatter workflow fields (`status`, `baseline_commit`, `review_loop_iteration`) as the parent sets them.
+- [x] `_bmad-output/implementation-artifacts/epic-16-lineage-procedure-2026-11-15.md` — append `## Terminal disposition — 2026-11-16`: the M procedure is ended, was never executed and must not be executed; link the owning section. Its off-main storage reasoning remains history and correct-course input only. Do not claim that the stop rules' terminal-record destination “applied only to an executed attempt”. State the actual basis instead: the user's answer, given after the question stated that the off-main rule only protected M's candidacy. Then state the durability status below.
+- [x] `_bmad-output/implementation-artifacts/epic-16-context.md` — append the latest state: M ended, the corrected blocker, current tuple drift, the next action with its downstream effect, durability and G-3 open. Link provision 5 to the approved amendment.
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` — append one dated section in the ledger's existing Epic 16 style (heading plus one `source_spec`/`summary`/`evidence` entry). Name the G-3 candidate-identity correct course, owner jpiquot (Release Owner with Architect involvement), the closure condition and this spec as source. Use the corrected blocker evidence.
+- [x] `_bmad-output/implementation-artifacts/sprint-status.yaml` — make these three changes and no semantic change; 16.1 and 16.2 stay `done`, 16.3 and `epic-16` stay `in-progress`:
+  - add one dated comment between the 16.2 and 16.3 rows;
+  - append one dated pointer comment line directly after the trailing Epic 16 block's last line, `# 16.1 done;16.2 not invoked/backlog;16.3 in-progress; Epic16/G-3 open.`, saying the procedure ended and the disposition was received at `2026-11-16T10:10:24Z`;
+  - update both `last_updated` values in their existing formats.
+
+**Next action, closure and downstream effect.**
+- **Next action:** jpiquot runs `bmad-correct-course` on G-3 candidate identity: what a migration approval binds to, how release verifies it, and whether the coordination, cadence and record-lineage controls remain. It must address both actual causes above: self-record supersession for C and R, and preconditions unmet within the two-hour window for M.
+- **Closure:** that proposal is approved or rejected.
+- **No due date or escalation trigger was supplied, and none is invented.** The earlier four-working-hour rule concerned the now-ended M drift handling and creates no new due date.
+- **If the proposal is rejected,** the existing approved rules continue unchanged: any fresh attempt needs a separately explicit named schedule of at most 24 hours and its own evidence and decisions (provision 5).
+- **Until closure,** no fresh attempt is scheduled and no recapture runs.
+- **Downstream:** [Epic 16 context](epic-16-context.md) states that Epic 17's final Product readiness decision waits on G-3 evidence, so it keeps waiting through this open next action.
+
+**Deadline and durability.** jpiquot's disposition was received at `2026-11-16T10:10:24Z`, before the outer deadline `2026-11-16T17:27:10Z`. It is written into this working tree and preserved in the owner decision conversation. Under the user's “no commit” answer, repository durability is the user's Git action. Until a commit containing these records is reachable on `origin`, report missing repository durability as an open item. If no such commit is reachable by `2026-11-16T17:27:10Z`, that missing durability is the remaining blocker to report. Never claim that the records were committed or that durability is met. Nothing is extended.
+
+Given the answer, when recorded, then both selected options are quoted and the inaccuracy of the parent-authored summary for M is corrected without altering the quote or the decision. jpiquot is named as Release Owner with Architect involvement. The receipt observation time is used, with no invented authoring time, due date, trigger, roster or acknowledgment.
+
+Given C, R and M, when the blocker is stated, then each candidate's cause matches the first-parent history above, and later drift is described in first-parent terms.
+
+Given M's expiry and drift, when the attempt ends, then no capture, migration decision, recapture, dispatch or new attempt is created. C's three decisions stay nonoperative, G-3 stays open and 16.3 stays in-progress.
+
+Given uncommitted records, when the deadline duty is described, then the records claim only timely receipt and working-tree recording, and they state the repository-durability condition.
+
+Given the correct-course next action, when tracked, then its example direction is input only, the Epic 17 dependency and the post-rejection rule are stated, and no planning artifact or rule changes.
+
+Given the diff, then exactly these five files under `_bmad-output/implementation-artifacts/` change. Every HEAD byte is unchanged, with only these exceptions:
+- the spec frontmatter workflow fields;
+- the two sprint `last_updated` values plus the two added sprint comment lines;
+- this section's checkboxes.
+
+Story 16.1's SHA-256 stays `f2754e0e24d56913ea757054f54ea77604eeba3000317abfe1040c73a61b651c`, and HEAD, index and gitlinks are unchanged.
+
+**Boundaries.**
+- No staging, commit, push, branch, switch, stash, reset or clean.
+- No workflow dispatch, no remote call, and no submodule or gitlink change.
+- No edit to Story 16.1, Story 16.2, planning artifacts or the frozen block.
+- Workspace `/pushall` may commit working-tree edits at any time; that is the user's Git, never this build's.
+
+**Verification.** The frontmatter-baseline validator form fails on unrelated later main commits (stale baseline: the `11c8377a…` mutation work, gitlinks and 16.2). Validate this round against current HEAD with:
+
+```bash
+run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTIONAL_LOCKS=0 python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md --base ebd3f76dc0b320d455917c593ff86526b58d0c77
+```
+
+Also run:
+- `git diff --check`;
+- the Story 16.1 SHA-256 check;
+- disposable `run-with-temp` read-only assertions for scope, HEAD-byte preservation (compare checked-out bytes via `git cat-file --filters`), sprint YAML semantics, CRLF and final newlines, new link/anchor resolution (report raw and unique counts), and unchanged HEAD, index and gitlinks.
+
+Record the actual results. There is no runtime change, so add no tests.
+
+## Review Triage Log
+
+### Terminal disposition — 2026-11-16 (review loop 1)
+
+All three layers returned before triage:
+- Blind Hunter: floor 6, 12 findings. Its multi-claim findings BH-11 and BH-12 are split below so that each claim gets one verdict.
+- Edge Case Hunter: 11 findings.
+- Verification Gap: no gaps, and one other finding.
+
+The reviewed content was this round's delta from HEAD `ebd3f76dc0b320d455917c593ff86526b58d0c77` to the working tree. Earlier 16.3 rounds were reviewed and committed at `51d13970…`, and the frontmatter `baseline_commit` predates unrelated main work.
+
+| Finding | Verdict and route | Verified evidence |
+|---|---|---|
+| TD-BH-1 | low; rejected (carried BH-1) | carried — `status: 'in-review'` is step 4's transient review state. The parent restores `in-progress` after review, and the sprint row stays `in-progress`. The verification account's “unchanged” claim was true when the check ran. |
+| TD-BH-2 | medium; bad_spec (G1) | First-parent log: M `b34be924…` (22:50:16Z) stayed main until `11c8377a…` (05:01:35Z), so its 01:11:05Z capture deadline expired while M was still main. The cause is preconditions that were never supplied, not drift. The handoff's quoted, parent-authored option summary seeded the misstatement. |
+| TD-BH-3 | medium; bad_spec (G1) | C was followed by `902fe13f…`, then by its own capture record `695d2314…` (R); R was followed by its own records commit `b34be924…` (M). This is the amendment's clarification-2 self-record cycle, which the blocker omitted. |
+| TD-BH-4 | low; bad_spec (G7) | Builds `801f268c…` already defaults to 5.1.1 and adds `UseHexalithProjectReferences`/`HexalithEventStoreFromSource` gating to the SDK42 selector; `73e60af8…` has neither. The records checked only the end points. |
+| TD-BH-5 | medium; bad_spec (G2) | The procedure's stop rules ask for committed terminal records within the deadline, or a reported missing-durability blocker. The handoff's “satisfies provision 5's duty” and the records' “applied only to an executed attempt” both overstate. The basis that holds is the user's no-commit answer, given after the question stated the off-main rule's narrow purpose. |
+| TD-BH-6 | low; rejected | The procedure banner already reads “execution blocked”, so nothing invites a reader to execute it. The ended state is appended under the append-only rule, and rewriting the banner needs an exception for little benefit. |
+| TD-BH-7 | low; bad_spec (G3) | Merge `ebd3f76d…` (08:48:14Z) landed after the question was posed (after the 08:43:16Z reads) and before the 10:10:24Z answer. The handoff asserted compliance instead of recording the parent's interpretation for confirmation. No Git action occurred. |
+| TD-BH-8 | medium; bad_spec (G4) | `epic-16-context.md` states that Epic 17's final readiness waits on G-3. The records omitted that, and the existing provision-5 rule that applies after a rejection. No due date or trigger may be invented, because the user supplied none. |
+| TD-BH-9 | low; bad_spec (G5) | The G-8 restatement was dropped. The run's jobs show `prepare-candidate` cancelled at 09:47:35Z and `release` skipped, before the 10:10:24Z receipt, so the “9 seconds after receipt” inference is false. The canceller is not exposed. |
+| TD-BH-10 | low; bad_spec (G6) | Current main's CI and Quality fail at the same named steps as `33e71036…`, but the records named the steps only for `33e71036…`. |
+| TD-BH-11a | low; bad_spec (G8) | The handoff's task heading was not a validator-recognized form, so the five checkboxes only produced non-failing notices. The amended handoff uses `Tasks & Acceptance — terminal disposition`. |
+| TD-BH-11b | false; rejected | The five planning paths are explicitly labelled “pre-existing … unchanged by this disposition”. The validator requires each File List path to match a change, so the labels make the scope explicit rather than blurring it. |
+| TD-BH-12a | low; rejected | The workflow's own defer format is the legacy `source_spec` bullet, and every earlier Epic 16 ledger section is prose. The item is a human-owned governance decision tracked in the sprint and context. Converting it to a sweep-triaged DW entry would expose it to automated resolution, which is more than a direct correction. |
+| TD-BH-12b | false; rejected | The ledger section explicitly states that it supersedes the preceding pending state “from that receipt onward” and that those sections remain history. |
+| TD-BH-12c | low; patch (carried into re-derivation) | The context cited provision 5 without the amendment link; the amended task now requires the link. |
+| TD-BH-12d | low; patch (carried into re-derivation) | The verification said “nine” new links, but the raw count is 10 and the unique count 9. The amended verification asks for both counts. |
+| TD-ECH-1 | low; rejected (carried BH-1) | carried — same transient-status claim as TD-BH-1. |
+| TD-ECH-2 | medium; bad_spec (G2) | Same root cause as TD-BH-5: the deadline claim rested on uncommitted edits. |
+| TD-ECH-3 | medium; bad_spec (G4) | The missing due date or trigger is the owner's actual answer. Record the Epic 17 effect and the existing post-rejection rule; inventing a review trigger is not allowed. |
+| TD-ECH-4 | low; rejected | Same claim and reasoning as TD-BH-12a. |
+| TD-ECH-5 | low; bad_spec (G3) | Same root cause as TD-BH-7. The edits stay working-tree only, and the parent presents the interpretation at completion. |
+| TD-ECH-6 | low; bad_spec (G9) | `sprint-status.yaml` lines 1324–1328 still describe the conditional procedure with the disposition “due … unchanged”. The handoff's “one dated comment” did not name that trailing block. |
+| TD-ECH-7 | low; bad_spec (G8) | Same as TD-BH-11a. |
+| TD-ECH-8 | low; rejected (carried BH-1) | carried — the checked task's “keep in-progress” intent holds once the parent restores the status after review. |
+| TD-ECH-9 | low; rejected (carried BH-1) | carried — the append-only claim excludes the parent's frontmatter workflow fields, which the amended AC now names. |
+| TD-ECH-10 | medium; bad_spec (G2) | Same root cause as TD-BH-5: the stop rule's fallback wording is not limited to executed attempts. |
+| TD-ECH-11 | low; bad_spec (G1) | `c215a54e…` and `c6233bda…` are second-parent commits of merge `ebd3f76d…`. A first-parent bisect places the second gitlink move at `ebd3f76d…`. |
+| TD-VG-O1 | low; rejected (carried BH-1) | carried. Step 5's done/review sync would contradict the frozen intent that 16.3 stays in-progress until operative approvals exist. The parent keeps 16.3 in-progress and leaves any closure to the user. |
+
+Grouping after the individual verdicts:
+- **G1:** blocker causal account (TD-BH-2, TD-BH-3, TD-ECH-11).
+- **G2:** deadline/durability overclaim (TD-BH-5, TD-ECH-2, TD-ECH-10).
+- **G3:** Git-target interpretation (TD-BH-7, TD-ECH-5).
+- **G4:** downstream and post-closure effect (TD-BH-8, TD-ECH-3).
+- **G5:** G-8 and release facts (TD-BH-9).
+- **G6:** red-run steps (TD-BH-10).
+- **G7:** catalog selection change (TD-BH-4).
+- **G8:** task heading (TD-BH-11a, TD-ECH-7).
+- **G9:** stale sprint trailing block (TD-ECH-6).
+
+G1, G2 and G3 originate in this handoff's own wording, so the entries route to bad_spec and loop back. The two patch items are carried into the amended tasks. Rejected findings leave every record unchanged.
+
+## Spec Change Log — terminal disposition loop 1
+
+- **Trigger:** review loop 1 findings G1–G9 above, with medium findings TD-BH-2/3/5/8 and TD-ECH-2/3/10.
+- **Amended:** this handoff (outside the frozen block). The amendments:
+  - mark the option text as parent-authored and require correcting it for M;
+  - add first-parent supersession facts for C/R/M, the catalog selection change at `801f268c…`, the failing steps for current main, and the release-job facts with G-8;
+  - restate the Git target as the parent's interpretation;
+  - replace “satisfies provision 5's duty” with a timely-receipt plus repository-durability condition;
+  - add the Epic 17 dependency and the post-rejection rule;
+  - name the sprint trailing-block pointer;
+  - use a validator-recognized task heading;
+  - name the frontmatter workflow-field exception.
+- **Known-bad state avoided:** records claiming that M was lost to drift; records claiming the deadline duty was satisfied by uncommitted edits; records asserting that a branch-target substitution complied with the answer; the stop-rule fallback dismissed as executed-attempt-only; a stale “due … unchanged” sprint note.
+- **Reverted:** this build's first-derivation edits to all five files, restored to HEAD `ebd3f76dc0b320d455917c593ff86526b58d0c77`. Disposable copies remain outside the repository.
+- **KEEP:**
+  - section headings and anchors: spec `## M terminal disposition — 2026-11-16`, procedure `## Terminal disposition — 2026-11-16`, context `## M terminal disposition — 2026-11-16`, ledger `## Epic 16 M terminal disposition — 2026-11-16`;
+  - the signer/capacity paragraph citing the five-capacity confirmation (`2026-11-15T21:49:02Z`, [human response](#human-response-and-incident-disposition--2026-11-15)) and the planning receipt (`2026-11-15T21:58:49Z`), with no capacity inferred;
+  - receipt-observation wording (not an authoring time; decision date 2026-11-16 UTC);
+  - full SHAs, run IDs and the per-commit gitlink transitions;
+  - the example direction as input only, and “No due date supplied”;
+  - C's three decisions nonoperative, linked to [migration decisions](#migration-decisions-received--2026-11-15);
+  - the closing status line “Story 16.1 done; Story 16.2 done as not invoked; Story 16.3 in-progress; Epic 16 / G-3 open. Migration approval: not claimed.”;
+  - the sprint comment between the 16.2 and 16.3 rows, with header `# last_updated: YYYY-MM-DD` and body `last_updated: MM-DD-YYYY HH:MM`;
+  - a File List with the five changed paths plus the five 2026-11-15 planning paths labelled pre-existing, because the validator needs that against `--base`;
+  - verification comparing checked-out bytes via `git cat-file --filters`, with the validator run against `--base ebd3f76dc0b320d455917c593ff86526b58d0c77`.
+
+## M terminal disposition — 2026-11-16
+
+**Signer and capacity.** Jérôme Piquot (`jpiquot`/Administrator), acting as Release Owner with Architect involvement under provision 5 of the [approved amendment](../planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-approval-lineage.md#planning-approval-receipt--2026-11-15). The authority source is the separate five-capacity confirmation recorded at `2026-11-15T21:49:02Z` ([human response](#human-response-and-incident-disposition--2026-11-15)) and the planning receipt received `2026-11-15T21:58:49Z`. No capacity is inferred from another.
+
+**Receipt observation.** `2026-11-16T10:10:24Z` is the parent's first UTC clock read after the answer arrived. It is a receipt observation, not an authoring time; no authoring time was supplied. Decision date: 2026-11-16 (UTC). The parent wrote every option label and description.
+
+**Selected options, as answered.**
+
+1. **“End; correct course”**: end the M attempt and record the terminal blocker. The accountable next action is a `bmad-correct-course` on G-3 candidate identity. The selected description's summary is preserved as answered: “three candidates (C, R, M) were each lost to main drift within hours, so exact-FrontComposer-main identity can't be met in this auto-committing workspace.” Its example direction, “approve the runtime tuple (EventStore/Builds/catalog) and have release verify it”, is input to that correct course only, never an adopted rule.
+2. **“Current branch, no commit”**: edit in place; no staging, commit or push; the user decides Git afterwards.
+
+The question stated that every option keeps G-3 open, keeps 16.3 in-progress and leaves all C/R/M history unchanged. No due date, calendar, escalation trigger or schedule was supplied.
+
+**Correction of the parent-authored summary.** The quoted summary is wrong for M and imprecise for C and R. C and R were not lost to unrelated drift: each was superseded on first-parent main by its own record lineage, the self-record cycle named in the amendment's [review clarification 2](../planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-approval-lineage.md#review-clarifications--2026-11-15). M was not lost to drift at all: it stayed main for at least six hours, its capture never ran because the procedure's preconditions were never supplied, and its capture deadline expired while it was still main. The quote and the selected options stay as answered. The correction changes neither the disposition nor the next action, because the correct course's scope covers both actual causes.
+
+**The M attempt is ended.** The conditional [M lineage procedure](epic-16-lineage-procedure-2026-11-15.md#terminal-disposition--2026-11-16) ends without ever having been executed. No M admission, schedule, complete writer roster, dated acknowledgment, record ref, M Tuple Record or M migration decision was created, and none is created now. Any remaining reliance on the owner-attested qualification hold that began `2026-11-15T21:58:49Z` ends with this named terminal blocker disposition; the observed R-to-M change had already ended its continuity for M. Nothing is continued, renewed, backdated or transferred. No capture, recapture, workflow dispatch or new attempt follows.
+
+**Concrete blocker, per candidate.** Candidates are listed in first-parent order. Times are commit times, on 2026-11-15 unless dated otherwise.
+
+- **C `e0eef14ddbbcd03823863a4f417a4b07f6f5bafc` (19:53:48Z): superseded by its own record lineage.** First-parent main moved to `902fe13fc411c9eb7cd3786180761a904a3b47fb` (20:39:25Z, governance/cadence docs) and then to R, the commit that records C's own 16.1 capture. C's timely accepted capture (primary Quality 43755163930 attempt 1) remains history. Its capture deadline `2026-11-15T22:12:06Z` has passed, and its three [migration decisions](#migration-decisions-received--2026-11-15) stay nonoperative.
+- **R `695d23149c56a6104e81d23a54116b4fb914df95` (20:41:28Z): superseded by its own records commit.** R was followed by M (“fix: story 16.3”), which records R-time amendment adoption and review. R's Quality 43759663406 attempt 1 succeeded, but R has no capture and no decisions, and its capture deadline `2026-11-15T22:57:29Z` expired.
+- **M `b34be9245443d21b72a6076cf205bbbc8a8c521f` (22:50:16Z): expired while still main.** M stayed main at least until `11c8377a858a756c4e4069bf08e62db1f58e1733`, whose commit time is 2026-11-16T05:01:35Z and whose push Quality 43807619578 was created at `2026-11-16T05:01:57Z` (parent observation); that is at least six hours. Its capture deadline `2026-11-16T01:11:05Z` expired while M was still main. The capture never ran because the procedure's preconditions were never supplied. They were required before step 1 and were still unsupplied at the receipt: an M-specific admission and schedule, a complete writer roster with dated acknowledgments, and Git authorization for the record ref. The non-adopted `2026-11-16T02:50:16Z` handling target also passed. M Quality 43771512600 attempt 1 completed `success` (last updated `2026-11-15T23:19:08Z`) and CI 43771512961 attempt 1 succeeded. No M Tuple Record or M decision exists.
+- **Later main, gitlink and catalog drift, in first-parent order.**
+  - `11c8377a…`: unrelated mutation work; push Quality 43807619578 and CI 43807620376 succeeded.
+  - `51d13970384597fc92dd3c5790c20e1dc11dcee7`: 16.3 lineage-preparation records.
+  - `fb454047dbf45f2bbd1a58bd6b84bb7ef056a3e2`: 16.2 records.
+  - `33e71036c04f2b99955376e9c90cbb1fc3a81e64` (2026-11-16T08:07:01Z, `/pushall` gitlink sync): EventStore `fdb59895975e86a1e234325a01237f259cdbd53b` → `eecc0e4da70a0d64aaeff4fb75cdc06f94eb7563`; Builds `73e60af8a1fcdf3f06726d5d1b6e1199cce778ee` → `801f268cd1b37ecae41d4fb20d115c055b4c5793`.
+  - Merge `ebd3f76dc0b320d455917c593ff86526b58d0c77` (2026-11-16T08:48:14Z): its second parent `c6233bdaf445d6a87e465a1e67f9eb266b0e322f` is a `/pushall` gitlink sync on `docs/story-16-2-not-invoked`, whose parent is the 16.2 closure `c215a54ecfde7e18d3e80b81da2994a0e64979b1`. It brought EventStore → `97c02f7bf99a694528a2b15f0b3b0a6e5fb10e9d` and Builds → `65fd22f37b9fad64b595841923cdbe050563ab99` to main, so on first-parent history that second move appears at `ebd3f76d…`.
+
+  The Builds catalog `Props/Directory.Packages.props` changed its selection logic, not only a value. At `73e60af8…` the empty-property default is `5.1.0` and the SDK42-view selector yields `4.2.0`. At the first move, `801f268c…`, the default is already `5.1.1`, and the SDK42 selector gains `('$(UseHexalithProjectReferences)' != 'true' or '$(HexalithEventStoreFromSource)' == 'false')` gating. `65fd22f3…` keeps default `5.1.1` with the same gating. The root `Directory.Packages.props` at HEAD sets no `HexalithEventStoreVersion`. All four coordinates of current main differ from C, R and M. This is an observation, not a Tuple Record.
+
+  The parent's later read-only review supplied the following observations. They are correct-course input only and change no rule or decision.
+
+  **Full first catalog change.** The `73e60af8…`→`801f268c…` change to that file has 9 insertions and 6 deletions:
+  - the EventStore default `5.1.0`→`5.1.1`, with source-mode gating on the SDK42 selector;
+  - the same gating on the SDK42 OpenAPI pair (`HexalithAspNetCoreOpenApiVersion` `10.0.15`, `HexalithOpenApiVersion` `2.13.0`);
+  - `HexalithFoldersVersion` `1.4.0`→`2.0.0`;
+  - a new SDK42 `HexalithMcpCliVersion` `2.0.1` pin.
+
+  FrontComposer's `deps.local.props` sets `HexalithEventStoreFromSource` to true and `deps.nuget.props` sets it to false, so from `801f268c…` onward SDK42-view projects resolve `4.2.0` only outside source mode.
+
+  **Runtime unchanged from C through `fb454047…`.** From C through `fb454047dbf45f2bbd1a58bd6b84bb7ef056a3e2`, EventStore `fdb59895…`, Builds `73e60af8…`, catalog default `5.1.0` and the absent root preset stayed the same. Only the FrontComposer commit changed, over commit times from 19:53:48Z up to the 2026-11-16T08:07:01Z move in `33e71036…`. C's decisions stay nonoperative, and nothing transfers.
+
+  **Both tuple moves were workspace `/pushall` gitlink syncs.** `33e71036…` and `c6233bda…` are both `/pushall` gitlink syncs. `c6233bda…` was committed at 2026-11-16T08:47:45Z, while the owner question was open, and was not visible to the 08:44Z ListAgents read. This is a further input to the correct course's coordination controls, alongside the two causes.
+
+  **Other gitlinks also moved.**
+  - At `33e71036…`: AI.Tools `17a37d83`→`7ef8166e`, Commons `fbf4e942`→`ab5e92fa`, Memories `b7e19503`→`fad5ec5e`, Parties `e59aed9c`→`d4a71068`, Platform `f6f85032`→`17b1f688`, PolymorphicSerializations `e97b5693`→`476cfcca`, Tenants `2ec93839`→`8aa6f169`.
+  - At `c6233bda…`: Memories `fad5ec5e`→`9d87500e`, Platform `17b1f688`→`ead9ff0d`.
+- **Red current main.** All four push runs failed at attempt 1: `33e71036…` CI 43828712114 and Quality 43828712236, and `ebd3f76d…` CI 43834275373 and Quality 43834274896. Both commits fail at the same steps: CI job dependency-governance at “Collect exact graph diff and affected-module proof” and “Enforce dependency-governance result”; Quality job build-and-test at “Prepare exact governance catalog objects”, then “Quarantine Summary” and “Coverage Summary”. The pattern matches a gitlink-bump seal transition; this disposition does not diagnose it. No current candidate is green.
+
+The run results and release-job facts are the parent's read-only observations, completed by `2026-11-16T10:29:40Z`. This build made no remote call and substitutes none of them for a capture. Read-only local Git confirms the first-parent chain and its commit times, the merge parents, the EventStore/Builds gitlinks at each commit, both catalog changes at `801f268c…`, the `5.1.1` default and gating at `65fd22f3…`, and the absence of a root `HexalithEventStoreVersion` at HEAD. These local reads evaluate no runtime compatibility.
+
+**Accountable next action.** jpiquot runs `bmad-correct-course` on G-3 candidate identity: what a migration approval binds to, how release verifies it, and whether the coordination, cadence and record-lineage controls remain. It must address both actual causes: self-record supersession for C and R, and M's preconditions, which were required before step 1 and still unsupplied at the receipt. The `/pushall` gitlink-sync observation above is a further input to its coordination controls. Per parent observation, two existing action items in `sprint-status.yaml` are related, and neither changes here. E11R-AI-1 (open, gate G-3, owner Architect + Release Owner) is the item the correct course will likely redefine. E12R-AI-2 (in-progress), whose text includes “stop bundling pinned-submodule gitlink bumps into story or spec commits”, bears on the red current main. The example direction above is input only. No planning artifact, selector, gate, receipt requirement, action item or rule changes here.
+
+**Closure condition.** That correct-course proposal is approved or rejected. If it is approved, its adopted provisions govern G-3 and 16.3. The owner did not address withdrawal or revision; either leaves the item open. **No due date supplied.** No due date, calendar or escalation trigger was supplied, and none is invented. No fresh attempt is scheduled and no recapture runs. That describes the current state, not a new bar: provision 5's separately explicit named schedule stays available to the owner.
+
+**Four-working-hour rule.** The approved rule in [PRD §0.1](../planning-artifacts/prd.md#01-v10-readiness-milestone-gates), the [architecture Active-Identity invariant](../planning-artifacts/architecture.md#eventstore-active-identity-invariant) and the [Epic 16 qualification text](../planning-artifacts/epics.md#epic-16-maintainers-verify-and-approve-exact-runtime-compatibility) still applies. The Release Owner, with Architect involvement, records a bounded disposition within four working hours of drift, missing authority, failed qualification, timeout or a latest-main lineage conflict. The options are to schedule one fresh attempt, reject with corrective work, or request an explicit planning amendment. M's `2026-11-16T01:11:05Z` timeout and the later drift engaged that rule. No working calendar was supplied, so timeliness cannot be measured; the receipt came about nine elapsed hours after the timeout. This disposition is the rule's “request an explicit planning amendment” option, bounded by its approve-or-reject closure. No time bound was supplied for the amendment itself, and the non-adopted procedure's “bounded due” suggestion stays unmet.
+
+**Downstream effect and post-rejection rule.** [Epic 16 context](epic-16-context.md#cross-story-dependencies) states that Epic 17's final Product readiness decision waits on G-3 evidence, so it keeps waiting through this open next action. If the proposal is rejected, the existing approved rules continue unchanged: any fresh attempt needs a separately explicit named schedule of at most 24 hours and its own evidence and decisions (provision 5).
+
+**G-8 and the release observation.** The independent G-8 production halt in [PRD §0.1](../planning-artifacts/prd.md#01-v10-readiness-milestone-gates) remains open; this disposition neither resolves nor relies on it. Release 43810326251 (`workflow_dispatch` on `11c8377a…`, actor jpiquot, created `2026-11-16T05:27:14Z`) was waiting on `production` at `08:43Z`. Its `prepare-candidate` job was cancelled at `09:47:35Z`, `release` was skipped and `verify-publication` was cancelled. The run was last updated `09:48:18Z`, before the receipt. No release job ran, and the read does not expose who cancelled it. It targeted a non-candidate commit while G-3 was open and the G-8 halt remained. It is an observation only, not a G-3 action. ListAgents near `08:44Z` showed peer sessions conversations, platform, memories and mcpcli, none named for FrontComposer. That is not writer-coverage evidence, and no roster or acknowledgment is invented.
+
+**Durability and deadline.** jpiquot's disposition was received by `2026-11-16T10:10:24Z` (first clock read after receipt), before the outer deadline `2026-11-16T17:27:10Z`. The disposition is made and preserved in the owner decision conversation for this disposition, Claude Code session `f1c496f3-d5c9-4e70-9e18-2c6ba8cc8d69`, which is distinct from the earlier thread `01a1e169-527e-7800-bc63-aa56bca0b1eb`. As of this build (`2026-11-16T11:03:16Z`), these records are in the working tree and this build committed nothing. They claim only that timely receipt and that recording. Under the user's “no commit” answer, repository durability is the user's Git action. The first commit carrying these records that is reachable on `origin` closes the durability item by itself: its commit and push metadata is the evidence, and no follow-up edit is needed. If no such commit is reachable by `2026-11-16T17:27:10Z`, jpiquot as Release Owner reports missing repository durability as the remaining blocker in that owner decision conversation. Repository durability is not claimed here, and nothing is extended.
+
+**Git interpretation.** When the question was posed, the checkout was `docs/story-16-2-not-invoked` with unpushed `c215a54ecfde7e18d3e80b81da2994a0e64979b1`. Before the answer arrived, workspace `/pushall` merged that branch into main as `ebd3f76dc0b320d455917c593ff86526b58d0c77` (2026-11-16T08:48:14Z) and left this checkout on a clean `main`. Applying “Current branch, no commit” to this `main` working tree is the **parent's interpretation**, which the parent presents to the user for confirmation. The user's confirmation or contrary direction will be recorded in a later dated section of this spec. If it is contrary, the user directs relocation; anything workspace `/pushall` has already committed stays as history. As of this build (`2026-11-16T11:03:16Z`), this build switched no checkout and staged, committed or pushed nothing. Workspace `/pushall` may commit these edits straight to main; that would be the user's Git action. The answer reports no change in EventStore authority, so Story 16.2 stays closed as not invoked.
+
+**Story 16.1 done; Story 16.2 done as not invoked; Story 16.3 in-progress; Epic 16 / G-3 open. Migration approval: not claimed.**
+
+### File List
+
+- `_bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md`
+- `_bmad-output/implementation-artifacts/epic-16-lineage-procedure-2026-11-15.md`
+- `_bmad-output/implementation-artifacts/epic-16-context.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-approval-lineage.md` — pre-existing: changed by the 2026-11-15 adoption round, unchanged by this disposition
+- `_bmad-output/planning-artifacts/prd.md` — pre-existing: changed by the 2026-11-15 adoption round, unchanged by this disposition
+- `_bmad-output/planning-artifacts/architecture.md` — pre-existing: changed by the 2026-11-15 adoption round, unchanged by this disposition
+- `_bmad-output/planning-artifacts/epics.md` — pre-existing: changed by the 2026-11-15 adoption round, unchanged by this disposition
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-tuple-freeze.md` — pre-existing: changed by the 2026-11-15 adoption round, unchanged by this disposition
+
+### Terminal disposition verification — 2026-11-16
+
+These checks first ran after the five edits were applied at `2026-11-16T10:42:29Z`. They ran again after the five task checkboxes above were reconciled and this subsection was appended. Both runs passed.
+
+- `run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTIONAL_LOCKS=0 python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md --base ebd3f76dc0b320d455917c593ff86526b58d0c77`: passed with “Story artifact validation passed.” Before this round's edits, the same command failed only on File List entries with no matching change against HEAD. This round's actual edits resolved four of them, and the five 2026-11-15 planning paths are labelled pre-existing in this round's File List.
+- `git diff --check`: passed with no whitespace errors.
+- Story 16.1 SHA-256: `f2754e0e24d56913ea757054f54ea77604eeba3000317abfe1040c73a61b651c`, unchanged.
+- Disposable read-only assertions, run as `run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTIONAL_LOCKS=0 python3 -I <scratch checker>` from outside the repository, all passed:
+  - Scope: exactly these five paths are modified, unstaged, all under `_bmad-output/implementation-artifacts/`, with no untracked files. Story 16.1, Story 16.2 and `_bmad-output/planning-artifacts/` are untouched.
+  - Repository state: HEAD and local `main` are still `ebd3f76dc0b320d455917c593ff86526b58d0c77`, and the checkout is still `main`. Nothing is staged. The `git ls-files -s` listing is byte-identical to the pre-edit listing, and all nine index gitlinks equal HEAD's.
+  - HEAD-byte preservation, comparing checked-out bytes from `git cat-file --filters`: in the procedure, context and ledger, the HEAD bytes are an unchanged prefix and content is only appended. In the spec, the HEAD bytes are an unchanged prefix apart from the parent-set frontmatter `review_loop_iteration`. Every byte of the parent's handoff is preserved apart from the five `- [ ]` → `- [x]` reconciliations in its task list, and the frontmatter equals the parent-set pre-edit frontmatter.
+  - Sprint: exactly two lines are added, the dated comment between the 16.2 and 16.3 rows and the pointer line directly after the trailing Epic 16 block's last line. Exactly two lines are replaced, the header `last_updated` (`2026-11-15` → `2026-11-16`) and the body `last_updated` (`11-16-2026 07:41` → `11-16-2026 10:42`), each in its existing format. The parsed YAML equals HEAD except `last_updated`, with `epic-16` in-progress, 16.1 done, 16.2 done and 16.3 in-progress.
+  - Format and links: all five files are CRLF-only with final newlines, and the added text has no trailing whitespace. The added text contains 15 relative Markdown links (raw count), to 8 unique targets (unique count); every file and anchor resolves. The sprint comment's spec anchor also resolves.
+  - Content: the spec disposition quotes both selected options and the parent-authored summary, corrects the summary for M, C and R, cites the full SHAs and run IDs listed above, and keeps the example direction as input only. It repeats none of the overclaims or the false release-timing fact that review loop 1 corrected. The procedure, context and ledger additions carry their required headings, links and states, and the ledger addition has exactly one `source_spec`/`summary`/`evidence` entry.
+
+No runtime code changed, so no tests were added or run. This build made no remote call, workflow dispatch, capture, staging, commit or push.
+
+**Review-fix pass.** After the coordinator's review, only this round's appended text was corrected, as of `2026-11-16T11:03:16Z`. The fixes scope the durability wording to this build and name its closing step, reporter and conversation; record the Git-interpretation recording slot; restate the four-working-hour rule and closure outcomes; add the parent-observed correct-course inputs; and use “at least until” for M's drift time. The two sprint comments now state the durability condition. Git commands were excluded for this pass, so the validator, `git diff --check` and the Git-based assertions above were not rerun; the parent runs full verification. A disposable non-Git check against the pre-round copies passed: every pre-round byte is preserved with the same exceptions as above plus the parent's later frontmatter `status` review-state change, all five files are CRLF-only with final newlines and no trailing whitespace in added text, the sprint YAML equals the pre-round copy except `last_updated`, and Story 16.1's SHA-256 is unchanged. The added text now contains 19 relative Markdown links (raw count) to 11 unique targets, all resolving.
+
+
+## Review Triage Log — terminal disposition review loop 2
+
+All three layers returned before triage:
+- Blind Hunter: floor 8, 18 findings.
+- Edge Case Hunter: 13 findings.
+- Verification Gap: no gaps, and one other finding.
+
+The reviewed content was the re-derived delta from HEAD `ebd3f76dc0b320d455917c593ff86526b58d0c77`. Rows matching a loop-1 row at the same location with the same claim are marked carried. The parent verified every other claim read-only before rendering its verdict.
+
+| Finding | Verdict and route | Verified evidence |
+|---|---|---|
+| TD2-BH-1 | medium; patch (G10) | The added “uncommitted” and “working tree” sentences have no time scope, so they become false inside the commit that carries them. No closing step or reporter was named. |
+| TD2-BH-2 | low; patch (G10) | The durability fallback named “the owner decision conversation” without a handle. This disposition's conversation is Claude Code session `f1c496f3-d5c9-4e70-9e18-2c6ba8cc8d69`, not the earlier thread `01a1e169-527e-7800-bc63-aa56bca0b1eb`. |
+| TD2-BH-3 | low; patch (G11) | The approved rule's bounded-disposition options include “request an explicit planning amendment”, which is bounded by its closure event. No time bound was supplied for the amendment, and the non-adopted procedure's “bounded due” suggestion stays unmet; the records now say so. |
+| TD2-BH-4 | medium; patch (G11) | PRD line 40, architecture line 398 and epics line 4059 require a disposition within four working hours of drift, missing authority, failed qualification, timeout or lineage conflict. The added claim that the rule “concerned the now-ended M drift handling” misstated an approved rule. That phrase came from the handoff, and the records now correct it. |
+| TD2-BH-5 | medium; patch (G12) | `git ls-tree` shows that C, `902fe13f…`, R, M, `11c8377a…`, `51d13970…` and `fb454047…` all select EventStore `fdb59895…` and Builds `73e60af8…`, with no root preset. Only the FrontComposer commit changed until `33e71036…`, a key input for the correct course that the records omitted. |
+| TD2-BH-6 | low; patch (G12) | Both later tuple moves were `/pushall` gitlink syncs. The reflog shows `c6233bda…` committed at 08:47:45Z while the owner question was open, and the 08:44Z ListAgents read did not show it. |
+| TD2-BH-7 | low; patch (G13) | “Until 05:01:35Z” used a commit time as the drift time. Push Quality 43807619578 was created at 05:01:57Z, so the records now say “at least until”, consistent with LP-BH-1. |
+| TD2-BH-8 | low; patch (G12) | Sprint action items E11R-AI-1 (open, gate G-3) and E12R-AI-2 (in-progress, “stop bundling pinned-submodule gitlink bumps”) exist and are relevant, but the records did not link them. |
+| TD2-BH-9 | low; rejected (carried TD-BH-1) | carried — the frontmatter `status: 'in-review'` is step 4's transient state. The verification claim was true when it ran, and the parent restores `in-progress` after review. |
+| TD2-BH-10 | low; patch (G12) | Diffing Builds `73e60af8…`→`801f268c…` also shows OpenAPI-pair gating, Folders 1.4.0→2.0.0 and a new SDK42 McpCli 2.0.1 pin. The records described only the EventStore lines. |
+| TD2-BH-11 | low; patch (G13) | The no-ref claim did not name the ref and could not speak for `origin`. The parent's `git ls-remote origin` at 10:56:43Z returned no `refs/heads/docs/epic-16-b34be924-records`. |
+| TD2-BH-12 | low; rejected (carried TD-BH-6) | carried — same banner location and the same “reads as executable” claim. A top-of-file pointer would break the append-only prefix. |
+| TD2-BH-13 | low; patch (G10) | The two added sprint comments omitted the 17:27:10Z durability condition. |
+| TD2-BH-14 | low; rejected | The validator merges same-named File List and Triage Log sections by design, and earlier rounds already use the same pattern. The duplicate planning paths are explicitly labelled pre-existing, and renaming the headings would rewrite preserved structure for an unlikely harm. |
+| TD2-BH-15 | low; patch (G13) | The ledger evidence attributed the deadline's expiry to the missing preconditions; it is the capture that never ran. The summary also omitted the scope requirement and G-8. |
+| TD2-BH-16 | low; patch (G11) | “Unmet within the two-hour window” framed M as a window-length problem. The preconditions were required before step 1 and were still unsupplied at the receipt. |
+| TD2-BH-17 | low; patch (G10) | The Git interpretation had no slot for recording the user's confirmation and no fallback if the user disagrees. |
+| TD2-BH-18 | low; rejected | The loop-1 triage rows quote each corrected wording. Scratchpad copies are non-durable by nature, so a path would add nothing durable, and the fix would edit this build's change log. |
+| TD2-ECH-1 | medium; patch (G10) | Same root cause as TD2-BH-1. |
+| TD2-ECH-2 | medium; patch (G10) | No reporter, and the validity of the disposition, was defined if durability fails. The disposition is made and preserved in the session either way; jpiquot reports any durability blocker there. |
+| TD2-ECH-3 | low; patch (G10) | Same root cause as TD2-BH-17. |
+| TD2-ECH-4 | false; rejected | Commit-subject classification (unmapped/interleaved) runs only in `--candidate` mode, at `eng/validate-story-artifacts.py:1540`. The recorded `--base` command never classifies subjects. |
+| TD2-ECH-5 | low; patch (G14) | Only the effect of a rejection was stated. The records now say adopted provisions govern on approval, and that withdrawal or revision, which the owner did not address, leaves the item open. |
+| TD2-ECH-6 | low; patch (G14) | “Until closure, no fresh attempt is scheduled” could read as a new bar. The records now describe it as the current state, with provision 5's explicit schedule still available. |
+| TD2-ECH-7 | low; patch (G12) | `git diff-tree` shows seven further gitlink moves at `33e71036…` and two at `c6233bda…` (Memories, Platform), which the records did not list. |
+| TD2-ECH-8 | low; patch (G12) | `deps.local.props` sets `HexalithEventStoreFromSource` to true and `deps.nuget.props` to false, so the SDK42 4.2.0 view applies only outside source mode. |
+| TD2-ECH-9 | false; rejected | The reflog shows the checkout moved to `main` at 08:47:49Z and the merge landed at 08:48:14Z. The blocking question returned just before the parent's 10:10:24Z clock read, so the answer post-dates the merge. |
+| TD2-ECH-10 | low; rejected (carried TD-BH-1) | carried — transient review status. |
+| TD2-ECH-11 | medium; patch (G11) | Same root cause as TD2-BH-4. |
+| TD2-ECH-12 | low; patch (G10) | “Received at 10:10:24Z” read as an exact instant. It is the first clock read after receipt, so the records now say “received by”. |
+| TD2-ECH-13 | low; patch (G10) | Same root cause as TD2-BH-13. |
+| TD2-VG-O1 | low; rejected (carried TD-VG-O1) | carried — the parent restores `in-progress` before presenting, and leaves any Git action to the user. |
+
+Grouping after the individual verdicts:
+- **G10:** durability scope, reporter, handle and Git fallback.
+- **G11:** the approved four-working-hour rule and the precondition framing.
+- **G12:** correct-course inputs (unchanged runtime triple, `/pushall` syncs, other gitlinks, full catalog change, build-mode gating, action items).
+- **G13:** timing and wording precision.
+- **G14:** closure semantics.
+
+No group's cause lies inside the frozen block, and each fix replaces or adds prose without changing a decision. They therefore route to patch, sent once to the same implementation agent. The handoff wording these records refine — the four-working-hour sentence, “within the two-hour window” and “Until closure, no fresh attempt is scheduled” — is superseded by the corrected records. The parent verified the patched tree as recorded below. No item is deferred.
+
+### Parent verification after review loop 2 — 2026-11-16
+
+The parent applied one direct correction, to the sprint 16-3 row comment added this round. The comment said “M expired while still main because its preconditions were never supplied”, the same causal slip as TD2-BH-15; it now says the capture never ran for lack of preconditions and the deadline expired while M was still main.
+
+The parent then ran these checks on the patched tree at `2026-11-16T11:03:50Z` and repeated them after this section was appended. All passed:
+
+- `run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTIONAL_LOCKS=0 python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md --base ebd3f76dc0b320d455917c593ff86526b58d0c77` printed “Story artifact validation passed.”, with no task-section notices.
+- `git diff --check` passed.
+- Story 16.1's SHA-256 is still `f2754e0e24d56913ea757054f54ea77604eeba3000317abfe1040c73a61b651c`.
+- HEAD is still `ebd3f76dc0b320d455917c593ff86526b58d0c77` and nothing is staged. The index gitlink entries equal HEAD's.
+- Exactly the five files under `_bmad-output/implementation-artifacts/` are modified. All five are CRLF-only with a final CRLF.
+- The parsed `sprint-status.yaml` equals HEAD apart from `last_updated`: `epic-16` and 16.3 are in-progress, 16.1 and 16.2 done.
+
+The patched records were read against each fix instruction. No runtime code changed and no test was added. This build made no Git mutation and no workflow dispatch; its only remote operations were the parent's read-only GitHub and `ls-remote` observations.
+
+## Git-target confirmation — 2026-11-16
+
+**Receipt observation.** `2026-11-16T11:49:32Z` is the parent's first UTC clock read after the answer arrived; it is not an authoring time. jpiquot answered the parent's completion summary with “1 yes;”. That summary's item 1 asked jpiquot to confirm the parent's interpretation of the earlier “Current branch, no commit” answer, recorded in the [M terminal disposition](#m-terminal-disposition--2026-11-16): workspace `/pushall` had merged `docs/story-16-2-not-invoked` into main as `ebd3f76dc0b320d455917c593ff86526b58d0c77` at `2026-11-16T08:48:14Z`, so the interpretation applies that answer to the `main` working tree. The answer **confirms** the interpretation. The trailing “;” supplied nothing further. Item 2 was informational, and nothing else is inferred.
+
+**Scope.** The confirmation authorizes no staging, commit or push. The durability condition in the M terminal disposition is unchanged: the first commit carrying these records that is reachable on `origin` closes it. If no such commit is reachable by `2026-11-16T17:27:10Z`, jpiquot as Release Owner reports missing repository durability as the remaining blocker in Claude Code session `f1c496f3-d5c9-4e70-9e18-2c6ba8cc8d69`.
+
+**Observation at that read.** Local `main` and HEAD are `ebd3f76d…`, with exactly the five record files modified and uncommitted. Remote-tracking `origin/main` is `9ea805dc7bbdf048b282e66e94115add295099a3`, two commits later: `a03ee98a…` “fix: align dependency seals and finite mutation inventory” and `9ea805dc…` “docs: activate repaired dependency source seal”. Neither touches the five record files, and neither moves the EventStore or Builds gitlink. Any later commit of these records must integrate with that newer main before it can reach `origin`; this build performs none of that.
+
+**Git target: confirmed (main working tree) · Durability: open until a commit reaches `origin` · Story 16.3 in-progress · G-3 open**
