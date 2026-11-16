@@ -45,13 +45,27 @@ run-with-temp bash -c '
   python3 eng/stryker_compat.py run happy-path || hfc_happy_status=$?
   hfc_error_status=0
   python3 eng/stryker_compat.py run error-handling || hfc_error_status=$?
+  hfc_happy_publication_status=0
+  pwsh ./eng/prepare-mutation-artifacts.ps1 -Segment happy-path || hfc_happy_publication_status=$?
+  hfc_error_publication_status=0
+  pwsh ./eng/prepare-mutation-artifacts.ps1 -Segment error-handling || hfc_error_publication_status=$?
+  hfc_lineage_status=0
+  pwsh ./eng/prepare-mutation-artifacts.ps1 -VerifyPublishedInputs || hfc_lineage_status=$?
   hfc_validation_status=0
   pwsh ./eng/validate-stryker-reports.ps1 -RequireCompatibilityProvenance || hfc_validation_status=$?
+  hfc_identity_status=0
+  python3 eng/check-mutation-triage.py || hfc_identity_status=$?
   if (( hfc_happy_status != 0 )); then exit "$hfc_happy_status"; fi
   if (( hfc_error_status != 0 )); then exit "$hfc_error_status"; fi
-  exit "$hfc_validation_status"
+  if (( hfc_happy_publication_status != 0 )); then exit "$hfc_happy_publication_status"; fi
+  if (( hfc_error_publication_status != 0 )); then exit "$hfc_error_publication_status"; fi
+  if (( hfc_lineage_status != 0 )); then exit "$hfc_lineage_status"; fi
+  if (( hfc_validation_status != 0 )); then exit "$hfc_validation_status"; fi
+  exit "$hfc_identity_status"
 '
 ```
+
+Worker preparation captures original-to-published file digests before normalization; verification binds the safe published copies before strict validation. Local replay and hosted aggregation retain the same lineage, exact matcher and failure propagation.
 
 The runner property builds xUnit 4.0.3 with its MTP entrypoint so Stryker can discover native `--filter` support and capture coverage in the test process. The Happy predicate is unchanged. Error handling selects the union of `MutationErrorHandling` and `MutationErrorRegression`, excluding `Performance`; the regression trait covers adverse assertions and invalid-to-valid recovery cases. Ordinary CI and Quality continue to run the complete test suite.
 

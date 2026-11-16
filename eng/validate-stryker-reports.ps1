@@ -10,6 +10,7 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+. (Join-Path $PSScriptRoot "mutation-artifact-policy.ps1")
 $ManifestFullPath = Join-Path $RepoRoot $ManifestPath
 $ReportRootFullPath = Join-Path $RepoRoot $ReportRoot
 $OutputFullPath = Join-Path $RepoRoot $OutputPath
@@ -61,14 +62,6 @@ function Get-PSObjectPropertyValue($Object, [string] $Name) {
   return $property.Value
 }
 
-function Normalize-ArtifactText([string] $Text) {
-  $normalizedRoot = [regex]::Escape($RepoRoot)
-  $text = [regex]::Replace($Text, $normalizedRoot, ".", [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-  $text = [regex]::Replace($text, 'C:\\Users\\[^\\]+', '<local-user>', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-  $text = [regex]::Replace($text, '/home/[^/\s]+|/Users/[^/\s]+', '<local-user>', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-  return $text
-}
-
 function Get-JsonValuesByName($Node, [string] $Name) {
   $values = New-Object System.Collections.Generic.List[object]
   if ($null -eq $Node) { return $values }
@@ -93,20 +86,6 @@ function Get-JsonValuesByName($Node, [string] $Name) {
   }
 
   return $values
-}
-
-function Test-UnsafeText([string] $Text) {
-  if ([string]::IsNullOrEmpty($Text)) { return $null }
-  if ($Text -match 'C:\\Users\\|/home/[^/\s]+|/Users/[^/\s]+') { return "machine-local path" }
-  # A one-character JavaScript object reference is code, not a credential literal.
-  # Keep quoted values and standalone markers under the ordinary strict scan.
-  $credentialText = [regex]::Replace($Text, '(?<prefix>[{,]\s*)[Tt]oken\s*:\s*[A-Za-z_$](?=\s*[},])', '${prefix}token-reference')
-  # A C# token variable initialized from another variable's .Token property
-  # contains no literal credential value. Preserve all ordinary/prefixed markers.
-  $credentialText = [regex]::Replace($credentialText, 'var\s+[A-Za-z_][A-Za-z0-9_]*Token\s*=\s*[A-Za-z_][A-Za-z0-9_]*\.Token\s*;', 'cancellation-reference')
-  if ($credentialText -match '(?i)(bearer\s+[a-z0-9._-]{12,}|api[_-]?key\s*[:=]|password\s*[:=]|secret\s*[:=]|(?<!cancellation)token\s*(?::|=(?!>|\\u003e)))') { return "secret-like value" }
-  if ($Text -match '(?i)tenant[_-]?id\s*[:=]\s*["'']?[0-9a-f-]{16,}') { return "tenant identifier" }
-  return $null
 }
 
 function Test-WildcardRepoPath([string] $Path, [string] $Pattern) {
@@ -312,9 +291,10 @@ foreach ($segment in $segments) {
 
   $inputSha256 = (Get-FileHash -LiteralPath $jsonReport.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
   $rawReportText = Get-Content -LiteralPath $jsonReport.FullName -Raw
-  $reportText = Normalize-ArtifactText $rawReportText
+  $publication = Get-PublicationArtifactText $rawReportText -Json
+  $reportText = $publication.Text
   $reportText | Set-Content -LiteralPath $jsonReport.FullName -Encoding utf8
-  $unsafe = Test-UnsafeText $reportText
+  $unsafe = $publication.Unsafe
   if ($unsafe) {
     Add-Failure "Mutation report '$($jsonReport.Name)' failed redaction scan: $unsafe."
   }
@@ -431,9 +411,10 @@ if (Test-Path -LiteralPath $ReportRootFullPath) {
   Get-ChildItem -LiteralPath $ReportRootFullPath -Recurse -File -ErrorAction SilentlyContinue |
     Where-Object { $textExtensions -contains $_.Extension.ToLowerInvariant() } |
     ForEach-Object {
-      $artifactText = Normalize-ArtifactText (Get-Content -LiteralPath $_.FullName -Raw)
+      $publication = Get-PublicationArtifactText (Get-Content -LiteralPath $_.FullName -Raw) -Json:($_.Extension -ieq ".json")
+      $artifactText = $publication.Text
       $artifactText | Set-Content -LiteralPath $_.FullName -Encoding utf8
-      $unsafe = Test-UnsafeText $artifactText
+      $unsafe = $publication.Unsafe
       if ($unsafe) {
         Add-Failure "Mutation artifact '$(ConvertTo-RepoPath $_.FullName)' failed redaction scan: $unsafe."
       }

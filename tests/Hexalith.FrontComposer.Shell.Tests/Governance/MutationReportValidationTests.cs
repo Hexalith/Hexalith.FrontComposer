@@ -62,6 +62,7 @@ public sealed class MutationReportValidationTests {
             string repository = FindRepositoryRoot();
             Directory.CreateDirectory(Path.Combine(fixture, "eng"));
             File.Copy(Path.Combine(repository, "eng/validate-stryker-reports.ps1"), Path.Combine(fixture, "eng/validate-stryker-reports.ps1"));
+            File.Copy(Path.Combine(repository, "eng/mutation-artifact-policy.ps1"), Path.Combine(fixture, "eng/mutation-artifact-policy.ps1"));
             string[] roots = ["src/Hexalith.FrontComposer.SourceTools/Parsing", "src/Hexalith.FrontComposer.SourceTools/Transforms"];
             foreach (string root in roots) {
                 Directory.CreateDirectory(Path.Combine(fixture, root));
