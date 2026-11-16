@@ -291,12 +291,17 @@ FrontComposer selects it.
    `.github/workflows/release.yml` and by the `prepare-domain-release@` pin in
    `.github/workflows/release-publish.yml`. `eng/release_contract.py builds` requires those two to equal
    `--approved`, which is the caller's own `env.BUILDS_EXECUTION_SHA`, and names the drifting file and
-   field. `CiGovernanceTests.ReleaseWorkflow_DelegatesToCallerOwnedPublisherAfterCiGate` enforces the
-   full equality set, which adds `env.BUILDS_EXECUTION_SHA`, `HEXALITH_BUILDS_EXECUTION_SHA` and the
-   `.hexalith/builds-execution` checkout `ref:`. The `release` rows of `evaluator_authorizations` in
+   field. `CiGovernanceTests.ReleaseWorkflow_DelegatesToCallerOwnedPublisherAfterCiGate` compares
+   matching 40-hex values across the full set, which adds `env.BUILDS_EXECUTION_SHA`,
+   `HEXALITH_BUILDS_EXECUTION_SHA` and the `.hexalith/builds-execution` checkout `ref:`. Its regexes can
+   miss an additional non-SHA or `-suffix` member, so it does not enforce every observed value.
+   The `release` rows of `evaluator_authorizations` in
    `eng/dependency-graph-policy.json` authorize this non-conformant caller. The CI pin is held by the
-   `domain-ci.yml@` pin in `.github/workflows/ci.yml`. Dated snapshot 2026-11-16: Release
-   `360a2b9c4e96809365a7de785be9a68152d5ac28`, CI `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
+   `domain-ci.yml@` pin in `.github/workflows/ci.yml`, authorized by the policy's `ci` rows. The
+   post-release pin is held by the `.hexalith/builds-execution` checkout `ref:` in
+   `.github/workflows/release-evidence.yml`, authorized by the policy's `post_release` rows. Dated
+   snapshot 2026-11-16: Release and post-release `360a2b9c4e96809365a7de785be9a68152d5ac28`,
+   CI `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
 3. **Builds catalog gitlink:** read with `git ls-tree <commit> references/Hexalith.Builds`. Dated
    snapshot 2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`.
 4. **Future split revision:** EXT-BUILDS-1. It does not yet exist.
@@ -351,9 +356,9 @@ currently not in effect (NC-35, NC-36). `HEXALITH_RELEASE_PUBLISH_ENABLED` must 
 a deny-only emergency stop; it can never authorize. No bounded risk exception is currently approved.
 
 **Observed nonconformance (authenticated API read 2026-11-16T15:55:29Z).** The variable reads `true`
-(updated 2026-10-05T06:13:40Z), and v4.6.0 through v6.0.0 were published without an approved
-exception. Register rows NC-35 and NC-36 route this to the Release Owner. Incident handling belongs
-to Story 17.2 and ledger rows to Story 17.14. `true` never authorizes, and neither does a green run
+(updated 2026-10-05T06:13:40Z); v4.5.0 (2026-09-19) and v4.6.0 through v6.0.0 were published
+after the 2026-09-09 halt adoption without an approved exception. Register rows NC-35 and NC-36 route
+this to the Release Owner. Incident handling belongs to Story 17.2 and ledger rows to Story 17.14. `true` never authorizes, and neither does a green run
 or environment approval. This record changes no variable, workflow or release posture.
 
 The **GOV-1 split implementation gate** is the canonical packet and approval-projection protocol in the

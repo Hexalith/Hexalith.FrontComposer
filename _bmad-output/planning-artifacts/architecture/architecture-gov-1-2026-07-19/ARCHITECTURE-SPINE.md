@@ -93,9 +93,9 @@ requires a separate dated Product Owner + Release Owner + Architect decision nam
 compensating controls, and revocation trigger; it cannot be inferred from environment approval.
 
 **Observed nonconformance (authenticated API read 2026-11-16T15:55:29Z, Story 17.1).** The blocker is
-still open. The variable reads literal `true` (updated 2026-10-05T06:13:40Z), and v4.6.0 through
-v6.0.0 were published without an approved exception. Literal `false` remains the only conforming
-value; `true`, a green run and environment approval never authorize. Register rows NC-34 to NC-36
+still open. The variable reads literal `true` (updated 2026-10-05T06:13:40Z); v4.5.0 (2026-09-19) and
+v4.6.0 through v6.0.0 were published after the 2026-09-09 halt adoption without an approved exception.
+Literal `false` remains the only conforming value; `true`, a green run and environment approval never authorize. Register rows NC-34 to NC-36
 route the caller-owned publisher, the flag and those publications to the Release Owner. Incident
 handling belongs to Story 17.2 and ledger rows to Story 17.14. This record changes no variable,
 workflow or release posture.

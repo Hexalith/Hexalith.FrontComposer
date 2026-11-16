@@ -77,3 +77,7 @@ green legacy run is not closure.
   are unchanged. NC-34 closes with NC-32 through SCB-2/SCB-3. NC-35 closes on the Release Owner's
   authenticated literal-`false` read (GOV-ACCEPT-1/OI-12). NC-36 closes through Story 17.2's incident
   disposition and Story 17.14's ledger rows. The gate's closed-register requirement covers all three.
+- Clarified 2026-11-16 (Story 17.1 review follow-up): NC-35 closes when the Release Owner or a
+  repository administrator sets literal `false` and records a subsequent authenticated API read of
+  literal `false` with its server timestamp (GOV-ACCEPT-1/OI-12). This clarifies the Release-Owner-only
+  observer shorthand above; all existing rows and companion history are preserved.

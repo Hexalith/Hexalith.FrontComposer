@@ -188,13 +188,18 @@ This section projects current state; it amends none of the decisions above. The
   `.github/workflows/release.yml` and the `prepare-domain-release@` pin in
   `.github/workflows/release-publish.yml`. `eng/release_contract.py builds` compares only those two with
   `--approved`, which is the caller's own `env.BUILDS_EXECUTION_SHA`.
-  `CiGovernanceTests.ReleaseWorkflow_DelegatesToCallerOwnedPublisherAfterCiGate` enforces the full
-  equality set, including `HEXALITH_BUILDS_EXECUTION_SHA` and the `.hexalith/builds-execution` checkout
-  `ref:`. The policy's `release` `evaluator_authorizations` rows authorize this non-conformant caller.
-  The CI pin is held by `domain-ci.yml@` in `.github/workflows/ci.yml`. Dated snapshot 2026-11-16: Release
-  `360a2b9c4e96809365a7de785be9a68152d5ac28`, CI `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
+  `CiGovernanceTests.ReleaseWorkflow_DelegatesToCallerOwnedPublisherAfterCiGate` compares matching
+  40-hex values across the full set, including `HEXALITH_BUILDS_EXECUTION_SHA` and the
+  `.hexalith/builds-execution` checkout `ref:`. Its regexes can miss an additional non-SHA or `-suffix`
+  member, so it does not enforce every observed value. The policy's `release` `evaluator_authorizations`
+  rows authorize this non-conformant caller.
+  The CI pin is held by `domain-ci.yml@` in `.github/workflows/ci.yml`, authorized by the policy's
+  `ci` rows. The post-release pin is held by the `.hexalith/builds-execution` checkout `ref:` in
+  `.github/workflows/release-evidence.yml`, authorized by the policy's `post_release` rows. Dated
+  snapshot 2026-11-16: Release and post-release `360a2b9c4e96809365a7de785be9a68152d5ac28`,
+  CI `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
 - **Builds catalog gitlink:** read with `git ls-tree <commit> references/Hexalith.Builds`. Dated
-  snapshot 2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`. It need not equal either pin.
+  snapshot 2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`. It need not equal any execution pin.
 - **Future split revision:** EXT-BUILDS-1. It is the owner-accepted immutable `split-publication-v1`
   successor required by decisions 16 and 19, and it does not yet exist.
 - **Candidate identities:** each is bound to its own evidence. No G-8 publication candidate is selected.
@@ -211,9 +216,9 @@ credentials. That job is not the split reusable of decision 19 (nonconformance r
 - Release Owner or repository-administrator action to set `HEXALITH_RELEASE_PUBLISH_ENABLED` to literal
   `false` and preserve an authenticated API observation remains open. The value is deny-only: literal
   `false` stops publication and `true` never authorizes it. **Observed nonconformance (authenticated API
-  read 2026-11-16T15:55:29Z):** the variable reads `true` (updated 2026-10-05T06:13:40Z), and v4.6.0
-  through v6.0.0 were published without an approved exception. Register rows NC-35 and NC-36 route this
-  to the Release Owner. Incident handling belongs to Story 17.2 and ledger rows to Story 17.14.
+  read 2026-11-16T15:55:29Z):** the variable reads `true` (updated 2026-10-05T06:13:40Z); v4.5.0
+  (2026-09-19) and v4.6.0 through v6.0.0 were published after the 2026-09-09 halt adoption without an
+  approved exception. Register rows NC-35 and NC-36 route this to the Release Owner. Incident handling belongs to Story 17.2 and ledger rows to Story 17.14.
 - Hexalith.Builds owner and Release Owner acceptance of the immutable split-reusable successor
   (EXT-BUILDS-1, which does not yet exist) entering AD-16 lineage remains open.
 - Product Owner and Release Owner approval of a measurable incident acknowledgement/containment target
@@ -236,9 +241,10 @@ credentials. That job is not the split reusable of decision 19 (nonconformance r
 - CI gains targeted graph-diff and affected-module cost only when pointers change.
 - Trust/profile/command expansion takes two changes: land reviewed inactive policy, then use it from a
   later base revision.
-- Production publication remains halted until the split reusable, owner decisions, incident runbook,
-  and GOV-1 split implementation gate close. `HEXALITH_RELEASE_PUBLISH_ENABLED=false` is the required
-  deny-only emergency stop during the halt and can never authorize publication.
+- Production publication must remain halted until the split reusable, owner decisions, incident
+  runbook, and GOV-1 split implementation gate close. The halt is currently not in effect (NC-35, NC-36).
+  `HEXALITH_RELEASE_PUBLISH_ENABLED=false` is the required deny-only emergency stop while the halt
+  requirement applies and can never authorize publication.
 - Literal hashes prove identity only; the immutable base/before policy is the independent authorization
   root for CI, Release, and post-release static evaluator closures.
 - Post-release verification remains bound to the original CI candidate across both workflow hops and

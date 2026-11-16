@@ -355,7 +355,8 @@ def validate_publication(
 RELEASE_WORKFLOW_PATH = ".github/workflows/release.yml"
 RELEASE_PUBLISHER_PATH = ".github/workflows/release-publish.yml"
 BUILDS_GITLINK_PATH = "references/Hexalith.Builds"
-_PUBLISHER_DELEGATION_LINE = "    uses: ./.github/workflows/release-publish.yml"
+_PUBLISHER_DELEGATION_LINE = f"    uses: ./{RELEASE_PUBLISHER_PATH}"
+_PUBLISHER_DELEGATION_RE = re.compile(rf"(?m)^{re.escape(_PUBLISHER_DELEGATION_LINE)}$")
 _PUBLISHER_ACTION_FIELD = "uses: Hexalith/Hexalith.Builds/Github/prepare-domain-release@"
 # Line-anchored so neither pattern crosses a newline or reads a commented-out line.
 _INPUT_PIN_RE = re.compile(r"(?m)^[ \t]+builds-execution-sha:[ \t]*(.*?)[ \t\r]*$")
@@ -394,9 +395,7 @@ def validate_builds_identity(workflow_text: str, publisher_text: str, selected_g
             f"cannot resolve the candidate Builds gitlink: {BUILDS_GITLINK_PATH} gitlink: "
             f"expected an exact lowercase 40-hex commit; actual {_shown([selected_gitlink])}"
         )
-    if re.findall(r"(?m)^    uses: \./\.github/workflows/release-publish\.yml$", workflow_text) != [
-        "    uses: ./.github/workflows/release-publish.yml"
-    ]:
+    if _PUBLISHER_DELEGATION_RE.findall(workflow_text) != [_PUBLISHER_DELEGATION_LINE]:
         # Raw lines keep indentation, quoting, comments and a stray CR visible in the diagnostic.
         delegations = [line for line in workflow_text.split("\n") if _WORKFLOW_USES_RE.match(line)]
         raise ContractError(
@@ -489,7 +488,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             root = pathlib.Path(args.root).resolve()
             result = subprocess.run(
-                ["git", "-C", str(root), "ls-tree", args.commit, "references/Hexalith.Builds"],
+                ["git", "-C", str(root), "ls-tree", args.commit, BUILDS_GITLINK_PATH],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -503,27 +502,30 @@ def main(argv: list[str] | None = None) -> int:
             if len(fields) < 3 or fields[0] != "160000":
                 raise ContractError(
                     f"cannot resolve the candidate Builds gitlink: {BUILDS_GITLINK_PATH} at commit "
-                    f"{_shown([args.commit])} is not a 160000 gitlink entry"
+                    f"{_shown([args.commit])} is not a 160000 gitlink entry; "
+                    f"actual {_shown([result.stdout.strip()] if result.stdout.strip() else [])}"
                 )
             workflow_bytes = subprocess.run(
-                ["git", "-C", str(root), "show", f"{args.commit}:.github/workflows/release.yml"],
+                ["git", "-C", str(root), "show", f"{args.commit}:{RELEASE_WORKFLOW_PATH}"],
                 capture_output=True,
                 check=False,
             )
             if workflow_bytes.returncode != 0:
                 raise ContractError(
                     f"cannot resolve the exact candidate release workflow: {RELEASE_WORKFLOW_PATH} "
-                    f"at commit {_shown([args.commit])}"
+                    f"at commit {_shown([args.commit])}; "
+                    f"actual {_shown([workflow_bytes.stderr.decode('utf-8', errors='replace').strip()])}"
                 )
             publisher_bytes = subprocess.run(
-                ["git", "-C", str(root), "show", f"{args.commit}:.github/workflows/release-publish.yml"],
+                ["git", "-C", str(root), "show", f"{args.commit}:{RELEASE_PUBLISHER_PATH}"],
                 capture_output=True,
                 check=False,
             )
             if publisher_bytes.returncode != 0:
                 raise ContractError(
                     f"cannot resolve the exact candidate release publisher: {RELEASE_PUBLISHER_PATH} "
-                    f"at commit {_shown([args.commit])}"
+                    f"at commit {_shown([args.commit])}; "
+                    f"actual {_shown([publisher_bytes.stderr.decode('utf-8', errors='replace').strip()])}"
                 )
             validate_builds_identity(
                 workflow_bytes.stdout.decode("utf-8-sig"),

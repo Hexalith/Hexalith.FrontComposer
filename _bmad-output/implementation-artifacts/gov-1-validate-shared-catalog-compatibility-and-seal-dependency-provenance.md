@@ -62,6 +62,10 @@ advanced to handoff v3 and manifest v4, and the spine's exact implementation gat
     `360a2b9c4e96809365a7de785be9a68152d5ac28`.
   - CI execution pin: held by `domain-ci.yml@` in `.github/workflows/ci.yml`. Snapshot 2026-11-16:
     `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
+  - Post-release execution pin: held by the `.hexalith/builds-execution` checkout `ref:` in
+    `.github/workflows/release-evidence.yml`. Snapshot 2026-11-16:
+    `360a2b9c4e96809365a7de785be9a68152d5ac28`. The policy's `ci` and `post_release`
+    `evaluator_authorizations` rows authorize the respective CI and post-release closures.
   - Builds catalog gitlink: read with `git ls-tree <commit> references/Hexalith.Builds`. Snapshot
     2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`.
   - Future split revision: EXT-BUILDS-1, which does not yet exist.
@@ -70,9 +74,9 @@ advanced to handoff v3 and manifest v4, and the spine's exact implementation gat
   protected job runs the Builds `prepare-domain-release` action over the checked-out candidate. It is
   legacy and **not G-8 conformant** (nonconformance register NC-34).
 - **Observed nonconformance (authenticated API read 2026-11-16T15:55:29Z).** The flag reads `true`
-  (updated 2026-10-05T06:13:40Z), and v4.6.0 through v6.0.0 were published without an approved
-  exception. Rows NC-35 and NC-36 route this to the Release Owner. Incident handling belongs to Story
-  17.2 and ledger rows to Story 17.14. `true` never authorizes.
+  (updated 2026-10-05T06:13:40Z); v4.5.0 (2026-09-19) and v4.6.0 through v6.0.0 were published
+  after the 2026-09-09 halt adoption without an approved exception. Rows NC-35 and NC-36 route this to
+  the Release Owner. Incident handling belongs to Story 17.2 and ledger rows to Story 17.14. `true` never authorizes.
 
 ## Acceptance Criteria
 
@@ -180,7 +184,7 @@ condition pass.
 | --- | --- | --- | --- |
 | Accept AD-19, the production-release halt, and the no-exception posture | Product Owner + Release Owner | Open; architecture adoption does not imply acceptance | Dated decision citing AD-19 and PRD D-16/G-8 |
 | Accept the immutable split-reusable successor into AD-16 lineage | Hexalith.Builds owner + Release Owner | Open; the successor is EXT-BUILDS-1, which does not yet exist; `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` is predecessor only | Accepted revision and exact closure evidence |
-| Apply and verify the literal-false emergency stop | Release Owner or repository administrator | Open. The authenticated read at 2026-11-16T15:55:29Z returned literal `true`, updated 2026-10-05T06:13:40Z. v4.6.0 through v6.0.0 were published without an approved exception (NC-35, NC-36) | Authenticated API value and server timestamp |
+| Apply and verify the literal-false emergency stop | Release Owner or repository administrator | Open. The authenticated read at 2026-11-16T15:55:29Z returned literal `true`, updated 2026-10-05T06:13:40Z. v4.5.0 (2026-09-19) and v4.6.0 through v6.0.0 were published after the 2026-09-09 halt adoption without an approved exception (NC-35, NC-36) | Authenticated API value and server timestamp |
 | Approve incident acknowledgement/containment target and runbook | Product Owner + Release Owner | Open | Approved `docs/release-incident-response.md` plus exercise/tabletop evidence |
 | Establish the no-bypass protected-main process | Release Owner | Open | Authenticated ruleset/protection evidence |
 | Authorize a bounded risk exception | Product Owner + Release Owner + Architect | No exception authorized | Separate dated decision with scope, expiry, evidence, compensating controls, and revocation trigger |

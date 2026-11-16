@@ -26,9 +26,10 @@ release, and neither does a green run nor a production-environment approval.
 No bounded risk exception is approved. Keep the variable at literal `false`
 while the halt applies.
 
-As of 2026-11-16 the variable reads `true` (updated 2026-10-05), and v4.6.0
-through v6.0.0 were published without an approved exception. That is a
-recorded nonconformance routed to the Release Owner. It does not authorize
+As of 2026-11-16 the variable reads `true` (updated 2026-10-05); v4.5.0
+(2026-09-19) and v4.6.0 through v6.0.0 were published after the 2026-09-09
+halt adoption without an approved exception. That is a recorded nonconformance
+routed to the Release Owner. It does not authorize
 any further release.
 
 ## Trusted publishing policy
@@ -58,12 +59,13 @@ Record the individual **NuGet username that created the policy**, then set the
 FrontComposer repository variable `NUGET_USER` to that exact username. It is
 not the GitHub actor, an email address, or the `Hexalith` organization name.
 
-A configured policy, a set `NUGET_USER` and green exact-source push CI are
+A configured policy, a set `NUGET_USER`, successful exact-source push CI and
+a successful push Quality run (`quality.yml`) for that same commit are
 prerequisites only. They do not lift the halt, and turning the variable to
 `true` does not authorize a release. Dispatch `release.yml` only from the
 current `main` commit; the workflow rejects a source once `main` has advanced.
-When it runs, the workflow rechecks the commit and its successful CI run,
-prepares and seals the candidate, obtains the temporary NuGet credential when
+When it runs, the workflow rechecks the commit and its successful CI and Quality
+runs, prepares and seals the candidate, obtains the temporary NuGet credential when
 the variable is exactly `true`, publishes, and checks the GitHub Release.
 `release-evidence.yml` independently verifies the published NuGet bytes and
 repository signatures. None of these checks makes the legacy path conformant.

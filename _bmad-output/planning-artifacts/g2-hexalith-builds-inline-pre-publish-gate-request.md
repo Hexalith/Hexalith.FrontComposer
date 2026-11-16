@@ -16,8 +16,12 @@
     `360a2b9c4e96809365a7de785be9a68152d5ac28`.
   - CI execution pin: held by `domain-ci.yml@` in `.github/workflows/ci.yml`. Snapshot 2026-11-16:
     `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
+  - Post-release execution pin: held by the `.hexalith/builds-execution` checkout `ref:` in
+    `.github/workflows/release-evidence.yml`. Snapshot 2026-11-16:
+    `360a2b9c4e96809365a7de785be9a68152d5ac28`. The policy's `ci` and `post_release`
+    `evaluator_authorizations` rows authorize the respective CI and post-release closures.
   - Builds catalog gitlink: read with `git ls-tree <commit> references/Hexalith.Builds`. Snapshot
-    2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`. It need not equal either pin.
+    2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`. It need not equal any execution pin.
   - Required split revision: EXT-BUILDS-1, the outcome requested below. It does not yet exist.
   - Candidate identities: each is bound to its own evidence.
 
@@ -145,15 +149,15 @@ author-unsigned and NuGet.org repository-signs uploads.
 
 `HEXALITH_RELEASE_PUBLISH_ENABLED` remains a common deny-only control. Any value other than literal
 `true` prevents publication; it never grants authority and never compensates for an invalid candidate,
-policy, evaluator, handoff, manifest, attestation/fallback, or privilege boundary. During the current
-halt, FrontComposer requires literal `false`. A Release Owner or repository administrator must set and
-verify that value through an authenticated API observation before any release approval or dispatch.
+policy, evaluator, handoff, manifest, attestation/fallback, or privilege boundary. While the halt
+requirement applies, FrontComposer requires literal `false`; the halt is currently not in effect.
+A Release Owner or repository administrator must set and verify that value through an authenticated API observation before any release approval or dispatch.
 `true` never authorizes, and no bounded risk exception is approved.
 
 **Observed nonconformance (authenticated API read 2026-11-16T15:55:29Z).** The variable reads `true`
-(updated 2026-10-05T06:13:40Z), and FrontComposer v4.6.0 through v6.0.0 were published without an
-approved exception. The GOV-1 nonconformance register records this as NC-34 to NC-36, routed to the
-Release Owner. This request changes no variable or workflow.
+(updated 2026-10-05T06:13:40Z); FrontComposer v4.5.0 (2026-09-19) and v4.6.0 through v6.0.0 were
+published after the 2026-09-09 halt adoption without an approved exception. The GOV-1 nonconformance
+register records this as NC-34 to NC-36, routed to the Release Owner. This request changes no variable or workflow.
 
 ## GOV-1 Split Implementation Gate
 

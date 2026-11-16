@@ -541,43 +541,32 @@ class ReleaseContractTests(unittest.TestCase):
                 {"ok": True, "builds_catalog_sha": catalog, "builds_execution_sha": approved},
                 json.loads(stdout.getvalue()),
             )
-    def test_builds_cli_rejects_missing_gitlink(self) -> None:
+    def test_builds_cli_reports_missing_or_non_gitlink_actual_entry(self) -> None:
         approved = "a" * 40
-        workflow = (
-            "uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@" + approved + "\n"
-            "      builds-execution-sha: " + approved + "\n"
-        )
-        with tempfile.TemporaryDirectory() as temporary:
-            root = pathlib.Path(temporary)
-            subprocess.run(["git", "init", "-q"], cwd=root, check=True, capture_output=True)
-            subprocess.run(["git", "config", "user.email", "builds-identity@example.test"], cwd=root, check=True)
-            subprocess.run(["git", "config", "user.name", "Builds Identity Fixture"], cwd=root, check=True)
-            workflow_path = root / ".github" / "workflows" / "release.yml"
-            workflow_path.parent.mkdir(parents=True, exist_ok=True)
-            workflow_path.write_text(workflow, encoding="utf-8")
-            subprocess.run(["git", "add", "."], cwd=root, check=True, capture_output=True)
-            subprocess.run(
-                ["git", "commit", "-q", "-m", "test: seed release workflow without Builds gitlink"],
-                cwd=root,
-                check=True,
-                capture_output=True,
-            )
-            commit = subprocess.run(
-                ["git", "rev-parse", "HEAD"],
-                cwd=root,
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.strip()
-            stderr = io.StringIO()
-            with contextlib.redirect_stderr(stderr):
-                status = rc.main(["builds", "--root", str(root), "--commit", commit, "--approved", approved])
-            self.assertEqual(1, status)
-            self.assertIn("cannot resolve the candidate Builds gitlink", stderr.getvalue())
-            self.assertIn(
-                f"references/Hexalith.Builds at commit {json.dumps(commit)} is not a 160000 gitlink entry",
-                stderr.getvalue(),
-            )
+        workflow, publisher = self._builds_identity_sources(approved, approved)
+        files = {".github/workflows/release.yml": workflow, ".github/workflows/release-publish.yml": publisher}
+        for label, extra_files in (
+            ("missing gitlink", {}),
+            ("regular file at gitlink path", {"references/Hexalith.Builds": "not a submodule\n"}),
+        ):
+            with self.subTest(label), tempfile.TemporaryDirectory() as temporary:
+                root = pathlib.Path(temporary)
+                commit = self._builds_fixture_commit(root, {**files, **extra_files}, None)
+                stderr = self._builds_cli_rejects(
+                    ["builds", "--root", str(root), "--commit", commit, "--approved", approved]
+                )
+                self.assertIn(
+                    f"references/Hexalith.Builds at commit {json.dumps(commit)} is not a 160000 gitlink entry; actual ",
+                    stderr,
+                )
+                if extra_files:
+                    blob = subprocess.run(
+                        ["git", "hash-object", "references/Hexalith.Builds"], cwd=root,
+                        check=True, capture_output=True, text=True,
+                    ).stdout.strip()
+                    self.assertIn(json.dumps(f"100644 blob {blob}\treferences/Hexalith.Builds"), stderr)
+                else:
+                    self.assertIn("actual none", stderr)
 
     @staticmethod
     def _builds_fixture_commit(root: pathlib.Path, files: dict[str, str], gitlink: str | None) -> str:
@@ -641,6 +630,16 @@ class ReleaseContractTests(unittest.TestCase):
                     ["builds", "--root", str(root), "--commit", commit, "--approved", approved]
                 )
                 self.assertIn(fragment + json.dumps(commit), stderr)
+                missing = ".github/workflows/release.yml" if "workflow" in label else ".github/workflows/release-publish.yml"
+                git_error = subprocess.run(
+                    ["git", "-C", str(root), "show", f"{commit}:{missing}"],
+                    capture_output=True, check=False,
+                )
+                self.assertNotEqual(0, git_error.returncode)
+                self.assertIn(
+                    "actual " + json.dumps(git_error.stderr.decode("utf-8", errors="replace").strip()),
+                    stderr,
+                )
 
     def test_builds_cli_rejects_label_commit_before_git_and_reports_git_failure(self) -> None:
         approved = "a" * 40

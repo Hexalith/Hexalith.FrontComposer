@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 11-16-2026 19:07
+last_updated: 11-16-2026 19:58
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -282,7 +282,7 @@ development_status:
   epic-16-retrospective: optional
 
   epic-17: in-progress
-  17-1-i-gov-src-1-reconcile-publication-governance-sources: in-progress
+  17-1-i-gov-src-1-reconcile-publication-governance-sources: review
   17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook: backlog
   17-3-i-gov-b-select-the-accepted-split-publication-topology: backlog
   17-4-i-gov-c-remove-publication-authority-from-candidate-executio: backlog
@@ -480,6 +480,15 @@ action_items:
         than 4.1.1. REL-AI-1 stays open for owner hash confirmation and sign-off.
         Current main has no successful completed push CI. Further publication remains
         unauthorized."
+      - "2026-11-16 Story 17.1: The release_control retirement statement above is historical.
+        The current caller-owned release-publish.yml again consults HEXALITH_RELEASE_PUBLISH_ENABLED.
+        The authenticated API read at 2026-11-16T15:55:29Z returned true, updated
+        2026-10-05T06:13:40Z (NC-35); the required production halt is not in effect.
+        v4.5.0 (2026-09-19) and v4.6.0 through v6.0.0 were published after the 2026-09-09
+        halt adoption without an approved exception (NC-36). Literal false remains
+        the deny-only stop; true, a green run and production approval never authorize.
+        Incident handling belongs to Story 17.2 and evidence-backed ledger rows to
+        Story 17.14. No workflow, variable or release posture changed."
     trigger_evidence:
       - "v3.2.1 runs: CI 29368280737, Release 29368461177, Evidence 29368682294; source
         e0a56f81d07024097db976ab20371ca8e3ca6394; release/tag d5935b833bc641475568aee573c584f0043afc83"
@@ -1267,7 +1276,7 @@ approved_change_backlog:
         - {id: "GOV-H", kind: "implementation", status: "proposed"}
         - {id: "GOV-I", kind: "implementation-evidence", status: "proposed"}
         - {id: "GOV-J", kind: "approval-evidence", status: "open"}
-        - {id: "GOV-SRC-1", kind: "documentation-traceability", status: "open", reconciled: "2026-11-16",
+        - {id: "GOV-SRC-1", kind: "documentation-traceability", status: "review", reconciled: "2026-11-16",
           evidence: "_bmad-output/implementation-artifacts/spec-17-1-reconcile-publication-governance-sources.md#source-digest-record"}
         - {id: "GOV-ACCEPT-1", kind: "approval", status: "open"}
         - {id: "GOV-ACCEPT-2", kind: "approval", status: "open"}
