@@ -2,7 +2,7 @@
 title: 'Story 17.1: Reconcile Publication-Governance Sources'
 type: 'chore'
 created: '2026-11-16'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 story_id: '17.1'
 story_key: '17-1-i-gov-src-1-reconcile-publication-governance-sources'
@@ -128,6 +128,41 @@ Rejected:
 - BH-17, AA-8 (rejected, because the fix edits this spec): the frontmatter and File List statuses disagree with `sprint-status.yaml`. This is carried from pass 1 BH-17/ECH-12, and the review's status sync resolves it.
 - AA-7 (false): the appended companion bullet rewrites no existing row. The frozen rule forbids rewriting rows, not adding a bullet, and pass 1 BH-15 already patched it.
 
+### Review Findings (pass 4)
+
+Review pass 4, 2026-11-16. Layers: Blind Hunter (BH), Edge Case Hunter (ECH), Verification Gap (VG) and Acceptance Auditor (AA). They reviewed the fix delta `ba2edb3c1ddf3e6a0755ff02bf2275cf7c83cb49..f8c15a483257d74686bd1feabc8dc627d7d6648b`, which holds the pass-2 and pass-3 fixes (`f8c15a48` combines them). The delta excludes this spec, `deferred-work.md` and `epic-17-context.md`. At `f8c15a48` all nine Source Digest Record rows reproduce, by SHA-256 and by blob ID. `tests/eng/test_release_contract.py` runs 37 tests, all passing, and the live `builds` command exits 0.
+
+- [ ] [Review][Patch] The post-release authority citations omit open NC-7 and NC-33. `architecture.md`, FC-DEP-1, the G2 request and the GOV-1 story say the `post_release` rows authorize the post-release closure; addendum row 2c carries NC-33 but not NC-7. The `post_release` row matching the current `release-evidence.yml` blob (sha256 `5cc696fc168000e7d3995a2db3c415761c69e53be21497dffbb5989197a3f524`) names an unreachable Builds `domain-release.yml` reusable, while AD-12 requires `reusable: null` — BH-1, BH-2, AA-1 (medium) [_bmad-output/planning-artifacts/architecture.md:302]
+- [ ] [Review][Patch] The PRD FR-24 identity paragraph names only the Release and CI pins, and `architecture.md` says the gitlink "need not equal either CI or Release execution pin". G-2 and the identity register name three pins — ECH-7, BH-4, AA-2 (low) [_bmad-output/planning-artifacts/prd.md:489]
+- [ ] [Review][Patch] The PRD G-2 evidence column omits the identity register and every pin-holding workflow except `release.yml`. The pass condition now cites pins held in `release-publish.yml`, `ci.yml` and `release-evidence.yml` — BH-5 (low) [_bmad-output/planning-artifacts/prd.md:34]
+- [ ] [Review][Patch] The FC-DEP-1 Consequences correction ("The halt is currently not in effect") is undated text in approved decision content, outside the dated 2026-11-16 section. Date it as a 2026-11-16 observation — BH-8 (low) [_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md:244]
+- [ ] [Review][Patch] The REL-AI-1 progress entry marks only the variable-retirement clause historical. `release_control` still names successful push CI as the only run prerequisite and omits the successful push Quality run that `release.yml` authenticates — BH-10 (low) [_bmad-output/implementation-artifacts/sprint-status.yaml:483]
+- [ ] [Review][Patch] The pass-2 BH-15 de-duplication is incomplete. `_ACTION_PIN_RE` repeats the `Hexalith/Hexalith.Builds/Github/prepare-domain-release@` literal from `_PUBLISHER_ACTION_FIELD`, and `_INPUT_PIN_RE` repeats the `builds-execution-sha` field named in `members`, so a renamed field can drift from the pattern that reads it — BH-12, AA-4 (low) [eng/release_contract.py:362]
+- [ ] [Review][Patch] The rewritten gitlink CLI test no longer asserts the `cannot resolve the candidate Builds gitlink:` prefix that the replaced test asserted. A probe that mutated the prefix left the test green — ECH-5 (low) [tests/eng/test_release_contract.py:559]
+- [ ] [Review][Patch] Identity register row 2c omits the introducing commit that rows 2a, 2b and 3 carry. `release-evidence.yml` took `360a2b9c4e96809365a7de785be9a68152d5ac28` in FrontComposer commit `15577f42be42539b5e917cb7ae6716c2c11ac534` (2026-10-18) — ECH-6 (low) [_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md:43]
+- [ ] [Review][Patch] The history line dates `3f0e3595be693fce56a37648c0bd0f89390f5fd3` to 2026-08-11, which is the cited spec's `created:` date. The Builds commit and its FrontComposer pin `e787690fa6b48973ee83fd9c9b5127c424179dce` are both dated 2026-08-14 — AA-3 (low) [_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md:48]
+- [ ] [Review][Patch] PRD D-6 says "reconciled 2026-11-16" twice in one cell — BH-15 (low) [_bmad-output/planning-artifacts/prd.md:696]
+
+Rejected:
+- BH-2, second half (false): `architecture.md` and FC-DEP-1 already say `eng/release_contract.py builds` requires the input and the action pin to equal `--approved`. Leaving out the addendum's follow-on sentence creates no disagreement.
+- BH-3 (low; carried rationale of pass-2 ECH-1/ECH-2/BH-1): a third-member decoy that `CiGovernanceTests` misses still needs a workflow edit, which changes a blob pinned by `evaluator_authorizations`. Row 2a already states that the C# check does not enforce every observed value.
+- BH-4, D-11 part (false): D-11 cites the execution pins through the identity register and makes no complete-list claim.
+- BH-6 (false): every paragraph lists v4.5.0 (2026-09-19) as published after the 2026-09-09 adoption, so none dates the deviation to October. NC-35 records the 2026-09-09 `true` read.
+- BH-7 (false): no live paragraph attributes v4.5.0 to the NC-34 path or to a flag value. Each cites NC-36, which carries the "then-legacy Builds reusable" and "not observed" qualifiers.
+- BH-9 (false): D-16 is the dated 2026-09-09 decision record of what the posture requires. G-8, which D-16 names, records the observed deviation. This spec's Code Map classifies D-16 as correct.
+- BH-10, `due` part (low): the missed REL-AI-1 due date is incident and ledger scope, owned by Stories 17.2 and 17.14.
+- BH-11 (false): row 2c makes no enforcement claim, and "held by" is accurate: the literal lives in `release-evidence.yml`.
+- BH-13 (false): the `ls-tree` failure message already shows git's stderr. The missing `actual` keyword names no harm.
+- ECH-1 and the empty-stderr part of BH-13 (low): `git show` writes a fatal message on every failure, so empty stderr needs a killed process, and the fix adds a branch.
+- BH-14 (low/false). (a) The non-160000 branch rejects every mode other than 160000, and the regular-file case already covers it. (b) False: `git hash-object <path>` applies the same attributes and filters as `git add`. (c) False: `assertNotEqual(0, git_error.returncode)` fails loudly if the label selects a file that exists.
+- BH-15, line wrap (false): Markdown rendering is unchanged, no lint gate covers `_bmad-output`, and `validate-docs.ps1` passes on the docs page.
+- ECH-2 (low; carried class of pass-2 ECH-3 and pass-3 BH-3): a tree or symlink at the workflow path fails closed with a delegation message. An object-type guard is beyond a direct correction.
+- ECH-3 (carried, pass 1 ECH-8 and pass 2 ECH-4): a non-UTF-8 blob raises a traceback.
+- ECH-4 (carried, pass 2 ECH-3 and pass 3 BH-3): a 40-hex tree or tag ID passes `--commit`.
+- ECH-5, check-order part (false): which of the gitlink and publisher errors appears first is not specified behavior, and both fail closed.
+- VG-1 (low): GOV-SRC-1 `status: "review"` is outside the backlog header's documented list. `UX-E` sets the precedent, no code reads the field, and the fix would change either the shared vocabulary or this spec's recorded tracking state.
+- AA-5 (rejected, because the fix edits this spec): the Line endings note says the addendum's four LF lines are untouched. L17 (Privilege boundary) was rewritten and kept LF. Blob digests are unaffected.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -182,6 +217,37 @@ All three layers reviewed the working-tree diff from `eddca353d566554af527064925
 | 3 | BH-10 the missing-source fixture assumes Git's English error text | low | patch | The assertion hard-codes an English fatal message while the implementation preserves Git stderr under its ambient locale. Compare with the actual Git diagnostic and keep the separate path/commit checks. |
 | 3 | ECH-1 quoted input/action declarations bypass pin collection | low | reject | Same location and claim as BH-1 and the explicit pass-2 rejected quoted/case-variant finding. Preserve that decision; generalized YAML parsing is not a direct correction for this unlikely policy-guarded case. |
 | 3 | VG-1 no automated committed-caller acceptance test | medium | defer (carried) | Carried from the pass-2 human-approved VG-1/BH-14 deferral. The gate fails closed before production. Revisit with the Epic 17 split caller switch; do not add a duplicate deferral or a workflow-YAML assertion test. |
+
+### Review pass 4 — 2026-11-16
+
+Four layers reviewed the fix delta `ba2edb3c1ddf3e6a0755ff02bf2275cf7c83cb49..f8c15a483257d74686bd1feabc8dc627d7d6648b`, excluding this spec, `deferred-work.md` and the epic context. Full evidence for each row is under Review Findings (pass 4).
+
+| Pass | Finding | Verdict | Route | Evidence |
+| --- | --- | --- | --- | --- |
+| 4 | BH-1, BH-2 (NC-33 part), AA-1: post-release authority citations omit NC-7 and NC-33 | medium | patch | The `post_release` row for blob `5cc696fc…` names a non-null `domain-release.yml` reusable. `grep -c NC-33` returns 0 in four sources. |
+| 4 | BH-2, follow-on sentence | false | reject | Both sources already state the exact two-member comparison. |
+| 4 | BH-3: the three C#-only members have no owner | low | reject (carried) | Pass-2 ECH-1/ECH-2/BH-1 rationale: the workflow blobs are pinned by policy. |
+| 4 | ECH-7, BH-4, AA-2: post-release pin missing from FR-24 and `architecture.md` L281 | low | patch | G-2 and the register name three pins. The D-11 part is false. |
+| 4 | BH-5: G-2 evidence column incomplete | low | patch | Lists only `release.yml` among the workflows. |
+| 4 | BH-6: flag already `true` at adoption | false | reject | Every paragraph includes v4.5.0 (2026-09-19). |
+| 4 | BH-7: v4.5.0 publication path | false | reject | No paragraph names its path; NC-36 qualifies it. |
+| 4 | BH-8: FC-DEP-1 Consequences correction undated | low | patch | Approved decision text, outside the dated section. |
+| 4 | BH-9: D-16 states the halt as fact | false | reject | Dated decision record; G-8 carries the deviation. |
+| 4 | BH-10: REL-AI-1 entry partial | low | patch | `release_control` omits the Quality prerequisite. The `due` part is rejected. |
+| 4 | BH-11: row 2c names no check | false | reject | Row 2c makes no enforcement claim. |
+| 4 | BH-12, AA-4: field literals duplicated in the pin regexes | low | patch | `_ACTION_PIN_RE` and `_INPUT_PIN_RE` hard-code the field names. |
+| 4 | BH-13: inconsistent resolution diagnostics | false | reject | The stderr is already shown. The empty-stderr part goes with ECH-1. |
+| 4 | BH-14: test gaps (tree entry, hash-object oracle, label-derived path) | low/false | reject | Generic mode check, same filters, loud failure. |
+| 4 | BH-15: wrap and D-6 duplicate | false/low | reject/patch | The wrap is not rendered or linted. The D-6 duplicate is real. |
+| 4 | ECH-1: empty `git show` stderr renders `""` | low | reject | Needs a killed process; the fix adds a branch. |
+| 4 | ECH-2: tree or symlink at a workflow path | low | reject (carried class) | Fails closed; would need an object-type guard. |
+| 4 | ECH-3: non-UTF-8 traceback | low | reject (carried) | Pass 1 ECH-8, pass 2 ECH-4. |
+| 4 | ECH-4: tree or tag `--commit` | low | reject (carried) | Pass 2 ECH-3, pass 3 BH-3. |
+| 4 | ECH-5: prefix assertion lost | low | patch | Mutation probe survived. The order part is false. |
+| 4 | ECH-6: row 2c lacks its introducing commit | low | patch | `15577f42…` (2026-10-18). |
+| 4 | VG-1: `review` not in the backlog status vocabulary | low | reject | `UX-E` precedent; no reader. |
+| 4 | AA-3: `3f0e3595…` dated by the spec, not the selection | low | patch | Builds commit and FrontComposer pin `e787690f…` are dated 2026-08-14. |
+| 4 | AA-5: LF-line claim in Implementation Notes | low | reject | The fix edits this spec. |
 
 ## Verification
 
