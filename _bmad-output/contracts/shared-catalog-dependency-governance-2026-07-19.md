@@ -196,10 +196,15 @@ This section projects current state; it amends none of the decisions above. The
   The CI pin is held by `domain-ci.yml@` in `.github/workflows/ci.yml`, authorized by the policy's
   `ci` rows. The post-release pin is held by the `.hexalith/builds-execution` checkout `ref:` in
   `.github/workflows/release-evidence.yml`, authorized by the policy's `post_release` rows.
-  Those rows remain non-conformant (NC-7): the row matching the current caller blob names an
-  unreachable Builds `domain-release.yml` reusable, while AD-12 requires `reusable: null` and
-  caller-reachable sources only. NC-33 also remains open: verification/ledger decisions can execute
-  ambient or candidate helper bytes rather than only the authorized closure. Dated snapshot
+  Those rows remain non-conformant (NC-7, recorded 2026-09-08). Dated policy snapshot 2026-11-16: all
+  seven `post_release` rows name a Builds `domain-release.yml` reusable, while AD-12 requires
+  `reusable: null` and caller-reachable sources only. They include the row matching the current
+  `release-evidence.yml` blob (sha256 `5cc696fc168000e7d3995a2db3c415761c69e53be21497dffbb5989197a3f524`),
+  whose reusable is unreachable because `release-evidence.yml` never calls it. NC-6 also remains open:
+  the `release-evidence.yml` verify step reloads no policy and performs no `post_release`
+  authorization, so no check consults these rows yet. NC-33 also remains open: verification/ledger
+  decisions can execute ambient or candidate helper bytes rather than only the authorized closure.
+  Dated snapshot
   2026-11-16: Release and post-release `360a2b9c4e96809365a7de785be9a68152d5ac28`,
   CI `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
 - **Builds catalog gitlink:** read with `git ls-tree <commit> references/Hexalith.Builds`. Dated
@@ -246,7 +251,7 @@ credentials. That job is not the split reusable of decision 19 (nonconformance r
 - Trust/profile/command expansion takes two changes: land reviewed inactive policy, then use it from a
   later base revision.
 - Production publication must remain halted until the split reusable, owner decisions, incident
-  runbook, and GOV-1 split implementation gate close. Observation 2026-11-16: the halt is not in effect
+  runbook and response target, and GOV-1 split implementation gate close. Observation 2026-11-16: the halt is not in effect
   (NC-35, NC-36).
   `HEXALITH_RELEASE_PUBLISH_ENABLED=false` is the required deny-only emergency stop while the halt
   requirement applies and can never authorize publication.

@@ -14,8 +14,10 @@ candidate-controlled code while it holds publication authority. The target
 architecture is a secretless candidate builder plus a separate protected
 publisher that runs only pinned owner code and treats the packages as data.
 Architecture has adopted it; Product Owner and Release Owner acceptance is
-pending. Production releases must stay halted until G-8 closes: the split
-boundary is accepted and implemented, incident readiness is established with
+pending. Production releases must stay halted until G-8 closes: an
+owner-accepted Hexalith.Builds split revision (EXT-BUILDS-1) enters the approved
+Builds lineage (AD-16) through delayed activation, the split boundary is
+accepted and implemented, incident readiness is established with
 an approved runbook and response target, required owner decisions are recorded,
 and the GOV-1 split implementation gate passes with its required conformance
 evidence. The halt is currently not in effect (see below).

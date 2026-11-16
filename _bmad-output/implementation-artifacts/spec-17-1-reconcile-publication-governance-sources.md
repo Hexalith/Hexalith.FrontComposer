@@ -163,6 +163,30 @@ Rejected:
 - VG-1 (low): GOV-SRC-1 `status: "review"` is outside the backlog header's documented list. `UX-E` sets the precedent, no code reads the field, and the fix would change either the shared vocabulary or this spec's recorded tracking state.
 - AA-5 (rejected, because the fix edits this spec): the Line endings note says the addendum's four LF lines are untouched. L17 (Privilege boundary) was rewritten and kept LF. Blob digests are unaffected.
 
+### Review Findings (pass 6)
+
+Review pass 6, 2026-11-16. Layers: Blind Hunter (BH), Edge Case Hunter (ECH), Verification Gap (VG) and Acceptance Auditor (AA). They reviewed the fix delta `a3970e1ec6e8b0ce1c82505542d97ad4f386033c..9b93b9d7ac2838990d8c1efe5cc92978e876472e`, which holds the pass-4 fixes and the pass-5 BH-5 fix. The delta excludes this spec, `deferred-work.md` and `epic-17-context.md`. At `9b93b9d7` all nine Source Digest Record rows reproduce, by SHA-256 and by blob ID. `tests/eng/test_release_contract.py` runs 37 tests, all passing, and the live `builds` command exits 0. VG found no gaps.
+
+- [x] [Review][Patch] The post-release authority citations omit open NC-6. Five sources say the post-release closure is "authorized by the policy's `post_release` rows", and the FR-24 bullet cites only NC-7 and NC-33. Under NC-6 the `release-evidence.yml` verify step runs `verify-release` with no policy reload and no `post_release` authorization. No code calls `require_evaluator_authorized(policy, "post_release", …)`, so no check consults those rows yet — BH-1 (medium) [_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md:43]
+- [x] [Review][Patch] The NC-7 caveat copied into `architecture.md`, FC-DEP-1, the G2 request and the GOV-1 story says "the row matching the current caller blob". It names neither `release-evidence.yml`, the blob nor a date. In `architecture.md` and FC-DEP-1, "caller" has just meant the `release.yml`→`release-publish.yml` caller, whose `release` rows name a reachable local reusable. NC-7 (2026-09-08) says "Five rows … none matches the HEAD caller blob". Today all seven `post_release` rows name `domain-release.yml`, including the one for blob sha256 `5cc696fc168000e7d3995a2db3c415761c69e53be21497dffbb5989197a3f524`, and the undated caveat reads as contradicting NC-7 — ECH-1, ECH-2, AA-1, BH-2, BH-3 (low) [_bmad-output/planning-artifacts/architecture.md:303]
+- [x] [Review][Patch] Halt-exit conditions disagree with the spine's Adoption and Release Eligibility. The docs page's new G-8 list omits the owner-accepted split Builds revision (EXT-BUILDS-1) entering AD-16 lineage. FC-DEP-1 Consequences names the incident runbook but not its response target, which the spine, D-16 and now the docs page require — ECH-6, AA-3, ECH-7, BH-7 (low) [docs/release-trusted-publishing.md:17]
+- [x] [Review][Patch] The G2 request's Deny-Only Publication Stop says "the halt is currently not in effect" with no date and no NC-35/NC-36 citation. Every other copy is anchored by a citation, a same-bullet dated observation or "see below" — AA-2, BH-8 (low) [_bmad-output/planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md:157]
+
+Rejected:
+- BH-4 (false): "unreachable" is fixed by the same sentence's "caller-reachable sources only", and it mirrors NC-7's own wording.
+- BH-5 (false): `release-evidence.yml` downloads the served NuGet bytes (L426) and runs `dotnet nuget verify` (L552). "Independently" denotes the separate workflow, and the next sentence denies conformance. NC-9 concerns the CI-handoff copy, not NuGet bytes. The sentence predates this story (baseline L39).
+- BH-6 (false): L11–12 introduce "the GOV-1 publication-safety boundary (gate G-8)" before L17 uses it. The diff makes no publication claim, and the page's absence from `docs/docfx.json` predates this story.
+- BH-7, literal-`false` re-read part (carried, pass-5 BH-4 defer).
+- BH-8, other copies (false): G2 L44 and `architecture.md` L359 cite NC-35/NC-36. The addendum L18 bullet carries the 2026-11-16 observation, and docs L21 points to "As of 2026-11-16". FC-DEP-1's NC-35/NC-36 name the read.
+- BH-9 (false): the history paragraph makes no completeness claim. Row 2c's predecessor `4eb33928a1d8c7775f97221cf9edc171db0cb5f8` is listed as the former Release pin, and the ancestry sentence covers "each listed commit".
+- BH-10 (carried, pass-2 BH-10 and pass-4 BH-10): `release_control` is superseded by an appended dated entry rather than rewritten.
+- BH-11 (false): `test_builds_identity_pin_drift_names_file_field_expected_and_actual` asserts `.github/workflows/release.yml builds-execution-sha` (L336), which is produced from `_BUILDS_INPUT_FIELD`. `_INPUT_PIN_RE`, built from the same constant, must read the fixture lines, so a broken constant fails existing tests.
+- BH-12 (carried, pass-4 BH-14a and ECH-2): mode `160000` is the gitlink check, and tree or symlink entries fail closed.
+- BH-13 (false): "Dated snapshot 2026-11-16: Release and post-release …, CI …" names the values it dates, so it cannot be read as dating NC-33. A mechanical alignment check would add a validator, which the Never list forbids.
+- ECH-3 (false): the 2026-08-04 entry is a dated record of that date's path in an append-only progress log, and the 2026-11-16 entry supersedes it (pass-1 ECH-18 reasoning).
+- ECH-4 (carried, pass-4 VG-1): `review` in the GOV-SRC-1 status.
+- ECH-5 (rejected, because the fix edits this spec; carried pass-1 BH-17/ECH-12 and pass-2 BH-17/AA-8): spec `done` beside story `review` is the workflow's designed split.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -271,6 +295,35 @@ Three independent context-free layers reviewed the cumulative implementation dif
 
 Only BH-5 survives as a new patch. There are no intent/spec loopbacks, new deferrals, or unresolved high findings.
 
+### Review pass 6 — 2026-11-16
+
+Four layers reviewed the fix delta `a3970e1ec6e8b0ce1c82505542d97ad4f386033c..9b93b9d7ac2838990d8c1efe5cc92978e876472e`, excluding this spec, `deferred-work.md` and the epic context. Full evidence for each row is under Review Findings (pass 6).
+
+| Pass | Finding | Verdict | Route | Evidence |
+| --- | --- | --- | --- | --- |
+| 6 | BH-1: post-release citations omit NC-6 | medium | patch | No `require_evaluator_authorized(policy, "post_release", …)` call exists; `verify-release` loads no policy. |
+| 6 | ECH-1, BH-2: NC-7 caveat vs register NC-7 row | low | patch | Seven rows today, one matching the current blob; NC-7 (2026-09-08) says five and none. |
+| 6 | ECH-2, AA-1: "current caller blob" referent | low | patch | Row 2c names `release-evidence.yml`; the four copies do not. |
+| 6 | BH-3: caveat undated, no blob identity | low | patch | Same sentence as ECH-2. |
+| 6 | BH-4: "unreachable" ambiguous | false | reject | "caller-reachable sources only" in the same sentence. |
+| 6 | BH-5: "independently verifies" uncaveated | false | reject | Bytes and signatures are verified; text predates the story. |
+| 6 | BH-6: page unpublished, undefined ids | false | reject | L11–12 define G-8; no publication claim in the diff. |
+| 6 | ECH-6, AA-3: docs halt list omits AD-16 lineage entry | low | patch | Spine L81–84 lists it; D-16 too. |
+| 6 | ECH-7: FC-DEP-1 halt list omits response target | low | patch | Spine "runbook/response target"; D-16 "acknowledgement/containment target". |
+| 6 | BH-7: halt-exit lists differ | low | patch / carried | Grouped with ECH-6/ECH-7; literal-`false` re-read part carried (pass-5 BH-4). |
+| 6 | AA-2, BH-8: G2 L157 undated halt state | low | patch | Other copies cite NC-35/NC-36 or a dated observation (BH-8 remainder false). |
+| 6 | BH-9: history paragraph incomplete | false | reject | No completeness claim; predecessor already listed. |
+| 6 | BH-10: `release_control` present tense | low | reject (carried) | Pass-2 BH-10, pass-4 BH-10. |
+| 6 | BH-11: summary prefix untested | false | reject | L336 fragment and regex both use `_BUILDS_INPUT_FIELD`. |
+| 6 | BH-12: fixture entry types | low | reject (carried) | Pass-4 BH-14a, ECH-2. |
+| 6 | BH-13: caveat placement, no alignment check | false | reject | Snapshot names its values; a check would be a new validator. |
+| 6 | ECH-3: 2026-08-04 entry CI-only | false | reject | Dated append-only entry. |
+| 6 | ECH-4: `review` status vocabulary | low | reject (carried) | Pass-4 VG-1. |
+| 6 | ECH-5: spec/story status split | low | reject (carried) | The fix edits this spec. |
+| 6 | VG: none | — | — | No verification gaps. |
+
+Four patches survive (one medium, three low). There are no decisions, no new deferrals and no unresolved high findings.
+
 ## Verification
 
 **Commands:**
@@ -356,6 +409,19 @@ Verified on the final working tree over `a3970e1ec6e8b0ce1c82505542d97ad4f386033
 - All nine source SHA-256/Git-blob pairs reproduce. All eleven retired-SHA hits across the nine live sources and sprint status have explicitly dated or historical context. Frozen intent and historical register rows remain unchanged; `git diff --check` passes.
 - The spec is `done`; the sprint story and GOV-SRC-1 implementation action are `review`. G-2, G-8, OI-7 through OI-14 and GOV-ACCEPT-2 remain open. Implementation completion grants no publication authorization.
 
+### Results after review pass 6 fixes — 2026-11-16
+
+All four pass-6 patches are applied. Seven of the nine digest-recorded sources changed (the spine and the nonconformance register did not), and their Source Digest Record rows were refreshed. Prior deferrals and rejections remain unchanged; no new deferral was added.
+
+Verified on the patched working tree over `9b93b9d7ac2838990d8c1efe5cc92978e876472e`:
+- `run-with-temp env PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests/eng/test_release_contract.py tests/eng/test_release_prepublish.py tests/eng/test_release_evidence_v2.py`: 69 tests pass. No code or test changed in this pass.
+- The live `run-with-temp python3 eng/release_contract.py builds --root . --commit "$(git rev-parse HEAD)" --approved 360a2b9c4e96809365a7de785be9a68152d5ac28` exits 0 with catalog `65fd22f37b9fad64b595841923cdbe050563ab99` and execution pin `360a2b9c4e96809365a7de785be9a68152d5ac28`.
+- `run-with-temp env PYTHONDONTWRITEBYTECODE=1 python3 -m unittest eng.tests.test_validate_story_artifacts`: 222 tests run, 2 existing skips, result `OK`. Targeted (`--story` on this spec) and repository-wide `eng/validate-story-artifacts.py` runs both print "Story artifact validation passed."
+- `pwsh -NoProfile -File eng/validate-docs.ps1 -SkipDocFx -SkipSnippetBuild` exits 0 ("Docs validation passed."), with `MSBUILDDISABLENODEREUSE=1` and `DOTNET_CLI_USE_MSBUILD_SERVER=0`. `Get-ContentFiles` (`eng/validate-docs.ps1` L59–86) does not select `docs/release-trusted-publishing.md`, so the full DocFX and snippet runs cannot observe this page's change; they were not re-run. The log is retained at `/home/administrator/.local/state/frontcomposer/review-17-1-pass6/validate-docs-quick.log`.
+- All nine Source Digest Record rows reproduce from the working tree: each blob ID equals `git hash-object <path>`, and each SHA-256 equals the digest of the LF-normalized bytes. `git diff --check` is clean.
+- Added source lines contain no abbreviated SHA. The only retired-SHA hit in them is the rewritten PRD FR-24 line, whose unchanged text already labels `4eb33928a1d8c7775f97221cf9edc171db0cb5f8` and `2fba3497043fe5ffcfe4dc44c51a09eae9b950ab` historical.
+- The review sync sets the `17-1` sprint row and the GOV-SRC-1 action to `done`, the action with `closed: "2026-11-16"` and this record as its receipt. G-2, G-8, OI-7 through OI-14 and GOV-ACCEPT-2 remain open; implementation completion grants no publication authorization.
+
 ## Implementation Notes
 
 - **Check.** `validate_builds_identity` keeps its exact-SHA decision patterns unchanged. A second, broader pattern reports what each file actually holds, such as a tag, branch, short SHA or expression. Every mismatch now reads `<file> <field>: expected exactly one "<approved>"; actual <values or none>`. Both members are reported when both drift. The `--approved` label rejection names that field. The gitlink, workflow and publisher resolution errors in `main` name the path and commit. They keep their original prefixes, so existing assertions on those prefixes still match.
@@ -368,6 +434,7 @@ Verified on the final working tree over `a3970e1ec6e8b0ce1c82505542d97ad4f386033
 - **Review fixes, 2026-11-16 (review iteration 2).** All thirteen pass-2 patch findings are addressed. FC-DEP-1 Consequences and the G2 stop section now distinguish the halt requirement from its observed absence. All live nonconformance paragraphs, PRD G-8 and FR-24 include v4.5.0 after the 2026-09-09 halt adoption. The identity register adds the post-release checkout pin and the `post_release` authorization authority, names the CI `ci` rows, dates the copied `release` policy-row values, expands introduced abbreviated SHAs (including historical `3f0e3595be693fce56a37648c0bd0f89390f5fd3`), and records the actual limits of the existing C# regex comparison. Architecture and FC-DEP-1 carry the same limit; the pin projections also name the post-release authority. PRD G-2 cites the identity register, and D-6/addendum wording distinguishes the 2026-09-09 adoption from later current-state reconciliation. The addendum update date and change map record Story 17.1. REL-AI-1 receives a dated progress entry that supersedes its historical variable-retirement claim without rewriting that claim. The public publishing page includes the successful exact-source push Quality prerequisite. Resolution failures now show the observed non-gitlink entry or escaped Git stderr, and delegation matching plus Git reads share the path constants. Existing CLI fixtures cover the additional diagnostic facts. The two pass-2 deferrals remain deferred; no workflow, policy, gitlink, repository variable or release posture changes.
 - **Review follow-up, 2026-11-16.** The addendum now distinguishes environment job progression from publication authorization, includes imported build props/targets in the gitlink description, and carries the open NC-33 ambient/candidate-helper caveat beside the post-release checkout pin. Appended corrections preserve the containment deferral and register history while identifying the existing approval/dispatch prohibition, its remaining deadline/escalation/public-guidance scope, and the Release Owner or repository administrator's authenticated literal-false read with server timestamp. The missing-workflow/publisher fixture compares captured Git stderr under the ambient locale while retaining the source-path and candidate-commit assertion. The two affected source digest rows were refreshed.
 - **Review fixes, 2026-11-16 (review pass 4).** All ten patch findings are addressed. The identity register, architecture, FC-DEP-1, G2 request and GOV-1 story now retain both NC-7 (the matching post-release row's unreachable reusable, contrary to AD-12 `reusable: null`) and NC-33 (ambient/candidate-helper execution) beside the post-release authority. FR-24 lists the post-release pin; architecture separates the gitlink from all three execution pins; G-2 lists the identity register and all four pin-holding workflows. FC-DEP-1 dates its halt observation. REL-AI-1 also supersedes the historical CI-only prerequisite with exact-source successful push CI and Quality. Pin patterns and diagnostics share field/reference constants, and the missing/non-gitlink fixture again requires its original diagnostic prefix. Row 2c names introducing commit `15577f42be42539b5e917cb7ae6716c2c11ac534` (2026-10-18); the historical `3f0e3595be693fce56a37648c0bd0f89390f5fd3` selection is dated 2026-08-14 at FrontComposer `e787690fa6b48973ee83fd9c9b5127c424179dce`. D-6's duplicate reconciliation date is removed. Prior deferrals and rejected findings remain unchanged; no workflow, policy, gitlink, variable or release posture changed.
+- **Review fixes, 2026-11-16 (review pass 6).** All four patch findings are addressed. The post-release authority text in the identity register (row 2c), `architecture.md`, FC-DEP-1, the G2 request and the GOV-1 story now carries open NC-6: the `release-evidence.yml` verify step reloads no policy and performs no `post_release` authorization, so no check consults those rows yet. The PRD FR-24 bullet cites NC-6, NC-7 and NC-33. In the four copied caveats, NC-7 is dated to its 2026-09-08 record, followed by a dated 2026-11-16 policy snapshot: all seven `post_release` rows name a Builds `domain-release.yml` reusable, including the row matching the current `release-evidence.yml` blob (sha256 `5cc696fc168000e7d3995a2db3c415761c69e53be21497dffbb5989197a3f524`), whose reusable that workflow never calls. The docs page's G-8 list adds the owner-accepted Hexalith.Builds split revision (EXT-BUILDS-1) entering the AD-16 lineage through delayed activation. FC-DEP-1 Consequences adds the incident runbook's response target. The G2 Deny-Only Publication Stop dates its halt observation and cites NC-35 and NC-36. No workflow, policy, gitlink, variable, register row or release posture changed. While applying these edits, the editor normalized the addendum's four pre-existing LF working-copy lines to CRLF. Git stores LF blobs for both forms, so no digest or blob ID depends on it, and `git diff` shows only the row 2c change. The G2 request working copy remains LF.
 - **Line endings.** Every CRLF file remains CRLF with no bare LF. The G2 request and register working copies were LF before this change and remain LF. The addendum's four pre-existing LF lines are untouched. Git normalizes every file to LF blobs, which is what the digests below hash.
 
 ## Source Digest Record
@@ -376,15 +443,15 @@ These are SHA-256 digests of each reconciled source's Git blob bytes (LF-normali
 
 | Source | SHA-256 | Git blob |
 | --- | --- | --- |
-| `_bmad-output/planning-artifacts/prd.md` | `e62fb8e840d6191d4834b4f5cc44eb0abcb0613443d8da98e967def74ccfdd06` | `67fdc3941a268b28f5cc3980f72b95f96e52a97d` |
-| `_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md` | `40b32284fd7e23f073e3496674b6ffc9ee899263f2feba2eaef346fe0ec54560` | `d22e81bda63d74399a6372c4d26cab0d09b971e5` |
-| `_bmad-output/planning-artifacts/architecture.md` | `214e0611fbfa8cbc544ea3840689ee0ff07d4590265fe86539a05daf0d222c8a` | `48cbfd865d9193e0c873e4ed3cee3c516a353e6c` |
-| `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md` | `a6b2badf0e3a8e266c9f09bb93fa958658aa2cdd4a045130849c17bdf8f2b1b6` | `e3d1a839b04fbab1e778953007fdbb710b69328e` |
-| `_bmad-output/planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md` | `3dc1576a40525653686e8f29b0f8af803670c032835ae4acaa997ad3d985dfab` | `f4089f668a041b1e0dade0397267893ed0b57bff` |
+| `_bmad-output/planning-artifacts/prd.md` | `acb0d692ef19fe5c5fc1e3dfca9797ade474b56b06add4fbbd497ae846455b6a` | `fb13deb5c5fb1104dc9a1a9cff75fc4a87120826` |
+| `_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md` | `706f99d1c4b1eb553eca1788c6339b718c7913da5ede43affd637d1f6e961c53` | `b2b4ea46a97b45e58e7b4c91ec8b1f72200ee260` |
+| `_bmad-output/planning-artifacts/architecture.md` | `f7a388f00410597972cf45cda3aae697428e22fe48c9cca665d5e662546e76a9` | `237327abd5ca91b5d3349375a3896021f41b327a` |
+| `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md` | `d7a7e0cbd8125596247f0ff4ce4e2074e23ce0f87d78c246039d1a10aab89d57` | `f13b25c9be0d3e3d8fc802a465869e7bb6e5e402` |
+| `_bmad-output/planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md` | `e383b16810ef45335a3a13702c72795d715f52bf16b1b0dc9877ff2458c87e07` | `e6767172be58469918484406de9b6b46808315f2` |
 | `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md` | `bc2c8caa6accca45851e9fc76455bfb4fd70ca214ba2410be4a6bca712307aaa` | `08c0d00aff79d445e2f95794fd1ef0d33b5782f5` |
 | `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/nonconformance-register-2026-09-08.md` | `0c4f81686e40814a97f7985ba0d253516c93f3087d1fbbda742312e42b8ba1d6` | `2189d74541e274787920ebee88e11655fbe5fecf` |
-| `_bmad-output/implementation-artifacts/gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance.md` | `0ee0d705627a8133901bed42d5e68dc371e9133a003610bce597532848e77a90` | `bda10d9fb901aecb16293486ae0a6f53b2978da1` |
-| `docs/release-trusted-publishing.md` | `ec8ff4cd571316e4095326ce88ae291e95fa81063773158a25ac45817145835f` | `242e3a932ff8aae417c835b58c6402b582fdffa2` |
+| `_bmad-output/implementation-artifacts/gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance.md` | `2b40c0f287cddbde375e094483f70289dd5457996817ac13f7daa4b3f2075d13` | `2faf794367e7113f99691d9632595f87316608ea` |
+| `docs/release-trusted-publishing.md` | `b39fd982bf375b9cb9f0b1f05b0c37b84062b6d2c628c66d6d33b9ac06b715cf` | `8aab053796fb780099b0472c8816c23a812c56a8` |
 
 ## File List
 

@@ -20,10 +20,15 @@
     `.github/workflows/release-evidence.yml`. Snapshot 2026-11-16:
     `360a2b9c4e96809365a7de785be9a68152d5ac28`. The policy's `ci` and `post_release`
     `evaluator_authorizations` rows authorize the respective CI and post-release closures.
-    The post-release rows remain non-conformant (NC-7): the row matching the current caller blob
-    names an unreachable Builds `domain-release.yml` reusable, while AD-12 requires `reusable: null`
-    and caller-reachable sources only. NC-33 also remains open: verification/ledger decisions can
-    execute ambient or candidate helper bytes rather than only the authorized closure.
+    The post-release rows remain non-conformant (NC-7, recorded 2026-09-08). Dated policy snapshot
+    2026-11-16: all seven `post_release` rows name a Builds `domain-release.yml` reusable, while AD-12
+    requires `reusable: null` and caller-reachable sources only. They include the row matching the
+    current `release-evidence.yml` blob (sha256
+    `5cc696fc168000e7d3995a2db3c415761c69e53be21497dffbb5989197a3f524`), whose reusable is
+    unreachable because `release-evidence.yml` never calls it. NC-6 also remains open: the
+    `release-evidence.yml` verify step reloads no policy and performs no `post_release`
+    authorization, so no check consults these rows yet. NC-33 also remains open: verification/ledger
+    decisions can execute ambient or candidate helper bytes rather than only the authorized closure.
   - Builds catalog gitlink: read with `git ls-tree <commit> references/Hexalith.Builds`. Snapshot
     2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`. It need not equal any execution pin.
   - Required split revision: EXT-BUILDS-1, the outcome requested below. It does not yet exist.
@@ -154,7 +159,8 @@ author-unsigned and NuGet.org repository-signs uploads.
 `HEXALITH_RELEASE_PUBLISH_ENABLED` remains a common deny-only control. Any value other than literal
 `true` prevents publication; it never grants authority and never compensates for an invalid candidate,
 policy, evaluator, handoff, manifest, attestation/fallback, or privilege boundary. While the halt
-requirement applies, FrontComposer requires literal `false`; the halt is currently not in effect.
+requirement applies, FrontComposer requires literal `false`. Observation 2026-11-16: the halt is not
+in effect (NC-35, NC-36).
 A Release Owner or repository administrator must set and verify that value through an authenticated API observation before any release approval or dispatch.
 `true` never authorizes, and no bounded risk exception is approved.
 
