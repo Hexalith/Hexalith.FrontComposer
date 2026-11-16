@@ -195,8 +195,12 @@ This section projects current state; it amends none of the decisions above. The
   rows authorize this non-conformant caller.
   The CI pin is held by `domain-ci.yml@` in `.github/workflows/ci.yml`, authorized by the policy's
   `ci` rows. The post-release pin is held by the `.hexalith/builds-execution` checkout `ref:` in
-  `.github/workflows/release-evidence.yml`, authorized by the policy's `post_release` rows. Dated
-  snapshot 2026-11-16: Release and post-release `360a2b9c4e96809365a7de785be9a68152d5ac28`,
+  `.github/workflows/release-evidence.yml`, authorized by the policy's `post_release` rows.
+  Those rows remain non-conformant (NC-7): the row matching the current caller blob names an
+  unreachable Builds `domain-release.yml` reusable, while AD-12 requires `reusable: null` and
+  caller-reachable sources only. NC-33 also remains open: verification/ledger decisions can execute
+  ambient or candidate helper bytes rather than only the authorized closure. Dated snapshot
+  2026-11-16: Release and post-release `360a2b9c4e96809365a7de785be9a68152d5ac28`,
   CI `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
 - **Builds catalog gitlink:** read with `git ls-tree <commit> references/Hexalith.Builds`. Dated
   snapshot 2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`. It need not equal any execution pin.
@@ -242,7 +246,8 @@ credentials. That job is not the split reusable of decision 19 (nonconformance r
 - Trust/profile/command expansion takes two changes: land reviewed inactive policy, then use it from a
   later base revision.
 - Production publication must remain halted until the split reusable, owner decisions, incident
-  runbook, and GOV-1 split implementation gate close. The halt is currently not in effect (NC-35, NC-36).
+  runbook, and GOV-1 split implementation gate close. Observation 2026-11-16: the halt is not in effect
+  (NC-35, NC-36).
   `HEXALITH_RELEASE_PUBLISH_ENABLED=false` is the required deny-only emergency stop while the halt
   requirement applies and can never authorize publication.
 - Literal hashes prove identity only; the immutable base/before policy is the independent authorization

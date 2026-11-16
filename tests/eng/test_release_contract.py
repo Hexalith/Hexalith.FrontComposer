@@ -556,7 +556,8 @@ class ReleaseContractTests(unittest.TestCase):
                     ["builds", "--root", str(root), "--commit", commit, "--approved", approved]
                 )
                 self.assertIn(
-                    f"references/Hexalith.Builds at commit {json.dumps(commit)} is not a 160000 gitlink entry; actual ",
+                    f"cannot resolve the candidate Builds gitlink: references/Hexalith.Builds at commit {json.dumps(commit)} "
+                    "is not a 160000 gitlink entry; actual ",
                     stderr,
                 )
                 if extra_files:

@@ -357,11 +357,13 @@ RELEASE_PUBLISHER_PATH = ".github/workflows/release-publish.yml"
 BUILDS_GITLINK_PATH = "references/Hexalith.Builds"
 _PUBLISHER_DELEGATION_LINE = f"    uses: ./{RELEASE_PUBLISHER_PATH}"
 _PUBLISHER_DELEGATION_RE = re.compile(rf"(?m)^{re.escape(_PUBLISHER_DELEGATION_LINE)}$")
-_PUBLISHER_ACTION_FIELD = "uses: Hexalith/Hexalith.Builds/Github/prepare-domain-release@"
+_BUILDS_INPUT_FIELD = "builds-execution-sha"
+_PUBLISHER_ACTION_REFERENCE = "Hexalith/Hexalith.Builds/Github/prepare-domain-release@"
+_PUBLISHER_ACTION_FIELD = f"uses: {_PUBLISHER_ACTION_REFERENCE}"
 # Line-anchored so neither pattern crosses a newline or reads a commented-out line.
-_INPUT_PIN_RE = re.compile(r"(?m)^[ \t]+builds-execution-sha:[ \t]*(.*?)[ \t\r]*$")
+_INPUT_PIN_RE = re.compile(rf"(?m)^[ \t]+{re.escape(_BUILDS_INPUT_FIELD)}:[ \t]*(.*?)[ \t\r]*$")
 _ACTION_PIN_RE = re.compile(
-    r"(?m)^[ \t]*(?:-[ \t]+)?uses:[ \t]*Hexalith/Hexalith\.Builds/Github/prepare-domain-release@(.*?)[ \t\r]*$"
+    rf"(?m)^[ \t]*(?:-[ \t]+)?uses:[ \t]*{re.escape(_PUBLISHER_ACTION_REFERENCE)}(.*?)[ \t\r]*$"
 )
 _WORKFLOW_USES_RE = re.compile(r"^[ \t]*(?:-[ \t]+)?uses:.*\.github/workflows/")
 # A pin value is exactly 40 lowercase hex, ended by the line end or by whitespace and a comment.
@@ -407,7 +409,7 @@ def validate_builds_identity(workflow_text: str, publisher_text: str, selected_g
     # value names the approved commit, so a second expression, a live `@main` beside a commented pin,
     # or `@<sha>-suffix` all fail and are shown verbatim.
     members = (
-        (RELEASE_WORKFLOW_PATH, "builds-execution-sha", _INPUT_PIN_RE.findall(workflow_text)),
+        (RELEASE_WORKFLOW_PATH, _BUILDS_INPUT_FIELD, _INPUT_PIN_RE.findall(workflow_text)),
         (RELEASE_PUBLISHER_PATH, _PUBLISHER_ACTION_FIELD, _ACTION_PIN_RE.findall(publisher_text)),
     )
     mismatches = [
@@ -417,7 +419,7 @@ def validate_builds_identity(workflow_text: str, publisher_text: str, selected_g
     ]
     if mismatches:
         raise ContractError(
-            "release publisher action and builds-execution-sha must use the identical approved Builds commit: "
+            f"release publisher action and {_BUILDS_INPUT_FIELD} must use the identical approved Builds commit: "
             + "; ".join(mismatches)
         )
 

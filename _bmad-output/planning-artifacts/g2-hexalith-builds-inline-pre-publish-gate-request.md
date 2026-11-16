@@ -20,6 +20,10 @@
     `.github/workflows/release-evidence.yml`. Snapshot 2026-11-16:
     `360a2b9c4e96809365a7de785be9a68152d5ac28`. The policy's `ci` and `post_release`
     `evaluator_authorizations` rows authorize the respective CI and post-release closures.
+    The post-release rows remain non-conformant (NC-7): the row matching the current caller blob
+    names an unreachable Builds `domain-release.yml` reusable, while AD-12 requires `reusable: null`
+    and caller-reachable sources only. NC-33 also remains open: verification/ledger decisions can
+    execute ambient or candidate helper bytes rather than only the authorized closure.
   - Builds catalog gitlink: read with `git ls-tree <commit> references/Hexalith.Builds`. Snapshot
     2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`. It need not equal any execution pin.
   - Required split revision: EXT-BUILDS-1, the outcome requested below. It does not yet exist.

@@ -278,9 +278,9 @@ requirements; candidates are author-unsigned and NuGet.org repository-signs uplo
 
 The manifest and exact `builds-execution-sha` bind the selected reusable in the AD-16 lineage rooted at
 `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`. The Builds catalog gitlink is a separate dependency-graph
-identity and need not equal either CI or Release execution pin. A new owner-accepted Builds revision
-implementing the split must enter that lineage and the active policy through delayed activation before
-FrontComposer selects it.
+identity and need not equal any CI, Release or post-release execution pin. A new owner-accepted Builds
+revision implementing the split must enter that lineage and the active policy through delayed activation
+before FrontComposer selects it.
 
 **Identity authorities and the active caller (reconciled 2026-11-16, Story 17.1).** The
 [identity register](prd-addendum-2026-09-08.md#2-dependency-governance-mechanism-moved-from-nfr-13--7--d-11) keeps five identities apart:
@@ -299,8 +299,12 @@ FrontComposer selects it.
    `eng/dependency-graph-policy.json` authorize this non-conformant caller. The CI pin is held by the
    `domain-ci.yml@` pin in `.github/workflows/ci.yml`, authorized by the policy's `ci` rows. The
    post-release pin is held by the `.hexalith/builds-execution` checkout `ref:` in
-   `.github/workflows/release-evidence.yml`, authorized by the policy's `post_release` rows. Dated
-   snapshot 2026-11-16: Release and post-release `360a2b9c4e96809365a7de785be9a68152d5ac28`,
+   `.github/workflows/release-evidence.yml`, authorized by the policy's `post_release` rows.
+   Those rows remain non-conformant (NC-7): the row matching the current caller blob names an
+   unreachable Builds `domain-release.yml` reusable, while AD-12 requires `reusable: null` and
+   caller-reachable sources only. NC-33 also remains open: verification/ledger decisions can execute
+   ambient or candidate helper bytes rather than only the authorized closure. Dated snapshot
+   2026-11-16: Release and post-release `360a2b9c4e96809365a7de785be9a68152d5ac28`,
    CI `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
 3. **Builds catalog gitlink:** read with `git ls-tree <commit> references/Hexalith.Builds`. Dated
    snapshot 2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`.
