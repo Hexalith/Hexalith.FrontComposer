@@ -1318,3 +1318,9 @@ approved_change_backlog:
 # R two-hour capture deadline2026-11-15T22:57:29Z: time-only eligibility then; outer deadline cannot extend it.
 # No capture/receipt transfer, extension, recapture, retry or new-attempt authorization.16.3 in-progress; G-3 open.
 # Story16.1 done;16.2 backlog/not invoked; Epic16 in-progress. Earlier sections and approved rules remain intact.
+
+# Epic16 lineage preparation 2026-11-15: conditional M/off-main records procedure at
+# _bmad-output/implementation-artifacts/epic-16-lineage-procedure-2026-11-15.md.
+# R capture expired 2026-11-15T22:57:29Z; no schedule/hold/receipt/Git authority inferred.
+# jpiquot Release Owner with Architect disposition due 2026-11-16T17:27:10Z unchanged.
+# 16.1 done;16.2 not invoked/backlog;16.3 in-progress; Epic16/G-3 open.
