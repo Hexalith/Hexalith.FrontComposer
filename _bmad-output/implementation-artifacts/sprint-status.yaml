@@ -1359,3 +1359,21 @@ approved_change_backlog:
 # User delegated concrete choices; planned/uncreated T ffb75718c02dafd9b7f0ae777e937d34893962da; prospective 2026-11-17 08:00–16:00Z, readiness cutoff07:45Z.
 # Owning spec supplies candidate bytes, proposed appointments/storage/Git/retention scope, writer leads and incident calendar/channel; no actual acknowledgment, appointment acceptance, Git action or qualification claimed.
 # Execution no-go pending actual approved preflight evidence; preserve no-commit scope.16.1/16.2 done;16.3/Epic16 in-progress; G-3 open; G-8 independent.
+
+
+# Epic 16 authorized preflight operator stop — 2026-11-16:
+# Scoped execution authority was received (first post-answer clock 14:35:53Z); exact T ffb75718c02dafd9b7f0ae777e937d34893962da and local docs/epic-16-ffb75718-records worktree/ref were prepared, with complete preflight records transferred.
+# Mandatory Builds check exited 1 for missing .github/hexalith-ci.json at the original root and exact T; first post-failure clock 2026-11-16T14:39:17Z. This is a prerequisite failure before the cutoff, not failed qualification or cutoff expiry.
+# Qualification and every push stop, including the record ref. Selected 2026-11-17 08:00–16:00Z slot does not start; no timer, automatic retry, replacement T or renewed deadline. The 07:45Z cutoff and all historical deadlines stay unchanged.
+# New records are local-only; remote durability is missing and must be reported now in Codex thread 01a1e4c9-0aad-7c03-ab11-b6b4dd06c3e8. Scoped session acknowledgments establish no human/editor/other-host/app/job completeness or actual human capacity/retention acceptance.
+# jpiquot as Release Owner with Architect records the actual bounded stop/corrective disposition, routes the exact pin/config mismatch to CiCd ownership for a separately authorized adoption/compatibility decision, and accepts or revises the next action by 2026-11-17T10:39:17Z (accepted working calendar). The operator stop is no owner disposition or migration rejection.
+# 16.1/16.2 done (16.2 not invoked);16.3/Epic16 in-progress; G-3/E11R-AI-1 open; E12R-AI-2 in-progress; G-8 independent; Epic17 final readiness waits. No T evidence, operative approval, runtime test or release claimed.
+# Source: spec-16-3-approve-or-reject-the-exact-runtime-migration.md#authorized-preflight-execution-and-stop--2026-11-16.
+
+
+# Epic 16 actual owner stop disposition — 2026-11-16:
+# jpiquot (Release Owner with Architect involvement) answered "Record the stop and accept this next action"; first post-answer UTC observation 2026-11-16T15:02:34Z, before the unchanged disposition due 2026-11-17T10:39:17Z.
+# Pending owner answer is received. Accepted next action: route missing CiCd-owned .github/hexalith-ci.json / pinned-Builds mismatch to a separately authorized adoption/compatibility decision; preserve local evidence and keep all pushes blocked.
+# November 17 qualification slot stays stopped. CiCd action and remote record/receipt durability remain unresolved; no repair, workflow edit, bypass, restart, new deadline, migration approval or release authorized.
+# All semantic states unchanged: 16.1/16.2 done;16.3/Epic16 in-progress; G-3/E11R-AI-1 open; E12R-AI-2 in-progress; G-8 independent. Local record 264411d10d270ee566359cf1f6753d57223b4a9f preserved.
+# Source: spec-16-3-approve-or-reject-the-exact-runtime-migration.md#human-stop-disposition-and-accepted-next-action--2026-11-16.
