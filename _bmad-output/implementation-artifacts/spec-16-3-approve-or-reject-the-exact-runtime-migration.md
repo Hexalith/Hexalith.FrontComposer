@@ -712,3 +712,53 @@ The patched records were read against each fix instruction. No runtime code chan
 **Observation at that read.** Local `main` and HEAD are `ebd3f76d…`, with exactly the five record files modified and uncommitted. Remote-tracking `origin/main` is `9ea805dc7bbdf048b282e66e94115add295099a3`, two commits later: `a03ee98a…` “fix: align dependency seals and finite mutation inventory” and `9ea805dc…` “docs: activate repaired dependency source seal”. Neither touches the five record files, and neither moves the EventStore or Builds gitlink. Any later commit of these records must integrate with that newer main before it can reach `origin`; this build performs none of that.
 
 **Git target: confirmed (main working tree) · Durability: open until a commit reaches `origin` · Story 16.3 in-progress · G-3 open**
+
+## Candidate-identity planning adoption — 2026-11-16
+
+**Actual answer:** “approve”, in response to the complete [2026-11-16 sprint change proposal](../planning-artifacts/sprint-change-proposal-2026-11-16.md) and explicit three-capacity approval request. **Signer:** Jérôme Piquot (`jpiquot`/Administrator), separately as Product Owner, Architect and Release Owner. The [owning planning receipt](../planning-artifacts/sprint-change-proposal-2026-11-16.md#planning-approval-receipt--2026-11-16) records the decisions and their scope. The first post-answer UTC clock read was `2026-11-16T12:23:13Z`; this is the receipt observation, not a supplied authoring timestamp. No migration or operational permission is inferred from this planning answer.
+
+Option A and §§3.1–3.5 are now adopted prospectively: keep exact tested FrontComposer/EventStore/Builds/catalog approval, store owning capture and decisions on a separately authorized same-repository record ref, and complete actual readiness before qualification starts. T is a future candidate, Q/S/F its durable record commits; none is selected here. The EventStore/Builds/catalog triple alone and a material-content/documentation-descendant exemption are unadopted alternatives. Human Release Owner review compares live main/dispatch/checkout T, committed selections and exact evidence/receipts alongside unchanged automated release controls. No G-3 receipt parser or new workflow input is claimed.
+
+The two causes remain separate. C and R were superseded by their own record lineage. M's capture never ran because candidate-specific admission/schedule, the complete writer roster/dated acknowledgments and record-ref Git authority were never supplied; its deadline expired while M was still main. The new rule addresses storage and readiness separately. All historical evidence, accepted C engineering capture/D1 exception, validity assessments, limitations and deadlines remain intact. C's received migration statements stay nonoperative; R/M receive no capture, receipt or review. The M procedure stays ended, was never executed and must not be executed.
+
+### Prospective acceptance under the approved rule
+
+**Given** an actual approved planning rule but missing execution prerequisites, **when** readiness is assessed, **then** keep 16.3 in-progress and G-3 open and do not start qualification. **Given** all preflight rows are durably satisfied, a separately authorized schedule may start one future attempt. **Given** T's complete timely capture and three actual approvals, **when** Q/S/F are durably reachable within the window and final main/time rechecks pass, **then** human governance may recognize G-3 only for exact T. Every record stays off main through T consumption. Any failure, rejection, expiry or drift preserves history, keeps current-release G-3 open and routes to the named bounded disposition. Story 16.2 retains its done/not-invoked state and conditional reopening rule.
+
+The approved preflight includes the exact candidate/push sequence, actual schedule, main-writer/automation scope and dated acknowledgments (including `/pushall`), authorized durable storage/Git actions, capture/decision capacity and a supplied working calendar. Retain the at-most-24-hour qualification window, two-hour durable-capture cadence from last required same-attempt success, overall Quality and independent exact push CI/Quality, three durable receipts/final review by window end, four-working-hour disposition, hold termination and retention under the proposal. A stable main, green run or earlier owner attestation is insufficient. Source execution still proves no package-mode runtime compatibility.
+
+**Closure and next action:** the candidate-identity correct-course decision action closes with the actual planning approval. The approved documentation adoption is applied. jpiquot as Release Owner with Architect owns completing §3.2 preflight with the actual workspace automation and repository/Git owners before any separately authorized future schedule. No candidate, ref name, schedule, calendar, acknowledgment or operational authorization is supplied by this answer. Missing prerequisites remain blocking, with no new due date assigned here. Epic 17's final Product readiness continues waiting on G-3; G-8's halt and all separate gates remain independent.
+
+**16.1 done; 16.2 done as not invoked; 16.3 and Epic 16 in-progress; G-3 open.** This planning adoption is recorded in the main working tree under the already confirmed no-commit scope. It performs no staging, commit, push, branch, workflow dispatch, qualification, coordination contact or automation suspension. Prior durability conditions are not renewed or claimed satisfied by this record.
+
+## Tasks & Acceptance — approved planning adoption
+
+- [x] Record the actual three-capacity planning approval in the 2026-11-16 proposal, preserving its prepared text and limiting approval to planning.
+- [x] Append the approved P1–P4 resolutions to PRD, architecture, epics and this owning spec without editing frozen intent or any Story 16.1 bytes.
+- [x] Append P5 cross-references to both 2026-11-15 proposals and the ended M procedure; refresh Epic 16 context from the adopted sources.
+- [x] Apply P6 ledger/sprint tracking and E11R-AI-1 clarification, keeping E11R-AI-1 open, E12R-AI-2 in-progress and all epic/story semantic states unchanged.
+- [x] Preserve the P7 runtime/release/dependency/gitlink boundaries; no operational execution or new qualification occurs.
+
+## File List
+
+Approved planning adoption — 2026-11-16; these are this round's changed paths.
+
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-16.md`
+- `_bmad-output/planning-artifacts/prd.md`
+- `_bmad-output/planning-artifacts/architecture.md`
+- `_bmad-output/planning-artifacts/epics.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-approval-lineage.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-15-epic-16-tuple-freeze.md`
+- `_bmad-output/implementation-artifacts/epic-16-lineage-procedure-2026-11-15.md`
+- `_bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md`
+- `_bmad-output/implementation-artifacts/epic-16-context.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+## Verification — approved planning adoption
+
+The owning-story command `run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTIONAL_LOCKS=0 python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md --base f26304dabf7153c7075fa8c4a82dc8fc537c5ed0` passed with “Story artifact validation passed.” The global command `run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTIONAL_LOCKS=0 python3 eng/validate-story-artifacts.py` and `git diff --check` also passed. The new File List heading was corrected to the validator's exact recognized form after the first run reported the new proposal as unlisted.
+
+Disposable read-only assertions under `run-with-temp env PYTHONDONTWRITEBYTECODE=1 GIT_OPTIONAL_LOCKS=0 python3 -` passed: exact 11-path adoption scope under `_bmad-output/`; nine tracked Markdown files append-only from HEAD; prepared proposal preserved except approved status/decision plus append; all historical sprint comments retained; parsed YAML differs only in `last_updated` and approved E11R-AI-1 action wording, with every status and E12R-AI-2 action unchanged. The tuple-freeze addition was moved after its final historical paragraph when the first prefix check detected its placement. An initial scratch-checker assumption that every YAML action has an `id` was corrected without changing repository data.
+
+Story 16.1 and 16.2 remain byte-identical to HEAD; the Story 16.1 SHA-256 is `f2754e0e24d56913ea757054f54ea77604eeba3000317abfe1040c73a61b651c`. This spec's entire HEAD prefix, including frozen intent and frontmatter workflow fields, is preserved. CRLF/final newlines/new-text whitespace and all 18 added relative links (6 unique target/anchor pairs) pass. HEAD/main remain `f26304dabf7153c7075fa8c4a82dc8fc537c5ed0`, index/nine gitlinks are unchanged and nothing is staged. No runtime test, remote read, contact, Git mutation, workflow dispatch or qualification occurred. **Planning adoption complete; execution prerequisites remain open; Story 16.3 in-progress; G-3 open.**

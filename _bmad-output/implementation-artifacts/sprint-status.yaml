@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 11-16-2026 10:42
+last_updated: 11-16-2026 12:23
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -277,6 +277,7 @@ development_status:
   # 16-2 not invoked on 2026-11-16 (AC4/OI-18): original EventStore authority confirmed at 2026-11-15T21:49:02Z; jpiquot as Product Owner chose tracking closure. EVT-XFER-1 not-required; row becomes done when review accepts the record. Reopen per tuple if EventStore authority is unavailable or proposed to move while that tuple's EventStore-maintainer receipt is still missing. No transfer or migration approval; G-3 open (spec-16-2-transfer-migration-approval-ownership-explicitly.md).
   16-2-a-evt-xfer-1-conditional-transfer-migration-approval-ownersh: done
   # 16-3 M terminal disposition on 2026-11-16 (receipt observed 2026-11-16T10:10:24Z): jpiquot as Release Owner with Architect chose "End; correct course"; the M procedure ended unexecuted (M's capture never ran because its preconditions were never supplied, and its deadline expired while M was still main; C/R were superseded by their own records). Next: bmad-correct-course on G-3 candidate identity; closes when that proposal is approved or rejected; no due date supplied. C decisions nonoperative; 16.3 stays in-progress; G-3 open; missing origin durability becomes the remaining blocker at 2026-11-16T17:27:10Z (spec-16-3-approve-or-reject-the-exact-runtime-migration.md#m-terminal-disposition--2026-11-16).
+  # 2026-11-16 planning receipt observed 12:23:13Z: jpiquot approved the complete candidate-identity proposal as Product Owner, Architect and Release Owner. Correct-course decision action closed; Option A adopted prospectively. Execution preflight remains missing; no future candidate/ref/schedule/Git authority supplied. 16.3/Epic16 in-progress; G-3 open. Receipt: planning-artifacts/sprint-change-proposal-2026-11-16.md#planning-approval-receipt--2026-11-16.
   16-3-a-evt-app-1-approve-or-reject-the-exact-runtime-migration: in-progress
   epic-16-retrospective: optional
 
@@ -828,9 +829,10 @@ action_items:
       its other prerequisites."
   - id: "E11R-AI-1"
     epic: 11
-    action: "Capture one passing provider-plus-AppHost record for the exact FrontComposer/EventStore/package/Builds
-      tuple current at execution, then obtain the required migration-approval receipts
-      without rewriting Story 11.25 history"
+    action: "Capture one passing provider-plus-AppHost record for the exact tested candidate
+      under the adopted readiness and record-ref rules, then obtain the three required
+      durable migration receipts and exact-current-main human release review without
+      rewriting Story 11.25 history."
     owner: "Architect + Release Owner"
     status: open
     gate: "G-3"
@@ -971,6 +973,7 @@ action_items:
     ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-09-27.md"
   - id: "E12R-AI-2"
     epic: 12
+    # Approved 2026-11-16: coordinate actual main writers and automation, including /pushall gitlink syncs, under the proposal preflight before qualification; the existing action, gitlink-bundling prohibition and in-progress status remain.
     action: "Return quality.yml to green without weakening the G-3 pin: realign references/Hexalith.EventStore
       to the evidence-bound SHA or advance the evidence through EVT-ID-1 (see E11R-AI-1),
       and stop bundling pinned-submodule gitlink bumps into story or spec commits."
@@ -1327,3 +1330,13 @@ approved_change_backlog:
 # jpiquot Release Owner with Architect disposition due 2026-11-16T17:27:10Z unchanged.
 # 16.1 done;16.2 not invoked/backlog;16.3 in-progress; Epic16/G-3 open.
 # 2026-11-16: the procedure above ended unexecuted; jpiquot's disposition was received by 2026-11-16T10:10:24Z (first clock read after receipt), before the due time above (repository durability awaits the user's Git); 16.2 is since done as not invoked; G-3 open; missing origin durability becomes the remaining blocker at 2026-11-16T17:27:10Z; see the 16-3 row comment.
+
+# Epic 16 candidate-identity planning adoption — 2026-11-16:
+# Actual answer "approve" as Product Owner, Architect and Release Owner; receipt observation 2026-11-16T12:23:13Z, not a supplied authoring time.
+# Approved rule: planning-artifacts/sprint-change-proposal-2026-11-16.md §§3.1–3.5; receipt at #planning-approval-receipt--2026-11-16.
+# Correct-course decision action closed by approval; exact four-part identity, authorized same-repository off-main records and readiness-before-start adopted prospectively.
+# T is future candidate notation; no candidate, ref name, schedule, working calendar, new acknowledgment or execution/Git authority supplied. No qualification starts.
+# Prior E11R-AI-1 action: "Capture one passing provider-plus-AppHost record for the exact FrontComposer/EventStore/package/Builds tuple current at execution, then obtain the required migration-approval receipts without rewriting Story 11.25 history".
+# E11R-AI-1 wording clarified under the approved rule; status open/gate G-3 unchanged. E12R-AI-2 action/status unchanged with coordination dependency added above.
+# C/R self-record supersession and M's missing prerequisites remain distinct; M's deadline expired while it was still main. M procedure ended/never executed/must not execute; no C receipt activation or transfer.
+# Historical deadlines, decisions, evidence/limits and durability conditions keep their original scope. 16.1 done;16.2 done as not invoked;16.3/Epic16 in-progress; G-3 open; Epic17 final readiness waits; G-8 halt independent.
