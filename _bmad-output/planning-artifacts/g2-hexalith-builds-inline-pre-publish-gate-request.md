@@ -8,7 +8,21 @@
 - **Status:** successor revision required. Hexalith.Builds issue 17 was reopened and its immutable
   revision `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` was owner-accepted on 2026-08-08. That revision is
   the AD-16 lineage anchor/predecessor; it is not evidence of the AD-19 split reusable.
-- **Current FrontComposer execution pin:** `4eb33928a1d8c7775f97221cf9edc171db0cb5f8`.
+- **FrontComposer identities (reconciled 2026-11-16, Story 17.1; values are dated snapshots, so re-read
+  the authority):** the [identity register](prd-addendum-2026-09-08.md#2-dependency-governance-mechanism-moved-from-nfr-13--7--d-11) keeps five identities apart.
+  - Lineage anchor: `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`, above.
+  - Release execution pin: held by `builds-execution-sha` in `.github/workflows/release.yml` and the
+    `prepare-domain-release@` pin in `.github/workflows/release-publish.yml`. Snapshot 2026-11-16:
+    `360a2b9c4e96809365a7de785be9a68152d5ac28`.
+  - CI execution pin: held by `domain-ci.yml@` in `.github/workflows/ci.yml`. Snapshot 2026-11-16:
+    `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
+  - Builds catalog gitlink: read with `git ls-tree <commit> references/Hexalith.Builds`. Snapshot
+    2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`. It need not equal either pin.
+  - Required split revision: EXT-BUILDS-1, the outcome requested below. It does not yet exist.
+  - Candidate identities: each is bound to its own evidence.
+
+  The execution pin this request named until 2026-11-16, `4eb33928a1d8c7775f97221cf9edc171db0cb5f8`,
+  is historical. The caller switched away from it on 2026-10-04.
 - **Required next upstream outcome:** an owner-accepted immutable revision in the AD-16 lineage that
   implements `split-publication-v1` exactly as the finalized GOV-1 spine requires.
 - **Owners:** Hexalith.Builds owner + Release Owner for upstream acceptance; FrontComposer Architecture,
@@ -16,8 +30,11 @@
 - **Issue:** <https://github.com/Hexalith/Hexalith.Builds/issues/17> and acceptance record
   <https://github.com/Hexalith/Hexalith.Builds/issues/17#issuecomment-5226651759>.
 - **Release impact:** the checked-in FrontComposer caller remains on a legacy publication-capable path.
-  Production releases remain halted; no current release is made compliant by protected-environment
-  approval alone.
+  Since 2026-10-04 that path has been the repository-owned `release-publish.yml`. Its protected job runs
+  the Builds `prepare-domain-release` action over the checked-out candidate. It is **not G-8
+  conformant** and does not use `domain-release.yml`. Production releases must remain halted, but the
+  halt is currently not in effect (NC-35, NC-36); no current release is made compliant by
+  protected-environment approval alone.
 - **Repository boundary:** FrontComposer does not edit or commit shared Hexalith.Builds source. Upstream
   implementation and acceptance occur in the owning repository; FrontComposer later pins and
   pre-authorizes the accepted immutable closure through AD-12 delayed activation.
@@ -131,6 +148,12 @@ author-unsigned and NuGet.org repository-signs uploads.
 policy, evaluator, handoff, manifest, attestation/fallback, or privilege boundary. During the current
 halt, FrontComposer requires literal `false`. A Release Owner or repository administrator must set and
 verify that value through an authenticated API observation before any release approval or dispatch.
+`true` never authorizes, and no bounded risk exception is approved.
+
+**Observed nonconformance (authenticated API read 2026-11-16T15:55:29Z).** The variable reads `true`
+(updated 2026-10-05T06:13:40Z), and FrontComposer v4.6.0 through v6.0.0 were published without an
+approved exception. The GOV-1 nonconformance register records this as NC-34 to NC-36, routed to the
+Release Owner. This request changes no variable or workflow.
 
 ## GOV-1 Split Implementation Gate
 

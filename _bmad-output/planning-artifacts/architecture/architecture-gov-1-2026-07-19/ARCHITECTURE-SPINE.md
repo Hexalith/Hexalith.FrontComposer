@@ -7,7 +7,7 @@ paradigm: 'bounded committed-object graph'
 scope: 'GOV-1 shared-catalog compatibility and dependency provenance'
 status: final
 created: '2026-07-19'
-updated: '2026-10-28'
+updated: '2026-11-16'
 binds: ['GOV-1', 'parent:approved-gov-1-amendment', 'parent:semantic-catalog-compatibility', 'parent:fr-24-exact-artifact-pipeline', 'parent:pre-publication-authorizes-only', 'parent:ownership-boundaries', 'parent:build-rel-1-governed-reusable-mode', 'parent:no-runtime-or-ux-change']
 sources:
   - _bmad-output/planning-artifacts/architecture.md
@@ -91,6 +91,14 @@ authenticated API read records that value and its server timestamp. No bounded r
 currently authorized. A future exception
 requires a separate dated Product Owner + Release Owner + Architect decision naming scope, expiry,
 compensating controls, and revocation trigger; it cannot be inferred from environment approval.
+
+**Observed nonconformance (authenticated API read 2026-11-16T15:55:29Z, Story 17.1).** The blocker is
+still open. The variable reads literal `true` (updated 2026-10-05T06:13:40Z), and v4.6.0 through
+v6.0.0 were published without an approved exception. Literal `false` remains the only conforming
+value; `true`, a green run and environment approval never authorize. Register rows NC-34 to NC-36
+route the caller-owned publisher, the flag and those publications to the Release Owner. Incident
+handling belongs to Story 17.2 and ledger rows to Story 17.14. This record changes no variable,
+workflow or release posture.
 
 ## Invariants & Rules
 
@@ -534,7 +542,15 @@ compensating controls, and revocation trigger; it cannot be inferred from enviro
   the evaluator; a caller blob with no row fails closed. `ci.yml` and `release.yml` each reference
   `domain-ci.yml`/`domain-release.yml` by a literal 40-hex Hexalith.Builds commit equal to the row's
   `reusable.commit`; the release row's reusable must implement AD-19 `split-publication-v1`, and the
-  two pins lie in the AD-16 lineage and need not be equal. For the Release phase, the
+  two pins lie in the AD-16 lineage and need not be equal. The active Release caller does not meet
+  this rule (dated snapshot 2026-11-16, Story 17.1; NC-34). `release.yml` names no `domain-release.yml`
+  pin. It delegates to the repository-owned `release-publish.yml`, which runs the Builds
+  `Github/prepare-domain-release` composite action at the `builds-execution-sha` commit. That
+  caller-owned publisher is legacy and **not G-8 conformant**. The [identity register](../../prd-addendum-2026-09-08.md#2-dependency-governance-mechanism-moved-from-nfr-13--7--d-11) keeps five identities
+  apart: the lineage anchor `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`, stated literally; the execution
+  pins and the Builds catalog gitlink, each cited by its authority with a dated value; the future split
+  revision EXT-BUILDS-1, which does not yet exist; and candidate identities bound to their evidence.
+  For the Release phase, the
   **execution-SHA equality set** is `env.BUILDS_EXECUTION_SHA`, `HEXALITH_BUILDS_EXECUTION_SHA`, the
   `builds-execution-sha:` input, the `domain-release.yml@` pin, and every `actions/checkout` `ref:`
   whose `path:` is `.hexalith/builds-execution` in the exact Release caller/reusable closure;

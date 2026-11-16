@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -320,6 +321,181 @@ class ReleaseContractTests(unittest.TestCase):
                 with self.assertRaises(rc.ContractError):
                     rc.validate_builds_identity(workflow, publisher, catalog, execution)
 
+    @staticmethod
+    def _builds_identity_sources(input_pin: str, action_pin: str) -> tuple[str, str]:
+        workflow = (
+            "    uses: ./.github/workflows/release-publish.yml\n"
+            "      builds-execution-sha: " + input_pin + "\n"
+        )
+        publisher = "uses: Hexalith/Hexalith.Builds/Github/prepare-domain-release@" + action_pin + "\n"
+        return workflow, publisher
+
+    def test_builds_identity_pin_drift_names_file_field_expected_and_actual(self) -> None:
+        approved = "a" * 40
+        drifted = "c" * 40
+        input_member = ".github/workflows/release.yml builds-execution-sha"
+        action_member = (
+            ".github/workflows/release-publish.yml "
+            "uses: Hexalith/Hexalith.Builds/Github/prepare-domain-release@"
+        )
+        for label, input_pin, action_pin, named, unnamed in (
+            ("workflow input drift", drifted, approved, [input_member], [action_member]),
+            ("publisher action drift", approved, drifted, [action_member], [input_member]),
+            ("both members drift", drifted, drifted, [input_member, action_member], []),
+        ):
+            with self.subTest(label):
+                workflow, publisher = self._builds_identity_sources(input_pin, action_pin)
+                with self.assertRaises(rc.ContractError) as raised:
+                    rc.validate_builds_identity(workflow, publisher, "b" * 40, approved)
+                message = str(raised.exception)
+                for member in named:
+                    self.assertIn(f'{member}: expected exactly one "{approved}"; actual "{drifted}"', message)
+                for member in unnamed:
+                    self.assertNotIn(member, message)
+
+    def test_builds_identity_duplicate_or_missing_pin_reports_every_observed_value(self) -> None:
+        approved = "a" * 40
+        workflow, publisher = self._builds_identity_sources(approved, approved)
+        duplicated = workflow + "      builds-execution-sha: " + "d" * 40 + "\n"
+        with self.assertRaises(rc.ContractError) as raised:
+            rc.validate_builds_identity(duplicated, publisher, "b" * 40, approved)
+        self.assertIn(
+            f'.github/workflows/release.yml builds-execution-sha: expected exactly one "{approved}"; '
+            f'actual "{approved}", "{"d" * 40}"',
+            str(raised.exception),
+        )
+        with self.assertRaises(rc.ContractError) as raised:
+            rc.validate_builds_identity(workflow, "name: publisher\n", "b" * 40, approved)
+        self.assertIn(
+            "prepare-domain-release@: expected exactly one " + f'"{approved}"; actual none',
+            str(raised.exception),
+        )
+
+    def test_builds_identity_rejects_labels_and_names_the_field(self) -> None:
+        approved = "a" * 40
+        workflow, publisher = self._builds_identity_sources(approved, approved)
+        for label in ("v4.6.0", "main", "refs/heads/main", "a" * 8, "A" * 40, "a" * 41, ""):
+            with self.subTest(approved=label):
+                with self.assertRaises(rc.ContractError) as raised:
+                    rc.validate_builds_identity(workflow, publisher, "b" * 40, label)
+                self.assertIn(
+                    "--approved (Builds execution SHA): expected an exact lowercase 40-hex commit; "
+                    f"actual {json.dumps(label)}",
+                    str(raised.exception),
+                )
+        for label in ("v4.6.0", "main", "a" * 8, "${{ env.BUILDS_EXECUTION_SHA }}"):
+            with self.subTest(workflow_label=label):
+                labelled_workflow, labelled_publisher = self._builds_identity_sources(label, label)
+                with self.assertRaises(rc.ContractError) as raised:
+                    rc.validate_builds_identity(labelled_workflow, labelled_publisher, "b" * 40, approved)
+                message = str(raised.exception)
+                self.assertIn(
+                    f'.github/workflows/release.yml builds-execution-sha: expected exactly one "{approved}"; '
+                    f"actual {json.dumps(label)}",
+                    message,
+                )
+                self.assertIn(
+                    f'prepare-domain-release@: expected exactly one "{approved}"; actual {json.dumps(label)}',
+                    message,
+                )
+
+    def test_builds_identity_every_observed_value_decides_each_member(self) -> None:
+        approved = "a" * 40
+        workflow, publisher = self._builds_identity_sources(approved, approved)
+        action = "uses: Hexalith/Hexalith.Builds/Github/prepare-domain-release@"
+        input_member = '.github/workflows/release.yml builds-execution-sha: expected exactly one "' + approved + '"'
+        action_member = (
+            '.github/workflows/release-publish.yml uses: Hexalith/Hexalith.Builds/Github/'
+            'prepare-domain-release@: expected exactly one "' + approved + '"'
+        )
+        for label, changed_workflow, changed_publisher, fragment in (
+            (
+                "expression beside the approved input",
+                workflow + "      builds-execution-sha: ${{ env.X }}\n",
+                publisher,
+                input_member + f'; actual "{approved}", "${{{{ env.X }}}}"',
+            ),
+            (
+                "commented approved pin beside a live branch pin",
+                workflow,
+                "        # " + action + approved + "\n        " + action + "main\n",
+                action_member + '; actual "main"',
+            ),
+            (
+                "suffixed action pin",
+                workflow,
+                action + approved + "-suffix\n",
+                action_member + f'; actual "{approved}-suffix"',
+            ),
+            (
+                "suffixed input pin",
+                workflow.replace(approved, approved + "-suffix"),
+                publisher,
+                input_member + f'; actual "{approved}-suffix"',
+            ),
+            (
+                "input value on the following line",
+                "    uses: ./.github/workflows/release-publish.yml\n      builds-execution-sha:\n        " + approved + "\n",
+                publisher,
+                input_member + '; actual ""',
+            ),
+        ):
+            with self.subTest(label):
+                with self.assertRaises(rc.ContractError) as raised:
+                    rc.validate_builds_identity(changed_workflow, changed_publisher, "b" * 40, approved)
+                self.assertIn(fragment, str(raised.exception))
+        # A trailing comment after the exact SHA is accepted; commented-out lines are not pins.
+        rc.validate_builds_identity(
+            workflow.replace(approved, approved + "  # release pin") + "      # builds-execution-sha: main\n",
+            "        # " + action + "main\n        - " + action + approved + " # v-pin\n",
+            "b" * 40,
+            approved,
+        )
+
+    def test_builds_identity_diagnostics_escape_control_characters(self) -> None:
+        approved = "a" * 40
+        workflow, publisher = self._builds_identity_sources(approved, approved)
+        forged = "x\x1b[2K\r::error::forged"
+        for label, args, rendered in (
+            ("forged input value", (workflow.replace(approved, forged), publisher, "b" * 40, approved), json.dumps(forged)),
+            ("forged approved value", (workflow, publisher, "b" * 40, approved + "\n::error::forged"),
+             json.dumps(approved + "\n::error::forged")),
+            ("malformed gitlink", (workflow, publisher, "b" * 39, approved),
+             'references/Hexalith.Builds gitlink: expected an exact lowercase 40-hex commit; actual "' + "b" * 39 + '"'),
+        ):
+            with self.subTest(label):
+                with self.assertRaises(rc.ContractError) as raised:
+                    rc.validate_builds_identity(*args)
+                message = str(raised.exception)
+                self.assertIn(rendered, message)
+                for raw in ("\n", "\r", "\x1b"):
+                    self.assertNotIn(raw, message)
+
+    def test_builds_identity_missing_delegation_names_workflow_and_observed_uses(self) -> None:
+        approved = "a" * 40
+        workflow, publisher = self._builds_identity_sources(approved, approved)
+        expected = (
+            '.github/workflows/release.yml job uses: expected exactly one '
+            '"    uses: ./.github/workflows/release-publish.yml" line; actual '
+        )
+        remote = "    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@" + approved
+        for label, changed_workflow, actual in (
+            ("other local workflow", workflow.replace("release-publish.yml", "other.yml"),
+             '"    uses: ./.github/workflows/other.yml"'),
+            ("trailing comment", workflow.replace("release-publish.yml", "release-publish.yml # publisher"),
+             '"    uses: ./.github/workflows/release-publish.yml # publisher"'),
+            ("remote reusable", workflow.replace("    uses: ./.github/workflows/release-publish.yml", remote),
+             json.dumps(remote)),
+            ("wrong indentation", workflow.replace("    uses:", "      uses:"),
+             '"      uses: ./.github/workflows/release-publish.yml"'),
+            ("carriage return", workflow.replace("\n", "\r\n"),
+             '"    uses: ./.github/workflows/release-publish.yml\\r"'),
+        ):
+            with self.subTest(label):
+                with self.assertRaises(rc.ContractError) as raised:
+                    rc.validate_builds_identity(changed_workflow, publisher, "b" * 40, approved)
+                self.assertIn(expected + actual, str(raised.exception))
+
     def test_builds_cli_reports_distinct_catalog_and_execution_sha(self) -> None:
         approved = "a" * 40
         catalog = "b" * 40
@@ -398,6 +574,140 @@ class ReleaseContractTests(unittest.TestCase):
                 status = rc.main(["builds", "--root", str(root), "--commit", commit, "--approved", approved])
             self.assertEqual(1, status)
             self.assertIn("cannot resolve the candidate Builds gitlink", stderr.getvalue())
+            self.assertIn(
+                f"references/Hexalith.Builds at commit {json.dumps(commit)} is not a 160000 gitlink entry",
+                stderr.getvalue(),
+            )
+
+    @staticmethod
+    def _builds_fixture_commit(root: pathlib.Path, files: dict[str, str], gitlink: str | None) -> str:
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "builds-identity@example.test"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Builds Identity Fixture"], cwd=root, check=True)
+        for relative, content in files.items():
+            path = root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+        subprocess.run(["git", "add", "."], cwd=root, check=True, capture_output=True)
+        if gitlink is not None:
+            subprocess.run(
+                ["git", "update-index", "--add", "--cacheinfo", f"160000,{gitlink},references/Hexalith.Builds"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+        subprocess.run(
+            ["git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "test: seed Builds identity fixture"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+        )
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    def _builds_cli_rejects(self, argv: list[str]) -> str:
+        stderr = io.StringIO()
+        stdout = io.StringIO()
+        with contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(stdout):
+            status = rc.main(argv)
+        self.assertEqual(1, status)
+        self.assertEqual("", stdout.getvalue())
+        return stderr.getvalue()
+
+    def test_builds_cli_names_missing_workflow_or_publisher_and_commit(self) -> None:
+        approved = "a" * 40
+        workflow, publisher = self._builds_identity_sources(approved, approved)
+        for label, files, fragment in (
+            (
+                "missing release workflow",
+                {".github/workflows/release-publish.yml": publisher},
+                "cannot resolve the exact candidate release workflow: .github/workflows/release.yml at commit ",
+            ),
+            (
+                "missing release publisher",
+                {".github/workflows/release.yml": workflow},
+                "cannot resolve the exact candidate release publisher: .github/workflows/release-publish.yml at commit ",
+            ),
+        ):
+            with self.subTest(label), tempfile.TemporaryDirectory() as temporary:
+                root = pathlib.Path(temporary)
+                commit = self._builds_fixture_commit(root, files, "b" * 40)
+                stderr = self._builds_cli_rejects(
+                    ["builds", "--root", str(root), "--commit", commit, "--approved", approved]
+                )
+                self.assertIn(fragment + json.dumps(commit), stderr)
+
+    def test_builds_cli_rejects_label_commit_before_git_and_reports_git_failure(self) -> None:
+        approved = "a" * 40
+        for label in ("HEAD", "--output=/tmp/forged", "-n", "a" * 8, "A" * 40):
+            with self.subTest(commit=label):
+                with unittest.mock.patch.object(rc.subprocess, "run", side_effect=AssertionError("git must not run")):
+                    stderr = self._builds_cli_rejects(
+                        ["builds", "--root", ".", f"--commit={label}", "--approved", approved]
+                    )
+                self.assertIn(
+                    "--commit (FrontComposer candidate commit): expected an exact lowercase 40-hex commit; "
+                    f"actual {json.dumps(label)}",
+                    stderr,
+                )
+        workflow, publisher = self._builds_identity_sources(approved, approved)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            self._builds_fixture_commit(
+                root,
+                {".github/workflows/release.yml": workflow, ".github/workflows/release-publish.yml": publisher},
+                "b" * 40,
+            )
+            unknown = "f" * 40
+            stderr = self._builds_cli_rejects(
+                ["builds", "--root", str(root), "--commit", unknown, "--approved", approved]
+            )
+            self.assertIn(
+                f'cannot resolve the candidate Builds gitlink: git ls-tree failed for commit {json.dumps(unknown)}: "',
+                stderr,
+            )
+            self.assertNotIn('""', stderr)
+            self.assertNotIn("160000", stderr)
+
+    def test_builds_cli_rejects_drift_and_labels_naming_source_and_field(self) -> None:
+        committed = "a" * 40
+        catalog = "b" * 40
+        workflow, publisher = self._builds_identity_sources(committed, committed)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            commit = self._builds_fixture_commit(
+                root,
+                {".github/workflows/release.yml": workflow, ".github/workflows/release-publish.yml": publisher},
+                catalog,
+            )
+            approved = "c" * 40
+            for label, value, expected in (
+                (
+                    "approved differs from both committed pins",
+                    approved,
+                    [
+                        f'.github/workflows/release.yml builds-execution-sha: expected exactly one "{approved}"; '
+                        f'actual "{committed}"',
+                        ".github/workflows/release-publish.yml uses: Hexalith/Hexalith.Builds/Github/"
+                        f'prepare-domain-release@: expected exactly one "{approved}"; actual "{committed}"',
+                    ],
+                ),
+                ("tag", "v6.0.0", ['--approved (Builds execution SHA): expected an exact lowercase 40-hex commit; actual "v6.0.0"']),
+                ("branch", "main", ['--approved (Builds execution SHA): expected an exact lowercase 40-hex commit; actual "main"']),
+                ("short sha", committed[:8], ["--approved (Builds execution SHA): expected an exact lowercase 40-hex commit; "
+                                              f'actual "{committed[:8]}"']),
+            ):
+                with self.subTest(label):
+                    stderr = self._builds_cli_rejects(
+                        ["builds", "--root", str(root), "--commit", commit, "--approved", value]
+                    )
+                    for fragment in expected:
+                        self.assertIn(fragment, stderr)
 
     def test_nuget_content_accepts_only_repository_signature_difference(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

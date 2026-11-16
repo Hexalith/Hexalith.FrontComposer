@@ -352,22 +352,75 @@ def validate_publication(
         raise ContractError("GitHub Release tag does not resolve to the exact dispatched SHA")
 
 
+RELEASE_WORKFLOW_PATH = ".github/workflows/release.yml"
+RELEASE_PUBLISHER_PATH = ".github/workflows/release-publish.yml"
+BUILDS_GITLINK_PATH = "references/Hexalith.Builds"
+_PUBLISHER_DELEGATION_LINE = "    uses: ./.github/workflows/release-publish.yml"
+_PUBLISHER_ACTION_FIELD = "uses: Hexalith/Hexalith.Builds/Github/prepare-domain-release@"
+# Line-anchored so neither pattern crosses a newline or reads a commented-out line.
+_INPUT_PIN_RE = re.compile(r"(?m)^[ \t]+builds-execution-sha:[ \t]*(.*?)[ \t\r]*$")
+_ACTION_PIN_RE = re.compile(
+    r"(?m)^[ \t]*(?:-[ \t]+)?uses:[ \t]*Hexalith/Hexalith\.Builds/Github/prepare-domain-release@(.*?)[ \t\r]*$"
+)
+_WORKFLOW_USES_RE = re.compile(r"^[ \t]*(?:-[ \t]+)?uses:.*\.github/workflows/")
+# A pin value is exactly 40 lowercase hex, ended by the line end or by whitespace and a comment.
+_PIN_VALUE_RE = re.compile(r"([0-9a-f]{40})(?:[ \t]+#.*)?")
+
+
+def _shown(values: list[str]) -> str:
+    """Render observed identity values for a diagnostic, escaping control characters."""
+    return ", ".join(json.dumps(value) for value in values) if values else "none"
+
+
+def _pin_value(observed: str) -> str:
+    """Return the commit an observed pin names, or the raw value when it is not an exact SHA."""
+    match = _PIN_VALUE_RE.fullmatch(observed)
+    return match.group(1) if match else observed
+
+
 def validate_builds_identity(workflow_text: str, publisher_text: str, selected_gitlink: str, approved: str) -> None:
+    """Require both Release execution-pin members to equal the exact approved Builds commit.
+
+    Each rejection names the source file and field together with the expected and actual values,
+    so a drifting pin, a label presented as an identity, or a missing delegation is attributable.
+    """
     if SHA_RE.fullmatch(approved) is None:
-        raise ContractError("approved Builds execution SHA must be an exact lowercase 40-hex commit")
+        raise ContractError(
+            "--approved (Builds execution SHA): expected an exact lowercase 40-hex commit; "
+            f"actual {_shown([approved])}"
+        )
     if SHA_RE.fullmatch(selected_gitlink) is None:
-        raise ContractError("cannot resolve the candidate Builds gitlink")
+        raise ContractError(
+            f"cannot resolve the candidate Builds gitlink: {BUILDS_GITLINK_PATH} gitlink: "
+            f"expected an exact lowercase 40-hex commit; actual {_shown([selected_gitlink])}"
+        )
     if re.findall(r"(?m)^    uses: \./\.github/workflows/release-publish\.yml$", workflow_text) != [
         "    uses: ./.github/workflows/release-publish.yml"
     ]:
-        raise ContractError("release workflow must delegate to its repository-owned NuGet publisher")
-    workflow_pins = re.findall(
-        r"uses:\s*Hexalith/Hexalith\.Builds/Github/prepare-domain-release@([0-9a-f]{40})\b",
-        publisher_text,
+        # Raw lines keep indentation, quoting, comments and a stray CR visible in the diagnostic.
+        delegations = [line for line in workflow_text.split("\n") if _WORKFLOW_USES_RE.match(line)]
+        raise ContractError(
+            f"release workflow must delegate to its repository-owned NuGet publisher: {RELEASE_WORKFLOW_PATH} "
+            f"job uses: expected exactly one {_shown([_PUBLISHER_DELEGATION_LINE])} line; "
+            f"actual {_shown(delegations)}"
+        )
+    # Every observed occurrence decides: a member passes only when it holds exactly one value and that
+    # value names the approved commit, so a second expression, a live `@main` beside a commented pin,
+    # or `@<sha>-suffix` all fail and are shown verbatim.
+    members = (
+        (RELEASE_WORKFLOW_PATH, "builds-execution-sha", _INPUT_PIN_RE.findall(workflow_text)),
+        (RELEASE_PUBLISHER_PATH, _PUBLISHER_ACTION_FIELD, _ACTION_PIN_RE.findall(publisher_text)),
     )
-    input_pins = re.findall(r"(?m)^\s+builds-execution-sha:\s*([0-9a-f]{40})\s*$", workflow_text)
-    if workflow_pins != [approved] or input_pins != [approved]:
-        raise ContractError("release publisher action and builds-execution-sha must use the identical approved Builds commit")
+    mismatches = [
+        f"{path} {field}: expected exactly one {_shown([approved])}; actual {_shown(observed)}"
+        for path, field, observed in members
+        if [_pin_value(value) for value in observed] != [approved]
+    ]
+    if mismatches:
+        raise ContractError(
+            "release publisher action and builds-execution-sha must use the identical approved Builds commit: "
+            + "; ".join(mismatches)
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -429,6 +482,11 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(json.dumps({"ok": True, "tag": args.expected_tag, "source_sha": args.expected_sha}, sort_keys=True))
         elif args.command == "builds":
+            if SHA_RE.fullmatch(args.commit) is None:
+                raise ContractError(
+                    "--commit (FrontComposer candidate commit): expected an exact lowercase 40-hex commit; "
+                    f"actual {_shown([args.commit])}"
+                )
             root = pathlib.Path(args.root).resolve()
             result = subprocess.run(
                 ["git", "-C", str(root), "ls-tree", args.commit, "references/Hexalith.Builds"],
@@ -436,23 +494,37 @@ def main(argv: list[str] | None = None) -> int:
                 text=True,
                 check=False,
             )
+            if result.returncode != 0:
+                raise ContractError(
+                    f"cannot resolve the candidate Builds gitlink: git ls-tree failed for commit "
+                    f"{_shown([args.commit])}: {_shown([result.stderr.strip()])}"
+                )
             fields = result.stdout.strip().split()
-            if result.returncode != 0 or len(fields) < 3 or fields[0] != "160000":
-                raise ContractError("cannot resolve the candidate Builds gitlink")
+            if len(fields) < 3 or fields[0] != "160000":
+                raise ContractError(
+                    f"cannot resolve the candidate Builds gitlink: {BUILDS_GITLINK_PATH} at commit "
+                    f"{_shown([args.commit])} is not a 160000 gitlink entry"
+                )
             workflow_bytes = subprocess.run(
                 ["git", "-C", str(root), "show", f"{args.commit}:.github/workflows/release.yml"],
                 capture_output=True,
                 check=False,
             )
             if workflow_bytes.returncode != 0:
-                raise ContractError("cannot resolve the exact candidate release workflow")
+                raise ContractError(
+                    f"cannot resolve the exact candidate release workflow: {RELEASE_WORKFLOW_PATH} "
+                    f"at commit {_shown([args.commit])}"
+                )
             publisher_bytes = subprocess.run(
                 ["git", "-C", str(root), "show", f"{args.commit}:.github/workflows/release-publish.yml"],
                 capture_output=True,
                 check=False,
             )
             if publisher_bytes.returncode != 0:
-                raise ContractError("cannot resolve the exact candidate release publisher")
+                raise ContractError(
+                    f"cannot resolve the exact candidate release publisher: {RELEASE_PUBLISHER_PATH} "
+                    f"at commit {_shown([args.commit])}"
+                )
             validate_builds_identity(
                 workflow_bytes.stdout.decode("utf-8-sig"),
                 publisher_bytes.stdout.decode("utf-8-sig"),

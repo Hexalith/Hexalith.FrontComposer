@@ -1,6 +1,6 @@
 ---
 created: 2026-07-19
-updated: 2026-11-14
+updated: 2026-11-16
 story: GOV-1
 owner: Product Owner + Architect + Developer + Release Owner
 source_proposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
@@ -51,8 +51,28 @@ advanced to handoff v3 and manifest v4, and the spine's exact implementation gat
 - Hexalith.Builds revision `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` is the accepted AD-16
   lineage anchor/predecessor. A later owner-accepted immutable revision must implement
   `split-publication-v1` before FrontComposer selects it.
-- Production releases remain halted. `HEXALITH_RELEASE_PUBLISH_ENABLED` must be literal `false` as a
-  deny-only emergency stop and can never authorize publication. No bounded risk exception exists.
+- Production releases must remain halted; the halt is currently not in effect (NC-35, NC-36).
+  `HEXALITH_RELEASE_PUBLISH_ENABLED` must be literal `false` as a deny-only emergency stop and can
+  never authorize publication. No bounded risk exception exists.
+- **Identities (reconciled 2026-11-16, Story 17.1).** The [identity register](../planning-artifacts/prd-addendum-2026-09-08.md#2-dependency-governance-mechanism-moved-from-nfr-13--7--d-11) keeps five identities
+  apart, and the values below are dated snapshots, so re-read the authority.
+  - Lineage anchor: `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`.
+  - Release execution pin: held by `builds-execution-sha` in `.github/workflows/release.yml` and the
+    `prepare-domain-release@` pin in `.github/workflows/release-publish.yml`. Snapshot 2026-11-16:
+    `360a2b9c4e96809365a7de785be9a68152d5ac28`.
+  - CI execution pin: held by `domain-ci.yml@` in `.github/workflows/ci.yml`. Snapshot 2026-11-16:
+    `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
+  - Builds catalog gitlink: read with `git ls-tree <commit> references/Hexalith.Builds`. Snapshot
+    2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`.
+  - Future split revision: EXT-BUILDS-1, which does not yet exist.
+  - Candidate identities: each is bound to its own evidence.
+- **Active caller.** `release.yml` delegates to the repository-owned `release-publish.yml`, whose
+  protected job runs the Builds `prepare-domain-release` action over the checked-out candidate. It is
+  legacy and **not G-8 conformant** (nonconformance register NC-34).
+- **Observed nonconformance (authenticated API read 2026-11-16T15:55:29Z).** The flag reads `true`
+  (updated 2026-10-05T06:13:40Z), and v4.6.0 through v6.0.0 were published without an approved
+  exception. Rows NC-35 and NC-36 route this to the Release Owner. Incident handling belongs to Story
+  17.2 and ledger rows to Story 17.14. `true` never authorizes.
 
 ## Acceptance Criteria
 
@@ -159,8 +179,8 @@ condition pass.
 | Decision | Owner | Current disposition | Closure evidence |
 | --- | --- | --- | --- |
 | Accept AD-19, the production-release halt, and the no-exception posture | Product Owner + Release Owner | Open; architecture adoption does not imply acceptance | Dated decision citing AD-19 and PRD D-16/G-8 |
-| Accept the immutable split-reusable successor into AD-16 lineage | Hexalith.Builds owner + Release Owner | Open; `a8a50859…` is predecessor only | Accepted revision and exact closure evidence |
-| Apply and verify the literal-false emergency stop | Release Owner or repository administrator | Open; the spine records the last observation as literal `true` | Authenticated API value and server timestamp |
+| Accept the immutable split-reusable successor into AD-16 lineage | Hexalith.Builds owner + Release Owner | Open; the successor is EXT-BUILDS-1, which does not yet exist; `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` is predecessor only | Accepted revision and exact closure evidence |
+| Apply and verify the literal-false emergency stop | Release Owner or repository administrator | Open. The authenticated read at 2026-11-16T15:55:29Z returned literal `true`, updated 2026-10-05T06:13:40Z. v4.6.0 through v6.0.0 were published without an approved exception (NC-35, NC-36) | Authenticated API value and server timestamp |
 | Approve incident acknowledgement/containment target and runbook | Product Owner + Release Owner | Open | Approved `docs/release-incident-response.md` plus exercise/tabletop evidence |
 | Establish the no-bypass protected-main process | Release Owner | Open | Authenticated ruleset/protection evidence |
 | Authorize a bounded risk exception | Product Owner + Release Owner + Architect | No exception authorized | Separate dated decision with scope, expiry, evidence, compensating controls, and revocation trigger |

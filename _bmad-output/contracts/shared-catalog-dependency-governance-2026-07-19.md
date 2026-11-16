@@ -177,14 +177,45 @@ does not, by itself, state whether a catalog satisfies a consumer contract.
     and approval-projection protocol in the spine; all required register rows must be closed and any
     stale/mixed/unavailable evidence or unprotected history fails the gate.
 
+## Current Identities and Caller (reconciled 2026-11-16, Story 17.1)
+
+This section projects current state; it amends none of the decisions above. The
+[identity register](../planning-artifacts/prd-addendum-2026-09-08.md#2-dependency-governance-mechanism-moved-from-nfr-13--7--d-11) keeps five identities apart:
+
+- **Lineage anchor:** `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`, owner-accepted 2026-08-08. It is a
+  predecessor only.
+- **Execution pins.** The Release pin is held by `builds-execution-sha` in
+  `.github/workflows/release.yml` and the `prepare-domain-release@` pin in
+  `.github/workflows/release-publish.yml`. `eng/release_contract.py builds` compares only those two with
+  `--approved`, which is the caller's own `env.BUILDS_EXECUTION_SHA`.
+  `CiGovernanceTests.ReleaseWorkflow_DelegatesToCallerOwnedPublisherAfterCiGate` enforces the full
+  equality set, including `HEXALITH_BUILDS_EXECUTION_SHA` and the `.hexalith/builds-execution` checkout
+  `ref:`. The policy's `release` `evaluator_authorizations` rows authorize this non-conformant caller.
+  The CI pin is held by `domain-ci.yml@` in `.github/workflows/ci.yml`. Dated snapshot 2026-11-16: Release
+  `360a2b9c4e96809365a7de785be9a68152d5ac28`, CI `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
+- **Builds catalog gitlink:** read with `git ls-tree <commit> references/Hexalith.Builds`. Dated
+  snapshot 2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`. It need not equal either pin.
+- **Future split revision:** EXT-BUILDS-1. It is the owner-accepted immutable `split-publication-v1`
+  successor required by decisions 16 and 19, and it does not yet exist.
+- **Candidate identities:** each is bound to its own evidence. No G-8 publication candidate is selected.
+
+The active caller is **legacy and not G-8 conformant**. `release.yml` delegates to the
+repository-owned `release-publish.yml`, whose protected `production` job checks out the candidate and
+runs the Builds `prepare-domain-release` action and Semantic Release while it holds publication
+credentials. That job is not the split reusable of decision 19 (nonconformance register NC-34).
+
 ## Unresolved Owner Decisions
 
 - Product Owner and Release Owner acceptance of AD-19, the production-release halt, and the current
   no-exception posture remains open under PRD D-16/G-8.
 - Release Owner or repository-administrator action to set `HEXALITH_RELEASE_PUBLISH_ENABLED` to literal
-  `false` and preserve an authenticated API observation remains open. The value is deny-only.
-- Hexalith.Builds owner and Release Owner acceptance of the immutable split-reusable successor entering
-  AD-16 lineage remains open.
+  `false` and preserve an authenticated API observation remains open. The value is deny-only: literal
+  `false` stops publication and `true` never authorizes it. **Observed nonconformance (authenticated API
+  read 2026-11-16T15:55:29Z):** the variable reads `true` (updated 2026-10-05T06:13:40Z), and v4.6.0
+  through v6.0.0 were published without an approved exception. Register rows NC-35 and NC-36 route this
+  to the Release Owner. Incident handling belongs to Story 17.2 and ledger rows to Story 17.14.
+- Hexalith.Builds owner and Release Owner acceptance of the immutable split-reusable successor
+  (EXT-BUILDS-1, which does not yet exist) entering AD-16 lineage remains open.
 - Product Owner and Release Owner approval of a measurable incident acknowledgement/containment target
   and the `docs/release-incident-response.md` runbook remains open.
 - Release Owner confirmation of the no-bypass protected-main ruleset required by the conformance and

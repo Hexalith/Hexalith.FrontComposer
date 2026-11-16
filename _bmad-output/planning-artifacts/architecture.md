@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-10-23
+updated: 2026-11-16
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -282,6 +282,33 @@ identity and need not equal either CI or Release execution pin. A new owner-acce
 implementing the split must enter that lineage and the active policy through delayed activation before
 FrontComposer selects it.
 
+**Identity authorities and the active caller (reconciled 2026-11-16, Story 17.1).** The
+[identity register](prd-addendum-2026-09-08.md#2-dependency-governance-mechanism-moved-from-nfr-13--7--d-11) keeps five identities apart:
+
+1. **Lineage anchor:** the literal `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` above. It is a
+   predecessor only.
+2. **Execution pins.** The Release pin is held by the `builds-execution-sha` input in
+   `.github/workflows/release.yml` and by the `prepare-domain-release@` pin in
+   `.github/workflows/release-publish.yml`. `eng/release_contract.py builds` requires those two to equal
+   `--approved`, which is the caller's own `env.BUILDS_EXECUTION_SHA`, and names the drifting file and
+   field. `CiGovernanceTests.ReleaseWorkflow_DelegatesToCallerOwnedPublisherAfterCiGate` enforces the
+   full equality set, which adds `env.BUILDS_EXECUTION_SHA`, `HEXALITH_BUILDS_EXECUTION_SHA` and the
+   `.hexalith/builds-execution` checkout `ref:`. The `release` rows of `evaluator_authorizations` in
+   `eng/dependency-graph-policy.json` authorize this non-conformant caller. The CI pin is held by the
+   `domain-ci.yml@` pin in `.github/workflows/ci.yml`. Dated snapshot 2026-11-16: Release
+   `360a2b9c4e96809365a7de785be9a68152d5ac28`, CI `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
+3. **Builds catalog gitlink:** read with `git ls-tree <commit> references/Hexalith.Builds`. Dated
+   snapshot 2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`.
+4. **Future split revision:** EXT-BUILDS-1. It does not yet exist.
+5. **Candidate identities:** each is bound to the evidence that names it. None is selected for G-8.
+
+The active caller is not the AD-19 topology above. `release.yml` delegates to the repository-owned
+`release-publish.yml`. Its protected `production` job checks out the dispatched candidate and runs
+the Builds `prepare-domain-release` composite action and Semantic Release while it holds publication
+credentials. This legacy caller-owned publisher is **not G-8 conformant** (nonconformance register
+NC-34). AD-13's evaluator-trust rule assumes a Builds `domain-release.yml` reusable, and this caller
+does not use one.
+
 Every authenticated Release run uploads `hexalith.release-verification-handoff.v3` under `if: always()`.
 It carries the selected quality run, original CI handoff, candidate, policy, publication-candidate
 coordinates, release state, final manifest v4, attestation/fallback, assets, denial reason, and Release
@@ -319,9 +346,15 @@ Ownership boundaries:
 ### GOV-1 Adoption And Split Implementation Gate
 
 The current FrontComposer caller still selects a legacy publication-capable path, so the architecture
-target is not a production-state claim. Production releases remain halted and
-`HEXALITH_RELEASE_PUBLISH_ENABLED` must be literal `false` as a deny-only emergency stop; it can never
-authorize. No bounded risk exception is currently approved.
+target is not a production-state claim. Production releases must remain halted, but the halt is
+currently not in effect (NC-35, NC-36). `HEXALITH_RELEASE_PUBLISH_ENABLED` must be literal `false` as
+a deny-only emergency stop; it can never authorize. No bounded risk exception is currently approved.
+
+**Observed nonconformance (authenticated API read 2026-11-16T15:55:29Z).** The variable reads `true`
+(updated 2026-10-05T06:13:40Z), and v4.6.0 through v6.0.0 were published without an approved
+exception. Register rows NC-35 and NC-36 route this to the Release Owner. Incident handling belongs
+to Story 17.2 and ledger rows to Story 17.14. `true` never authorizes, and neither does a green run
+or environment approval. This record changes no variable, workflow or release posture.
 
 The **GOV-1 split implementation gate** is the canonical packet and approval-projection protocol in the
 spine's Deferred section. It requires
