@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 11-15-2026 22:05
+last_updated: 11-16-2026 07:41
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -274,7 +274,7 @@ development_status:
   # Named approvals, role/transfer decisions and exact candidate/record lineage keep G-3 open; 16.2/16.3 remain pending.
   epic-16: in-progress
   16-1-i-evt-id-1-capture-the-current-eventstore-runtime-tuple: done
-  16-2-a-evt-xfer-1-conditional-transfer-migration-approval-ownersh: backlog
+  16-2-a-evt-xfer-1-conditional-transfer-migration-approval-ownersh: in-progress
   16-3-a-evt-app-1-approve-or-reject-the-exact-runtime-migration: in-progress
   epic-16-retrospective: optional
 
