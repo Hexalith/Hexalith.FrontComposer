@@ -2,7 +2,7 @@
 title: 'Story 17.2: Publish and Exercise the Release Incident Runbook'
 type: 'chore'
 created: '2026-11-17'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 story_id: '17.2'
 story_key: '17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook'
@@ -46,6 +46,7 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
+- [x] `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs`: prove the runbook is selected by executable metadata validation and included in generic page metadata checks.
 - [x] `docs/release-incident-response.md`: write operator metadata, triggers, roles, approved targets and escalation. Cover literal-false stop with authenticated readback/server timestamp, refusal of approvals/dispatches, in-flight cancellation/restriction, credential revocation/rotation, and independent confirmation without candidate execution.
 - [x] `docs/release-incident-response.md`: preserve candidate/run/attempt identities, manifests, handoffs, assets and ledger observations; inventory GitHub/NuGet effects across all package IDs; distinguish absent evidence from verified absence. Explain immutable AD-15 preservation, service-unavailable escalation, unlisting preference, correction under a new version, communication, recovery and re-enable prerequisites. Missing safe preservation blocks retry. Require cause/remediation, independent verification, Release Owner approval and all existing G-8 conditions before re-enable.
 - [x] `docs/docfx.json`, `docs/toc.yml`, `docs/how-to/index.md`, `eng/validate-docs.ps1`: include, link and validate the runbook using the existing site pipeline.
@@ -129,10 +130,33 @@ The simulated T+00/T+05/T+20/T+60 branches and their required decisions have now
 
 Story implementation acceptance may now proceed to review. This receipt neither closes G-8/GOV-ACCEPT-1/2 nor authorizes publication, recovery dispatch, credential changes or other remote operations. The existing unrelated full-docs blocker remains reported separately.
 
+
+### Review patches and replacement runbook identity — 2026-11-17
+
+Review BH-2 through BH-6 are corrected: the guide now gives private-channel/support routing and concrete trusted administration references, classifies known incident facts/unknowns immediately with append-only observations, follows complete affected credential scopes beyond the eight expected IDs, and links the existing source authorities while distinguishing mutable navigation from exact evidence. No new workflow, validator, evidence system or live operation was added.
+
+VG-1 is addressed through the existing executable metadata fixture: `ReleaseIncidentRunbookMetadataIsValidatedByPublicationCommandAsync` removes `reviewed` and requires the real PowerShell validator's runbook-specific failure. Generic content-metadata coverage now includes the runbook too. A disposable Debug project build completed with **0 warnings / 0 errors**, and both focused tests passed (**2 total; 0 failed/skipped/not run**). Exact commands and logs are retained in `artifacts/verification/story-17-2/verify-review-fixes.sh`, `review-fixes-build.log` and `review-fixes-tests.log`. The primary agent added the required XML summary to the new public test method; the final full documentation job includes that source revision.
+
+Current runbook UTF-8/CRLF raw-file SHA-256 is **`24814b2f4a13b76b2c88e3ae72dfcd22b52abb09b0ba5b496683bd7fe0c69d5c`**. The owner-approved `303fc2b614be85dae00664f0aa92b68ebd5cf6419d5e41b739f5dbef5090c04e` remains the historical pre-patch revision. Its receipt does not approve the replacement bytes. **Replacement-digest approval is pending.** The actual tabletop decisions, assigned capacities, response targets and accepted preservation-gap triage deadline remain recorded; they need no fabricated repeat exercise.
+
+While review work was in progress, HEAD advanced externally to `b23b4cb91d974b4266a9369a85e6dae32163a893`, containing the earlier Story 17.2 source/receipt/triage state. The primary agent observed that full identifier directly from Git, preserved the commit and kept the original `baseline_commit` unchanged. No commit or push was performed by this workflow.
+
+
+### Final revised-runbook approval and completion receipt — 2026-11-17
+
+The user answered **“approve”** to the request naming the reviewed replacement runbook SHA-256 **`24814b2f4a13b76b2c88e3ae72dfcd22b52abb09b0ba5b496683bd7fe0c69d5c`**. The first UTC clock observation after receipt was **2026-11-17T07:48:14Z**; this bounds observation, not message authorship or scenario time. The primary agent rehashed the unchanged UTF-8/CRLF runbook before recording this approval. This receipt supersedes all earlier pending-replacement-approval statements while preserving both the old approval and review history.
+
+The current runbook is approved in the previously designated Product/Release capacities; the actual combined-role tabletop decisions and separate verification review were received at the earlier recorded observation. All implementation tasks and story acceptance criteria are now met. Review BH-2 through BH-6 and VG-1 are fixed and verified; BH-1 was rejected; Edge Case Hunter found no issue. BH-7 is retained as the workflow-required agent-context follow-up in deferred-work.md. No unresolved containment-critical finding remains in this story's runbook/tabletop acceptance; no live containment or production readiness is claimed.
+
+Implementation workflow status is complete; sprint Story 17.2 and the GOV-I action move to `review`. The existing two Fluent contingency version errors remain the explicitly reported full-docs blocker. The owner-accepted Story 17.8 preservation-gap triage deadline remains **2026-11-18T00:00:00Z**; the missing capability continues to forbid real recovery/retry until independently verified. G-8, GOV-ACCEPT-1/2 and publication authorization remain separate.
+
 ## Spec Change Log
 
+- 2026-11-17: applied review patches BH-2 through BH-6 and executable validation coverage VG-1. The runbook digest changed; old approval remains historical and replacement approval is required. Frozen intent and actual tabletop receipts are preserved.
 - 2026-11-17: recorded the actual owner confirmation of all three tabletop/approval requests at first post-receipt UTC observation `2026-11-17T07:15:31Z`; marked the tabletop task complete without changing frozen intent or approved runbook bytes.
 - 2026-11-17: implemented runbook/site integration and prepared the single support-safe tabletop record. Frozen intent/owner decisions were preserved. Actual participant verification/approval remains pending; no governance acceptance or publication authorization was inferred.
+
+- 2026-11-17: recorded the actual replacement-digest approval at first post-receipt UTC observation `2026-11-17T07:48:14Z`; all story tasks are complete and the implementation workflow is finalized.
 
 ## Review Triage Log
 
@@ -152,7 +176,7 @@ All three context-free review layers completed before triage: Blind Hunter, Edge
 | BH-7 | Regenerated epic context drops exact release-entry predicates. | medium | The previous cache explicitly included main/live-candidate equality, CI/Quality success and authenticated run-bound handoff; the refreshed summary omits those details. Defer because the fix changes agent-context material, as the review routing rule requires. The canonical authorities remain unchanged; subsequent implementation must consult them. |
 | VG-1 | New root runbook inclusion lacks an executable negative regression fixture. | medium | Pre-verified regression gap: removing its selection entry leaves DocFX publication intact while the inspected negative fixtures mutate only other pages. This loses the changed support-safe content-validation safeguard without a test failure. Patch the existing executable metadata fixture with the runbook case; this tests real pipeline behavior, not runbook prose. |
 
-The surviving patches share no root cause merely because they touch the same guide. Each is a direct correction to demonstrated documentation or executable-validation behavior, adds no public API or new state guard, and preserves the approved intent. No intent-gap or bad-spec loopback is required. Runbook patches will supersede the earlier exact-byte approval and require a new digest receipt after verification.
+The surviving patches share no root cause merely because they touch the same guide. Each is a direct correction to demonstrated documentation or executable-validation behavior, adds no public API or new state guard, and preserves the approved intent. BH-2 through BH-6 and VG-1 have now been patched and verified with the focused metadata tests; final documentation verification and replacement-byte approval follow. No intent-gap or bad-spec loopback is required. Runbook patches will supersede the earlier exact-byte approval and require a new digest receipt after verification.
 
 ## Verification
 
@@ -177,7 +201,7 @@ The surviving patches share no root cause merely because they touch the same gui
 | Trigger-to-response owners, acknowledgement/containment targets, escalation, evidence, credentials, effects, recovery and communication | Runbook sections “Recognize and acknowledge”, “Stop publication and remove authority”, “Preserve original identities and bytes”, “Inventory external effects”, and “Communicate and recover”. | Implemented; prospective targets are owner-approved. Exact-byte runbook approval and tabletop decisions are recorded in the actual owner receipt; live response-time performance is not claimed. |
 | Cached-true / issued credential containment without candidate execution | Explicit cached-true branch, separate job/authority invalidation and independent confirmation; synthetic T+05 inject. | Procedure implemented; participant confirmed containment decisions and separate review of verification results/limits in the actual owner receipt. |
 | Missing immutable preservation or critical findings forbid retry | Explicit current missing-workflow/service-unavailable branches, AD-15 slot/namespace/immutability/prior-recovery requirements and recovery conjunction; T+20/T+60 injects. | Safe hold procedure implemented; no real preservation capability/result claimed. Participant accepted the recovery hold and bounded triage follow-up; no real preservation result is claimed. |
-| Dated human tabletop with truthful timestamps, decisions, gaps, owners, deadlines and approvals | This spec's single tabletop record distinguishes preparation UTC, scenario offsets, real prior owner decisions and six pending actual-receipt rows. | Met by the dated actual owner receipt: all three decisions and exact-digest approval confirmed. Review remains required; G-8 and every publication gate remain independent. |
+| Dated human tabletop with truthful timestamps, decisions, gaps, owners, deadlines and approvals | This spec's single tabletop record distinguishes preparation UTC, scenario offsets, real prior owner decisions and the prepared receipt rows followed by dated actual owner responses and the final revised-runbook approval. | Met by the actual tabletop receipt and final replacement-digest approval receipt. Review fixes and focused verification are complete; G-8 and every publication gate remain independent. |
 
 
 ### Primary-agent verification and pending participation
@@ -185,6 +209,21 @@ The surviving patches share no root cause merely because they touch the same gui
 The primary agent read the baseline-to-working-tree diff, including both untracked new files, and independently checked the retained rendered page/TOC/How-to links and the unchanged runbook digest. The per-story artifact check initially identified the missing File List; the list is now present and that exact command passes. Global artifact validation and `git diff --check` also pass. No new DocFX/source change followed the full and narrow documentation runs.
 
 Two synthetic tabletop decision prompts and a separate exact-byte runbook approval/verification prompt were issued to the owner in this session. At the implementation handoff, responses remained pending; the earlier spec approval and role assignment were not converted into tabletop or runbook-approval receipts. The later actual owner receipt above supplies the missing decisions and exact-digest approval before the review transition. There is no new CI run link because no workflow was dispatched or remote operation performed.
+
+
+
+### Final verification after review patches — 2026-11-17
+
+- `run-with-temp bash artifacts/verification/story-17-2/verify-docs-post-review.sh` repeated the full existing docs invocation in a fresh disposable clone, including the final changed test source in its overlay. Release build, all **8** documentation snippets and DocFX metadata/build completed. The final page and both navigation links were independently inspected, including the corrected immediate-classification text and minimum/full-scope inventory wording.
+- The overall gate again **exited 1 with the same two unchanged Fluent contingency catalog-version errors only**. No new runbook or test-source failure was reported. Final logs, rendered outputs and the existing validation manifest are retained under `artifacts/verification/story-17-2/post-review/`. This records the known blocker; no check was suppressed and no unrelated page/catalog was changed.
+- Focused executable metadata tests: **2 passed, 0 failed, 0 skipped, 0 not run**; disposable Debug build **0 warnings / 0 errors**. Source-only XML documentation was then included in the successful final full build. Runbook raw SHA-256 remains `24814b2f4a13b76b2c88e3ae72dfcd22b52abb09b0ba5b496683bd7fe0c69d5c`; Git-normalized blob ID read directly from Git is `a0de1e2cdacfc205ef7047692dd07ff6984281c7`.
+- Primary-agent verification confirmed all six patch entries are resolved. BH-1 is rejected on the explicit claims-separation rule; Edge Case Hunter reported no finding; BH-7 remains the required agent-context deferral. No reviewer finding is silently dropped. Replacement runbook approval is the remaining current acceptance receipt; the tabletop task stays unchecked until it arrives.
+
+
+
+### Completion gates — 2026-11-17
+
+After the actual replacement approval, targeted and repository-wide `eng/validate-story-artifacts.py` checks both printed `Story artifact validation passed.` and `git diff --check` passed. The owning repository's lockfile-pinned and installed commitlint CLI **21.2.4** validated the exact completion message with **0 problems / 0 warnings**; successful output is retained in `artifacts/verification/story-17-2/post-review/commitlint.log`. Root-declared submodule working trees are clean and selected HEADs have no unpublished current-HEAD work; unrelated historical side branches are preserved. The workflow's final local commit contains only this story's remaining four paths; no push is part of completion.
 
 
 ## File List
@@ -195,7 +234,9 @@ Two synthetic tabletop decision prompts and a separate exact-byte runbook approv
 - `docs/how-to/index.md` — links the incident response guide.
 - `eng/validate-docs.ps1` — selects the page for existing validation and input tracking.
 - `_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md` — approved intent, implementation, verification and actual/pending tabletop receipts.
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` — records the in-progress story and GOV-I evidence reference.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — records the review-ready story and GOV-I final approval evidence reference.
 - `_bmad-output/implementation-artifacts/epic-17-context.md` — refreshes stale planning context before this story's implementation.
 
 - `_bmad-output/implementation-artifacts/deferred-work.md` — records the review-routed agent-context follow-up without modifying existing entries.
+
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs` — adds executable missing-runbook-metadata regression and generic root-page metadata coverage.

@@ -16,10 +16,13 @@ This is the canonical FrontComposer release incident runbook. The Release Owner
 owns it with Security. It applies to `Hexalith/Hexalith.FrontComposer`, its
 `production` environment, GitHub Releases, and the NuGet packages listed below.
 Its approval and participant-executed tabletop are recorded in
-`_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md`.
+[the Story 17.2 record](https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md).
 Until that record contains approval of the exact raw-file SHA-256 and the required
 exercise receipts, GOV-I remains open. A change to these bytes requires renewed
 approval; documentation availability alone proves neither approval nor readiness.
+Repository links using `main` below locate the current sources; they are mutable
+navigation, not approval evidence. Read the exact digest/revision named by the
+actual approval or incident receipt before relying on an authority.
 
 ## Recognize and acknowledge
 
@@ -58,8 +61,21 @@ escalate to the repository/organization owner or relevant service support, assig
 an available authorized responder and record the gap; do not assume an unnamed
 backup exists.
 
-Notify all required capacities at detection through the established private
-incident channel. If acknowledgement is at risk, escalate before T+15 minutes;
+At detection, locate the selected private channel in the existing incident
+record's communications entry. If none is recorded, the Release Owner selects
+an access-controlled channel and records its locator, authorized participants
+and custodian there; keep the private locator in restricted owner custody and
+only a support-safe reference in this public record. No channel or contact
+receipt is implied by this guide. Notify all required capacities through that
+channel, recording each capacity explicitly even when `jpiquot` fills them all.
+For provider escalation, sign in to the
+[GitHub Support portal](https://support.github.com/) using its
+[ticket procedure](https://docs.github.com/en/support/contacting-github-support/creating-a-support-ticket),
+or use [NuGet's official contact page](https://www.nuget.org/policies/Contact)
+and its signed-in **Contact Support** route; do not post exposure details to a
+public issue or discussion. Record actual ticket references/responses in the
+existing restricted incident record. These routes appoint no backup and claim
+no contact has occurred. If acknowledgement is at risk, escalate before T+15 minutes;
 if containment cannot be proven, escalate immediately and again before T+60
 minutes. Record each recipient, channel, UTC time, response and next owner.
 Service outage, inaccessible credentials, continuing jobs, or uncertainty about
@@ -76,6 +92,17 @@ dispatch workflows, publish, unlist or send messages. Do not execute candidate
 source, release scripts, package hooks, extracted binaries or ambient recovery
 helpers during containment. Use trusted administration interfaces and read-only
 data inspection from a clean operator environment.
+
+Use the following trusted administration references for the actions below;
+they are instructions, not operations executed by this guide or the tabletop:
+
+| Action | Official administration reference |
+| --- | --- |
+| Stop flag and authenticated readback | GitHub [update repository variable](https://docs.github.com/en/rest/actions/variables#update-a-repository-variable) and [get repository variable](https://docs.github.com/en/rest/actions/variables#get-a-repository-variable), targeting the exact variable/repository below. |
+| Refuse pending `production` approval | [Get pending deployments](https://docs.github.com/en/rest/actions/workflow-runs#get-pending-deployments-for-a-workflow-run), then an authorized reviewer uses [review pending deployments](https://docs.github.com/en/rest/actions/workflow-runs#review-pending-deployments-for-a-workflow-run) with `state: rejected` for the recorded environment IDs. |
+| Restrict new release execution | Administrator uses [disable workflow](https://docs.github.com/en/rest/actions/workflows#disable-a-workflow) for the identified publication-capable caller workflow, including `release.yml`, and confirms its state with [get workflow](https://docs.github.com/en/rest/actions/workflows#get-a-workflow). This does not terminate existing jobs or invalidate issued credentials. |
+| Stop and verify in-flight jobs | [Cancel workflow run](https://docs.github.com/en/rest/actions/workflow-runs#cancel-a-workflow-run), [force cancel](https://docs.github.com/en/rest/actions/workflow-runs#force-cancel-a-workflow-run) if needed, then [get run attempt](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt) and [list jobs for that attempt](https://docs.github.com/en/rest/actions/workflow-jobs#list-jobs-for-a-workflow-run-attempt) for terminal status. |
+| Stop NuGet exchange / revoke static keys | Sign in to NuGet.org → username → [Trusted Publishing](https://www.nuget.org/account/TrustedPublishing), as described in [NuGet's setup guide](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing#github-actions-setup), and select the affected owner/policy for removal. For static keys use username → [API Keys](https://www.nuget.org/account/apikeys), following [NuGet's delete/regenerate guidance](https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package). If an authorized removal control is unavailable, record that gap and escalate through NuGet Contact Support; do not assume revocation. |
 
 1. **Release Owner / GitHub administrator:** refuse new production approvals,
    dispatches and reruns immediately. Record pending approvals and every active,
@@ -164,7 +191,7 @@ Actions artifacts are supplemental replay material and can expire; local copies
 and this tabletop record are not immutable release evidence.
 
 Reference the existing
-`_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md` and
+[REL-AI-1 release-evidence ledger](https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md) and
 its immutable Release-attempt identities. Keep each historical disposition and
 machine observation; append an evidence-backed observation only for an actual
 attempt through the accepted ledger process. A later successful check, sign-off
@@ -186,7 +213,8 @@ release-evidence/incident/<release_run_id>-<release_attempt>/<recovery_run_id>-<
 The prerelease points to the authenticated original candidate; this reserved
 namespace is excluded from product/version discovery. Its mandatory
 `incident-evidence.json` follows the existing AD-15
-`frontcomposer.release-incident-evidence.v1` contract, accounting for
+`frontcomposer.release-incident-evidence.v1`
+[preservation contract in the GOV-1 spine](https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#ad-15--adopted-release-to-verifier-handoff-preserves-the-original-candidate), accounting for
 `publication_candidate`, `descriptor`, `ci_handoff`, `release_handoff`, `manifest`,
 `authorization`, `ledger_observation`, `github_inventory`, `nuget_inventory` and
 `prior_recovery_inventory`. Each slot is present with its original byte identity,
@@ -231,9 +259,16 @@ package bytes, repository signatures, and symbol acceptance/availability. Search
 by exact ID/version as well as version listings; indexing delays and unlisting
 can hide results from search.
 
-Current expected inventory is the eight IDs in `tools/release-packages.json`,
-cross-checked with packable rows in `eng/release-package-inventory.json` at the
-affected source. Inspect **all eight**, even if a failed run names only one:
+The eight expected IDs in
+[the release package list](https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/tools/release-packages.json),
+cross-checked with packable rows in
+[the package inventory](https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/eng/release-package-inventory.json)
+at the affected source, are a **minimum**, not the exposure boundary. Follow
+each affected credential/policy/actor's full package and repository scope,
+including unexpected IDs and other repositories. Route those other scopes to
+their authorized owners; `jpiquot`'s FrontComposer capacities confer no authority
+over them. Record their response or an explicit unknown when access/ownership
+cannot be confirmed. Inspect **all eight** below even if a failed run names only one:
 
 | Package ID | Required effects to reconcile per affected version |
 | --- | --- |
@@ -258,9 +293,13 @@ Distinguish **verified absent** (complete authenticated service observation at a
 recorded time) from **not observed**, **not recorded**, **expired** and
 **API unavailable**. A 404, permission failure, partial page, delayed index or
 inaccessible symbol server alone does not prove no external effect. Escalate
-unresolved gaps to the service owner; keep incident classification and recovery
-blocked until all effects are reconciled or truthfully accounted for in verified
-immutable incident evidence and approved remediation.
+unresolved gaps to the service owner. Classify known incident facts and explicit
+unknowns immediately; append timestamped observations as evidence arrives through
+the existing incident/ledger process without replacing or weakening earlier
+incident observations. An incomplete inventory must not delay incident
+classification. Keep recovery/retry blocked until all effects are reconciled or
+truthfully accounted for in verified immutable incident evidence and approved
+remediation.
 
 ## Communicate and recover
 
@@ -308,7 +347,9 @@ evidence, owners and recorded completion:
   decision with UTC time, candidate, policy/execution identities and evidence.
 - **All existing G-8 conditions are satisfied separately:** an owner-accepted
   Builds split revision (EXT-BUILDS-1) enters approved AD-16 lineage through delayed
-  activation; GOV-B through GOV-H are implemented and evidenced; GOV-I has an
+  activation under the
+  [GOV-1 AD-16 lineage authority](https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#ad-16--adopted-hexalithbuilds-workflow-revision-is-an-owner-accepted-external-input);
+  GOV-B through GOV-H are implemented and evidenced; GOV-I has an
   approved runbook and actual tabletop with no unresolved containment-critical
   finding; GOV-J passes on one unchanged candidate; source reconciliation and
   GOV-ACCEPT-1/2 have their required exact-identity receipts. All other existing

@@ -486,6 +486,15 @@ public sealed partial class DocsSiteValidationTests {
         await AssertFluentPublicationAsync(scenario);
     }
 
+    /// <summary>
+    /// Verifies that the documentation command rejects missing runbook metadata.
+    /// </summary>
+    [Fact]
+    public async Task ReleaseIncidentRunbookMetadataIsValidatedByPublicationCommandAsync()
+    {
+        await AssertFluentPublicationAsync("RunbookMissingMetadata");
+    }
+
     [Theory]
     [InlineData("RecursiveMarkdownExclusion")]
     [InlineData("ExactDocfxExclusion")]
@@ -607,6 +616,11 @@ public sealed partial class DocsSiteValidationTests {
             {
                 File.WriteAllText(page, Regex.Replace(File.ReadAllText(page), @"(?m)^reviewed:[^\n]*\n", ""));
             }
+            if (scenario == "RunbookMissingMetadata")
+            {
+                string runbook = Path.Combine(root, "docs", "release-incident-response.md");
+                File.WriteAllText(runbook, Regex.Replace(File.ReadAllText(runbook), @"(?m)^reviewed:[^\n]*\n", ""));
+            }
             IReadOnlyDictionary<string, string>? environment = null;
             if (scenario == "EmptyDocfxCache")
             {
@@ -619,7 +633,14 @@ public sealed partial class DocsSiteValidationTests {
             manifest.RootElement.GetProperty("inputRoots").EnumerateArray().Select(value => value.GetString())
                 .ShouldContain("docs/fluent-ui-v5-contingency.md");
             string[] failures = manifest.RootElement.GetProperty("blockingFailures").EnumerateArray().Select(value => value.GetString()!).ToArray();
-            if (scenario is "Match" or "UnrelatedDocfxExclusion")
+            if (scenario == "RunbookMissingMetadata")
+            {
+                exitCode.ShouldNotBe(0, output + error);
+                failures.ShouldContain("docs/release-incident-response.md is missing required front matter 'reviewed'.");
+                manifest.RootElement.GetProperty("inputRoots").EnumerateArray().Select(value => value.GetString())
+                    .ShouldContain("docs/release-incident-response.md");
+            }
+            else if (scenario is "Match" or "UnrelatedDocfxExclusion")
             {
                 exitCode.ShouldBe(0, output + error);
                 failures.ShouldBeEmpty();
@@ -784,6 +805,7 @@ public sealed partial class DocsSiteValidationTests {
 
         yield return Path.Combine(docs, "index.md");
         yield return Path.Combine(docs, "fluent-ui-v5-contingency.md");
+        yield return Path.Combine(docs, "release-incident-response.md");
         foreach (string root in roots) {
             foreach (string file in Directory.EnumerateFiles(Path.Combine(docs, root), "*.md", SearchOption.AllDirectories)) {
                 yield return file;
