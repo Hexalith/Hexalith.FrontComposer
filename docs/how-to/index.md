@@ -17,3 +17,4 @@ slug: how-to/
 - [Prove the three-call adopter bootstrap](adopter-bootstrap-proof.md)
 - [Apply migration guidance](migration-guides.md)
 - [Debug generated output](generated-output-debugging.md)
+- [Respond to a release incident](../release-incident-response.md)

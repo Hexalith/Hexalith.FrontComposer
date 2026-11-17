@@ -4,55 +4,50 @@
 
 ## Goal
 
-Close FR-24 release safety. The current legacy caller runs candidate code while it holds publication authority. This epic replaces it with a split pipeline: a secretless builder hands authenticated candidate bytes to a protected publisher that never runs candidate code. It also keeps an append-only, attempt-keyed release ledger, rehearses incident containment, and records the owner decisions that gate G-1, G-2, G-8 and the v1.0 milestone. Production stays halted until G-8 closes.
+Establish FR-24 publication safety through a secretless builder, protected candidate-free publisher, append-only release records, exercised incident response, and owner decisions. Production must remain halted until G-8 closes. This requirement is not observed fact: on 2026-11-16 the emergency-stop variable read `true`, and releases had been published after halt adoption without an approved exception.
 
 ## Stories
 
-- Story 17.1: [I · GOV-SRC-1] Reconcile Publication-Governance Sources
-- Story 17.2: [I · GOV-I] Publish and Exercise the Release Incident Runbook
-- Story 17.3: [I · GOV-B] Select the Accepted Split Publication Topology
-- Story 17.4: [I · GOV-C] Remove Publication Authority from Candidate Execution
-- Story 17.5: [I · GOV-D] Produce an Authenticated Run-Bound Publication Candidate
-- Story 17.6: [I · GOV-E] Validate Handoff V3 and Typed Append-Only Attempt State
-- Story 17.7: [I · GOV-F] Publish with Candidate-Free Pinned Code
-- Story 17.8: [I · GOV-G] Pin Post-Release Verification and Preserve Incident Evidence
-- Story 17.9: [I · GOV-H] Reject Ambiguous Publication Asset Names
-- Story 17.10: [A · GOV-J] Revalidate GOV-1 on One Unchanged Candidate
-- Story 17.11: [A · GOV-ACCEPT-1] Accept the Publication Boundary and Incident Posture
-- Story 17.12: [A · GOV-ACCEPT-2] Accept Reconciled Governance Sources
-- Story 17.13: [A · REL-LEDGER-1] Accept the Release-Ledger State Model
-- Story 17.14: [I · REL-LEDGER-2] Complete Evidence-Backed Release Ledger Rows
-- Story 17.15: [A · REL-A3-APP-1] Decide the Sample-Host Container Boundary
-- Story 17.16: [A · PRD-APP-1] Record Final Product Readiness
+- Story 17.1: Reconcile Publication-Governance Sources
+- Story 17.2: Publish and Exercise the Release Incident Runbook
+- Story 17.3: Select the Accepted Split Publication Topology
+- Story 17.4: Remove Publication Authority from Candidate Execution
+- Story 17.5: Produce an Authenticated Run-Bound Publication Candidate
+- Story 17.6: Validate Handoff V3 and Typed Append-Only Attempt State
+- Story 17.7: Publish with Candidate-Free Pinned Code
+- Story 17.8: Pin Post-Release Verification and Preserve Incident Evidence
+- Story 17.9: Reject Ambiguous Publication Asset Names
+- Story 17.10: Revalidate GOV-1 on One Unchanged Candidate
+- Story 17.11: Accept the Publication Boundary and Incident Posture
+- Story 17.12: Accept Reconciled Governance Sources
+- Story 17.13: Accept the Release-Ledger State Model
+- Story 17.14: Complete Evidence-Backed Release Ledger Rows
+- Story 17.15: Decide the Sample-Host Container Boundary
+- Story 17.16: Record Final Product Readiness
 
 ## Requirements & Constraints
 
-- **Separate statuses.** Two streams are tracked separately: publication boundary (EXT-BUILDS-1, GOV-B to GOV-H, GOV-J, GOV-SRC-1, GOV-ACCEPT-1/2) and evidence/decisions (GOV-I, REL-LEDGER-1/2, REL-A3-APP-1, PRD-APP-1). Acceptance, implementation, evidence, approval, publication authorization and milestone status never merge.
-- **Item classes.** Only I items claim implementation completion. An A item closes through a dated accept/reject decision that cites exact digests. X (EXT-BUILDS-1) is owned by Builds. A missing receipt or a rejection keeps the gate open; any fix is a bounded residual.
-- **Halt.** `HEXALITH_RELEASE_PUBLISH_ENABLED` must be literal `false`, a deny-only stop that never authorizes. No risk exception exists. A green run, environment approval, attestation, classification or Product approval never authorizes a release.
-- **Exact bytes.** GitHub assets must match the sealed checksums byte for byte. NuGet may add only a valid root `.signature.p7s`; all other normalized ZIP members stay byte-equivalent. Rebuilding or repacking is never evidence. Candidates are author-unsigned.
-- **Ledger.** Each attempt has an immutable key and one disposition. `deferred-no-ci-handoff` is the only deferred sentinel and is permanent. A bad or unauthenticated handoff is `missing-artifact`. Reruns only append; incidents are never relabelled green.
-- **Lean evidence.** Reuse existing tests, lanes, tooling and artifacts; add no duplicate packets, schemas, validators or workflows. Stories record commands, counts, commit SHA and CI run link. Durable release evidence lives on the GitHub Release.
+- Keep upstream acceptance, implementation, evidence, owner approval, publication authorization, and readiness separate. Implementation requires proof; approval requires dated named accept/reject receipts citing exact identities. Missing evidence leaves gates open.
+- `HEXALITH_RELEASE_PUBLISH_ENABLED=false` is a deny-only emergency stop. No release approval or dispatch is eligible until the Release Owner or repository administrator sets literal `false` and records a subsequent authenticated API observation and server timestamp. `true`, green checks, protected-environment approval, and Product approval never authorize publication. No bounded risk exception is approved.
+- The legacy caller executes candidate code with publication authority and is not G-8 conformant. Source reconciliation does not repair it. Distinguish requirements from dated nonconformance observations.
+- Incident readiness requires an approved runbook and measurable acknowledgement/containment targets, a dated Release/Security/operations tabletop, immutable evidence, credential rotation when exposure is plausible, complete external-effect inventory, recovery, communication, and explicit re-enable approval. Unresolved containment-critical findings keep GOV-I open. Prefer unlisting affected packages and correcting under a new version.
+- Reuse existing tooling, records, releases, and ledger contracts. Record commands, counts, source SHA, and CI links; add no duplicate evidence system. Durable release evidence lives on GitHub Releases; Actions artifacts are supplemental replay material.
 
 ## Technical Decisions
 
-- **Topology.** The caller pins one immutable Builds `domain-release.yml` (`split-publication-v1`) with two fixed jobs: `build-publication-candidate` and `publish-publication-candidate`. A new revision enters the AD-16 lineage (anchor `a8a50859…`) only through delayed activation, and rollback is tested.
-- **Identities.** The lineage anchor, `builds-execution-sha`, Builds catalog gitlink, future split revision and candidate SHA are distinct; the gitlink need not equal the pin.
-- **Gate.** It requires `refs/heads/main` and a 40-hex SHA equal to live main with one successful CI run and one successful `quality.yml` run. It reads only the run-named `hexalith.dependency-release-handoff.v1`, read-only. Bad run data fails first.
-- **Builder.** It packs once, runs the existing checks, and uploads one `publication-candidate-<run_id>-<run_attempt>` (`hexalith.publication-candidate.v1`). Its outputs never authorize.
-- **Graph.** `hexalith.dependency-graph.v1` covers root gitlinks and their direct gitlinks only, read from committed objects without initializing submodules.
-- **Publisher.** It runs only pinned owner code in protected `production`. It authenticates every candidate byte as data, verifies an attestation or the approved fallback, and seals `hexalith.release-evidence.v4`. It requires `publish_authorized=true` before any NuGet, Release or tag effect. Asset destination names must be canonically unique.
-- **Attempt state.** Every run uploads `hexalith.release-verification-handoff.v3` under `if: always()`. A total classifier assigns one state. `publication_started` is set just before the first mutation. Work extends `frontcomposer.release-ledger-record.v2`.
-- **Post-release.** Verification uses the original candidate and evaluator closure and never authorizes retroactively. A separately authorized recovery stage preserves partial publications in a reserved-namespace prerelease.
-- **GOV-J.** `frontcomposer.gov1-split-conformance.v1` and five review lenses bind one unchanged candidate. An open Critical or High finding blocks. It needs an evidence PR plus a separate approval PR; a direct push, squash or rebase fails.
-- **Ownership.** Builds owns the reusable workflow and its permissions. FrontComposer owns artifacts, validation, evidence, publication and verification. The Release Owner owns production, credentials, exceptions and incidents.
-- **Incidents.** `docs/release-incident-response.md` contains incidents without running candidate code and preserves evidence. Prefer unlisting and a new version.
-- **Sample host.** The working assumption, for Story 17.15 to decide, is that the `Hexalith.FrontComposer.UI` image is local/e2e-only and never published.
+- One immutable Builds `domain-release.yml` implements `split-publication-v1` with fixed builder/publisher jobs. The builder has no production environment, publication credential, write scope, OIDC/attestation authority, or signing material. It packs once into one authenticated run/attempt-bound `hexalith.publication-candidate.v1` artifact.
+- The protected publisher executes only active-policy-authorized pinned owner code, never candidate source. It treats candidate bytes as data, independently authenticates the closed archive and provenance/fallback, seals `hexalith.release-evidence.v4`, and requires `publish_authorized=true` before any product-publication mutation.
+- GitHub assets must match sealed bytes exactly. NuGet downloads may add only a valid root `.signature.p7s`; every other normalized ZIP member must remain byte-equivalent. Rebuilding or repacking cannot prove equivalence. Candidates are author-unsigned.
+- Separate five identities: the lineage anchor `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`, independently held execution pins, Builds catalog gitlink, future owner-accepted split revision, and evidence-bound candidates. Re-read moving authorities; snapshots become historical. Git ancestry alone does not prove policy-history lineage.
+- Dependency evidence covers root gitlinks and their direct gitlinks from committed objects without recursive initialization. Candidate policy changes activate only from a later base.
+- An always-uploaded `hexalith.release-verification-handoff.v3` and total classifier cover every attempt outcome. Set `publication_started` immediately before the first product mutation. Missing or unauthenticated handoffs are `missing-artifact`; the sole valid deferred sentinel is permanently incident-bearing `deferred-no-ci-handoff`.
+- Extend `frontcomposer.release-ledger-record.v2` with immutable attempt keys and append-only observations. A later green result never erases or weakens an incident. Independent post-release verification never authorizes retroactively. Incomplete publication requires separately authorized candidate-free preservation of immutable evidence in the reserved incident namespace before retry.
+- Builds owns the reusable contract and minimum permissions; FrontComposer owns validation, evidence, publication, and verification; the Release Owner owns production, credentials, and incidents. Runbook and response-target approval remain Product Owner/Release Owner decisions.
+- GOV-J binds deterministic conformance and five review lenses to one unchanged candidate, a closed nonconformance register, an unchanged protected-main evidence PR, and a distinct approval-projection PR. Open Critical/High findings, stale or mixed identities, direct push, squash, or rebase fail acceptance.
 
 ## Cross-Story Dependencies
 
-- EXT-BUILDS-1 blocks 17.3 and caller activation. 17.1, 17.2 and 17.13 can start now.
-- 17.10 needs 17.2 to 17.9 on one candidate. 17.11 needs the runbook from 17.2. 17.12 needs 17.1 and goes stale on any digest change.
-- 17.13 reviews 17.6's handoff and ledger. 17.14 waits for 17.13.
-- 17.16 is last and needs G-1 to G-8 closed. G-3 from Epic 16 is still open.
-- Finish source, workflow and policy changes before choosing a candidate; a later G-8 commit invalidates it.
+- EXT-BUILDS-1 must supply an accepted immutable split revision before Story 17.3 or caller activation. Source reconciliation, incident readiness, and ledger-model decisions can progress independently of that upstream blocker.
+- GOV-J follows GOV-B through GOV-I. GOV-ACCEPT-1 needs the approved incident runbook; GOV-ACCEPT-2 follows source reconciliation and becomes stale on source-digest changes. Incident readiness does not itself close either acceptance decision.
+- Ledger backfill follows state-model acceptance. Preserve missing evidence and permanent dispositions for every publication-capable attempt, including later discovered releases.
+- Final readiness waits for all gates, including open G-3 EventStore evidence/decisions. Finish release-blocking source, workflow, and policy integration before choosing a releasable candidate; later G-8 edits create a different candidate.

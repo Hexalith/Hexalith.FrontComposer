@@ -5,6 +5,8 @@
   items:
   - name: Fluent UI v5 contingency
     href: fluent-ui-v5-contingency.md
+  - name: Release incident response
+    href: release-incident-response.md
   - name: Migrations
     href: migrations/index.md
     items:

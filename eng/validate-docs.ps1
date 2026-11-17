@@ -61,6 +61,7 @@ function Get-ContentFiles {
     $patterns = @(
         'index.md',
         'fluent-ui-v5-contingency.md',
+        'release-incident-response.md',
         'tutorials/**/*.md',
         'how-to/**/*.md',
         'reference/**/*.md',
@@ -78,7 +79,7 @@ function Get-ContentFiles {
                     if ($rel.StartsWith($prefix, [System.StringComparison]::Ordinal)) { return $true }
                 }
 
-                return $rel -in @('docs/index.md', 'docs/fluent-ui-v5-contingency.md')
+                return $rel -in @('docs/index.md', 'docs/fluent-ui-v5-contingency.md', 'docs/release-incident-response.md')
             } |
             ForEach-Object { if (-not $files.Contains($_.FullName)) { $files.Add($_.FullName) | Out-Null } }
     }
@@ -1307,7 +1308,7 @@ $manifest = [ordered]@{
     generatedAt = '2026-05-10T00:00:00Z'
     validationCommand = 'pwsh ./eng/validate-docs.ps1'
     toolVersions = $toolVersions
-    inputRoots = @('docs/index.md', 'docs/fluent-ui-v5-contingency.md', 'docs/tutorials', 'docs/how-to', 'docs/reference', 'docs/concepts', 'docs/diagnostics', 'docs/migrations', 'docs/validation/producer-fingerprints.json', 'docs/validation/api-summary-baseline.txt')
+    inputRoots = @('docs/index.md', 'docs/fluent-ui-v5-contingency.md', 'docs/release-incident-response.md', 'docs/tutorials', 'docs/how-to', 'docs/reference', 'docs/concepts', 'docs/diagnostics', 'docs/migrations', 'docs/validation/producer-fingerprints.json', 'docs/validation/api-summary-baseline.txt')
     producerFingerprints = $producerFingerprints
     generatedOutputRoots = @($docfxOutput, 'artifacts/docs/mcp-reference', 'artifacts/docs/snippets', $(if (-not $SkipDocFx) { 'artifacts/docs/api-references' })) | Where-Object { $_ }
     mcpReferenceSlices = $mcpOutputs

@@ -26,6 +26,7 @@
         "files": [
           "index.md",
           "fluent-ui-v5-contingency.md",
+          "release-incident-response.md",
           "toc.yml",
           "tutorials/**.md",
           "how-to/**.md",

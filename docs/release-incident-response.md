@@ -1,0 +1,339 @@
+---
+title: "Respond to a release incident"
+description: "Contain suspected release credential exposure, unauthorized publication, package mismatch, or partial publication while preserving original evidence."
+genre: how-to
+audience: operator
+ownerStory: 17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook
+status: controlled
+reviewed: 2026-11-17
+uid: frontcomposer.release.incident-response
+slug: release-incident-response
+---
+
+# Respond to a release incident
+
+This is the canonical FrontComposer release incident runbook. The Release Owner
+owns it with Security. It applies to `Hexalith/Hexalith.FrontComposer`, its
+`production` environment, GitHub Releases, and the NuGet packages listed below.
+Its approval and participant-executed tabletop are recorded in
+`_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md`.
+Until that record contains approval of the exact raw-file SHA-256 and the required
+exercise receipts, GOV-I remains open. A change to these bytes requires renewed
+approval; documentation availability alone proves neither approval nor readiness.
+
+## Recognize and acknowledge
+
+Open an incident on suspicion; do not wait for a confirmed malicious package.
+Triggers include a possibly exposed publication credential or OIDC token;
+candidate-controlled code receiving publication authority; an unauthorized actor,
+environment approval, dispatch, policy or workflow closure; missing or
+unauthenticated manifests, handoffs or ledger observations; unequal package
+bytes or invalid repository signatures; unexpected tags, assets or package
+versions; and failed, cancelled or incomplete publication with possible external
+effects. A green run or later successful verification does not dismiss these
+triggers. Historical NC-35/NC-36 records are retained, not reinterpreted by a later
+stop observation.
+
+Record the first detection as `T0` in UTC and start elapsed wall-clock timing.
+On 2026-11-17 the owner accepted acknowledgement within **15 minutes** and
+containment within **60 minutes** of detection. These prospective targets do not
+claim historical response performance. Acknowledgement names the incident lead,
+suspected scope, affected identities and next update time. Containment requires
+verified removal of publication authority, not merely a changed flag or accepted
+cancellation request.
+
+| Capacity | Current designated participant | Responsibility |
+| --- | --- | --- |
+| Product / Release Owner | `jpiquot` | Lead, approve runbook and response targets, refuse publication, decide consumer response and eventual re-enable. |
+| Security | `jpiquot` | Assess exposure, coordinate revocation/rotation, judge containment and approve security remediation. |
+| GitHub administrator / operations | `jpiquot` | Stop flag, pending approvals, dispatch restrictions, run cancellation, repository authority and GitHub support escalation. |
+| NuGet policy owner / credential custodian | `jpiquot` | Stop new credential exchange, revoke exposed authority, inventory and unlist affected versions when separately authorized, contact NuGet support. |
+| Independent verification capacity | `jpiquot` | Perform a separate read-only verification using independently fetched API/asset evidence; record results and limitations separately from operator assertions. |
+
+The owner explicitly selected one person covering all capacities. This records
+combined capacity, not a second human reviewer. Exercise participation and each
+capacity's decisions still need actual receipts. In a live incident the lead must
+confirm availability immediately. If a capacity is unavailable or access fails,
+escalate to the repository/organization owner or relevant service support, assign
+an available authorized responder and record the gap; do not assume an unnamed
+backup exists.
+
+Notify all required capacities at detection through the established private
+incident channel. If acknowledgement is at risk, escalate before T+15 minutes;
+if containment cannot be proven, escalate immediately and again before T+60
+minutes. Record each recipient, channel, UTC time, response and next owner.
+Service outage, inaccessible credentials, continuing jobs, or uncertainty about
+issued keys is an unresolved containment-critical finding, not a target waiver.
+The Release Owner gives a status update at acknowledgement, at T+60 minutes, and
+at least every 60 minutes while containment is unproven. Security may require
+an earlier consumer advisory; the lead records the decision and deadline.
+
+## Stop publication and remove authority
+
+These are live-incident actions for authorized owners. A tabletop only describes
+them: it must not change settings, cancel runs, mint or revoke credentials,
+dispatch workflows, publish, unlist or send messages. Do not execute candidate
+source, release scripts, package hooks, extracted binaries or ambient recovery
+helpers during containment. Use trusted administration interfaces and read-only
+data inspection from a clean operator environment.
+
+1. **Release Owner / GitHub administrator:** refuse new production approvals,
+   dispatches and reruns immediately. Record pending approvals and every active,
+   queued or waiting publication-capable run, including reusable jobs and
+   related attempts. Restrict new release execution and approval through
+   authorized repository/environment administration; record the actual restriction
+   and readback. Prevent bypass by other writers, automation and dispatch credentials.
+2. **GitHub administrator:** set repository variable
+   `HEXALITH_RELEASE_PUBLISH_ENABLED` to the exact lowercase string `false`.
+   From a separately authenticated read-only request, capture the resulting value,
+   `updated_at`, HTTP status, server `Date`, observer and UTC observation time.
+   An unset or other non-`true` value may stop a future job mechanically, but does
+   not satisfy the required literal-false receipt. A readback failure is a gap.
+   The following request is read-only and must not log request authorization:
+
+   ```sh
+   gh api --include repos/Hexalith/Hexalith.FrontComposer/actions/variables/HEXALITH_RELEASE_PUBLISH_ENABLED
+   ```
+
+3. **GitHub administrator:** cancel active publication-capable runs and confirm
+   every job's terminal status through the Actions API. If normal cancellation
+   does not stop a run, use the authorized force-cancel interface and escalate
+   failures to GitHub support. Capture the request result and subsequent run/job
+   observations; an accepted request is not proof of termination. Preserve
+   available metadata first where possible without delaying containment. Never
+   delete runs, logs, artifacts, tags or assets to stop publication.
+4. **NuGet custodian + Security:** block further token exchanges by disabling or
+   removing the affected trusted-publishing policy through owner administration;
+   preserve its non-secret identity, scopes and original settings. Inventory
+   already-issued temporary NuGet keys, static keys and other publication
+   credentials. Revoke/delete or rotate exposed static keys and any affected
+   GitHub App/PAT or dispatch credential. Do not issue replacement credentials to
+   the suspect execution path. Record credential identifiers/scopes, issuance or
+   latest possible issuance, expiry, revocation results and custody, never values.
+5. **Security:** treat an issued temporary key as potentially usable until
+   independently confirmed revoked or expired. Stopping the policy prevents new
+   exchange; it does not prove a previously issued key is revoked. NuGet documents
+   temporary keys as valid for one hour. Request provider-assisted invalidation
+   if self-service revocation cannot be confirmed. Unknown issuance/expiry,
+   provider outage or inability to remove authority keeps containment unproven;
+   escalate rather than substituting an assumed timeout. Record any possibly
+   exposed OIDC/signing material and its provider-specific invalidation, even
+   though the current FrontComposer flow does not require author signing.
+6. **Independent verification capacity:** separately read the flag, restrictions,
+   run/job termination, credential/policy receipts and external inventories.
+   Confirm that no remaining actor or issued credential can mutate GitHub or
+   NuGet for the affected scope. Record `contained_at` only with evidence for
+   that conjunction and calculate `contained_at - T0`; otherwise record partial
+   containment, the missing proof, owner and next escalation time. Do not test
+   revocation with a package push or execute a candidate as verification.
+
+**Cached-true branch:** the current `release-publish.yml` reads the flag during
+preparation and later uses `steps.prepare.outputs.publish-enabled`. A job that
+cached `true`, or already obtained a credential, can continue after the variable
+changes. The flag is authoritative deny-only input for later preparation; live
+containment also needs cancellation/restriction and credential invalidation.
+Protected-environment approval, `true`, a green CI result, and Product approval
+never grant publication authorization. Changing default token permissions is not
+evidence that a token already issued to a running job has lost authority.
+
+GitHub documents cancellation behavior and the
+[force-cancel fallback](https://docs.github.com/en/rest/actions/workflow-runs#force-cancel-a-workflow-run).
+NuGet describes
+[trusted publishing and temporary credentials](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing)
+and [API-key custody and revocation](https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package).
+
+## Preserve original identities and bytes
+
+**Release Owner + Security**, starting at detection and before any retry, retain
+the original candidate SHA, candidate descriptor/archive digests, active
+policy commit/digest, actual execution pins and action closure identities,
+Builds catalog gitlink, CI/Quality/Release/verification run IDs and attempts,
+repository, workflow paths, actor/triggering actor, production review history,
+environment protection, flag observations, planned versions and publication
+marker. The candidate named by the authenticated handoff remains authoritative;
+do not replace it with today's `main`, a tag head or a later successful run.
+
+Capture authenticated API metadata and the raw available archives, manifests,
+seals, attestations/fallback authorizations, CI and release handoffs, package and
+symbol assets, logs and ledger observations. Record API pagination/completeness,
+server times, artifact IDs/names/expiry, asset IDs/names/sizes/digests, and SHA-256
+over downloaded bytes before treating contents as data. Preserve authentication
+failures as quarantined bytes, not usable evidence. Missing/expired evidence is
+not reconstructed by rebuilding, repacking, rerunning or resealing an old release.
+Actions artifacts are supplemental replay material and can expire; local copies
+and this tabletop record are not immutable release evidence.
+
+Reference the existing
+`_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md` and
+its immutable Release-attempt identities. Keep each historical disposition and
+machine observation; append an evidence-backed observation only for an actual
+attempt through the accepted ledger process. A later successful check, sign-off
+or new attempt cannot erase, weaken or replace an incident-bearing observation.
+A synthetic exercise creates no Release attempt or ledger row. Do not backfill
+historical per-attempt evidence as part of this runbook exercise.
+
+**Immutable AD-15 preservation:** if publication started and the product Release
+is absent or incomplete, recovery requires a separately approved, candidate-free,
+active-policy-authorized `incident_recovery` closure in the protected `production`
+environment. It may write only evidence, without NuGet, OIDC, package or product
+publication authority, to a separate immutable non-draft prerelease whose tag and
+name are exactly:
+
+```text
+release-evidence/incident/<release_run_id>-<release_attempt>/<recovery_run_id>-<recovery_attempt>
+```
+
+The prerelease points to the authenticated original candidate; this reserved
+namespace is excluded from product/version discovery. Its mandatory
+`incident-evidence.json` follows the existing AD-15
+`frontcomposer.release-incident-evidence.v1` contract, accounting for
+`publication_candidate`, `descriptor`, `ci_handoff`, `release_handoff`, `manifest`,
+`authorization`, `ledger_observation`, `github_inventory`, `nuget_inventory` and
+`prior_recovery_inventory`. Each slot is present with its original byte identity,
+quarantined with reason `authentication-failed`, or absent with the applicable
+`not-produced`, `not-recorded`, `expired` or `api-unavailable` reason. Captured API
+responses/transport errors support every absence claim; an absent source can be
+truthfully recorded without pretending its bytes were preserved.
+
+Independently verify every slot/asset identity, the candidate, non-draft status
+and immutability before retry. A failed recovery keeps its partial tag, draft and
+assets untouched; a later recovery gets its own run-bound namespace and inventories
+every prior recovery attempt. Never adopt, replace or delete prior recovery state.
+
+**Current capability gap, source baseline `66250f89230e1b261b51ce873c83d96176a9d325`:**
+`.github/workflows/release-incident-preservation.yml` does not exist. The AD-15
+mechanism above is required future capability, not an available command. Do not
+dispatch a similarly named workflow, use the legacy evidence-recovery selector,
+invoke ambient repository helpers, or manually manufacture an immutable evidence
+receipt. Escalate to the Release Owner and the implementation owner of Story 17.8.
+Hold retry until the approved mechanism exists and a real preservation result
+passes independent verification. If GitHub Releases is unavailable, retain safe
+working copies and transport-error observations, escalate to GitHub support,
+and keep retry forbidden until the service returns and preservation is verified
+immutable. Do not weaken the prerequisite because evidence is expiring.
+
+## Inventory external effects
+
+**GitHub administrator + NuGet custodian**, with a separate read-only confirmation,
+inventory the complete interval from the earliest plausible exposure/publication
+through confirmed containment, including adjacent run attempts and versions.
+Start immediately; provide the first inventory and explicit unknowns by T+60
+minutes, update at least hourly until complete, and finish before recovery/re-enable.
+
+For GitHub, inspect authenticated Releases (including drafts/prereleases and
+reserved incident releases), tag/ref targets, asset identities/downloaded bytes,
+immutability, related run/job timelines, artifacts, approvals and audit events.
+Inventory unexpected tags, releases, versions and assets as well as planned ones.
+Do not rely on a successful job or `publication_started=false`: observed external
+mutation with a false marker is an incident. For NuGet inspect package/version
+registration, listed/unlisted state, publication times, downloadable original
+package bytes, repository signatures, and symbol acceptance/availability. Search
+by exact ID/version as well as version listings; indexing delays and unlisting
+can hide results from search.
+
+Current expected inventory is the eight IDs in `tools/release-packages.json`,
+cross-checked with packable rows in `eng/release-package-inventory.json` at the
+affected source. Inspect **all eight**, even if a failed run names only one:
+
+| Package ID | Required effects to reconcile per affected version |
+| --- | --- |
+| `Hexalith.FrontComposer.Cli` | GitHub `.nupkg` / `.snupkg`, NuGet package and symbol state |
+| `Hexalith.FrontComposer.Contracts` | GitHub `.nupkg` / `.snupkg`, NuGet package and symbol state |
+| `Hexalith.FrontComposer.Contracts.UI` | GitHub `.nupkg` / `.snupkg`, NuGet package and symbol state |
+| `Hexalith.FrontComposer.Mcp` | GitHub `.nupkg` / `.snupkg`, NuGet package and symbol state |
+| `Hexalith.FrontComposer.Schema` | GitHub `.nupkg` / `.snupkg`, NuGet package and symbol state |
+| `Hexalith.FrontComposer.Shell` | GitHub `.nupkg` / `.snupkg`, NuGet package and symbol state |
+| `Hexalith.FrontComposer.SourceTools` | GitHub `.nupkg` / `.snupkg`, NuGet package and symbol state |
+| `Hexalith.FrontComposer.Testing` | GitHub `.nupkg` / `.snupkg`, NuGet package and symbol state |
+
+The AppHost and combined UI are non-packable; unexpected publication still
+belongs in the inventory. Record expected/observed version, source identity,
+raw hash, size, URL, UTC observation, API status, listing/signature/symbol result
+and evidence reference. GitHub bytes must equal the sealed bytes exactly.
+NuGet may add only a valid root `.signature.p7s`; every other normalized ZIP
+member must remain byte-equivalent. Never restore/install the packages to inspect
+them during containment. When safe verification is unavailable, record unknown.
+
+Distinguish **verified absent** (complete authenticated service observation at a
+recorded time) from **not observed**, **not recorded**, **expired** and
+**API unavailable**. A 404, permission failure, partial page, delayed index or
+inaccessible symbol server alone does not prove no external effect. Escalate
+unresolved gaps to the service owner; keep incident classification and recovery
+blocked until all effects are reconciled or truthfully accounted for in verified
+immutable incident evidence and approved remediation.
+
+## Communicate and recover
+
+**Release Owner + Security:** record the cause, exposure window, affected package
+versions and consumers, containment evidence, remaining unknowns and corrective
+actions. Use the existing incident/spec/ledger records rather than a new evidence
+system. Keep a support-safe account with UTC times, named capacities, actual
+decisions, owners and deadlines. Keep secrets, raw credentials, signed download
+URLs, private paths and sensitive logs out of public documentation; restrict
+original sensitive material in approved owner custody and reference redacted
+receipts. Do not paste tokens as proof of revocation.
+
+Decide the audience and channel for each update (responders, repository/package
+owners, affected consumers and providers), then obtain the appropriate owner
+authorization before sending. Record when notices were actually sent and by whom;
+a drafted notice is not delivery. Communicate affected IDs/versions, observed
+impact, whether containment is verified, safe consumer action, and the next update
+time. Do not announce successful remediation while inventory or revocation is unknown.
+
+Prefer separately authorized **unlisting** of affected NuGet versions and a
+corrected release under a **new version**. Unlisting reduces discovery but exact
+version restore remains possible; warn consumers accordingly. Do not overwrite,
+delete/recreate or reseal old packages, tags, product Releases or evidence.
+Retain original byte identities and append the corrective-version relationship
+through existing records. Product retry, preservation dispatch and unlisting
+each require their own applicable authority; none is authorized by this tabletop.
+See [NuGet unlisting policy](https://learn.microsoft.com/en-us/nuget/nuget-org/policies/deleting-packages)
+and [correcting a published package](https://learn.microsoft.com/en-us/dotnet/standard/library-guidance/publish-nuget-package).
+
+**Recovery decision:** keep publication halted until all of the following have
+evidence, owners and recorded completion:
+
+- Cause/remediation and exposure scope are documented, all containment-critical
+  findings are fixed, credentials are revoked/rotated or proven expired, and
+  replacement custody prevents recurrence.
+- Every GitHub/NuGet effect across the complete interval is reconciled, affected
+  versions and consumer actions are decided, and required communications have
+  actual receipts.
+- Original manifests/handoffs/assets/ledger observations remain intact. Required
+  AD-15 immutable preservation has succeeded, accounts for prior recoveries and
+  missing evidence, and is independently verified. Missing safe preservation
+  forbids retry even when the proposed correction passes tests.
+- Independent verification records exact identities, observations and limitations;
+  the Release Owner approves the recovery plan and an explicitly scoped re-enable
+  decision with UTC time, candidate, policy/execution identities and evidence.
+- **All existing G-8 conditions are satisfied separately:** an owner-accepted
+  Builds split revision (EXT-BUILDS-1) enters approved AD-16 lineage through delayed
+  activation; GOV-B through GOV-H are implemented and evidenced; GOV-I has an
+  approved runbook and actual tabletop with no unresolved containment-critical
+  finding; GOV-J passes on one unchanged candidate; source reconciliation and
+  GOV-ACCEPT-1/2 have their required exact-identity receipts. All other existing
+  release gates, including G-1/G-2/G-3, still apply.
+
+Only after that conjunction may an authorized administrator perform the scoped
+re-enable and record authenticated readback. Setting `true` supplies no authority
+itself. A later incident restarts this runbook; a successful new attempt cannot
+make the original incident compliant. As of the stated source baseline the
+legacy publisher and missing preservation capability prevent treating this
+procedure or its approval as G-8 closure or permission to publish.
+
+## Rehearse without live effects
+
+Use the existing Story 17.2 spec for the single dated support-safe tabletop
+record. Give participants a clearly synthetic partial-publication/possible-key
+exposure scenario, then inject a cached-true job, unavailable immutable preservation
+and a proposed recovery. Use historical attempt identities only as references;
+never present the synthetic events as observations about those attempts.
+
+Record scenario elapsed times separately from actual response UTC timestamps.
+Each capacity must state its acknowledgement/containment decisions, evidence to
+verify, credential action, complete package inventory, unavailable-service response,
+recovery refusal/prerequisites and communications. Capture real response receipts,
+findings with criticality, assigned owners/deadlines, separate verification and
+Product/Release approval of the exact runbook raw-file SHA-256. Do not infer an
+exercise response or digest approval from a previous role assignment. Missing
+receipts or unresolved containment-critical findings leave GOV-I open.
