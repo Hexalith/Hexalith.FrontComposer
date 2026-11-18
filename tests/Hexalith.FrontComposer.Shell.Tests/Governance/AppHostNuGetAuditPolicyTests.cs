@@ -10,7 +10,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 
 [Trait("Category", "Governance")]
 public sealed class AppHostNuGetAuditPolicyTests {
-    private static readonly string[] ForbiddenAuditWarningCodes = ["NU1901", "NU1902", "NU1903", "NU1904"];
+    private static readonly string[] ForbiddenNoWarnAuditCodes = ["NU1901", "NU1902", "NU1903", "NU1904"];
+    // Catalog policy: low/moderate advisories stay warnings; high/critical remain errors.
+    private static readonly string[] ForbiddenWarningsNotAsErrorsAuditCodes = ["NU1903", "NU1904"];
 
     private static readonly string[] RequiredRationaleMetadata = [
         "AffectedPackage",
@@ -43,7 +45,7 @@ public sealed class AppHostNuGetAuditPolicyTests {
         JsonElement properties = evaluated.RootElement.GetProperty("Properties");
         foreach (string propertyName in new[] { "NoWarn", "WarningsNotAsErrors" }) {
             IReadOnlyCollection<string> warningCodes = SplitWarningCodes(properties.GetProperty(propertyName).GetString());
-            foreach (string forbiddenCode in ForbiddenAuditWarningCodes) {
+            foreach (string forbiddenCode in ForbiddenAuditCodes(propertyName)) {
                 warningCodes.ShouldNotContain(
                     forbiddenCode,
                     StringComparer.OrdinalIgnoreCase,
@@ -71,7 +73,7 @@ public sealed class AppHostNuGetAuditPolicyTests {
                 .Where(static element =>
                     element.Name.LocalName is "NoWarn" or "WarningsNotAsErrors")) {
                 IReadOnlyCollection<string> warningCodes = SplitWarningCodes(property.Value);
-                foreach (string forbiddenCode in ForbiddenAuditWarningCodes) {
+                foreach (string forbiddenCode in ForbiddenAuditCodes(property.Name.LocalName)) {
                     warningCodes.ShouldNotContain(
                         forbiddenCode,
                         StringComparer.OrdinalIgnoreCase,
@@ -274,6 +276,9 @@ public sealed class AppHostNuGetAuditPolicyTests {
             .ToArray();
         return matches.Length == 1 ? matches[0].Value.Trim() : string.Empty;
     }
+
+    private static string[] ForbiddenAuditCodes(string propertyName) =>
+        propertyName is "NoWarn" ? ForbiddenNoWarnAuditCodes : ForbiddenWarningsNotAsErrorsAuditCodes;
 
     private static string[] SplitWarningCodes(string? value) => (value ?? string.Empty)
         .Split([';', ',', ' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

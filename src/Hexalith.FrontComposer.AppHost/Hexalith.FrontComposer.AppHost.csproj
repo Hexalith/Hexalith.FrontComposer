@@ -4,6 +4,8 @@
     <TargetFramework>net11.0</TargetFramework>
     <IsAspireHost>true</IsAspireHost>
     <AspireUseCliBundle>true</AspireUseCliBundle>
+    <SkipAddAspireDefaultReferences>true</SkipAddAspireDefaultReferences>
+    <SuppressAspireAppHostSdkObsoleteWarning>true</SuppressAspireAppHostSdkObsoleteWarning>
     <IsPackable>false</IsPackable>
     <IsPublishable>true</IsPublishable>
     <UserSecretsId>hexalith-frontcomposer</UserSecretsId>
@@ -12,6 +14,8 @@
     <HexalithBuildsRoot Condition="'$(HexalithBuildsRoot)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'references', 'Hexalith.Builds'))</HexalithBuildsRoot>
   </PropertyGroup>
   <ItemGroup>
+    <!-- SkipAddAspireDefaultReferences avoids the SDK's implicit Versioned PackageReference, which CPM rejects. -->
+    <PackageReference Include="Aspire.Hosting.AppHost" />
     <!-- Reusable DAPR topology orchestration (state store + pub/sub, sidecars, resiliency)
          for the Hexalith event store. Consumed via the platform Aspire extension methods
          (AddHexalithEventStore / AddEventStoreDomainModule). EventStore is ALWAYS taken from
