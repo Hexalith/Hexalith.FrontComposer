@@ -672,7 +672,8 @@ public sealed class FluentConformanceTests {
     private static bool IsBuildOutput(string file) {
         string normalized = file.Replace('\\', '/');
         return normalized.Contains("/bin/", StringComparison.Ordinal)
-            || normalized.Contains("/obj/", StringComparison.Ordinal);
+            || normalized.Contains("/obj/", StringComparison.Ordinal)
+            || normalized.Contains("/_bmad-output/", StringComparison.Ordinal);
     }
 
     private static List<string> FindDeadScopedCssOnFluentRoots(

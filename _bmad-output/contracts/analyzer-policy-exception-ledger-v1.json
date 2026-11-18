@@ -188,6 +188,19 @@
       "evidence": "Story 11.23 pre-activation census and activated Release parity gate both report 0 warnings / 0 errors."
     },
     {
+      "key": "aspire17-obsolete-hosting",
+      "sourceKind": "MSBuild and pragma",
+      "exactScope": "Directory.Build.props, AppHost project, and AppHost AddProject call sites",
+      "mechanism": "WarningsNotAsErrors CS0618/ASPIRE012, AppHost NoWarn ASPIRE012, and CS0618 pragmas on AddProject helpers",
+      "decision": "remain",
+      "rationale": "Aspire 17 keeps AddProject and Aspire.AppHost.Sdk available but obsolete until the approved Project v2 migration. FrontComposer still hosts through those surfaces, so the obsolete diagnostics stay visible as warnings rather than breaking TreatWarningsAsErrors.",
+      "owner": "Framework Maintainer",
+      "decisionDate": "2026-11-18",
+      "reviewDate": "2027-11-18",
+      "trigger": "Remove when AppHost migrates off AddProject and Aspire.AppHost.Sdk.",
+      "evidence": "Aspire 17 hosting remains on AppHost.Sdk/17.0.0 with AddProject IProjectMetadata helpers in Program.cs and LocalReadinessTopology.cs."
+    },
+    {
       "key": "naming-ca1707-diagnostic-id-compatibility",
       "sourceKind": "EditorConfig",
       "exactScope": "src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs",
@@ -501,6 +514,30 @@
       "dispositionKey": "policy-root-analysis-mode"
     },
     {
+      "key": "msbuild-root-aspire17-warnings-not-as-errors",
+      "sourceKind": "msbuild",
+      "path": "Directory.Build.props",
+      "property": "WarningsNotAsErrors",
+      "diagnosticIds": [
+        "$(WarningsNotAsErrors);CS0618;ASPIRE012"
+      ],
+      "exactScope": "repository",
+      "mechanism": "WarningsNotAsErrors",
+      "dispositionKey": "aspire17-obsolete-hosting"
+    },
+    {
+      "key": "msbuild-apphost-aspire012-nowarn",
+      "sourceKind": "msbuild",
+      "path": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+      "property": "NoWarn",
+      "diagnosticIds": [
+        "ASPIRE012"
+      ],
+      "exactScope": "AppHost project",
+      "mechanism": "NoWarn",
+      "dispositionKey": "aspire17-obsolete-hosting"
+    },
+    {
       "key": "msbuild-source-doc-nowarn",
       "sourceKind": "msbuild",
       "path": "src/Directory.Build.props",
@@ -727,6 +764,8 @@
       "key": "source-pragmas",
       "sourceKind": "pragma",
       "paths": [
+        "src/Hexalith.FrontComposer.AppHost/LocalReadinessTopology.cs",
+        "src/Hexalith.FrontComposer.AppHost/Program.cs",
         "src/Hexalith.FrontComposer.Cli/MigrationDiagnostics.cs",
         "src/Hexalith.FrontComposer.Contracts.UI/Shortcuts/ShortcutBinding.cs",
         "src/Hexalith.FrontComposer.Contracts/Communication/QueryRequestJsonConverter.cs",
@@ -786,7 +825,7 @@
         "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/TypedFieldFixtures/TypedFieldFormFixture.cs",
         "tests/Hexalith.FrontComposer.UI.Tests/ProductionRouterTests.cs"
       ],
-      "entryCount": 89,
+      "entryCount": 91,
       "diagnosticIds": [
         "BL0001",
         "BL0006",

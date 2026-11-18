@@ -1164,6 +1164,8 @@ def acquire_object_stores(
 
     direct_edges: list[dict[str, Any]] = []
     for edge in root_edges:
+        if not _walk_depth2_inventory(policy, edge["repository"]):
+            continue
         owner_local = resolve_local_path(policy, edge["repository"], destination)
         direct_edges.extend(
             _owner_edges(owner_local, edge["commit"], edge["repository"], 2, policy, destination)

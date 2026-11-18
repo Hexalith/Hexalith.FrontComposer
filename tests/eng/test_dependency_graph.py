@@ -4065,6 +4065,53 @@ class ConsumerProjectionTests(unittest.TestCase):
         self.assertEqual(result["event_base"], candidate)
         self.assertEqual(result["candidate"], later)
 
+    def test_acquisition_skips_omitted_evidence_only_nested_inventory(self) -> None:
+        identity = "github.com/hexalith/hexalith.cicd"
+        owner = TempGitRepo(self.root.root / "references" / "CiCd")
+        owner.add_submodule(
+            "Conversations",
+            "references/Conversations",
+            "https://github.com/Hexalith/Hexalith.Conversations.git",
+            "2" * 40,
+        )
+        owner_commit = owner.commit()
+        self.fixture.policy["trusted_identities"].append({"identity": identity, "local_path": "references/CiCd"})
+        self.fixture.policy["semantic_profiles"][identity] = "fixture"
+        self.fixture.policy["module_build_registry"][identity] = {
+            "disposition": "evidence-only",
+            "solution": None,
+            "builds_contract_source": "none",
+            "restore_argv": None,
+            "build_argv": None,
+        }
+        self.root.add_submodule("CiCd", "references/CiCd", "https://github.com/Hexalith/Hexalith.CiCd.git", owner_commit)
+        linked = self.root.commit()
+        direct = dg._owner_edges(self.root.root, linked, self.fixture.identity("Root"), 1, self.fixture.policy, self.root.root)
+        self.row["root_selectors_sha256"] = dg.canonical_digest(
+            [{key: edge[key] for key in ("path", "repository", "commit")} for edge in direct]
+        )
+        commit = self.write_policy()
+        by_identity = {
+            self.fixture.identity("Builds"): self.builds.root,
+            self.fixture.identity("Source"): self.source.root,
+            identity: owner.root,
+        }
+
+        def clone(args, **kwargs):
+            remote = dg.normalize_identity(args[-2], "fixture remote")
+            self.assertNotEqual(remote, "github.com/hexalith/hexalith.conversations")
+            result = subprocess.run(
+                ["git", "clone", "--quiet", "--no-checkout", str(by_identity[remote]), args[-1]],
+                capture_output=True,
+            )
+            return result, 1
+
+        destination = pathlib.Path(self.temp.name) / "acquired-cicd"
+        with mock.patch.object(dg, "_run_git_network", side_effect=clone):
+            result = dg.acquire_object_stores(self.root.root, destination, commit, commit)
+        self.assertNotIn("github.com/hexalith/hexalith.conversations", result["stores"])
+        self.assertFalse((destination / "references" / "Conversations").exists())
+
     def test_catalog_preparation_refuses_uninitialized_store_before_network(self) -> None:
         commit = self.write_policy()
         (self.builds.root / ".git").rename(self.builds.root / "git-store-backup")
