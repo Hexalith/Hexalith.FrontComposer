@@ -233,6 +233,46 @@ class CollectionTests(unittest.TestCase):
                 with self.assertRaisesRegex(dg.GraphError, "unknown/untrusted repository identity"):
                     dg.collect_graph(root.root, fx.identity("Root"), root_commit, policy)
 
+    def test_evidence_only_owner_without_projection_skips_untrusted_nested_inventory(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        cicd_identity = "github.com/hexalith/hexalith.cicd"
+        evidence = fx.add_repo("CiCd")
+        evidence.add_submodule(
+            "Conversations", "references/Conversations",
+            "https://github.com/other/conversations.git", "2" * 40,
+        )
+        evidence_commit = evidence.commit()
+        next(row for row in fx.policy["trusted_identities"] if row["identity"] == fx.identity("CiCd"))["identity"] = cicd_identity
+        fx.policy["module_build_registry"][cicd_identity] = {
+            "disposition": "evidence-only",
+            "solution": None,
+            "builds_contract_source": "none",
+            "restore_argv": None,
+            "build_argv": None,
+        }
+
+        root = fx.add_repo("Root")
+        root.add_submodule("CiCd", "references/CiCd", "https://github.com/Hexalith/Hexalith.CiCd.git", evidence_commit)
+        root_commit = root.commit()
+
+        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+        self.assertEqual(envelope["edge_count"], 1)
+        self.assertEqual(envelope["edges"][0]["repository"], cicd_identity)
+        self.assertEqual(envelope["edges"][0]["depth"], 1)
+
+        mid = fx.add_repo("Mid")
+        mid.add_submodule(
+            "Conversations", "references/Conversations",
+            "https://github.com/other/conversations.git", "2" * 40,
+        )
+        mid_commit = mid.commit()
+        fx.register_module("Mid")
+        walked_root = fx.add_repo("WalkedRoot")
+        fx.link("WalkedRoot", "references/Mid", "Mid", mid_commit)
+        walked_commit = walked_root.commit()
+        with self.assertRaisesRegex(dg.GraphError, "unknown/untrusted repository identity"):
+            dg.collect_graph(walked_root.root, fx.identity("WalkedRoot"), walked_commit, fx.policy)
+
     def test_depth2_boundary_excludes_depth3(self) -> None:
         fx = GraphFixture(self.tmp_path)
         deepest = fx.add_repo("Deepest")

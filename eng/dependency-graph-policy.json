@@ -43,6 +43,10 @@
       "local_path": "references/Hexalith.Platform"
     },
     {
+      "identity": "github.com/hexalith/hexalith.cicd",
+      "local_path": "references/Hexalith.CiCd"
+    },
+    {
       "identity": "github.com/hexalith/hexalith.mcpcli",
       "local_path": "references/Hexalith.McpCli"
     }
@@ -56,8 +60,9 @@
     "github.com/hexalith/hexalith.commons": "shared-catalog-baseline-v1",
     "github.com/hexalith/hexalith.polymorphicserializations": "shared-catalog-baseline-v1",
     "github.com/hexalith/hexalith.tenants": "shared-catalog-baseline-v1",
-    "github.com/hexalith/hexalith.ai.tools": "shared-catalog-baseline-v1",
+    "github.com/hexalith/hexalith.ai.tools": "policy-inventory-v1",
     "github.com/hexalith/hexalith.platform": "platform-mtls-source-v1",
+    "github.com/hexalith/hexalith.cicd": "policy-inventory-v1",
     "github.com/hexalith/hexalith.mcpcli": "shared-catalog-baseline-v1"
   },
   "profiles": {
@@ -88,8 +93,8 @@
         "System.ComponentModel.Annotations": "5.0.0",
         "System.Reactive": "7.0.0",
         "System.Threading.Tasks.Extensions": "4.6.3",
-        "Verify": "33.4.0",
-        "Verify.XunitV3": "33.4.0"
+        "Verify": "33.6.0",
+        "Verify.XunitV3": "33.6.0"
       }
     },
     "eventstore-catalog-v1": {
@@ -117,34 +122,10 @@
     },
     "parties-catalog-v1": {
       "owner_checks": {
+        "well_formed_project_root": true,
+        "override_not_enabled": true,
         "no_local_override_for_selected_catalog_packages": true,
-        "no_minver": true,
-        "no_inline_versions_in_tracked_files": {
-          "extensions": [
-            ".csproj",
-            ".props",
-            ".targets"
-          ]
-        },
-        "guarded_imports": {
-          "import_projects": [
-            "$(Hexalith1BuildPackageProps)",
-            "$(Hexalith2BuildPackageProps)",
-            "$(Hexalith3BuildPackageProps)"
-          ],
-          "import_conditions": [
-            "Exists('$(Hexalith1BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'",
-            "Exists('$(Hexalith2BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'",
-            "'$(HexalithVersionsLoaded)' != 'true'"
-          ],
-          "required_properties": {
-            "ManagePackageVersionsCentrally": "true",
-            "CentralPackageTransitivePinningEnabled": "true",
-            "Hexalith1BuildPackageProps": "$(MSBuildThisFileDirectory)references/Hexalith.Builds/Props/Directory.Packages.props",
-            "Hexalith2BuildPackageProps": "$(MSBuildThisFileDirectory)../Hexalith.Builds/Props/Directory.Packages.props",
-            "Hexalith3BuildPackageProps": "$(MSBuildThisFileDirectory)../../Hexalith.Builds/Props/Directory.Packages.props"
-          }
-        }
+        "no_minver": true
       },
       "selected_catalog_required_properties": {},
       "selected_catalog_required_package_names": [
@@ -167,10 +148,15 @@
         "well_formed_project_root": true,
         "override_not_enabled": true,
         "canonical_source_files": {
-          "DaprSelfHostedMtls.cs": "3fa9ccf46cd70cdc2253dda51ad06b3bcf5f7f696b3b74a95ca1b86913489a7c",
-          "DaprSelfHostedMtlsSubscriber.cs": "35e5f5b4418814e8df7fc5f73b3d25ea2531215978723b8dcf49060cd2cd7e24"
+          "DaprSelfHostedMtls.cs": "d68d48222e60ff978344b005d921a48520f31be282294e2fe93d8957e5d3f33d",
+          "DaprSelfHostedMtlsSubscriber.cs": "c7c60cad8c0f612029fb6904eca4fd6f567a068d6ea0735c3239fb360de8fc3a"
         }
       },
+      "selected_catalog_required_properties": {},
+      "selected_catalog_required_packages": {}
+    },
+    "policy-inventory-v1": {
+      "owner_checks": {},
       "selected_catalog_required_properties": {},
       "selected_catalog_required_packages": {}
     }
@@ -352,6 +338,13 @@
       "build_argv": null
     },
     "github.com/hexalith/hexalith.platform": {
+      "disposition": "evidence-only",
+      "solution": null,
+      "builds_contract_source": "none",
+      "restore_argv": null,
+      "build_argv": null
+    },
+    "github.com/hexalith/hexalith.cicd": {
       "disposition": "evidence-only",
       "solution": null,
       "builds_contract_source": "none",
@@ -3527,9 +3520,9 @@
   },
   "consumer_source_projections": {
     "github.com/hexalith/hexalith.platform": {
-      "owner_commit": "ead9ff0d4268efaa7054b3a14b45956b647f6171",
-      "gitmodules_sha256": "6da4f5297d79bfa54afcb8daacda70670af11868ba1738cc185f584db8eb6ab7",
-      "inventory_sha256": "9293b66ffcda6828027ebfe2abfcec9695582baf8fd4433b46271c9fd96e5e7d",
+      "owner_commit": "1ffa6013577fb0aace1cab93371db98f92829244",
+      "gitmodules_sha256": "0e0b9eaf9e639f24cc4e9816aabbda14909358e70f3ab66d4714a99ae61897bd",
+      "inventory_sha256": "3654bde4ad26cd90153def7901e56e219e5f68b18632457960f5ee1d275b668b",
       "inventory_only_identities": [
         "github.com/hexalith/hexalith.agents",
         "github.com/hexalith/hexalith.chatbot",
@@ -3540,8 +3533,8 @@
         "github.com/hexalith/hexalith.works"
       ],
       "source_files": {
-        "DaprSelfHostedMtls.cs": "3fa9ccf46cd70cdc2253dda51ad06b3bcf5f7f696b3b74a95ca1b86913489a7c",
-        "DaprSelfHostedMtlsSubscriber.cs": "35e5f5b4418814e8df7fc5f73b3d25ea2531215978723b8dcf49060cd2cd7e24"
+        "DaprSelfHostedMtls.cs": "d68d48222e60ff978344b005d921a48520f31be282294e2fe93d8957e5d3f33d",
+        "DaprSelfHostedMtlsSubscriber.cs": "c7c60cad8c0f612029fb6904eca4fd6f567a068d6ea0735c3239fb360de8fc3a"
       },
       "consumer_repository": "github.com/hexalith/hexalith.frontcomposer",
       "consumer_project": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
@@ -3550,10 +3543,10 @@
         "DaprSelfHostedMtls.cs": "Platform/DaprSelfHostedMtls.cs",
         "DaprSelfHostedMtlsSubscriber.cs": "Platform/DaprSelfHostedMtlsSubscriber.cs"
       },
-      "builds_commit": "65fd22f37b9fad64b595841923cdbe050563ab99",
+      "builds_commit": "38e038d1179b1c829ba47a45bfa0a4683ea5e2a5",
       "builds_project": "src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj",
-      "root_selectors_sha256": "4963cd37098b2296339139a17900c95a90a598f76f16a782d57d9791e8156efe",
-      "consumer_configuration_sha256": "6b784fc0091868af62a756ff7b29a7696213c796dd7a31de6960ac385b91b76a"
+      "root_selectors_sha256": "8f580272667abba18feefd2d3019a34aae66dc845374d6e0ad1071ea178ec07f",
+      "consumer_configuration_sha256": "09ab350d22c1363eff59644a2d2fc97a0f28981672809971ba167d6a10b17ab6"
     }
   }
 }

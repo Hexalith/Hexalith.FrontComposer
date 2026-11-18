@@ -545,6 +545,18 @@ def _owner_edges(
     return edges
 
 
+# Evidence-only owners whose nested gitlinks are not FrontComposer execution inputs.
+# Platform still walks because it has a consumer source projection.
+_DEPTH2_OMITTED_EVIDENCE_IDENTITIES = frozenset({"github.com/hexalith/hexalith.cicd"})
+
+
+def _walk_depth2_inventory(policy: dict[str, Any], identity: str) -> bool:
+    """Walk depth-2 unless this identity is an omitted evidence-only inventory."""
+    if identity in policy.get("consumer_source_projections", {}):
+        return True
+    return identity not in _DEPTH2_OMITTED_EVIDENCE_IDENTITIES
+
+
 def _collect_edges(root_dir: Path, root_identity: str, root_commit: str, policy: dict[str, Any]) -> list[dict[str, Any]]:
     """Read the bounded committed inventory without requiring catalog objects."""
     require_commit(root_commit, "root commit")
@@ -552,6 +564,8 @@ def _collect_edges(root_dir: Path, root_identity: str, root_commit: str, policy:
 
     edges = _owner_edges(root_dir, root_commit, root_identity, 1, policy, root_dir)
     for depth1_edge in list(edges):
+        if not _walk_depth2_inventory(policy, depth1_edge["repository"]):
+            continue
         owner_local = resolve_local_path(policy, depth1_edge["repository"], root_dir)
         edges.extend(
             _owner_edges(owner_local, depth1_edge["commit"], depth1_edge["repository"], 2, policy, root_dir)
@@ -1627,6 +1641,45 @@ _TENANTS707_CURRENT_CONDITION = (
     "'$(HexalithTenantsVersion)' == '' and '$(HexalithEventStoreVersion)' == '4.2.0' and ("
     + _SDK42_CURRENT_GATES + ")"
 )
+_TIMESHEETS_NET10_SELECTOR = "HexalithTimesheetsNet10CatalogView"
+_TIMESHEETS_NET10_PROJECTS = frozenset({
+    "Hexalith.Timesheets",
+    "Hexalith.Timesheets.AppHost",
+    "Hexalith.Timesheets.ArchitectureTests",
+    "Hexalith.Timesheets.Client",
+    "Hexalith.Timesheets.Contracts",
+    "Hexalith.Timesheets.Contracts.Tests",
+    "Hexalith.Timesheets.IntegrationTests",
+    "Hexalith.Timesheets.Projections",
+    "Hexalith.Timesheets.Projections.Tests",
+    "Hexalith.Timesheets.ReadModels",
+    "Hexalith.Timesheets.Server",
+    "Hexalith.Timesheets.Server.Tests",
+    "Hexalith.Timesheets.ServiceDefaults",
+    "Hexalith.Timesheets.Testing",
+    "Hexalith.Timesheets.Works",
+    "Hexalith.Timesheets.Works.Tests",
+})
+_SDK42_TIMESHEETS_GATES = _SDK42_CURRENT_GATES + " or '$(HexalithTimesheetsNet10CatalogView)' == 'true'"
+_PACKAGE_530_EVENTSTORE_CONDITION = (
+    "'$(HexalithEventStoreVersion)' == '' and ("
+    "'$(UseHexalithProjectReferences)' != 'true' or '$(HexalithEventStoreFromSource)' == 'false') and ("
+    + _SDK42_TIMESHEETS_GATES + ")"
+)
+_PACKAGE_530_MEMORIES_CONDITION = (
+    "'$(HexalithMemoriesVersion)' == '' and '$(HexalithEventStoreVersion)' == '4.2.0' and ("
+    + _SDK42_TIMESHEETS_GATES + ")"
+)
+_PACKAGE_530_TENANTS_CONDITION = (
+    "'$(HexalithTenantsVersion)' == '' and '$(HexalithEventStoreVersion)' == '4.2.0' and ("
+    + _SDK42_TIMESHEETS_GATES + ")"
+)
+_PACKAGE_530_COMMONS_CONDITION = (
+    "'$(HexalithTimesheetsNet10CatalogView)' == 'true' and '$(HexalithCommonsVersion)' == ''"
+)
+_PACKAGE_530_POLY_CONDITION = (
+    "'$(HexalithTimesheetsNet10CatalogView)' == 'true' and '$(HexalithPolymorphicSerializationsVersion)' == ''"
+)
 
 
 def _current_sdk42_qualification(
@@ -1727,6 +1780,88 @@ def _current_tenants8_qualification(
     if not positions[memories_default] < positions[current] < positions[retained]:
         raise GraphError(f"{context}: {contract} current then retained rows must follow SDK/Memories selection")
     _validate_catalog_logging_import(root, retained, parents, catalog_source, context, contract)
+
+
+def _current_package_530_qualification(
+    root: ET.Element, parents: dict[ET.Element, ET.Element], context: str,
+    catalog_source: tuple[Path, str, int] | None,
+) -> dict[str, ET.Element]:
+    """Prove the closed package 5.3.0/Timesheets net10 cohort is inactive for FrontComposer."""
+    contract = "current package 5.3.0/Timesheets net10 qualification"
+    if root.tag != "Project" or root.attrib:
+        raise GraphError(f"{context}: {contract} requires an ordinary unconditional Project root")
+    if any(element.tag.casefold() in {"target", "usingtask", "output"} for element in root.iter()):
+        raise GraphError(f"{context}: {contract} rejects executable catalog targets, tasks or outputs")
+    positions = {element: index for index, element in enumerate(root.iter())}
+
+    def require_global(element: ET.Element, name: str) -> None:
+        group = parents.get(element)
+        if (group is None or group.tag != "PropertyGroup" or group.attrib or parents.get(group) is not root):
+            raise GraphError(f"{context}: {contract} {name} must be in an unconditional top-level PropertyGroup")
+
+    def require_selector(name: str, allowed_projects: frozenset[str]) -> ET.Element:
+        definitions = [element for element in root.iter() if element.tag.casefold() == name.casefold()]
+        if len(definitions) != 2 or any(element.tag != name for element in definitions):
+            raise GraphError(f"{context}: {contract} selector {name} requires exactly two canonical declarations")
+        default, enabled = definitions
+        for element in definitions:
+            require_global(element, name)
+        if default.attrib or default.text != "false" or list(default):
+            raise GraphError(f"{context}: {contract} selector {name} requires an unconditional literal false default")
+        if set(enabled.attrib) != {"Condition"} or enabled.text != "true" or list(enabled):
+            raise GraphError(f"{context}: {contract} selector {name} requires one conditional literal true assignment")
+        clauses = re.split(r"\s+or\s+", enabled.attrib["Condition"].strip())
+        parsed = [re.fullmatch(r"\$\(MSBuildProjectName\.Equals\('(?P<project>[A-Za-z0-9._-]+)'\)\)", value) for value in clauses]
+        projects = [match.group("project") for match in parsed if match is not None]
+        if len(projects) != len(clauses) or len(projects) != len(set(projects)) or set(projects) != allowed_projects:
+            raise GraphError(f"{context}: {contract} selector {name} must contain exactly its qualified literal project-name Equals subjects")
+        return enabled
+
+    timesheets = require_selector(_TIMESHEETS_NET10_SELECTOR, _TIMESHEETS_NET10_PROJECTS)
+    sdk42_enabled = [require_selector(name, projects) for name, projects in _SDK42_CURRENT_PROJECTS.items()]
+
+    overrides: dict[str, ET.Element] = {}
+    defaults: dict[str, ET.Element] = {}
+    cohort_rows = (
+        ("HexalithCommonsVersion", _PACKAGE_530_COMMONS_CONDITION, "2.30.11", "3.0.1"),
+        ("HexalithPolymorphicSerializationsVersion", _PACKAGE_530_POLY_CONDITION, "1.19.9", "2.0.0"),
+        ("HexalithEventStoreVersion", _PACKAGE_530_EVENTSTORE_CONDITION, "4.2.0", "5.3.0"),
+        ("HexalithMemoriesVersion", _PACKAGE_530_MEMORIES_CONDITION, "3.0.27", "4.0.0"),
+        ("HexalithTenantsVersion", _PACKAGE_530_TENANTS_CONDITION, "7.0.7", "8.0.1"),
+    )
+    for name, condition, retained, current in cohort_rows:
+        definitions = [element for element in root.iter() if element.tag.casefold() == name.casefold()]
+        if len(definitions) != 2 or any(element.tag != name for element in definitions):
+            raise GraphError(f"{context}: {contract} {name} requires exactly two canonical declarations")
+        selected = [element for element in definitions if element.attrib == {"Condition": condition}
+                    and element.text == retained and not list(element)]
+        if len(selected) != 1:
+            raise GraphError(f"{context}: {contract} {name} retained row must have its exact literal condition and version")
+        override = selected[0]
+        default = next(element for element in definitions if element is not override)
+        for element in definitions:
+            require_global(element, name)
+        if (default.attrib != {"Condition": f"'$({name})' == ''"}
+                or default.text != current or list(default)):
+            raise GraphError(f"{context}: {contract} {name} must retain canonical default {current}")
+        overrides[name] = override
+        defaults[name] = default
+
+    eventstore_override = overrides["HexalithEventStoreVersion"]
+    if not positions[timesheets] < positions[eventstore_override]:
+        raise GraphError(f"{context}: {contract} Timesheets selector must precede the EventStore override")
+    if any(positions[enabled] >= positions[eventstore_override] for enabled in sdk42_enabled):
+        raise GraphError(f"{context}: {contract} SDK4.2 selectors must select subjects before the EventStore override")
+    if not (positions[overrides["HexalithCommonsVersion"]] < positions[defaults["HexalithCommonsVersion"]]
+            < positions[overrides["HexalithEventStoreVersion"]] < positions[defaults["HexalithEventStoreVersion"]]
+            < positions[overrides["HexalithMemoriesVersion"]] < positions[defaults["HexalithMemoriesVersion"]]
+            < positions[overrides["HexalithTenantsVersion"]] < positions[defaults["HexalithTenantsVersion"]]):
+        raise GraphError(f"{context}: {contract} retained Commons, EventStore, Memories and Tenants rows must precede their defaults in that order")
+    if not (positions[overrides["HexalithPolymorphicSerializationsVersion"]] < positions[defaults["HexalithPolymorphicSerializationsVersion"]]
+            < positions[eventstore_override]):
+        raise GraphError(f"{context}: {contract} retained PolymorphicSerializations row must precede its default and the EventStore override")
+    _validate_catalog_logging_import(root, defaults["HexalithTenantsVersion"], parents, catalog_source, context, contract)
+    return overrides
 
 
 def _inactive_eventstore_sdk42_override(
@@ -1850,6 +1985,10 @@ def assert_selected_catalog_property_shape(
         if (any(element.get("Condition") in {_SDK42_CURRENT_CONDITION, _SDK42_PACKAGE_CURRENT_CONDITION} for element in root.iter("HexalithEventStoreVersion"))
                 or any(element.get("Condition") == _MEMORIES327_CURRENT_CONDITION for element in matches)):
             matches.remove(_current_sdk42_qualification(root, parents, context, catalog_source)[prop_name])
+    if allow_eventstore_qualification and any(element.tag == _TIMESHEETS_NET10_SELECTOR for element in root.iter()):
+        override = _current_package_530_qualification(root, parents, context, catalog_source).get(prop_name)
+        if override is not None:
+            matches.remove(override)
     if len(matches) != 1:
         observed_values = [match.text or "" for match in matches]
         observed = "<missing>" if not observed_values else repr(observed_values)
