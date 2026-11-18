@@ -43,6 +43,8 @@ public abstract class CommandRendererTestBase : BunitContext {
             .SetVoidResult();
         JSInterop.SetupVoid("Microsoft.FluentUI.Blazor.Utilities.Attributes.copyToShadow", _ => true)
             .SetVoidResult();
+        JSInterop.SetupVoid("Microsoft.FluentUI.Blazor.Utilities.DomFunctions.focus", _ => true)
+            .SetVoidResult();
         JSInterop.SetupVoid("Microsoft.FluentUI.Blazor.Components.TextInput.attachImmediateEvent", _ => true)
             .SetVoidResult();
         FcExpandInRowModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js");
