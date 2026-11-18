@@ -125,9 +125,9 @@ prerequisite implementation.
 
 ## 2026-11-18 dependency refresh
 
-The root Builds catalog now selects EventStore `5.3.1` and Tenants `8.0.2`.
-The dependency policy checks the updated catalog against the synchronized
-Memories and Platform gitlinks and the committed Platform inventory. The two
+The root Builds catalog now selects EventStore `5.3.1`, Tenants `8.0.2`, and
+Folders `2.0.1`. The dependency policy checks the updated catalog against the
+synchronized Memories, Parties, and Platform gitlinks and the committed Platform inventory. The two
 linked Platform source files retain their previously recorded digests.
 
 This documentation commit activates the dependency policy from its immediate
