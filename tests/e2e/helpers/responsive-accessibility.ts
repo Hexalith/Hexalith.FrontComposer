@@ -1737,9 +1737,17 @@ export async function settlePaint(page: Page): Promise<void> {
       const roots: (Document | ShadowRoot)[] = [document];
       const collect = (root: Document | ShadowRoot) => { for (const element of root.querySelectorAll('*')) if (element.shadowRoot) { roots.push(element.shadowRoot); collect(element.shadowRoot); } };
       collect(document);
-      const animations = roots.flatMap(root => root.getAnimations()).filter(animation => animation.playState === 'running' && Number.isFinite(Number(animation.effect?.getComputedTiming().endTime)));
+      const animations = roots.flatMap(root => root.getAnimations()).filter(animation => {
+        const timing = animation.effect?.getComputedTiming();
+        return animation.playState === 'running'
+          && Number.isFinite(Number(timing?.endTime))
+          && timing?.iterations !== Infinity;
+      });
       if (!animations.length) return;
-      await Promise.allSettled(animations.map(animation => animation.finished));
+      await Promise.allSettled(animations.map(animation => Promise.race([
+        animation.finished,
+        new Promise<void>(resolve => setTimeout(resolve, 200)),
+      ])));
     }
   });
 }
