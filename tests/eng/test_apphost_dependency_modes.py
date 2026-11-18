@@ -15,13 +15,14 @@ UI = ROOT / "src/Hexalith.FrontComposer.UI/Hexalith.FrontComposer.UI.csproj"
 TENANTS_UI = ROOT / "references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Hexalith.Tenants.UI.csproj"
 PARTIES_UI = ROOT / "references/Hexalith.Parties/src/Hexalith.Parties.UI/Hexalith.Parties.UI.csproj"
 MEMORIES_IDS = {"Hexalith.Memories.Contracts", "Hexalith.Memories.Client.Rest"}
+FRONTCOMPOSER_IDS = {"Hexalith.FrontComposer.Contracts", "Hexalith.FrontComposer.Shell", "Hexalith.FrontComposer.SourceTools"}
 
 
 def evaluate(project: Path, configuration: str | None, properties: dict[str, str] | None = None) -> dict:
     command = [
         "dotnet", "msbuild", str(project), "-nologo",
         "-getProperty:HexalithMemoriesFromSource,ProjectAssetsFile,RestoreUseStaticGraphEvaluation,FrontComposerCallerHookObserved,"
-        "HexalithEventStoreVersion,Version",
+        "HexalithEventStoreVersion,HexalithFrontComposerFromSource,Version",
         "-getItem:ProjectReference,PackageReference,Compile",
     ]
     if configuration is not None:
@@ -227,8 +228,9 @@ class AppHostDependencyModeTests(unittest.TestCase):
         }
         assets = set()
         for parent in (APPHOST, UI, None):
-            with self.subTest(parent=parent.name if parent else "restore evaluation"):
-                properties = forwarded_properties(module_reference(evaluate(parent, "Debug"))) if parent else {}
+            with self.subTest(parent=parent.name if parent else "standalone source restore"):
+                properties = (forwarded_properties(module_reference(evaluate(parent, "Debug")))
+                              if parent else {"UseHexalithProjectReferences": "true"})
                 child = evaluate(TENANTS_UI, "Debug" if parent else None, properties)
                 self.assertEqual(child["Properties"]["HexalithMemoriesFromSource"], "true")
                 memories_projects = {
@@ -259,11 +261,17 @@ class AppHostDependencyModeTests(unittest.TestCase):
         child = evaluate(TENANTS_UI, "Debug", {"HexalithMemoriesRoot": str(ROOT / "missing-memories-source")})
         self.assert_package_only(child)
 
-    def test_default_restore_and_release_share_the_ui_source_choice(self) -> None:
-        default = evaluate(TENANTS_UI, None)
-        release = evaluate(TENANTS_UI, "Release")
-        self.assertEqual(default["Properties"]["HexalithMemoriesFromSource"], "true")
-        self.assertEqual(default["Properties"], release["Properties"])
+    def test_default_restore_and_release_select_published_ui_dependencies(self) -> None:
+        for configuration in (None, "Debug", "Release"):
+            with self.subTest(configuration=configuration):
+                child = evaluate(TENANTS_UI, configuration)
+                self.assertEqual(child["Properties"]["HexalithFrontComposerFromSource"], "false")
+                self.assertNotEqual(child["Properties"]["HexalithMemoriesFromSource"], "true")
+                self.assert_package_only(child)
+                packages = {item["Identity"] for item in child["Items"]["PackageReference"]}
+                projects = {Path(item["FullPath"]).stem for item in child["Items"]["ProjectReference"]}
+                self.assertTrue(FRONTCOMPOSER_IDS.issubset(packages))
+                self.assertFalse(FRONTCOMPOSER_IDS.intersection(projects))
 
     def test_ui_parent_edges_preserve_explicit_memories_package_selection(self) -> None:
         for parent in (APPHOST, UI):
@@ -275,17 +283,22 @@ class AppHostDependencyModeTests(unittest.TestCase):
                     child = evaluate(project, "Debug", properties)
                     self.assertEqual(child["Properties"]["HexalithMemoriesFromSource"], "false")
 
-    def test_debug_restore_contains_only_memories_project_libraries(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="frontcomposer-memories-restore-") as artifacts:
-            result = subprocess.run(
-                ["dotnet", "restore", str(TENANTS_UI), "--artifacts-path", artifacts, "-p:Configuration=Debug", "--nologo"],
-                cwd=ROOT, capture_output=True, text=True, timeout=180,
-            )
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            child = evaluate(TENANTS_UI, "Debug", {"ArtifactsPath": artifacts})
-            libraries = json.loads(Path(child["Properties"]["ProjectAssetsFile"]).read_text())["libraries"]
-            memories = [(name.split("/")[0], item["type"]) for name, item in libraries.items() if name.split("/")[0] in MEMORIES_IDS]
-            self.assertCountEqual(memories, [(name, "project") for name in MEMORIES_IDS])
+    def test_debug_restore_resolves_memories_in_the_selected_dependency_mode(self) -> None:
+        for source_selection, library_type in (({}, "package"), ({"UseHexalithProjectReferences": "true"}, "project")):
+            with self.subTest(library_type=library_type), tempfile.TemporaryDirectory(
+                prefix="frontcomposer-memories-restore-"
+            ) as artifacts:
+                result = subprocess.run(
+                    ["dotnet", "restore", str(TENANTS_UI), "--artifacts-path", artifacts, "-p:Configuration=Debug",
+                     "--nologo", *[f"-p:{key}={value}" for key, value in source_selection.items()]],
+                    cwd=ROOT, capture_output=True, text=True, timeout=180,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                child = evaluate(TENANTS_UI, "Debug", source_selection | {"ArtifactsPath": artifacts})
+                libraries = json.loads(Path(child["Properties"]["ProjectAssetsFile"]).read_text())["libraries"]
+                memories = [(name.split("/")[0], item["type"]) for name, item in libraries.items()
+                            if name.split("/")[0] in MEMORIES_IDS]
+                self.assertCountEqual(memories, [(name, library_type) for name in MEMORIES_IDS])
 
     def test_release_keeps_memories_packages_and_omits_debug_build_edges(self) -> None:
         host = evaluate(APPHOST, "Release")
