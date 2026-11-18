@@ -3543,9 +3543,9 @@
         "DaprSelfHostedMtls.cs": "Platform/DaprSelfHostedMtls.cs",
         "DaprSelfHostedMtlsSubscriber.cs": "Platform/DaprSelfHostedMtlsSubscriber.cs"
       },
-      "builds_commit": "73268e2676a0c9f11b8e807abaece2fd9a2dd50c",
+      "builds_commit": "f9f0c76e0680d7c5d7f66090517efbe41c2ebd60",
       "builds_project": "src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj",
-      "root_selectors_sha256": "2ef224cac062eb4494bc918b2f877a5e9ce001c6852b4681e87c39b5deea2285",
+      "root_selectors_sha256": "fe8922bbea4e7c2e36ffb75b305df1ad57207bdf5ae91894c933bd157c6da56b",
       "consumer_configuration_sha256": "09ab350d22c1363eff59644a2d2fc97a0f28981672809971ba167d6a10b17ab6"
     }
   }
