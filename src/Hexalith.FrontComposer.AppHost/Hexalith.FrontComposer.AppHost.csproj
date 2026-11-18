@@ -8,6 +8,7 @@
     <SuppressAspireAppHostSdkObsoleteWarning>true</SuppressAspireAppHostSdkObsoleteWarning>
     <IsPackable>false</IsPackable>
     <IsPublishable>true</IsPublishable>
+    <NoWarn>$(NoWarn);ASPIRE012</NoWarn>
     <UserSecretsId>hexalith-frontcomposer</UserSecretsId>
     <!-- Canonical hosting helpers remain source-owned in package/Release mode as well. -->
     <HexalithPlatformRoot Condition="'$(HexalithPlatformRoot)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'references', 'Hexalith.Platform'))</HexalithPlatformRoot>
