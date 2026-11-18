@@ -123,6 +123,17 @@ The prior-policy, exact-source CI, package/API compatibility, publication and do
 consumer-adoption gates remain required. No package publication is authorized by this
 prerequisite implementation.
 
+## 2026-11-18 dependency refresh
+
+The root Builds catalog now selects EventStore `5.3.1` and Tenants `8.0.2`.
+The dependency policy checks the updated catalog against the synchronized
+Memories and Platform gitlinks and the committed Platform inventory. The two
+linked Platform source files retain their previously recorded digests.
+
+This documentation commit activates the dependency policy from its immediate
+parent. The push CI and Quality runs on this commit evaluate the newly active
+policy.
+
 ## Activating and replaying this seal
 
 Publish the initial seal commit, containing the complete selected dependency
