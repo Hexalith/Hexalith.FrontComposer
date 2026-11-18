@@ -1020,6 +1020,10 @@ def acquire_catalog_objects(root_dir: Path, event_base: str, candidate: str) -> 
     must be valid before networking; neither candidate URLs nor origin are used.
     Missing root Builds objects are prerequisites for reading their inventories.
     Collection and validation remain offline and retain missing-object failures.
+
+    A newly trusted root identity therefore cannot prepare catalogs on the SHA
+    that first adds it: Quality loads the push-before policy. The identity
+    becomes usable on the subsequent main SHA that uses that policy as the event base.
     """
     event_base = require_commit(event_base, "catalog acquisition event base")
     candidate = require_commit(candidate, "catalog acquisition candidate")

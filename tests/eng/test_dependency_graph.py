@@ -4037,6 +4037,34 @@ class ConsumerProjectionTests(unittest.TestCase):
             dg.acquire_catalog_objects(self.root.root, base, candidate)
         network.assert_not_called()
 
+    def test_catalog_preparation_lands_existing_gitlink_trust_on_the_next_sha(self) -> None:
+        identity = "github.com/hexalith/hexalith.cicd"
+        owner = TempGitRepo(self.root.root / "references" / "CiCd")
+        owner.write_text("README.md", "cicd inventory\n")
+        owner_commit = owner.commit()
+        self.root.add_submodule("CiCd", "references/CiCd", "https://github.com/Hexalith/Hexalith.CiCd.git", owner_commit)
+        base = self.write_policy()
+        self.fixture.policy["trusted_identities"].append({"identity": identity, "local_path": "references/CiCd"})
+        self.fixture.policy["semantic_profiles"][identity] = "fixture"
+        self.fixture.policy["module_build_registry"][identity] = {
+            "disposition": "evidence-only",
+            "solution": None,
+            "builds_contract_source": "none",
+            "restore_argv": None,
+            "build_argv": None,
+        }
+        candidate = self.write_policy()
+        with mock.patch.object(dg, "_run_git_network") as network, self.assertRaisesRegex(dg.GraphError, "unknown/untrusted"):
+            dg.acquire_catalog_objects(self.root.root, base, candidate)
+        network.assert_not_called()
+        self.root.write_text("activation-marker.txt", "delayed cicd trust\n")
+        later = self.root.commit()
+        with mock.patch.object(dg, "_run_git_network") as network:
+            result = dg.acquire_catalog_objects(self.root.root, candidate, later)
+        network.assert_not_called()
+        self.assertEqual(result["event_base"], candidate)
+        self.assertEqual(result["candidate"], later)
+
     def test_catalog_preparation_refuses_uninitialized_store_before_network(self) -> None:
         commit = self.write_policy()
         (self.builds.root / ".git").rename(self.builds.root / "git-store-backup")
