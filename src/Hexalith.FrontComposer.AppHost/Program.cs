@@ -1,3 +1,5 @@
+#pragma warning disable CS0618 // Aspire 17 deprecates AddProject<T>; keep IProjectMetadata helpers.
+
 using CommunityToolkit.Aspire.Hosting.Dapr;
 
 using Microsoft.Extensions.Hosting;
