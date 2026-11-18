@@ -1670,23 +1670,23 @@ _TIMESHEETS_NET10_PROJECTS = frozenset({
     "Hexalith.Timesheets.Works.Tests",
 })
 _SDK42_TIMESHEETS_GATES = _SDK42_CURRENT_GATES + " or '$(HexalithTimesheetsNet10CatalogView)' == 'true'"
-_PACKAGE_530_EVENTSTORE_CONDITION = (
+_TIMESHEETS_NET10_EVENTSTORE_CONDITION = (
     "'$(HexalithEventStoreVersion)' == '' and ("
     "'$(UseHexalithProjectReferences)' != 'true' or '$(HexalithEventStoreFromSource)' == 'false') and ("
     + _SDK42_TIMESHEETS_GATES + ")"
 )
-_PACKAGE_530_MEMORIES_CONDITION = (
+_TIMESHEETS_NET10_MEMORIES_CONDITION = (
     "'$(HexalithMemoriesVersion)' == '' and '$(HexalithEventStoreVersion)' == '4.2.0' and ("
     + _SDK42_TIMESHEETS_GATES + ")"
 )
-_PACKAGE_530_TENANTS_CONDITION = (
+_TIMESHEETS_NET10_TENANTS_CONDITION = (
     "'$(HexalithTenantsVersion)' == '' and '$(HexalithEventStoreVersion)' == '4.2.0' and ("
     + _SDK42_TIMESHEETS_GATES + ")"
 )
-_PACKAGE_530_COMMONS_CONDITION = (
+_TIMESHEETS_NET10_COMMONS_CONDITION = (
     "'$(HexalithTimesheetsNet10CatalogView)' == 'true' and '$(HexalithCommonsVersion)' == ''"
 )
-_PACKAGE_530_POLY_CONDITION = (
+_TIMESHEETS_NET10_POLY_CONDITION = (
     "'$(HexalithTimesheetsNet10CatalogView)' == 'true' and '$(HexalithPolymorphicSerializationsVersion)' == ''"
 )
 
@@ -1791,12 +1791,12 @@ def _current_tenants8_qualification(
     _validate_catalog_logging_import(root, retained, parents, catalog_source, context, contract)
 
 
-def _current_package_530_qualification(
+def _timesheets_net10_qualification(
     root: ET.Element, parents: dict[ET.Element, ET.Element], context: str,
     catalog_source: tuple[Path, str, int] | None,
 ) -> dict[str, ET.Element]:
-    """Prove the closed package 5.3.0/Timesheets net10 cohort is inactive for FrontComposer."""
-    contract = "current package 5.3.0/Timesheets net10 qualification"
+    """Prove the closed Timesheets net10 catalog view is inactive for FrontComposer."""
+    contract = "Timesheets net10 catalog qualification"
     if root.tag != "Project" or root.attrib:
         raise GraphError(f"{context}: {contract} requires an ordinary unconditional Project root")
     if any(element.tag.casefold() in {"target", "usingtask", "output"} for element in root.iter()):
@@ -1831,14 +1831,17 @@ def _current_package_530_qualification(
 
     overrides: dict[str, ET.Element] = {}
     defaults: dict[str, ET.Element] = {}
+    qualified_cohorts = {("5.3.0", "8.0.1"), ("5.3.1", "8.0.2")}
+    eventstore_versions = {eventstore for eventstore, _ in qualified_cohorts}
+    tenants_versions = {tenants for _, tenants in qualified_cohorts}
     cohort_rows = (
-        ("HexalithCommonsVersion", _PACKAGE_530_COMMONS_CONDITION, "2.30.11", "3.0.1"),
-        ("HexalithPolymorphicSerializationsVersion", _PACKAGE_530_POLY_CONDITION, "1.19.9", "2.0.0"),
-        ("HexalithEventStoreVersion", _PACKAGE_530_EVENTSTORE_CONDITION, "4.2.0", "5.3.0"),
-        ("HexalithMemoriesVersion", _PACKAGE_530_MEMORIES_CONDITION, "3.0.27", "4.0.0"),
-        ("HexalithTenantsVersion", _PACKAGE_530_TENANTS_CONDITION, "7.0.7", "8.0.1"),
+        ("HexalithCommonsVersion", _TIMESHEETS_NET10_COMMONS_CONDITION, "2.30.11", {"3.0.1"}),
+        ("HexalithPolymorphicSerializationsVersion", _TIMESHEETS_NET10_POLY_CONDITION, "1.19.9", {"2.0.0"}),
+        ("HexalithEventStoreVersion", _TIMESHEETS_NET10_EVENTSTORE_CONDITION, "4.2.0", eventstore_versions),
+        ("HexalithMemoriesVersion", _TIMESHEETS_NET10_MEMORIES_CONDITION, "3.0.27", {"4.0.0"}),
+        ("HexalithTenantsVersion", _TIMESHEETS_NET10_TENANTS_CONDITION, "7.0.7", tenants_versions),
     )
-    for name, condition, retained, current in cohort_rows:
+    for name, condition, retained, allowed_defaults in cohort_rows:
         definitions = [element for element in root.iter() if element.tag.casefold() == name.casefold()]
         if len(definitions) != 2 or any(element.tag != name for element in definitions):
             raise GraphError(f"{context}: {contract} {name} requires exactly two canonical declarations")
@@ -1851,10 +1854,14 @@ def _current_package_530_qualification(
         for element in definitions:
             require_global(element, name)
         if (default.attrib != {"Condition": f"'$({name})' == ''"}
-                or default.text != current or list(default)):
-            raise GraphError(f"{context}: {contract} {name} must retain canonical default {current}")
+                or default.text not in allowed_defaults or list(default)):
+            raise GraphError(f"{context}: {contract} {name} must use a canonical default from {sorted(allowed_defaults)}")
         overrides[name] = override
         defaults[name] = default
+
+    selected_cohort = (defaults["HexalithEventStoreVersion"].text, defaults["HexalithTenantsVersion"].text)
+    if selected_cohort not in qualified_cohorts:
+        raise GraphError(f"{context}: {contract} requires a qualified EventStore/Tenants pair")
 
     eventstore_override = overrides["HexalithEventStoreVersion"]
     if not positions[timesheets] < positions[eventstore_override]:
@@ -1995,7 +2002,7 @@ def assert_selected_catalog_property_shape(
                 or any(element.get("Condition") == _MEMORIES327_CURRENT_CONDITION for element in matches)):
             matches.remove(_current_sdk42_qualification(root, parents, context, catalog_source)[prop_name])
     if allow_eventstore_qualification and any(element.tag == _TIMESHEETS_NET10_SELECTOR for element in root.iter()):
-        override = _current_package_530_qualification(root, parents, context, catalog_source).get(prop_name)
+        override = _timesheets_net10_qualification(root, parents, context, catalog_source).get(prop_name)
         if override is not None:
             matches.remove(override)
     if len(matches) != 1:

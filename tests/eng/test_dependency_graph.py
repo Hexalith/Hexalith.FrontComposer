@@ -2947,6 +2947,27 @@ class PolicyShapeTests(unittest.TestCase):
         actual = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
         self.assertEqual(1, self._evaluate_frontcomposer_profile(actual, logging_target=self._analyzer_logging_target())["selectors_validated"])
 
+    def test_timesheets_catalog_requires_a_qualified_eventstore_and_tenants_pair(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        logging_target = self._analyzer_logging_target()
+        for eventstore_version, tenants_version, accepted in (
+            ("5.3.0", "8.0.1", True),
+            ("5.3.1", "8.0.2", True),
+            ("5.3.1", "8.0.1", False),
+            ("5.3.0", "8.0.2", False),
+        ):
+            with self.subTest(eventstore=eventstore_version, tenants=tenants_version):
+                root = ET.fromstring(catalog)
+                list(root.iter("HexalithEventStoreVersion"))[-1].text = eventstore_version
+                list(root.iter("HexalithTenantsVersion"))[-1].text = tenants_version
+                candidate = self._catalog_xml_bytes(root)
+                if accepted:
+                    self.assertEqual(1, self._evaluate_frontcomposer_profile(
+                        candidate, logging_target=logging_target)["selectors_validated"])
+                else:
+                    with self.assertRaisesRegex(dg.GraphError, "requires a qualified EventStore/Tenants pair"):
+                        self._evaluate_frontcomposer_profile(candidate, logging_target=logging_target)
+
     def test_immutable_consumer_scope_matches_tracked_root_project_inventory(self) -> None:
         tracked = set(_run(["ls-files", "-z", "--", "*.csproj"], ROOT).decode("utf-8").rstrip("\0").split("\0"))
         archived = {
