@@ -19,8 +19,8 @@ The root `Directory.Packages.props` imports the central catalog at `references/H
 
 | Package ID | Selected version |
 | --- | --- |
-| `Microsoft.FluentUI.AspNetCore.Components` | `5.0.1` |
-| `Microsoft.FluentUI.AspNetCore.Components.Icons` | `5.0.1` |
+| `Microsoft.FluentUI.AspNetCore.Components` | `5.1.0` |
+| `Microsoft.FluentUI.AspNetCore.Components.Icons` | `5.1.0` |
 
 Both selections are **GA**. To inspect the authority, run these read-only commands from the FrontComposer root, substituting the exact gitlink SHA printed by the first command into the second:
 

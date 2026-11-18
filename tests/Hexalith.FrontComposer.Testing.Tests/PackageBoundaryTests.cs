@@ -10,7 +10,7 @@ using Xunit;
 namespace Hexalith.FrontComposer.Testing.Tests;
 
 public sealed class PackageBoundaryTests {
-    private const string FluentV5Version = "5.0.1";
+    private const string FluentV5Version = "5.1.0";
     private const string LocalizationAbstractionsVersion = "11.0.0";
     private const string MicrosoftNetTestSdkVersion = "18.12.0";
     private const string XunitRunnerVisualStudioVersion = "4.0.1";
