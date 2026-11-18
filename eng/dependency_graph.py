@@ -1024,6 +1024,9 @@ def acquire_catalog_objects(root_dir: Path, event_base: str, candidate: str) -> 
     A newly trusted root identity therefore cannot prepare catalogs on the SHA
     that first adds it: Quality loads the push-before policy. The identity
     becomes usable on the subsequent main SHA that uses that policy as the event base.
+
+    The same delayed activation applies to a resealed consumer projection owner pin.
+    The SHA that moves that gitlink cannot collect catalogs against the previous pin.
     """
     event_base = require_commit(event_base, "catalog acquisition event base")
     candidate = require_commit(candidate, "catalog acquisition candidate")
