@@ -214,3 +214,7 @@ is permitted only by a new dated Architect + Release Owner decision that records
 graph/policy/evaluator/split-role/handoff/manifest/attestation/evidence proofs, scope, approvers, expiry,
 revocation and migration triggers, and closure through the same implementation gate. GOV-1 grants no
 such contingency.
+
+## FrontComposer credential design — 2026-11-19
+
+For FrontComposer, the deliverable is an exact Builds action closure that supports the caller-owned protected publishing workflow. The original cross-repository reusable contract remains historical context for this integration. [GOV-1 amendment](architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#frontcomposer-trusted-publishing-amendment--2026-11-19)

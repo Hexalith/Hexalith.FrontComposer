@@ -81,3 +81,20 @@ green legacy run is not closure.
   repository administrator sets literal `false` and records a subsequent authenticated API read of
   literal `false` with its server timestamp (GOV-ACCEPT-1/OI-12). This clarifies the Release-Owner-only
   observer shorthand above; all existing rows and companion history are preserved.
+
+### NC-35 stop observation on 2026-11-19
+
+The authorized repository administration session authenticated as `jpiquot` set
+`HEXALITH_RELEASE_PUBLISH_ENABLED` to literal `false` for
+`Hexalith/Hexalith.FrontComposer`. A separate authenticated GET returned HTTP 200,
+the literal value `false`, and `updated_at=2026-11-19T09:36:24Z`. The server
+`Date` was 2026-11-19T09:36:24Z. The session verified the readback again at local
+UTC 2026-11-19T09:40:23Z, with HTTP 200 and server `Date` 2026-11-19T09:40:24Z.
+
+That satisfies the NC-35 literal-false observation requirement as of the readback.
+The earlier true observations remain in the register. Release run
+[44384083969, attempt 1](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/44384083969/attempts/1)
+on `314940556b02f4b0d20bbb4f7525338d354279a2` was terminal and cancelled, with
+the `release` job skipped. A paginated inventory of `release.yml` returned no
+nonterminal runs. G-8, GOV-ACCEPT-1/2, and the separate incident and re-enable
+decisions remain open.

@@ -470,3 +470,35 @@ These are SHA-256 digests of each reconciled source's Git blob bytes (LF-normali
 - `_bmad-output/implementation-artifacts/spec-17-1-reconcile-publication-governance-sources.md` — this spec: verification results, implementation notes, digest record and file list.
 - `_bmad-output/implementation-artifacts/epic-17-context.md` — Epic 17 context compiled for this story by the workflow; read as context and not edited by the implementation.
 - `_bmad-output/implementation-artifacts/deferred-work.md` — the Story 17.1 review appended two deferrals (floating `@main` Builds references; no interim containment instruction or deadline while the flag reads `true`).
+
+## NC-35 observation delta on 2026-11-19
+
+The append-only stop observation changes the nonconformance-register entry in
+the Story 17.1 source set. The original Source Digest Record above remains
+the historical snapshot. Use the following updated register identity when
+assembling the next GOV-ACCEPT-2 receipt and revalidate the committed source
+set before approval.
+
+| Source | SHA-256 of Git blob bytes | Git blob |
+| --- | --- | --- |
+| `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/nonconformance-register-2026-09-08.md` | `8a708d40f465580dcd1de0d34c9403bc421b326fa81b608af35427a248b0e30a` | `07db58dbc934fb57f0e0c53fc328eb664ff98a4c` |
+
+## Source digests for the 2026-11-19 Trusted Publishing amendment
+
+The following working-tree source identities supersede the earlier register
+delta for the selected same-repository OIDC design. They are review material
+for GOV-ACCEPT-2. Reproduce them from the reviewed commit and record the
+Product Owner and Release Owner decision against that commit after the
+source reconciliation is complete.
+
+| Source | SHA-256 of Git blob bytes | Git blob |
+| --- | --- | --- |
+| `_bmad-output/planning-artifacts/prd.md` | `5523074e2c12e111e35f92c83505bda467fafe063585de3e2c93372c81260e4a` | `6c61073886d18ef2604d56ae9494a8abe5901730` |
+| `_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md` | `4103b551bfa1747e3385addfcbf8ce4af6009f15dcae5b9bc4a0d8d78a6c723b` | `327e607d6c16ba704bc2bb1a8a953619a0af827e` |
+| `_bmad-output/planning-artifacts/architecture.md` | `303741999cd5ff2c62109051e427fc21056f38ed68d88ab397830eaad08f209d` | `898c7ad4aacab67f6be96e9e690e4981d7bd43f5` |
+| `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md` | `04ddf0474e5bdbf45848cd799898432a87e8aaa7db75cd6da8aca1d0dab68547` | `a831059dfb5c9d2cbaaeb08a5e249c25ca7c0a19` |
+| `_bmad-output/planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md` | `efe5aa167cacaf5844be18a74db82d29f378ce874f41f54bf910b3e1ac2876ee` | `45cf4660c376b7e99d0001d7fe7b9fd945b24360` |
+| `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md` | `4e12f40925962c2706052c3b03c1db314af7fa46eefb5ca841b0e8135aec5a73` | `9ac7e6d997883b223785817afa3bc6f05a566869` |
+| `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/nonconformance-register-2026-09-08.md` | `8a708d40f465580dcd1de0d34c9403bc421b326fa81b608af35427a248b0e30a` | `07db58dbc934fb57f0e0c53fc328eb664ff98a4c` |
+| `_bmad-output/implementation-artifacts/gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance.md` | `a48333cc43b14957e992d5ed20264fe8fc90b91a6d68d21e8db925526d43f821` | `e38512ec20b1a14888ab8100387ff871691326e0` |
+| `docs/release-trusted-publishing.md` | `f78e8d3a7efa4f1a9514663098a693e1aa212a0bd4010be4657aad3305753d7c` | `56efbc8bbfdf2156676fb861ff667c52e5b355f7` |

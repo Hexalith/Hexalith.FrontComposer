@@ -142,6 +142,8 @@ FrontComposer is a developer product distributed as NuGet packages and a `frontc
 
 The readiness milestone is judged by package-consumer safety **and** by a named Hexalith domain-module adoption (Tenants, G-6), not by a public web launch funnel.
 
+**2026-11-19 credential design.** G-8 uses the selected FrontComposer-owned publisher and owner-accepted Builds actions. The required owner receipts and conformance gate still govern eligibility. [GOV-1 amendment](architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#frontcomposer-trusted-publishing-amendment--2026-11-19)
+
 ## 5. Features And Functional Requirements
 
 ### 5.0 Requirement Status Map

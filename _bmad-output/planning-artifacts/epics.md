@@ -4218,6 +4218,8 @@ So that partial publication or credential exposure can be contained without dest
 
 **External dependency — [X · EXT-BUILDS-1]:** The Hexalith.Builds owner must publish and accept one immutable revision implementing the split-publication reusable contract in the approved lineage. FrontComposer may reconcile sources and perform other unblocked work, but Story 17.3 and caller activation remain blocked until this external revision and its owner acceptance exist.
 
+**2026-11-19 credential design.** Story 17.3 targets the FrontComposer-owned protected publisher and owner-accepted Builds actions, with the same delayed activation, two-role boundary, and rollback proof. [GOV-1 amendment](architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#frontcomposer-trusted-publishing-amendment--2026-11-19)
+
 ### Story 17.3: [I · GOV-B] Select the Accepted Split Publication Topology
 
 As a Release Owner,

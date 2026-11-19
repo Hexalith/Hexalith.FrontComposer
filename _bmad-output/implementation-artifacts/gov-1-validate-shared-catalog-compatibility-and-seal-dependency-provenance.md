@@ -928,3 +928,7 @@ repair; complete current-source mutation, CI/Quality, publication and GOV-1
 acceptance remain separate requirements. AD-12 still requires a distinct
 landed-policy activation push. This append records no completed Release or human
 code review.
+
+## FrontComposer credential design — 2026-11-19
+
+The selected implementation preserves NuGet OIDC by putting the protected publisher in FrontComposer. EXT-BUILDS-1, release actor proof, source reconciliation, and exact owner acceptance remain required. [GOV-1 amendment](../planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#frontcomposer-trusted-publishing-amendment--2026-11-19)

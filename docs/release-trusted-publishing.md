@@ -13,14 +13,15 @@ publication-safety boundary (gate G-8). Its protected job checks out and runs
 candidate-controlled code while it holds publication authority. The target
 architecture is a secretless candidate builder plus a separate protected
 publisher that runs only pinned owner code and treats the packages as data.
-Architecture has adopted it; Product Owner and Release Owner acceptance is
-pending. Production releases must stay halted until G-8 closes: an
-owner-accepted Hexalith.Builds split revision (EXT-BUILDS-1) enters the approved
+The selected design keeps the protected job in FrontComposer and pins the
+Builds actions it executes. Formal acceptance and conformance are pending.
+Production releases must stay halted until an owner-accepted Hexalith.Builds
+action revision (EXT-BUILDS-1) enters the approved
 Builds lineage (AD-16) through delayed activation, the split boundary is
 accepted and implemented, incident readiness is established with
 an approved runbook and response target, required owner decisions are recorded,
 and the GOV-1 split implementation gate passes with its required conformance
-evidence. The halt is currently not in effect (see below).
+evidence. [GOV-1 amendment](../_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#frontcomposer-trusted-publishing-amendment--2026-11-19)
 
 `HEXALITH_RELEASE_PUBLISH_ENABLED` is a deny-only stop. Only the exact value
 `true` turns publication on mechanically: once its source checks pass, the
@@ -31,11 +32,9 @@ release, and neither does a green run nor a production-environment approval.
 No bounded risk exception is approved. Keep the variable at literal `false`
 while the halt applies.
 
-As of 2026-11-16 the variable reads `true` (updated 2026-10-05); v4.5.0
-(2026-09-19) and v4.6.0 through v6.0.0 were published after the 2026-09-09
-halt adoption without an approved exception. That is a recorded nonconformance
-routed to the Release Owner. It does not authorize
-any further release.
+On 2026-11-19 GitHub confirmed the variable was set to literal `false`.
+The [nonconformance register](../_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/nonconformance-register-2026-09-08.md#nc-35-stop-observation-on-2026-11-19)
+preserves that receipt and the earlier post-halt publication observations.
 
 ## Trusted publishing policy
 
