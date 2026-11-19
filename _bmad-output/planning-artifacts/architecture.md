@@ -212,6 +212,8 @@ mandatory requires a later separately approved change after supported gitlinks m
 Decision record: `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`.
 Focused spine: `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md`.
 
+**2026-11-19 credential design.** The selected target keeps the protected OIDC job in FrontComposer and pins the Builds actions it executes. The builder and publisher stay privilege-separated. [GOV-1 amendment](architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#frontcomposer-trusted-publishing-amendment--2026-11-19)
+
 ## FR-24 Release Evidence Architecture
 
 Release authorization is an exact-artifact, privilege-separated pipeline:

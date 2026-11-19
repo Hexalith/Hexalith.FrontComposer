@@ -26,6 +26,8 @@ Current execution reconciled 2026-11-16 by Story 17.1, alongside the target arch
 - **REL-AI-1 role.** Post-publication audit closure: the Release Owner confirms downloaded GitHub-asset hashes and the NuGet repository-signature/normalized-member equivalence result, then appends a signed observation. It does not repair a nonconforming privilege boundary or authorize publication retroactively.
 - **Incident response.** `docs/release-incident-response.md` is the required D-16/OI-15 runbook. Before any retry, the runbook must require acknowledgement and recorded containment, disable the publish gate, preserve immutable evidence, rotate possibly exposed credentials, and inventory every external effect. It must prefer unlisting and permit correction only under a new version. Re-enablement requires documented cause and remediation, completed rotation, complete external-effect inventory, independent verification, and Release Owner approval.
 
+**2026-11-19 credential design.** EXT-BUILDS-1 now targets the owner-accepted Builds action revision for the FrontComposer-owned publisher. Keep that release execution SHA distinct from the catalog gitlink and the protected workflow's signer digest. [GOV-1 amendment](architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#frontcomposer-trusted-publishing-amendment--2026-11-19)
+
 ## 2. Dependency Governance Mechanism (moved from NFR-13 / §7 / D-11)
 
 - **Compatibility vs provenance.** Compatibility is established from versioned semantic shared-catalog profiles and affected-module standalone Release/NuGet restore/build evidence. Exact commits and raw catalog fingerprints are sealed as provenance only and never become compatibility allowlists.

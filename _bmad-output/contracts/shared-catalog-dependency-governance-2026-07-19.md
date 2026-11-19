@@ -315,3 +315,7 @@ AD-2/AD-6/AD-10 trusted exact metadata acquisition remains binding: an unconsume
 The same user approval permits only the FrontComposer semantic expectations for Microsoft.Extensions.Localization and System.Collections.Immutable 10.0.13→10.0.14, matching already-selected Builds 81ab. No actual catalog, SDK, package, Gitlink, authentication behavior or other baseline changes. This bounded approval does not close the independent Product/Release/implementation gates above. Exact policy rows and current evidence are owned by the [Story 13.6 spec](../implementation-artifacts/spec-13-6-qualify-full-topology-readiness.md) and its approved amendment context.
 
 Root-source projection validation also recomputes supplied depth-one rows from the actual committed root before any selected-owner skip, and authenticates root Builds catalog bytes/digest. Legitimate older roots without the owner receive no projection authority; a rehashed omitted owner or stale root selector cannot bypass collection/affected-build validation.
+
+## FrontComposer credential design — 2026-11-19
+
+The selected FrontComposer seam uses a protected same-repository publisher and exact Builds actions. The active policy binds the action revision independently of the catalog pin and protected signer identity. [GOV-1 amendment](../planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#frontcomposer-trusted-publishing-amendment--2026-11-19)

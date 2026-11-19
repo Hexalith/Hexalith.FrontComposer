@@ -1,0 +1,10 @@
+/.github/CODEOWNERS @jpiquot
+/.github/actions/ @jpiquot
+/.github/scripts/ @jpiquot
+/.github/workflows/ @jpiquot
+/eng/dependency-graph-policy.json @jpiquot
+/eng/dependency_*.py @jpiquot
+/eng/workflow_source_closure.py @jpiquot
+/eng/release_*.py @jpiquot
+/eng/validate_gov1_conformance.py @jpiquot
+/_bmad-output/implementation-artifacts/gov-1-split-publication-conformance* @jpiquot

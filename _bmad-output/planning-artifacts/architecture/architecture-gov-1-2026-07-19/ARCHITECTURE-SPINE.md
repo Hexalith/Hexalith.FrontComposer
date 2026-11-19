@@ -100,6 +100,58 @@ route the caller-owned publisher, the flag and those publications to the Release
 handling belongs to Story 17.2 and ledger rows to Story 17.14. This record changes no variable,
 workflow or release posture.
 
+## FrontComposer Trusted Publishing amendment — 2026-11-19
+
+The user selected the same-repository OIDC design in the
+[credential decision](../../../implementation-artifacts/spec-g8-split-publisher-credential-contract.md). This is the selected
+implementation target. GOV-ACCEPT-1 and GOV-ACCEPT-2 still require the exact
+reviewed source identities, and the production hold remains in effect. The
+November 19 authenticated literal-false readback is in the
+[nonconformance register](nonconformance-register-2026-09-08.md#nc-35-stop-observation-on-2026-11-19).
+
+The following FrontComposer-specific changes supersede the Builds-hosted job
+placement and signer projections below for the new implementation. Historical
+attempts and the shared reusable's existing modes retain their original identities.
+
+- **AD-13, AD-18, AD-19 job boundary.** `release.yml` authenticates current
+  `main`, successful push CI and Quality, and the run-bound CI handoff. Its
+  read-only builder packs once, seals the artifact inventory, and uploads the
+  AD-19 candidate artifact. A distinct called `release-publish.yml` in
+  `Hexalith/Hexalith.FrontComposer` owns the protected job under `production`.
+  It has no FrontComposer checkout. It executes only the authorized workflow
+  and exact pinned actions. All candidate data comes from authenticated
+  artifacts and read-only Git objects. Candidate scripts and packages are never
+  executed by the publisher.
+- **AD-12, AD-13, AD-16 workflow authorization.** The Release row binds both
+  exact FrontComposer workflow blobs and every reachable action. A same-commit
+  reusable may be pre-authorized by the identical blob from a prior reviewed
+  commit. Runtime verification must authenticate its actual commit and hash.
+  `builds_execution_sha` is the one owner-accepted Builds actions commit.
+  It must equal each Builds implementation pin in the Release closure. AD-16
+  lineage admission for this topology comes from the accepted Builds action
+  coordinates in a policy revision that became an active base. A catalog
+  gitlink, historical publisher pin, or unrelated action cannot admit it.
+  The policy must land before the caller selects the closure. During staging,
+  a call carrying legacy inputs must fail before any publication credential.
+- **AD-17 and AD-19 provenance.** The v4 manifest retains `caller`,
+  `reusable`, and `builds_execution_sha`. Here `reusable` is the exact
+  FrontComposer `.github/workflows/release-publish.yml` at the candidate
+  commit for the local reusable call. Bind the attestation signer workflow
+  and signer digest to this protected job. Verify the signature, issuer, signer
+  workflow and digest, candidate source digest and ref, run and attempt, and
+  exact package subjects through the pinned trust closure. Interpret a
+  provider-emitted main-ref signer alias only with separate exact signer-digest
+  verification. The signer digest and Builds action digest are separate.
+- **AD-18 and AD-19 credentials.** The publisher checks the literal deny-only
+  flag, authenticates the CI handoff and candidate archive, verifies policy and
+  closure identities, and completes the attestation and publication
+  authorization checks before its protected `NuGet/login` step. The GitHub
+  OIDC exchange identifies FrontComposer, `release-publish.yml`, and
+  `production`. Its one-hour key is passed only to the pinned publication
+  action. The builder receives no credential. G-8 still requires incident
+  preservation, protected-main review, the unchanged-candidate checks, the
+  conformance packet and approval projection, and every existing gate.
+
 ## Invariants & Rules
 
 ### AD-1 — `[ADOPTED]` v1 graph boundary
