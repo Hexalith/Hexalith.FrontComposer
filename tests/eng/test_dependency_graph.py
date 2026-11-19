@@ -2501,6 +2501,19 @@ class PolicyShapeTests(unittest.TestCase):
         })
         return self._catalog_xml_bytes(root)
 
+    def _sdk42_catalog_import_pair(self) -> bytes:
+        root = ET.fromstring(self._sdk42_logging_import_catalog())
+        ET.SubElement(root, "Import", {
+            "Project": "$(MSBuildThisFileDirectory)AspireAppHost.Build.targets",
+            "Condition": "Exists('$(MSBuildThisFileDirectory)AspireAppHost.Build.targets')",
+        })
+        return self._catalog_xml_bytes(root)
+
+    def test_sdk42_optional_catalog_imports_accept_logging_then_apphost(self) -> None:
+        catalog = self._sdk42_catalog_import_pair()
+        self.assertEqual(1, self._evaluate_frontcomposer_profile(
+            catalog, logging_target=self._analyzer_logging_target())["selectors_validated"])
+
     def test_sdk42_optional_logging_import_accepts_absence_and_committed_analyzer_target(self) -> None:
         catalog = self._sdk42_logging_import_catalog()
         target = self._analyzer_logging_target()
@@ -2953,8 +2966,10 @@ class PolicyShapeTests(unittest.TestCase):
         for eventstore_version, tenants_version, accepted in (
             ("5.3.0", "8.0.1", True),
             ("5.3.1", "8.0.2", True),
+            ("5.4.0", "8.0.2", True),
             ("5.3.1", "8.0.1", False),
             ("5.3.0", "8.0.2", False),
+            ("5.4.0", "8.0.1", False),
         ):
             with self.subTest(eventstore=eventstore_version, tenants=tenants_version):
                 root = ET.fromstring(catalog)

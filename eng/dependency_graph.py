@@ -1483,65 +1483,102 @@ def assert_selected_catalog_property(root: ET.Element, prop_name: str, expected_
         raise GraphError(f"{context}: {prop_name} expected {expected_value!r}, found {observed_text!r}")
 
 
+_CATALOG_OPTIONAL_IMPORTS = (
+    {
+        "project": "$(MSBuildThisFileDirectory)Logging.Build.targets",
+        "path": "Props/Logging.Build.targets",
+        "shape": ("Project", {}, (("Target", {
+            "Name": "HexalithRemoveReplacedLoggingSourceGenerator",
+            "AfterTargets": "ResolveReferences",
+            "Condition": "'$(DisableMicrosoftExtensionsLoggingSourceGenerator)' == 'true'",
+        }, (("ItemGroup", {}, (
+            ("_HexalithTelemetryLoggingGenerator", {
+                "Include": "@(Analyzer)", "Condition": "'%(Analyzer.Filename)' == 'Microsoft.Gen.Logging'",
+            }, ()),
+            ("Analyzer", {
+                "Remove": "@(Analyzer)",
+                "Condition": "'@(_HexalithTelemetryLoggingGenerator)' != '' and '%(Analyzer.Filename)' == 'Microsoft.Extensions.Logging.Generators'",
+            }, ()),
+        )),)),)),
+        "shape_error": "must contain only the closed analyzer-only XML shape",
+    },
+    {
+        "project": "$(MSBuildThisFileDirectory)AspireAppHost.Build.targets",
+        "path": "Props/AspireAppHost.Build.targets",
+        "shape": ("Project", {}, (("Target", {
+            "Name": "HexalithUseCatalogAspireAppHostPackage",
+            "AfterTargets": "AddImplicitAspireAppHostPackage",
+            "Condition": "'$(ManagePackageVersionsCentrally)' == 'true'",
+        }, (("ItemGroup", {}, (
+            ("_HexalithImplicitAspireAppHostPackage", {
+                "Include": "@(PackageReference)",
+                "Condition": "'%(PackageReference.Identity)' == 'Aspire.Hosting.AppHost' and '%(PackageReference.IsImplicitlyDefined)' == 'true'",
+            }, ()),
+            ("PackageReference", {"Remove": "@(_HexalithImplicitAspireAppHostPackage)"}, ()),
+            ("PackageReference", {
+                "Include": "Aspire.Hosting.AppHost",
+                "Condition": "'@(_HexalithImplicitAspireAppHostPackage)' != ''",
+            }, ()),
+            ("_HexalithImplicitAspireAppHostPackage", {
+                "Remove": "@(_HexalithImplicitAspireAppHostPackage)",
+            }, ()),
+        )),)),)),
+        "shape_error": "must contain only the closed AppHost package XML shape",
+    },
+)
+
+
 def _validate_catalog_logging_import(
     root: ET.Element, default: ET.Element, parents: dict[ET.Element, ET.Element],
     catalog_source: tuple[Path, str, int] | None, context: str,
     contract: str = "HexalithEventStoreVersion SDK4.2",
 ) -> None:
-    """Prove the sole optional analyzer import from the catalog's exact Builds commit."""
+    """Prove the closed optional catalog imports from the exact Builds commit."""
     imports = [element for element in root.iter() if element.tag in {"Import", "ImportGroup", "Sdk"}]
     if root.get("Sdk") is not None:
         raise GraphError(f"{context}: {contract} proof rejects implicit SDK imports")
     if not imports:
         return
-    expected_import = {
-        "Project": "$(MSBuildThisFileDirectory)Logging.Build.targets",
-        "Condition": "Exists('$(MSBuildThisFileDirectory)Logging.Build.targets')",
-    }
-    positions = {element: index for index, element in enumerate(root.iter())}
-    if (len(imports) != 1 or imports[0].tag != "Import" or imports[0].attrib != expected_import
-            or parents.get(imports[0]) is not root or positions[imports[0]] <= positions[default]
-            or list(imports[0]) or (imports[0].text or "").strip()):
+    if len(imports) > len(_CATALOG_OPTIONAL_IMPORTS):
         raise GraphError(f"{context}: {contract} proof rejects unsupported, grouped or misplaced catalog imports")
+    positions = {element: index for index, element in enumerate(root.iter())}
+    for index, imported in enumerate(imports):
+        spec = _CATALOG_OPTIONAL_IMPORTS[index]
+        expected_import = {
+            "Project": spec["project"],
+            "Condition": f"Exists('{spec['project']}')",
+        }
+        if (imported.tag != "Import" or imported.attrib != expected_import
+                or parents.get(imported) is not root or positions[imported] <= positions[default]
+                or list(imported) or (imported.text or "").strip()):
+            raise GraphError(f"{context}: {contract} proof rejects unsupported, grouped or misplaced catalog imports")
     if catalog_source is None:
         raise GraphError(f"{context}: {contract} logging import requires its exact committed Builds source")
     local_path, commit, max_bytes = catalog_source
     commit = require_commit(commit, f"{context}: logging import source commit")
-    path = "Props/Logging.Build.targets"
-    entry = _tree_entry(local_path, commit, path)
-    if entry is None:
-        return  # The exact Exists condition is false in this committed contract tree.
-    mode, object_type, _object_id = entry
-    if mode not in {"100644", "100755"} or object_type != "blob":
-        raise GraphError(f"{context}: {path} at {commit} must be a regular committed blob, found {mode} {object_type}")
-    blob = read_blob(local_path, commit, path, max_bytes, context)
-    if blob is None:
-        raise GraphError(f"{context}: {path} at {commit} disappeared during committed import inspection")
-    target = parse_project_xml(blob, f"{context}: {path}@{commit}")
 
-    expected = ("Project", {}, (("Target", {
-        "Name": "HexalithRemoveReplacedLoggingSourceGenerator",
-        "AfterTargets": "ResolveReferences",
-        "Condition": "'$(DisableMicrosoftExtensionsLoggingSourceGenerator)' == 'true'",
-    }, (("ItemGroup", {}, (
-        ("_HexalithTelemetryLoggingGenerator", {
-            "Include": "@(Analyzer)", "Condition": "'%(Analyzer.Filename)' == 'Microsoft.Gen.Logging'",
-        }, ()),
-        ("Analyzer", {
-            "Remove": "@(Analyzer)",
-            "Condition": "'@(_HexalithTelemetryLoggingGenerator)' != '' and '%(Analyzer.Filename)' == 'Microsoft.Extensions.Logging.Generators'",
-        }, ()),
-    )),)),))
-
-    def require_shape(element: ET.Element, expected_node: tuple) -> None:
+    def require_shape(element: ET.Element, expected_node: tuple, path: str, shape_error: str) -> None:
         tag, attributes, children = expected_node
         if (element.tag != tag or element.attrib != attributes or len(element) != len(children)
                 or (element.text or "").strip() or (element.tail or "").strip()):
-            raise GraphError(f"{context}: {path} must contain only the closed analyzer-only XML shape")
+            raise GraphError(f"{context}: {path} {shape_error}")
         for child, expected_child in zip(element, children, strict=True):
-            require_shape(child, expected_child)
+            require_shape(child, expected_child, path, shape_error)
 
-    require_shape(target, expected)
+    for index, _imported in enumerate(imports):
+        spec = _CATALOG_OPTIONAL_IMPORTS[index]
+        path = spec["path"]
+        entry = _tree_entry(local_path, commit, path)
+        if entry is None:
+            continue  # The exact Exists condition is false in this committed contract tree.
+        mode, object_type, _object_id = entry
+        if mode not in {"100644", "100755"} or object_type != "blob":
+            raise GraphError(f"{context}: {path} at {commit} must be a regular committed blob, found {mode} {object_type}")
+        blob = read_blob(local_path, commit, path, max_bytes, context)
+        if blob is None:
+            raise GraphError(f"{context}: {path} at {commit} disappeared during committed import inspection")
+        target = parse_project_xml(blob, f"{context}: {path}@{commit}")
+        require_shape(target, spec["shape"], path, spec["shape_error"])
 
 
 # Exact inactive SDK4.2 subjects in the qualified current catalog; no prefix admission.
@@ -1831,14 +1868,14 @@ def _timesheets_net10_qualification(
 
     overrides: dict[str, ET.Element] = {}
     defaults: dict[str, ET.Element] = {}
-    qualified_cohorts = {("5.3.0", "8.0.1"), ("5.3.1", "8.0.2")}
+    qualified_cohorts = {("5.3.0", "8.0.1"), ("5.3.1", "8.0.2"), ("5.4.0", "8.0.2")}
     eventstore_versions = {eventstore for eventstore, _ in qualified_cohorts}
     tenants_versions = {tenants for _, tenants in qualified_cohorts}
     cohort_rows = (
         ("HexalithCommonsVersion", _TIMESHEETS_NET10_COMMONS_CONDITION, "2.30.11", {"3.0.1"}),
         ("HexalithPolymorphicSerializationsVersion", _TIMESHEETS_NET10_POLY_CONDITION, "1.19.9", {"2.0.0"}),
         ("HexalithEventStoreVersion", _TIMESHEETS_NET10_EVENTSTORE_CONDITION, "4.2.0", eventstore_versions),
-        ("HexalithMemoriesVersion", _TIMESHEETS_NET10_MEMORIES_CONDITION, "3.0.27", {"4.0.0"}),
+        ("HexalithMemoriesVersion", _TIMESHEETS_NET10_MEMORIES_CONDITION, "3.0.27", {"4.0.0", "4.1.0"}),
         ("HexalithTenantsVersion", _TIMESHEETS_NET10_TENANTS_CONDITION, "7.0.7", tenants_versions),
     )
     for name, condition, retained, allowed_defaults in cohort_rows:
