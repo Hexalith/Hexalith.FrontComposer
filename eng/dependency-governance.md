@@ -134,6 +134,18 @@ This documentation commit activates the dependency policy from its immediate
 parent. The push CI and Quality runs on this commit evaluate the newly active
 policy.
 
+## 2026-11-19 dependency refresh
+
+The root Builds catalog now selects EventStore `5.4.0`, Memories `4.1.0`, and
+Tenants `8.0.2`. The dependency policy checks that catalog against the
+synchronized module gitlinks and the committed Platform inventory. The two
+linked Platform source files retain their previously recorded digests. Tenants
+qualifies EventStore `5.4.0` for current package production.
+
+This documentation commit activates the dependency policy from its immediate
+parent. The push CI and Quality runs on this commit evaluate the newly active
+policy.
+
 ## Activating and replaying this seal
 
 Publish the initial seal commit, containing the complete selected dependency
@@ -276,12 +288,16 @@ Conditions contain only literal project-name `Equals` disjunctions for Parties
 identities or exactly the three Builds packaged-host roles. Case-insensitive
 version aliases, reassignment, ambiguous scope, changed overrides and invalid
 placement fail closed. Unknown, grouped, duplicate or misplaced imports are
-rejected. The sole supported import is the exact optional
+rejected. The supported imports are the exact optional
 `$(MSBuildThisFileDirectory)Logging.Build.targets` import and Exists condition,
-directly at the root after the canonical default. Its absence must be proved
-from the same selected Builds commit. A present target must be a bounded regular
-committed blob with the closed analyzer-selection/removal XML structure;
-property assignments, further imports, tasks or unfamiliar content fail.
+then the exact optional `$(MSBuildThisFileDirectory)AspireAppHost.Build.targets`
+import and Exists condition, directly at the root after the canonical default.
+Absence of either file must be proved from the same selected Builds commit.
+A present Logging target must be a bounded regular committed blob with the
+closed analyzer-selection/removal XML structure; a present AppHost target must
+be a bounded regular committed blob with the closed implicit-package rewrite
+XML structure; property assignments, further imports, tasks or unfamiliar
+content fail.
 Working-tree files and ambient HEAD cannot supply this proof. The canonical
 default must follow the compatibility row and still pass the ordinary unique literal-version contract. Other profiles
 retain the strict single-property rule; compatible future default-version
