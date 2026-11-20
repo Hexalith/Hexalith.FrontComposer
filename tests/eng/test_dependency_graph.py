@@ -2962,6 +2962,18 @@ class PolicyShapeTests(unittest.TestCase):
 
     def test_timesheets_catalog_requires_a_qualified_eventstore_and_tenants_pair(self) -> None:
         catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        # Reconstruct the retired Parties view for replay of the older sealed pairs.
+        historical = ET.fromstring(catalog)
+        properties = next(group for group in historical if group.find("HexalithPlatformSdk42CatalogView") is not None)
+        fixture = ET.parse(ROOT / "tests/ci-governance/fixtures/builds-sdk42-current-qualification.props")
+        for index, selector in enumerate(fixture.iter("HexalithPartiesSdk42CatalogView")):
+            properties.insert(index, selector)
+        platform_gate = "'$(HexalithPlatformSdk42CatalogView)' == 'true'"
+        for row in historical.iter():
+            condition = row.get("Condition", "")
+            if platform_gate in condition:
+                row.set("Condition", condition.replace(platform_gate, "'$(HexalithPartiesSdk42CatalogView)' == 'true' or " + platform_gate))
+        catalog = self._catalog_xml_bytes(historical)
         logging_target = self._analyzer_logging_target()
         for eventstore_version, tenants_version, accepted in (
             ("5.3.0", "8.0.1", True),
@@ -2982,6 +2994,23 @@ class PolicyShapeTests(unittest.TestCase):
                 else:
                     with self.assertRaisesRegex(dg.GraphError, "requires a qualified EventStore/Tenants pair"):
                         self._evaluate_frontcomposer_profile(candidate, logging_target=logging_target)
+
+    def test_current_timesheets_view_requires_latest_eventstore_and_excludes_frontcomposer(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        for change in ("older SDK", "older Tenants", "FrontComposer subject", "retired selector alias"):
+            with self.subTest(change=change):
+                root = ET.fromstring(catalog)
+                if change == "older SDK":
+                    list(root.iter("HexalithEventStoreVersion"))[-1].text = "5.3.1"
+                elif change == "older Tenants":
+                    list(root.iter("HexalithTenantsVersion"))[-1].text = "8.0.1"
+                elif change == "FrontComposer subject":
+                    enabled = list(root.iter("HexalithTimesheetsNet10CatalogView"))[1]
+                    enabled.set("Condition", enabled.get("Condition") + " or $(MSBuildProjectName.Equals('Hexalith.FrontComposer.AppHost'))")
+                else:
+                    ET.SubElement(root.find("PropertyGroup"), "hexalithpartiessdk42catalogview").text = "true"
+                self._assert_frontcomposer_profile_failure(self._catalog_xml_bytes(root), "Timesheets net10 catalog qualification",
+                                                          logging_target=self._analyzer_logging_target())
 
     def test_immutable_consumer_scope_matches_tracked_root_project_inventory(self) -> None:
         tracked = set(_run(["ls-files", "-z", "--", "*.csproj"], ROOT).decode("utf-8").rstrip("\0").split("\0"))

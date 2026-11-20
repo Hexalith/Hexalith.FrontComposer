@@ -66,6 +66,15 @@
       GenerateSuppressionFile="false" />
   </Target>
 
+  <!-- The shared catalog selects the package version. Reject a command-line override
+       before restore or compilation can mix an older SDK into this host. -->
+  <Target Name="ValidateFrontComposerEventStoreVersion"
+          BeforeTargets="CollectPackageReferences;PrepareForBuild"
+          Condition="'$(FrontComposerRoot)' == 'true'">
+    <Error Condition="'$(HexalithEventStoreVersion)' != '5.4.0'"
+           Text="FrontComposer requires EventStore 5.4.0. Selected version: '$(HexalithEventStoreVersion)'." />
+  </Target>
+
   <!-- Source mode: Tenants forwards its own EventStore version on every EventStore edge.
        Without one root selection, the same EventStore project builds under two Version
        identities into one bin/obj, and the launched gateway can load a Contracts assembly

@@ -1706,20 +1706,6 @@ _TIMESHEETS_NET10_PROJECTS = frozenset({
     "Hexalith.Timesheets.Works",
     "Hexalith.Timesheets.Works.Tests",
 })
-_SDK42_TIMESHEETS_GATES = _SDK42_CURRENT_GATES + " or '$(HexalithTimesheetsNet10CatalogView)' == 'true'"
-_TIMESHEETS_NET10_EVENTSTORE_CONDITION = (
-    "'$(HexalithEventStoreVersion)' == '' and ("
-    "'$(UseHexalithProjectReferences)' != 'true' or '$(HexalithEventStoreFromSource)' == 'false') and ("
-    + _SDK42_TIMESHEETS_GATES + ")"
-)
-_TIMESHEETS_NET10_MEMORIES_CONDITION = (
-    "'$(HexalithMemoriesVersion)' == '' and '$(HexalithEventStoreVersion)' == '4.2.0' and ("
-    + _SDK42_TIMESHEETS_GATES + ")"
-)
-_TIMESHEETS_NET10_TENANTS_CONDITION = (
-    "'$(HexalithTenantsVersion)' == '' and '$(HexalithEventStoreVersion)' == '4.2.0' and ("
-    + _SDK42_TIMESHEETS_GATES + ")"
-)
 _TIMESHEETS_NET10_COMMONS_CONDITION = (
     "'$(HexalithTimesheetsNet10CatalogView)' == 'true' and '$(HexalithCommonsVersion)' == ''"
 )
@@ -1864,19 +1850,33 @@ def _timesheets_net10_qualification(
         return enabled
 
     timesheets = require_selector(_TIMESHEETS_NET10_SELECTOR, _TIMESHEETS_NET10_PROJECTS)
-    sdk42_enabled = [require_selector(name, projects) for name, projects in _SDK42_CURRENT_PROJECTS.items()]
+    # The current catalog retired the Parties selector. Replay older seals with their
+    # original subjects and version pairs, and require 5.4.0 for the reduced scope.
+    parties = "HexalithPartiesSdk42CatalogView"
+    has_parties_view = any(element.tag.casefold() == parties.casefold() for element in root.iter())
+    selectors = [name for name in _SDK42_CURRENT_PROJECTS if name != parties or has_parties_view]
+    sdk42_enabled = [require_selector(name, _SDK42_CURRENT_PROJECTS[name]) for name in selectors]
+    gates = " or ".join(f"'$({name})' == 'true'" for name in [*selectors, _TIMESHEETS_NET10_SELECTOR])
+    eventstore_condition = (
+        "'$(HexalithEventStoreVersion)' == '' and ("
+        "'$(UseHexalithProjectReferences)' != 'true' or '$(HexalithEventStoreFromSource)' == 'false') "
+        f"and ({gates})"
+    )
+    sdk42_condition = f"'$(HexalithEventStoreVersion)' == '4.2.0' and ({gates})"
 
     overrides: dict[str, ET.Element] = {}
     defaults: dict[str, ET.Element] = {}
-    qualified_cohorts = {("5.3.0", "8.0.1"), ("5.3.1", "8.0.2"), ("5.4.0", "8.0.2")}
+    qualified_cohorts = {("5.4.0", "8.0.2")}
+    if has_parties_view:
+        qualified_cohorts.update({("5.3.0", "8.0.1"), ("5.3.1", "8.0.2")})
     eventstore_versions = {eventstore for eventstore, _ in qualified_cohorts}
     tenants_versions = {tenants for _, tenants in qualified_cohorts}
     cohort_rows = (
         ("HexalithCommonsVersion", _TIMESHEETS_NET10_COMMONS_CONDITION, "2.30.11", {"3.0.1"}),
         ("HexalithPolymorphicSerializationsVersion", _TIMESHEETS_NET10_POLY_CONDITION, "1.19.9", {"2.0.0"}),
-        ("HexalithEventStoreVersion", _TIMESHEETS_NET10_EVENTSTORE_CONDITION, "4.2.0", eventstore_versions),
-        ("HexalithMemoriesVersion", _TIMESHEETS_NET10_MEMORIES_CONDITION, "3.0.27", {"4.0.0", "4.1.0"}),
-        ("HexalithTenantsVersion", _TIMESHEETS_NET10_TENANTS_CONDITION, "7.0.7", tenants_versions),
+        ("HexalithEventStoreVersion", eventstore_condition, "4.2.0", eventstore_versions),
+        ("HexalithMemoriesVersion", f"'$(HexalithMemoriesVersion)' == '' and {sdk42_condition}", "3.0.27", {"4.0.0", "4.1.0"}),
+        ("HexalithTenantsVersion", f"'$(HexalithTenantsVersion)' == '' and {sdk42_condition}", "7.0.7", tenants_versions),
     )
     for name, condition, retained, allowed_defaults in cohort_rows:
         definitions = [element for element in root.iter() if element.tag.casefold() == name.casefold()]

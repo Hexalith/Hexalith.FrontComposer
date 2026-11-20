@@ -49,6 +49,34 @@ def forwarded_properties(reference: dict) -> dict[str, str]:
 
 
 class AppHostDependencyModeTests(unittest.TestCase):
+    def assert_restored_eventstore_version(self, artifacts: str, expected: str) -> None:
+        resolved = {
+            library for assets in Path(artifacts).rglob("project.assets.json")
+            for library in json.loads(assets.read_text())["libraries"]
+            if library.casefold().startswith(("hexalith.eventstore.", "hexalith.eventstore/"))
+        }
+        self.assertTrue(resolved, "The AppHost restore must include EventStore")
+        self.assertEqual({library.rsplit("/", 1)[1] for library in resolved}, {expected}, sorted(resolved))
+
+    def test_restore_rejects_explicit_eventstore_downgrade(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="frontcomposer-eventstore-downgrade-") as artifacts:
+            result = subprocess.run(
+                ["dotnet", "restore", str(APPHOST), "--artifacts-path", artifacts, "-p:Configuration=Release",
+                 "-p:HexalithEventStoreVersion=4.2.0", "-m:1", "--nologo"],
+                cwd=ROOT, capture_output=True, text=True, timeout=240,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("FrontComposer requires EventStore 5.4.0. Selected version: '4.2.0'.", result.stdout + result.stderr)
+
+    def test_release_restores_only_the_selected_eventstore_version(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="frontcomposer-eventstore-release-") as artifacts:
+            result = subprocess.run(
+                ["dotnet", "restore", str(APPHOST), "--artifacts-path", artifacts, "-p:Configuration=Release", "-m:1", "--nologo"],
+                cwd=ROOT, capture_output=True, text=True, timeout=240,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assert_restored_eventstore_version(artifacts, evaluate(APPHOST, "Release")["Properties"]["HexalithEventStoreVersion"])
+
     def test_debug_apphost_preserves_one_source_selection_on_every_external_edge(self) -> None:
         host = evaluate(APPHOST, "Debug")
         self.assertEqual(host["Properties"]["RestoreUseStaticGraphEvaluation"], "true")
@@ -158,6 +186,7 @@ class AppHostDependencyModeTests(unittest.TestCase):
                 },
             }
             host = evaluate(APPHOST, "Debug")
+            self.assert_restored_eventstore_version(artifacts, host["Properties"]["HexalithEventStoreVersion"])
             properties = forwarded_properties(module_reference(host)) | {"ArtifactsPath": artifacts}
             for project, required in cases.items():
                 with self.subTest(project=project.name):
