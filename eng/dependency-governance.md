@@ -1,5 +1,19 @@
 # Dependency governance source projection
 
+## 2026-11-20 FrontComposer EventStore selection
+
+FrontComposer requires EventStore `5.4.0` for source and package builds.
+The AppHost restore selects that version in Debug, Release and Debug with
+`HexalithEventStoreFromSource=false`. An explicit downgrade fails before
+FrontComposer restores packages or compiles. The shared Builds catalog at
+`6548f2486a0cb1618e99a503bce999a00ec857fa` supplies the version. Its
+remaining SDK 4.2 selectors apply to Platform, packaged Builds hosts and
+Timesheets. The catalog validator checks the exact projects in those selectors.
+
+This commit activates dependency policy `aa6f9e87baa60fa479685b9aa62726694587cf9a`.
+That policy binds the updated Builds pointer and FrontComposer build check to
+the graph's 76 edges and nine catalog selections.
+
 ## 2026-11-20 audit correction
 
 The dependency refresh advances five direct selectors. The exact values for all ten are recorded in the superproject tree. Read them with `git ls-tree HEAD:references`.
