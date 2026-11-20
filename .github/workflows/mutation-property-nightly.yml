@@ -59,9 +59,9 @@ jobs:
       - name: Initialize build submodules
         uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
 
-      - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@6e77e79e8914a375b0c43b0af3bd142405675ecd
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: '11.0.100'
+          global-json-file: global.json
 
       - name: Install .NET 11 runtimes
         shell: pwsh
@@ -151,9 +151,9 @@ jobs:
       - name: Initialize build submodules
         uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
 
-      - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@6e77e79e8914a375b0c43b0af3bd142405675ecd
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: '11.0.100'
+          global-json-file: global.json
 
       - name: Install .NET 11 runtimes
         shell: pwsh
@@ -254,9 +254,9 @@ jobs:
       - name: Initialize build submodules
         uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
 
-      - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@6e77e79e8914a375b0c43b0af3bd142405675ecd
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: '11.0.100'
+          global-json-file: global.json
 
       - name: Install .NET 11 runtimes
         shell: pwsh
