@@ -23,14 +23,14 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
     /// <param name="descriptor">Descriptor of the command tool that produced the acknowledgement.</param>
     /// <param name="creator">Agent context whose tenant and user were injected into the dispatched command.</param>
     /// <param name="result">Dispatcher acknowledgement containing the agent-visible handles.</param>
-    /// <param name="pendingTransitions">Transitions captured by the command dispatcher callback.</param>
+    /// <param name="observer">Dispatch callback that buffers transitions until bound to the acknowledged entry.</param>
     /// <param name="cancellationToken">Cancellation token for pending transition recording.</param>
     /// <returns>The MCP acknowledgement payload.</returns>
     internal McpCommandAcknowledgement TrackAcknowledged(
         McpCommandDescriptor descriptor,
         FrontComposerMcpAgentContext creator,
         CommandResult result,
-        IReadOnlyList<(CommandLifecycleState State, string? MessageId)> pendingTransitions,
+        McpDispatchLifecycleObserver observer,
         CancellationToken cancellationToken) {
         ILifecycleStateService lifecycle = services.GetService<ILifecycleStateService>()
             ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
@@ -38,9 +38,10 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             descriptor,
             creator,
             result,
-            pendingTransitions,
+            observer.TakePending(),
             lifecycle,
-            cancellationToken);
+            cancellationToken,
+            observer);
     }
 
     public Task<FrontComposerMcpResult> ReadAsync(

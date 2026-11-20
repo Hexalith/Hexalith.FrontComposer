@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 
 using Shouldly;
 
@@ -19,6 +20,8 @@ public sealed class ToolPackagingSmokeTests {
 
         string repositoryRoot = LocateRepositoryRoot();
         string workDirectory = Path.Combine(Path.GetTempPath(), "hfc-cli-tool-smoke", Guid.NewGuid().ToString("N"));
+        string sampleDirectory = Path.Combine(repositoryRoot, "artifacts", "cli-inspect-smoke", Guid.NewGuid().ToString("N"));
+        string version = "0.0.0-test." + typeof(CliApplication).Assembly.ManifestModule.ModuleVersionId.ToString("N");
         string packageDirectory = Path.Combine(workDirectory, "packages");
         _ = Directory.CreateDirectory(packageDirectory);
 
@@ -36,7 +39,7 @@ public sealed class ToolPackagingSmokeTests {
                     "Release",
                     "--output",
                     packageDirectory,
-                    "-p:PackageVersion=0.0.0-test-local",
+                    "-p:PackageVersion=" + version,
                 ],
                 repositoryRoot);
 
@@ -50,13 +53,34 @@ public sealed class ToolPackagingSmokeTests {
                     "--add-source",
                     packageDirectory,
                     "--version",
-                    "0.0.0-test-local",
+                    version,
                 ],
                 workDirectory);
 
             ProcessResult help = await RunAsync("dotnet", ["frontcomposer", "--help"], workDirectory);
             help.Output.ShouldContain("frontcomposer inspect");
             help.Output.ShouldContain("frontcomposer migrate");
+
+            // Match the sample's path depth so its project references resolve; keep build outputs private to this run.
+            string sampleSource = Path.Combine(repositoryRoot, "samples", "Counter", "Counter.Domain");
+            Directory.CreateDirectory(sampleDirectory);
+            foreach (string file in Directory.EnumerateFiles(sampleSource)) {
+                File.Copy(file, Path.Combine(sampleDirectory, Path.GetFileName(file)));
+            }
+
+            string sampleProject = Path.Combine(sampleDirectory, "Counter.Domain.csproj");
+            _ = await RunAsync("dotnet", ["build", sampleProject, "-c", "Release"], repositoryRoot);
+            string[] inspect = ["frontcomposer", "inspect", "--project", sampleProject, "--configuration", "Release", "--build", "--format", "json"];
+            ProcessResult first = await RunAsync("dotnet", inspect, workDirectory);
+            using JsonDocument document = JsonDocument.Parse(first.Output);
+            JsonElement[] files = document.RootElement.GetProperty("generatedFiles").EnumerateArray().ToArray();
+            files.ShouldContain(x => x.GetProperty("relatedType").GetString() == "Counter.Domain.BatchIncrementCommand"
+                && x.GetProperty("family").GetString() == "CommandForm");
+            files.ShouldContain(x => x.GetProperty("relatedType").GetString() == "Counter.Domain.CounterProjection"
+                && x.GetProperty("family").GetString() == "ProjectionRazor");
+
+            ProcessResult warm = await RunAsync("dotnet", [.. inspect, "--framework", "net11.0"], workDirectory);
+            warm.Output.ShouldBe(first.Output);
 
             string? dnx = FindOnPath("dnx");
             if (dnx is not null) {
@@ -65,7 +89,7 @@ public sealed class ToolPackagingSmokeTests {
                     [
                         "Hexalith.FrontComposer.Cli",
                         "--version",
-                        "0.0.0-test-local",
+                        version,
                         "--source",
                         packageDirectory,
                         "--",
@@ -76,6 +100,7 @@ public sealed class ToolPackagingSmokeTests {
             }
         }
         finally {
+            TryDelete(sampleDirectory);
             TryDelete(workDirectory);
         }
     }

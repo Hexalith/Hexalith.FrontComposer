@@ -207,13 +207,30 @@ public sealed class InspectCommandTests {
         explicitFramework.ShouldContain("-p:CompilerGeneratedFilesOutputPath=obj/Release/net10.0/generated/HexalithFrontComposer");
         explicitFramework.ShouldContain("--framework");
         explicitFramework.ShouldContain("net10.0");
+    }
 
-        IReadOnlyList<string> inferredFramework = GeneratedOutputLoader.CreateBuildArguments(
-            "Acme.App.csproj",
-            "Debug",
-            null);
-        inferredFramework.ShouldContain("-p:CompilerGeneratedFilesOutputPath=obj/Debug/$(TargetFramework)/generated/HexalithFrontComposer");
-        inferredFramework.ShouldNotContain("--framework");
+    [Fact]
+    public async Task InspectRecognizesOnlyTheFrontComposerGeneratorAndPrefersItsCurrentOutput() {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net11.0");
+        const string file = "Acme.Create.CommandForm.g.razor.cs";
+        const string generatorPath = "Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/";
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net11.0", file, "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net11.0", generatorPath + file, "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net11.0", "Acme.LegacyProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net11.0", "Foreign/Foreign.Generator/Other.g.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net11.0", "Hexalith.FrontComposer.SourceTools/Other/Unrelated.g.cs", "");
+
+        using StringWriter output = new();
+        using StringWriter error = new();
+        int exitCode = await CliApplication.RunAsync(["inspect", "--project", project, "--format", "json"], output, error, CancellationToken.None);
+
+        exitCode.ShouldBe(0, error.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
+        string[] paths = document.RootElement.GetProperty("generatedFiles").EnumerateArray().Select(x => x.GetProperty("path").GetString()!).ToArray();
+        paths.Length.ShouldBe(2);
+        paths.ShouldContain("obj/Debug/net11.0/generated/HexalithFrontComposer/" + generatorPath + file);
+        paths.ShouldContain("obj/Debug/net11.0/generated/HexalithFrontComposer/Acme.LegacyProjection.g.razor.cs");
     }
 
     [Fact]

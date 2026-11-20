@@ -1,15 +1,13 @@
 # Hexalith.FrontComposer
-The Hexalith Blazor Front Shell.
+FrontComposer generates Blazor forms, projection views, and command lifecycle feedback from annotated .NET domain types.
+
+## Run the Counter sample
+
+Start with the [first projection tutorial](docs/tutorials/getting-started.md) for the direct-submodule checkout, SDK, build, sample URL, and CLI inspection commands. The sample uses a simulated command service. For integration with EventStore, follow the [adopter bootstrap proof](docs/how-to/adopter-bootstrap-proof.md). The [documentation index](docs/index.md) covers authoring, migration, and reference material.
 
 ## Dependency source selection
 
-The [dependency policy](eng/dependency-graph-policy.json) binds an exact
-consumer source projection: Platform `c1997c60f31e08d945b44cb7aa2afd7800e8ff69`,
-Builds `0577f0c2d70bd4c2999aa3d98a705c83919bfc00`, the two canonical Dapr
-Compile inputs, and all root dependency selectors. SDK and published package
-selections remain separate from this source projection; a pointer change alone
-cannot authorize new code. The complete selection and compatibility holds are
-recorded in [dependency governance](eng/dependency-governance.md).
+The superproject records each direct dependency revision in Git. The [dependency policy](eng/dependency-graph-policy.json) binds those revisions to the consumer source projection, Dapr compile inputs, and root selectors. Use `git submodule status` to inspect a checkout. A leading `+` identifies a working revision that differs from its recorded pin. The SDK selection and published package versions have their own manifests. See [dependency governance](eng/dependency-governance.md) for the qualification and activation procedure.
 
 The pointer synchronization on 2026-11-06 initially selected a different
 projection without its policy proof, and CI refused it. The corrective commit

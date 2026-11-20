@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 9-5-diataxis-documentation-site
 status: published
-reviewed: 2026-05-10
+reviewed: 2026-11-20
 uid: frontcomposer.reference.cli
 slug: reference/cli/
 ---
@@ -15,8 +15,12 @@ slug: reference/cli/
 <!-- hfc:reference:start -->
 `frontcomposer inspect` reports generated-output paths, project metadata, diagnostics, and
 machine-readable JSON. It classifies generated filenames; v1 does not extract schema fingerprints
-or parse descriptors inside manifest source. It reads top-level generated `.g.cs`/`.g.razor.cs`
-files in `obj/{Configuration}/{TargetFramework}/generated/HexalithFrontComposer/`.
+or parse descriptors inside manifest source. The output root is `obj/{Configuration}/{TargetFramework}/generated/HexalithFrontComposer/`.
+The CLI reads generated `.g.cs` and `.g.razor.cs` files directly under that root and under Roslyn’s
+`Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/`
+subdirectory. If both contain the same filename, the compiler-emitted copy is used.
+With `--build`, the CLI can infer a single target framework from the project. Supply `--framework`
+to select among multiple targets. Other generators are excluded.
 
 `inspect --format json` emits `schemaVersion: frontcomposer.cli.inspect.v1`, `project`,
 `summary`, `generatedFiles[]`, and `diagnostics[]`. The summary counts generated files, forms

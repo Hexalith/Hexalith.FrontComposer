@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text.Json;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -23,7 +24,40 @@ internal static class GeneratedOutputLoader {
         string projectDirectory = Path.GetDirectoryName(projectFullPath)!;
 
         if (build) {
-            int buildExit = await RunBuildAsync(projectFullPath, configuration, framework, error, cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(framework)) {
+                // MSBuild does not expand $(TargetFramework) inside a command-line global property.
+                var (evaluationExit, properties) = await RunDotnetAsync(
+                    ["msbuild", projectFullPath, "-nologo", "-p:Configuration=" + configuration, "-getProperty:TargetFramework,TargetFrameworks"],
+                    error, cancellationToken).ConfigureAwait(false);
+                if (evaluationExit != 0) {
+                    return InspectLoadResult.Fail("Could not evaluate target frameworks. Pass --framework to select one.", ExitCodes.GeneratedOutputUnavailable);
+                }
+
+                try {
+                    using JsonDocument document = JsonDocument.Parse(properties);
+                    JsonElement values = document.RootElement.GetProperty("Properties");
+                    framework = values.GetProperty("TargetFramework").GetString();
+                    if (string.IsNullOrWhiteSpace(framework)) {
+                        string[] frameworks = (values.GetProperty("TargetFrameworks").GetString() ?? string.Empty)
+                            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                        if (frameworks.Length != 1) {
+                            return InspectLoadResult.Fail("Pass --framework to select a target framework for this build.", ExitCodes.InvalidArguments);
+                        }
+
+                        framework = frameworks[0];
+                    }
+                }
+                catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException) {
+                    return InspectLoadResult.Fail("Could not read the evaluated target frameworks. Pass --framework to select one.", ExitCodes.GeneratedOutputUnavailable);
+                }
+            }
+
+            if (!IsValidFrameworkName(framework)) {
+                return InspectLoadResult.Fail("--framework must be a target framework moniker, not a path.", ExitCodes.InvalidArguments);
+            }
+
+            IReadOnlyList<string> buildArguments = CreateBuildArguments(projectFullPath, configuration, framework);
+            var (buildExit, _) = await RunDotnetAsync(buildArguments, error, cancellationToken).ConfigureAwait(false);
             if (buildExit != 0) {
                 return InspectLoadResult.Fail(
                     "Build did not complete successfully; generated output may be stale. Re-run with a successful build before inspecting.",
@@ -46,8 +80,18 @@ internal static class GeneratedOutputLoader {
 
         List<GeneratedFileInfo> files;
         try {
-            files = Directory.EnumerateFiles(generatedDirectory, "*", SearchOption.TopDirectoryOnly)
-                .Where(path => path.EndsWith(".g.cs", StringComparison.Ordinal) || path.EndsWith(".g.razor.cs", StringComparison.Ordinal))
+            if (build && !EnumerateGeneratedFiles(generatedDirectory).Any()) {
+                // A warm SDK build can skip CoreCompile when disk emission is first requested.
+                // References were built above, so only the selected project needs recompiling.
+                var (rebuildExit, _) = await RunDotnetAsync(
+                    [.. CreateBuildArguments(projectFullPath, configuration, selectedFramework.Framework!), "--no-incremental", "--no-dependencies", "--no-restore"],
+                    error, cancellationToken).ConfigureAwait(false);
+                if (rebuildExit != 0) {
+                    return InspectLoadResult.Fail("Could not rebuild the selected project to emit generated files.", ExitCodes.GeneratedOutputUnavailable);
+                }
+            }
+
+            files = EnumerateGeneratedFiles(generatedDirectory)
                 .Select(path => GeneratedFileClassifier.Classify(projectDirectory, path, absolutePaths))
                 .OrderBy(x => x.RelatedType ?? string.Empty, StringComparer.Ordinal)
                 .ThenBy(x => x.Family.ToString(), StringComparer.Ordinal)
@@ -83,10 +127,17 @@ internal static class GeneratedOutputLoader {
         return InspectLoadResult.Ok(report);
     }
 
-    private static async Task<int> RunBuildAsync(
-        string projectPath,
-        string configuration,
-        string? framework,
+    private static IEnumerable<string> EnumerateGeneratedFiles(string outputRoot) {
+        string compilerDirectory = Path.Combine(outputRoot, "Hexalith.FrontComposer.SourceTools", "Hexalith.FrontComposer.SourceTools.FrontComposerGenerator");
+        return new[] { compilerDirectory, outputRoot }
+            .Where(Directory.Exists)
+            .SelectMany(directory => Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
+            .Where(path => path.EndsWith(".g.cs", StringComparison.Ordinal) || path.EndsWith(".g.razor.cs", StringComparison.Ordinal))
+            .DistinctBy(Path.GetFileName, StringComparer.Ordinal);
+    }
+
+    private static async Task<(int ExitCode, string Output)> RunDotnetAsync(
+        IReadOnlyList<string> arguments,
         TextWriter error,
         CancellationToken cancellationToken) {
         ProcessStartInfo start = new("dotnet") {
@@ -94,7 +145,7 @@ internal static class GeneratedOutputLoader {
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        foreach (string arg in CreateBuildArguments(projectPath, configuration, framework)) {
+        foreach (string arg in arguments) {
             start.ArgumentList.Add(arg);
         }
 
@@ -115,39 +166,25 @@ internal static class GeneratedOutputLoader {
                 throw;
             }
 
-            _ = await standardOutput.ConfigureAwait(false);
+            string stdout = await standardOutput.ConfigureAwait(false);
             string stderr = await standardError.ConfigureAwait(false);
             if (process.ExitCode != 0 && !string.IsNullOrWhiteSpace(stderr)) {
                 await error.WriteLineAsync(OutputSanitizer.Sanitize(stderr, 4_000), cancellationToken: CancellationToken.None).ConfigureAwait(false);
             }
 
-            return process.ExitCode;
+            return (process.ExitCode, stdout);
         }
         catch (Win32Exception) {
-            return ExitCodes.GeneratedOutputUnavailable;
+            return (ExitCodes.GeneratedOutputUnavailable, string.Empty);
         }
     }
 
-    internal static IReadOnlyList<string> CreateBuildArguments(string projectPath, string configuration, string? framework) {
-        List<string> args = ["build", projectPath, "--configuration", configuration];
-        if (!string.IsNullOrWhiteSpace(framework)) {
-            args.Add("--framework");
-            args.Add(framework);
-        }
-
-        args.Add("-p:EmitCompilerGeneratedFiles=true");
-        args.Add("-p:CompilerGeneratedFilesOutputPath=" + BuildCompilerGeneratedFilesOutputPath(configuration, framework));
-        return args;
-    }
-
-    private static string BuildCompilerGeneratedFilesOutputPath(string configuration, string? framework)
-        => string.Join(
-            "/",
-            "obj",
-            configuration,
-            string.IsNullOrWhiteSpace(framework) ? "$(TargetFramework)" : framework,
-            GeneratedRoot,
-            FrontComposerGeneratedRoot);
+    internal static IReadOnlyList<string> CreateBuildArguments(string projectPath, string configuration, string framework)
+        => [
+            "build", projectPath, "--configuration", configuration, "--framework", framework,
+            "-p:EmitCompilerGeneratedFiles=true",
+            "-p:CompilerGeneratedFilesOutputPath=" + string.Join("/", "obj", configuration, framework, GeneratedRoot, FrontComposerGeneratedRoot),
+        ];
 
     private static FrameworkSelection SelectFramework(string projectDirectory, string configuration, string? framework) {
         string configurationDirectory = Path.Combine(projectDirectory, "obj", configuration);
@@ -188,7 +225,7 @@ internal static class GeneratedOutputLoader {
         => Directory.EnumerateDirectories(configurationDirectory)
             .Where(path => Directory.Exists(Path.Combine(path, GeneratedRoot, FrontComposerGeneratedRoot)))
             .Select(Path.GetFileName)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Where(name => name is not null && IsValidFrameworkName(name))
             .Order(StringComparer.Ordinal)!;
 
     private static bool ProjectLooksFrontComposerAnnotated(string projectDirectory) {
@@ -223,7 +260,7 @@ internal static class GeneratedOutputLoader {
         }
     }
 
-    private static readonly char[] InvalidFrameworkChars = ['/', '\\', ':', ';', '*', '?', '<', '>', '|', '"', '\'', '\0'];
+    private static readonly char[] InvalidFrameworkChars = ['/', '\\', ':', ';', '*', '?', '$', '<', '>', '|', '"', '\'', '\0'];
 
     private static bool IsValidFrameworkName(string framework) {
         if (string.IsNullOrWhiteSpace(framework) || framework.Length > 80 || framework != framework.Trim()) {

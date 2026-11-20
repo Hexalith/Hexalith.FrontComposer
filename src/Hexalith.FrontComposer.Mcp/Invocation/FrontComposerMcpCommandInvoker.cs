@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Text.Json;
@@ -39,6 +38,7 @@ public sealed class FrontComposerMcpCommandInvoker(
         // admission/schema failures that fire upstream of allocation legitimately have none.
         string? capturedMessageId = null;
         string? capturedCorrelationId = null;
+        McpDispatchLifecycleObserver? observer = null;
         try {
             McpToolResolutionResult resolution = await admissionService.ResolveAsync(toolName, cancellationToken).ConfigureAwait(false);
             if (!resolution.Accepted || resolution.Tool is null) {
@@ -78,10 +78,8 @@ public sealed class FrontComposerMcpCommandInvoker(
 
             ICommandService commandService = services.GetRequiredService<ICommandService>();
             FrontComposerMcpLifecycleTracker? lifecycleTracker = services.GetService<FrontComposerMcpLifecycleTracker>();
-            ConcurrentQueue<(CommandLifecycleState State, string? MessageId)> lifecycleTransitions = new();
-            Action<CommandLifecycleState, string?>? onLifecycleChange = lifecycleTracker is null
-                ? null
-                : (state, messageId) => lifecycleTransitions.Enqueue((state, messageId));
+            observer = lifecycleTracker is null ? null : new McpDispatchLifecycleObserver();
+            Action<CommandLifecycleState, string?>? onLifecycleChange = observer is null ? null : observer.Observe;
 
             CommandResult result = await DispatchAsync(commandService, command, commandType, onLifecycleChange, cancellationToken)
                 .ConfigureAwait(false);
@@ -91,7 +89,7 @@ public sealed class FrontComposerMcpCommandInvoker(
                     descriptor,
                     context,
                     result,
-                    [.. lifecycleTransitions],
+                    observer!,
                     cancellationToken);
                 return FrontComposerMcpResult.Success("Command acknowledged.", acknowledgement.ToJson());
             }
@@ -166,6 +164,9 @@ public sealed class FrontComposerMcpCommandInvoker(
                 logger,
                 ex.GetType().FullName ?? "Exception");
             return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.DownstreamFailed);
+        }
+        finally {
+            observer?.StopBuffering();
         }
     }
 

@@ -514,15 +514,15 @@ public static class ServiceCollectionExtensions {
 
         // Story 2-2 Decision D24 — register IDerivedValueProvider chain in the exact order:
         // 1. System → 2. ProjectionContext → 3. ExplicitDefault → 4. LastUsed → 5. ConstructorDefault.
-        // Registered via AddScoped (scoped per circuit in Blazor Server; per-app in WASM). Providers
-        // with pure state may safely be scoped. Resolution order = registration order.
+        // The constructor fallback keeps defaults for one renderer. A transient registration
+        // gives each injected provider chain its own instance, even within the same circuit.
         _ = services.AddScoped<IDerivedValueProvider, SystemValueProvider>();
         _ = services.AddScoped<IDerivedValueProvider, ProjectionContextProvider>();
         _ = services.AddScoped<IDerivedValueProvider, ExplicitDefaultValueProvider>();
         _ = services.AddScoped<LastUsedValueProvider>();
         _ = services.AddScoped<IDerivedValueProvider>(sp => sp.GetRequiredService<LastUsedValueProvider>());
         _ = services.AddScoped<ILastUsedRecorder>(sp => sp.GetRequiredService<LastUsedValueProvider>());
-        _ = services.AddScoped<IDerivedValueProvider, ConstructorDefaultValueProvider>();
+        _ = services.AddTransient<IDerivedValueProvider, ConstructorDefaultValueProvider>();
 
         return services;
     }

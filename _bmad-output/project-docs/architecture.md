@@ -1,16 +1,16 @@
 # Hexalith.FrontComposer — Architecture
 
-> **Generated:** 2026-06-02 · deep scan. See [project-overview.md](./project-overview.md) for the high-level summary.
+> **Generated:** 2026-06-02 · deep scan. Framework targets checked against the project manifests on 2026-11-20. See [project-overview.md](./project-overview.md) for the high-level summary.
 
 ## 1. Executive summary
 
-FrontComposer is a **source-generation-driven Blazor application framework**. Its architecture is organized around one idea: a dual-TFM, UI-clean **contracts kernel** defines the netstandard-safe vocabulary of attributes and types, while net10-only `Contracts.UI` supplies Blazor/Fluent rendering contracts; a **Roslyn incremental generator** reads domain types annotated with that vocabulary and emits all the boilerplate (Blazor views, command forms, Fluxor state, DI registration, MCP manifest); and several **consumers** (the Blazor shell, the MCP server, the CLI) use the generated artifacts at runtime/build-time. The producer and all consumers are bound together by **schema fingerprints** (v1 supports canonical-JSON and SourceTools-blob SHA-256 algorithms) so incompatibilities are detected as **drift** rather than failing silently.
+FrontComposer is a **source-generation-driven Blazor application framework**. Its architecture is organized around one idea: a dual-TFM, UI-clean **contracts kernel** defines the netstandard-safe vocabulary of attributes and types, while net11-only `Contracts.UI` supplies Blazor/Fluent rendering contracts; a **Roslyn incremental generator** reads domain types annotated with that vocabulary and emits all the boilerplate (Blazor views, command forms, Fluxor state, DI registration, MCP manifest); and several **consumers** (the Blazor shell, the MCP server, the CLI) use the generated artifacts at runtime/build-time. The producer and all consumers are bound together by **schema fingerprints** (v1 supports canonical-JSON and SourceTools-blob SHA-256 algorithms) so incompatibilities are detected as **drift** rather than failing silently.
 
 ## 2. Layered structure
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ LAYER 0 — Contracts kernel  (net10.0 + netstandard2.0, no UI deps)         │
+│ LAYER 0 — Contracts kernel  (net11.0 + netstandard2.0, no UI deps)         │
 │   Hexalith.FrontComposer.Contracts                                         │
 │   • Attributes ([Projection],[Command],[BoundedContext],[ProjectionRole]…) │
 │   • Communication (ICommandService, IQueryService, lifecycle)              │
@@ -19,7 +19,7 @@ FrontComposer is a **source-generation-driven Blazor application framework**. It
 │   • Schema (SchemaFingerprint, baseline, delta) + FcDiagnosticIds          │
 │   Hexalith.FrontComposer.Schema  → SchemaMigrationDeltaAnalyzer            │
 │                                                                            │
-│ LAYER 0A — Contracts.UI  (target: net10.0, Blazor/Fluent contracts)        │
+│ LAYER 0A — Contracts.UI  (target: net11.0, Blazor/Fluent contracts)        │
 │   • Typography/FcTypoToken, RenderFragment contexts, KeyboardEventArgs      │
 │   • Projection slot/template/view rendering contracts                       │
 ├──────────────────────────────────────────────────────────────────────────┤
@@ -29,7 +29,7 @@ FrontComposer is a **source-generation-driven Blazor application framework**. It
 │   Outputs: per-projection (5 files), per-command (7+page), MCP manifest    │
 │   + opt-in drift detection vs a checked-in JSON baseline                   │
 ├──────────────────────────────────────────────────────────────────────────┤
-│ LAYER 2 — Consumers  (net10.0)                                             │
+│ LAYER 2 — Consumers  (net11.0)                                             │
 │   Shell  ── Blazor runtime: composes generated views, Fluxor store,        │
 │             nav/layout/dialogs, EventStore SignalR/HTTP clients            │
 │   Mcp    ── ASP.NET Core MCP server: generated manifest → tools/resources  │
@@ -343,7 +343,7 @@ This is the "MCP boundary" described in `docs/concepts/source-generation-and-mcp
 | **Identity** | NUlid | ULIDs (26-char Crockford base32), never GUIDs, for `messageId`/`correlationId`. |
 | **Schema integrity** | `CanonicalSchemaMaterial` (SHA-256 canonical JSON) | Pins `JavaScriptEncoder.Create(UnicodeRanges.All)` + a STJ source-gen context; `AbsentValueSentinel = "<absent>"`; `StringComparer.Ordinal` everywhere. Changing any of these invalidates all stored fingerprints. |
 | **Incremental caching** | Pure equatable IR + `EquatableArray<T>` | No Roslyn symbols in IR; full structural `Equals`/`GetHashCode`. |
-| **Contracts kernel split** | dual-TFM UI-clean `Contracts` + net10-only `Contracts.UI` | Contracts.UI owns typography, render-fragment contexts, and keyboard shortcut APIs under their existing namespaces. Shell owns runtime options/actions/registries; Testing owns `InMemoryStorageService`; SourceTools remains kernel-only. |
+| **Contracts kernel split** | dual-TFM UI-clean `Contracts` + net11-only `Contracts.UI` | Contracts.UI owns typography, render-fragment contexts, and keyboard shortcut APIs under their existing namespaces. Shell owns runtime options/actions/registries; Testing owns `InMemoryStorageService`; SourceTools remains kernel-only. |
 | **Query composition** | `ProjectionQuery` + `QueryRequest.Create` | Projection criteria are composed into the transport/cache envelope. HFC0001/CS0618 preserves the v1.12 flattened source, deconstruction, and flat JSON compatibility surface throughout 2.x, with removal targeted for `3.0.0`. |
 | **Generated path** | `GeneratedOutputPathContract.Template` | `obj/{Config}/{TFM}/generated/HexalithFrontComposer/{Type}.g.razor.cs` is a public contract validated in Debug *and* Release. |
 | **Diagnostics** | `FcDiagnosticIds` / `DiagnosticDescriptors` | Build-time `HFC1xxx`, runtime `HFC2xxx`; new IDs declared with full XML docs. |

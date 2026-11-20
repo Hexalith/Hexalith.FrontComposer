@@ -199,7 +199,10 @@ public sealed class EventStoreQueryClient(
                                     logger,
                                     ex.ProjectionType,
                                     ex.GetType().Name);
-                                throw;
+                                // The server validated the ETag, but these local bytes cannot
+                                // satisfy this query. Keep other pages and scopes intact.
+                                await TryInvalidateSchemaMismatchAsync(
+                                    cacheKey, projectionType: null, tenantContext, cancellationToken).ConfigureAwait(false);
                             }
                         }
 
@@ -223,6 +226,7 @@ public sealed class EventStoreQueryClient(
                                 statusCode: System.Net.HttpStatusCode.NotModified);
                         }
 
+                        RevalidateSnapshot(tenantContext);
                         FrontComposerTelemetry.SetOutcome(activity, "protocol_drift_retry");
                         FrontComposerHotPathLog.QueryNotModifiedWithoutCacheRetry(logger);
                         return await ExecuteAsync<T>(
@@ -417,13 +421,12 @@ public sealed class EventStoreQueryClient(
     }
 
     /// <summary>
-    /// DN2 — best-effort family-level cache invalidation on schema mismatch. AC7 specifies
-    /// "all entries for the affected projection type/discriminator family". Wrapped in try/catch
-    /// per P1 — a cache-removal failure must never replace the schema-mismatch we are surfacing.
+    /// A schema mismatch in a fresh response invalidates the projection family. An unreadable
+    /// cached response invalidates only its key. Cache errors must not interrupt recovery.
     /// </summary>
     private async Task TryInvalidateSchemaMismatchAsync(
         string? cacheKey,
-        string projectionType,
+        string? projectionType,
         TenantContextSnapshot tenantContext,
         CancellationToken cancellationToken) {
         try {

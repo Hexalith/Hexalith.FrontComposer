@@ -11,6 +11,8 @@ using Hexalith.FrontComposer.Shell.State.ETagCache;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
+using NSubstitute;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
@@ -253,35 +255,81 @@ public class EventStoreQueryCacheIntegrationTests : IDisposable {
         cached.ShouldBeNull();
     }
 
-    [Fact]
-    public async Task QueryAsync_304WithIncompatibleCachedPayload_DoesNotInvalidateCache() {
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task QueryAsync304WithIncompatibleCachedPayloadRetriesOnceWithoutValidators(bool validResponse, bool returnETag) {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string discriminator = ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)!;
+        ETagCacheEntry stale = new("\"v1\"", "{not-json", 1, 1, ETagCacheEntry.CurrentFormatVersion, 1, discriminator);
         string key = BuildKey(0);
-        await _storage.SetAsync(
-            key,
-            new ETagCacheEntry(
-                ETag: "\"v1\"",
-                Payload: "{not-json",
-                CachedAtUtcTicks: 1,
-                LastAccessedUtcTicks: 1,
-                FormatVersion: ETagCacheEntry.CurrentFormatVersion,
-                PayloadVersion: 1,
-                Discriminator: ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)!),
-            TestContext.Current.CancellationToken);
+        await _cache.SetAsync(key, stale, ct);
+        string otherKey = BuildKey(25);
+        await _cache.SetAsync(otherKey, stale with {
+            Discriminator = ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 25, 25)!,
+        }, ct);
+        _cache.TryBuildKey("other-tenant", User, discriminator, out string otherTenantKey).ShouldBeTrue();
+        await _cache.SetAsync(otherTenantKey, stale, ct);
+
         ScriptedHandler handler = new();
-        handler.Script.Add(_ => new HttpResponseMessage(HttpStatusCode.NotModified) {
-            Headers = { ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"v1\"") },
+        handler.Script.Add(req => {
+            req.Headers.GetValues("If-None-Match").ShouldContain(stale.ETag);
+            return new HttpResponseMessage(HttpStatusCode.NotModified);
+        });
+        handler.Script.Add(req => {
+            req.Headers.Contains("If-None-Match").ShouldBeFalse();
+            HttpResponseMessage response = Ok(validResponse ? "[{\"id\":\"fresh\"}]" : "{not-json", "\"v2\"");
+            if (!returnETag) {
+                response.Headers.ETag = null;
+            }
+
+            return response;
         });
         EventStoreQueryClient sut = NewClient(handler);
+        QueryRequest request = BuildRequest(cacheDiscriminator: discriminator, eTag: "\"caller-validator\"");
 
-        _ = await Should.ThrowAsync<ProjectionSchemaMismatchException>(
-            async () => await sut.QueryAsync<OrderProjection>(
-                BuildRequest(cacheDiscriminator: ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)),
-                TestContext.Current.CancellationToken).ConfigureAwait(true))
-            .ConfigureAwait(true);
+        if (validResponse) {
+            QueryResult<OrderProjection> result = await sut.QueryAsync<OrderProjection>(request, ct);
+            result.IsNotModified.ShouldBeFalse();
+            result.Items.Single().Id.ShouldBe("fresh");
+            ETagCacheEntry? cached = await _cache.TryGetAsync(key, 1, ct);
+            (cached?.ETag).ShouldBe(returnETag ? "\"v2\"" : null);
+            (await _cache.TryGetAsync(otherKey, 1, ct)).ShouldNotBeNull();
+        }
+        else {
+            _ = await Should.ThrowAsync<ProjectionSchemaMismatchException>(() => sut.QueryAsync<OrderProjection>(request, ct));
+            (await _cache.TryGetAsync(key, 1, ct)).ShouldBeNull();
+        }
 
-        ETagCacheEntry? stored = await _storage.GetAsync<ETagCacheEntry>(key, TestContext.Current.CancellationToken);
-        stored.ShouldNotBeNull();
-        stored!.Payload.ShouldBe("{not-json");
+        handler.RequestCount.ShouldBe(2);
+        (await _cache.TryGetAsync(otherTenantKey, 1, ct)).ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task QueryAsyncUnreadable304AndFailedEvictionRefetchesOnlyOnce() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string key = BuildKey(0);
+        string discriminator = ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)!;
+        ETagCacheEntry stale = new("\"v1\"", "{not-json", 1, 1, ETagCacheEntry.CurrentFormatVersion, 1, discriminator);
+        IETagCache cache = Substitute.For<IETagCache>();
+        cache.TryBuildKey(Tenant, User, discriminator, out Arg.Any<string>()).Returns(call => {
+            call[3] = key;
+            return true;
+        });
+        cache.TryGetAsync(key, 1, ct).Returns(stale);
+        cache.RemoveAsync(key, ct).Returns(Task.FromException(new IOException("Storage unavailable.")));
+        ScriptedHandler handler = new();
+        handler.Script.Add(_ => new HttpResponseMessage(HttpStatusCode.NotModified));
+        handler.Script.Add(req => {
+            req.Headers.Contains("If-None-Match").ShouldBeFalse();
+            return new HttpResponseMessage(HttpStatusCode.NotModified);
+        });
+
+        HttpRequestException failure = await Should.ThrowAsync<HttpRequestException>(
+            () => NewClient(handler, cache: cache).QueryAsync<OrderProjection>(BuildRequest(cacheDiscriminator: discriminator), ct));
+        failure.StatusCode.ShouldBe(HttpStatusCode.NotModified);
+        handler.RequestCount.ShouldBe(2);
     }
 
     private static HttpResponseMessage Ok(string payloadArrayJson, string etag) {
@@ -425,7 +473,8 @@ public class EventStoreQueryCacheIntegrationTests : IDisposable {
 
     private EventStoreQueryClient NewClient(
         HttpMessageHandler handler,
-        EventStoreTestSupport.RecordingAuthRedirector? redirector = null) => new(
+        EventStoreTestSupport.RecordingAuthRedirector? redirector = null,
+        IETagCache? cache = null) => new(
         new SingleClientFactory(handler),
         Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
             BaseAddress = new System.Uri("https://eventstore.test"),
@@ -433,7 +482,7 @@ public class EventStoreQueryCacheIntegrationTests : IDisposable {
         }),
         new TestUserContextAccessor(Tenant, User),
         EventStoreTestSupport.CreateClassifier(),
-        _cache,
+        cache ?? _cache,
         redirector ?? new EventStoreTestSupport.RecordingAuthRedirector(),
         NullLogger<EventStoreQueryClient>.Instance);
 

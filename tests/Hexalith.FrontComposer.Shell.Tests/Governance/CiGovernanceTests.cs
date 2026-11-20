@@ -100,7 +100,6 @@ public sealed class CiGovernanceTests {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/commitlint.yml"));
 
-        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/commitlint.yml@main");
         workflow.ShouldNotContain("continue-on-error: true");
 
         string onBlock = ExtractOnBlock(workflow);

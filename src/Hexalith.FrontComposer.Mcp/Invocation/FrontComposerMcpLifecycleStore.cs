@@ -16,13 +16,11 @@ public sealed partial class FrontComposerMcpLifecycleStore(
     TimeProvider? timeProvider = null) : IDisposable {
     private readonly ConcurrentDictionary<string, LifecycleEntry> _byCorrelation = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, LifecycleEntry> _byMessage = new(StringComparer.Ordinal);
-    private readonly ConcurrentQueue<string> _insertionOrder = new();
-    private readonly ConcurrentQueue<string> _terminalOrder = new();
+    private readonly LinkedList<LifecycleEntry> _activeOrder = new();
+    private readonly Queue<LifecycleEntry> _terminalOrder = new();
     private readonly object _capacityGate = new();
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
-    private int _activeCount;
     private int _disposed;
-    private int _terminalCount;
 
     /// <summary>
     /// Records a command acknowledgement and the lifecycle transitions emitted by the current command request.
@@ -37,6 +35,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
     /// <param name="pendingTransitions">Transitions captured by the command dispatcher callback.</param>
     /// <param name="lifecycle">Scoped lifecycle service for the current command request.</param>
     /// <param name="cancellationToken">Cancellation token for pending transition recording.</param>
+    /// <param name="observer">Optional sink for observations arriving after the captured batch.</param>
     /// <returns>The MCP acknowledgement payload.</returns>
     /// <exception cref="FrontComposerMcpException">
     /// Thrown with <see cref="FrontComposerMcpFailureCategory.UnsupportedSchema"/> when a handle is not canonical, the
@@ -49,7 +48,8 @@ public sealed partial class FrontComposerMcpLifecycleStore(
         CommandResult result,
         IReadOnlyList<(CommandLifecycleState State, string? MessageId)> pendingTransitions,
         ILifecycleStateService lifecycle,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken,
+        McpDispatchLifecycleObserver? observer = null) {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(creator);
@@ -66,13 +66,11 @@ public sealed partial class FrontComposerMcpLifecycleStore(
         string correlationId = result.CorrelationId is null
             ? messageId
             : RequireCanonicalIdentifier(result.CorrelationId);
-        (CommandLifecycleState State, string MessageId)[] validatedTransitions = [
-            .. pendingTransitions.Select(transition => (
-                transition.State,
-                transition.MessageId is null
-                    ? messageId
-                    : RequireCanonicalIdentifier(transition.MessageId))),
-        ];
+        if (pendingTransitions.Any(transition =>
+            transition.MessageId is not null && !string.Equals(transition.MessageId, messageId, StringComparison.Ordinal))) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        }
+
         LifecycleEntry entry = GetOrCreateEntry(descriptor, creator, correlationId, messageId);
 
         // E14R-AI-1 D3: a dispatcher that re-acknowledges a correlation owned by another principal must not
@@ -90,11 +88,12 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             lifecycle.Transition(correlationId, CommandLifecycleState.Acknowledged, messageId);
         }
 
-        foreach ((CommandLifecycleState state, string transitionMessageId) in validatedTransitions) {
+        foreach ((CommandLifecycleState state, string? transitionMessageId) in pendingTransitions) {
             cancellationToken.ThrowIfCancellationRequested();
-            lifecycle.Transition(correlationId, state, transitionMessageId);
+            lifecycle.Transition(correlationId, state, transitionMessageId ?? messageId);
         }
 
+        observer?.Bind(entry.CreateDispatchSink());
         return new McpCommandAcknowledgement(
             messageId,
             correlationId,
@@ -115,8 +114,8 @@ public sealed partial class FrontComposerMcpLifecycleStore(
         ArgumentNullException.ThrowIfNull(transition);
 
         if (!FrontComposerMcpUlid.IsCanonical(transition.CorrelationId)
-            || (transition.MessageId is not null && !FrontComposerMcpUlid.IsCanonical(transition.MessageId))
-            || !_byCorrelation.TryGetValue(transition.CorrelationId, out LifecycleEntry? entry)) {
+            || !_byCorrelation.TryGetValue(transition.CorrelationId, out LifecycleEntry? entry)
+            || (transition.MessageId is not null && !string.Equals(transition.MessageId, entry.MessageId, StringComparison.Ordinal))) {
             return false;
         }
 
@@ -181,14 +180,8 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             snapshot = [.. _byCorrelation.Values];
             _byCorrelation.Clear();
             _byMessage.Clear();
-            while (_insertionOrder.TryDequeue(out _)) {
-            }
-
-            while (_terminalOrder.TryDequeue(out _)) {
-            }
-
-            Volatile.Write(ref _activeCount, 0);
-            Volatile.Write(ref _terminalCount, 0);
+            _activeOrder.Clear();
+            _terminalOrder.Clear();
         }
 
         foreach (LifecycleEntry entry in snapshot) {
@@ -246,8 +239,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
             }
 
-            _insertionOrder.Enqueue(correlationId);
-            _ = Interlocked.Increment(ref _activeCount);
+            _activeOrder.AddLast(created.ActiveNode);
             created.Start();
             EnforceCapacityLocked();
             return created;
@@ -269,47 +261,33 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                     && left.BadgeMappings.OrderBy(pair => pair.Key, StringComparer.Ordinal)
                         .SequenceEqual(right.BadgeMappings.OrderBy(pair => pair.Key, StringComparer.Ordinal))));
 
-    private void EnforceCapacity() {
-        lock (_capacityGate) {
-            EnforceCapacityLocked();
-        }
-    }
-
     private void EnforceCapacityLocked() {
         int max = Math.Max(1, options.Value.MaxActiveLifecycleEntries);
-        while (Volatile.Read(ref _activeCount) > max && _insertionOrder.TryDequeue(out string? oldest)) {
-            if (_byCorrelation.TryGetValue(oldest, out LifecycleEntry? entry)) {
-                _ = entry.MarkNeedsReview(_time.GetUtcNow());
-            }
+        while (_activeOrder.Count > max) {
+            LifecycleEntry oldest = _activeOrder.First!.Value;
+            // A concurrent terminal callback may already be waiting for this gate.
+            _activeOrder.RemoveFirst();
+            _ = oldest.MarkNeedsReview(_time.GetUtcNow());
         }
-
-        EnforceTerminalRetention();
     }
 
-    private void OnEntryTerminalized(string correlationId) {
+    private void OnEntryTerminalized(LifecycleEntry entry) {
         lock (_capacityGate) {
-            _ = Interlocked.Decrement(ref _activeCount);
-            _ = Interlocked.Increment(ref _terminalCount);
-            _terminalOrder.Enqueue(correlationId);
-            EnforceTerminalRetention();
-        }
-    }
-
-    private void EnforceTerminalRetention() {
-        int maxRetained = Math.Max(1, options.Value.MaxRetainedTerminalLifecycleEntries);
-        while (Volatile.Read(ref _terminalCount) > maxRetained && _terminalOrder.TryDequeue(out string? oldest)) {
-            if (!_byCorrelation.TryGetValue(oldest, out LifecycleEntry? entry) || !entry.IsTerminal) {
-                continue;
+            if (Volatile.Read(ref _disposed) != 0) {
+                return;
             }
 
-            if (_byCorrelation.TryRemove(oldest, out LifecycleEntry? removed)) {
-                if (_byMessage.TryGetValue(removed.MessageId, out LifecycleEntry? mapped)
-                    && ReferenceEquals(mapped, removed)) {
-                    _ = _byMessage.TryRemove(removed.MessageId, out _);
-                }
+            if (entry.ActiveNode.List is not null) {
+                _activeOrder.Remove(entry.ActiveNode);
+            }
 
-                _ = Interlocked.Decrement(ref _terminalCount);
-                removed.Dispose();
+            _terminalOrder.Enqueue(entry);
+            int maxRetained = Math.Max(1, options.Value.MaxRetainedTerminalLifecycleEntries);
+            while (_terminalOrder.Count > maxRetained) {
+                LifecycleEntry oldest = _terminalOrder.Dequeue();
+                _ = _byCorrelation.TryRemove(oldest.CorrelationId, out _);
+                _ = _byMessage.TryRemove(oldest.MessageId, out _);
+                oldest.Dispose();
             }
         }
     }
@@ -356,7 +334,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
         private readonly object _gate = new();
         private readonly Queue<McpLifecycleTransitionDto> _history = new();
         private readonly int _maxHistory;
-        private readonly Action<string> _onTerminalized;
+        private readonly Action<LifecycleEntry> _onTerminalized;
         private readonly TimeProvider _time;
         private readonly TimeSpan _timeout;
         private readonly ITimer _timeoutTimer;
@@ -379,7 +357,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             int maxHistory,
             TimeSpan timeout,
             TimeProvider time,
-            Action<string> onTerminalized) {
+            Action<LifecycleEntry> onTerminalized) {
             // Descriptor collection interfaces can wrap mutable caller-owned lists and maps. Retain the
             // acknowledged structure so later caller mutation is checked as a conflicting retry.
             Descriptor = descriptor with {
@@ -390,6 +368,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                 })],
                 DerivablePropertyNames = descriptor.DerivablePropertyNames is null ? null! : [.. descriptor.DerivablePropertyNames],
             };
+            ActiveNode = new(this);
             OwnerTenantId = ownerTenantId;
             OwnerUserId = ownerUserId;
             CorrelationId = correlationId;
@@ -404,6 +383,8 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                 Timeout.InfiniteTimeSpan,
                 Timeout.InfiniteTimeSpan);
         }
+
+        public LinkedListNode<LifecycleEntry> ActiveNode { get; }
 
         public McpCommandDescriptor Descriptor { get; }
 
@@ -439,43 +420,60 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             }
         }
 
+        public Action<CommandLifecycleState, string?> CreateDispatchSink() {
+            // A producer can retain its callback beyond terminal eviction. Do not keep this entry
+            // or the store alive, or look up a replacement entry after these aliases are reused.
+            WeakReference<LifecycleEntry> target = new(this);
+            return (state, messageId) => {
+                if (target.TryGetTarget(out LifecycleEntry? entry)
+                    && (messageId is null || string.Equals(messageId, entry.MessageId, StringComparison.Ordinal))
+                    && (state is CommandLifecycleState.Syncing or CommandLifecycleState.Degraded || IsTerminalState(state))) {
+                    entry.RecordState(state, entry.MessageId, entry._time.GetUtcNow(), state == CommandLifecycleState.IdempotentConfirmed);
+                }
+            };
+        }
+
         public void Observe(CommandLifecycleTransition transition) {
             if (!string.Equals(transition.CorrelationId, CorrelationId, StringComparison.Ordinal)
                 || !FrontComposerMcpUlid.IsCanonical(transition.CorrelationId)
-                || (transition.MessageId is not null && !FrontComposerMcpUlid.IsCanonical(transition.MessageId))) {
+                || (transition.MessageId is not null && !string.Equals(transition.MessageId, MessageId, StringComparison.Ordinal))) {
                 return;
             }
 
+            RecordState(transition.NewState, transition.MessageId, transition.TimestampUtc, transition.IdempotencyResolved);
+        }
+
+        private void RecordState(CommandLifecycleState state, string? messageId, DateTimeOffset timestampUtc, bool idempotencyResolved) {
             bool becameTerminal = false;
             lock (_gate) {
                 bool currentTerminal = IsTerminalState(_state);
-                if (currentTerminal) {
+                if (currentTerminal || Volatile.Read(ref _entryDisposed) != 0) {
                     return;
                 }
 
-                _state = transition.NewState;
-                if (transition.NewState == CommandLifecycleState.Confirmed) {
+                _state = state;
+                if (state == CommandLifecycleState.Confirmed) {
                     if (_outcome is null) {
-                        _outcome = transition.IdempotencyResolved
+                        _outcome = idempotencyResolved
                             ? McpTerminalOutcome.IdempotentSuccess(Descriptor.Title)
                             : McpTerminalOutcome.Success();
                     }
                 }
-                else if (transition.NewState == CommandLifecycleState.Rejected && _outcome is null) {
+                else if (state == CommandLifecycleState.Rejected && _outcome is null) {
                     _outcome = McpTerminalOutcome.GenericRejection();
                 }
 
-                else if (transition.NewState == CommandLifecycleState.IdempotentConfirmed && _outcome is null)
+                else if (state == CommandLifecycleState.IdempotentConfirmed && _outcome is null)
                 {
                     _outcome = McpTerminalOutcome.IdempotentSuccess(Descriptor.Title);
                 }
-                else if (transition.NewState is CommandLifecycleState.NeedsReview or CommandLifecycleState.Warning
+                else if (state is CommandLifecycleState.NeedsReview or CommandLifecycleState.Warning
                     or CommandLifecycleState.DegradedExhausted && _outcome is null)
                 {
-                    _outcome = McpTerminalOutcome.Unconfirmed(transition.NewState);
+                    _outcome = McpTerminalOutcome.Unconfirmed(state);
                 }
 
-                AppendHistory(transition.NewState, transition.MessageId, transition.TimestampUtc, transition.IdempotencyResolved);
+                AppendHistory(state, messageId, timestampUtc, idempotencyResolved);
 
                 if (IsTerminalState(_state) && !_terminalRecorded) {
                     _terminalRecorded = true;
@@ -491,7 +489,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                 catch (ObjectDisposedException) {
                 }
 
-                _onTerminalized(CorrelationId);
+                _onTerminalized(this);
             }
         }
 
@@ -561,7 +559,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             catch (ObjectDisposedException) {
             }
 
-            _onTerminalized(CorrelationId);
+            _onTerminalized(this);
             return true;
         }
 

@@ -170,6 +170,79 @@ public sealed class LocalStorageServiceTests {
         ex.Message.ShouldContain("boom");
     }
 
+    [Fact]
+    public async Task FlushAsyncReportsInteropCancellationAndContinuesPersisting() {
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        await using LocalStorageService sut = CreateService(out TestJsRuntime js);
+        js.SetItemException = new TaskCanceledException("Interop timed out");
+
+        await sut.SetAsync("failed", 1, ct);
+        await Should.ThrowAsync<TaskCanceledException>(
+            () => sut.FlushAsync(ct).WaitAsync(TimeSpan.FromSeconds(5), ct));
+        ct.IsCancellationRequested.ShouldBeFalse();
+
+        js.SetItemException = null;
+        await sut.SetAsync("next", 2, ct);
+        await sut.FlushAsync(ct);
+        js.StoredJson.ContainsKey("failed").ShouldBeFalse();
+        js.StoredJson["next"].ShouldBe("2");
+    }
+
+    [Fact]
+    public async Task FlushAsyncCancelledWaitLeavesWriteFailureForNextFlush() {
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        await using LocalStorageService sut = CreateService(out TestJsRuntime js);
+        using CancellationTokenSource caller = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        TaskCompletionSource gate = js.SetItemGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        js.SetItemException = new JSException("Write failed");
+        await sut.SetAsync("failed", 1, ct);
+
+        Task abandoned = sut.FlushAsync(caller.Token);
+        await caller.CancelAsync();
+        gate.SetResult();
+        await Should.ThrowAsync<TaskCanceledException>(() => abandoned);
+        await Should.ThrowAsync<JSException>(() => sut.FlushAsync(ct));
+        await sut.FlushAsync(ct);
+    }
+
+    [Fact]
+    public async Task DisposeAsyncDrainsAcceptedWritesAndRacingFlushes() {
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        await using LocalStorageService sut = CreateService(out TestJsRuntime js);
+        TaskCompletionSource gate = js.SetItemGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        await sut.SetAsync("theme", "Dark", ct);
+
+        Task firstFlush = sut.FlushAsync(ct);
+        Task dispose = sut.DisposeAsync().AsTask();
+        Task lateFlush = sut.FlushAsync(ct);
+        lateFlush.IsCompleted.ShouldBeFalse();
+        gate.SetResult();
+        await Task.WhenAll(firstFlush, lateFlush, dispose).WaitAsync(TimeSpan.FromSeconds(5), ct);
+        js.StoredJson["theme"].ShouldBe("\"Dark\"");
+        await Should.ThrowAsync<ObjectDisposedException>(() => sut.SetAsync("late", 1, ct));
+        await Should.ThrowAsync<ObjectDisposedException>(() => sut.RemoveAsync("theme", ct));
+    }
+
+    [Fact]
+    public async Task DisposeAsyncCancelsStalledInteropAndSettlesAllFlushWaiters() {
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        FakeTimeProvider time = new();
+        await using LocalStorageService sut = CreateService(out TestJsRuntime js, time: time);
+        js.SetItemGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        await sut.SetAsync("stalled", true, ct);
+        await js.SetItemStarted.Task.WaitAsync(TimeSpan.FromSeconds(5), ct);
+
+        Task acceptedFlush = sut.FlushAsync(ct);
+        Task dispose = sut.DisposeAsync().AsTask();
+        Task concurrentDispose = sut.DisposeAsync().AsTask();
+        Task lateFlush = sut.FlushAsync(ct);
+        time.Advance(TimeSpan.FromSeconds(6));
+        await Task.WhenAll(dispose, concurrentDispose).WaitAsync(TimeSpan.FromSeconds(5), ct);
+        await Should.ThrowAsync<TaskCanceledException>(() => acceptedFlush.WaitAsync(TimeSpan.FromSeconds(5), ct));
+        await Should.ThrowAsync<TaskCanceledException>(() => lateFlush.WaitAsync(TimeSpan.FromSeconds(5), ct));
+        js.StoredJson.ContainsKey("stalled").ShouldBeFalse();
+    }
+
     private static LocalStorageService CreateService(
         out TestJsRuntime js,
         int maxEntries = 500,
@@ -198,6 +271,8 @@ public sealed class LocalStorageServiceTests {
         private readonly ConcurrentQueue<JsInvocation> _invocations = new();
 
         public Exception? SetItemException { get; set; }
+
+        public TaskCompletionSource SetItemStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public TaskCompletionSource? SetItemGate { get; set; }
 
@@ -233,6 +308,7 @@ public sealed class LocalStorageServiceTests {
                     return (TValue)(object?)json!;
 
                 case "localStorage.setItem":
+                    _ = SetItemStarted.TrySetResult();
                     if (SetItemGate is not null) {
                         await SetItemGate.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
                     }
@@ -241,6 +317,7 @@ public sealed class LocalStorageServiceTests {
                         throw SetItemException;
                     }
 
+                    _storedJson[(string)actualArgs[0]!] = (string?)actualArgs[1];
                     return default!;
 
                 case "localStorage.removeItem":
@@ -248,6 +325,7 @@ public sealed class LocalStorageServiceTests {
                         await RemoveGate.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
                     }
 
+                    _ = _storedJson.TryRemove((string)actualArgs[0]!, out _);
                     return default!;
 
                 case "eval":

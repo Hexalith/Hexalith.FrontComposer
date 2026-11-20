@@ -1,0 +1,12 @@
+name: Test the combined UI router
+description: Run the production route and authorization component tests against the Debug source host.
+runs:
+  using: composite
+  steps:
+    - name: Build and test the combined UI router
+      shell: bash
+      run: |
+        set -euo pipefail
+        project=tests/Hexalith.FrontComposer.UI.Tests/Hexalith.FrontComposer.UI.Tests.csproj
+        dotnet build "$project" --configuration Debug --disable-build-servers -m:1 -warnaserror:MSB3277
+        dotnet run --project "$project" --configuration Debug --no-build --no-launch-profile -- -noLogo

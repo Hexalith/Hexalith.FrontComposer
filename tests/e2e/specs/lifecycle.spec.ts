@@ -22,15 +22,30 @@ test.describe('Story 3.4: command lifecycle UI', () => {
     await expect(form).toBeVisible();
     await fillFieldByLabel(form, 'Amount', '2');
     await fillFieldByLabel(form, 'Note', 'QA story 3.4 browser lifecycle');
+    // Capture short-lived UI states in the browser before a Playwright round trip can miss them.
+    const readTransitions = await indicator.evaluateHandle(node => {
+      const states: string[] = [];
+      let acknowledgementVisible = false;
+      const record = () => {
+        const state = node.getAttribute('data-lifecycle-state');
+        if (state && state !== states.at(-1)) states.push(state);
+        const message = node.querySelector('[data-testid="fc-acknowledged"]');
+        if (message?.checkVisibility({ visibilityProperty: true })) acknowledgementVisible = true;
+      };
+      const observer = new MutationObserver(record);
+      observer.observe(node, { attributes: true, attributeFilter: ['data-lifecycle-state'], childList: true, subtree: true });
+      record();
+      return () => {
+        observer.disconnect();
+        return { states, acknowledgementVisible };
+      };
+    });
+
     await form.getByRole('button', { name: 'Batch Increment' }).click();
-
-    await lifecycle.expectState(commandId, 'submitting');
-    await lifecycle.expectState(commandId, 'acknowledged');
-    await expect(form.getByTestId('fc-acknowledged')).toBeVisible();
-    await lifecycle.expectState(commandId, 'syncing');
-
-    const terminal = await lifecycle.waitForTerminal(commandId);
-    expect(terminal).toBe('confirmed');
+    expect(await lifecycle.waitForTerminal(commandId)).toBe('confirmed');
+    const observed = await readTransitions.evaluate(read => read());
+    expect(observed.states).toEqual(['idle', 'submitting', 'acknowledged', 'syncing', 'confirmed']);
+    expect(observed.acknowledgementVisible).toBe(true);
     await expect(form.getByTestId('fc-confirmed')).toBeVisible();
     await expect(form).toBeVisible();
   });

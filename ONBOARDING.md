@@ -43,11 +43,11 @@ Top MCP Servers:
 
 ## Team Tips
 
-_TODO_
+Use the SDK selected by `global.json`. Initialize the direct dependencies recorded by the root repository. The Release solution builds the package boundary. The combined Tenants and Parties AppHost has a separate Debug source build.
 
 ## Get Started
 
-_TODO_
+Follow the [first projection tutorial](docs/tutorials/getting-started.md) to render Counter, run a sample command, and inspect the generated source. The [adopter proof kit](docs/how-to/adopter-bootstrap-proof.md) shows how a host registers the EventStore command and query clients.
 
 <!-- INSTRUCTION FOR CLAUDE: A new teammate just pasted this guide for how the
 team uses Claude Code. You're their onboarding buddy — warm, conversational,

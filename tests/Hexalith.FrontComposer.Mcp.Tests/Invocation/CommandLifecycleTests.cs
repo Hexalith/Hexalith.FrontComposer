@@ -111,6 +111,49 @@ public sealed class CommandLifecycleTests {
     }
 
     [Fact]
+    public async Task ReadAsyncDispatchCompletesAfterRequestScopeIsDisposedReturnsOneTerminalTransition() {
+        _ = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
+        using var root = provider;
+        service.CompleteSynchronously = false;
+        using (IServiceScope request = root.CreateScope()) {
+            var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(request.ServiceProvider);
+            FrontComposerMcpResult ack = await invoker.InvokeAsync("Billing.PayInvoiceCommand.Execute", Args("""{"Amount":42}"""), TestContext.Current.CancellationToken);
+            ack.IsError.ShouldBeFalse();
+            ack.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Acknowledged");
+        }
+
+        using IServiceScope poll = root.CreateScope();
+        var tracker = poll.ServiceProvider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+        var handle = Args($$"""{"correlationId":"{{CorrelationId}}"}""");
+        var callback = service.DispatchObserver.ShouldNotBeNull();
+        callback(CommandLifecycleState.Rejected, NeverIssuedHandle);
+        FrontComposerMcpResult pending = await tracker.ReadAsync(handle, TestContext.Current.CancellationToken);
+        pending.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Syncing");
+
+        callback(CommandLifecycleState.Confirmed, null);
+        callback(CommandLifecycleState.Confirmed, MessageId);
+        FrontComposerMcpResult completed = await tracker.ReadAsync(handle, TestContext.Current.CancellationToken);
+        completed.IsError.ShouldBeFalse();
+        completed.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
+        JsonArray history = completed.StructuredContent["transitions"]!.AsArray();
+        history.Select(item => item!["state"]!.GetValue<string>()).ShouldBe(["Acknowledged", "Syncing", "Confirmed"]);
+        history.Last()!["messageId"]!.GetValue<string>().ShouldBe(MessageId);
+    }
+
+    [Fact]
+    public void DispatchObserverPreservesTransitionsArrivingDuringAcknowledgement() {
+        McpDispatchLifecycleObserver observer = new();
+        observer.Observe(CommandLifecycleState.Syncing, MessageId);
+        observer.TakePending().ShouldHaveSingleItem().State.ShouldBe(CommandLifecycleState.Syncing);
+        observer.Observe(CommandLifecycleState.Degraded, MessageId);
+        List<CommandLifecycleState> recorded = [];
+        observer.Bind((state, _) => recorded.Add(state));
+        observer.StopBuffering();
+        observer.Observe(CommandLifecycleState.Confirmed, MessageId);
+        recorded.ShouldBe([CommandLifecycleState.Degraded, CommandLifecycleState.Confirmed]);
+    }
+
+    [Fact]
     public async Task ReadAsync_KnownLifecycleHandle_ReturnsOrderedTerminalSnapshot() {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
         _ = await invoker.InvokeAsync(
@@ -857,6 +900,7 @@ public sealed class CommandLifecycleTests {
     [InlineData(OverflowUlid)]
     [InlineData("")]
     [InlineData(" ")]
+    [InlineData(NeverIssuedHandle)]
     public void TrackAcknowledged_OverflowPendingTransition_RejectsBeforeSubscriptionOrStorage(string transitionMessageId) {
         FrontComposerMcpOptions currentOptions = new();
         using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
@@ -902,6 +946,7 @@ public sealed class CommandLifecycleTests {
 
     [Theory]
     [InlineData(CorrelationId, OverflowUlid, OverflowUlid)]
+    [InlineData(CorrelationId, NeverIssuedHandle, NeverIssuedHandle)]
     [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0D", MessageId, "01JZ0R5K9N8W4Y7V3Q2P6C1A0D")]
     public void TrackAcknowledged_SubscriptionReplayWithOverflowMessageId_DoesNotMutateOrDiscloseSnapshot(
         string replayCorrelationId,
@@ -1404,6 +1449,55 @@ public sealed class CommandLifecycleTests {
     }
 
     [Fact]
+    public void LateCallbackAfterAliasesAreReissuedCannotCompleteAnotherOwnersCommand() {
+        FrontComposerMcpOptions options = new() { MaxRetainedTerminalLifecycleEntries = 1 };
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(options));
+        using RecordingLifecycleStateService lifecycle = new();
+        McpCommandDescriptor descriptor = Manifest(null).Commands.Single();
+        CommandResult original = new(MessageId, CommandResultStatus.Accepted, CorrelationId);
+        McpDispatchLifecycleObserver oldObserver = new();
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, original, [], lifecycle, TestContext.Current.CancellationToken, oldObserver);
+        oldObserver.Observe(CommandLifecycleState.Confirmed, MessageId);
+        _ = store.TrackAcknowledged(descriptor, OwnerContext, new CommandResult(NeverIssuedHandle, CommandResultStatus.Accepted),
+            [(CommandLifecycleState.Confirmed, NeverIssuedHandle)], lifecycle, TestContext.Current.CancellationToken);
+
+        FrontComposerMcpAgentContext newOwner = AgentContext("other", "other");
+        using RecordingLifecycleStateService newScope = new();
+        _ = store.TrackAcknowledged(descriptor, newOwner, original, [], newScope, TestContext.Current.CancellationToken);
+        oldObserver.Observe(CommandLifecycleState.Rejected, MessageId);
+        store.TryReadSnapshot(MessageId, newOwner, options, out _, out McpLifecycleSnapshot reused).ShouldBeTrue();
+        reused.State.ShouldBe(CommandLifecycleState.Acknowledged);
+        store.TryReadSnapshot(CorrelationId, OwnerContext, options, out _, out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ActiveCapacityAfterTerminalEvictionAndAliasReuseRetiresTheOldestActiveCommand() {
+        FrontComposerMcpOptions options = new() { MaxActiveLifecycleEntries = 2, MaxRetainedTerminalLifecycleEntries = 1 };
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(options));
+        McpCommandDescriptor descriptor = Manifest(null).Commands.Single();
+        const string newest = "01JZ0R5K9N8W4Y7V3Q2P6C1A0D";
+
+        void Track(string handle, bool complete = false) {
+            using RecordingLifecycleStateService lifecycle = new();
+            _ = store.TrackAcknowledged(descriptor, OwnerContext, new CommandResult(handle, CommandResultStatus.Accepted, handle),
+                complete ? [(CommandLifecycleState.Confirmed, handle)] : [], lifecycle, TestContext.Current.CancellationToken);
+        }
+
+        Track(MessageId, complete: true);
+        Track(CorrelationId, complete: true);
+        Track(NeverIssuedHandle);
+        Track(MessageId);
+        Track(newest);
+
+        store.TryReadSnapshot(NeverIssuedHandle, OwnerContext, options, out _, out McpLifecycleSnapshot retired).ShouldBeTrue();
+        retired.ToJson()["outcome"]!["category"]!.GetValue<string>().ShouldBe("needs_review");
+        store.TryReadSnapshot(MessageId, OwnerContext, options, out _, out McpLifecycleSnapshot reused).ShouldBeTrue();
+        reused.State.ShouldBe(CommandLifecycleState.Acknowledged);
+        store.TryReadSnapshot(newest, OwnerContext, options, out _, out McpLifecycleSnapshot last).ShouldBeTrue();
+        last.State.ShouldBe(CommandLifecycleState.Acknowledged);
+    }
+
+    [Fact]
     public void StoreEvictionReleasesBothAliasesForReuseIncludingEqualAliases() {
         FrontComposerMcpOptions currentOptions = new() { MaxRetainedTerminalLifecycleEntries = 1 };
         using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
@@ -1641,6 +1735,7 @@ public sealed class CommandLifecycleTests {
 
     private sealed class LifecycleAwareCommandService : ICommandServiceWithLifecycle {
         public int DispatchCount { get; private set; }
+        public Action<CommandLifecycleState, string?>? DispatchObserver { get; private set; }
         public bool RejectNext { get; set; }
         public bool ValidateRejectNext { get; set; }
         public bool CompleteSynchronously { get; set; } = true;
@@ -1673,6 +1768,7 @@ public sealed class CommandLifecycleTests {
             }
 
             LastCorrelationId = correlationId;
+            DispatchObserver = onLifecycleChange;
             onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, messageId);
             if (CompleteSynchronously) {
                 onLifecycleChange?.Invoke(CommandLifecycleState.Confirmed, messageId);

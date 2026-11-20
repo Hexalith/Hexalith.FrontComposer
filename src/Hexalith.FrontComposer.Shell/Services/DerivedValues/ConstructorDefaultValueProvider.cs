@@ -9,8 +9,8 @@ namespace Hexalith.FrontComposer.Shell.Services.DerivedValues;
 /// <summary>
 /// Derived-value provider #5 (final fallback) in the chain (Story 2-2 Decision D24).
 /// Reads the command's property initialization value via <c>new TCommand()</c>, which
-/// captures <c>= defaultValue</c> initializers on auto-properties. Cached per
-/// <c>(Type, string)</c> pair so the reflection/instantiation cost is paid once per property.
+/// captures <c>= defaultValue</c> initializers on auto-properties. Each renderer receives its own provider so related fields read from one
+/// command instance and repeated resolutions within the form retain the same defaults.
 /// </summary>
 /// <remarks>
 /// Commands declared as positional-ctor records (no parameterless ctor) resolve to
@@ -20,8 +20,8 @@ namespace Hexalith.FrontComposer.Shell.Services.DerivedValues;
 /// <c>AddDerivedValueProvider&lt;T&gt;</c> or add parameterless ctors.
 /// </remarks>
 public sealed class ConstructorDefaultValueProvider : IDerivedValueProvider {
-    private static readonly ConcurrentDictionary<Type, object?> InstanceCache = new();
-    private static readonly ConcurrentDictionary<(Type, string), object?> ValueCache = new();
+    private readonly ConcurrentDictionary<Type, object?> _instanceCache = new();
+    private readonly ConcurrentDictionary<(Type, string), object?> _valueCache = new();
 
     /// <inheritdoc/>
     [UnconditionalSuppressMessage("Trimming", "IL2067:UnrecognizedReflectionPattern", Justification = "commandType flows from generated code; trim preservation is delegated to the renderer.")]
@@ -36,11 +36,11 @@ public sealed class ConstructorDefaultValueProvider : IDerivedValueProvider {
         ct.ThrowIfCancellationRequested();
 
         (Type commandType, string propertyName) key = (commandType, propertyName);
-        if (ValueCache.TryGetValue(key, out object? cached)) {
+        if (_valueCache.TryGetValue(key, out object? cached)) {
             return Task.FromResult(new DerivedValueResult(true, cached));
         }
 
-        object? instance = InstanceCache.GetOrAdd(commandType, static t => {
+        object? instance = _instanceCache.GetOrAdd(commandType, static t => {
             try {
                 return Activator.CreateInstance(t);
             }
@@ -88,7 +88,6 @@ public sealed class ConstructorDefaultValueProvider : IDerivedValueProvider {
             return Task.FromResult(DerivedValueResult.None);
         }
 
-        _ = ValueCache.TryAdd(key, value);
-        return Task.FromResult(new DerivedValueResult(true, value));
+        return Task.FromResult(new DerivedValueResult(true, _valueCache.GetOrAdd(key, value)));
     }
 }

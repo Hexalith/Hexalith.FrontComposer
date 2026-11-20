@@ -1,6 +1,7 @@
 # FC-CLI-INSPECT v1 Contract
 
 Date: 2026-06-05
+Implementation clarification: 2026-11-20
 Status: confirmed-and-pinned
 Scope: `frontcomposer inspect` generated-output and diagnostics reporting.
 Owner: FrontComposer Epic 7, Story 7.1.
@@ -16,8 +17,8 @@ The public source of that layout is `GeneratedOutputPathContract.Directory` and
 `GeneratedOutputPathContract.Template`. The CLI keeps the same project-relative directory shape and
 passes `-p:EmitCompilerGeneratedFiles=true` plus
 `-p:CompilerGeneratedFilesOutputPath=obj/{Configuration}/{TargetFramework}/generated/HexalithFrontComposer`
-when `--build` is supplied. If `--framework` is omitted for the build invocation, the CLI passes the
-MSBuild placeholder `$(TargetFramework)` so each target framework resolves under its own output folder.
+when `--build` is supplied. With no explicit framework, the CLI evaluates the project for the selected
+configuration. A single target is selected automatically. For multiple targets, supply `--framework <tfm>`.
 
 Supported inspect options are:
 
@@ -71,8 +72,10 @@ Evidence:
 
 ## Generated-File Families
 
-Generated files are enumerated top-level only from the generated-output directory and include `*.g.cs`
-and `*.g.razor.cs`. Ordering is deterministic and shared by JSON and text output:
+The CLI reads `*.g.cs` and `*.g.razor.cs` at the public output root and in Roslyn's
+`Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/`
+directory below it. A matching hint name uses the compiler-emitted copy. Diagnostic sidecars
+remain at the output root. JSON and text use the same deterministic ordering.
 
 1. `RelatedType` with null treated as the empty string
 2. `Family`

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Threading.Channels;
 using Hexalith.FrontComposer.Contracts.Storage;
@@ -23,7 +24,9 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.Storage;
 /// issues one <c>localStorage.setItem</c> JS interop call at a time. Callers observe a completed
 /// task immediately — the render thread is never blocked. <see cref="FlushAsync"/> enqueues a
 /// sentinel carrying a <see cref="TaskCompletionSource"/> and awaits that TCS so the drain worker
-/// signals "everything before me has been flushed" without closing the channel.
+/// reports the first write failure since the previous observed flush, or completes successfully.
+/// Cancelled flush waits leave that failure available to the next caller. During disposal,
+/// accepted writes have a five-second grace period before stalled interop is cancelled.
 /// </para>
 /// <para>
 /// <b>LRU eviction:</b> a <see cref="ConcurrentDictionary{TKey,TValue}"/> tracks the last-access
@@ -49,6 +52,9 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
     /// than the default serializer (Story 3-6 Review Finding F-AA-001 / F-BH-003).
     /// </summary>
     internal static JsonSerializerOptions SchemaLockJsonOptions { get; } = FcJson.StorageCompact;
+
+    // Give accepted writes a chance to finish before cancelling a disconnected circuit's outstanding JS call.
+    private static readonly TimeSpan ShutdownDrainTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IJSRuntime _js;
     private readonly FcShellOptions _options;
@@ -129,18 +135,20 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
         Justification = "IStorageService callers persist Fluxor state records with preserved members (ThemeValue, DensityLevel, DataGridNavigationState); the interface's generic T is the contract authorising the reflective path.")]
     public Task SetAsync<T>(string key, T value, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrEmpty(key);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         _lruTimestamps[key] = _time.GetUtcNow().UtcTicks;
         EvictIfOverCap();
         string json = JsonSerializer.Serialize(value, SchemaLockJsonOptions);
-        _ = _writes.Writer.TryWrite(new PendingWrite(key, json, FlushSignal: null));
+        ObjectDisposedException.ThrowIf(!_writes.Writer.TryWrite(new PendingWrite(key, json, FlushSignal: null)), this);
         return Task.CompletedTask;
     }
 
     /// <inheritdoc />
     public Task RemoveAsync(string key, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrEmpty(key);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         _ = _lruTimestamps.TryRemove(key, out _);
-        _ = _writes.Writer.TryWrite(new PendingWrite(key, SerializedValue: null, FlushSignal: null));
+        ObjectDisposedException.ThrowIf(!_writes.Writer.TryWrite(new PendingWrite(key, SerializedValue: null, FlushSignal: null)), this);
         return Task.CompletedTask;
     }
 
@@ -165,41 +173,37 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
 
     /// <inheritdoc />
     public async Task FlushAsync(CancellationToken cancellationToken = default) {
-        if (Volatile.Read(ref _disposed) != 0) {
+        cancellationToken.ThrowIfCancellationRequested();
+        TaskCompletionSource signal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using CancellationTokenRegistration registration = cancellationToken.Register(() => signal.TrySetCanceled(cancellationToken));
+        if (_writes.Writer.TryWrite(new PendingWrite(SentinelKey, SerializedValue: null, FlushSignal: signal))) {
+            await signal.Task.ConfigureAwait(false);
             return;
         }
 
-        TaskCompletionSource tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        if (!_writes.Writer.TryWrite(new PendingWrite(SentinelKey, SerializedValue: null, FlushSignal: tcs))) {
-            // Channel already closed (disposal in flight) — treat Flush as a no-op.
-            return;
+        // The closed channel is itself a flush boundary. A racing caller must wait for its accepted writes.
+        await _drainTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+        if (_pendingDrainFailure is { } failure) {
+            ExceptionDispatchInfo.Throw(failure);
         }
-
-        await tcs.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync() {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) {
+            await _drainTask.ConfigureAwait(false);
             return;
         }
 
         _ = _writes.Writer.TryComplete();
         try {
+            using CancellationTokenSource deadline = new(ShutdownDrainTimeout, _time);
+            using CancellationTokenRegistration registration = deadline.Token.Register(_cts.Cancel);
             await _drainTask.ConfigureAwait(false);
         }
-        catch (OperationCanceledException) {
-            // Normal on cancellation.
+        finally {
+            _cts.Dispose();
         }
-
-        try {
-            await _cts.CancelAsync().ConfigureAwait(false);
-        }
-        catch (ObjectDisposedException) {
-            // Already disposed; safe to ignore.
-        }
-
-        _cts.Dispose();
     }
 
     private void EvictIfOverCap() {
@@ -227,20 +231,21 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
     private async Task DrainLoopAsync(CancellationToken cancellationToken) {
         try {
             await foreach (PendingWrite write in _writes.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
-                try {
-                    if (write.FlushSignal is not null) {
-                        if (_pendingDrainFailure is not null) {
-                            Exception failure = _pendingDrainFailure;
+                if (write.FlushSignal is { } signal) {
+                    if (_pendingDrainFailure is { } failure) {
+                        // A caller that cancelled its wait has not observed this failure.
+                        if (signal.TrySetException(failure)) {
                             _pendingDrainFailure = null;
-                            _ = write.FlushSignal.TrySetException(failure);
                         }
-                        else {
-                            _ = write.FlushSignal.TrySetResult();
-                        }
-
-                        continue;
+                    }
+                    else {
+                        _ = signal.TrySetResult();
                     }
 
+                    continue;
+                }
+
+                try {
                     if (write.SerializedValue is null) {
                         await _js.InvokeVoidAsync("localStorage.removeItem", cancellationToken, write.Key)
                             .ConfigureAwait(false);
@@ -250,18 +255,25 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
                             .ConfigureAwait(false);
                     }
                 }
-                catch (OperationCanceledException) {
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                     throw;
                 }
                 catch (Exception ex) {
                     _pendingDrainFailure ??= ex;
                     FrontComposerWarningLog.LocalStorageDrainWriteFailed(_logger, write.Key, ex);
-                    _ = (write.FlushSignal?.TrySetException(ex));
                 }
             }
         }
-        catch (OperationCanceledException) {
-            // Expected on disposal.
+        catch (Exception ex) {
+            _pendingDrainFailure = ex;
+            _ = _writes.Writer.TryComplete(ex);
+            while (_writes.Reader.TryRead(out PendingWrite pending)) {
+                _ = pending.FlushSignal?.TrySetException(ex);
+            }
+
+            if (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested) {
+                throw;
+            }
         }
     }
 }
