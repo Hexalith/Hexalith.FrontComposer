@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PRD Validation: Hexalith.FrontComposer</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+
+    --grade-exc: #16a34a;
+    --grade-good: #65a30d;
+    --grade-fair: #d97706;
+    --grade-poor: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .grade {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: white;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .grade-excellent { background: var(--grade-exc); }
+  .grade-good { background: var(--grade-good); }
+  .grade-fair { background: var(--grade-fair); }
+  .grade-poor { background: var(--grade-poor); }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+</head>
+
+<body><main class="container">
+<header class="report-header"><div class="title"><h1>Hexalith.FrontComposer — Validation Report</h1><div class="subtitle">_bmad-output/planning-artifacts/prd.md</div></div><div class="grade grade-fair">Fair</div></header>
+<div class="synthesis">
+<p>The PRD gives teams testable operator journeys, clear evidence for adopter success, and an explicit decision to keep the readiness milestone open. Its approval table, public package contract, and CLI scope need reconciliation before Product re-approval or use as instructions for new stories. The most consequential discrepancies concern the release hold, the publisher that must qualify, and the framework consumers must target.</p><p>The November 19 receipt records HEXALITH_RELEASE_PUBLISH_ENABLED as false, stopping publication, and the architecture amendment places the protected publisher in FrontComposer. The release gate still requires owner acceptance. The README and migration plan also retain the local CLI and require the MCP host to retire with its Projects plug-in. Those distinctions affect which teams should act next.</p>
+<p>0 critical · 5 high · 7 medium · 1 low</p><p>FrontComposer main <code>aa016201c47e0cf226aed1418acb0f6c729fb0dc</code> · PRD dated 2026-11-16 with <code>prd-addendum-2026-09-08.md</code>.</p></div>
+<div class="dimension-summary">
+<div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color:var(--verdict-thin)">Thin</div></div>
+<div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color:var(--verdict-strong)">Strong</div></div>
+<div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color:var(--verdict-strong)">Strong</div></div>
+<div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></div>
+<div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color:var(--verdict-thin)">Thin</div></div>
+<div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color:var(--verdict-thin)">Thin</div></div>
+<div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></div>
+</div>
+<section class="dimension"><details open><summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-thin">Thin</span></summary><div class="dim-body"><div class="dim-judgment"><p>Section 0.1 names the evidence, owner and decision for each of eight gates. G-5, G-6 and G-7 cite dated, bounded acceptance. G-1, G-2, G-3, G-4 and G-8 remain open. A Release Owner reading the opening summary would nevertheless start incident response from an obsolete observation. The November 19 architecture decision also changes which component Architecture and Release must accept.</p></div></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">F01 · Correct the recorded state of the release stop</h3></header><div class="finding-note">The PRD says “the halt is currently not in effect,” citing a November 16 observation of true. The November 19 receipt records literal false at 09:36:24 UTC and a second verification. Treating the earlier observation as current sends the Release Owner back to an action already evidenced.</div><div class="finding-fix"><strong>Suggested change.</strong> Date both observations, cite the November 19 receipt as the latest recorded state and retain the earlier incidents in NC-35/36. Keep G-8 open pending conformance evidence and owner acceptance.</div><div class="finding-location"><strong>Evidence.</strong> PRD §0 line 21 and §0.1 G-8 · <code>docs/release-trusted-publishing.md:26–37</code> · GOV-1 nonconformance register, NC-35. Addendum §1 line 18.</div></article>
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">F02 · Qualify the publisher selected on November 19</h3></header><div class="finding-note">G-2 still requires an owner-accepted Builds split reusable workflow. The architecture amendment selects a protected workflow owned by FrontComposer that runs pinned Builds actions. The current gate would qualify the wrong artifact and leave the selected workflow’s identity unaccounted for.</div><div class="finding-fix"><strong>Suggested change.</strong> Reconcile G-2, FR-24, the decision register and addendum around the selected workflow, signer, and Builds action revisions. Preserve the separate requirements for secretless building, authenticated evidence and formal owner acceptance.</div><div class="finding-location"><strong>Evidence.</strong> PRD §0.1 G-2, §5.7 FR-24, §12 D-11 · addendum §§1–2 · <code>docs/release-trusted-publishing.md:11–24</code> · GOV-1 architecture spine, November 19 amendment, lines 103–153.</div></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F11 · Record why the most recent G-3 attempt stopped</h3></header><div class="finding-note">The appendix refers to a future candidate T. Story 16.3 records a later attempted candidate, ffb75718, whose preflight ended when the pinned CI configuration did not match. Scheduling that attempt again would bypass the outstanding CiCd decision.</div><div class="finding-fix"><strong>Suggested change.</strong> Link the cancelled slot and its owner disposition from G-3. Distinguish a future qualification from the November 20 dependency seal and the ended attempt.</div><div class="finding-location"><strong>Evidence.</strong> PRD §0.1 G-3, November 16 appendix · Story 16.3 spec, lines 1112–1125 · <code>eng/dependency-governance.md:3–21</code>.</div></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F12 · Distinguish completed governance work from open G-8 approvals</h3></header><div class="finding-note">The gate text leaves all implementation and evidence slices open. The tracker marks GOV-SRC-1 done. Story 17.2 records a tabletop, approval of the revised runbook digest and prospective response targets, and GOV-I in review.</div><div class="finding-fix"><strong>Suggested change.</strong> Credit the completed source check and runbook decision. Keep remaining review, preservation, live incident-readiness and conformance decisions explicit.</div><div class="finding-location"><strong>Evidence.</strong> PRD §0.1 G-2/G-8, D-16 · sprint status, lines 1279–1286 · Story 17.2 spec, lines 145–151 · <code>docs/release-incident-response.md:41–44</code>.</div></article>
+</div></details></section>
+<section class="dimension"><details><summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">Strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>FR-4 defines exact field-count thresholds for three generated form densities. FR-15 and SM-10 distinguish acknowledgement from a confirmed outcome and bound the wait for confirmation. Addendum §§4.1–4.3 give observable examples of focus recovery and announcements. The roles in §2 correspond to real work, including release evidence and adopter testing.</p></div></div><div class="findings-list">
+</div></details></section>
+<section class="dimension"><details><summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-strong">Strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>The “describe their operational surface once” thesis in §1 links Nina&#x27;s three-call bootstrap in UJ-1, Marc&#x27;s row-freshness decision in UJ-2, and the named Tenants adoption proof in SM-1. SM-7 identifies a meaningful operator outcome. SM-C4 and SM-C5 prevent a green workflow or a ledger entry alone from counting as release success.</p></div></div><div class="findings-list">
+</div></details></section>
+<section class="dimension"><details><summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-adequate">Adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>The consequences under the FRs make most behavioral requirements independently testable. Two statements would produce incorrect acceptance tests for supported inputs or a failure partway through a migration.</p></div></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F06 · Specify the unit of atomicity for migration writes</h3></header><div class="finding-note">“Apply mode is atomic” can be read as a promise to roll back the entire run. Each file is replaced atomically. Earlier writes survive a later refusal, and cancellation can interrupt the report.</div><div class="finding-fix"><strong>Suggested change.</strong> Describe partial application, path and hash revalidation, and the exit/report outcomes. Use a two-file case in which the second file fails after the first succeeds.</div><div class="finding-location"><strong>Evidence.</strong> PRD §5.6 FR-21 line 446 · <code>docs/reference/cli.md:54–59</code> · <code>src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:28–46</code>.</div></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F07 · Require real compiler output in packaged inspection acceptance</h3></header><div class="finding-note">Formatting and filtering checks can pass when inspect returns an empty result. The November 20 audit found this failure on the Counter sample with the installed CLI even though the fixture passed.</div><div class="finding-fix"><strong>Suggested change.</strong> Require a known command and projection from the packaged tool. Cover compiler and flat layouts, exclude unrelated generators and cite the existing regression evidence.</div><div class="finding-location"><strong>Evidence.</strong> PRD §5.6 FR-20 lines 433–438 · November 20 sprint change proposal, lines 19 and 41 · <code>tests/Hexalith.FrontComposer.Cli.Tests/InspectCommandTests.cs:213</code>.</div></article>
+<article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">F10 · Clarify which command constructors are accepted</h3></header><div class="finding-note">FR-2 says a missing public parameterless constructor triggers HFC1009. The parser also accepts a public constructor when every argument has an explicit default.</div><div class="finding-fix"><strong>Suggested change.</strong> Describe zero-argument construction and include an all-default constructor that passes alongside one required-argument constructor that fails.</div><div class="finding-location"><strong>Evidence.</strong> PRD §5.1 FR-2 line 202 · <code>src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs:474–494</code>.</div></article>
+</div></details></section>
+<section class="dimension"><details open><summary><h2>Scope honesty</h2><span class="verdict-pill verdict-thin">Thin</span></summary><div class="dim-body"><div class="dim-judgment"><p>Sections 8.3 and 13 distinguish deferred UX work, assumptions and approved scope. The public tooling boundary creates a consequential exception. The named local CLI exemption is documented in both the root-pinned AI.Tools revision and its refreshed main checkout.</p></div></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">F04 · Retain inspect and migrate as supported local developer tools</h3></header><div class="finding-note">FR-20 and FR-21 make a generic McpCli replacement or withdrawal a prerequisite for retiring the FrontComposer CLI. The merged migration plan explicitly retains both commands under its local compiler exemption. A team following the PRD could schedule a replacement that the plan excludes.</div><div class="finding-fix"><strong>Suggested change.</strong> Record the exemption in the vision, FRs and package table. Preserve local build, freshness, write-safety and privacy behavior and keep the commands out of agent-facing transports.</div><div class="finding-location"><strong>Evidence.</strong> PRD opening, §5.6 FR-20/21, §11 · <code>README.md:30</code> · <code>references/Hexalith.AI.Tools/hexalith-mcpcli-migration-instructions.md:33</code>.</div></article>
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">F05 · Require coordinated retirement of the MCP host and Projects plug-in</h3></header><div class="finding-note">The PRD permits removal after FrontComposer capabilities have replacement or withdrawal evidence. The approved plan couples the host to the Projects plug-in. A host-only cutover could strand a consumer.</div><div class="finding-fix"><strong>Suggested change.</strong> Add the complete consumer inventory, coordinated cutover and live, release and rollback evidence to the host retirement condition.</div><div class="finding-location"><strong>Evidence.</strong> PRD §5.5 line 372 and §11 line 673 · <code>README.md:31</code> · AI.Tools McpCli migration instructions, lines 117–125.</div></article>
+</div></details></section>
+<section class="dimension"><details open><summary><h2>Downstream usability</h2><span class="verdict-pill verdict-thin">Thin</span></summary><div class="dim-body"><div class="dim-judgment"><p>Frozen IDs, the §3 glossary and the explicit supersession of legacy epic IDs make individual requirements easy to extract. Some sections that identify themselves as current give implementers an outdated SDK, consumer target or compatibility baseline.</p></div></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">F03 · Publish the correct consumer framework requirements</h3></header><div class="finding-note">NFR-1 specifies SDK 10.0.400. The package table promises net10.0 for Shell and Testing. The 6.0 consumer migration requires .NET 11 and the repository pins SDK 11.0.100. An adopter following the table can select a framework that cannot load the runtime packages.</div><div class="finding-fix"><strong>Suggested change.</strong> Refresh each package target and the SDK requirement from its project file. Identify the retained netstandard2.0 assets and link the 5.0-to-6.0 migration instructions.</div><div class="finding-location"><strong>Evidence.</strong> PRD §6 NFR-1/2, §7, §11 · <code>global.json</code> · <code>docs/migrations/5.0-to-6.0.md:24–26</code> · Shell and Testing project files.</div></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F08 · Update the API compatibility baseline</h3></header><div class="finding-note">OI-11 instructs Release to advance the comparison target from 4.4.0 to 4.5.0. The implemented published-package baseline is already 5.0.0. Turning the open item into a story could move the baseline backward. The ledger records the November 1 owner decision closing REL-BASE-1 and carries a bounded residual.</div><div class="finding-fix"><strong>Suggested change.</strong> Replace the 4.4.0-to-4.5.0 instruction with the November 1 disposition and actual baseline. Identify the remaining precursor-acceptance work separately from the open G-1 attempt-ledger backfill.</div><div class="finding-location"><strong>Evidence.</strong> PRD §5.7 FR-25 and §12.2 OI-11 · <code>eng/release_compatibility.py:17</code>. Release evidence ledger, lines 1086–1105 and 1429–1446.</div></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F13 · Replace the obsolete Fluent documentation task</h3></header><div class="finding-note">OI-10 describes an rc.2-versus-rc.5 mismatch. The contingency page now names Components and Icons 5.1.0 GA. Story 15.4 is marked done while its DOC-C alias still says proposed.</div><div class="finding-fix"><strong>Suggested change.</strong> Record the named catalog revision and completed documentation work. Identify the outstanding Product posture or approval decision separately.</div><div class="finding-location"><strong>Evidence.</strong> PRD FR-23 line 472 and §12.2 OI-10 line 738 · <code>docs/fluent-ui-v5-contingency.md:18–40</code> · sprint status, lines 236 and 1266.</div></article>
+</div></details></section>
+<section class="dimension"><details><summary><h2>Shape fit</h2><span class="verdict-pill verdict-adequate">Adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>A capability specification with named journeys, per-feature acceptance and an evidence register fits a brownfield framework serving both operators and downstream developers. The latest G-3 rule appears after the assumptions index, which makes a correct operational instruction too easy to miss when extracting the authoritative table alone.</p></div></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F09 · Put the approved G-3 evidence location in the gate table</h3></header><div class="finding-note">A maintainer extracting the gate table could place the receipt on main, advancing it past the tested commit. The November 16 amendment requires a separately authorized record ref in the same repository and keeps main at the tested candidate.</div><div class="finding-fix"><strong>Suggested change.</strong> State the record-ref rule in G-3, link D-12 and FR-29.7 to the amendment, and retain the outstanding qualification and owner decisions.</div><div class="finding-location"><strong>Evidence.</strong> PRD §0.1 G-3 line 35, §12 D-12 and November 16 amendment, lines 775–785.</div></article>
+</div></details></section>
+<section class="reviewer-section"><details><summary><h2>Release evidence</h2><span class="reviewer-source">review-source-consistency.md</span></summary><div class="dim-body"><p>The dated governance and implementation records support keeping the milestone open. They change the status of specific work and the evidence required for the protected publisher.</p></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">F01 · Correct the recorded state of the release stop</h3></header><div class="finding-note">The PRD says “the halt is currently not in effect,” citing a November 16 observation of true. The November 19 receipt records literal false at 09:36:24 UTC and a second verification. Treating the earlier observation as current sends the Release Owner back to an action already evidenced.</div><div class="finding-fix"><strong>Suggested change.</strong> Date both observations, cite the November 19 receipt as the latest recorded state and retain the earlier incidents in NC-35/36. Keep G-8 open pending conformance evidence and owner acceptance.</div><div class="finding-location"><strong>Evidence.</strong> PRD §0 line 21 and §0.1 G-8 · <code>docs/release-trusted-publishing.md:26–37</code> · GOV-1 nonconformance register, NC-35. Addendum §1 line 18.</div></article>
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">F02 · Qualify the publisher selected on November 19</h3></header><div class="finding-note">G-2 still requires an owner-accepted Builds split reusable workflow. The architecture amendment selects a protected workflow owned by FrontComposer that runs pinned Builds actions. The current gate would qualify the wrong artifact and leave the selected workflow’s identity unaccounted for.</div><div class="finding-fix"><strong>Suggested change.</strong> Reconcile G-2, FR-24, the decision register and addendum around the selected workflow, signer, and Builds action revisions. Preserve the separate requirements for secretless building, authenticated evidence and formal owner acceptance.</div><div class="finding-location"><strong>Evidence.</strong> PRD §0.1 G-2, §5.7 FR-24, §12 D-11 · addendum §§1–2 · <code>docs/release-trusted-publishing.md:11–24</code> · GOV-1 architecture spine, November 19 amendment, lines 103–153.</div></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F08 · Update the API compatibility baseline</h3></header><div class="finding-note">OI-11 instructs Release to advance the comparison target from 4.4.0 to 4.5.0. The implemented published-package baseline is already 5.0.0. Turning the open item into a story could move the baseline backward. The ledger records the November 1 owner decision closing REL-BASE-1 and carries a bounded residual.</div><div class="finding-fix"><strong>Suggested change.</strong> Replace the 4.4.0-to-4.5.0 instruction with the November 1 disposition and actual baseline. Identify the remaining precursor-acceptance work separately from the open G-1 attempt-ledger backfill.</div><div class="finding-location"><strong>Evidence.</strong> PRD §5.7 FR-25 and §12.2 OI-11 · <code>eng/release_compatibility.py:17</code>. Release evidence ledger, lines 1086–1105 and 1429–1446.</div></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F11 · Record why the most recent G-3 attempt stopped</h3></header><div class="finding-note">The appendix refers to a future candidate T. Story 16.3 records a later attempted candidate, ffb75718, whose preflight ended when the pinned CI configuration did not match. Scheduling that attempt again would bypass the outstanding CiCd decision.</div><div class="finding-fix"><strong>Suggested change.</strong> Link the cancelled slot and its owner disposition from G-3. Distinguish a future qualification from the November 20 dependency seal and the ended attempt.</div><div class="finding-location"><strong>Evidence.</strong> PRD §0.1 G-3, November 16 appendix · Story 16.3 spec, lines 1112–1125 · <code>eng/dependency-governance.md:3–21</code>.</div></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F12 · Distinguish completed governance work from open G-8 approvals</h3></header><div class="finding-note">The gate text leaves all implementation and evidence slices open. The tracker marks GOV-SRC-1 done. Story 17.2 records a tabletop, approval of the revised runbook digest and prospective response targets, and GOV-I in review.</div><div class="finding-fix"><strong>Suggested change.</strong> Credit the completed source check and runbook decision. Keep remaining review, preservation, live incident-readiness and conformance decisions explicit.</div><div class="finding-location"><strong>Evidence.</strong> PRD §0.1 G-2/G-8, D-16 · sprint status, lines 1279–1286 · Story 17.2 spec, lines 145–151 · <code>docs/release-incident-response.md:41–44</code>.</div></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F13 · Replace the obsolete Fluent documentation task</h3></header><div class="finding-note">OI-10 describes an rc.2-versus-rc.5 mismatch. The contingency page now names Components and Icons 5.1.0 GA. Story 15.4 is marked done while its DOC-C alias still says proposed.</div><div class="finding-fix"><strong>Suggested change.</strong> Record the named catalog revision and completed documentation work. Identify the outstanding Product posture or approval decision separately.</div><div class="finding-location"><strong>Evidence.</strong> PRD FR-23 line 472 and §12.2 OI-10 line 738 · <code>docs/fluent-ui-v5-contingency.md:18–40</code> · sprint status, lines 236 and 1266.</div></article>
+</div></details></section>
+<section class="reviewer-section"><details><summary><h2>Transport ownership</h2><span class="reviewer-source">review-transport-ownership.md</span></summary><div class="dim-body"><p>The transport inventory defines different obligations for the retained local CLI and the migrating MCP host. The packaged inspection and partial-write cases also change what adopter tests must prove.</p></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">F04 · Retain inspect and migrate as supported local developer tools</h3></header><div class="finding-note">FR-20 and FR-21 make a generic McpCli replacement or withdrawal a prerequisite for retiring the FrontComposer CLI. The merged migration plan explicitly retains both commands under its local compiler exemption. A team following the PRD could schedule a replacement that the plan excludes.</div><div class="finding-fix"><strong>Suggested change.</strong> Record the exemption in the vision, FRs and package table. Preserve local build, freshness, write-safety and privacy behavior and keep the commands out of agent-facing transports.</div><div class="finding-location"><strong>Evidence.</strong> PRD opening, §5.6 FR-20/21, §11 · <code>README.md:30</code> · <code>references/Hexalith.AI.Tools/hexalith-mcpcli-migration-instructions.md:33</code>.</div></article>
+<article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">F05 · Require coordinated retirement of the MCP host and Projects plug-in</h3></header><div class="finding-note">The PRD permits removal after FrontComposer capabilities have replacement or withdrawal evidence. The approved plan couples the host to the Projects plug-in. A host-only cutover could strand a consumer.</div><div class="finding-fix"><strong>Suggested change.</strong> Add the complete consumer inventory, coordinated cutover and live, release and rollback evidence to the host retirement condition.</div><div class="finding-location"><strong>Evidence.</strong> PRD §5.5 line 372 and §11 line 673 · <code>README.md:31</code> · AI.Tools McpCli migration instructions, lines 117–125.</div></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F06 · Specify the unit of atomicity for migration writes</h3></header><div class="finding-note">“Apply mode is atomic” can be read as a promise to roll back the entire run. Each file is replaced atomically. Earlier writes survive a later refusal, and cancellation can interrupt the report.</div><div class="finding-fix"><strong>Suggested change.</strong> Describe partial application, path and hash revalidation, and the exit/report outcomes. Use a two-file case in which the second file fails after the first succeeds.</div><div class="finding-location"><strong>Evidence.</strong> PRD §5.6 FR-21 line 446 · <code>docs/reference/cli.md:54–59</code> · <code>src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:28–46</code>.</div></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">F07 · Require real compiler output in packaged inspection acceptance</h3></header><div class="finding-note">Formatting and filtering checks can pass when inspect returns an empty result. The November 20 audit found this failure on the Counter sample with the installed CLI even though the fixture passed.</div><div class="finding-fix"><strong>Suggested change.</strong> Require a known command and projection from the packaged tool. Cover compiler and flat layouts, exclude unrelated generators and cite the existing regression evidence.</div><div class="finding-location"><strong>Evidence.</strong> PRD §5.6 FR-20 lines 433–438 · November 20 sprint change proposal, lines 19 and 41 · <code>tests/Hexalith.FrontComposer.Cli.Tests/InspectCommandTests.cs:213</code>.</div></article>
+</div></details></section>
+<div class="mechanical"><h3>Mechanical notes</h3><ul>
+<li>The numbered definitions cover FR-1 through FR-30 plus FR-19a, NFR-1 through NFR-13, UJ-1 through UJ-6, and SM-1 through SM-10 plus SM-2a. FR-27 and FR-28 are retained as retired. SM-C1 and SM-C3 have explicit retirement notes.</li>
+<li>All six journeys name a protagonist. Module and Bounded Context have an explicit operator/developer mapping in §3.</li>
+<li>A3 is the sole active inline assumption and maps to §13 and OI-9. A1 and A2 have retirement dispositions. The register has 19 OI rows, five marked closed and one conditional transfer entry. The November 16 G-3 amendment records that the transfer was not invoked for the earlier attempt.</li>
+<li>Relative Markdown file links and heading fragments checked in both reviewed documents resolved against the checkout. Each document&#x27;s updated field reads November 16 although both contain a November 19 credential-design amendment.</li>
+<li>The PRD records G-1, G-2, G-3, G-4 and G-8 as open. G-5, G-6 and G-7 have dated decisions bounded to their evidence. Product re-approval remains pending.</li>
+<li>Review scope was the checked-in requirements and corroborating evidence. The November 19 release-stop state comes from the tracked readback. The November 20 checkout has eight direct submodule revisions ahead of the parent gitlinks. Their branch tips cannot establish qualification of a sealed release candidate.</li>
+<li>The reviewed Git blobs (LF) have SHA-256 digests 5523074e2c12e111e35f92c83505bda467fafe063585de3e2c93372c81260e4a for the PRD and 4103b551bfa1747e3385addfcbf8ce4af6009f15dcae5b9bc4a0d8d78a6c723b for the addendum.</li>
+</ul></div><footer class="report-footer"><div class="meta"><span>Rubric · .agents/skills/bmad-prd/assets/prd-validation-checklist.md</span><span>2026-11-20T11:48:24+00:00</span></div></footer></main></body></html>

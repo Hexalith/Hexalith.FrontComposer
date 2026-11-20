@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PRD Validation: Hexalith.FrontComposer</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+
+    --grade-exc: #16a34a;
+    --grade-good: #65a30d;
+    --grade-fair: #d97706;
+    --grade-poor: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .grade {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: white;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .grade-excellent { background: var(--grade-exc); }
+  .grade-good { background: var(--grade-good); }
+  .grade-fair { background: var(--grade-fair); }
+  .grade-poor { background: var(--grade-poor); }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+</head>
+
+<body><main class="container">
+<header class="report-header"><div class="title"><h1>Hexalith.FrontComposer — Validation Report</h1><div class="subtitle">_bmad-output/planning-artifacts/prd.md</div></div><div class="grade grade-excellent">Excellent</div></header>
+<div class="synthesis"><p>The revised PRD gives Product an actionable gate register and gives adopters testable contracts for the shell, packages and compiler tools. Two details still affect planning and acceptance: OI-19 obscures documentation work already delivered, and the projection recovery metric promises fallback polling even when the adopter has disabled it. G-4 and the readiness milestone remain open on their own evidence and approval requirements.</p><p>Source checks corroborated the OI-19 finding and identified two further discrepancies. The PRD still queues a validator repair completed by Story 15.1, and the addendum describes two planned release-policy inputs alongside fields already enforced. The dated release-stop receipt, runbook approval and stopped G-3 preflight agree with their source records.</p><p>Your November 20 approval receipt matches both reviewed files. Formal D-9 re-approval and G-4 still depend on OI-4 (Fluent 5.1.0), OI-16 (UX and accessibility) and OI-19 (documentation parity). G-1, G-2, G-3 and G-8 also remain open.</p><p>0 critical · 0 high · 4 medium · 2 low</p><p>Working-tree PRD and addendum · FrontComposer main aa016201 · 2026-11-20T15:02:43+00:00</p></div><div class="dimension-summary">
+<div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></div>
+<div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color:var(--verdict-strong)">Strong</div></div>
+<div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color:var(--verdict-strong)">Strong</div></div>
+<div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></div>
+<div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color:var(--verdict-strong)">Strong</div></div>
+<div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></div>
+<div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color:var(--verdict-strong)">Strong</div></div>
+</div>
+<section class="dimension"><details><summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-adequate">Adequate</span></summary><div class="dim-body"><p>Section 0.1 distinguishes the release hold, the selected publication design, and the approvals needed to use it. For G-3 it identifies who stopped the previous attempt, why it stopped, and what a future candidate requires. G-4 identifies three remaining prerequisites. One of those rows gives maintainers too little information to decide whether to schedule implementation, check the existing evidence, or obtain a closure decision.</p></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">OI-19 omits the evidence for work already delivered</h3></header><div class="finding-location">§5.6 FR-23 and §12.2 OI-19, PRD lines 463–464 and 744</div><p class="finding-note">FR-23 describes page inclusion, four status-map areas and a CLI guide link, then assigns catalog/index parity to open OI-19. The implementation already checks current component sources against classified inventory and published contracts, rejects unclassified components, and detects migration catalog/index/guide drift in both directions. The November 1 retrospective reports 155 passing docs-parity cases and 127 passing migration cases on its reviewed build. Stories 15.2/15.3 are done. The remaining OI-19 handoff gives owners no way to identify which coverage or acceptance evidence is outstanding across the entire public surface. Evidence in <code>tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcDocComponentDocumentationContractTests.cs:235,271,363</code>, <code>tests/Hexalith.FrontComposer.Cli.Tests/MigrationCommandTests.cs:1013,1098,1683</code>, <code>_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md:238–239,295–297</code> and <code>sprint-status.yaml:233–236,1128–1137</code> in the same implementation directory.</p><p class="finding-fix"><strong>Suggested change.</strong> Cite the delivered DOC-A/B tests, their bounded evidence and the stale tracker aliases. Identify the remaining surface, evidence identity or owner disposition required for OI-19 before changing its gate status.</p></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">The addendum leaves the implementation state of two release-policy controls ambiguous</h3></header><div class="finding-location">addendum §2, line 36</div><p class="finding-note">It identifies the policy JSON as the executable authority for “Release Owner logins, and attestation capability.” At FrontComposer <code>aa016201</code>, its JSON contains neither <code>release_owner_logins</code> nor <code>attestation_capability</code>. The GOV-1 spine specifies those inputs for the target, and the November 19 credential spec explicitly requires a policy/parser change before Release Owner logins can activate. A reviewer looking for current evaluator enforcement needs to know the fields are outstanding. Evidence in <code>eng/dependency-graph-policy.json</code>, <code>_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md:415–420,1156–1157</code> and <code>_bmad-output/implementation-artifacts/spec-g8-split-publisher-credential-contract.md:34</code>.</p><p class="finding-fix"><strong>Suggested change.</strong> Identify the implemented policy fields and label owner logins and attestation capability as target policy inputs pending implementation and active-policy evidence. Retain G-8’s existing acceptance obligations.</p></article>
+</div></details></section>
+<section class="dimension"><details><summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">Strong</span></summary><div class="dim-body"><p>The adopter, operator and release roles each drive a distinct decision. FR-4 changes the generated form according to the count of editable inputs, and FR-13 permits fresh-row indicators only when a command can identify a materially changed row. Those observable consequences give the framework and its user journeys a concrete purpose.</p></div><div class="findings-list">
+</div></details></section>
+<section class="dimension"><details><summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-strong">Strong</span></summary><div class="dim-body"><p>The promise in §1 that a domain team can describe its operational surface once is tested through UJ-1 and the named Tenants bootstrap proof in SM-1. UJ-3 and SM-10 extend the same thesis to operators by distinguishing a command acknowledgement from confirmation in the projection. SM-C4 and SM-C5 protect the release decision from two misleading signals, a successful workflow and an unverified ledger entry.</p></div><div class="findings-list">
+</div></details></section>
+<section class="dimension"><details><summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-adequate">Adequate</span></summary><div class="dim-body"><p>FR-2 describes the zero-argument command construction contract and FR-21 tells adopters exactly what persists after a partially successful migration. Projection and storage requirements also supply concrete numbers, but their acceptance conditions blur defaults and supported overrides.</p></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Recovery lacks an acceptance case for disabled polling</h3></header><div class="finding-location">§5.3 FR-12, §6 NFR-8 and §9 SM-8, PRD lines 317, 565 and 629</div><p class="finding-note">SM-8 requires “FallbackPolling within one polling interval” and FR-12 promises a restart after closure. FcShellOptions.cs lines 237–241 explicitly permit interval zero. The cited Story 11.2 acceptance criteria distinguish that case: after a terminal hub close the shell records disconnection and avoids the automatic restart loop. ProjectionSubscriptionService.cs line 693 also checks for a positive interval. A valid adopter configuration would fail the metric as written.</p><p class="finding-fix"><strong>Suggested change.</strong> Scope the polling and closed-restart bounds to enabled polling. Give interval zero its own observable disconnection and no-poll acceptance case.</p></article>
+<article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">The storage default reads as a fixed ceiling</h3></header><div class="finding-location">§5.2 FR-9 and §6 NFR-9, PRD lines 275 and 566</div><p class="finding-note">“at most LocalStorageMaxEntries=500” presents 500 as universal. FcShellOptions.cs lines 138–139 set a default of 500 and a supported range of 50 to 10,000, and LocalStorageService.cs line 210 uses the configured value.</p><p class="finding-fix"><strong>Suggested change.</strong> Identify 500 as the default and specify eviction against the configured cap within the supported range.</p></article>
+</div></details></section>
+<section class="dimension"><details><summary><h2>Scope honesty</h2><span class="verdict-pill verdict-strong">Strong</span></summary><div class="dim-body"><p>The opening and §§5.5–5.6 identify the supported local compiler commands, the maintained compatibility host, and the conditions for retiring the host with its consumer plug-in. Section 8.3 explicitly excludes fresh-row markers for server-allocated targets without the required identity proof. The limited local container use remains a disclosed A3 assumption assigned to OI-9. None of those boundaries silently expands milestone scope.</p></div><div class="findings-list">
+</div></details></section>
+<section class="dimension"><details><summary><h2>Downstream usability</h2><span class="verdict-pill verdict-adequate">Adequate</span></summary><div class="dim-body"><p>The status map preserves historical decisions beside the requirements they constrain. Named journeys, stable identifiers and relative source links support extraction into stories and tests. One glossary entry uses attractive UI descriptions where an adopter needs actual attribute values.</p></div><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">The ProjectionRole examples are not all usable attribute values</h3></header><div class="finding-location">§3 Glossary, PRD line 105</div><p class="finding-note">The entry defines an attribute value with “for example list, timeline, card.” ProjectionRole.cs lines 7–21 defines ActionQueue, StatusOverview, DetailRecord, Timeline and Dashboard. An adopter copying List or Card into an annotation would get a compiler error.</p><p class="finding-fix"><strong>Suggested change.</strong> Use the declared enum names as examples and describe each resulting UI shape separately where useful.</p></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">The planning status still queues the original validator repair</h3></header><div class="finding-location">§8.2, PRD line 601</div><p class="finding-note">“The current Story 11.32 validator red state is new PLAN-INT-2 work” appeared under a September snapshot heading. Story 15.1 subsequently repaired the bounded 11.32 issue. The retrospective records a passing default validator run and separate strict-mode attribution failures involving interleaved commits across five Epic 15 story records. A reader using §8.2 to plan remediation can reopen completed work and miss the later defect. Evidence in <code>_bmad-output/implementation-artifacts/sprint-status.yaml:233,1128–1137</code> and <code>_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md:236–237,295</code>.</p><p class="finding-fix"><strong>Suggested change.</strong> Date the original failure and reference the Story 15.1 closure. Route strict-attribution, deferred coverage and stale-alias work through their recorded retrospective actions.</p></article>
+</div></details></section>
+<section class="dimension"><details><summary><h2>Shape fit</h2><span class="verdict-pill verdict-strong">Strong</span></summary><div class="dim-body"><p>A brownfield developer framework needs its public package surface and compatibility promises alongside operator journeys. Sections 2.4, 5.0 and 11 serve those different readers. The addendum houses the detailed release identities, interaction contracts and CLI recovery behavior, and §0.1 keeps the current milestone decision accessible without requiring a reader to reconstruct it from historical amendments.</p></div><div class="findings-list">
+</div></details></section>
+<section class="reviewer-section"><details><summary><h2>Source consistency</h2><span class="reviewer-source">review-source-consistency.md</span></summary><p>Source checks corroborated the OI-19 finding and identified two further discrepancies. The PRD still queues a validator repair completed by Story 15.1, and the addendum describes two planned release-policy inputs alongside fields already enforced. The dated release-stop receipt, runbook approval and stopped G-3 preflight agree with their source records.</p><div class="findings-list">
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">OI-19 omits the evidence for work already delivered</h3></header><div class="finding-location">§5.6 FR-23 and §12.2 OI-19, PRD lines 463–464 and 744</div><p class="finding-note">FR-23 describes page inclusion, four status-map areas and a CLI guide link, then assigns catalog/index parity to open OI-19. The implementation already checks current component sources against classified inventory and published contracts, rejects unclassified components, and detects migration catalog/index/guide drift in both directions. The November 1 retrospective reports 155 passing docs-parity cases and 127 passing migration cases on its reviewed build. Stories 15.2/15.3 are done. The remaining OI-19 handoff gives owners no way to identify which coverage or acceptance evidence is outstanding across the entire public surface. Evidence in <code>tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcDocComponentDocumentationContractTests.cs:235,271,363</code>, <code>tests/Hexalith.FrontComposer.Cli.Tests/MigrationCommandTests.cs:1013,1098,1683</code>, <code>_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md:238–239,295–297</code> and <code>sprint-status.yaml:233–236,1128–1137</code> in the same implementation directory.</p><p class="finding-fix"><strong>Suggested change.</strong> Cite the delivered DOC-A/B tests, their bounded evidence and the stale tracker aliases. Identify the remaining surface, evidence identity or owner disposition required for OI-19 before changing its gate status.</p></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">The planning status still queues the original validator repair</h3></header><div class="finding-location">§8.2, PRD line 601</div><p class="finding-note">“The current Story 11.32 validator red state is new PLAN-INT-2 work” appeared under a September snapshot heading. Story 15.1 subsequently repaired the bounded 11.32 issue. The retrospective records a passing default validator run and separate strict-mode attribution failures involving interleaved commits across five Epic 15 story records. A reader using §8.2 to plan remediation can reopen completed work and miss the later defect. Evidence in <code>_bmad-output/implementation-artifacts/sprint-status.yaml:233,1128–1137</code> and <code>_bmad-output/implementation-artifacts/epic-15-retro-2026-11-01.md:236–237,295</code>.</p><p class="finding-fix"><strong>Suggested change.</strong> Date the original failure and reference the Story 15.1 closure. Route strict-attribution, deferred coverage and stale-alias work through their recorded retrospective actions.</p></article>
+<article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">The addendum leaves the implementation state of two release-policy controls ambiguous</h3></header><div class="finding-location">addendum §2, line 36</div><p class="finding-note">It identifies the policy JSON as the executable authority for “Release Owner logins, and attestation capability.” At FrontComposer <code>aa016201</code>, its JSON contains neither <code>release_owner_logins</code> nor <code>attestation_capability</code>. The GOV-1 spine specifies those inputs for the target, and the November 19 credential spec explicitly requires a policy/parser change before Release Owner logins can activate. A reviewer looking for current evaluator enforcement needs to know the fields are outstanding. Evidence in <code>eng/dependency-graph-policy.json</code>, <code>_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md:415–420,1156–1157</code> and <code>_bmad-output/implementation-artifacts/spec-g8-split-publisher-credential-contract.md:34</code>.</p><p class="finding-fix"><strong>Suggested change.</strong> Identify the implemented policy fields and label owner logins and attestation capability as target policy inputs pending implementation and active-policy evidence. Retain G-8’s existing acceptance obligations.</p></article>
+</div></details></section>
+<div class="mechanical"><h3>Mechanical notes</h3><ul>
+<li>FR-1 through FR-30, including the additional FR-19a, remain identifiable. FR-27 and FR-28 retain their retired status. The 13 NFRs, six named journeys and SM-1 through SM-10 plus SM-2a remain traceable. SM-C1 and SM-C3 have recorded retirement dispositions.</li>
+<li>A3 maps from the inline assumption to §13 and OI-9. A1 and A2 retain their retirement dispositions. G-1, G-2, G-3, G-4 and G-8 are open. G-5, G-6 and G-7 cite dated, bounded acceptances.</li>
+<li>The earlier review’s 13 findings and the subsequent correction to the G-6/G-7 status table were resolved on this revision. The checks covered 31 stable functional requirement IDs, eight package target rows and eight gate states. The repository story-artifact validator passed.</li>
+</ul><h3>Reviewed file identities</h3><ul>
+<li><code>prd.md</code> · SHA-256 <code>656a1f6777d16f0af2a038071d24b47843cfe14a7de694d865d7022c436b51d6</code></li>
+<li><code>prd-addendum-2026-09-08.md</code> · SHA-256 <code>9604e2c70f1d4b63150b7fec7771ad2acebe8ca051b509a3b76d880aa00a0927</code></li>
+</ul><h3>Review and decision records</h3><ul>
+<li><a href="../update/review-update.md">Approval receipt</a></li>
+<li><a href="../update/reconcile-validation.md">Prior findings and dispositions</a></li>
+<li><a href="review-rubric.md">Rubric review</a></li>
+<li><a href="review-source-consistency.md">Source consistency review</a></li>
+</ul></div><footer class="report-footer"><div class="meta"><span>Rubric · .agents/skills/bmad-prd/assets/prd-validation-checklist.md</span><span>2026-11-20T15:02:43+00:00</span></div></footer></main></body></html>
