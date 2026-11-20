@@ -1,6 +1,28 @@
 # Dependency governance source projection
 
-The maintenance selection uses these exact committed root dependencies:
+## 2026-11-20 audit correction
+
+The dependency refresh advances five direct selectors. The exact values for all ten are recorded in the superproject tree. Read them with `git ls-tree HEAD:references`.
+
+| Changed direct dependency | Selected commit |
+| --- | --- |
+| Builds | `dc55dcc2304a402ad297f939f4bf04f2834cf345` |
+| CiCd | `80a95724a8f91decca16e08e44368b58156d7b77` |
+| Memories | `11343d16b9682fd25dc651c5fc32e48d5274c616` |
+| Parties | `f907ff97de4f129ad8897976e6b1fa0c361baf68` |
+| Platform | `5f6845005eaa7f1d4e2481b59642f81b8b214d4a` |
+
+The Builds change confines the OIDC 10 compatibility selection to net10 consumers. The CiCd commit records the workflow-pin proposal in the owning repository. Module adoption and workflow deployment require their own owner decisions.
+
+The Platform projection binds these direct selectors to SHA-256 `70658e4c3675226bd99ad96fdfb435b0ec916c1d3e1fe33e42b03e185f8b7e41` and the selected Platform inventory to `eeca89b48c8f95968ff06e864ce8d8ad9861298b37a32ea8093ad739125a2a2b`. The UI host and router test project files change with the Parties authorization adapter and its tests. The digest for the exact consumer configuration is `b0c6e74e0f565becc06bcf53945880154e148bce1c06d91bd666bdbd71309aab`. Both canonical Platform source files and the set of inventory-only repositories match the previous seal. The graph contains 76 edges.
+
+The seal commit is `afa37b156d1b1ccc6970139c255bb218ff1342c1`. It was pushed and verified on the review branch before this documentation-only child. Local replay under the new seal validated 76 edges. The previous policy rejected the changed Platform pin as expected. Main-branch activation requires the separate pushes and hosted CI and Quality evidence described below.
+
+The combined host passed all 29 Debug UI tests. In the interactive Keycloak test, the verified tenant owner made a bearer-authenticated Parties query. A tenant reader with the same realm Admin role made none. Both signed-out sessions were challenged on the next protected request.
+
+## Historical maintenance selection
+
+The November 11 maintenance selection used these direct commits.
 
 | Root dependency | Selected commit |
 | --- | --- |
@@ -14,8 +36,8 @@ The maintenance selection uses these exact committed root dependencies:
 | Hexalith.PolymorphicSerializations | `e3b455fcdbfdb702c9b74491778f7adaa6ce3625` |
 | Hexalith.Tenants | `6188ea48cab9fdf4207072135c66aab5a7b7fe32` |
 
-The current Platform inventory, two unchanged canonical source-file digests, consumer
-configuration, root Builds source and root selectors are resealed in
+That Platform inventory, the two canonical source-file digests, consumer
+configuration, root Builds source and root selectors were resealed in
 `dependency-graph-policy.json`. Platform remains evidence-only, with only the
 existing canonical source pair consumed by the AppHost. All nine repositories
 were fetched and synchronized individually; nested checkouts were not moved or
