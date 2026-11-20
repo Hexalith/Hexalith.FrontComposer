@@ -49,6 +49,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />
+    <InternalsVisibleTo Include="Hexalith.FrontComposer.UI.Tests" />
   </ItemGroup>
 
   <Target Name="RemoveStandaloneUiHostRootAssets"

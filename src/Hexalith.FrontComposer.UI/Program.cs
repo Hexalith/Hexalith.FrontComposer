@@ -1,5 +1,7 @@
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.UI.Services;
 using Hexalith.Parties.AdminPortal.Components;
+using Hexalith.Parties.AdminPortal.Services;
 using Hexalith.Parties.ConsumerPortal.Components;
 using Hexalith.Parties.UI;
 using Hexalith.Parties.UI.Authentication;
@@ -43,12 +45,15 @@ if (authEnabled)
         oidcAuthority!,
         builder.Configuration["Authentication:OpenIdConnect:ClientId"]!,
         builder.Configuration["Authentication:OpenIdConnect:ClientSecret"]!,
-        tenantClaimType: "eventstore:current-tenant",
+        tenantClaimType: PartiesAdminAuthorizationService.CurrentTenantClaim,
         userClaimType: "sub",
         roleClaimType: "roles"));
 }
 
 builder.Services.AddHexalithTenantsUiModule(builder.Configuration, authEnabled);
+// The combined UI reads through the caller-bound Tenants gateway. The standalone Parties
+// registration is a TryAdd fallback for hosts with a local tenant projection store.
+builder.Services.AddScoped<IAdminPortalAuthorizationService, PartiesAdminAuthorizationService>();
 builder.Services.AddHexalithPartiesUiModule(builder.Configuration, authEnabled);
 
 WebApplication app = builder.Build();

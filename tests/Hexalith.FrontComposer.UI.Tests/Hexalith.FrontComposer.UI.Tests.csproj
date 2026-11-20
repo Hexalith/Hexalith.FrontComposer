@@ -5,17 +5,26 @@
     <!-- The UI host owns source-mode properties for its module project graph. Rebuilding its
          transitive modules here drops those properties and mixes published/source Shell APIs. -->
     <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+    <_HostModuleProperties>$(_HexalithSourceReferenceProperties);CustomAfterMicrosoftCommonTargets=$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '../../src/Hexalith.FrontComposer.UI/DropPublishedFrontComposerAssemblies.targets'))</_HostModuleProperties>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.UI\Hexalith.FrontComposer.UI.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
+    <PackageReference Include="NSubstitute" />
     <PackageReference Include="bunit" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.v3.assert" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseHexalithProjectReferences)' == 'true'">
+    <ProjectReference Include="$(HexalithPartiesRoot)/src/Hexalith.Parties.AdminPortal/Hexalith.Parties.AdminPortal.csproj" AdditionalProperties="$(_HostModuleProperties)" />
+    <ProjectReference Include="$(HexalithTenantsRoot)/src/Hexalith.Tenants.UI/Hexalith.Tenants.UI.csproj" AdditionalProperties="$(_HostModuleProperties)" />
+    <ProjectReference Include="$(HexalithTenantsRoot)/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" AdditionalProperties="$(_HostModuleProperties)" />
+    <ProjectReference Include="$(HexalithEventStoreRoot)/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj" AdditionalProperties="$(_HostModuleProperties)" />
+    <ProjectReference Include="$(HexalithEventStoreRoot)/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" AdditionalProperties="$(_HostModuleProperties)" />
   </ItemGroup>
   <Import Project="..\..\src\Hexalith.FrontComposer.UI\DropPublishedFrontComposerAssemblies.targets" />
 </Project>
