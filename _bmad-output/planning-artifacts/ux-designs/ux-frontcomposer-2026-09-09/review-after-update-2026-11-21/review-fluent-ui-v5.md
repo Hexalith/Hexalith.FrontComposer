@@ -1,0 +1,28 @@
+# Fluent UI implementation alignment
+
+The updated handoff specifies the observable behavior for all five items in this lens. Three product behaviors still need implementation work. The affected surfaces are Module navigation on narrow screens, annotated status cells, and the visible command summary when status polling is disabled. Settings density and the lifecycle mockup’s account control match the revised handoff.
+
+## High
+
+**FL-1 · The hamburger provides no Module destination on narrow screens.** A fresh Chromium session opened Counter.Web Home with the Counter Module available. At 320 CSS px, Enter opened “Primary navigation” with only its title and Close button. At 900 CSS px, neither Enter nor a click exposed the dialog or the Module list. The 1440 px rail successfully navigated to `/counter/counter-projection`. Resizing that page to 320 px produced the same empty drawer. The default shell removes its Navigation layout item below CompactDesktop and gives the hamburger no navigation content. The responsive specification now records the observed gap. [Responsive contract](../EXPERIENCE.md#responsive--platform) · [Shell composition](../../../../../src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor) · [Hamburger](../../../../../src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor)
+
+Provide the authorized Module list once on the active narrow navigation surface. Check cold Phone and Tablet loads and a Desktop-to-Phone resize. Use the keyboard to activate Counter and verify the selected default tab, destination-heading focus, and a single current Module when navigation reopens.
+
+## Medium
+
+**FL-2 · Generated status cells have no persistent visible label.** In the generated status grid, all six annotated enum cells had a named glyph and empty rendered cell text at rest. Their tooltips were hidden in ordinary and forced colors. Focusing Warning revealed its tooltip. The revised design records the gap and requires a visible label beside the glyph. [Working visual contract](../DESIGN.md#components) · [UX-DR2](../../../ux-design.md#ux-dr2---semantic-status-slots) · [Status cell](../../../../../src/Hexalith.FrontComposer.Shell/Components/Badges/FcStatusIcon.razor)
+
+Display the localized status text alongside each glyph. Verify all six cells at rest with and without forced colors and preserve their contextual accessible names.
+
+**F3 · The pending summary claims active checks when polling is disabled.** The timing and zero-value rules are now documented. With `Hexalith:Shell:PendingCommandPollingIntervalMs=0`, submitting Batch Increment on the Counter page displayed “BatchIncrementCommand is still pending. EventStore accepted it and FrontComposer is checking status.” The summary had `aria-live="off"` and later displayed the confirmed outcome. This observation concerns the visible summary. AM-17 already uses neutral copy. Source inspection confirms a zero interval disables the polling timer, a zero per-tick budget returns before status work, and the summary selects its localized sentence solely from the Pending status. [Working lifecycle contract](../EXPERIENCE.md#command-authorization-validation-and-lifecycle) · [Polling driver](../../../../../src/Hexalith.FrontComposer.Shell/Infrastructure/PendingCommands/PendingCommandPollingDriver.cs) · [Polling coordinator](../../../../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandPollingCoordinator.cs) · [Summary formatter](../../../../../src/Hexalith.FrontComposer.Shell/Components/EventStore/FcPendingCommandSummary.razor.cs) · [English resource](../../../../../src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx)
+
+Use pending copy that remains accurate when the shell makes zero status requests. Exercise each disabling option separately with a pending operation. Keep the visual summary silent and preserve the mounted wrapper’s acknowledgement-based deadline.
+
+## Resolved
+
+- **FL-3 · Selected and effective density.** Choosing Compact in Settings left the page at Comfortable at 900 CSS px. The Compact radio remained selected and Settings explained the viewport override. At 1440 px, selecting Compact applied it to the page. The revised handoff covers this difference, silent entry and hydration, and the subsequent effective-change announcement. The announcer source and its component tests cover speech scheduling. [Settings behavior](../EXPERIENCE.md#component-patterns) · [Density announcer tests](../../../../../tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcDensityAnnouncerTests.cs)
+- **FL-4 · Account control in the lifecycle mockup.** In the updated offline reference, the closed Account control showed the avatar initial M. Enter exposed Marc inside the account disclosure, and a second Enter closed it. This matches the specified closed-header treatment. [Lifecycle mockup](../mockups/key-command-lifecycle.html) · [Account menu](../../../../../src/Hexalith.FrontComposer.Shell/Components/Layout/FcAccountMenu.razor)
+
+## Evidence scope
+
+November 21, 2026. Local Counter.Web Release sample built from FrontComposer `431aa71b` and the recorded Builds catalog `e1380b81`, Fluent Components and Icons 5.1.0, .NET SDK 11.0.100. The sample ran in Test with its specimen routes enabled and the pending-command polling interval set to zero. Generated statuses were checked on the type specimen with `generatedGrid=true&accessibilityScenarios=true`. Chromium supplied the keyboard, rendered-text and accessibility-tree observations. The local sample used specimen data. Native assistive technology, a deployed tenant and the hosted Quality lane were outside this run.

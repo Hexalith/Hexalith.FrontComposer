@@ -3,8 +3,8 @@ name: Hexalith Common Application UX
 description: Common visual identity for Hexalith web applications composed through FrontComposer and Fluent UI Blazor V5.
 status: accepted-supplement
 product_approval: pending-reapproval
-updated: 2026-09-09
-reconciliation_revision: oi-16-2026-09-09
+updated: 2026-11-21
+reconciliation_revision: prd-and-architecture-2026-11-21
 sources:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/prd-addendum-2026-09-08.md
@@ -93,9 +93,9 @@ not a fill for headers, navigation, footers, dashboards, or tab panels.
 All colors inherit from the active Fluent V5 theme and Fluent 2 tokens. The semantic references in
 frontmatter intentionally have no product-owned hex values: repository policy forbids redefining the
 theme. `--fc-color-accent`, when an implementation exposes it, aliases the active Fluent V5 accent
-role and cannot define an independent seed or palette. Status colors are not FrontComposer
+foreground role `--colorBrandForeground1`. The shell uses `FcShellOptions.AccentColor` (default `#0097A7`) to seed the Fluent brand ramp. Components consume the resulting theme roles. Status colors are not FrontComposer
 pseudo-tokens: each owning Fluent component supplies its supported semantic appearance/parameters and
-active-theme roles, while UX-VC-1 defines the required observable contrast and fallback.
+active-theme roles, while UX-VC-1 defines the required observable contrast and fallback. Both Fluent Components and Icons select version 5.1.0 GA at the recorded catalog revision. OI-4 tracks the decision for that exact identity. [Catalog and decision](../../docs/fluent-ui-v5-contingency.md)
 
 ### UX-VC-1 - Contrast And Forced-Colors Matrix
 
@@ -103,10 +103,10 @@ active-theme roles, while UX-VC-1 defines the required observable contrast and f
 | --- | --- | --- | --- | --- |
 | VC-01 | Primary text on canvas/raised/chrome | `{colors.foreground-primary}` meets 4.5:1 for normal text and 3:1 for large text on each owning surface | `CanvasText` on `Canvas`; inherited system selection remains intact | Computed-style contrast in both themes plus forced-colors snapshot |
 | VC-02 | Secondary/caption text | Inherited role meets the applicable text ratio; never use low contrast for required instructions, status, or errors | `CanvasText`; disabled-only content may use `GrayText` | Computed-style assertion for every changed pair |
-| VC-03 | Current navigation/tab | Accent/thread plus persistent current marker and accessible current/selected state; meaningful boundary meets 3:1 | System outline/border and visible current text; never background color alone | Current state visible with authored colors suppressed |
+| VC-03 | Current navigation/tab | Accent/thread plus persistent current marker and accessible current/selected state; meaningful boundary meets 3:1 | System outline/border and visible current text; never background color alone | Check current, focused and current-plus-focused Module and tab controls with authored colors suppressed. Keyboard focus must remain visibly distinct when selection is already indicated |
 | VC-04 | Keyboard focus | Focus indicator meets 3:1 against adjacent colors and is distinct from selection/current state | `Highlight`/`CanvasText` or system focus outline; `forced-color-adjust: auto` | Keyboard screenshot + computed geometry/contrast |
 | VC-05 | Status, stale, reconnect, lifecycle | Icon/shape and visible status text meet non-text/text ratios; semantic color is supplemental | `CanvasText` icon/text with system border; state name remains visible | One snapshot per state family in light/dark/forced colors |
-| VC-06 | Fresh row | Visible “New/Updated” text and icon/shape accompany any accent/background treatment | System border plus visible state text/icon; no animation or fill dependency | Appearance/expiry snapshots and DOM-state assertion |
+| VC-06 | Fresh row | One cue per eligible entry above the grid. Its info icon and default localized text “Updated row: {EntityKey}.” identify the row | System border plus visible state text/icon; no animation or fill dependency | Check placement, visible row identity and silent removal under SS-48 |
 | VC-07 | Validation/error/rejection | Error summary, field relationship, icon, and text remain distinct; error color is supplemental | `CanvasText` plus system border/outline; invalid relationship remains in DOM | Computed contrast + semantic DOM assertion |
 | VC-08 | Disabled/unavailable | Disabled state is distinguishable from enabled without color alone and retains readable explanation where needed | `GrayText` plus native disabled semantics; no opacity-only distinction | State comparison in all modes |
 | VC-09 | No tenant/no access | Neutral panel, heading, explanation, and recovery action use normal text/action roles | `Canvas`/`CanvasText` with system button/link treatment | Theme/forced-colors snapshots plus accessible-name assertion |
@@ -118,7 +118,7 @@ module palettes, and `forced-color-adjust: none` without a component-specific re
 
 Typography is Fluent-owned. Use the inherited text roles and component parameters instead of custom
 font ramps. The ownership trace remains: `Typography`, `FcTypoToken`, and `TypographyStyle` ship from
-the net10-only `Hexalith.FrontComposer.Contracts.UI` package/assembly under
+the `net11.0` `Hexalith.FrontComposer.Contracts.UI` package/assembly under
 `Hexalith.FrontComposer.Contracts.Rendering`; the nine mappings and
 `ContractsMetadata.TypographyMappingVersion = "3.1.0"` are unchanged.
 
@@ -142,11 +142,13 @@ Layout uses FrontComposer and inherited Fluent V5 primitives. Multiple sibling t
 region stay outside. `FcPageToolbar` owns the public search/filter/view/action surface; its internal
 composition is not a separately promised API.
 
+[Responsive navigation reference](ux-designs/ux-frontcomposer-2026-09-09/mockups/key-responsive-navigation.html)
+
 ### UX-RF-1 - Reflow, Zoom, Target, And Focus Geometry
 
 | Surface | 320 CSS pixels / 400% zoom | Target-size rule | Unobscured-focus rule |
 | --- | --- | --- | --- |
-| `FrontComposerShell` / `FrontComposerNavigation` | Drawer/rail and content form one reading-order stream; no page-level horizontal scroll | Skip, account, settings, menu, hamburger, and navigation actions are at least 24×24 CSS px | Skip target, navigation, and route heading clear sticky header/footer |
+| `FrontComposerShell` / `FrontComposerNavigation` | The authorized Module destinations remain reachable. An open modal drawer contains keyboard focus and returns it on Escape. UX-DR3 records the narrow-shell implementation gap | Skip, account, settings, menu, hamburger, and navigation actions are at least 24×24 CSS px | Skip target, navigation, and route heading clear sticky header/footer |
 | Home directory | Module cards and their authorized CTAs stack without content or operation loss | Card links, CTAs, refresh, and other Home actions are at least 24×24 CSS px | Focused card/action remains entirely outside sticky chrome and transient messages |
 | `FcPageTabs` / `FcPageTab` | Tab strip may own horizontal scrolling; selected tab and panel remain associated | Each tab meets 24×24 CSS px or records an applicable standard exception | Active tab and ring remain fully visible inside tab-strip scrollport |
 | `FcPageToolbar` | Controls wrap or enter an accessible overflow without reordering focus | Search, filter, view, overflow, and actions meet 24×24 CSS px | Expanded popover/menu and invoking control remain visible |
@@ -187,7 +189,7 @@ V5 component owns its visual tokens; it does not waive UX-VC-1 or the canonical 
 | `FcPageTab` | Tab/header and owned panel remain visually associated; disabled and selected states satisfy UX-VC-1. |
 | `FcPageToolbar` | Search/filter/view/overflow/action composition follows inherited control visuals and responsive wrapping; internal Fluent composition is not public contract. |
 | `FcCommandPalette` | Bounded overlay with visible query focus, active result, no-results state, and close affordance. |
-| `FcSettingsDialog` | Fluent-owned dialog surface with labelled heading, bounded scroll, and visible safe actions. |
+| `FcSettingsDialog` | Fluent dialog with labelled heading, bounded scroll and visible actions. On Tablet or Phone, Settings previews a saved preference that differs from effective Comfortable and displays the viewport explanation. |
 | `FcDestructiveConfirmationDialog` | Destructive consequence and both actions are explicit; Confirm may use primary appearance while the non-destructive Cancel receives initial focus. Visual appearance never changes the safe focus contract. |
 | `FcFormAbandonmentGuard` | In-flow warning appears only after the 30-second edit threshold; “Stay on form” receives initial focus and “Leave anyway” is the explicit destructive choice. It is not a modal dialog. |
 | `FcLifecycleWrapper` | Visible state name, icon, explanatory text, and permitted actions for every UX-SS-1 lifecycle state; pulse is non-essential. |
@@ -195,10 +197,12 @@ V5 component owns its visual tokens; it does not waive UX-VC-1 or the canonical 
 | `FcProjectionEmptyPlaceholder` | Heading, explanation, and at most one authorized CTA; no decorative false urgency. |
 | `FcProjectionConnectionStatus` | Persistent text/icon distinction for stale, reconnecting, fallback, and recovery; no color-only dot. |
 | `FcPendingCommandSummary` | Bounded pending/rejected summary; rows keep visible state text and recovery/action hierarchy. |
-| `FcNewItemIndicator` | Static icon/shape plus visible text; initial accent/animation is optional, never semantic; expiry leaves normal row appearance. |
+| `FcNewItemIndicator` | Above-grid info icon and visible row-specific text per VC-06. A nonblank `Text` replaces the visible label while the shared AM-21 announcement still identifies the row. An adopter override must preserve a visible row identifier. |
 | `FluentAccordion` (inherited) | Used for multiple sibling titled sections; the primary item is expanded by default. |
 | `FluentBadge` (inherited) | Numeric counts only; not used as the sole carrier for semantic status. |
-| `FluentTooltip` (inherited) | Supplemental concise label on hover and keyboard focus; never the sole accessible name or state text. |
+| `FluentTooltip` (inherited) | Supplemental concise label on hover and keyboard focus. At rest the semantic status needs visible text beside its icon. UX-DR2 records the outstanding generated-cell implementation. |
+
+[Command lifecycle reference](ux-designs/ux-frontcomposer-2026-09-09/mockups/key-command-lifecycle.html)
 
 ## UX-RM-1 - Reduced-Motion Matrix
 
@@ -208,7 +212,7 @@ V5 component owns its visual tokens; it does not waive UX-VC-1 or the canonical 
 | Skeleton/loading shimmer | Inherited when present | Static skeleton | Loading text/status semantics |
 | Lifecycle Syncing/pending pulse | Optional restrained pulse | No pulse/loop | Visible state text/icon and AM-12 |
 | Reconnect/recovery transition | Optional short emphasis | Immediate state swap | Connection text/icon and AM-05–AM-07 |
-| Fresh-row arrival/expiry | Optional short emphasis | Static `New/Updated` cue; silent removal | Visible text/icon/shape and AM-21 |
+| Fresh-row arrival/removal | Optional short emphasis above the grid | Static info icon and visible row-specific text, removed silently | AM-21 on eligible appearance only. Materialization, filter dismissal, expiry and scope changes stay silent |
 | Focus/scroll | Instant or minimal browser behavior | No smooth animated scrolling; place focus immediately | Focus indicator and UX-FM-1 destination |
 
 ## Do's and Don'ts

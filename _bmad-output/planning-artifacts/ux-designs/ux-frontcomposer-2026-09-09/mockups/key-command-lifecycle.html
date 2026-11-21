@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Command lifecycle</title>
+  <style>
+    /* DESIGN.md: Colors, Layout & Spacing, Components. EXPERIENCE.md: State Patterns,
+       Command Form and Lifecycle, Accessibility Floor and UJ-3. The D-8 authority is
+       ux-design.md, specifically UX-AM-1, UX-VR-1, UX-FM-1 and UX-SS-1. */
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: #242424;
+      background: #f4f3ef;
+      --accent: var(--colorBrandForeground1, #006873);
+      --border: var(--colorNeutralStroke2, #d5d5d2);
+      --muted: var(--colorNeutralForeground2, #525451);
+    }
+    * { box-sizing: border-box; }
+    body { max-width: 76rem; margin: auto; padding: clamp(.75rem, 3.5vw, 3rem); }
+    .reference { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(1.6rem, 3vw, 2.1rem); line-height: 1.2; font-weight: 600; }
+    h2 { font-size: 1.75rem; margin-block-end: .8rem; font-weight: 600; }
+    h3 { font-size: 1.1rem; font-weight: 600; }
+    label { display: block; margin-bottom: .25rem; color: var(--muted); font-size: .825rem; font-weight: 600; }
+    select { color: inherit; background: white; border: 1px solid #767873; border-radius: 4px; font: inherit; padding: .44rem; width: min(100%, 19rem); }
+    .picker { max-width: 100%; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .browser { border: 1px solid #b6b7b4; border-radius: 8px; background: white; }
+    .chrome, .shell-header { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; border-bottom: 1px solid var(--border); }
+    .chrome { padding: .55rem .85rem; border-radius: 8px 8px 0 0; background: #eaeae7; color: var(--muted); font-size: .78rem; }
+    .traffic { display: flex; gap: .28rem; }
+    .traffic i { display: block; width: .45rem; height: .45rem; border-radius: 50%; background: #999c97; }
+    .address { padding: .18rem .65rem; background: #f8f8f6; border-radius: 4px; overflow-wrap: anywhere; }
+    .shell-header { padding: .75rem 1rem; font-size: .88rem; background: #fafaf9; }
+    .shell-name { font-weight: 600; }
+    .account { position: relative; margin-inline-start: auto; }
+    .account summary { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 50%; background: #e5e7e5; font-weight: 600; list-style: none; cursor: pointer; }
+    .account summary::-webkit-details-marker { display: none; }
+    .account p { position: absolute; z-index: 1; inset-inline-end: 0; min-width: 9rem; margin-top: .3rem; padding: .7rem 1rem; border: 1px solid var(--border); border-radius: 4px; background: white; }
+    .shell { display: grid; grid-template-columns: 72px minmax(0,1fr); }
+    .rail { border-inline-end: 1px solid var(--border); background: #fafaf9; border-bottom-left-radius: 8px; }
+    .rail-item { display: grid; justify-items: center; gap: .3rem; padding: .7rem .1rem; font-size: .72rem; }
+    .rail-item svg, .menu { height: 1.25rem; width: 1.25rem; fill: none; stroke: currentColor; stroke-width: 1.7; }
+    .current { color: var(--accent); font-weight: 650; border-inline-start: 3px solid currentColor; background: #f2f5f4; }
+    .workspace { padding: clamp(.8rem, 3vw, 2.5rem); min-width: 0; }
+    .tabs { display: flex; gap: 1.2rem; border-bottom: 1px solid var(--border); font-size: .92rem; margin-bottom: 1.5rem; }
+    .tabs span { padding-bottom: .6rem; }
+    .tab-active { border-bottom: 2px solid var(--accent); font-weight: 600; }
+    .command { max-width: 53rem; border: 1px solid var(--border); border-radius: 6px; }
+    .command-content { padding: clamp(.75rem, 2vw, 1.35rem); }
+    .fields { display: grid; grid-template-columns: minmax(4rem,.55fr) minmax(7rem,1.3fr) minmax(7rem,.8fr); gap: .9rem; margin: 1rem 0 1.15rem; }
+    .fields dt, .status-title { font-size: .82rem; color: var(--muted); font-weight: 600; }
+    .fields dd { margin: .25rem 0 0; padding: .45rem .55rem; background: #f8f8f6; border: 1px solid var(--border); border-radius: 4px; font-size: .92rem; overflow-wrap: anywhere; }
+    .status-title { color: inherit; margin: 0 0 .45rem; }
+    .feedback { padding: .9rem 1rem; background: #f6f7f6; border: 1px solid var(--border); border-inline-start: 3px solid var(--accent); border-radius: 4px; }
+    .state { display: inline-flex; align-items: center; gap: .5rem; font-size: 1rem; font-weight: 650; overflow-wrap: anywhere; }
+    .icon { display: inline-grid; place-items: center; width: 1.2rem; min-width: 1.2rem; height: 1.2rem; border: 1.5px solid currentColor; border-radius: 50%; font-weight: bold; font-size: .85rem; line-height: 1; }
+    .message { margin-top: .4rem; font-size: .97rem; line-height: 1.5; }
+    .explanation { margin-top: .6rem; font-size: .87rem; line-height: 1.5; color: var(--muted); }
+    .notes { margin-top: 1rem; line-height: 1.55; color: var(--muted); font-size: .84rem; }
+    .notes summary { cursor: pointer; width: fit-content; color: var(--accent); }
+    .notes p { margin-top: .45rem; max-width: 68ch; }
+    .panel { display: none; }
+    @media (min-width: 1024px) and (max-width: 1365.98px) {
+      .shell { grid-template-columns: 48px minmax(0,1fr); }
+      .rail-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    }
+    @media (max-width: 1023.98px) {
+      .shell { grid-template-columns: minmax(0,1fr); }
+      .rail { display: none; }
+    }
+    @media (max-width: 42rem) {
+      .fields { grid-template-columns: 1fr; }
+    }
+    @media (forced-colors: active) {
+      .current, .tab-active, .feedback { border-color: Highlight; }
+      .icon { color: CanvasText; }
+    }
+    body:has(option[value="submitting"]:checked) [data-snapshot="submitting"] { display: block; }
+    body:has(option[value="acknowledged"]:checked) [data-snapshot="acknowledged"] { display: block; }
+    body:has(option[value="syncing"]:checked) [data-snapshot="syncing"] { display: block; }
+    body:has(option[value="confirmed"]:checked) [data-snapshot="confirmed"] { display: block; }
+    body:has(option[value="idempotent"]:checked) [data-snapshot="idempotent"] { display: block; }
+    body:has(option[value="rejected"]:checked) [data-snapshot="rejected"] { display: block; }
+    body:has(option[value="review"]:checked) [data-snapshot="review"] { display: block; }
+    body:has(option[value="warning"]:checked) [data-snapshot="warning"] { display: block; }
+    body:has(option[value="degraded"]:checked) [data-snapshot="degraded"] { display: block; }
+    body:has(option[value="exhausted"]:checked) [data-snapshot="exhausted"] { display: block; }
+  </style>
+</head>
+<body>
+  <header class="reference">
+    <h1>Command lifecycle</h1>
+    <div class="picker">
+      <label for="state">Preview state</label>
+      <select id="state">
+        <option value="submitting">Submitting</option>
+        <option value="acknowledged" selected>Acknowledged</option>
+        <option value="syncing">Syncing</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="idempotent">IdempotentConfirmed</option>
+        <option value="rejected">Rejected</option>
+        <option value="review">NeedsReview</option>
+        <option value="warning">Warning</option>
+        <option value="degraded">Degraded · polling active</option>
+        <option value="exhausted">Degraded · polling exhausted</option>
+      </select>
+    </div>
+  </header>
+  <main class="browser" aria-label="Counter sample preview">
+    <div class="chrome"><span class="traffic" aria-hidden="true"><i></i><i></i><i></i></span><span class="address">/counter/overview</span></div>
+    <div class="shell-header">
+      <svg class="menu" aria-hidden="true" viewBox="0 0 20 20"><path d="M2 5h16M2 10h16M2 15h16"/></svg>
+      <span class="shell-name">Counter sample</span><details class="account"><summary aria-label="Account"><span aria-hidden="true">M</span></summary><p>Marc</p></details>
+    </div>
+    <div class="shell">
+      <div class="rail" aria-hidden="true">
+        <div class="rail-item"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="m2 9 8-7 8 7v8h-6v-5H8v5H2z"/></svg><span class="rail-label">Home</span></div>
+        <div class="rail-item current" aria-current="page"><svg aria-hidden="true" viewBox="0 0 20 20"><rect x="3" y="2" width="14" height="16" rx="2"/><path d="M6 6h8M6 10h2m3 0h3m-8 4h2m3 0h3"/></svg><span class="rail-label">Counter</span></div>
+      </div>
+      <div class="workspace">
+        <h2>Counter</h2>
+        <div class="tabs"><span class="tab-active" aria-current="page">Overview</span><span>Projection</span></div>
+        <section class="command" aria-labelledby="command">
+          <div class="command-content">
+            <h3 id="command">Batch increment</h3>
+            <dl class="fields" aria-label="Submitted command values">
+              <div><dt>Amount</dt><dd>3</dd></div>
+              <div><dt>Note</dt><dd>Stock count adjustment</dd></div>
+              <div><dt>Effective date</dt><dd>21 Nov 2026</dd></div>
+            </dl>
+            <p class="status-title">Command status</p>
+            <div class="feedback">
+              <div class="panel" data-snapshot="submitting"><span class="state"><span class="icon" aria-hidden="true">↑</span>Submitting</span></div>
+              <div class="panel" data-snapshot="acknowledged"><span class="state"><span class="icon" aria-hidden="true">…</span>Acknowledged</span></div>
+              <div class="panel" data-snapshot="syncing"><span class="state"><span class="icon" aria-hidden="true">↻</span>Syncing</span></div>
+              <div class="panel" data-snapshot="confirmed"><span class="state"><span class="icon" aria-hidden="true">✓</span>Confirmed</span></div>
+              <div class="panel" data-snapshot="idempotent"><span class="state"><span class="icon" aria-hidden="true">✓</span>Idempotent confirmed</span></div>
+              <div class="panel" data-snapshot="rejected"><span class="state"><span class="icon" aria-hidden="true">×</span>Rejected</span></div>
+              <div class="panel" data-snapshot="review"><span class="state"><span class="icon" aria-hidden="true">?</span>Needs review</span></div>
+              <div class="panel" data-snapshot="warning"><span class="state"><span class="icon" aria-hidden="true">!</span>Warning</span></div>
+              <div class="panel" data-snapshot="degraded"><span class="state"><span class="icon" aria-hidden="true">…</span>Degraded · polling active</span></div>
+              <div class="panel" data-snapshot="exhausted"><span class="state"><span class="icon" aria-hidden="true">!</span>Degraded · polling exhausted</span></div>
+              <div class="message" role="status" aria-live="polite" aria-atomic="true">
+                <p class="panel" data-snapshot="submitting">Submitting command.</p>
+                <p class="panel" data-snapshot="acknowledged">Command accepted. Waiting for confirmation.</p>
+                <p class="panel" data-snapshot="syncing">Command accepted. Updating the view.</p>
+                <p class="panel" data-snapshot="confirmed">Command confirmed.</p>
+                <p class="panel" data-snapshot="idempotent">Command confirmed.</p>
+                <p class="panel" data-snapshot="rejected">Command rejected. Review the message and try again.</p>
+                <p class="panel" data-snapshot="review">Command needs review before its result can be confirmed.</p>
+                <p class="panel" data-snapshot="warning">Command completed with a warning. Review the details.</p>
+                <p class="panel" data-snapshot="degraded">Confirmation is taking longer than expected. Review status or continue working.</p>
+                <p class="panel" data-snapshot="exhausted">Confirmation was not received. Review status later or continue working.</p>
+              </div>
+              <p class="panel explanation" data-snapshot="submitting">The request is in progress. A second submission is blocked while this command is active.</p>
+              <p class="panel explanation" data-snapshot="acknowledged">The service accepted the request. The counter’s updated value is still unconfirmed.</p>
+              <p class="panel explanation" data-snapshot="syncing">With the default polling interval, the shell checks for confirmation every second. You can continue working.</p>
+              <p class="panel explanation" data-snapshot="confirmed">The status or projection confirms the requested outcome. You can inspect the refreshed counter.</p>
+              <p class="panel explanation" data-snapshot="idempotent">The requested result was already confirmed. You can inspect the counter without submitting it again.</p>
+              <p class="panel explanation" data-snapshot="rejected">The command did not apply. Your input is preserved for correction before a new submission.</p>
+              <p class="panel explanation" data-snapshot="review">Automatic tracking has ended. Review the available status with the operator responsible for this counter.</p>
+              <p class="panel explanation" data-snapshot="warning">This is the terminal outcome for this command. Check the reported warning before deciding whether another action is needed.</p>
+              <p class="panel explanation" data-snapshot="degraded">With default timing, 10 seconds have elapsed. Checks continue every second until an outcome arrives or total polling time reaches 120 seconds.</p>
+              <p class="panel explanation" data-snapshot="exhausted">The default 120-second polling budget has elapsed. Local polling has ended. A later status check is a separate operation.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <details class="notes">
+    <summary>Keyboard and announcement behavior</summary>
+    <p>The preview uses the default polling and retry settings and default idempotent-confirmation copy. Hosts can configure them. The selector keeps keyboard focus as you inspect individual states. In the running shell, a meaningful transition is announced once for the active operation. Progress announcements coalesce over 250 ms. Routine polls and repeated terminal observations stay silent.</p>
+    <p>This example shows a rejection without a field mapping. A rejection linked to an editable field focuses the linked error summary, preserves the entered values, and suppresses the separate polite rejection announcement.</p>
+  </details>
+</body>
+</html>

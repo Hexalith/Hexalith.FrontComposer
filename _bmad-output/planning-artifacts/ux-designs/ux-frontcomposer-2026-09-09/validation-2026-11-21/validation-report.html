@@ -1,0 +1,254 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FrontComposer UX validation</title><style>
+
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+
+
+a { color: #204971; text-underline-offset: .15em; }
+a:focus-visible, summary:focus-visible { outline: 3px solid #16487a; outline-offset: -3px; }
+.finding-title { margin: 0; } .finding-note, .finding-fix { margin: .5em 0; }
+.finding-links { font-size: .9em; overflow-wrap: anywhere; } code, .subtitle { overflow-wrap: anywhere; }
+.verdict-pill, .badge { color: #191714; } .badge-sev-low { color: #35485a; }
+.dim-verdict { color: #292524; } .finding-title { min-width: 0; }
+@media(max-width: 600px) { .container { padding: 20px 12px; } .dimension-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } section summary { flex-wrap: wrap; } .reviewer-source { display: none; } }
+@media(prefers-reduced-motion: reduce) { section summary::before { transition: none; } }
+@media print { .container { max-width: 100%; } details::details-content { display: contents; } }
+
+</style></head><body><main class="container"><header class="report-header"><div class="title"><h1>FrontComposer UX validation</h1><p class="subtitle">Working UX documents on FrontComposer 431aa71b · 2026-11-21T12:45+01:00</p></div></header>
+<div class="synthesis"><p><strong>13 distinct findings · 0 critical · 5 high · 6 medium · 2 low</strong></p>
+<p>All six named journeys and all 21 component groups are present. Two handoff instructions could change what an operator sees. UJ-3 describes a failed optional retry as a degraded command, and the grid specification places the fresh-row cue inside the row even though the approved design puts it above the grid.</p>
+<p>In the default Counter shell, the hamburger offered no Module destination at phone or tablet width. The responsive navigation mockup contains Module links, but keyboard focus can move behind its open drawer, and its current items lose visible focus in forced colors. Each of the ten command lifecycle previews displayed the expected default announcement.</p>
+<p>The rubric and accessibility reviews independently observed two keyboard behaviors. Module-route focus and Module Tab focus have separate acceptance criteria (FM-01 and FM-02). Each appears once in the counts.</p>
+</div><div class="dimension-summary">
+<div class="dim-card"><div class="dim-name">Flow coverage</div><div class="dim-verdict">Adequate</div></div>
+<div class="dim-card"><div class="dim-name">Token completeness</div><div class="dim-verdict">Strong</div></div>
+<div class="dim-card"><div class="dim-name">Component coverage</div><div class="dim-verdict">Adequate</div></div>
+<div class="dim-card"><div class="dim-name">State coverage</div><div class="dim-verdict">Adequate</div></div>
+<div class="dim-card"><div class="dim-name">Visual reference coverage</div><div class="dim-verdict">Adequate</div></div>
+<div class="dim-card"><div class="dim-name">Bloat and overspecification</div><div class="dim-verdict">Strong</div></div>
+<div class="dim-card"><div class="dim-name">Inheritance discipline</div><div class="dim-verdict">Adequate</div></div>
+<div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict">Strong</div></div>
+</div>
+<section class="dimension"><details><summary><h2>Flow coverage</h2><span class="verdict-pill verdict-adequate">adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>Both experience documents contain all six PRD journey titles in order, with the named people, numbered steps, a climax and a failure path. Each journey has a surface. One recovery instruction contradicts the implementation.</p></div></div><div class="findings-list">
+<article id="F1" class="finding"><header><span class="badge badge-sev-high">High</span><h3 class="finding-title">F1 · A failed optional retry can be mistaken for a degraded command</h3></header><p class="finding-note">UJ-3 says a second failure degrades the command. Once the service has acknowledged the original MessageId, a failed retry to recover unreadable correlation data still returns Accepted with that ID and unknown correlation. The example could lead an operator to treat accepted work as degraded prematurely.</p><p class="finding-fix"><strong>Suggested fix.</strong> Correct the UJ-3 failure path. Keep the accepted outcome after this retry and identify the later lifecycle evidence or confirmation deadline that can move the command to Degraded.</p><p class="finding-links"><a href="../EXPERIENCE.md#uj-3-marc-executes-a-command-safely">UJ-3</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs">EventStoreCommandClient.cs, accepted result and RetryAcceptedCorrelationAsync</a></p></article>
+</div></details></section>
+<section class="dimension"><details><summary><h2>Token completeness</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>All named token references resolve. The color reference names the active Fluent 2 role <code>--colorBrandForeground1</code>. Theme inheritance, the configurable shell seed, measurable contrast criteria, and non-color fallbacks are explicit. A component can consume the inherited role across light and dark themes.</p></div></div><div class="findings-list">
+</div></details></section>
+<section class="dimension"><details><summary><h2>Component coverage</h2><span class="verdict-pill verdict-adequate">adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>The same 21 component-pattern groups have visual and behavioral rows. The generated fresh-row treatment conflicts with a dated implementation decision.</p></div></div><div class="findings-list">
+<article id="F2" class="finding"><header><span class="badge badge-sev-high">High</span><h3 class="finding-title">F2 · The grid handoff gives the wrong location and label for a fresh row</h3></header><p class="finding-note">The visual component row and VC-06 describe a row-level “New/Updated” marker. Story 13.5 records an October 12 decision to put one cue per entry above the grid. The generated default names the affected row with “Updated row: {EntityKey}.”</p><p class="finding-fix"><strong>Suggested fix.</strong> Align DESIGN.md, VC-06 and RM-1 with the dated decision. Specify the generated label, adopter overrides, and silent removal on row materialization, filter or scope change, or expiry.</p><p class="finding-links"><a href="../DESIGN.md#components">Design components</a> · <a href="../../../ux-design-detailed-2026-07-05.md">VC-06 and RM-1</a> · <a href="../../../../implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md">Story 13.5, human decision</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcNewItemIndicator.razor.cs">FcNewItemIndicator, ResolvedText</a></p></article>
+</div></details></section>
+<section class="dimension"><details><summary><h2>State coverage</h2><span class="verdict-pill verdict-adequate">adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>The state tables cover human, developer, and compatibility-host surfaces. They distinguish missing tenant from empty data, mapped from unmapped rejection, and active from exhausted Degraded. Two configuration or entry cases need clearer acceptance criteria.</p></div></div><div class="findings-list">
+<article id="F3" class="finding"><header><span class="badge badge-sev-medium">Medium</span><h3 class="finding-title">F3 · Lifecycle timing examples omit supported zero settings</h3></header><p class="finding-note">UJ-3 and the state matrix describe polling and the post-acknowledgment retry as unconditional. A host can disable either independently. The local confirmation deadline still runs from acknowledgment when polling is disabled.</p><p class="finding-fix"><strong>Suggested fix.</strong> Label the timing profile as the default. Add acceptance cases for zero polling and zero post-acceptance retry, including the expected state and copy.</p><p class="finding-links"><a href="../EXPERIENCE.md#command-authorization-validation-and-lifecycle">Lifecycle state matrix</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Options/FcShellOptions.cs">Shell options</a> · <a href="../../../../../tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/PendingCommands/PendingCommandPollingDriverTests.cs">Zero-interval polling test</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Components/Lifecycle/FcLifecycleWrapper.razor.cs">FcLifecycleWrapper, ScheduleDeadline</a></p></article>
+<article id="F4" class="finding"><header><span class="badge badge-sev-low">Low</span><h3 class="finding-title">F4 · Normal Module entry can be read as an unavailable tab</h3></header><p class="finding-note">The supporting state row groups an absent tab with an unavailable tab. Opening the bare Module route selects its default tab silently. An explicit unknown or disabled tab triggers AM-31.</p><p class="finding-fix"><strong>Suggested fix.</strong> Distinguish normal Module entry (SS-31) from an invalid requested tab (SS-32) in the working experience document.</p><p class="finding-links"><a href="../EXPERIENCE.md#supporting-surface-states">Supporting surface states</a> · <a href="../../../ux-design.md#ux-ss-1---state-by-surface-acceptance-matrix">SS-31 and SS-32</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageTabs.razor.cs">FcPageTabs, route selection</a></p></article>
+</div></details></section>
+<section class="dimension"><details><summary><h2>Visual reference coverage</h2><span class="verdict-pill verdict-adequate">adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>Both spines link both HTML references at the relevant sections. Chromium exposed the expected visible announcement for each of the ten lifecycle snapshots, including distinct messages for the two Degraded states and the shared default confirmation message. These are selectable examples of state presentation. There are no imports or wireframes awaiting a link.</p></div></div><div class="findings-list">
+<p>See A3 and A4 in the accessibility review for the Module-route and Module Tab findings.</p>
+</div></details></section>
+<section class="dimension"><details><summary><h2>Bloat and overspecification</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>Exact values serve observable acceptance checks, including the 72/48 px rail widths, the compact grid metric and the shipped viewport tiers. The lifecycle timing exception is recorded once as F3. The dated receipts keep historical candidate acceptance distinguishable from open readiness decisions.</p></div></div><div class="findings-list">
+</div></details></section>
+<section class="dimension"><details><summary><h2>Inheritance discipline</h2><span class="verdict-pill verdict-adequate">adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>All 19 source declarations across the pair resolve. The three D-8 documents have explicit precedence. The six PRD journey names, component groups and active Fluent role carry through. One default announcement is presented as an invariant despite a tested public override.</p></div></div><div class="findings-list">
+<article id="F6" class="finding"><header><span class="badge badge-sev-medium">Medium</span><h3 class="finding-title">F6 · AM-13 omits the public idempotent announcement override</h3></header><p class="finding-note">The canonical copy “Command confirmed.” is the default for both confirmation states. The wrapper and its test allow a nonblank IdempotentInfoMessage to replace the spoken text for an idempotent result.</p><p class="finding-fix"><strong>Suggested fix.</strong> Document the default and the tested override in AM-13 and the voice guidance. Preserve one terminal announcement per operation.</p><p class="finding-links"><a href="../../../ux-design.md#ux-am-1---announcement-matrix">AM-13</a> · <a href="../EXPERIENCE.md#voice-and-tone">Voice and tone</a> · <a href="../../../../../tests/Hexalith.FrontComposer.Shell.Tests/Components/Lifecycle/FcLifecycleWrapperIdempotentTests.cs">Override test</a></p></article>
+</div></details></section>
+<section class="dimension"><details><summary><h2>Shape fit</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>The visual sections follow the eight-part design order. The experience spine includes the eight required sections, responsive and inspiration guidance, and the security/tenancy behavior needed by the documented surfaces.</p></div></div><div class="findings-list">
+</div></details></section>
+<section class="reviewer-section"><details><summary><h2>Accessibility</h2><span class="reviewer-source">review-accessibility.md</span></summary><div class="dim-body"><div class="dim-judgment"><p>The responsive navigation preview hides keyboard focus in two reproducible interactions. The review also reproduced both focus destinations noted in the rubric. The offline lifecycle selector retained focus through all ten snapshots.</p></div></div><div class="findings-list">
+<article id="A1" class="finding"><header><span class="badge badge-sev-high">High</span><h3 class="finding-title">A1 · Keyboard focus moves behind the open navigation drawer</h3></header><p class="finding-note">In the navigation mockup at 320 and 1024 CSS px, Tab can move past the drawer into workspace links that the drawer fully covers. Escape leaves the drawer open. The active control is hidden in this sequence (WCAG 2.2 SC 2.4.11).</p><p class="finding-fix"><strong>Suggested fix.</strong> Keep a disclosure in document flow, or give the overlay modal keyboard behavior with inert background controls. Support dismissal with focus return and verify forward and reverse Tab.</p><p class="finding-links"><a href="../mockups/key-responsive-navigation.html">Drawer styles and controls</a> · <a href="../../../ux-design.md#ux-ae-1---responsive-and-accessibility-evidence-matrix">Canonical UX-AE-1</a></p></article>
+<article id="A2" class="finding"><header><span class="badge badge-sev-high">High</span><h3 class="finding-title">A2 · Current navigation items lose visible focus in forced colors</h3></header><p class="finding-note">At desktop width, the mockup paints the same outline on a current Module link or workspace link before and after keyboard focus. A pixel comparison showed a visible focus change on an inactive link only (WCAG SC 2.4.7).</p><p class="finding-fix"><strong>Suggested fix.</strong> Give current items a distinct forced-colors focus outline and offset. Test the current, focused and current-plus-focused states on both controls.</p><p class="finding-links"><a href="../mockups/key-responsive-navigation.html">Navigation style rules</a> · <a href="../../../ux-design-detailed-2026-07-05.md#ux-vc-1---contrast-and-forced-colors-matrix">Visual focus contract</a></p></article>
+<article id="A3" class="finding"><header><span class="badge badge-sev-medium">Medium</span><h3 class="finding-title">A3 · Module navigation focuses the preview frame</h3></header><p class="finding-note">Enter on Parties in the navigation mockup changes route but focuses the outer section containing the shell and address bar. FM-01 sends focus to the new route heading.</p><p class="finding-fix"><strong>Suggested fix.</strong> Move focus to the destination workspace heading on Module activation, or mark the fragment interaction as a layout preview and identify the product focus destination alongside it.</p><p class="finding-links"><a href="../mockups/key-responsive-navigation.html">Module links and destinations, lines 136–202</a> · <a href="../../../ux-design.md#ux-fm-1---focus-matrix">FM-01</a></p></article>
+<article id="A4" class="finding"><header><span class="badge badge-sev-medium">Medium</span><h3 class="finding-title">A4 · The Module Tab selector behaves as ordinary links</h3></header><p class="finding-note">Right Arrow on the active workspace tab has no effect. Enter on Users focuses the destination section. The mockup omits tab roles, selection and panel relationships. FM-02 retains focus on the selected tab.</p><p class="finding-fix"><strong>Suggested fix.</strong> Implement arrow-key navigation and selected-tab focus with a labelled panel, or explicitly identify the route links as a preview and link the tab interaction contract.</p><p class="finding-links"><a href="../mockups/key-responsive-navigation.html">Workspace selector, lines 151–153 and 177–179</a> · <a href="../../../ux-design.md#ux-fm-1---focus-matrix">FM-02</a></p></article>
+</div></details></section>
+<section class="reviewer-section"><details><summary><h2>Fluent UI implementation alignment</h2><span class="reviewer-source">review-fluent-ui-v5.md</span></summary><div class="dim-body"><div class="dim-judgment"><p>The most consequential gap is the empty drawer in the default narrow shell. Two additional findings affect status readability and the Settings density contract. The lifecycle mockup also differs from the account control.</p></div></div><div class="findings-list">
+<article id="FL-1" class="finding"><header><span class="badge badge-sev-high">High</span><h3 class="finding-title">FL-1 · Phone and tablet navigation has no Module list in the default drawer</h3></header><p class="finding-note">The default shell removes its only navigation area below 1024 CSS px. Its hamburger supplies a title but no child content. Fluent UI 5.1.0 falls back to the registered navigation area, which is absent on these tiers. In a local build of Counter.Web, at 320 CSS px the opened drawer contained only its title and Close button, including after a resize from 1440. At 900 CSS px neither Enter nor a click produced a visible dialog or a Module list. Counter was available on Home at both widths and the desktop rail reached /counter/counter-projection.</p><p class="finding-fix"><strong>Suggested fix.</strong> Pass the authorized Module list to the active drawer exactly once. Cover cold phone and tablet entry plus a desktop-to-phone resize. Open the drawer by keyboard, activate Counter and verify its default tab, route heading and current entry.</p><p class="finding-links"><a href="../EXPERIENCE.md#responsive--platform">Responsive specification</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor">Shell composition</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor.cs">Viewport guard</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor">Hamburger</a> · <a href="../../../../../tests/e2e/specs/sidebar-responsive.spec.ts">Responsive sidebar tests</a> · <a href="../../../../../tests/e2e/specs/responsive-accessibility.spec.ts">Named-drawer and focus tests</a> · <a href="../mockups/key-responsive-navigation.html">Navigation mockup</a></p></article>
+<article id="FL-2" class="finding"><header><span class="badge badge-sev-medium">Medium</span><h3 class="finding-title">FL-2 · Generated status cells hide the visible label until interaction</h3></header><p class="finding-note">UX-DR2 requires persistent icon-plus-text status. An annotated enum cell renders an FcStatusIcon with an accessible name, but its localized label is in the tooltip. A sighted reader must hover or focus to read it.</p><p class="finding-fix"><strong>Suggested fix.</strong> Render persistent text next to the glyph in the generated presentation, preserve the accessible name and check the cell at rest and in forced colors.</p><p class="finding-links"><a href="../../../ux-design.md#ux-dr2---semantic-status-slots">UX-DR2</a> · <a href="../../../prd.md#fr-11-render-projection-grids-and-states">PRD</a> · <a href="../../../../../src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs">Generated column</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Components/Badges/FcStatusIcon.razor">FcStatusIcon</a> · <a href="../../../../../tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/FcStatusIconTests.cs">Component tests</a></p></article>
+<article id="FL-3" class="finding"><header><span class="badge badge-sev-medium">Medium</span><h3 class="finding-title">FL-3 · Settings omits the difference between selected and effective density</h3></header><p class="finding-note">The working pair implies that every choice updates the page and that Settings stays silent. Phone and Tablet force Comfortable even when Compact is saved. Initial hydration and opening Settings are silent. A later effective density change can announce the new value once.</p><p class="finding-fix"><strong>Suggested fix.</strong> Document the narrow-viewport override, the saved choice and preview, and the announcement trigger in Settings and the responsive guidance.</p><p class="finding-links"><a href="../EXPERIENCE.md#component-patterns">Working component and state patterns</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/State/Density/DensityPrecedence.cs">Density precedence</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Components/Layout/FcSettingsDialog.razor">Settings dialog</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Components/Layout/FcDensityAnnouncer.razor.cs">Density announcer</a> · <a href="../../../../../tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcSettingsDialogTests.cs">Forced-density tests</a></p></article>
+<article id="FL-4" class="finding"><header><span class="badge badge-sev-low">Low</span><h3 class="finding-title">FL-4 · The lifecycle preview exposes the name in the closed header</h3></header><p class="finding-note">The closed lifecycle mockup header displays “Marc”. The working contract and account component show an avatar in the closed header and the display name inside the account menu.</p><p class="finding-fix"><strong>Suggested fix.</strong> Use the same closed avatar treatment as the responsive mockup.</p><p class="finding-links"><a href="../mockups/key-command-lifecycle.html">Lifecycle mockup</a> · <a href="../DESIGN.md#components">Design components</a> · <a href="../../../../../src/Hexalith.FrontComposer.Shell/Components/Layout/FcAccountMenu.razor">Account menu</a></p></article>
+</div></details></section>
+<div class="mechanical"><h2>Checks and limits</h2><ul>
+<li>Reviewed the D-8 UX authority, its visual and behavioral supplements, DESIGN.md, EXPERIENCE.md and both offline HTML mockups. All declared sources, local links, checked heading anchors and named token references resolve. The 111 canonical matrix row IDs retain their order. The six journeys include their expected actors, steps, climax and failure path.</li>
+<li>Chromium exercised both previews offline from 320 to 1440 CSS px. The navigation rail matched its specified width at eight boundary widths. All ten lifecycle snapshots exposed their expected default message, including both Degraded outcomes. Reflow, keyboard input, forced colors and reduced motion were exercised on the previews.</li>
+<li>axe-core 4.14.0 reported zero automated violations across 20 lifecycle cases and eight navigation cases with the configured WCAG A/AA tags through 2.2 AA. Some rules returned incomplete results. The focused-item paint comparison and obscured-focus checks required keyboard interaction.</li>
+<li>The local Counter.Web sample used FrontComposer 431aa71b, its recorded Builds revision e1380b81, Fluent Components and Icons 5.1.0, the .NET 11.0.100 SDK and the repository’s Release/Test fixture configuration with specimens enabled. The drawer and desktop control were exercised in Chromium. Other implementation comparisons used source, test assertions and the selected package.</li>
+<li>Native screen-reader speech, 400% browser zoom, physical devices, an authenticated deployment and the hosted Quality lane were outside this run. OI-4, OI-16/SM-6 and G-4 retain their recorded ownership and evidence requirements.</li>
+</ul><h2>Reviewed versions</h2><ul>
+<li><a href="../../../ux-design.md">ux-design.md</a> · <code>1f87c1c1c2c5ce8463a9a502a48f3be1a03c995294d40d6851ef39cac908f826</code></li>
+<li><a href="../../../ux-design-detailed-2026-07-05.md">ux-design-detailed-2026-07-05.md</a> · <code>6353689cf83f19d96aab8a852d1865efba8a0fb5361941b3effd6909b49a95b2</code></li>
+<li><a href="../../../ux-experience-2026-07-05.md">ux-experience-2026-07-05.md</a> · <code>13c17b0d511f721a20ad94418e4e09251a0dd25875865d55fc17ad3d34c56daf</code></li>
+<li><a href="../DESIGN.md">DESIGN.md</a> · <code>fd0e2b15dc0bbe1ca7c10aaea1bda5bbf1590fdffadabe2193e1f5d9365f5436</code></li>
+<li><a href="../EXPERIENCE.md">EXPERIENCE.md</a> · <code>6cd567798ef93ac7fc523872fef2b72b1b0950bc0ffa132b83251b84133937a5</code></li>
+<li><a href="../mockups/key-command-lifecycle.html">key-command-lifecycle.html</a> · <code>c7a081da3c48d2580cfc49b61358415aeb8633e2c8714683b9ba8da4e9da885c</code></li>
+<li><a href="../mockups/key-responsive-navigation.html">key-responsive-navigation.html</a> · <code>28de35ce7b83610791b483204861aab745e32e65588b82135f32df4cd9b5cf24</code></li>
+</ul></div>
+<footer class="report-footer"><h2>Reviewer files</h2><p><a href="review-rubric.md">UX rubric</a> · <a href="review-accessibility.md">Accessibility</a> · <a href="review-fluent-ui-v5.md">Fluent UI implementation alignment</a></p><p><a href="validation-report.md">Markdown report</a> · 2026-11-21T12:45+01:00</p></footer></main></body></html>

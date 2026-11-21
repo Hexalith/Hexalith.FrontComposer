@@ -1,8 +1,8 @@
 ---
 name: Hexalith Common Application UX
 description: Visual identity contract for operational web applications composed with FrontComposer and Blazor Fluent UI V5.
-status: draft
-updated: 2026-09-23
+status: final
+updated: 2026-11-21
 sources:
   - _bmad-output/planning-artifacts/ux-design.md
   - _bmad-output/planning-artifacts/ux-design-detailed-2026-07-05.md
@@ -12,9 +12,10 @@ sources:
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md
   - _bmad-output/planning-artifacts/epics.md
+  - docs/fluent-ui-v5-contingency.md
 colors:
   accent-thread:
-    note: 'Inherited active Fluent V5 accent role; no hard-coded default or independent seed. Adopters override it through Fluent theming.'
+    note: 'Inherit --colorBrandForeground1 from the active Fluent V5 theme.'
 typography:
   page-title:
     note: 'Inherited FluentText Size700 and Semibold; rendered as, or inside, the route-level h1.'
@@ -61,7 +62,7 @@ components:
 
 # Hexalith Common Application Design
 
-This file owns **how FrontComposer surfaces look**. `EXPERIENCE.md` is its peer and owns information architecture, behavior, states, interactions, accessibility behavior, and journeys. `ux-design.md` is canonical; this file is a supplement to it and loses on any conflict. It may add visual detail but never overrides a canonical matrix row. Within its domain, this file still wins over mockups, wireframes, imports, historical supplements, and implementation examples.
+This working pair supports the D-8 UX contract. The [canonical UX matrices](../../ux-design.md) govern both files. The [visual supplement](../../ux-design-detailed-2026-07-05.md) defines appearance, and the [experience supplement](../../ux-experience-2026-07-05.md) defines behavior and journeys. Those sources take precedence over this pair and any visual references.
 
 ## Brand & Style
 
@@ -73,7 +74,7 @@ Neutral chrome frames the product. Data and task state carry hierarchy. The conf
 
 ## Colors
 
-`{colors.accent-thread}` is the active Fluent V5 accent role. FrontComposer defines no hard-coded accent default and no independent seed or palette; adopters change the accent through Fluent theming, while the shell preserves the accent-as-thread rule. The current public baseline still seeds `FcShellOptions.AccentColor` with a hard-coded default; removing that seed is an open implementation delta, not contract.
+`{colors.accent-thread}` refers to Fluent 2 `--colorBrandForeground1`. A shell alias such as `--fc-color-accent` follows that active role. The shell currently seeds the Fluent brand ramp through `FcShellOptions.AccentColor`; FrontComposer components consume theme roles, including when an adopter changes the ramp. [Fluent contingency plan](../../../../docs/fluent-ui-v5-contingency.md)
 
 All other roles—including canvas, chrome, raised surfaces, borders, foregrounds, focus, success, warning, error, information, disabled, hover, and selected states—inherit the active Fluent theme and Fluent 2 tokens. Light, dark, reduced-motion, and forced-colors presentations remain theme-owned.
 
@@ -90,13 +91,13 @@ Route titles are real, focusable `h1` headings. Helper copy, counts, timestamps,
 
 ## Layout & Spacing
 
-The default page layout is full width. Opt-in constrained pages cap their measure at `{spacing.constrained-content-max}`. The application frame is desktop-first responsive web, with semantic Desktop, Compact, and Narrow-browser behavior defined in the peer spine.
+The default page layout is full width. Opt-in constrained pages cap their measure at `{spacing.constrained-content-max}`. The application frame is desktop-first responsive web, with rail and drawer behavior defined in [Responsive & Platform](EXPERIENCE.md#responsive--platform).
 
-The primary navigation rail is `{spacing.navigation-rail-labeled}` when labels are shown and `{spacing.navigation-rail-icon-only}` in icon-only mode. The hamburger remains visible in both modes. Compact projection rows are exactly `{spacing.projection-row-compact}`, and projection headers remain sticky while the grid body scrolls.
+The primary navigation rail is `{spacing.navigation-rail-labeled}` when labels are shown and `{spacing.navigation-rail-icon-only}` in icon-only mode. The hamburger remains visible in both modes. Compact projection rows measure `{spacing.projection-row-compact}` with default text settings and grow to fit zoomed or spaced text. Headers remain sticky inside the labelled grid scrollport.
 
 Use FrontComposer and Fluent layout primitives for design-system-owned layout. Raw CSS is limited to layout or browser behavior Fluent does not own: sticky regions, overlays, positioning, user-agent resets, and the focusable route heading. Page titles, breadcrumbs, toolbars, navigation chrome, and a single primary content region stay outside section accordions. A page, dialog, or detail panel with two or more sibling titled content sections uses one inherited Fluent accordion; if a primary section belongs there, it is expanded by default.
 
-[NOTE FOR UX] Numeric responsive breakpoints are not specified by the confirmed sources. Preserve Desktop, Compact, and Narrow-browser behavior without fabricating widths.
+Keyboard focus remains distinguishable from the current Module marker and selected tab indicator, including in forced colors. [Responsive navigation reference](mockups/key-responsive-navigation.html) · [Focus and drawer behavior](EXPERIENCE.md#responsive--platform)
 
 ## Elevation & Depth
 
@@ -121,22 +122,24 @@ Every entry below has behavioral peer coverage in `EXPERIENCE.md`. Fluent implem
 | **account-control — `FcAccountMenu`** | Always-present account affordance in header chrome, using inherited avatar/menu styling. The user display name belongs inside the menu, not as duplicated header text. |
 | **home-directory — `FcHomeDirectory` + `FcHomeCard`** | Neutral directory surface with skeletons that preserve card geometry. Ready/actionable modules receive hierarchy through ordering, text, counts, and inherited surface emphasis—not saturated fills. “Other areas” uses the inherited accordion treatment. |
 | **command-palette — `FcCommandPalette`** | Inherited dialog/combobox/search/result visuals. Keyboard highlight and focus use the active Fluent selected/focus roles; no custom palette color ramp. |
-| **settings — `FcSettingsDialog`** | Inherited dialog, radio, toggle, and action visuals. Theme and density changes apply live to the page behind the dialog without inventing a second token system. |
+| **settings — `FcSettingsDialog`** | Inherited dialog, radio, toggle, and action visuals. Radio selection and preview reflect the saved density. On Tablet and Phone, the shell uses Comfortable. If the saved choice differs, Settings shows a note explaining why. The page uses the effective density. |
 | **page-frame — `FcPageHeader` + `FcPageLayout`** | A clear route title using `{typography.page-title}` above full-width or constrained content. No accent title band. |
-| **module-tabs — `FcPageTabs` / inherited Fluent tabs** | Route-backed module views use the inherited selected-tab indicator below the page header or toolbar. Tabs never mimic primary shell navigation. |
+| **module-tabs — `FcPageTabs` + `FcPageTab` / inherited Fluent tabs** | Route-backed module views use the inherited selected-tab indicator below the page header or toolbar. Tabs never mimic primary shell navigation. |
 | **page-toolbar — `FcPageToolbar`** | One coherent inherited toolbar strip: leading search/filter/view affordances and end-aligned actions. Its internal Fluent composition is implementation-owned and must not be promoted into a new visual API accidentally. |
 | **page-sections — inherited Fluent accordion** | Two or more sibling titled sections share one accordion. The primary section is visually discoverable and expanded by default when placed inside; the only primary region is never collapsed. |
-| **projection-grid — generated inherited Fluent data grid** | Compact default rows are exactly `{spacing.projection-row-compact}`; header is sticky and body scrolls. Hover, selection, focus, separators, column resizing, and virtualization styling inherit Fluent. |
+| **projection-grid — generated inherited Fluent data grid** | Rows start at `{spacing.projection-row-compact}` in compact density and expand for content. The header stays visible as rows scroll. Hover, selection, focus, separators, column resizing, and virtualization styling inherit Fluent. |
 | **projection-placeholders — `FcProjectionLoadingSkeleton` + `FcProjectionEmptyPlaceholder`** | Skeleton geometry mirrors the expected Card, Timeline, or Grid layout. Empty treatment is neutral, uses inherited illustration/icon treatment if supplied, and presents no false error coloration. |
 | **projection-health — `FcProjectionConnectionStatus` + `FcSlowQueryNotice` + `FcMaxItemsCapNotice`** | Inherited semantic message/notice treatment above or adjacent to the affected grid without shifting shell chrome. Reconnecting may use motion only when allowed; every state retains text and shape in reduced motion and forced colors. |
 | **row-detail — `FcExpandInRowDetail` + `FcExpandedRowHiddenBanner`** | Expanded content reads as a nested region within the row, separated by inherited surface/stroke roles. The filter-hidden notice is visually adjacent to the grid and distinguishable without color alone. |
-| **status-affordance — `FcStatusIcon` + inherited icon/tooltip; `FcDesaturatedBadge` + inherited badge** | Semantic status is a lightweight Fluent icon with an always-available accessible label and a label tooltip on hover/focus. Counts remain pill badges; non-urgent counts use desaturated treatment. Color never carries status alone. |
+| **status-affordance — `FcStatusIcon` + inherited icon/tooltip; `FcDesaturatedBadge` + inherited badge** | Semantic status pairs an icon or shape with visible state text and a persistent accessible name. A tooltip can repeat the label on hover or focus. Counts remain pill badges; non-urgent counts use desaturated treatment. Color never carries status alone. |
 | **command-form — generated form + `FcFieldPlaceholder`** | Fluent inputs and validation styling only. Server-controlled/derived fields do not leave visual gaps. Unsupported types show a bounded neutral placeholder rather than a broken control. Density is Inline, CompactInline, or FullPage as defined behaviorally. |
 | **command-authorization — `FcAuthorizedCommandRegion`** | Pending, Authorized, and NotAuthorized use inherited progress/content/denied treatments with stable geometry; no protected form flashes before authorization resolves. |
-| **command-safety — `FcDestructiveConfirmationDialog` + `FcFormAbandonmentGuard`** | Inherited destructive dialog and warning/message treatment. Destructive emphasis uses Fluent semantic roles rather than the brand accent. |
-| **lifecycle-feedback — `FcLifecycleWrapper` + `FcPendingCommandSummary`** | Inherited semantic badges/message bars distinguish progress, confirmation, rejection, review, warning, and degradation. Accepted transport never receives the confirmed-success treatment. |
-| **fresh-row-indicator — `FcNewItemIndicator`** | A restrained row-level marker using `{colors.accent-thread}` only as supplemental emphasis. Shape/text persist in forced colors; reduced motion removes animation without removing meaning. |
+| **command-safety — `FcDestructiveConfirmationDialog` + `FcFormAbandonmentGuard`** | Inherited destructive dialog and warning/message treatment. The dialog names the consequence and opens on Cancel. The abandonment warning appears in the form and opens on Stay on form. |
+| **lifecycle-feedback — `FcLifecycleWrapper` + `FcPendingCommandSummary`** | Inherited semantic badges/message bars distinguish progress, confirmation, rejection, review, warning, and degradation. Accepted transport never receives the confirmed-success treatment. [Command lifecycle reference](mockups/key-command-lifecycle.html) |
+| **fresh-row-indicator — `FcNewItemIndicator`** | Show one cue per eligible entry above the generated grid, with an info icon and the localized label “Updated row: {EntityKey}.” The cue retains its text, icon and system border in forced colors and stays static under reduced motion. `{colors.accent-thread}` supplies supplemental emphasis. |
 | **customization-diagnostic — `FcCustomizationDiagnosticPanel`** | Development-only inherited diagnostic-panel treatment, visually distinct from operator data while avoiding raw payload, tenant, token, or stack-trace presentation. |
+
+FL-2 remains open for generated annotated-enum projection cells. At rest the generated cell supplies the glyph and accessible name, but the localized status label is visible only in its tooltip. Verify persistent visible text beside the glyph before hover or focus, including in forced colors. [Fluent implementation review](validation-2026-11-21/review-fluent-ui-v5.md)
 
 ## Do's and Don'ts
 
@@ -150,8 +153,8 @@ Every entry below has behavioral peer coverage in `EXPERIENCE.md`. Fluent implem
 | Use FrontComposer/Fluent controls and page-section accordion rules | Hand-roll interactive controls, tabs, toolbars, grids, or hide the only primary region |
 | Keep visual state changes stable under zoom, text spacing, reduced motion, and forced colors | Add layout shift, decorative animation, nested card stacks, gradients, or bespoke shadows |
 
-### Open visual questions
+### Visual evidence and open decisions
 
-- [NOTE FOR UX] Warning, NeedsReview, Degraded, missing-tenant, FallbackPolling, SlowQuery, MaxItems, and fresh-row dismissal/forced-colors states have final copy: the canonical `ux-design.md` UX-AM-1 row copy. Only their visual treatment is unresolved, and UX/Product own that disposition. Until decided, inherit the nearest Fluent semantic treatment, preserve the stated meaning, and do not create a new visual language.
-- [NOTE FOR UX] Numeric responsive breakpoints remain unspecified.
-- [NOTE FOR UX] The selected Fluent V5 catalog pin (FLUENT-APP-1) and the exact API name of the active accent role under that pin must be confirmed before the visual contract can be marked final.
+The visual supplement sets contrast and forced-colors criteria in UX-VC-1 and reduced-motion behavior in UX-RM-1. These cover lifecycle and connection states, missing tenant context and the fresh-row cue. UX-AM-1 supplies their announcements. [Visual matrices](../../ux-design-detailed-2026-07-05.md) · [Announcement matrix](../../ux-design.md)
+
+The catalog selected by FrontComposer `431aa71b` uses Fluent Components and Icons `5.1.0` GA. OI-4 still requires a green hosted Quality run at the exact identity and a dated Product Owner and Architect decision. OI-16/SM-6 track the broader UX evidence. [Fluent contingency plan](../../../../docs/fluent-ui-v5-contingency.md) · [Product gates](../../prd.md)

@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Responsive navigation · FrontComposer</title>
+<style>
+/* DESIGN.md: Layout & Spacing, Components (shell-frame, navigation-rail, module-tabs,
+   projection-grid). EXPERIENCE.md: Information Architecture, Responsive & Platform,
+   Component Patterns and Key Flows UJ-2. Fragment links keep reference routes offline.
+   Viewport boundaries follow fc-layout-breakpoints.js. */
+:root {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: #242424;
+  background: #f5f4f1;
+  color-scheme: light;
+  --stroke: #d4d3d0;
+  --quiet: #565755;
+  --accent: #0097a7;
+  --focus: #035d68;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; }
+.address span { display: none; }
+body:not(:has(.route-panel:target)) .address [data-address="tenants"],
+body:has([id="tenants/tenants"]:target) .address [data-address="tenants"],
+body:has([id="tenants/workspace-users"]:target) .address [data-address="users"],
+body:has([id="parties/overview"]:target) .address [data-address="parties"] { display: inline; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+h1, h2, h3, p, figure, dl, dd { margin: 0; }
+.reference-title { font-size: clamp(2rem, 4.2vw, 3.5rem); font-weight: 600; letter-spacing: -.045em; line-height: 1.08; }
+.route-heading { font-size: clamp(1.5rem, 2.1vw, 2rem); font-weight: 600; line-height: 1.2; letter-spacing: -.03em; }
+h3 { font-size: 1rem; font-weight: 600; }
+.page { max-width: 78rem; margin: 0 auto; padding: clamp(1rem, 4vw, 3.2rem); }
+.intro { margin-bottom: 1.5rem; }
+.intro p:not(.reference-title) { color: var(--quiet); margin-top: .8rem; max-width: 60ch; line-height: 1.5; }
+[hidden] { display: none !important; }
+/* Without script the links still choose real hash targets. */
+body:not(.enhanced) :is(.contents, .route-panel):not(.default) { display: none; }
+body:not(.enhanced):has(.route-panel:target) :is(.contents, .route-panel) { display: none; }
+body:not(.enhanced):has(.route-panel:target) :is(.contents:has(:target), .route-panel:target) { display: block; }
+.skip { position: absolute; left: 1rem; top: 0; padding: .5rem 1rem; background: white; z-index: 5; transform: translateY(-150%); }
+.skip:focus { transform: none; }
+.route-heading, .tabs a { scroll-margin: 12px; }
+.browser { background: white; border: 1px solid #bdbdb9; border-radius: 8px; }
+.location { display: flex; align-items: center; gap: .8rem; min-height: 38px; padding: 5px 12px; background: #ececea; border-radius: 8px 8px 0 0; border-bottom: 1px solid var(--stroke); }
+.dots { display: flex; gap: 4px; }
+.dots i { display: block; width: 7px; height: 7px; border-radius: 50%; background: #a5a7a2; }
+.address { font: .78rem ui-monospace, Consolas, monospace; color: #434543; overflow-wrap: anywhere; }
+.shell { position: relative; }
+.appbar { display: flex; align-items: center; min-height: 49px; gap: 8px; padding: 4px 12px; background: #fafafa; border-bottom: 1px solid var(--stroke); }
+.product { font-size: 1rem; font-weight: 600; letter-spacing: -.01em; }
+.avatar { margin-inline-start: auto; inline-size: 31px; block-size: 31px; border-radius: 50%; display: grid; place-items: center; background: #e5e7e5; font-weight: 600; color: #38413a; }
+.account { margin-inline-start: auto; position: relative; }
+.account summary { list-style: none; cursor: pointer; border-radius: 50%; }
+summary::-webkit-details-marker { display: none; }
+.account p { position: absolute; top: calc(100% + 5px); right: 0; z-index: 3; min-width: 10rem; padding: .8rem 1rem; background: white; border: 1px solid var(--stroke); border-radius: 6px; }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.hamburger { display: grid; place-items: center; list-style: none; cursor: pointer; width: 36px; height: 36px; border-radius: 5px; }
+.hamburger:hover, .account summary:hover { background: #e9ecea; }
+.bars { width: 18px; height: 12px; display: inline-block; border-block: 1.5px solid currentColor; position: relative; }
+.bars::after { content: ""; position: absolute; left: 0; top: calc(50% - .75px); width: 100%; border-top: 1.5px solid currentColor; }
+.desktop-switch { display: none; }
+.fallback-menu[open] { flex-basis: 100%; }
+.fallback-menu .drawer { padding: .5rem; border: 1px solid var(--stroke); }
+.appbar:has(.fallback-menu[open]) { flex-wrap: wrap; }
+.drawer-open, .drawer-close { border: 1px solid transparent; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+.drawer-close { padding: .4rem .75rem; border-color: var(--stroke); border-radius: 4px; }
+.drawer-dialog { margin: auto auto auto 0; width: min(18rem, calc(100% - 1rem)); max-height: 100dvh; height: 100%; border: 0; border-inline-end: 1px solid var(--stroke); padding: 1rem; color: inherit; background: #fafafa; }
+.drawer-dialog::backdrop { background: rgb(0 0 0 / 24%); }
+.drawer-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+.drawer-title { font-weight: 600; }
+.drawer-open { display: none; }
+.enhanced .drawer-open { display: grid; }
+.layout { display: flex; align-items: stretch; min-height: 22rem; }
+.rail { display: none; flex: none; background: #fafafa; border-right: 1px solid var(--stroke); border-radius: 0 0 0 8px; padding: 8px 3px; }
+.module { position: relative; display: flex; align-items: center; text-decoration: none; color: #494b49; border-radius: 4px; }
+.module:hover { background: #e9ecea; }
+.module[aria-current] { color: #1d3133; font-weight: 600; background: #e9efee; }
+.module[aria-current]::before { position: absolute; content: ""; top: 9px; bottom: 9px; left: 0; width: 3px; border-radius: 3px; background: var(--accent); }
+.module-symbol { display: inline-grid; place-items: center; width: 24px; height: 24px; }
+.building { display: block; width: 15px; height: 17px; border: 1.5px solid currentColor; border-radius: 1px; position: relative; }
+.building::before { position: absolute; content: ""; width: 2.5px; height: 2.5px; background: currentColor; top: 3px; left: 3px; box-shadow: 5px 0, 0 4px, 5px 4px; }
+.building::after { position: absolute; content: ""; bottom: 0; left: 4px; width: 4px; height: 3px; background: currentColor; }
+.people { display: block; border: 1.5px solid currentColor; border-radius: 6px 6px 2px 2px; width: 15px; height: 8px; margin-top: 9px; position: relative; }
+.people::before { content: ""; position: absolute; width: 6px; height: 6px; border: 1.5px solid currentColor; border-radius: 50%; top: -10px; left: 3px; }
+:is(.drawer, .drawer-dialog) .module { gap: 10px; padding: 8px 12px; }
+.workspace { min-width: 0; flex: 1; }
+.contents { padding: clamp(1rem, 3.4vw, 2.5rem); }
+.tabs { display: flex; gap: .25rem; margin: 13px 0 23px; border-bottom: 1px solid var(--stroke); }
+.tabs a { padding: 8px 11px; text-decoration: none; position: relative; }
+.tabs a:hover { background: #f4f4f4; }
+.tabs a[aria-selected="true"] { font-weight: 600; }
+.tabs a[aria-selected="true"]::after { position: absolute; content: ""; height: 3px; bottom: -1px; inset-inline: 11px; background: var(--accent); border-radius: 2px; }
+.grid-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; text-align: start; font-size: .875rem; }
+th, td { padding: 5px 9px; border-bottom: 1px solid #e4e5e2; height: 32px; text-align: start; overflow-wrap: anywhere; }
+th { background: #f6f6f5; font-weight: 600; }
+td code { font: .83rem ui-monospace, Consolas, monospace; }
+.state { display: inline-flex; align-items: center; gap: 6px; }
+.state::before { content: "✓"; font-size: .75rem; color: #36583a; font-weight: 700; }
+.empty { color: var(--quiet); font-size: .9rem; line-height: 1.55; }
+figcaption { margin-top: .7rem; display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap; color: var(--quiet); font-size: .85rem; line-height: 1.45; }
+.mode { color: #272b29; font-weight: 650; }
+.mode > span { display: none; }
+.mode .phone { display: inline; }
+.tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(13rem,100%), 1fr)); gap: 1rem; margin-top: 1.75rem; }
+.tiers div { border-top: 1px solid #bebeba; padding-top: .65rem; }
+dt { font-weight: 600; font-size: .925rem; }
+dt small { display: block; font-size: .79rem; color: var(--quiet); margin-top: 3px; font-weight: 400; }
+dd { color: var(--quiet); font-size: .84rem; line-height: 1.5; margin-top: 4px; }
+@media (min-width: 768px) {
+  .mode .phone { display: none; }
+  .mode .tablet { display: inline; }
+}
+@media (min-width: 1024px) {
+  .rail { display: block; width: 48px; }
+  .rail .module { flex-direction: column; justify-content: center; min-height: 43px; margin-bottom: 3px; }
+  .rail .mod-label { display: none; }
+  .shell:has(.drawer-dialog[open], .fallback-menu[open]) .rail { visibility: hidden; }
+  .mode .tablet { display: none; }
+  .mode .compact { display: inline; }
+}
+@media (min-width: 1366px) {
+  .rail { width: 72px; }
+  .rail .mod-label { display: inline; font-size: .75rem; }
+  .rail .module { min-height: 55px; gap: 3px; }
+  .fallback-menu, .enhanced .drawer-open { display: none; }
+  .desktop-switch { display: block; }
+  .desktop-switch:has(input:focus-visible) .hamburger { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .shell:has(.desktop-switch input:checked) .rail { width: 48px; }
+  .shell:has(.desktop-switch input:checked) .rail .module { min-height: 43px; }
+  .shell:has(.desktop-switch input:checked) .mod-label { display: none; }
+  .mode .compact { display: none; }
+  .mode .desktop { display: inline; }
+}
+@media (max-width: 450px) {
+  .page { padding: 1rem .625rem; }
+  .contents { padding: 1rem .625rem; }
+  th, td { padding-inline: 4px; }
+  .layout { min-height: 20rem; }
+}
+@media (forced-colors: active) {
+  .module[aria-current]::before, .tabs a[aria-selected="true"]::after { border: 2px solid Highlight; }
+  .module[aria-current], .tabs a[aria-selected="true"] { font-weight: 700; }
+  :focus-visible, .desktop-switch:has(input:focus-visible) .hamburger { outline: 3px solid Highlight; outline-offset: 2px; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+  <a class="skip" href="#workspace">Skip to workspace</a>
+  <header class="intro"><p class="reference-title">Responsive navigation</p><p>Use the navigation menu to change the rail or open the Module drawer. Resize the browser to see each layout.</p></header>
+  <figure aria-label="FrontComposer navigation reference">
+    <div class="browser">
+      <div class="location"><span aria-hidden="true" class="dots"><i></i><i></i><i></i></span><span class="address"><span data-address="tenants">/tenants/tenants</span><span data-address="users">/tenants/workspace-users</span><span data-address="parties">/parties/overview</span></span></div>
+      <div class="shell">
+        <div class="appbar">
+          <label class="desktop-switch"><input class="sr" type="checkbox" aria-label="Use icon-only navigation"><span class="hamburger" title="Toggle navigation labels"><i class="bars" aria-hidden="true"></i></span></label>
+          <button class="drawer-open hamburger" type="button" aria-label="Module navigation drawer" aria-controls="module-drawer" aria-haspopup="dialog" aria-expanded="false"><i class="bars" aria-hidden="true"></i></button>
+          <details class="fallback-menu"><summary class="hamburger" aria-label="Module navigation drawer"><i class="bars" aria-hidden="true"></i></summary>
+            <nav class="drawer" aria-label="Module navigation">
+              <a class="module" href="#tenants/tenants" aria-label="Tenants" title="Tenants"><span class="module-symbol" aria-hidden="true"><i class="building"></i></span><span class="mod-label">Tenants</span></a>
+              <a class="module" href="#parties/overview" aria-label="Parties" title="Parties"><span class="module-symbol" aria-hidden="true"><i class="people"></i></span><span class="mod-label">Parties</span></a>
+            </nav>
+          </details>
+          <dialog id="module-drawer" class="drawer-dialog" aria-labelledby="drawer-title">
+            <div class="drawer-bar"><p class="drawer-title" id="drawer-title">Modules</p><button class="drawer-close" type="button" autofocus>Close</button></div>
+          </dialog>
+          <span class="product">Hexalith</span>
+          <details class="account"><summary aria-label="Account"><span class="avatar" aria-hidden="true">M</span></summary><p>Marc</p></details>
+        </div>
+        <div class="layout">
+          <nav class="rail" aria-label="Module navigation">
+              <a class="module" href="#tenants/tenants" aria-label="Tenants" title="Tenants"><span class="module-symbol" aria-hidden="true"><i class="building"></i></span><span class="mod-label">Tenants</span></a>
+              <a class="module" href="#parties/overview" aria-label="Parties" title="Parties"><span class="module-symbol" aria-hidden="true"><i class="people"></i></span><span class="mod-label">Parties</span></a>
+          </nav>
+          <div id="workspace" class="workspace" tabindex="-1">
+            <div id="tab-fallback-status" class="sr" role="status" aria-live="polite" aria-atomic="true"></div>
+            <section class="contents default" aria-labelledby="tenants-title">
+              <h1 class="route-heading" id="tenants-title" tabindex="-1">Tenant workspace</h1>
+              <nav class="tabs" aria-label="Tenant workspace pages">
+                <a id="tab-tenants" href="#tenants/tenants">Tenants</a>
+                <a id="tab-users" href="#tenants/workspace-users">Users</a>
+              </nav>
+              <div class="route-panel default" id="tenants/tenants">
+                <div class="grid-wrap"><table aria-label="Tenants"><thead><tr><th scope="col">Name</th><th scope="col">Tenant ID</th><th scope="col">Status</th></tr></thead><tbody><tr><td>Acme Corp</td><td><code>acme</code></td><td><span class="state">Active</span></td></tr>
+<tr><td>Alpha Corp</td><td><code>alpha</code></td><td><span class="state">Active</span></td></tr>
+<tr><td>Beta Corp</td><td><code>beta</code></td><td><span class="state">Active</span></td></tr>
+<tr><td>Contoso</td><td><code>contoso</code></td><td><span class="state">Active</span></td></tr></tbody></table></div>
+              </div>
+              <div class="route-panel" id="tenants/workspace-users"><p class="empty">No users match the current selection.</p></div>
+            </section>
+            <section class="contents" aria-labelledby="parties-title">
+              <h1 class="route-heading" id="parties-title" tabindex="-1">Parties</h1>
+              <nav class="tabs" aria-label="Parties pages"><a id="tab-overview" href="#parties/overview">Overview</a></nav>
+              <div class="route-panel" id="parties/overview"><p class="empty">No Parties destinations are available for your account.</p></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  <figcaption><span class="mode"><span class="desktop">Desktop</span><span class="compact">CompactDesktop</span><span class="tablet">Tablet</span><span class="phone">Phone</span></span><span>Current browser viewport</span></figcaption>
+  </figure>
+  <dl class="tiers" aria-label="Navigation at each viewport width">
+    <div><dt>Desktop<small>1366 CSS px and wider</small></dt><dd>72 px labelled rail. The hamburger switches to the 48 px icon-only rail.</dd></div>
+    <div><dt>CompactDesktop<small>1024 to below 1366 CSS px</small></dt><dd>48 px icon-only rail with accessible Module names.</dd></div>
+    <div><dt>Tablet<small>768 to below 1024 CSS px</small></dt><dd>The hamburger opens the labelled Module drawer.</dd></div>
+    <div><dt>Phone<small>Below 768 CSS px</small></dt><dd>The same drawer keeps the workspace available at 320 CSS px.</dd></div>
+  </dl>
+</main>
+
+<script>
+(() => {
+  const panels = [...document.querySelectorAll('.route-panel')];
+  const tabLists = [...document.querySelectorAll('.tabs')];
+  const tabs = tabLists.flatMap(list => [...list.querySelectorAll('a')]);
+  const moduleLinks = document.querySelectorAll('.module');
+  const drawer = document.querySelector('.drawer-dialog');
+  const opener = document.querySelector('.drawer-open');
+  const account = document.querySelector('.account');
+  const fallback = document.querySelector('.fallback-menu');
+  const desktop = matchMedia('(min-width: 1366px)');
+  const fallbackStatus = document.getElementById('tab-fallback-status');
+  let focusOnChange = 'heading';
+  let statusHash;
+  let announcementFrame;
+
+  drawer.append(fallback.querySelector('nav'));
+  fallback.hidden = true;
+  document.body.classList.add('enhanced');
+
+  for (const list of tabLists) list.setAttribute('role', 'tablist');
+  for (const tab of tabs) {
+    // The static IDs support fragment navigation without script. Once enhanced,
+    // routes own focus and panel IDs serve only the tab/panel relationship.
+    const panel = document.getElementById(tab.hash.slice(1));
+    panel.dataset.route = panel.id;
+    panel.id = 'panel-' + tab.id;
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-controls', panel.id);
+    panel.setAttribute('role', 'tabpanel');
+    panel.setAttribute('aria-labelledby', tab.id);
+    panel.tabIndex = 0;
+  }
+
+  function announceFallback(label) {
+    if (statusHash === location.hash) return;
+    statusHash = location.hash;
+    cancelAnimationFrame(announcementFrame);
+    fallbackStatus.textContent = '';
+    if (!label) return;
+    // Give the existing region an empty paint before publishing, even for
+    // consecutive invalid routes that resolve to the same default label.
+    announcementFrame = requestAnimationFrame(() => {
+      announcementFrame = requestAnimationFrame(() => {
+        fallbackStatus.textContent = 'That page is unavailable. Showing ' + label + '.';
+      });
+    });
+  }
+
+  function selectRoute(focus) {
+    const route = location.hash.slice(1).replace(/^\/+|\/+$/g, '');
+    const moduleName = route.split('/')[0];
+    const exactPanel = panels.find(panel => panel.dataset.route === route);
+    const moduleDefault = panels.find(panel => panel.dataset.route.startsWith(moduleName + '/'));
+    const selected = exactPanel || moduleDefault || panels[0];
+    const tab = tabs.find(item => item.getAttribute('aria-controls') === selected.id);
+    const section = selected.closest('.contents');
+    for (const panel of panels) panel.hidden = panel !== selected;
+    for (const list of tabLists) list.closest('.contents').hidden = list !== tab.closest('.tabs');
+    for (const item of tabs) {
+      item.setAttribute('aria-selected', String(item === tab));
+      item.tabIndex = item === tab ? 0 : -1;
+    }
+    const module = selected.dataset.route.split('/')[0];
+    for (const link of moduleLinks) {
+      if (link.hash.startsWith('#' + module + '/')) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    }
+    document.querySelector('.address').textContent = '/' + selected.dataset.route;
+    if (focus === 'tab') tab.focus();
+    if (focus === 'heading') section.querySelector('h1').focus();
+    const unknownTab = moduleDefault && !exactPanel && route.includes('/');
+    announceFallback(unknownTab ? tab.textContent.trim() : null);
+  }
+
+  function navigate(link, focus) {
+    if (drawer.open) drawer.close();
+    account.open = false;
+    if (location.hash === link.hash) {
+      selectRoute(focus);
+      return;
+    }
+    focusOnChange = focus;
+    location.hash = link.hash;
+  }
+
+  addEventListener('hashchange', () => {
+    if (drawer.open) drawer.close();
+    selectRoute(focusOnChange);
+    focusOnChange = 'heading';
+  });
+  document.addEventListener('click', event => {
+    const link = event.target.closest('.module, .tabs a, .skip');
+    if (!link || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    event.preventDefault();
+    if (link.matches('.skip')) selectRoute('heading');
+    else navigate(link, link.matches('[role="tab"]') ? 'tab' : 'heading');
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && account.open) {
+      account.open = false;
+      account.querySelector('summary').focus();
+      return;
+    }
+    const tab = event.target.closest('[role="tab"]');
+    if (!tab || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const peers = [...tab.parentElement.querySelectorAll('[role="tab"]')];
+    const index = peers.indexOf(tab);
+    let next;
+    switch (event.key) {
+      case 'ArrowLeft': next = (index + peers.length - 1) % peers.length; break;
+      case 'ArrowRight': next = (index + 1) % peers.length; break;
+      case 'Home': next = 0; break;
+      case 'End': next = peers.length - 1; break;
+      case ' ': next = index; break;
+      default: return;
+    }
+    event.preventDefault();
+    navigate(peers[next], 'tab');
+  });
+
+  opener.addEventListener('click', () => {
+    account.open = false;
+    drawer.showModal();
+    opener.setAttribute('aria-expanded', 'true');
+  });
+  drawer.querySelector('.drawer-close').addEventListener('click', () => drawer.close());
+  drawer.addEventListener('keydown', event => {
+    if (event.key !== 'Tab') return;
+    const stops = drawer.querySelectorAll('button, a[href]');
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+  drawer.addEventListener('close', () => opener.setAttribute('aria-expanded', 'false'));
+  desktop.addEventListener('change', () => {
+    if (desktop.matches && drawer.open) {
+      drawer.close();
+      document.querySelector('.desktop-switch input').focus();
+    }
+  });
+  account.addEventListener('focusout', event => {
+    if (!account.contains(event.relatedTarget)) account.open = false;
+  });
+  selectRoute(location.hash ? 'heading' : null);
+})();
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 ---
 name: Hexalith Common Application UX
-status: draft
-updated: 2026-09-23
+status: final
+updated: 2026-11-21
 sources:
   - _bmad-output/planning-artifacts/ux-design.md
   - _bmad-output/planning-artifacts/ux-design-detailed-2026-07-05.md
@@ -11,24 +11,25 @@ sources:
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md
   - _bmad-output/planning-artifacts/epics.md
+  - docs/reference/cli.md
+  - README.md
 ---
 
 # Hexalith Common Application Experience
 
-**Approved McpCli experience correction (2026-09-27):** `Hexalith.McpCli` is the target Hexalith-owned CLI and MCP entry point. The FrontComposer MCP endpoint, projection/skill resources, lifecycle tool, and `frontcomposer inspect/migrate` CLI flows below describe legacy compatibility behavior. Each requires an owner-approved generic McpCli replacement or explicit withdrawal before retirement; do not claim that the five v1 generic tools already implement these flows.
-
-
-This file owns **how FrontComposer works**: information architecture, behavior, state, interaction, accessibility, and journeys. `DESIGN.md` is its peer and owns appearance. `ux-design.md` is canonical; this file is a supplement to it and loses on any conflict. It may add behavioral detail but never overrides a canonical matrix row. Within its domain, this file still wins over mockups, wireframes, imports, historical supplements, and implementation examples.
+This working pair supports the D-8 UX contract. The [canonical UX matrices](../../ux-design.md), [behavior and journey supplement](../../ux-experience-2026-07-05.md), and [visual supplement](../../ux-design-detailed-2026-07-05.md) take precedence over this pair and any visual references.
 
 ## Foundation
 
 The primary human form factor is desktop-first responsive web. The shared shell also serves compact and narrow browser viewports; it is not a native mobile or desktop product. Nonvisual peer surfaces are part of the same product experience: generated C# output, the `frontcomposer` CLI, the MCP protocol, and the Testing package.
 
-The UI system is **FrontComposer + Blazor Fluent UI V5**. It inherits Fluent behavior unless this spine defines a FrontComposer delta. `DESIGN.md` is the sole visual identity reference and exposes the inherited Fluent V5 accent role as `{colors.accent-thread}` without redefining Fluent.
+The UI system is **FrontComposer + Blazor Fluent UI V5**. The visual supplement and the companion `DESIGN.md` describe the active Fluent theme, including `{colors.accent-thread}`.
 
-The audience is operational: adopter developers, authenticated operators, AI-agent integrators, framework maintainers, and release owners. Bespoke consumer marketing or transactional UX is outside this contract. Hexalith.Tenants is the obligated first adopter; Hexalith.Parties is only a dated Product-selected D-7 fallback and inherits the identical evidence obligation.
+The audience includes adopter developers, authenticated operators, AI-agent integrators, framework maintainers, and release owners. Product accepted the Tenants bootstrap and render proof on 2026-09-26 for candidate `05d12200`. The Parties fallback under D-7 was unused. [G-6 Product decision](../../../implementation-artifacts/tests/tenants-g6-product-decision-2026-09-26.md)
 
-Every human surface is tenant- and user-scoped. Missing or stale tenant context is an explicit fail-closed state, never empty-looking data. Every agent surface is host-authenticated and follows the exact MCP disclosure boundaries below.
+Operator data and controls are tenant- and user-scoped. Missing or stale tenant context displays a fail-closed state. `Hexalith.McpCli` owns target agent-facing transport. FrontComposer retains its descriptors and the developer-operated local compiler commands `frontcomposer inspect` and `frontcomposer migrate`.
+
+Existing agent consumers use the FrontComposer HTTP MCP host under FR-17 through FR-19a. Move FK01–FK04 first, account for every consumer and obtain owner approval for each capability’s replacement or withdrawal. Resource and lifecycle replacements need approved generic McpCli contracts. Retire the host and `Hexalith.Projects.Mcp` together after K12 Web/Chatbot evidence, Projects 6.7 cutover, DW-82 publication and selected-environment live, release and rollback acceptance. The local compiler commands stay supported after cutover. [Compatibility inventory](../../../../README.md#legacy-compatibility-surfaces)
 
 ## Information Architecture
 
@@ -43,14 +44,14 @@ Every human surface is tenant- and user-scoped. Missing or stale tenant context 
 | Projection row detail | Expand action from a projection row | Inspect one entity in an accessible nested region and launch allowed commands | UJ-2, UJ-3 |
 | Generated command form | Inline or CompactInline host; FullPage at `/commands/{BoundedContext}/{CommandTypeName}`; palette or authorized CTA | Validate and submit one domain command | UJ-3 |
 | Command lifecycle | Attached to the active generated command | Separate transport acknowledgement from confirmed/rejected/review/degraded outcome | UJ-3 |
-| Settings | Header control or `Ctrl+,` | Theme and density selection applied live, Restore defaults, persistence | UJ-2, UJ-3 |
+| Settings | Header control or `Ctrl+,` | Theme, saved density choice and preview, effective density, Restore defaults | UJ-2, UJ-3 |
 | Account control | Always-present header control | Sign-in/sign-out and account access through `/authentication/challenge` and `/authentication/sign-out` | UJ-2, UJ-3 |
 | Customization diagnostics | Development-only override host | Explain customization-contract mismatches without exposing operator data | UJ-5 |
-| MCP tool catalog/call | `tools/list`; `tools/call` | Discover and execute visible generated command tools | UJ-4 |
+| MCP tool catalog/call | `tools/list`; `tools/call` | Discover and invoke visible generated command tools on the compatibility host | UJ-4 |
 | MCP projection/skill resources | `resources/list`; `resources/read` | Read registered projection descriptors/data and validated skill reference content | UJ-4 |
 | MCP lifecycle polling | `frontcomposer.lifecycle.subscribe` | Observe a command across later requests and DI scopes | UJ-4 |
-| Generated output and inspect | `obj/{Config}/{TFM}/generated/HexalithFrontComposer/`; `frontcomposer inspect` | Inspect generated forms, grids, registrations, manifests, diagnostics, and drift | UJ-1, UJ-5 |
-| Migration plan/apply | `frontcomposer migrate` | Preview or atomically apply an allowlisted migration edge; dry-run by default | UJ-5 |
+| Generated output and inspect | `obj/{Config}/{TFM}/generated/HexalithFrontComposer/`; `frontcomposer inspect` | Inspect on-disk forms, grids, registration and manifest files, and diagnostic sidecars | UJ-1, UJ-5 |
+| Migration plan/apply | `frontcomposer migrate` | Preview an executable migration locally. Explicit apply replaces each eligible file separately | UJ-5 |
 | Adopter test harness | FrontComposer Testing package in bUnit | Exercise generated consumer success, failure, authorization, paging, focus, and accessibility behavior | UJ-6 |
 
 Navigation invariants:
@@ -87,9 +88,9 @@ Microcopy is direct, localized, evidence-based, and support-safe. Brand posture 
 | Explain rejection using support-safe error code, category, suggested action, and docs code | Expose raw EventStore metadata, event payloads, tokens, JWT claims, stack traces, or unrestricted PII |
 | Announce meaningful state once; coalesce progress | Announce every retry, poll tick, render, or row expiry |
 
-Announcement copy is final and owned by the canonical `ux-design.md` UX-AM-1 rows, including Warning (AM-16), NeedsReview (AM-15), Degraded (AM-17, AM-24), missing tenant (AM-26), FallbackPolling (AM-06), SlowQuery (AM-08), MaxItems (AM-09), and fresh-row appearance (AM-21; expiry and dismissal are silent). This file does not restate or vary that copy.
+UX-AM-1 owns the announcement text. AM-13 defaults to “Command confirmed.” for Confirmed and IdempotentConfirmed. For an idempotent result, a nonblank `IdempotentInfoMessage` replaces that announcement with the adopter’s plain text. Blank and whitespace-only values use the localized default. Announce the first terminal outcome once per operation. Repeated observations of that outcome stay silent. [Announcement matrix](../../ux-design.md#ux-am-1---announcement-matrix) · [Idempotent announcement tests](../../../../tests/Hexalith.FrontComposer.Shell.Tests/Components/Lifecycle/FcLifecycleWrapperIdempotentTests.cs)
 
-[NOTE FOR UX] Only the visual treatment of those states is unresolved; UX/Product own that disposition.
+UX-VC-1 and UX-RM-1 define the visible state text, non-color cues, and reduced-motion treatment. [Visual acceptance matrices](../../ux-design-detailed-2026-07-05.md)
 
 ## Component Patterns
 
@@ -98,21 +99,21 @@ Visual specifications for every row live in `DESIGN.md` Components.
 | Component / pattern | Behavioral contract |
 |---|---|
 | **shell-frame — `FrontComposerShell`** | Hosts one main landmark, skip links, providers, header, navigation, route content, footer, shortcuts, and the always-present account control. Successful client navigation focuses the route `h1`; failed navigation preserves usable focus and announces failure. |
-| **navigation-rail — `FrontComposerNavigation` + `FcHamburgerToggle`** | Shows exactly one primary entry per Module and one active item. Hamburger is always available; Desktop toggles labeled/icon-only rail, while compact/narrow behavior reveals the same Module list without promoting subpages. |
+| **navigation-rail — `FrontComposerNavigation` + `FcHamburgerToggle`** | Shows exactly one primary entry per Module and one active item. The shell-owned hamburger precedes optional `HeaderStart` content. Desktop toggles the labelled/icon-only rail. Tablet and Phone require the authorized Module list in the drawer. The default shell gap and acceptance cases are in Responsive & Platform. |
 | **account-control — `FcAccountMenu`** | Always renders despite adopter header customization. Exposes sign-in/sign-out routes and returns focus to the invoker when its menu closes. Host/server security owns generic authentication wiring. |
 | **home-directory — `FcHomeDirectory` + `FcHomeCard`** | Implements No Modules (SS-01), Hydrating (SS-02), Empty (SS-03), and Ready (SS-04) outcomes. Ready items sort by the canonical urgency rule; activation enters the Module/default tab. Missing tenant overrides all data-like states with fail-closed feedback. |
 | **command-palette — `FcCommandPalette`** | Opens with `Ctrl+K` as an ARIA combobox, searches authorization-visible registry entries after a `150ms` debounce, supports keyboard result navigation, and routes commands/pages through canonical routes. Close returns focus to invoker; navigation focuses destination `h1`. |
-| **settings — `FcSettingsDialog`** | Opens from header or `Ctrl+,`, supports theme/density selection, Restore defaults, and Done/close. Changes apply live and update the body density attribute; closing never rolls them back, and the dialog session is intentionally silent (OF-02, SS-43). Preferences persist only with resolved tenant/user scope. |
+| **settings — `FcSettingsDialog`** | Opens from header or `Ctrl+,`, supports theme/density selection, Restore defaults, and Done/close. The selection is saved live, and the preview shows the selected density. The shell uses effective density. Tablet and Phone force Comfortable and explain a differing choice in the dialog. Closing keeps the selection. Preferences persist only with resolved tenant/user scope. A failed browser-storage write surfaces at flush and later writes can still persist. |
 | **page-frame — `FcPageHeader` + `FcPageLayout`** | Provides the route `h1` and full-width default or opt-in `{spacing.constrained-content-max}` content. Failed route activation leaves focus on a stable heading/status target. |
-| **module-tabs — `FcPageTabs` / inherited Fluent tabs** | Encodes selection in `/{module}/{tab}`, is deep-linkable, and preserves Fluent arrow-key behavior. Keyboard selection keeps focus on the active tab while its labelled tabpanel changes. |
-| **page-toolbar — `FcPageToolbar`** | Presents leading search, filter, view/overflow controls, and end-aligned authorized actions. `/` focuses page search only when enabled. Its public behavior is stable; internal Fluent composition is implementation-owned. |
+| **module-tabs — `FcPageTabs` + `FcPageTab` / inherited Fluent tabs** | Encodes selection in `/{module}/{tab}`, is deep-linkable, and preserves Fluent arrow-key behavior. Keyboard selection keeps focus on the active tab while its labelled tabpanel changes. |
+| **page-toolbar — `FcPageToolbar`** | Presents leading search, filter, view/overflow controls, and end-aligned authorized actions. `/` focuses the route’s sole eligible, enabled page-search input. With none or more than one, focus stays in place. Its public behavior is stable; internal Fluent composition is implementation-owned. |
 | **page-sections — inherited Fluent accordion** | Groups two or more sibling titled regions on a page/dialog/detail panel. The primary item is expanded by default when included. The only primary content region is never hidden behind expansion. |
 | **projection-grid — generated inherited Fluent data grid** | Filters are debounced and resettable; row details, column priority over 15 columns, sticky header, paging/virtualization, keyboard focus, and state notices stay within one labelled grid context. Server-side virtualization begins at `500` rows; unfiltered results cap at `10,000`. |
 | **projection-placeholders — `FcProjectionLoadingSkeleton` + `FcProjectionEmptyPlaceholder`** | Skeleton matches expected Card/Timeline/Grid layout and is marked busy. Empty distinguishes “no data” from “no filter matches,” retains context, and offers an authorized create CTA only when available. |
 | **projection-health — `FcProjectionConnectionStatus` + `FcSlowQueryNotice` + `FcMaxItemsCapNotice`** | Surfaces Reconnecting/FallbackPolling/recovery, SlowQuery after `2,000ms`, and MaxItems at `10,000` without disabling safe read actions. Meaningful transitions announce once; retry/poll ticks remain silent. |
 | **row-detail — `FcExpandInRowDetail` + `FcExpandedRowHiddenBanner`** | Expansion creates a labelled `region` in the row. If a filter hides an expanded row, announce that transition and provide a stable recovery path; do not leave focus on removed content. |
-| **status-affordance — `FcStatusIcon` + inherited icon/tooltip; `FcDesaturatedBadge` + inherited badge** | Status has semantic icon, accessible name, and tooltip on hover and keyboard focus. Counts remain badges. Neither color nor hover is required to obtain the meaning. |
-| **command-form — generated form + `FcFieldPlaceholder`** | Density uses non-derivable property count: 0–1 Inline, 2–4 CompactInline, 5+ FullPage. Server-controlled/derived fields are hidden and injected later. Unsupported field types show a placeholder. Validation links summary items to controls, focuses the summary on failed submit, preserves useful input, and lets keyboard users reach the first invalid field. |
+| **status-affordance — `FcStatusIcon` + inherited icon/tooltip; `FcDesaturatedBadge` + inherited badge** | Status has a semantic icon or shape, visible state text and a persistent accessible name. A tooltip may repeat the label on hover and keyboard focus. Counts remain badges. FL-2 is open for generated annotated-enum cells. Accept the change when the localized label is visible beside the glyph before interaction in normal and forced colors, and the contextual accessible name is preserved. |
+| **command-form — generated form + `FcFieldPlaceholder`** | Density uses non-derivable property count: 0–1 Inline, 2–4 CompactInline, 5+ FullPage. The form constructs the command with zero arguments and reads every command-provided default from that instance, so related field values agree. A public constructor with explicit defaults for every parameter also qualifies. Opening another form creates a fresh instance. Server-controlled/derived fields are hidden and injected later. Unsupported field types show a placeholder. Validation links summary items to controls, focuses the summary on failed submit, preserves useful input, and lets keyboard users reach the first invalid field. |
 | **command-authorization — `FcAuthorizedCommandRegion`** | Resolves Pending, Authorized, or NotAuthorized before revealing/activating protected commands. `[RequiresPolicy]` runs before `BeforeSubmit` and again afterward for protected commands; the service boundary also authorizes. |
 | **command-safety — `FcDestructiveConfirmationDialog` + `FcFormAbandonmentGuard`** | Destructive commands require explicit confirmation. Dirty-form navigation after `30s` of edits is guarded; cancel restores the form/focus. Dialog close returns focus to invoker; modal depth stays one. |
 | **lifecycle-feedback — `FcLifecycleWrapper` + `FcPendingCommandSummary`** | Shows the exact lifecycle vocabulary and never calls transport acceptance confirmed success. Progress is polite. Client validation (AM-18) and field-mapped server rejection (AM-19, VR-02) use the focused summary; an unmapped rejection uses polite AM-14 and keeps focus in the lifecycle/recovery context (VR-03, FM-08). No lifecycle state uses a focused alert. FC-CNC permits one in-flight local command and blocks—never queues/batches—a later local submit with one accessible announcement. |
@@ -125,13 +126,13 @@ Visual specifications for every row live in `DESIGN.md` Components.
 
 | State | Entry evidence | Meaning and actions | Recovery / announcement |
 |---|---|---|---|
-| No Modules (SS-01) | Registry has no domain manifests | Valid empty shell; link to getting started | Terminal for current registry; route heading identifies Home |
+| No Modules (SS-01) | Registry has no domain manifests | Valid empty shell with settings and account access | AM-25 politely once for the settled registry |
 | Hydrating (SS-02 Loading) | Manifest/count query pending | Geometry-matched skeletons; shell remains operable | Non-terminal; resolves to Empty or Ready; AM-01 once, no per-card announcements |
 | Empty (SS-03) | Query succeeds with no visible Modules | No accessible Modules; not an error | Terminal; new registration/access or refresh; AM-02 once |
-| Ready (SS-04 Data) | One or more visible Modules | Actionable Modules ordered first; zero-action Modules follow by name/secondary grouping | Stable until live count change; reordering preserves focus |
+| Ready (SS-04 Data) | One or more visible Modules | Ready Modules first, then descending actionable count, then ordinal name | AM-03 only for an operator-initiated load. Later count updates preserve focus |
 | Route failure | Client navigation cannot activate target | Current surface remains usable; failure status offers retry/back | Announce once; focus remains on stable heading/status |
-| No Module access | Policy hides entry or direct route denies | Hidden when policy requires; otherwise support-safe denied surface | Terminal until auth changes; alert/heading is focus target |
-| Missing/stale tenant | Tenant resolution absent, invalid, or changes under a live surface | Explicit blocked state; never render stale/empty-looking data | Clear prior scope before render; announce once as blocking |
+| No Module access | Policy hides entry or direct route denies | Hidden when policy requires; otherwise support-safe denied surface | Terminal until auth changes; an activated denial focuses its heading (AM-26). Hidden entries stay silent |
+| Missing/stale tenant | Tenant resolution absent, invalid, or changes under a live surface | Explicit blocked state; never render stale/empty-looking data | Clear prior scope before render. Focus the replacement heading once (AM-26) |
 | Signed out / signed in | Host auth state | Account menu offers challenge or sign-out | Sign-out evicts token state; navigation returns to a stable route |
 
 Home is reachable through both `/` and `/home`. Settings preference hydration and all badge/home counts are tenant/user scoped; storage is skipped rather than defaulted when scope is absent.
@@ -140,16 +141,16 @@ Home is reachable through both `/` and `/home`. Settings preference hydration an
 
 | Surface | Required states | Contract |
 |---|---|---|
-| Module workspace / Module Tab | Loading, Available, No Access, Missing Tenant, Invalid Tab Fallback | Loading preserves shell geometry; Available selects exactly one route-backed tab; denied/tenant failures are explicit; an absent or unavailable tab falls back to the default tab, which becomes the selected tab, and announces AM-31 once (FM-02, SS-32); the invalid target is never selected. |
+| Module workspace / Module Tab | Loading, Available, No Access, Missing Tenant, Invalid Tab Fallback | Opening `/{module}` selects its default tab silently (SS-31). An explicitly requested unknown or disabled tab selects the default instead and produces AM-31 once (SS-32). Preserve the shell during loading and expose denial or missing tenant as its own state. |
 | Projection flyout | Closed, Open, No Projections, Authorization-filtered, Navigation Failure | Open is keyboard navigable; no-projection Modules retain their workspace/default tab; hidden projections are not teased; close/failure returns or preserves useful focus. |
 | Command palette | Closed, Hydrating, Results, No Matches, Authorization-filtered, Navigation Failure | Search results update after `150ms`; only a zero-result query speaks, as AM-28 through the single palette-owned status node, and no result-count speech is emitted; results exclude unauthorized actions and keep query/focus on a recoverable target after failure. |
-| Settings | Hydrating, Open, Persisted, Persistence Skipped/Failed | Theme/density changes apply live; closing does not roll them back, and the dialog session is intentionally silent (OF-02, SS-43). An exposed setting error focuses a complete local summary (AM-18); missing scope skips storage without inventing a default tenant; failure preserves the selected value in-session and gives support-safe feedback. |
+| Settings | Hydrating, Open, Persisted, Persistence Skipped/Failed | Initial hydration, first viewport measurement and opening the dialog are silent (OF-02, SS-43). A later effective density change announces “Density set to {effective density}.” once. A saved choice that leaves effective density unchanged stays silent. An exposed error focuses its local summary (AM-18). Missing scope skips persistence, and a failed write preserves the in-session selection. |
 | Account control | Signed Out, Challenge Pending, Signed In, Sign-out Pending/Failed | Menu is always reachable. Challenge/sign-out use framework routes; sign-out invalidates/evicts token state; failure exposes no token or claim detail and leaves a stable retry route. |
 | Projection row detail | Collapsed, Expanded, Hidden by Filter, Query/Permission Error | Expanded region is labelled; hiding moves/preserves focus at the grid and announces once; detail errors retain row context and do not expose backend internals. |
 | Generated command form | Initial, Authorization Pending/Denied, Dirty, Invalid, Dispatching, Retryable Failure, Lifecycle Outcome | Only editable fields render; dirty navigation is guarded; invalid submission focuses the linked summary; dispatch locks the local lane; input survives meaningful correction/retry. |
 | Customization diagnostics | Hidden, Mismatch, Render Fault | Hidden outside Development; visible states provide bounded corrective metadata and never replace the operator-facing projection with unsafe details. |
 | MCP tool/resource/lifecycle surfaces | Visible, Hidden/Unknown, Schema Mismatch, Malformed, Canceled, Oversized, Lifecycle Pending/Terminal | Public shapes and disclosure boundaries are fixed by the MCP matrix below; hidden/unknown handling precedes schema details where specified. |
-| Inspect / migrate / generated output | Success, Actionable Findings, Unavailable, Dry-run Plan, Apply Success, Refused Target, Drift | Machine and text results remain deterministic; unsafe writes and unapproved drift fail closed. |
+| Inspect / migrate / generated output | Success, Actionable Findings, Unavailable, Dry-run Plan, Apply Success, Refused Target, Drift, Partial Apply | After a failed or interrupted apply, inspect the working tree for earlier successful writes. |
 | Adopter test harness | Configured Success, Rejection, Timeout/Stall, Authorization Denial, Query Variants, Assertion Failure | Fakes are deterministic; assertion/evidence output is redacted; a failing UX assertion remains failure evidence and is not replaced by another green lane. |
 
 ### Projection state-by-surface matrix
@@ -162,12 +163,15 @@ Each state is visible and accessible within the projection list/detail context. 
 | Empty | Successful scoped query has zero rows and no active filter mismatch | No records exist; authorized create CTA may appear | Terminal for query result; create, refresh, or navigate | Heading/status once |
 | Data | Successful scoped query returns rows | Filter, sort, expand, page, run authorized actions | Stable until refresh/connection/query change | No bulk row announcement |
 | Stale | Freshness evidence says displayed projection may be old | Keep readable data; show consequence; refresh/wait; mutations fail closed where current evidence is required | Non-terminal; exits on successful reconciliation | Polite once per projection/stale transition |
-| Reconnecting | SignalR disconnected/retry active | Live updates unavailable; data may age; manual safe reads remain | Non-terminal; jittered exponential retries unbounded, delay capped at `30,000ms`; closed connection restart within `10s` | Announce entry once; retries silent |
-| FallbackPolling | Realtime unavailable and fallback driver active | Data refreshes by HTTP while connection recovers | Non-terminal; every `15s` across at most `8` lanes; exits automatically on reconnect | Entry/recovery once; ticks silent |
+| Reconnecting | SignalR disconnected/retry active | Live updates unavailable; data may age; manual safe reads remain | Non-terminal; jittered exponential retries unbounded, delay capped at `30,000ms`; closed connection restart within `10s` when fallback polling is enabled | Announce entry once; retries silent |
+| FallbackPolling | Realtime unavailable and fallback driver active | Data refreshes by HTTP while connection recovers | Default every `15s` across at most `8` lanes. Polling ends on reconnect | Entry/recovery once; ticks silent |
 | SlowQuery | Active query exceeds `2,000ms` | Query continues; user may wait, reset/refine filters, or navigate | Non-terminal; clears on completion/cancel/new query | Polite once per query |
 | MaxItems | Unfiltered result reaches `10,000` cap | Result is bounded; refine filters; server virtualization applies from `500` rows | Stable constraint until query narrows | Once per query shape; no per-page repeats |
 | Reconnected | Realtime resumes and reconciliation succeeds | Data refreshed; live mode restored | Transient notice for `3,000ms`, then silent | Polite once |
-| Query/permission error | Scoped query fails or policy denies | Preserve safe context; no raw backend detail; retry only when allowed | Terminal for attempt; new auth/query/refresh may recover | Alert/focused summary when blocking |
+| Query failure / offline | Scoped query fails, or network is unavailable | Keep usable stale data labelled. Offer permitted retry, navigation or support | Retry the query when connectivity or input permits | AM-30 politely once per operation or connection epoch |
+| Permission or scope loss | Tenant, user or policy no longer authorizes the view | Clear prior data and offers of protected actions. Show a safe recovery path | Re-evaluate after context or authorization changes | AM-26 on the replacement heading, focus only |
+
+With `ProjectionFallbackPollingIntervalSeconds=0`, a terminal hub close leaves the connection disconnected. The fallback driver stays idle and the closed-connection restart loop does not run. Keep readable data labelled with its freshness. If HTTP returns 304 and the cached projection cannot be read, evict only that scoped entry and retry once without its validator. A failed retry follows the query-failure state. [Recovery finding](../../prds/prd-frontcomposer-2026-11-20/post-approval/validation-report.md) · [Runtime boundaries](../../architecture.md#host-and-runtime-boundaries)
 
 Expanded row detail is a labelled region. If filtering removes its row, the hidden-expansion notice announces once, moves or preserves focus at a valid grid control, and never implies deletion.
 
@@ -181,16 +185,25 @@ Client validation runs before dispatch. A failed submit focuses a linked error s
 |---|---|---|---|
 | Submitting | Valid authorized command is dispatching; not yet accepted | Wait/cancel only where contract permits; second local submit blocked | Polite once; non-terminal |
 | Acknowledged | HTTP/EventStore accepted the command | Wait for status/projection evidence | Polite once; non-terminal; never success |
-| Syncing | Accepted command awaits confirmed status/projection | Wait; polling continues; start-over only where provided | Coalesced polite progress; non-terminal |
+| Syncing | Accepted command awaits confirmed status/projection | Wait for evidence. Status polling runs only when enabled. | Coalesced polite progress (AM-12), non-terminal |
 | Confirmed | Approved status/projection evidence proves outcome | Return to refreshed list/detail | Polite once; terminal success |
 | Rejected | Structured domain rejection | Review support-safe reason; correct/retry when meaningful | Unmapped (VR-03): polite AM-14 once; focus stays in the lifecycle/recovery context (FM-08). Field-mapped (VR-02): AM-19 focused summary once; AM-14 suppressed. Terminal |
-| IdempotentConfirmed | Evidence proves requested material result was already confirmed | No repeat dispatch required | Polite once; terminal success; fresh marker only if terminal materiality is Material |
+| IdempotentConfirmed | Evidence confirms that the requested result already held | Continue without repeating dispatch. A fresh-row cue requires Material disposition. | AM-13 once, with the idempotent override when supplied. Terminal success. |
 | NeedsReview | Outcome requires human review; not confirmed success | Follow named support/review action when supplied | Once; terminal for automated lifecycle |
-| Warning | Outcome succeeded or progressed with a qualifying warning; not equivalent to Confirmed unless evidence says so | Follow support-safe action; retain context | Once; terminal/non-terminal only as supplied by lifecycle evidence |
-| Degraded, polling active (SS-24) | Confirmation reaches `10,000ms` while the status budget remains; outcome unconfirmed, no false success | Review status, continue working, or close; polling continues every `1,000ms` | AM-17 once; non-terminal until confirmation/other terminal evidence or the `120,000ms` ceiling |
-| Degraded, polling exhausted (SS-26) | The operation remains unconfirmed when total polling reaches `120,000ms`; local polling has ended | Review status later, continue working, close, or start a separately identified recovery operation; later backend evidence is a newly correlated update, never a retroactive mutation | AM-24 once, immediately; terminal |
+| Warning | Terminal evidence reports that the command completed with a warning (SS-23) | Read the warning and follow the available recovery action | AM-16 once per operation |
+| Degraded, awaiting confirmation (SS-24) | The mounted wrapper reaches 10,000 ms from acknowledgement while the local confirmation window is still open | Review status or continue working. Enabled polls continue on their configured schedule. | AM-17 once, non-terminal until a terminal outcome or the configured deadline |
+| Degraded, local deadline exhausted (SS-26) | The accepted operation is unconfirmed at its configured deadline, measured from acknowledgement | Review status later, continue working, close, or start a separate recovery operation. Later evidence belongs to a newly correlated update. | AM-24 immediately, once. Terminal. |
 
-Lifecycle polling uses the confirmed status endpoint every `1,000ms` for at most `120,000ms`. The lifecycle coordinator has zero pre-accept lifecycle retries. Separately, one transient **dispatch** retry runs `250ms` after acknowledgement, reusing the same `MessageId` so it cannot duplicate the command; it is not a lifecycle-poll retry. FC-CNC keeps exactly one in-flight local command; later submits do not run.
+The default profile checks command status every 1,000 ms, enters non-terminal Degraded at 10,000 ms and reaches the local confirmation deadline at 120,000 ms. FC-CNC admits one in-flight local command. The lifecycle coordinator makes zero pre-accept retries. [Shell options](../../../../src/Hexalith.FrontComposer.Shell/Options/FcShellOptions.cs) · [Wrapper deadlines](../../../../src/Hexalith.FrontComposer.Shell/Components/Lifecycle/FcLifecycleWrapper.razor.cs)
+
+| Independent host setting | Observable acceptance case |
+|---|---|
+| `PendingCommandPollingIntervalMs=0` or `MaxPendingCommandPollingPerTick=0` | Assert zero command-status requests. Without confirming evidence, keep the command unconfirmed. The mounted wrapper still measures `MaxPendingCommandPollingDurationMs` from acknowledgement. When the window extends past 10,000 ms, announce AM-17 once at that point, then AM-24 once at the deadline. With polling disabled, the current pending summary still says FrontComposer is checking status. Both its visible and accessible text must describe the outcome as unconfirmed without implying that checks are running. [Pending summary](../../../../src/Hexalith.FrontComposer.Shell/Components/EventStore/FcPendingCommandSummary.razor.cs) |
+| `CommandDispatchRetryAttempts=0` | After acceptance with unreadable optional correlation, send no recovery POST. Keep Accepted with the original `MessageId` and unknown correlation. AM-11 remains the acknowledgement. Configured status polling and the local deadline remain independent. |
+
+With recovery enabled, an unreadable correlation response after acknowledgement can trigger one optional same-`MessageId` POST after the configured delay (default 250 ms). An unsuccessful recovery retains the accepted result. [Accepted correlation handling](../../../../src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs)
+
+[Command lifecycle reference](mockups/key-command-lifecycle.html)
 
 ### Fresh-row state
 
@@ -198,22 +211,24 @@ The resolver is the only terminal owner. Target identity is an immutable pre-dis
 
 Publish only when both identity and Material disposition are known and the outcome is eligible. Suppress Unknown identity/materiality, NoOp, delete, Rejected, NeedsReview, and server-allocated target keys. A material idempotent confirmation remains eligible. SignalR nudges, visible-row diffs, EventStore aggregate IDs, and untyped results are never row identity.
 
+In a generated projection, render one cue per eligible entry above the grid. The info icon accompanies localized AM-21, “Updated row: {EntityKey}.” A nonblank `Text` parameter replaces the visible label. The entry-aware shared status node still announces AM-21 once per tenant/user/entity/message transition, including across remounts and views. Keep focus in place. Remove the cue silently on row materialization, filter change, scope change, dismissal or ten-second expiry. A standalone `FcNewItemIndicator` without `Entry` keeps its own status node, localized default text and optional `AriaLabelOverride`. [Story 13.5 decision](../../../implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md) · [Indicator component](../../../../src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcNewItemIndicator.razor.cs)
+
 Indicator state is tenant/user/lane scoped before read and render. Add, materialization, dismiss, filter/requery, expiry, clear, and scope change invalidate live generated consumers. Active identity is `(ViewKey, EntityKey)` with atomic first-wins across message IDs: later outcomes cannot replace provenance or extend expiry.
 
-### MCP state and disclosure matrix
+### Compatibility MCP host state and disclosure matrix
 
 | Request | Public result | Behavioral guarantee |
 |---|---|---|
-| `tools/list` without auth/tenant or on catalog failure | Successful empty tools collection | Fail closed; empty remains a credential-validity signal because authenticated callers see at least the lifecycle tool |
+| `tools/list` without auth/tenant or on catalog failure | The mapped endpoint challenges unauthenticated HTTP requests. The handler returns an empty tools collection for missing agent context, tenant or catalog failure | Authenticated callers see at least the lifecycle tool, so the challenge and empty result disclose credential validity |
 | `tools/call` unknown/hidden/unauthorized/tenant-less/policy-denied | `category: unknown_tool`, `docsCode: HFC-MCP-UNKNOWN-TOOL`, suggestion, caller-visible tools, optional truncation continuation; text `Request failed.` | Hidden and absent are byte-identical for the same caller |
 | Visible tool with incompatible schema | Distinct schema-mismatch result; no side effect | Exact, CompatibleAdditive, and CompatibleWarning may allow side effects; every other negotiation kind blocks |
-| `resources/list` | Static generated projection/skill descriptor catalog | Same catalog for all callers; bounded-context/projection names are disclosed pending the independent security disposition |
+| `resources/list` | Static generated projection/skill descriptor catalog | Same catalog for all callers. Bounded-context and projection names are disclosed. G-7 accepted this behavior for the reviewed candidate |
 | Registered projection resource hidden/unauthorized/tenant-less/policy-denied | `unknown_resource` | Those registered-resource causes are indistinguishable |
 | Unregistered resource URI | ModelContextProtocol SDK default not-found | Distinguishable from registered hidden resources by stated contract |
 | Visible projection with incompatible schema | Distinct schema result | No read side effect under incompatible negotiation |
 | Skill resource failure | `unknown_resource`, `malformed_request`, `canceled`, or `response_too_large` | Skills are framework-global validated reference content, not tenant data |
 
-The fixed lifecycle tool crosses requests through singleton state with a scoped tracker. Logs and responses never echo requested hidden tool names, fingerprints, tenant identifiers, raw exception text, tokens, or payloads.
+The host retains the delayed terminal callback with the acknowledged command entry across requests. Each later poll rechecks reader admission, and a denied lookup receives the opaque tool result. The independent security review closed G-7 on 2026-09-26 for the exact v2 candidate. [Security decision](../../../implementation-artifacts/tests/mcp-g7-security-review-2026-09-26.md) · [Runtime boundaries](../../architecture.md#host-and-runtime-boundaries)
 
 ### Developer/tooling states
 
@@ -221,10 +236,12 @@ The fixed lifecycle tool crosses requests through singleton state with a scoped 
 |---|---|
 | Bootstrap | Valid three-call order starts; missing/misordered registration fails at startup with the named missing stage; no first-render failure |
 | Generated output | Valid annotated types emit deterministic artifacts; invalid use emits governed HFC diagnostics; generated files are never hand-edited |
-| Inspect | Text/JSON success, warning/error filtered result, actionable-findings exit, or unavailable-output exit; paths are repository-relative/redacted |
-| Migrate | Dry-run plan by default; apply is atomic; generated, submodule, symlink, out-of-root, `bin`, `obj`, and `.git` targets fail closed |
+| Inspect | Report on-disk generated files and diagnostics in deterministic text or JSON. Without `--build` these can be stale. Read the Roslyn and legacy flat layouts, preferring the compiler-emitted copy on a name collision. Only `--absolute-paths` opts generated-file paths into absolute output. Project and sidecar paths retain their relative or redacted form. |
+| Migrate | Dry-run previews an allowlisted executable edge. Explicit apply rechecks each path and source hash before atomic replacement of that file. Refuse generated output, nested repositories, linked files/directories and out-of-root targets. A handled write failure exits 4 with `applied=false` in the completed report. Cancellation may leave a partial or absent report. Earlier edits survive both cases. |
 | Customization | Resolution order is full-view override, projection template, generated default; field slots participate only when the selected renderer delegates; development-only mismatch panel |
 | Testing | Deterministic success, rejection, timeout/stall, authorization denial, paging/filter/sort, focus/accessibility, and redacted evidence states |
+
+Inspect the working tree after a failed or interrupted migration before retrying. Imported Compile items can fall outside the tool’s coverage. Before sharing output, check exception messages for absolute paths and review free-form diagnostics and diffs for private content. [CLI reference](../../../../docs/reference/cli.md) · [Migration recovery](../../../../docs/how-to/migration-guides.md)
 
 ## Interaction Primitives
 
@@ -246,13 +263,13 @@ Behavioral accessibility is mandatory; visual contrast/focus styling lives in `D
 
 - Meet WCAG 2.2 AA for generated and hand-authored shell UI.
 - Preserve one main landmark, skip links to content, unique route `h1`, semantic navigation, labelled tablist/tab/tabpanel relationships, combobox/listbox semantics for palette, dialog semantics, grid semantics, and `role="region"` for row detail.
-- Every interactive element has an accessible name. Status icons have `aria-label` and focusable tooltip access; count badges include textual context.
+- Every interactive element has an accessible name. Status icons pair an accessible name with visible state text. A tooltip is supplementary. Count badges include textual context.
 - Focus order follows reading order. Route/tab/palette/dialog behavior is deterministic; focus never lands in removed, hidden, or obscured content.
 - Progress and non-blocking transitions use a polite status channel. Submit-blocking validation (AM-18) and field-mapped server rejection (AM-19) use the focused linked error summary without live attributes; an unmapped Rejected outcome uses polite AM-14 and keeps focus in the lifecycle/recovery context. No focused alert is used. Each meaningful transition is announced once.
 - At `320 CSS px` reflow and `400%` zoom, meaning and operation remain available without two-dimensional scrolling except content with an essential two-dimensional layout.
 - Text remains operable when tested with WCAG text-spacing overrides: line height `1.5` times font size, paragraph spacing `2` times font size, letter spacing `0.12` times font size, and word spacing `0.16` times font size.
 - Pointer targets meet WCAG 2.2 AA `24×24 CSS px` minimum or a documented exception; keyboard operation remains equivalent.
-- Focus is not entirely hidden by sticky headers, dialogs, notices, or other authored content.
+- The entire focused control and its indicator stay visible inside their scrollport, including beside sticky chrome, messages, popovers, and dialogs (AE-05).
 - Reduced motion removes pulses/transitions without removing timing, state, or fresh-row meaning. Forced colors preserves borders, focus, semantic icons/text, and fresh-row meaning without color dependence.
 - Stable `data-testid` selectors remain on behavior governed by bUnit/e2e evidence; selectors supplement rather than replace accessible semantics.
 
@@ -262,18 +279,25 @@ Behavioral accessibility is mandatory; visual contrast/focus styling lives in `D
 - Clear old scope before the next scope can render. Storage keys are tenant/user/feature scoped, and persistence is skipped when scope is unavailable.
 - Server-controlled command fields—TenantId, UserId, MessageId, CorrelationId, timestamps, and declared derived values—never appear as editable input and are injected server-side.
 - Authorization runs both in the visible command region and at the service boundary. A hidden UI control is not authorization.
-- MCP endpoints sit behind host authentication and require both tenant-tool and resource-visibility gates. Allow-all gates are development/sample-only and remain a readiness enforcement gap, not accepted production behavior.
-- UI, MCP, logs, telemetry, snapshots, and evidence never expose raw tokens, JWT payloads, EventStore metadata, raw event payloads, stack traces, unrestricted PII, or hidden resource/tool identifiers.
+- The compatibility MCP endpoint requires host authentication and both visibility gates. `MapFrontComposerMcp` rejects the shipped allow-all gate types outside Development. The host owns its authentication scheme and any custom gate behavior.
+- The combined UI grants Parties administration only when the caller-bound Tenants API confirms active, authorized TenantOwner membership for the selected tenant and current user. A principal change invalidates any outstanding lookup. [Host authorization boundary](../../architecture.md#host-and-runtime-boundaries)
+- Keep tokens, JWT payloads, raw events and metadata, stack traces and unrestricted PII out of UI, MCP failure responses and shared evidence. The static MCP resource catalog discloses the descriptor names documented above.
 
 ## Responsive & Platform
 
-| Semantic viewport | Behavior |
+| Shipped viewport tier (CSS px) | Required navigation behavior |
 |---|---|
-| Desktop | Persistent primary Module rail; hamburger toggles `{spacing.navigation-rail-labeled}` labelled and `{spacing.navigation-rail-icon-only}` icon-only modes; full-width data surfaces by default |
-| Compact | Rail may remain icon-only or move behind the shell's compact navigation control; Module Tabs, palette, settings, and row actions remain keyboard/touch reachable |
-| Narrow browser | Drawer-style navigation may present the same one-entry-per-Module list; content reflows to one logical reading order; tables retain an accessible bounded horizontal strategy only where essential |
+| Desktop (1366 and wider) | The hamburger switches the primary Module rail between `{spacing.navigation-rail-labeled}` labelled and `{spacing.navigation-rail-icon-only}` icon-only modes. |
+| CompactDesktop (1024 to below 1366) | The rail uses icon-only mode and every Module keeps its accessible name. |
+| Tablet (768 to below 1024) and Phone (below 768) | The hamburger reveals the Module list in a drawer. Content reflows in reading order. |
 
-[NOTE FOR UX] The sources define semantic behavior but no numeric breakpoints. Implementations must use the shared breakpoint watcher and must not invent product-contract widths in this spine.
+The shared watcher selects the tier. At 320 CSS px and 400% zoom the shell must preserve every operation. A two-dimensional grid or the tab strip may own bounded horizontal scrolling while focus stays visible. [Viewport watcher](../../../../src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-layout-breakpoints.js) · [Canonical reflow criteria](../../ux-design.md#ux-ae-1---responsive-and-accessibility-evidence-matrix)
+
+FL-1 remains open in the default shell. On Counter.Web at `431aa71b`, the 320 CSS px drawer had only its title and Close button, including after a resize from 1440. At 900 CSS px the hamburger exposed no Module list. On a cold Phone and Tablet load, then after a Desktop-to-Phone resize, open the drawer by keyboard. It must contain each authorized Module exactly once. Activate Counter and verify its default tab at `/counter/counter-projection`, focus on the route heading (FM-01), and one current Module on reopening. [Observed runtime behavior](validation-2026-11-21/review-fluent-ui-v5.md)
+
+An open overlay drawer keeps forward and reverse Tab on visible controls. Escape closes it and returns focus to its invoker. Within a Module, arrow-key tab selection keeps focus on the selected tab and exposes its labelled panel (FM-02). In forced colors, inspect the current item, the focused item and their combination in both the rail and tab list. Focus must remain visibly distinct from selection. [Responsive navigation reference](mockups/key-responsive-navigation.html) · [Focus matrix](../../ux-design.md#ux-fm-1---focus-matrix)
+
+Tablet and Phone force Comfortable density. Selecting Compact on either tier preserves Compact in the control and preview while the page stays Comfortable. Moving to Desktop makes the saved choice effective and can announce that change once. [Density precedence](../../../../src/Hexalith.FrontComposer.Shell/State/Density/DensityPrecedence.cs) · [Density announcer](../../../../src/Hexalith.FrontComposer.Shell/Components/Layout/FcDensityAnnouncer.razor.cs)
 
 ## Inspiration & Anti-patterns
 
@@ -294,7 +318,7 @@ Behavioral accessibility is mandatory; visual contrast/focus styling lives in `D
 3. She wraps the app body in `<FrontComposerShell>@Body</FrontComposerShell>`.
 4. The source generator emits deterministic registrations, projection/command artifacts, and manifests; startup validation verifies the bootstrap stages.
 5. The shell opens at Home with its account control, shortcuts, one Tenants Module entry, and a useful empty/progressive state even before domain data exists.
-6. **Climax:** Nina enters Tenants through its default Module Tab and sees both a generated projection and generated command reachable without bespoke framework plumbing—the candidate-bound G-6 proof target.
+6. **Climax:** Nina enters Tenants through its default Module Tab and sees both a generated projection and generated command reachable without bespoke framework plumbing (the G-6 render and registration scope).
 
 Failure: a missing or misordered bootstrap call stops startup with the named missing stage. Nina corrects registration before any first-render failure; an empty domain registry remains valid and is not an error.
 
@@ -306,7 +330,7 @@ Failure: a missing or misordered bootstrap call stops startup with the named mis
 4. He uses the secondary projection flyout to select another `/{module}/{tab}` without creating another top-level active entry.
 5. The projection list progresses through Loading to Data; Marc filters the grid, whose `32px` compact rows, sticky header, status affordances, and column priority preserve scanability.
 6. He expands a labelled row-detail region and checks projection health. SlowQuery at `2,000ms`, MaxItems at `10,000`, Stale, Reconnecting, or FallbackPolling remain explicit when applicable.
-7. A row his own recent command materially changed appears through the scoped fresh-row contract on the already-rendered grid.
+7. A cue above the grid names the row his own recent command materially changed. When the row materializes, the cue clears silently and Marc keeps his place.
 8. **Climax:** Marc identifies the relevant row and can state whether the read model is current, fallback-polled, stale, bounded, or reconnecting—without mistaking a nudge for proof.
 
 Failure: tenant context is missing or goes stale. The prior scope clears before render and an explicit fail-closed state replaces data; Marc never sees an empty-looking grid that could be misread as “no records.”
@@ -318,18 +342,18 @@ Failure: tenant context is missing or goes stale. The prior scope clears before 
 3. A destructive command requires confirmation. Client validation links a focused summary to invalid fields and preserves input.
 4. Marc submits. FC-CNC makes this the only in-flight local command; a rapid second submit is blocked and announced as not run.
 5. The lifecycle moves through Submitting, Acknowledged, and Syncing. Acknowledged explicitly means transport acceptance, not success.
-6. The status poll supplies Confirmed, Rejected, IdempotentConfirmed, NeedsReview, Warning, or Degraded evidence; `10,000ms` produces non-terminal Degraded (AM-17) while `1,000ms` polling may continue; reaching `120,000ms` unconfirmed ends the local lifecycle as terminal Degraded (AM-24).
+6. Marc waits for authoritative status or projection evidence. Under the default profile, an unconfirmed command reaches Degraded at 10 seconds (AM-17). At the configured local deadline, the mounted wrapper ends the unconfirmed lifecycle with AM-24, even if command-status polling is disabled.
 7. **Climax:** Confirmed projection/status evidence refreshes the row/list and the lifecycle becomes Confirmed; Marc trusts the visible outcome rather than the HTTP response.
 
-Failure: an unmapped Rejected outcome announces politely (AM-14) and keeps focus in the lifecycle/recovery context; a field-mapped rejection focuses the mapped summary (AM-19). Correctable input is preserved either way. A transient dispatch fault may retry exactly once, `250ms` after acknowledgement, reusing the same `MessageId`; another failure degrades without a duplicate command.
+Failure: an unmapped Rejected outcome announces AM-14 politely and keeps focus in the lifecycle/recovery context. A field-mapped rejection focuses the mapped summary (AM-19). Correctable input is preserved. If the original submission was accepted but the optional correlation-recovery POST fails, Marc still sees an accepted, unconfirmed command with the original `MessageId` and unknown correlation. Only later lifecycle evidence or the acknowledgement-based deadline changes that outcome.
 
 ### UJ-4. Ravi exposes the domain surface to an AI agent.
 
-1. Ravi, an AI-agent integrator, places the MCP endpoint behind host authentication.
+1. Ravi, an AI-agent integrator, maintains an existing consumer on the compatibility MCP host behind host authentication.
 2. He registers the tenant-tool and resource-visibility gates and excludes allow-all gates from the non-Development host.
 3. The agent calls `tools/list` and sees only its visible generated commands plus `frontcomposer.lifecycle.subscribe`; it reads the disclosed static resource catalog with the documented boundary.
 4. The agent calls a command after admission, schema negotiation, argument validation, and server-side controlled-field injection.
-5. The server returns a bounded acknowledgement; the agent polls lifecycle in a later request/DI scope.
+5. The server returns a bounded acknowledgement. When the agent polls from a later request, the host checks the reader’s access again before returning the command outcome.
 6. **Climax:** the agent observes a real terminal lifecycle snapshot without receiving tenant internals or gaining a side effect through an incompatible schema.
 
 Failure: unknown, hidden, unauthorized, or tenant-less tool calls collapse to the same `unknown_tool` shape for that caller. Registered hidden resource reads return `unknown_resource`; unregistered URIs retain the stated SDK not-found distinction. No response/log echoes the requested secret surface.
@@ -338,12 +362,12 @@ Failure: unknown, hidden, unauthorized, or tenant-less tool calls collapse to th
 
 1. Camille, a framework maintainer, changes a generator contract in annotated-source handling or emission.
 2. She updates the governed HFC diagnostic behavior, generated-output snapshots, schema fingerprints, and public API baselines intentionally.
-3. She runs `frontcomposer inspect` to compare generated files, forms, grids, registrations, manifests, warnings, and errors in deterministic text/JSON forms.
-4. Where consumers need an upgrade, she adds an allowlisted `frontcomposer migrate` edge with dry-run preview and atomic, path-safe apply.
+3. She runs the local `frontcomposer inspect` against the Counter project with an explicit build when she needs fresh artifacts. The packaged tool reports the `Counter.Domain.BatchIncrementCommand` form and `Counter.Domain.CounterProjection` grid. Repeating inspection on the same files yields identical JSON.
+4. She previews the allowlisted `frontcomposer migrate` edge in dry-run mode. When she chooses apply, the tool rechecks each target and replaces eligible files one at a time.
 5. She validates Contracts/Contracts.UI boundaries and the public generated-output path without editing `obj` output.
 6. **Climax:** drift gates detect exactly the intended change and consumers receive a named diagnostic and migration path instead of a silent runtime mismatch.
 
-Failure: accidental structural/metadata drift, invalid migration target, public API mismatch, or unsupported schema blocks the lane. Camille changes the source generator/contract or migration plan; she never edits generated files or bypasses the baseline.
+Failure: drift or an unsafe target blocks the relevant operation. If a later write fails or migration is interrupted, Camille checks which files changed before deciding what to keep or retry. She reviews output for private content before sharing it.
 
 ### UJ-6. Sophie tests a generated consumer experience.
 
@@ -352,13 +376,12 @@ Failure: accidental structural/metadata drift, invalid migration target, public 
 3. She asserts bootstrap and projection states, linked validation, lifecycle truth, blocked-submit feedback, and fresh-row scope/first-wins behavior.
 4. She verifies route/tab/palette/dialog focus, keyboard-only recovery, deduplicated live announcements, silent expiry, `320 CSS px` reflow, `400%` zoom, text spacing, target size, unobscured focus, forced colors, and reduced motion.
 5. Evidence recorders redact tenant/user values, secrets, tokens, raw paths, payloads, and stack traces.
-6. **Climax:** Sophie produces candidate-bound proof that Tenants boots and renders a generated projection and command while realistic failure UX remains testable and accessible.
+6. **Climax:** Sophie reproduces a generated consumer failure and asserts the visible state, focus and recovery action using the shared harness. She records the tested candidate and the matrix rows exercised.
 
-Failure: a regression or unredacted value fails the focused/default lane. The evidence names the behavior and candidate; a green unrelated lane cannot substitute, and Parties cannot replace Tenants without a dated D-7 Product decision and equivalent proof.
+Failure: a regression or unredacted value fails the focused/default lane. Sophie records the failed behavior, the tested candidate and the safe recovery action.
 
-## Open Questions
+## Evidence and open decisions
 
-- [NOTE FOR UX] Exact visual treatment remains unresolved for Warning, NeedsReview, Degraded, missing tenant, FallbackPolling, SlowQuery, MaxItems, and fresh-row dismissal/forced-colors states; UX/Product own that disposition. Their copy is final in the canonical UX-AM-1 rows.
-- [NOTE FOR UX] Numeric responsive breakpoints remain unresolved; only semantic Desktop, Compact, and Narrow-browser behavior is committed.
-- [NOTE FOR UX] Product/Architecture must confirm the selected Fluent V5 pin and exact supported token/API names before final handoff.
-- The spine remains `draft` until the opt-in reviewer gate runs or is explicitly skipped and these source-owned gaps receive a disposition.
+- G-5 closed when Product accepted the Story 9.8 live freshness proof on 2026-10-20 for candidate `7a573763`. The server-allocated-key exclusion remains. [Product decision](../../../implementation-artifacts/spec-13-8-accept-the-completed-fresh-row-live-proof.md#product-decision-receipt)
+- G-6 and G-7 have separate September candidate receipts for the Tenants bootstrap and legacy MCP security outcomes. The bootstrap proves registration and rendering. The security receipt covers the reviewed host candidate and its disclosed behavior. [Product gates](../../prd.md)
+- Story 13.6 records the November 15 owner disposition for the named accessibility candidate, at root `b22be84b` plus reviewed patch `31b7fe31`, including native evidence, reuse for AE-02 zoom and the WebKit capability limit. Broader OI-16/SM-6 evidence, OI-19 documentation parity, OI-4 Fluent re-decision, and formal G-4/D-9 Product re-approval remain open. [Accessibility receipt](../../../implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md#owner-acceptance-of-the-h6-review-patches-and-code-review-completion--2026-11-15) · [Product gates](../../prd.md)
