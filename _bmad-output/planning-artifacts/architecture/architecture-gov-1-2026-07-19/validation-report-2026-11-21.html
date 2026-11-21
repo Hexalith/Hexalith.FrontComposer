@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FrontComposer architecture validation · 21 November 2026</title><style>
+:root {color-scheme:light; --ink:#182a32; --muted:#46606d; --teal:#12605b; --line:#cbd9d9; --amber:#8c4108}
+* {box-sizing:border-box}
+body {margin:0; background:#f3f6f5; color:var(--ink); font:16px/1.57 "Segoe UI", system-ui, sans-serif}
+main {max-width:1000px; padding:2.7rem clamp(1rem,4vw,4rem) 3rem; margin:2rem auto; background:white; border-top:6px solid var(--teal)}
+h1,h2,h3 {line-height:1.2; text-wrap:balance; color:#153839}
+h1 {font-size:clamp(2rem,4.5vw,3.25rem); margin:0 0 1.2rem; letter-spacing:-.035em}
+h2 {margin:2.1rem 0 .65rem; padding-top:1.25rem; border-top:1px solid var(--line); font-size:1.5rem}
+h3 {margin:1.7rem 0 .35rem; font-size:1.1rem}
+p {margin:.5rem 0 .95rem}
+blockquote {border-left:4px solid #c06b22; background:#fff5e8; color:#55310e; margin:1.2rem 0; padding:.7rem 1rem} blockquote p {margin:0}
+a {color:var(--teal); text-underline-offset:.17em; overflow-wrap:anywhere}
+a:focus-visible {outline:2px solid var(--amber); outline-offset:3px}
+table {width:100%; border-collapse:collapse; margin:1rem 0}
+th,td {padding:.6rem .7rem; text-align:left; vertical-align:top; border-bottom:1px solid var(--line)}
+th {background:#e7f0ee; color:#184e4c} td:first-child {font-weight:600}
+code {font: .88em/1.4 ui-monospace,monospace; background:#eff3f3; overflow-wrap:anywhere; padding:.06em .16em}
+pre {background:#eff3f3; padding:.8rem; white-space:pre-wrap; overflow-wrap:anywhere}
+li {margin:.25rem 0 .5rem}
+@media(max-width:650px) {main {margin:0; padding:1.3rem 1rem 2rem} th,td {padding:.4rem; font-size:.91rem}}
+@media print {body,main {background:white; margin:0} main {padding:0; max-width:none} h2,h3 {break-after:avoid} tr,blockquote {break-inside:avoid}}
+</style></head><body><main><h1 id="frontcomposer-architecture-validation">FrontComposer architecture validation</h1>
+<p>21 November 2026 · GOV-1 dependency provenance and publication governance</p>
+<blockquote>
+<p><strong>Verdict: revision required before G-8 conformance can be assessed against this spine.</strong> The three independent reviews identified 7 High, 6 Medium and 2 Low documentation findings after consolidation. None was Critical. The spine passed deterministic lint, but implementers following its handoff, approval and evidence rules can still reach different results on the same release attempt.</p>
+</blockquote>
+<p>The review covered the working GOV-1 spine and its planning and runtime companions. The architecture documents were kept intact. In the findings below, line numbers refer to those reviewed files. A High finding can prevent a supported transition, change an incident disposition, or cause conforming producers and verifiers to reject one another’s evidence.</p>
+<h2 id="high-findings">High findings</h2>
+<h3 id="1-define-how-a-sealed-platform-revision-can-advance">1. Define how a sealed Platform revision can advance</h3>
+<p>AD-12 requires one prior-base policy to check both sides of a change. AD-12a admits exactly one Platform owner commit. A policy sealed to A rejects candidate B. A policy already sealed to B rejects base A. The current collector follows that sequence. The exact-commit failure reproduced below is one observed instance of pin drift. The contract also needs a transition that works when starting from matching pins.</p>
+<p><strong>Decision needed.</strong> Define an owner-reviewed, two-revision transition that preserves prior authorization. Show one accepted A → B change and refusals for a third revision and for self-authorization. Spine lines 399–409, 475–486 and 511–520. <a href="reviews/review-rubric-validate-2026-11-21.md">Rubric RW-01</a> · <a href="../../../../eng/dependency_graph.py">Collector</a></p>
+<h3 id="2-reconcile-the-g-8-packet-with-the-evidence-storage-decision">2. Reconcile the G-8 packet with the evidence-storage decision</h3>
+<p>The implementation gate requires committing raw check outputs, reviewer reports, sidecars and the packet through a protected PR. PRD §7 sends raw outputs to CI or local scratch and records run references in the story or spec. The planning architecture cites both instructions. The G-3 record-ref decision has a different scope.</p>
+<p><strong>Decision needed.</strong> Product and Release owners should select the authoritative storage and retention rule for this packet. Specify what a future verifier can retrieve and hash, including after CI artifacts expire. Spine lines 1180–1204 and 1245–1263, planning lines 345 and 360–368, PRD line 582. <a href="../../prd.md">PRD</a> · <a href="reviews/review-rubric-validate-2026-11-21.md">Rubric RW-02</a></p>
+<h3 id="3-specify-which-bytes-each-digest-covers">3. Specify which bytes each digest covers</h3>
+<p>AD-5 and the conventions table prescribe canonical JSON for every digest. Other clauses require the exact bytes of catalog files, policy blobs and archived evidence. On this commit, the same policy gives SHA-256 <code>ca0b7b72…</code> over the Git blob and <code>7a8cadff…</code> after AD-5 JSON serialization. A verifier choosing the other rule rejects the policy.</p>
+<p><strong>Correction.</strong> List the hash input for each field. Preserve raw-byte identity for files, artifacts and policy blobs. Apply canonical JSON to the defined structured values, including the graph digest. Include both results as a regression example. Spine lines 195–207, 215–219, 399–403 and 1053–1056. <a href="reviews/review-current-fit-validate-2026-11-21.md">Current-fit CF-01</a></p>
+<h3 id="4-give-the-ci-handoff-its-exact-caller-shape">4. Give the CI handoff its exact caller shape</h3>
+<p>AD-13 refers to the AD-12 policy shapes. The policy caller has repository, workflow path and blob hash. The implemented CI handoff adds the candidate commit, checks that commit, and hashes the four-member caller. A producer following the three-member definition cannot satisfy the implemented handoff validator.</p>
+<p><strong>Correction.</strong> Define the wire caller and policy lookup projection separately. Pin a shared fixture showing the exact caller members, candidate equality, and digest. Spine lines 411–422 and 550–562. <a href="../../../../eng/dependency_handoff.py">Handoff producer and verifier</a> · <a href="reviews/review-divergence-validate-2026-11-21.md">Divergence review</a></p>
+<h3 id="5-apply-conformance-equalities-to-the-stage-that-owns-them">5. Apply conformance equalities to the stage that owns them</h3>
+<p>The packet’s equality map applies Release evaluator identity to every handoff. The closed push-CI handoff carries the CI evaluator. AD-13 allows CI and Release to use different Builds pins. A valid CI handoff can therefore fail the packet check before Release evidence is considered.</p>
+<p><strong>Correction.</strong> Bind the CI handoff to the CI evaluator, the Release handoff to the Release evaluator, and the subsequent verification to the authenticated Release attempt. Keep the shared candidate and policy checks. Test a passing case with different accepted CI and Release pins. Spine lines 550–565 and 1233–1242. <a href="reviews/review-divergence-validate-2026-11-21.md">Divergence review</a></p>
+<h3 id="6-represent-a-skipped-publisher-without-inventing-an-approval">6. Represent a skipped publisher without inventing an approval</h3>
+<p>A gate-frozen attempt requires a skipped publisher and can complete without a deployment review. AD-18 nevertheless requires a nonempty set of production approvers containing an authorized Release Owner. The required G-8 fixture cannot produce that evidence for a job that never requested approval.</p>
+<p><strong>Correction.</strong> Define the ledger representation for a verified skip, separately from approval evidence that was required but could not be retrieved. Keep verified Release Owner approval mandatory whenever the protected publisher runs. Spine lines 676–679, 700–717, 896–911 and 1223–1229. <a href="reviews/review-divergence-validate-2026-11-21.md">Divergence review</a></p>
+<h3 id="7-give-a-started-publication-one-permanent-incident-disposition">7. Give a started publication one permanent incident disposition</h3>
+<p>Suppose the marker says publication started, the first write failed before any external bytes appeared, and a required archive is missing. The disposition table supports a partial-publication incident. The precedence rule prioritizes partial publication only when external evidence exists, then classifies a missing archive as <code>missing-artifact</code>. The recovery rule also uses the start marker. Two ledgers can assign different permanent outcomes.</p>
+<p><strong>Correction.</strong> Publish one ordered disposition rule covering the marker, observed effects and missing evidence. Use the same cases in the classifier, ledger and recovery fixtures. Spine lines 670–682, 714–745 and 783–790. Counted once across two reviews. <a href="reviews/review-rubric-validate-2026-11-21.md">Rubric RW-03</a> · <a href="reviews/review-divergence-validate-2026-11-21.md">Divergence review</a></p>
+<h2 id="medium-and-low-findings">Medium and Low findings</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Severity</th>
+<th>Finding and recommended correction</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Medium</td>
+<td><strong>Deferred CI handoff.</strong> AD-15 names the sentinel file but leaves its exact JSON members and coordinate checks open. Define the valid payload and the outcome for malformed input. Spine lines 613–623, 716–731.</td>
+</tr>
+<tr class="even">
+<td>Medium</td>
+<td><strong>Graph diff identity.</strong> AD-4 admits self-references. In a root self-reference at a different revision, AD-8’s logical key can represent edges at two depths. Specify an unambiguous key or an explicit refusal and test both sides of the diff. Spine lines 157–179, 275–283.</td>
+</tr>
+<tr class="odd">
+<td>Medium</td>
+<td><strong>Schema fingerprints.</strong> The runtime survey implies a single encoding and says a mismatch blocks side effects. Document the runtime JSON and SourceTools text algorithms and which negotiation results permit compatible operations. Runtime architecture lines 341 and 350.</td>
+</tr>
+<tr class="even">
+<td>Medium</td>
+<td><strong>Quickstart registration.</strong> The decorated stub provides the command service. EventStore integration registers the query service. Document the calls an adopter needs to resolve each interface. Runtime architecture lines 70–72.</td>
+</tr>
+<tr class="odd">
+<td>Medium</td>
+<td><strong>Active navigation.</strong> Module tiles compute active state from the route and emit <code>aria-current</code>. The runtime survey still attributes selection to <code>NavLinkMatch</code>. Document the current route-matching and no-match behavior. Runtime architecture line 76.</td>
+</tr>
+<tr class="even">
+<td>Medium</td>
+<td><strong>QueryRequest migration.</strong> Both companions present 3.0.0 as a future removal target. The reviewed source still exposes the obsolete flat API and the repository records releases after 3.0.0. Record actual availability and mark the previous target as historical pending an owner decision. Planning line 41 and runtime line 353.</td>
+</tr>
+<tr class="odd">
+<td>Low</td>
+<td><strong>Diagnostic IDs.</strong> The two-band summary omits IDs used by other owners, including MCP HFC4001. Link the published diagnostic registry and use its allocation. Runtime architecture line 355.</td>
+</tr>
+<tr class="even">
+<td>Low</td>
+<td><strong>Owner-decision register.</strong> The GOV-1 spec and owner companion still ask for the stop observation and runbook tabletop. Reference the dated November receipts and retain the separate incident-preservation and acceptance work.</td>
+</tr>
+</tbody>
+</table>
+<p>The reviews give the source locations and disposition for each item. <a href="reviews/review-rubric-validate-2026-11-21.md">Rubric</a> · <a href="reviews/review-current-fit-validate-2026-11-21.md">Current fit</a> · <a href="reviews/review-divergence-validate-2026-11-21.md">Producer and verifier consistency</a></p>
+<h2 id="implementation-and-release-status">Implementation and release status</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Check</th>
+<th>Result on November 21</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Committed dependency graph</td>
+<td><strong>Failed.</strong> The validator stopped at the Platform owner pin. The comparison below also shows that the Builds pin differs from the policy. The validator stopped before qualifying the remaining inputs.</td>
+</tr>
+<tr class="even">
+<td>Graph coverage</td>
+<td>AD-1 calls for the direct gitlinks of every selected root module. The collector and acquisition code keep the direct CiCd edge and omit its nested inventory when CiCd has no consumer projection. Platform’s projected inventory is traversed. The spine documents this open implementation difference.</td>
+</tr>
+<tr class="odd">
+<td>Publication</td>
+<td>The protected FrontComposer workflow still checks out candidate code and runs Semantic Release (NC-34). G-8 requires a read-only builder and a candidate-free publisher. For release evidence, the current producer writes manifest v3 and release-verification handoff v1. G-8 calls for v4 and v3 respectively. The separate <strong>push-CI handoff</strong> is v1 in both descriptions.</td>
+</tr>
+<tr class="even">
+<td>Owner decisions</td>
+<td>G-3 still needs qualification of an exact runtime candidate and three role decisions. G-8 still needs implementation, evidence and acceptance. The recorded November 19 readbacks showed the publication switch at literal false. This validation used that dated receipt and made no live settings or release assessment.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr class="header">
+<th>Input</th>
+<th>Sealed policy in FrontComposer HEAD</th>
+<th>Gitlink recorded by HEAD</th>
+<th>Local submodule checkout</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Hexalith.Platform</td>
+<td><code>9c39cd58</code></td>
+<td><code>54d90be3</code></td>
+<td><code>abb62da8</code></td>
+</tr>
+<tr class="even">
+<td>Hexalith.Builds</td>
+<td><code>6548f248</code></td>
+<td><code>70ce9cb3</code></td>
+<td><code>e1380b81</code></td>
+</tr>
+</tbody>
+</table>
+<p>Reproduce the dependency result from the FrontComposer root. The command exited 1.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> eng/dependency_graph.py validate <span class="at">--commit</span> 61dcd07fb412acf2feb66d8ee61513c16ef6ec4d</span></code></pre></div>
+<pre class="text"><code>github.com/hexalith/hexalith.platform@54d90be3b661591048640d3585a8eab4aea0e534: consumer source projection owner pin changed</code></pre>
+<p>Sources include the <a href="../../../../eng/dependency-graph-policy.json">dependency policy</a>, <a href="../../../../eng/dependency_graph.py">graph engine</a>, <a href="../../../../.github/workflows/release-publish.yml">protected workflow</a>, <a href="../../../../eng/release_evidence.py">manifest producer</a>, <a href="../../../../eng/dependency_handoff.py">handoff producer</a>, <a href="nonconformance-register-2026-09-08.md#nc-35-stop-observation-on-2026-11-19">NC-35 receipt</a> and <a href="../../prd.md#01-v10-readiness-milestone-gates">milestone gates</a>.</p>
+<h2 id="checks-and-reviewed-sources">Checks and reviewed sources</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Check</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>BMad spine lint</td>
+<td>Zero findings. All 20 decision IDs, including AD-12a, match the committed sequence.</td>
+</tr>
+<tr class="even">
+<td>Document links</td>
+<td>All 73 local references checked across the three documents resolve, including Markdown heading fragments.</td>
+</tr>
+<tr class="odd">
+<td>Focused regressions</td>
+<td>37 release-contract tests, two graph-inventory omission tests and one projection-owner refusal test passed. These cover the current implementation.</td>
+</tr>
+<tr class="even">
+<td>Inputs</td>
+<td>The working architecture texts were read against the FrontComposer source at <code>61dcd07fb412acf2feb66d8ee61513c16ef6ec4d</code>. All ten direct submodule worktrees differ from that commit’s gitlinks.</td>
+</tr>
+<tr class="odd">
+<td>Scope of evidence</td>
+<td>Static source, recorded owner decisions and focused local tests. Live GitHub environment protection, NuGet publication, the full runtime suite and an end-to-end G-8 conformance run were outside this assessment.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr class="header">
+<th>Reviewed document</th>
+<th>SHA-256 of working file (CRLF)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="ARCHITECTURE-SPINE.md">GOV-1 decision spine</a></td>
+<td><code>d38994cceeb5cd9e0a0682ddb3b6ff642a53b3cbfe1c13587b7f91185dfeab07</code></td>
+</tr>
+<tr class="even">
+<td><a href="../../architecture.md">Planning architecture</a></td>
+<td><code>dee18d9072f5fa46b4bb6b2cb7da6f5d2a72fde2cd52d348baec372d326f263f</code></td>
+</tr>
+<tr class="odd">
+<td><a href="../../../project-docs/architecture.md">Runtime architecture</a></td>
+<td><code>10f799777c1db7d9a2d57b87056c6075b5277be28a5aa3c77a7fbf0e641a91cd</code></td>
+</tr>
+</tbody>
+</table>
+<p>The spine’s LF-normalized Git blob has SHA-256 <code>e7550d16adb444ed92070fa6fcf877c49419f3a02a7bcf2205e98de0406a31f7</code>. The three independent reviews are available alongside this report. <a href="reviews/review-rubric-validate-2026-11-21.md">Rubric</a> · <a href="reviews/review-current-fit-validate-2026-11-21.md">Current fit</a> · <a href="reviews/review-divergence-validate-2026-11-21.md">Producer and verifier consistency</a></p>
+</main></body></html>

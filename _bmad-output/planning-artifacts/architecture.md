@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-11-20
+updated: 2026-11-21
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -10,21 +10,18 @@ sourceOfRecord:
 
 # Hexalith.FrontComposer Architecture Planning Source
 
-**Tooling ownership.** The September McpCli course correction transferred the target agent-facing presentation to `Hexalith.McpCli`. The subsequent AI.Tools plan retains `frontcomposer inspect` and `migrate` as local compiler tooling. The HTTP MCP library serves existing consumers until its coupled retirement gate is satisfied. See the [compatibility inventory and removal criteria](../../README.md#legacy-compatibility-surfaces).
-
-
-This document makes the architecture discoverable to implementation-readiness workflows. The detailed brownfield architecture source remains `_bmad-output/project-docs/architecture.md`; this file is the planning artifact that readiness checks should load.
+This is the planning source for implementation and readiness reviews. The [brownfield architecture](../project-docs/architecture.md) describes the code and the [GOV-1 spine](architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md) records the release and dependency decisions.
 
 ## Architecture Summary
 
-FrontComposer is a source-generation-driven Blazor application framework. A dual-TFM, UI-clean contracts kernel defines the netstandard-safe attribute, communication, registration, MCP, schema, and diagnostic contracts; packable net11-only `Contracts.UI` owns Blazor/Fluent rendering contracts. A Roslyn incremental generator reads annotated domain projections and commands; runtime consumers compose the generated artifacts through the Blazor Shell, MCP server, CLI, and Testing package. Schema fingerprints bind the producer and consumers so drift is detected instead of failing silently.
+Annotated domain commands and projections are the common input to the Blazor UI and the generated descriptors. A Roslyn generator consumes the UI-independent contracts kernel. Schema fingerprints let consumers detect drift before using incompatible descriptors. The Shell renders the generated UI. FrontComposer retains the developer-operated `inspect` and `migrate` compiler commands. Hexalith.McpCli owns the target agent-facing presentation. The existing HTTP MCP host serves compatibility consumers until the Projects plug-in and every dependent consumer meet their joint retirement criteria. [Compatibility inventory](../../README.md#legacy-compatibility-surfaces)
 
 ## Layers
 
 - **Layer 0 - Contracts kernel:** `Hexalith.FrontComposer.Contracts` targets `net11.0;netstandard2.0`; both faces are free of Blazor, Fluent, runtime implementations, and test fakes. It owns attributes, communication contracts, registration abstractions, MCP descriptors, schema fingerprint contracts, diagnostics IDs, and UI-neutral seams.
 - **Layer 0A - Contracts.UI:** packable net11-only Blazor/Fluent rendering contract assembly. It owns `Typography`/`FcTypoToken`, `RenderFragment` contexts, `KeyboardEventArgs` members, and projection slot/template/view rendering contracts under their existing public namespaces.
 - **Layer 1 - SourceTools producer:** Roslyn incremental generator. Parse emits pure equatable IR; transform and emit produce generated UI, Fluxor state, registration, and manifests while referencing only the `Contracts` kernel.
-- **Layer 2 - Consumers:** Shell directly references Contracts + Contracts.UI and owns runtime options, registries, and Fluxor actions; Testing references Contracts + Shell and owns test fakes; MCP and Schema remain kernel-only; CLI has no project references.
+- **Layer 2 - Consumers:** Shell directly references Contracts + Contracts.UI and owns runtime options, registries, and Fluxor actions; Testing references Contracts + Shell and owns test fakes; Schema targets net11.0 and netstandard2.0 and references Contracts. The HTTP MCP adapter references Contracts and Schema. CLI has no project references.
 - **External dependencies:** root-declared `references/Hexalith.*` submodules only. Nested submodules are not initialized.
 
 ### Shell sublayers
@@ -43,7 +40,7 @@ The Shell source architecture guard enforces namespace/folder agreement, the Sta
 - No Blazor/Fluent/runtime/testing implementation types are added to `Contracts`; rendering contracts live in Contracts.UI, runtime options/registries/actions in Shell, and `InMemoryStorageService` in Testing.
 - `ProjectionQuery` owns query criteria. `QueryRequest.Create` composes it with transport/cache metadata while HFC0001/CS0618 preserves the v1.12 flattened source and flat JSON compatibility surface throughout 2.x, with removal targeted for `3.0.0`.
 - No Roslyn `ISymbol` escapes the SourceTools parse stage.
-- Generated output path `obj/{Config}/{TFM}/generated/HexalithFrontComposer/` is public contract.
+- The compiler and local CLI share `obj/{Config}/{TFM}/generated/HexalithFrontComposer/` as the public output root. For a selected project target, inspection recognizes the flat layout and Roslyn’s assembly/generator subdirectories and excludes unrelated generators. [Generated output contract](../../docs/reference/generated-output.md)
 - Schema canonicalization pins encoder, sentinel, source-gen context, and ordinal comparison.
 - Fluent UI v5 is the UI component system; raw interactive HTML controls are forbidden outside documented carve-outs.
 - Shell state follows Fluxor single-writer discipline and scoped-lifetime discipline.
@@ -58,6 +55,13 @@ The Shell source architecture guard enforces namespace/folder agreement, the Sta
   are sealed in the release dependency graph; deeper historical edges require a separately approved schema.
 - UX/layout policy is defined by the UX, IA, and route invariants below and projected into the
   canonical `ux-design.md` planning source.
+
+### Host and runtime boundaries
+
+- A generated form requires zero-argument construction. Every field that takes its default from the command sees the same instance within a form. A new form resolves a fresh instance. [FR-2](prd.md#fr-2-generate-command-artifacts)
+- The combined UI authorizes Parties administration through the caller’s Tenants API. It requires one selected tenant and current, active, authorized TenantOwner evidence matching both tenant and user. A principal change invalidates an outstanding result. [Host authorization adapter](../../src/Hexalith.FrontComposer.UI/Services/PartiesAdminAuthorizationService.cs)
+- The HTTP MCP host retains the delayed terminal callback with the acknowledged command entry across requests. Each poll rechecks reader admission. [November audit](sprint-change-proposal-2026-11-20.md#implementation-record)
+- A failed browser-storage write is reported at a flush boundary while subsequent writes proceed. On an HTTP 304 with an unreadable framework-cached projection, the query client evicts the affected scoped entry and retries once without its validator. [Runtime composition](../project-docs/architecture.md#4-runtime-composition-shell)
 
 ## FC-NIP Composition Invariants
 
@@ -115,12 +119,17 @@ not be conflated:
 - **Compatibility:** validate every Builds selector inside that v1 boundary, cache catalog bytes by
   distinct selected commit, load `Props/Directory.Packages.props` from that exact commit, and evaluate
   the selecting owner's explicit semantic package/import/marker profile. FrontComposer requires each
-  governed `Hexalith*Version` property to be present exactly once in canonical self-default form with a
-  literal NuGet version, but does not repeat its point value. External-package decisions remain explicit,
+  governed family to have a canonical literal default. The validator recognizes specific scoped catalog views
+  only when it can prove which projects receive them. FrontComposer also enforces its selected EventStore
+  version before restore and build. External-package decisions remain explicit,
   and an internal family advance must survive the exact affected-module Release/NuGet restore and build.
   A structurally valid, build-compatible catalog at a new commit passes.
 - **Provenance:** record the exact repository identity, owner/path edge, 40-hex commit, depth, and Builds
   catalog SHA-256 fingerprint in deterministic review and release evidence.
+
+**Build and checkout identity.** At FrontComposer `61dcd07f`, `global.json` selects SDK 11.0.100 and the root build requires EventStore 5.4.0 in source and package modes. Debug normally follows the root project references. Release normally restores the published module packages. In both modes the AppHost compiles the two approved Platform Dapr helper files and references the root Builds tooling project. The Platform projection binds those inputs, the root selectors and the consumer build configuration. [Build configuration](../../Directory.Build.props) · [EventStore guard](../../Directory.Build.targets) · [AppHost](../../src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj)
+
+**Dependency check on November 21.** The committed FrontComposer tree, its policy, and the local submodule checkouts have distinct identities. Running `python3 eng/dependency_graph.py validate --commit 61dcd07fb412acf2feb66d8ee61513c16ef6ec4d` fails with `consumer source projection owner pin changed`. The commit selects Platform `54d90be3` and Builds `70ce9cb3`. Its policy still binds Platform `9c39cd58` and Builds `6548f248`. The fast-forwarded checkouts were Platform `abb62da8` and Builds `e1380b81`. All ten direct checkouts advanced beyond the superproject’s recorded gitlinks. The committed graph therefore remains unqualified. AD-12 requires a reviewed change and subsequent base-policy activation before a new selection can supply release evidence. [Executable policy](../../eng/dependency-graph-policy.json) · [Previous selection record](../../eng/dependency-governance.md#2026-11-20-frontcomposer-eventstore-selection)
 
 Pointer-change CI compares the base and candidate dependency graphs and runs the affected module's
 supported standalone restore/build gate. Repository resolution is closed-world from the active
@@ -133,7 +142,8 @@ The graph engine is offline/object-only. CI acquires exact base and candidate ob
 root repository and FrontComposer-owned approved remote policy into isolated temporary bare stores,
 including base-only objects needed to prove removals. A versioned `eng/dependency-graph-policy.json`
 owns trusted identity/path mappings, semantic owner profiles, supported module argv/evidence-only
-dispositions, evaluator authorizations, Release Owner logins, attestation capability, and v1 limits.
+dispositions, evaluator authorizations and v1 limits. The G-8 design also requires Release Owner
+logins, attestation capability and an incident-recovery closure. These have yet to enter the active policy.
 Base/candidate `.gitmodules` are untrusted graph data. For PRs the active
 policy is the exact base commit's policy; for pushes it is the non-zero before commit's policy. Both
 graphs use that immutable revision and evidence records its commit and raw SHA-256. A candidate policy
@@ -141,7 +151,7 @@ change cannot authorize itself: it activates only when it is the base policy of 
 one-time v1 bootstrap was consumed when the first policy landed on 2026-07-19; base-policy absence is
 permanently fail-closed and no bootstrap mode is reachable. A zero/unavailable before revision may produce
 diagnostic/full-affected evidence, but the gate fails and is never release-eligible. The policy is
-release-definition and fallback-invalidation material. The authenticated CI handoff,
+release-definition and fallback-invalidation material. In the G-8 design the authenticated CI handoff,
 release-verification handoff v3, and manifest v4 record its canonical coordinates and raw-byte SHA-256.
 
 The policy has no implicit semantic or build defaults. Every Builds-selector owner maps to exactly one
@@ -183,9 +193,11 @@ under inclusive byte/edge ceilings; another object format or an exceeded ceiling
 owns the canonical catalog semantic policy and machine result. C# Governance consumes that result and
 retains repository-wide MSBuild ownership checks instead of independently encoding catalog semantics.
 
-Missing objects after bounded acquisition fail closed. All depth-1/2 edges, including self/back-references, are recorded; the
+Missing objects after bounded acquisition fail closed. AD-1 requires all depth-1/2 edges, including self/back-references, to be recorded; the
 fixed boundary guarantees termination. Blob parsing/hashing may cache by Builds repository/commit, but
 semantic evaluation remains per selector or owner contract profile and diagnostics retain every owner.
+
+The current collector has one documented difference from AD-1. It records the direct CiCd gitlink but omits its nested inventory from collection and acquisition when CiCd has no consumer source projection. Platform’s projected inventory is still traversed. The omission needs reconciliation with the approved graph boundary before the implementation can claim full AD-1 coverage. [Collector](../../eng/dependency_graph.py) · [Inventory regression tests](../../tests/eng/test_dependency_graph.py)
 
 Pull-request evidence uses `github.event.pull_request.base.sha` as the explicit base input and
 `github.sha` as the exact merge revision built by primary CI. It records the computed merge-base and
@@ -194,9 +206,7 @@ the same merge revision used for collection and affected builds. Push evidence c
 `github.event.before` with `github.sha`; an unavailable/zero base takes the full-affected fail-closed
 path. Unchanged graphs build no module.
 
-The manifest lineage is `hexalith.release-evidence.v1` (legacy) → `v2` → `v3` → `v4`.
-Preparation emits only `hexalith.release-evidence.v4`; v2/v3 acceptance is confined to explicit audit
-and verification commands, and no legacy manifest is resealed, upgraded, or made fallback-eligible.
+The checked-in release producer emits `hexalith.release-evidence.v3` and the release-to-verifier handoff uses v1. The G-8 target advances that pair to manifest v4 and handoff v3, with the attempt ledger migrated in the same change. After the cutover, preparation emits only v4. Older manifests remain available for explicit audit and verification. [Manifest producer](../../eng/release_evidence.py) · [Handoff producer](../../eng/dependency_handoff.py)
 V4 seals the dependency graph, policy, selected quality run, exact attestation-or-fallback projection,
 and CI/Release workflow provenance defined by AD-17. The AD-9 fallback request and canonical
 `hexalith.attestation-fallback-authorization.v3` are bound to one authenticated Release run/attempt,
@@ -216,7 +226,7 @@ Focused spine: `_bmad-output/planning-artifacts/architecture/architecture-gov-1-
 
 ## FR-24 Release Evidence Architecture
 
-Release authorization is an exact-artifact, privilege-separated pipeline:
+FR-24 requires the following flow for G-8 conformance. The active publisher and its outstanding implementation work are described below.
 
 ```text
 Secretless candidate builder
@@ -260,12 +270,7 @@ offline and live. Missing, failed,
 truncated, paginated, duplicated, or malformed responses fail before the protected job. No tag,
 ambient checkout, default-branch value, or later workflow-run head may replace the dispatched candidate.
 
-The selected Hexalith.Builds reusable implements `split-publication-v1` as two fixed jobs defined
-directly in one immutable `domain-release.yml`: `build-publication-candidate` and
-`publish-publication-candidate`. The builder has no environment, publication credential, OIDC or
-attestation authority, or write scope. It may execute the exact candidate only to restore, build, pack,
-plan, validate, and produce the closed `hexalith.publication-candidate.v1` artifact. Builder-side
-manifest, readiness, or classification output is diagnostic denial evidence only and cannot authorize.
+FrontComposer’s selected design places the read-only builder under `release.yml` and the protected job in its same-repository `release-publish.yml`. The builder may execute the authenticated candidate to restore, build, pack and validate it, then upload one run-bound `hexalith.publication-candidate.v1` artifact. Its token grants read access only. All publication credentials, write permissions and attestation authority belong to the distinct protected job. [November 19 credential decision](../implementation-artifacts/spec-g8-split-publisher-credential-contract.md#decision)
 
 The publisher is the only product-publication actor. It runs under the protected `production`
 environment, executes only the active-policy-authorized candidate-free owner closure, downloads the
@@ -278,17 +283,12 @@ authenticated package digests is evidence registration, not package/Release publ
 authorize by itself. Author signing, production PFX custody, and RFC 3161 author timestamps are not
 requirements; candidates are author-unsigned and NuGet.org repository-signs uploaded packages.
 
-The manifest and exact `builds-execution-sha` bind the selected reusable in the AD-16 lineage rooted at
-`a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`. The Builds catalog gitlink is a separate dependency-graph
-identity and need not equal any CI, Release or post-release execution pin. A new owner-accepted Builds
-revision implementing the split must enter that lineage and the active policy through delayed activation
-before FrontComposer selects it.
+The target v4 manifest binds the FrontComposer caller and local publisher workflow blobs at the authenticated candidate. That same-repository job supplies the signer identity. Its separate `builds_execution_sha` identifies the accepted, pinned Builds actions. The Release Owner and Builds owner must accept that exact action revision, and its authorized closure must enter the AD-16 lineage through an active base policy before use. The protected publisher exchanges OIDC for a one-hour NuGet key only after verification and authorization. The catalog gitlink identifies the source of build inputs. [GOV-1 amendment](architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#frontcomposer-trusted-publishing-amendment--2026-11-19)
 
 **Identity authorities and the active caller (reconciled 2026-11-16, Story 17.1).** The
 [identity register](prd-addendum-2026-09-08.md#2-dependency-governance-mechanism-moved-from-nfr-13--7--d-11) keeps five identities apart:
 
-1. **Lineage anchor:** the literal `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` above. It is a
-   predecessor only.
+1. **Lineage anchor.** The owner-accepted BUILD-REL-1 predecessor is `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`.
 2. **Execution pins.** The Release pin is held by the `builds-execution-sha` input in
    `.github/workflows/release.yml` and by the `prepare-domain-release@` pin in
    `.github/workflows/release-publish.yml`. `eng/release_contract.py builds` requires those two to equal
@@ -315,17 +315,12 @@ before FrontComposer selects it.
    CI `7d2019adf4591a2c320a9288f76fc5f0f6905f65`.
 3. **Builds catalog gitlink:** read with `git ls-tree <commit> references/Hexalith.Builds`. Dated
    snapshot 2026-11-16: `65fd22f37b9fad64b595841923cdbe050563ab99`.
-4. **Future split revision:** EXT-BUILDS-1. It does not yet exist.
+4. **Selected Builds actions revision:** EXT-BUILDS-1 requires exact owner acceptance and AD-16 activation. Upstream implementation on a branch or a dependency pull supplies neither.
 5. **Candidate identities:** each is bound to the evidence that names it. None is selected for G-8.
 
-The active caller is not the AD-19 topology above. `release.yml` delegates to the repository-owned
-`release-publish.yml`. Its protected `production` job checks out the dispatched candidate and runs
-the Builds `prepare-domain-release` composite action and Semantic Release while it holds publication
-credentials. This legacy caller-owned publisher is **not G-8 conformant** (nonconformance register
-NC-34). AD-13's evaluator-trust rule assumes a Builds `domain-release.yml` reusable, and this caller
-does not use one.
+**Active implementation (NC-34).** The checked-in `release.yml` already delegates to FrontComposer’s `release-publish.yml`. Its protected `production` job checks out the candidate, runs the Builds preparation action and invokes Semantic Release. G-8 requires that candidate execution move into the separate read-only builder. The same workflow filename and OIDC identity alone cannot establish that isolation. [Protected workflow](../../.github/workflows/release-publish.yml)
 
-Every authenticated Release run uploads `hexalith.release-verification-handoff.v3` under `if: always()`.
+Under the G-8 design, every authenticated Release run uploads `hexalith.release-verification-handoff.v3` under `if: always()`.
 It carries the selected quality run, original CI handoff, candidate, policy, publication-candidate
 coordinates, release state, final manifest v4, attestation/fallback, assets, denial reason, and Release
 evaluator. The total AD-15 classifier distinguishes gate-frozen, no-releasable, rejected, compliant,
@@ -351,9 +346,8 @@ durable authorization.
 
 Ownership boundaries:
 
-- **Hexalith.Builds** owns the reusable workflow contract, minimum permissions, and the upstream
-  semantic catalog-contract version/canonicalization contract.
-- **FrontComposer** owns artifact creation, inventory/consumer/test validation, evidence
+- **Hexalith.Builds** owns the shared workflows, the pinned implementation actions used by the protected publisher, and the upstream semantic catalog contract.
+- **FrontComposer** owns both Release workflow definitions, artifact creation, inventory/consumer/test validation, evidence
   generation, dependency-graph collection/verification, readiness classification, publication of
   authorized bytes, and downloaded-artifact verification.
 - **Release Owner** owns production environment approval, NuGet publishing credentials, exceptions,
@@ -361,16 +355,7 @@ Ownership boundaries:
 
 ### GOV-1 Adoption And Split Implementation Gate
 
-The current FrontComposer caller still selects a legacy publication-capable path, so the architecture
-target is not a production-state claim. Production releases must remain halted, but the halt is
-currently not in effect (NC-35, NC-36). `HEXALITH_RELEASE_PUBLISH_ENABLED` must be literal `false` as
-a deny-only emergency stop; it can never authorize. No bounded risk exception is currently approved.
-
-**Observed nonconformance (authenticated API read 2026-11-16T15:55:29Z).** The variable reads `true`
-(updated 2026-10-05T06:13:40Z); v4.5.0 (2026-09-19) and v4.6.0 through v6.0.0 were published
-after the 2026-09-09 halt adoption without an approved exception. Register rows NC-35 and NC-36 route
-this to the Release Owner. Incident handling belongs to Story 17.2 and ledger rows to Story 17.14. `true` never authorizes, and neither does a green run
-or environment approval. This record changes no variable, workflow or release posture.
+Production publication is halted. The November 19 authenticated read returned `HEXALITH_RELEASE_PUBLISH_ENABLED=false` at 09:36:24 UTC, and the second read confirmed it. Those observations satisfy NC-35 as of that date. The earlier November 16 true reading and publications through v6.0.0 remain in the incident history under NC-36. The flag can deny a release. Enabling publication requires a separate Release Owner decision after conformance and incident obligations are met. [NC-35 readback](architecture/architecture-gov-1-2026-07-19/nonconformance-register-2026-09-08.md#nc-35-stop-observation-on-2026-11-19)
 
 The **GOV-1 split implementation gate** is the canonical packet and approval-projection protocol in the
 spine's Deferred section. It requires
@@ -380,20 +365,7 @@ evidence PR with Release Owner approval, and a distinct protected-main approval-
 spine hash, mixed candidate/Builds/policy/evaluator evidence, unavailable source evidence, any open row,
 direct push, or squash/rebase fails the gate.
 
-Unresolved owner decisions remain explicit:
-
-- Product Owner and Release Owner acceptance of AD-19, the production-release halt, and the current
-  no-exception posture (PRD D-16/G-8).
-- Release Owner or repository-administrator action to set the emergency-stop variable to literal
-  `false` and capture an authenticated API observation.
-- Hexalith.Builds owner and Release Owner acceptance of the immutable split-reusable revision entering
-  the AD-16 lineage.
-- Product Owner and Release Owner approval of the incident acknowledgement/containment target and the
-  `docs/release-incident-response.md` runbook before integration.
-- Release Owner confirmation of the no-bypass protected-main ruleset required for conformance and
-  append-only ledger approvals.
-
-This delivery architecture does not alter FrontComposer runtime, public product behavior, or UX.
+The owner approved the revised incident runbook and exercised its 15-minute acknowledgement and 60-minute containment targets on November 17. GOV-I remains in review. G-8 still needs verified immutable incident preservation, acceptance and activation of the exact Builds actions, the candidate-free publisher, protected-main evidence, formal GOV-ACCEPT-1/2 and a separate re-enable decision. GOV-SRC-1 delivered the November 16 source reconciliation. A later edit, including this one, requires the affected source digests to be reviewed again. [Runbook receipt](../implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md#final-revised-runbook-approval-and-completion-receipt--2026-11-17) · [PRD gate decisions](prd.md#01-v10-readiness-milestone-gates)
 
 ## Epic 11 Release Readiness Remediation Program
 
@@ -409,8 +381,8 @@ and sprint status records the bounded epic as done:
 - **Artifact integrity:** Story 11.32 reconciled queue/story evidence and made contradictions fail
   closed.
 - **Residual ownership:** Story 11.25 did not grant EventStore migration approval or close G-3.
-  E11R-AI-1 is carried by proposed EVT-ID-1/EVT-APP-1. The current Story 11.32 validator red state is
-  proposed PLAN-INT-2 work and does not rewrite completed Epic 11 history.
+  E11R-AI-1 carried into EVT-ID-1/EVT-APP-1. Story 15.1 repaired the original Story 11.32 validator issue.
+  The Epic 15 retrospective records the separate strict-mode attribution findings. [Epic 15 retrospective](../implementation-artifacts/epic-15-retro-2026-11-01.md)
 
 Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents. Logging ownership follows
 security/fail-closed (11.18a), then command-lifecycle/projection/polling hot paths (11.18c), then
@@ -509,3 +481,5 @@ Approval binds the exact FrontComposer commit, EventStore source gitlink, Builds
 Complete schedule, all-writer/automation coverage and dated acknowledgments, storage/Git authority and capture/decision capacity before starting qualification. Retain the at-most-24-hour window, two-hour durable capture, durable decisions/final review by window end, four-working-hour disposition and hold/stop rules in the approved proposal. A later source/policy/workflow change, including G-8 implementation, creates a different candidate; finish required release-blocking integration before selecting releasable T. No runtime, API, component, schema or topology diagram change is required. New automated G-3 enforcement would be separate work; this adoption creates none.
 
 **Correct-course planning action closed; Story 16.3 in-progress; G-3 open.** Existing evidence/decisions and source/package/runtime limits remain unchanged. Original EventStore authority is available; 16.2 stays done as not invoked with conditional reopening. G-8's halt and all publication gates remain independent; no qualification, Git action or release is authorized by this adoption.
+
+The subsequent Story 16.3 disposition stopped the preflight for `ffb75718` and routed the blocker to CiCd. G-3 still requires a separately authorized candidate and window, passing exact-candidate evidence and all three durable role decisions. The November 20 dependency seal and the November 21 checkout refresh do not qualify a new runtime tuple. [Story 16.3 stop disposition](../implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md#human-stop-disposition-and-accepted-next-action--2026-11-16)

@@ -7,7 +7,7 @@ paradigm: 'bounded committed-object graph'
 scope: 'GOV-1 shared-catalog compatibility and dependency provenance'
 status: final
 created: '2026-07-19'
-updated: '2026-11-16'
+updated: '2026-11-21'
 binds: ['GOV-1', 'parent:approved-gov-1-amendment', 'parent:semantic-catalog-compatibility', 'parent:fr-24-exact-artifact-pipeline', 'parent:pre-publication-authorizes-only', 'parent:ownership-boundaries', 'parent:build-rel-1-governed-reusable-mode', 'parent:no-runtime-or-ux-change']
 sources:
   - _bmad-output/planning-artifacts/architecture.md
@@ -37,8 +37,7 @@ companions:
 
 # Architecture Spine — GOV-1 Dependency Provenance
 
-**Approved McpCli course correction (2026-09-27):** `Hexalith.McpCli` owns the target Hexalith CLI/MCP presentation. FrontComposer retains its UI and descriptor semantics; `Hexalith.FrontComposer.Cli` and `.Mcp`, including inspect/migrate, resources, skill corpus, and lifecycle calls, are obsolete migration sources. Their replacement or approved withdrawal needs a generic McpCli contract and owner-approved parity evidence before package removal. Descriptions below of proprietary transports are compatibility and historical requirements.
-
+`Hexalith.McpCli` owns the target agent-facing transport. FrontComposer owns UI and descriptor semantics and retains `frontcomposer inspect` and `migrate` as local compiler tools. The compatibility HTTP MCP host retires together with the Projects plug-in only after the consumer cutover and its evidence gates pass. [Compatibility inventory and removal criteria](../../../../README.md#legacy-compatibility-surfaces)
 
 ## Design Paradigm
 
@@ -61,10 +60,7 @@ flowchart LR
 
 ## Inherited Invariants
 
-This spine is the authoritative mechanism record for GOV-1 and the release-integration seam. The
-parent's FR-24 prose is a projection of it. The 2026-09-09 owner-ratified privilege split strengthens
-the exact-artifact invariant and supersedes the parent's same-job mechanism; source reconciliation is
-required before split-publication implementation (see Deferred).
+This spine defines the GOV-1 mechanism that the parent FR-24 architecture projects. The September 9 decision separated the builder and publisher. The November 19 amendment selects the FrontComposer-owned protected workflow and its Builds actions. Story 17.1 recorded the November 16 source reconciliation. GOV-ACCEPT-2 reviews the exact source digests that will be accepted.
 
 | Inherited | From parent | Binds here |
 | --- | --- | --- |
@@ -72,33 +68,15 @@ required before split-publication implementation (see Deferred).
 | Shared-catalog compatibility is semantic, never a hard-coded SHA allowlist | `architecture.md` Key Invariants | AD-6 separation of compatibility and provenance. |
 | FR-24 exact-artifact pipeline: validate the one prepared package set with inventory, tests, consumer checks, checksums, SBOM, and symbol evidence; seal, classify, and publish only those authorized bytes | `architecture.md` FR-24 Release Evidence Architecture | AD-9 ordering; AD-13/AD-17 propagation; AD-19 builder evidence and publisher boundary. |
 | Only pre-publication authorization may authorize; post-publication verification never authorizes | `architecture.md` FR-24 Release Evidence Architecture | AD-9, AD-15 fail-closed evidence. |
-| Ownership boundaries: Hexalith.Builds owns the reusable-workflow contract and catalog marker; FrontComposer owns evidence, verification, and publication of authorized bytes; the Release Owner owns production approval, credentials, exceptions, and incident response | `architecture.md` FR-24 Release Evidence Architecture | AD-15 ledger, AD-16 lineage, AD-18 approval, Deferred runbook items. |
+| Hexalith.Builds owns shared workflows, implementation actions and the catalog marker. FrontComposer owns its Release workflows, evidence, verification and publication of authorized bytes. The Release Owner owns production approval, credentials, exceptions and incident response. | `architecture.md` FR-24 Release Evidence Architecture | AD-15 ledger, AD-16 lineage, AD-18 approval, Deferred runbook items. |
 | BUILD-REL-1 governed intent: the pinned reusable is opt-in/default-off for existing callers, preserves root-only non-recursive initialization, and publishes only the exact author-unsigned candidate packages after mandatory attestation or approved fallback; NuGet.org repository-signs them | G2 request (BUILD-REL-1), REL-5 (2026-08-04), and `architecture.md` FR-24 Release Evidence Architecture; author signing and the same-job mechanism are superseded | AD-13, AD-16, AD-18, AD-19. |
 | GOV-1 alters no runtime, API, package inventory, or UX | `architecture.md` FR-24 Release Evidence Architecture | AD-11 scope. |
 
 ## Adoption and Release Eligibility
 
-Administrator ratified the architecture direction in this update; that does not close PRD D-16/G-8
-or imply Product Owner and Release Owner acceptance. Until those roles accept AD-19 and the reconciled
-parent/source contract, an owner-accepted split Builds revision enters AD-16 lineage, the implementation
-gate passes, and the approved incident runbook/response target exists, production releases halt. The
-required emergency-stop value during that interval is literal
-`HEXALITH_RELEASE_PUBLISH_ENABLED=false`; it can deny but never authorize. A read-only repository API
-observation on 2026-09-09 instead returned literal `true` (last updated 2026-08-06), so the legacy path
-is publication-capable and this is a Critical operational blocker. No release approval or dispatch is
-eligible until a Release Owner or repository administrator sets literal `false` and a subsequent
-authenticated API read records that value and its server timestamp. No bounded risk exception is
-currently authorized. A future exception
-requires a separate dated Product Owner + Release Owner + Architect decision naming scope, expiry,
-compensating controls, and revocation trigger; it cannot be inferred from environment approval.
+**G-2 and G-8 remain open.** Keep production halted. The current protected workflow still checks out and executes the candidate (NC-34). The November 19 authenticated readbacks at 09:36 and 09:40 UTC satisfied the NC-35 literal-false observation at those times. The September 9 and November 16 observations of `true` and the post-halt publications v4.5.0 through v6.0.0 retain their incident history (NC-36 and Story 17.14). [NC-35 readbacks](nonconformance-register-2026-09-08.md#nc-35-stop-observation-on-2026-11-19)
 
-**Observed nonconformance (authenticated API read 2026-11-16T15:55:29Z, Story 17.1).** The blocker is
-still open. The variable reads literal `true` (updated 2026-10-05T06:13:40Z); v4.5.0 (2026-09-19) and
-v4.6.0 through v6.0.0 were published after the 2026-09-09 halt adoption without an approved exception.
-Literal `false` remains the only conforming value; `true`, a green run and environment approval never authorize. Register rows NC-34 to NC-36
-route the caller-owned publisher, the flag and those publications to the Release Owner. Incident
-handling belongs to Story 17.2 and ledger rows to Story 17.14. This record changes no variable,
-workflow or release posture.
+Keep `HEXALITH_RELEASE_PUBLISH_ENABLED=false` while the split is unqualified. The flag can only deny publication. The user selected the credential design on November 19. Production eligibility requires the exact Builds actions revision accepted by its owner and the Release Owner, delayed policy activation, the candidate-free implementation, verified incident preservation, the full conformance gate and GOV-ACCEPT-1/2. Re-enabling also requires the separate Release Owner decision. No bounded exception has been approved. A future exception requires a dated Product Owner, Release Owner and Architect decision specifying scope, expiry, compensating controls and revocation trigger. [Milestone gates](../../prd.md#01-v10-readiness-milestone-gates)
 
 ## FrontComposer Trusted Publishing amendment — 2026-11-19
 
@@ -109,9 +87,7 @@ reviewed source identities, and the production hold remains in effect. The
 November 19 authenticated literal-false readback is in the
 [nonconformance register](nonconformance-register-2026-09-08.md#nc-35-stop-observation-on-2026-11-19).
 
-The following FrontComposer-specific changes supersede the Builds-hosted job
-placement and signer projections below for the new implementation. Historical
-attempts and the shared reusable's existing modes retain their original identities.
+The amendment governs the FrontComposer implementation of AD-12/13/16/17/18/19 below. Historical evidence retains the workflow and signer identities of the topology that produced it.
 
 - **AD-13, AD-18, AD-19 job boundary.** `release.yml` authenticates current
   `main`, successful push CI and Quality, and the run-bound CI handoff. Its
@@ -162,6 +138,8 @@ attempts and the shared reusable's existing modes retain their original identiti
   commit as depth 1 and every gitlink in each exact root-selected repository commit as depth 2. Edges
   below depth 2 are outside v1. Census counts are evidence, never acceptance criteria. Complete
   historical traversal requires a new schema and approval.
+
+  **Implementation at `61dcd07f`.** Collection and acquisition retain the direct CiCd gitlink but skip its nested inventory when CiCd has no consumer source projection. Platform’s projection still traverses its nested inventory. This exception in the collector falls short of the approved AD-1 boundary and requires reconciliation before claiming complete evidence. [Collector](../../../../eng/dependency_graph.py) · [Regression fixtures](../../../../tests/eng/test_dependency_graph.py)
 
 ### AD-2 — `[ADOPTED]` committed objects are authoritative
 
@@ -416,9 +394,7 @@ attempts and the shared reusable's existing modes retain their original identiti
 - **Rule:** FrontComposer-owned `eng/dependency-graph-policy.json` (`hexalith.dependency-graph-policy.v1`)
   is the sole declarative policy for trusted identities, owner semantic profiles, the module build
   registry, optional `consumer_source_projections`, `resource_limits`, `evaluator_authorizations`, `release_owner_logins`, and
-  `attestation_capability`; candidate `.gitmodules`, workflows, and action metadata are untrusted data.
-  Architecture defines schema, coverage invariants, activation, and trust boundary without mirroring
-  policy rows.
+  `attestation_capability`. The last two fields are target controls pending implementation and prior-base activation. Candidate `.gitmodules`, workflows and action metadata supply data only. The active policy owns the rows.
 
   **Activation.** For a PR the active policy is read from `event_base`; for a push, from the non-zero
   `github.event.before`; at release, from the handoff `dependency_policy.commit`, which must equal
@@ -449,8 +425,7 @@ attempts and the shared reusable's existing modes retain their original identiti
   `caller.blob_sha256` either at `caller.workflow_path` in the candidate commit or in a committed
   fixture file under `tests/ci-governance/fixtures/`, and a row whose caller blob is found in neither
   fails closed. A policy revision may pre-authorize a next
-  closure; switching to it happens only in a later change governed by that now-active policy (the
-  two-phase pin pattern). A closure absent from the active registry fails the push gate, release, or
+  closure. For the same-repository Release call, the earlier policy may name an identical publisher blob at a reviewed commit. Authenticate the actual called workflow at the candidate commit and require the same blob hash before accepting its signer or issuing credentials. Switching the caller requires the earlier policy to be active. A closure absent from the active registry fails the push gate, release, or
   verification; it is never a soft deferral. A `post_release` or `incident_recovery` evaluator executes
   only commands whose complete text is in its pre-authorized caller blob and pinned actions in its exact closure. It never
   checks out an ambient default branch or the released candidate and never imports or invokes a
@@ -491,9 +466,9 @@ attempts and the shared reusable's existing modes retain their original identiti
 
 ### AD-12a — `[ADOPTED 2026-10-28]` bounded consumer source projections
 
-- **Authority and scope:** the user-approved Story 13.6 bounded provenance amendment permits one
-  closed consumer-source mechanism. Exact owner revisions, source hashes and semantic expectations
-  remain policy data. This does not close the independent GOV-1 publication/adoption gates.
+- **Binds:** the Platform source projection, FrontComposer AppHost consumer, graph collector and affected-build materializer.
+- **Prevents:** an inventory-only repository or an unsealed helper file becoming executable through an umbrella dependency.
+- **Rule:** apply the closed Story 13.6 projection below. The active policy binds the owner, consumer configuration, selected sources and root selectors. All publication gates continue to apply.
 - **Raw inventory (AD-1/AD-4/AD-5):** retain every raw v1 depth-one/depth-two edge, including
   self/back-references, its identity/order and canonical digest. The v1 envelope/member sets do not
   change. A projection is additional consumer evidence, never an omitted edge or repository trust.
@@ -542,7 +517,7 @@ attempts and the shared reusable's existing modes retain their original identiti
   Before any selected-owner/older-root skip, authenticate supplied root depth-one rows against the
   actual committed root `.gitmodules`/gitlinks and authenticate raw root Builds catalog bytes/digest.
   A rehashed omitted owner or forged selector cannot suppress this gate. A legitimate older root
-  without the projection owner retains its authenticated raw inventory and receives no projection authority.
+  without the projection owner retains its authenticated raw inventory and receives no projection authority. Updating working checkouts supplies no release evidence. The November 21 [parent architecture](../../architecture.md) distinguishes the committed selectors, their policy seal and the working revisions.
 
 ### AD-13 — `[ADOPTED]` release consumes the exact CI-tested revision
 
@@ -570,10 +545,7 @@ attempts and the shared reusable's existing modes retain their original identiti
   publication step consumes it, and no tag, ambient checkout, default-branch value, or later run head
   may replace it. `main` is re-validated before protected credentials. The
   `hexalith.dependency-release-source.v1` proof CI also emits is a diagnostic only; it is never
-  release-eligible and never a candidate authority for manifest preparation. Release invokes only the
-  active-policy-authorized AD-19 `split-publication-v1` reusable: the authenticated candidate may be
-  executed only by its secretless builder, then crosses into the protected publisher exclusively as
-  the run-bound publication-candidate artifact.
+  release-eligible. In the AD-19 target, `release.yml` binds the exact candidate to the read-only builder. The protected FrontComposer publisher receives candidate output only through the authenticated run-bound artifact.
 
   **Handoff.** The artifact contains exactly one duplicate-member-free `dependency-release-handoff.json`
   with `{schema, run, revisions, evaluator, dependency_policy, dependency_graph}`: `schema` is
@@ -587,31 +559,12 @@ attempts and the shared reusable's existing modes retain their original identiti
   AD-14/AD-5 shapes. Release recomputes `definition_digest` and the raw handoff SHA-256 and binds both
   into AD-17.
 
-  **Evaluator trust.** The CI evaluator is the active-policy `ci` row whose `caller.blob_sha256` equals
-  the exact `.github/workflows/ci.yml` blob at the candidate commit; the release evaluator is the
-  `release` row matched the same way for `.github/workflows/release.yml`. Because the caller blob
-  literally names the reusable commit and that commit fixes every transitive action, the matched row is
-  the evaluator; a caller blob with no row fails closed. `ci.yml` and `release.yml` each reference
-  `domain-ci.yml`/`domain-release.yml` by a literal 40-hex Hexalith.Builds commit equal to the row's
-  `reusable.commit`; the release row's reusable must implement AD-19 `split-publication-v1`, and the
-  two pins lie in the AD-16 lineage and need not be equal. The active Release caller does not meet
-  this rule (dated snapshot 2026-11-16, Story 17.1; NC-34). `release.yml` names no `domain-release.yml`
-  pin. It delegates to the repository-owned `release-publish.yml`, which runs the Builds
-  `Github/prepare-domain-release` composite action at the `builds-execution-sha` commit. That
-  caller-owned publisher is legacy and **not G-8 conformant**. The [identity register](../../prd-addendum-2026-09-08.md#2-dependency-governance-mechanism-moved-from-nfr-13--7--d-11) keeps five identities
-  apart: the lineage anchor `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`, stated literally; the execution
-  pins and the Builds catalog gitlink, each cited by its authority with a dated value; the future split
-  revision EXT-BUILDS-1, which does not yet exist; and candidate identities bound to their evidence.
-  For the Release phase, the
-  **execution-SHA equality set** is `env.BUILDS_EXECUTION_SHA`, `HEXALITH_BUILDS_EXECUTION_SHA`, the
-  `builds-execution-sha:` input, the `domain-release.yml@` pin, and every `actions/checkout` `ref:`
-  whose `path:` is `.hexalith/builds-execution` in the exact Release caller/reusable closure;
-  `release_contract.py builds` asserts the caller members before the protected publisher and
-  Governance asserts the rest. Post-release and recovery use their respective active-policy-authorized
+  **Evaluator trust.** Match the CI and Release caller blobs at the candidate commit against the active policy rows for their stages. CI binds its literal Builds `domain-ci.yml` revision. FrontComposer Release binds `release.yml`, the same-repository `release-publish.yml` at the candidate, and the closure of every reachable action. Authenticate the actual called commit and blob under AD-12 before using that publisher. Missing rows or a changed blob fail closed. The CI and Release Builds pins can differ.
+
+  The Release execution SHA equals every Builds implementation-action pin in the Release closure and any corresponding checkout/input. The FrontComposer publisher commit is the candidate. The Builds catalog gitlink is a separate selection. The November 16 caller used the local publisher to check out candidate code and run `Github/prepare-domain-release` with Semantic Release in `production` (NC-34). EXT-BUILDS-1 still needs acceptance of the exact actions revision for the candidate-free publisher. The [identity register](../../prd-addendum-2026-09-08.md#2-dependency-governance-mechanism-moved-from-nfr-13--7--d-11) gives each identity and its evidence scope. Post-release and recovery use their respective active-policy-authorized
   `post_release` and `incident_recovery` action commits, which may advance after the historical Release; the ledger records
   that evaluator independently and never projects it as Release provenance or requires equality with
-  the historical `builds_execution_sha`. Every transitive `uses:` in either closure is a literal
-  40-hex commit; `@main` or any mutable reference anywhere in the closure is non-conforming.
+  historical `builds_execution_sha`. External executable `uses:` references must carry literal 40-hex commits. The local Release workflow call must resolve at the candidate to the authorized blob.
 
   **Static closure.** `eng/workflow_source_closure.py` computes the closure from exact Git blobs,
   following every literal job/step `uses:` in the caller, reusable workflows, and composite
@@ -624,29 +577,23 @@ attempts and the shared reusable's existing modes retain their original identiti
   other step whose explicit `path:`/`with.path` normalizes to that directory, a prefix of it, or a
   descendant of it (a second checkout, another repository, a mutable ref, an expression), and every
   `run:` step whose text contains that literal path, fails closed; a checkout without `path:` targets
-  the workspace root, is the caller's own candidate checkout, and is exempt. That ref must equal the row's `reusable.commit` or, for `post_release` and
-  `incident_recovery`, the `commit` of the local actions it reaches. In a Builds blob itself (`domain-ci.yml`,
-  `domain-release.yml`), a local `uses:` under that prefix resolves to the same Builds commit as the
-  enclosing blob, and that blob's checkout into the directory must be exactly `repository:
+  the workspace root. A candidate checkout is allowed only in a stage authorized to execute it. For Builds-hosted CI the Builds checkout ref equals the row's `reusable.commit`. For FrontComposer Release it equals `builds_execution_sha`. Post-release and recovery bind the commit of their own reachable actions. In a Builds blob itself (`domain-ci.yml` or the shared
+  `domain-release.yml`), a local `uses:` under that prefix resolves to the same Builds commit as the enclosing blob. Its checkout into the directory must specify `repository:
   Hexalith/Hexalith.Builds` with `ref: ${{ inputs.builds-execution-sha }}`, since the caller binds
   that input through `builds-execution-sha == reusable.commit`, an equality the closure computation
   itself asserts from the caller blob literal before admitting the carve-out; any other checkout form
   into the directory inside a Builds blob fails closed. External references require literal 40-hex commits and
   repositories already named by the matching row; acquisition fetches only those commits into bounded
   isolated bare stores. JavaScript actions terminate at their exact repository commit, which fixes the
-  committed bundle. Docker actions, expressions in `uses:`, ambiguous/missing metadata, YAML
-  anchors/aliases/merge keys affecting `uses:`, unsupported `uses:` forms, and composite cycles fail
-  closed; AD-7 caps apply. Runtime `github.workflow_sha`/`job.workflow_sha` observation and
-  production-time closure recomputation are deferred (see Deferred); `job.*` contexts are
-  GitHub.com-only.
+  committed bundle. Docker actions, expressions in `uses:`, ambiguous/missing metadata, YAML anchors/aliases/merge keys affecting `uses:`, unsupported `uses:` forms, and composite cycles fail closed. AD-7 caps apply. The FrontComposer publisher verifies its own actual commit and blob under AD-12. General production-time closure recomputation is deferred (see Deferred).
 
 ### AD-14 — `[ADOPTED]` manifest migration is one-way and fail-closed
 
 - **Binds:** manifest producer, verifier, fixtures, fallback approvals, and historical evidence.
 - **Prevents:** legacy evidence being silently upgraded, resealed, or treated as dependency-complete.
 - **Rule:** the manifest lineage is `hexalith.release-evidence.v1` (legacy) → `v2` → `v3` → `v4`
-  (AD-17).
-  `prepare-manifest` emits only the current schema, and `classify-release`, `seal-manifest`,
+  (AD-17). At `61dcd07f` the release producer emits v3 and the release-to-verifier handoff uses v1. Under the G-8 cutover,
+  `prepare-manifest` emits only v4, and `classify-release`, `seal-manifest`,
   `fallback-digest`, `verify-prepared`, and `publish` accept only it; v2/v3 acceptance is confined to
   `verify-manifest` and audit commands, so a v2/v3 manifest is never produced, resealed, or
   fallback-eligible for a new publication. Legacy manifests without the current members are parsed
@@ -720,9 +667,7 @@ attempts and the shared reusable's existing modes retain their original identiti
 
   **Attempt classifier.** A governed attempt is an authenticated AD-13 operator Release run that
   obtained the CI handoff and whose caller blob matches the active `release` evaluator for the exact
-  AD-19 split reusable, independent of any legacy job name or outcome. The split contract exposes
-  exactly one API job named `release / build-publication-candidate` and one named
-  `release / publish-publication-candidate`; zero, duplicates, other publication-capable jobs, or a
+  AD-19 FrontComposer workflow/action closure. Authenticate exactly one builder in `release.yml` and one publisher in the called `release-publish.yml`. Preserve the classifier’s exact API job identities, `release / build-publication-candidate` and `release / publish-publication-candidate`, in the authorized definitions. A missing or duplicate role, another publication-capable job, or a
   topology/handoff disagreement fail closed as `missing-artifact`. The builder job never starts
   publication. With a literal `true` publish gate and non-null release plan, pinned publisher code sets
   `publication_started=true` immediately before the first NuGet push or GitHub Release/tag/asset
@@ -877,27 +822,17 @@ attempts and the shared reusable's existing modes retain their original identiti
 
 ### AD-16 — `[ADOPTED]` Hexalith.Builds workflow revision is an owner-accepted external input
 
-- **Binds:** primary CI, reusable release, GOV-1 completion, and every governed release.
+- **Binds:** primary CI, the FrontComposer Release closure, GOV-1 completion and governed releases.
 - **Prevents:** FrontComposer editing shared Builds source, silently weakening provenance, or claiming completion against a mutable reference.
 - **Rule:** CI and release each pin one immutable 40-hex Builds execution commit; both must lie in the
-  accepted lineage and need not be equal, and `builds_execution_sha` names the release pin only. A
-  Builds commit is **in the accepted lineage** iff, walking the first-parent history of `main` for
-  `eng/dependency-graph-policy.json`, some policy revision that was the active base of a later `main`
-  commit contains a row of any stage with that `reusable.commit`, and every policy revision on that
-  walk back to the one recording the owner-accepted revision
-  `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` (Hexalith.Builds issue 17, accepted 2026-08-08) satisfies
-  the same rule for its own pins. The predicate is per Builds commit, not per stage; Governance
-  verifies it from the policy blob history; Git ancestry of the Builds commits is not required. The
+  accepted lineage. `builds_execution_sha` identifies the Release actions. Admission follows the first-parent policy history of `main` back to the owner-accepted BUILD-REL-1 anchor `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` (Builds issue 17, 2026-08-08). Each admission must occur in a policy revision that became the active base of a later main commit, with the same rule applied back to the anchor. Builds-hosted workflow pins retain their reusable-commit predicate. For the FrontComposer publisher, admission instead requires the exact owner-accepted Builds implementation-action coordinates in the Release closure. A catalog gitlink, historical publisher pin or unrelated action cannot admit this revision. The
   lineage admits; only rows present in the active policy authorize, so retiring a pin is a policy
   change that removes its rows under AD-12 delayed activation, after which a workflow revert to that
   pin fails closed. Each pinned commit and its exact workflow/action blob closure live in the
   active policy before integration. No reusable-workflow integration, GOV-1 completion claim, or
   release eligibility exists against a commit outside the lineage. The Builds catalog gitlink (AD-8
   graph identity) and the execution commits are independent identities. Builds owns the reusable
-  contract's reusable workflow/action code, inputs, and minimum permissions. FrontComposer owns the
-  publication-candidate/manifest/evidence schemas, exact output bytes, classification, invocation of
-  the selected reusable, and publication/verification operation; the Release Owner owns production
-  approval, credentials, exceptions, and incident containment. FrontComposer may select only a lineage
+  contract's shared workflow/action code, inputs and minimum permissions. FrontComposer owns its two workflow blobs, publication-candidate/manifest/evidence schemas, exact output bytes, classification and publication/verification. The Release Owner owns production approval, credentials, exceptions and incident containment. FrontComposer may select only a lineage
   commit. A FrontComposer-owned contingency outside the lineage requires a dated Release Owner +
   Architect decision with scope, expiry, migration trigger, and equivalent proofs.
 
@@ -905,7 +840,7 @@ attempts and the shared reusable's existing modes retain their original identiti
 
 - **Binds:** manifest producer, offline/live verifiers, fallback digest, Governance pins, and fixtures.
 - **Prevents:** two producers projecting CI/Release provenance into different member sets or digest material.
-- **Rule:** the current manifest schema is `hexalith.release-evidence.v4`; v3 remains byte-preserved
+- **Rule:** the split publisher uses `hexalith.release-evidence.v4`. After cutover v3 remains byte-preserved
   audit evidence and is never eligible for new publication. V4 carries the required top-level members
   `dependency_graph` (complete AD-5 envelope), `dependency_policy` (AD-14 projection), `quality_run`
   (the exact AD-13 selected projection), `attestation` (the exact AD-15
@@ -918,12 +853,7 @@ attempts and the shared reusable's existing modes retain their original identiti
   `{repository, workflow_path, run_id, run_attempt, event, branch, head_sha}` projected from the
   authenticated CI handoff (`head_sha` = handoff `run.candidate`, event `push`, branch `main`) and
   `evidence_sha256` is the raw CI handoff JSON SHA-256, which transitively binds the CI evaluator
-  closure. `release` is exactly `{caller, reusable, builds_execution_sha}` where `caller` and
-  `reusable` are `{repository, workflow_path, commit, blob_sha256}`, `reusable` names
-  `github.com/hexalith/hexalith.builds` `.github/workflows/domain-release.yml`, and
-  `reusable.commit == builds_execution_sha`; that exact reusable blob implements both AD-19 split
-  roles, so one provenance coordinate binds builder and publisher code while their privileges remain
-  separate. `definition_digest` is SHA-256 over the AD-5 canonical
+  closure. `release` is exactly `{caller, reusable, builds_execution_sha}`. Each workflow coordinate is `{repository, workflow_path, commit, blob_sha256}`. For FrontComposer, the caller and reusable are respectively `.github/workflows/release.yml` and `.github/workflows/release-publish.yml` in `github.com/hexalith/hexalith.frontcomposer`, both at the candidate. The signer's digest is the called workflow commit. `builds_execution_sha` binds the separately accepted Builds actions. Historical Builds-hosted records use the original Builds workflow coordinate and equality with its execution SHA. `definition_digest` is SHA-256 over the AD-5 canonical
   bytes of `{ci, release}` and is the `workflow_definition` input of AD-9. Offline verification
   recomputes the digest and rejects any unequal projection. Run coordinates are JSON integers >= 1;
   identities, paths, commits, and hashes follow the Consistency Conventions. Actors and approvals never
@@ -933,7 +863,7 @@ attempts and the shared reusable's existing modes retain their original identiti
 
 ### AD-18 — publication actor and least-privilege stage tokens
 
-- **Binds:** `ci.yml`, `release.yml`, `release-evidence.yml`, `release-incident-preservation.yml`, the pinned reusable at `reusable.commit`, and Governance static assertions.
+- **Binds:** `ci.yml`, `release.yml`, `release-publish.yml`, `release-evidence.yml`, `release-incident-preservation.yml` and Governance static assertions.
 - **Prevents:** any write collaborator publishing, a job with write scope consuming candidate code, or artifact deletion breaking handoff immutability.
 - **Rule:** workflow-level permissions are `contents: read` plus `actions: read` only where an Actions
   API consumer needs it; unspecified permissions are `none`. CI, graph/semantic gates, affected builds,
@@ -944,17 +874,10 @@ attempts and the shared reusable's existing modes retain their original identiti
 
   Only the AD-19 candidate-free publisher/attester may hold product publication authority. It runs under the
   `production` environment, whose protection requires Release Owner review, allows deployments from
-  `main` only, and grants no admin bypass; the reusable declares
-  `environment: ${{ inputs.environment-name }}` and the caller passes `production`. The caller may
+  `main` only, and grants no admin bypass. The protected job in FrontComposer’s `release-publish.yml` binds `production`. The caller may
   delegate only `{contents, id-token, attestations, issues, pull-requests}` write scopes, and each
   protected job receives only its required subset. `artifact-metadata: write` is forbidden because
-  AD-19 disables registry push and storage-record creation. `NUGET_API_KEY` or a successor credential is
-  environment-scoped and exposed only to the publisher; `secrets: inherit` and repository/organization
-  publication-secret forwarding are forbidden. GitHub makes the protected job's token permissions and
-  environment secrets available for the whole job; step-level elevation is not assumed. Safety comes
-  from executing only pinned candidate-free owner code in that job. That code invokes no publication
-  credential, OIDC token request, or write API until after the bounded archive and every digest are
-  authenticated; candidate bytes are never executed at any point. Reusable-workflow permissions may
+  AD-19 disables registry push and storage-record creation. After artifact authentication, attestation/fallback verification and publication authorization, the pinned `NuGet/login` step exchanges GitHub OIDC for a one-hour NuGet credential. The identity binds FrontComposer, `release-publish.yml` and `production`. Only the pinned publication action receives the key. Forbid `secrets: inherit` and forwarding a publishing secret. GitHub grants job permissions at job scope. Only pre-authorized owner code executes there. Archive and digest authentication precede any OIDC request or write. Candidate bytes are always data. Reusable-workflow permissions may
   be maintained or reduced, never elevated, so the exact caller and reusable blobs are both part of
   the static assertion surface. Governance fails if either phase violates these rules.
 
@@ -996,16 +919,9 @@ attempts and the shared reusable's existing modes retain their original identiti
 
 ### AD-19 — `[ADOPTED]` build and publication are privilege-separated
 
-- **Binds:** BUILD-REL-1 successor reusable, Release caller, publication-candidate artifact, package publisher, attester, and split-phase fixtures.
+- **Binds:** the FrontComposer Release caller, protected publisher, accepted Builds actions, publication-candidate artifact, attester and split-phase fixtures.
 - **Prevents:** candidate-controlled MSBuild, package hooks, shell, release configuration, or plugins executing with GitHub/NuGet publication authority.
-- **Rule:** the active AD-13 Release evaluator selects exactly one Hexalith.Builds reusable implementing
-  `split-publication-v1` with two fixed roles: `build-publication-candidate` and
-  `publish-publication-candidate`. It is a default-off opt-in mode of the exact
-  `.github/workflows/domain-release.yml` pinned by AD-17, so existing callers remain behaviorally
-  unchanged until they explicitly select it. Both fixed jobs must be defined directly in that selected
-  reusable: it may invoke closure-listed literal-commit composite/JavaScript actions, but a nested or
-  sibling reusable workflow may not define, wrap, or receive either split job. This keeps the protected
-  attester's GitHub OIDC `job_workflow_ref` equal to the AD-17 selected reusable identity. The builder checks out only the exact AD-13 candidate with
+- **Rule:** FrontComposer `release.yml` authenticates the dispatch and runs exactly one read-only `build-publication-candidate` role. Its distinct same-repository `release-publish.yml` runs the protected `publish-publication-candidate` role under `production`. The called workflow owns the OIDC job identity. The publisher executes only the pre-authorized workflow and its pinned actions. The builder checks out only the exact AD-13 candidate with
   `submodules: false`, initializes only dependencies declared by FrontComposer's root `.gitmodules`,
   never performs recursive or nested-submodule initialization, and may execute its
   restore/build/pack/release-planning surface. It must run the package inventory, exact-package tests,
@@ -1052,15 +968,14 @@ attempts and the shared reusable's existing modes retain their original identiti
   authorized bytes with literal argv/API fields; release notes and metadata remain bounded data. Only
   after artifact authentication, it must either mint and verify GitHub provenance attestations over
   every verified package digest or validate the AD-9 sealed `approved-unsupported` fallback. The
-  attester is exactly `actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6` (v4.2.0), already in
-  the active evaluator closure. Pinned publisher code creates an ordinally sorted checksum file from
+  attester specified here is `actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6` (v4.2.0). Its exact bytes must be part of the authorized closure before use. Pinned publisher code creates an ordinally sorted checksum file from
   the authenticated package `asset_name`/SHA-256 pairs and passes only `subject-checksums`, with
   `push-to-registry: false`, `create-storage-record: false`, `show-summary: false`, and the current
   protected-job token. Verification executes a closure-listed literal-commit owner action whose
   bundled verifier is pinned with the action bytes; ambient `gh`, `cosign`, or a runtime-installed
   verifier is forbidden. Its policy is the semantic equivalent of `gh attestation verify` with exact
   repository `Hexalith/Hexalith.FrontComposer`, signer workflow
-  `Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml`, signer digest
+  `Hexalith/Hexalith.FrontComposer/.github/workflows/release-publish.yml`, signer digest
   `reusable.commit`, source ref `refs/heads/main`, source digest equal to the candidate, predicate type
   `https://slsa.dev/provenance/v1`, and self-hosted runners denied. After signature/certificate policy
   succeeds, it requires the certificate result's issuer
@@ -1080,9 +995,7 @@ attempts and the shared reusable's existing modes retain their original identiti
   repository_owner_id:<API owner id>, runner_environment:"github-hosted"}`; and
   `buildDefinition.resolvedDependencies` contains exactly
   `{uri:"git+https://github.com/Hexalith/Hexalith.FrontComposer@refs/heads/main",
-  digest:{gitCommit:<candidate>}}`. `runDetails.builder.id` is exactly
-  `https://github.com/Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@<reusable.commit>`
-  and `runDetails.metadata.invocationId` is exactly
+  digest:{gitCommit:<candidate>}}`. `runDetails.builder.id` must identify `https://github.com/Hexalith/Hexalith.FrontComposer/.github/workflows/release-publish.yml` at the exact `reusable.commit`. A GitHub `@refs/heads/main` alias on that identity is admissible only after the pinned verifier independently checks the cryptographic signer digest against that commit. `runDetails.metadata.invocationId` is exactly
   `https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/<run_id>/attempts/<run_attempt>`.
   GitHub repository/OIDC spelling is byte-exact here and is distinct from the lower-case internal
   repository identity of AD-3. The `production` environment approval is authenticated separately by
@@ -1092,8 +1005,7 @@ attempts and the shared reusable's existing modes retain their original identiti
 
   Pinned owner-controlled code then prepares and seals the final manifest from the authenticated descriptor
   and evidence, performs the complete AD-9 offline/live/classification gate, and requires
-  `publish_authorized=true`; builder-produced readiness claims are ignored. The final manifest binds
-  the attestation bundle or fallback digest, and the publisher returns their exact AD-15 projections.
+  `publish_authorized=true`. The final manifest binds the attestation bundle or fallback digest, and the publisher returns their exact AD-15 projections. Only then may the AD-18 `NuGet/login` exchange occur.
   The publisher job uses `concurrency: governed-release-nuget-<version>` with the already validated
   canonical version bytes and cancellation disabled and,
   immediately before its first side effect, rechecks that no matching tag, Release, asset, or NuGet
@@ -1113,8 +1025,7 @@ attempts and the shared reusable's existing modes retain their original identiti
   `.signature.p7s`: verification requires a valid repository signature and byte-equivalent normalized
   ZIP members for every other entry; any other addition/removal/content drift is an incident.
   Builder/publisher job topology and a hostile candidate that attempts credential access are mandatory
-  contract fixtures. A new owner-accepted Builds
-  revision implementing this split must enter AD-16 lineage before FrontComposer selects it.
+  contract fixtures. The Builds and Release owners must accept the exact Builds actions revision, and it must enter AD-16 lineage before selection.
 
 ```mermaid
 flowchart LR
@@ -1136,7 +1047,7 @@ flowchart LR
 | Concern | Convention |
 | --- | --- |
 | Repository identity | Lowercase `github.com/owner/repository`; active-policy closed-world map; Builds identity is `github.com/hexalith/hexalith.builds`. |
-| Builds identities | Catalog identity = the unique depth-1 edge whose `repository` equals the Builds identity, resolved from the graph (path-literal lookups are non-conforming); Release execution identity = the active-policy `release` row's `reusable.commit`, equal to `builds_execution_sha`; the CI pin is independently sealed in the CI handoff; catalog/CI/Release identities need not be equal. |
+| Builds identities | Resolve the catalog from its unique depth-1 Builds identity edge. CI seals its own execution pin in the CI handoff. Release binds its accepted Builds actions to `builds_execution_sha`. The publisher signs under the separate FrontComposer workflow commit. |
 | Git identity | Full lowercase 40-hex commit IDs; no abbreviations or symbolic revisions; the all-zero OID is never a valid commit in any evidence member. |
 | Paths | ASCII relative POSIX paths, byte-exact; no absolute, backslash, empty, dot, `..`, or control segments. |
 | Catalog identity | SHA-256 of raw committed blob bytes; optional marker represented as JSON `null`. |
@@ -1150,12 +1061,7 @@ flowchart LR
 
 ## Executable Policy Authority and Closed Registry Shape
 
-`eng/dependency-graph-policy.json` is the sole executable authority for semantic profile identifiers,
-owner-to-profile assignments, required catalog properties/packages/versions, target dispositions and
-argv, evaluator authorizations, Release Owner login authorizations, attestation capability, and
-resource limits. `release_owner_logins` is an ordinally sorted unique array of nonempty GitHub logins;
-`attestation_capability` is `supported` or `unsupported`. This spine does not mirror those values; a
-planning-document edit cannot authorize a catalog, command, repository, workflow, or evaluator.
+`eng/dependency-graph-policy.json` governs catalog semantics, owner profiles, build dispositions and commands, evaluator authorizations, and resource limits. G-8 additionally requires `release_owner_logins` (ordinally sorted, unique nonempty GitHub logins), `attestation_capability` (`supported` or `unsupported`), and the `incident_recovery` evaluator. These target controls require parser support, reviewed policy and prior-base activation. The checked-in policy does not yet supply them.
 
 The semantic registry is closed: every Builds selector owner in the defined graph resolves to exactly
 one named profile; every referenced profile exists with a closed, schema-valid contract; baseline
@@ -1171,14 +1077,13 @@ row follows AD-12 delayed activation and requires policy/Governance fixtures.
 
 ## Stack
 
-Observed design-environment versions on 2026-09-08, not trust inputs. Behavior is pinned by golden
-fixtures; .NET comes from the repository `global.json`; CI invokes `python3`, not `uv`.
+The SDK row reflects the November 21 checkout. The Git, Python and Actions entries record the September 8 design environment. Golden fixtures pin behavior. CI invokes `python3`.
 
 | Name | Observed version |
 | --- | --- |
 | Git | 2.53.0 local (upstream 2.55.0; plumbing unchanged) |
 | Python | 3.14.4 local (upstream 3.14.7; standard-library `json`, `hashlib`, `subprocess`) |
-| .NET SDK | 10.0.400 local/pinned feature-band floor (`global.json`, `rollForward: latestPatch`; upstream 10.0.401) |
+| .NET SDK | 11.0.100 with `rollForward: latestPatch`, from the FrontComposer root `global.json`. |
 | GitHub Actions | GitHub.com only on GitHub-hosted `ubuntu-24.04`: `actions/upload-artifact` v7.0.1 (v4+ immutable artifacts, unique names per run, `archive: true`; v4+ unsupported on GHES); `actions/attest` v4.2.0 at `f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6`; `job.workflow_*` contexts (not on GHES) |
 | Git object format | SHA-1 (required by v1; fail closed otherwise) |
 
@@ -1202,7 +1107,8 @@ eng/
 .github/workflows/
   ci.yml                         # dependency-governance job: diff, affected builds, AD-13 handoff
   quality.yml                    # Gate 2b Governance + tests/eng suites; deny-only precondition for select-ci (AD-13)
-  release.yml                    # workflow_dispatch exact-main-SHA release; AD-15 handoff emission
+  release.yml                    # authenticate exact dispatch, build candidate and emit AD-15 handoff
+  release-publish.yml            # protected FrontComposer job, pinned Builds actions and NuGet/login
   release-evidence.yml           # workflow_run post-release verification and ledger record
   release-incident-preservation.yml # candidate-free reserved-namespace incident evidence writer
 tests/eng/
@@ -1222,7 +1128,7 @@ tests/ci-governance/fixtures/    # current manifest fixtures; policy/split-phase
 | `.hexalith/builds-execution/` | Exact-SHA Builds checkout hosting local actions such as `Github/initialize-build`. |
 | `DEPENDENCY_RELEASE_HANDOFF`, `RELEASE_EVALUATOR` | Paths of the authenticated CI handoff and matched release evaluator consumed by preparation. |
 | `attestation-fallback-request` | Run-bound workflow-dispatch request; authority comes only from the exact production deployment review comment. |
-| `HEXALITH_RELEASE_PUBLISH_ENABLED` | Deny-only Builds publish gate variable; recorded, never authorizing. |
+| `HEXALITH_RELEASE_PUBLISH_ENABLED` | FrontComposer repository variable. A disabled value denies publication. Its value alone grants no publication authority. |
 | `.github/release-evidence-recovery.json` | Push-triggered recovery input for post-release verification. |
 
 ```mermaid
@@ -1230,9 +1136,9 @@ flowchart TD
     CI[ci.yml push on main] -->|dependency-release-handoff run-attempt| REL[release.yml workflow_dispatch]
     Q[quality.yml push on main] -->|deny-only success precondition, same head| REL
     REL -->|select-ci, verify-ci live| REL
-    REL -->|exact candidate| B[secretless build-publication-candidate]
-    B -->|publication-candidate packages + evidence| PUB[protected candidate-free publisher]
-    PUB -->|owner code publishes verified data| EXT[GitHub Release + NuGet]
+    REL -->|exact candidate| B[read-only builder in release.yml]
+    B -->|authenticated publication candidate| PUB[protected release-publish.yml]
+    PUB -->|pinned owner actions and verified bytes| EXT[GitHub Release + NuGet]
     REL -->|release-verification-handoff run-attempt, if always| POST[release-evidence.yml workflow_run]
     POST -->|re-authenticates CI artifact| CI
     POST -->|re-authenticates publication candidate and published bytes| EXT
@@ -1254,7 +1160,7 @@ flowchart TD
 | Exact-object acquisition | CI temporary bare stores | AD-3, AD-7, AD-10 |
 | External catalog marker | BUILD-CAT-1 in Hexalith.Builds | AD-6 |
 | External reusable workflow contract | Hexalith.Builds issue 17 accepted lineage | AD-13, AD-15, AD-16 |
-| Split build/publication privilege boundary | owner-accepted Hexalith.Builds reusable + publication-candidate artifact | AD-13, AD-15, AD-18, AD-19 |
+| Split build/publication privilege boundary | FrontComposer `release.yml` and `release-publish.yml`, authenticated candidate artifact, owner-accepted Builds actions | AD-13, AD-15, AD-18, AD-19 |
 
 ## Deferred
 
@@ -1264,37 +1170,12 @@ flowchart TD
   repositories; SHA-1 collision risk is accepted for v1 (catalog bytes are additionally SHA-256-bound).
 - **Mandatory catalog marker:** BUILD-CAT-1 owns the marker and canonical catalog contract; absence
   remains valid until supported selectors migrate and a separate approval changes AD-6.
-- **Runtime workflow identity and production closure recomputation:** recording `github.workflow_sha` /
-  `job.workflow_sha` and recomputing the static closure at CI/release time are deferred; v1 trust is
-  the exact caller blob hash, the literal reusable commit, and the PR-gate recomputation of AD-12.
-  Revisit when the Builds `governed-provenance` output is consumed by FrontComposer evidence.
+- **Runtime identity and closure recomputation.** AD-12/13 require runtime authentication of the actual FrontComposer publisher commit and blob. General runtime closure recomputation and additional workflow-context observations remain deferred until Builds provenance is consumed.
 - **Repository-control hardening:** candidate/evaluator code may execute only in the secretless builder;
   protected publication and post-release classification execute exact owner-controlled closure bytes.
-  As of 2026-09-08 `main` still has no branch protection/ruleset or `CODEOWNERS`, and a non-admin write
-  collaborator exists. The intended defense in depth is a no-bypass `main` ruleset requiring pull
-  requests, CI/Governance checks, and code-owner review of policy, evaluator, and workflow paths, with
-  observed protection recorded in the ledger. Revisit when that ruleset lands, a second Release Owner
-  is appointed, or another write collaborator is added.
-- **Incident runbook and automation:** `docs/release-incident-response.md` and the candidate-free,
-  protected `release-incident-preservation.yml` workflow are Release Owner-owned and must land before
-  `split-publication-v1` integration. The runbook records acknowledgement and the AD-15 containment and
-  immutable evidence-Release actions before any retry/later dispatch; re-enable requires documented
-  cause/remediation, credential rotation when exposure is possible, complete external-side-effect
-  inventory, independent verification, and Release Owner approval. Automatic incident-issue creation
-  remains deferred and must not grant the read-only verifier write scope. Product Owner and Release
-  Owner acceptance and the measurable response target remain open D-16/G-8 inputs; until recorded, the
-  halt/no-exception rule under Adoption and Release Eligibility applies.
-- **Companion/source reconciliation:** before split-publication implementation, the owner of
-  `architecture.md`, FC-DEP-1, the GOV-1 story, and the G2 request must replace their same-job
-  Semantic-Release/handoff-v2 wording with AD-15/AD-19, distinguish pre-authorization attestation
-  evidence registration from package/Release publication, migrate the PRD's target manifest from v3
-  to v4, and preserve REL-5's dated removal of author signing while retaining mandatory
-  attestation/fallback evidence. The nonconformance register must
-  add discrete closure rows for: accepted split reusable plus delayed activation; caller switch and
-  exact two-job topology; removal of `production` from candidate/build jobs; publication-candidate
-  production/authentication and hostile-candidate fixtures; handoff-v3/ledger migration;
-  candidate-free final classification/publication; pinned post-release helper execution; and duplicate
-  destination asset-name rejection. This spine-only run does not mutate those sources.
+  The repository supplies `.github/CODEOWNERS` for workflow and policy paths. The November 19 credential record reports no effective `main` ruleset and admin bypass in `production`. The Release Owner must verify a no-bypass ruleset, required checks and code-owner review, and record the effective protection. Revisit when the ruleset or permitted reviewers change.
+- **Incident preservation and recovery.** On November 17 the owner approved the revised runbook and its tabletop, including targets of 15 elapsed minutes to acknowledge and 60 to contain from detection. GOV-I remains in review. Story 17.8 must independently verify immutable incident preservation. AD-15 requires verified evidence before retry, investigation of cause, complete external-effect inventory, credential rotation where exposure is possible, independent verification and a separate Release Owner re-enable decision. Automatic incident-issue creation remains deferred. [Runbook approval](../../../implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md#final-revised-runbook-approval-and-completion-receipt--2026-11-17)
+- **Source review and conformance.** GOV-SRC-1 reconciled the parent architecture, FC-DEP-1, the G2 request, the GOV-1 story and the PRD on November 16. GOV-ACCEPT-2 requires fresh review of the exact source digests after changes. Prove the register’s eight closure bundles on the selected topology: accepted Builds actions and delayed activation, the two FrontComposer workflow roles, removal of publication privileges from the builder, archive authentication and hostile-candidate proof, handoff-v3/ledger migration, candidate-free final classification/publication, a pinned verifier, and rejection of duplicate destination asset names. The GOV-ACCEPT-1/2 owner decisions stay open. [Source digest record](../../../implementation-artifacts/spec-17-1-reconcile-publication-governance-sources.md#source-digests-for-the-2026-11-19-trusted-publishing-amendment)
 
   The named **GOV-1 split implementation gate** passes only when
   `_bmad-output/implementation-artifacts/gov-1-split-publication-conformance.json` exists as duplicate-
@@ -1363,8 +1244,7 @@ flowchart TD
 
   The register hash must name an updated register in which every row required above is closed with
   evidence. An unchanged protected-main packet PR adds the packet, raw outputs, review reports, and
-  sidecars; changes no implementation/policy/workflow blob relative to `frontcomposer_commit`; and
-  passes the exact required live validator check. Its Release Owner review body is exactly the AD-5
+  sidecars, changes no implementation/policy/workflow blob relative to `frontcomposer_commit`, and passes the exact required live validator check. The packet author must be distinct from its approving Release Owner. The approval body is exactly the AD-5
   canonical JSON of
   `{schema:"frontcomposer.gov1-conformance-approval.v1", packet_sha256, spine_sha256,
   frontcomposer_commit, builds_commit, decision:"accepted", signer}` with no surrounding text. The API

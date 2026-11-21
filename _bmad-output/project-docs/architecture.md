@@ -1,10 +1,10 @@
 # Hexalith.FrontComposer — Architecture
 
-> **Generated:** 2026-06-02 · deep scan. Framework targets checked against the project manifests on 2026-11-20. See [project-overview.md](./project-overview.md) for the high-level summary.
+> **Source review.** Initial survey on 2026-06-02. Runtime boundaries, dependency selection and package targets checked against FrontComposer `61dcd07f` on 2026-11-21. [Project overview](./project-overview.md)
 
 ## 1. Executive summary
 
-FrontComposer is a **source-generation-driven Blazor application framework**. Its architecture is organized around one idea: a dual-TFM, UI-clean **contracts kernel** defines the netstandard-safe vocabulary of attributes and types, while net11-only `Contracts.UI` supplies Blazor/Fluent rendering contracts; a **Roslyn incremental generator** reads domain types annotated with that vocabulary and emits all the boilerplate (Blazor views, command forms, Fluxor state, DI registration, MCP manifest); and several **consumers** (the Blazor shell, the MCP server, the CLI) use the generated artifacts at runtime/build-time. The producer and all consumers are bound together by **schema fingerprints** (v1 supports canonical-JSON and SourceTools-blob SHA-256 algorithms) so incompatibilities are detected as **drift** rather than failing silently.
+FrontComposer is a **source-generation-driven Blazor framework**. Domain assemblies annotate projections and commands using the UI-independent Contracts kernel. A Roslyn incremental generator turns those declarations into views, forms, Fluxor state, DI registration and an MCP manifest. The Shell renders the generated components. The compatibility HTTP host exposes the manifest to existing consumers, and the local compiler CLI inspects build output or migrates adopter source. Generated schema fingerprints identify drift between producers and consumers.
 
 ## 2. Layered structure
 
@@ -41,7 +41,7 @@ FrontComposer is a **source-generation-driven Blazor application framework**. It
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Dependency direction:** everything points *down* to the `Contracts` kernel. `SourceTools` references only `Contracts` (so it stays netstandard2.0). `Schema` references `Contracts`. `Mcp` references `Contracts` + `Schema`. Shell directly references Contracts + Contracts.UI. Testing references Contracts + Shell and owns the adopter test fake. CLI has no project references. Contracts.UI must not flow back into SourceTools, Schema, MCP, or either kernel target.
+**Package boundaries.** Contracts and Schema target `net11.0` and `netstandard2.0`. SourceTools targets `netstandard2.0` and references only Contracts among FrontComposer projects. Schema references Contracts. Contracts.UI owns the separate Blazor rendering contracts on `net11.0`. Shell references Contracts and Contracts.UI, Testing references Contracts and Shell, and the compatibility MCP host references Contracts and Schema. The local CLI has no project references. These last four packages target `net11.0`. [Project manifests](../../src) · [SDK selection](../../global.json)
 
 ## 3. The generation pipeline (Layer 1 detail)
 
@@ -76,6 +76,14 @@ These three calls are **order- and presence-validated at startup** (Story 1.1): 
 `FrontComposerShell` (`src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor`) mounts the Fluxor `StoreInitializer`, skip links, a `FluentLayout` with Header / Navigation / Content / Footer areas, global keyboard shortcuts (`Ctrl+,` settings, `Ctrl+K` palette), and `FluentProviders`. Generated projection pages render to `FluentDataGrid` with filter/expand/status components; generated commands render through `FcAuthorizedCommandRegion`, generated forms, and `FcLifecycleWrapper`, which surfaces Submitting, Acknowledged, Syncing, Confirmed, Rejected, idempotent-confirmed, and NeedsReview paths. Levels 2–4 customization (`ProjectionTemplate`, field-slot, full-view overrides) let external assemblies inject alternate render fragments. The generated body resolution order is deterministic: Level 4 full-view override → Level 2 projection template → generated default body; Level 3 field slots compose only inside whichever body explicitly delegates to the generated field/row/section/default renderers. Level 3 and Level 4 contract mismatches are registry/startup/runtime diagnostics today, while HFC1050-HFC1055 are build-time SourceTools accessibility analyzer warnings for statically inspectable override components. Development-only contract-mismatch panels render only in DEBUG + `IsDevelopment()`. The shell header's right cluster includes a framework-owned **account control** (`FcAccountMenu` — a `FluentAvatar` opening a Sign in / Sign out menu wired to the framework `/authentication/{challenge,sign-out}` endpoints, reading the principal from `AuthenticationStateProvider`), rendered **always** so it survives adopter `HeaderEnd` customization. The navigation hamburger (`FcHamburgerToggle`) is **always visible** and at Desktop toggles `SidebarCollapsed` (full nav ↔ 48px rail) via `SidebarToggledAction` — **superseding the earlier "D9 / no Desktop hamburger" decision (2026-06)**. The framework-owned sidebar (`FrontComposerNavigation`) keeps **exactly one active item**: the registered route that is the **longest segment-prefix** of the current URL renders with `NavLinkMatch.Prefix` and every other item with `NavLinkMatch.All` (which strips the query string before comparing), so a container route (e.g. a domain's `/{bc}` landing) no longer co-highlights with its sub-routes, query-string pages still resolve to their item, and detail pages keep their section ancestor lit (2026-06). The **server-side security wiring** that powers the account control is **framework-owned** (2026-06): a Blazor Server host calls `AddHexalithFrontComposerServerSecurity(...)` (or the granular `AddHexalithFrontComposerAuthentication` + `AddHexalithFrontComposerServerAuthenticationState` + `AddHexalithFrontComposerTokenRelay`) from `Hexalith.FrontComposer.Shell.Extensions`. These helpers replace the quickstart's fail-closed `NullAuthenticationStateProvider` with `ServerAuthenticationStateProvider`, add cascading authentication state, and register the circuit-safe per-user bearer-token relay (`FrontComposerUserTokenStore` / `FrontComposerGatewayAuthorizationHandler`). Domain modules supply only domain-specific security *configuration* (provider choice, claim mapping, authorization policies, which gateways to authorize) — this generic plumbing must not be duplicated per domain module.
 
 State is managed in Fluxor slices under `src/Hexalith.FrontComposer.Shell/State/` (Theme, Density, Navigation, CommandPalette, ETagCache, PendingCommands, ProjectionConnection, ReconnectionReconciliation, …) following a **single-writer discipline** (ADR-007): each action type has one dispatch source; effects own persistence and JS interop. EventStore-enabled hosts run command-status polling through a scoped `PendingCommandPollingDriver`. `IPendingCommandOutcomeResolver` is the single owner of terminal pending-command application and eligible fresh-row publication; polling, generated callbacks, reconnect reconciliation, and other adapters emit observations through that boundary rather than mutating terminal pending state directly.
+
+Three runtime boundaries affect what an operator sees after a form opens or a request fails.
+
+- A generated form accepts commands constructible with zero arguments, including public constructors with explicit defaults for every parameter. For field defaults, each form renderer resolves its own provider. When reflection can create a parameterless instance, related properties read from that same instance within the form. A later form gets fresh defaults. The provider declines when it cannot create the instance. [Command parser](../../src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs) · [Default value provider](../../src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ConstructorDefaultValueProvider.cs)
+- When a framework-cached HTTP 304 refers to unreadable projection data, the query client evicts the affected scoped entry and retries once without its validator. A repeated 304 with no compatible entry fails. Callers that own their ETag cache receive the no-change result directly. [EventStore query client](../../src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs)
+- A queued browser write can fail after the caller returns. The scoped storage worker keeps draining later writes and reports a per-call interop failure at a flush boundary. [Browser storage service](../../src/Hexalith.FrontComposer.Shell/Infrastructure/Storage/LocalStorageService.cs)
+
+The combined Tenants and Parties UI resolves Parties administration through the signed-in caller’s Tenants query gateway. It requires one authenticated identity, one active tenant selection (`eventstore:current-tenant`), and current evidence for the same tenant and user. The active tenant must authorize the user as `TenantOwner`. An authentication change during lookup causes the host to discard the old result. The combined host can therefore enforce ownership with its invocation-only Dapr access. [Host registration](../../src/Hexalith.FrontComposer.UI/Program.cs) · [Authorization adapter](../../src/Hexalith.FrontComposer.UI/Services/PartiesAdminAuthorizationService.cs) · [Boundary tests](../../tests/Hexalith.FrontComposer.UI.Tests/PartiesAdminAuthorizationTests.cs)
 
 #### 4.0.1 Shell sublayer declaration
 
@@ -289,9 +297,7 @@ correct-course proposal that introduced this section.
 
 **RC attribute-splatting caveat.** When a converted `<div>` carried `data-testid`/`role`/`aria-*`/event
 handlers, `FluentStack` must splat them onto its root element for the unit/e2e selector and a11y
-contracts to survive. This holds on the pinned `5.0.0-rc.5-26219.1` (`FluentStack` captures unmatched
-attributes); confirm via the component's own bUnit lane after each conversion. (Mirrors §4.2's
-RC-surface caveat.)
+contracts to survive. The June conversion tested attribute forwarding against `5.0.0-rc.5-26219.1`. Each conversion must check the component's bUnit lane against the selected catalog version.
 
 **First burn-down (correct-course 2026-06-19).** Four clean Shell conversions landed:
 `FcAccountMenu` (`.fc-account-menu`), `FcSettingsDialog` (`.fc-settings-body`), the former
@@ -325,16 +331,16 @@ resolved:
 All conversions verified per the RC caveat: Release build clean (TWAE), Governance guard green with the
 now-empty §4.1 allowlist, and the full Shell default lane at **1905 passed / 0 failed**.
 
-## 5. AI-agent surface (MCP)
+## 5. HTTP MCP compatibility host and local compiler tooling
 
-`Hexalith.FrontComposer.Mcp` is an ASP.NET Core adapter (HTTP streamable MCP) that turns the generated `McpManifest` into a live tool/resource surface:
+`Hexalith.McpCli` owns the target agent-facing interface. The FrontComposer HTTP host serves existing consumers until it and the Projects plug-in meet their coupled retirement criteria, including consumer cutover and live, release and rollback acceptance. Its current ASP.NET Core adapter presents tools and resources from the generated `McpManifest`. [Compatibility inventory and retirement criteria](../../README.md#legacy-compatibility-surfaces)
 
-- **Tools** are built dynamically at each `tools/list`: every generated `McpCommandDescriptor` becomes a command tool; plus a fixed `frontcomposer.lifecycle.subscribe` tool for polling command lifecycle.
+- **Tools.** Each `tools/list` evaluates generated command descriptors against current caller admission. The fixed `frontcomposer.lifecycle.subscribe` tool polls command state. An acknowledgement binds dispatcher callbacks to a singleton lifecycle entry, allowing a terminal update to survive request disposal. On every poll the scoped tracker verifies the creator’s tenant and user and rechecks admission for the originating tool. Hidden and missing handles yield the same response. [Lifecycle store](../../src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs) · [Read admission](../../src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleTracker.cs)
 - **Resources:** projection resources (`frontcomposer://<bounded-context>/projections/<projection-name>`, tenant-scoped, rendered as Markdown) and **skill-corpus** resources (`frontcomposer://skills/<id>`) — the embedded markdown docs under `docs/skills/frontcomposer/**/*.md`.
 - **Security is fail-closed:** both `IFrontComposerMcpTenantToolGate` and `IFrontComposerMcpResourceVisibilityGate` must be registered or startup throws. Auth/tenant/unknown failures return a single opaque shape so callers can't fingerprint the cause. Server-controlled fields (`TenantId`, `UserId`, `MessageId`, `CorrelationId`) cannot be supplied by agents.
 - **Schema negotiation:** `McpSchemaNegotiator` classifies client/server fingerprint pairs (Exact / CompatibleAdditive / CompatibleWarning / Incompatible) and blocks side-effects on mismatch.
 
-This is the "MCP boundary" described in `docs/concepts/source-generation-and-mcp-split.md`.
+The retained `frontcomposer inspect` and `frontcomposer migrate` commands are local developer tooling. Inspection selects one project's configuration and framework. It reads the existing compiler output unless the developer requests `--build`. Migration defaults to a dry run. On apply, it rechecks each file's path and content hash immediately before atomic replacement. A later write failure can leave earlier successful edits on disk. [CLI contract](../../docs/reference/cli.md) · [Tool ownership](../../README.md#legacy-compatibility-surfaces)
 
 ## 6. Cross-cutting concerns & invariants
 
@@ -345,7 +351,7 @@ This is the "MCP boundary" described in `docs/concepts/source-generation-and-mcp
 | **Incremental caching** | Pure equatable IR + `EquatableArray<T>` | No Roslyn symbols in IR; full structural `Equals`/`GetHashCode`. |
 | **Contracts kernel split** | dual-TFM UI-clean `Contracts` + net11-only `Contracts.UI` | Contracts.UI owns typography, render-fragment contexts, and keyboard shortcut APIs under their existing namespaces. Shell owns runtime options/actions/registries; Testing owns `InMemoryStorageService`; SourceTools remains kernel-only. |
 | **Query composition** | `ProjectionQuery` + `QueryRequest.Create` | Projection criteria are composed into the transport/cache envelope. HFC0001/CS0618 preserves the v1.12 flattened source, deconstruction, and flat JSON compatibility surface throughout 2.x, with removal targeted for `3.0.0`. |
-| **Generated path** | `GeneratedOutputPathContract.Template` | `obj/{Config}/{TFM}/generated/HexalithFrontComposer/{Type}.g.razor.cs` is a public contract validated in Debug *and* Release. |
+| **Generated output** | `obj/{Config}/{TFM}/generated/HexalithFrontComposer/` | Inspection accepts the flat layout and the SourceTools generator's compiler subdirectory. The compiler copy wins for duplicate filenames. Other generators' subdirectories are excluded. [Path reference](../../docs/reference/generated-output.md) |
 | **Diagnostics** | `FcDiagnosticIds` / `DiagnosticDescriptors` | Build-time `HFC1xxx`, runtime `HFC2xxx`; new IDs declared with full XML docs. |
 | **Telemetry** | `FrontComposerActivitySource` | OpenTelemetry `ActivitySource`. |
 | **Build strictness** | `TreatWarningsAsErrors=true` | Analyzer/style warnings fail the build. |
@@ -353,30 +359,33 @@ This is the "MCP boundary" described in `docs/concepts/source-generation-and-mcp
 
 ## 7. Architecturally significant decisions (observed)
 
-- **ADR-003:** Build on FluentUI **v5 RC**, pin the exact version (`5.0.0-rc.5-26219.1`).
+- **ADR-003.** Use Fluent UI Blazor v5. The original decision pinned an RC. The Builds catalog selected by `61dcd07f` pins Components and Icons to `5.1.0` GA. OI-4 still requires dated Product and Architect acceptance of this selection. [Catalog](../../references/Hexalith.Builds/Props/Directory.Packages.props) · [Fluent contingency](../../docs/fluent-ui-v5-contingency.md) · [PRD](../planning-artifacts/prd.md#01-v10-readiness-milestone-gates)
 - **ADR-007:** Fluxor single-writer discipline per state slice.
 - **ADR-030:** Scoped lifetime discipline for storage/effects/auth/tenant accessors.
-- **Drift pipeline must not depend on `CompilationProvider`** (decision "P12") — only the trim/AOT advisory legitimately combines it, isolated in its own output.
-- **Stories 11.8/11.11-11.14 (2026-07-05 through 2026-07-11):** Contracts kernel split approved and implemented. Contracts.UI is an explicit release package, existing packages validate against `v1.12.0`, and the binary-breaking ownership changes target `2.0.0` with migration evidence.
-- **Custom inline SVG icon factory** (`FcFluentIcons`) instead of the FluentUI icons NuGet (no v5-compatible release at authoring time).
+- **Drift pipeline must not depend on `CompilationProvider`** (decision "P12") — the trim/AOT advisory and the command generator’s async-validation capability check use it in separate pipelines.
+- **Stories 11.8/11.11-11.14 (2026-07-05 through 2026-07-11):** Contracts kernel split approved and implemented. Contracts.UI became a separate release package. The original 2.0.0 migration was measured against v1.12.0. Today the default package validation baseline is 5.0.0. For packable libraries with a runtime baseline, validation compares the published net10.0 assembly to the candidate net11.0 assembly. [Package validation targets](../../Directory.Build.targets)
+- Shell components select icons through `FcFluentIcons`, backed by the typed Fluent v5 Icons package. [Icon factory](../../src/Hexalith.FrontComposer.Shell/Components/Icons/FcFluentIcons.cs)
 - **No third-party CLI framework** — the CLI uses a bespoke option parser and a fixed generated-output path contract.
-- **Shared-catalog shape policy:** each governed `Hexalith*Version` selector is value-independent but
-  structurally strict: it must occur exactly once, contain a literal NuGet version, and be a global
-  MSBuild property declared directly in a top-level `PropertyGroup`. The declaration may be
-  unconditional or use only the canonical self-default condition (`'$(Name)' == ''`); declarations
-  under `Target`, `Choose`, conditional/nested groups, or any other container fail closed.
+- **Shared catalog.** The validator checks the canonical literal default for each governed package family. The FrontComposer profile recognizes explicitly scoped version assignments when it can prove which projects receive each value. The consumer’s build guard separately requires EventStore 5.4.0. [Catalog semantics and dependency selection](../planning-artifacts/architecture.md#shared-catalog-compatibility-and-dependency-provenance)
 
 ## 8. External dependencies (submodules)
 
-Root-declared git submodules live under `references/` ([.gitmodules](.gitmodules)). Build-relevant Hexalith libraries are consumed as **local `ProjectReference`s in Debug/source builds** (via [deps.local.props](deps.local.props)) and as **published NuGet packages in Release/package builds** (via [deps.nuget.props](deps.nuget.props)). `UseHexalithProjectReferences=true` is the explicit source-debug override; `UseNuGetDeps` remains the legacy inverse switch. Direct `references/Hexalith.*` solution entries are disabled for `Release|*` so Release solution builds cannot silently compile submodule sources. They are **not** part of this documentation scope:
+The superproject records ten direct dependencies under `references/`. Debug defaults to source project references, and Release defaults to published domain packages. `UseHexalithProjectReferences` selects the mode explicitly, with `UseNuGetDeps` as its legacy inverse. The non-packable Aspire AppHost consumes source from two external repositories in both modes. It links the two approved Platform Dapr mTLS files and references Builds.Tooling. The consumer projection binds the permitted source to the root selectors and the consumer configuration. [Declared submodules](../../.gitmodules) · [Build modes](../../Directory.Build.props) · [AppHost](../../src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj) · [Dependency governance](../../eng/dependency-governance.md)
+
+At FrontComposer `61dcd07f` the SDK selection is `11.0.100` with `latestPatch` roll-forward. The selected Builds catalog supplies EventStore `5.4.0`. Root build targets require that version before restore or build and forward it across direct and transitive source project edges so the host loads one EventStore identity. Release provenance is read from the gitlinks of the candidate FrontComposer commit. [SDK](../../global.json) · [Build targets](../../Directory.Build.targets) · [Release architecture](../planning-artifacts/architecture.md)
+
+The November 20 audit exercised Keycloak sign-in, the protected Tenants page, token relay and sign-out on its recorded host. Published deployment of the combined UI remains unqualified in that record because its Debug publish failed in SDK static-asset compression. Current-candidate runtime and release acceptance have separate evidence requirements. [Audit implementation record](../planning-artifacts/sprint-change-proposal-2026-11-20.md#implementation-record)
 
 | Submodule | Repo | Role for FrontComposer |
 |---|---|---|
 | `references/Hexalith.AI.Tools` | github.com/Hexalith/Hexalith.AI.Tools | Shared LLM/UX/state instructions |
 | `references/Hexalith.Builds` | github.com/Hexalith/Hexalith.Builds | Shared build/release assets |
+| `references/Hexalith.CiCd` | github.com/Hexalith/Hexalith.CiCd | Workflow generation and delivered CI/CD policy |
 | `references/Hexalith.Commons` | github.com/Hexalith/Hexalith.Commons | Shared primitives (e.g. ULID helpers, value/error patterns) |
 | `references/Hexalith.EventStore` | github.com/Hexalith/Hexalith.EventStore | The CQRS/event-sourcing backend the Shell talks to via SignalR/HTTP |
 | `references/Hexalith.Memories` | github.com/Hexalith/Hexalith.Memories | Memories contracts/client projects referenced by the solution |
+| `references/Hexalith.Parties` | github.com/Hexalith/Hexalith.Parties | Parties domain and portals for the combined UI |
+| `references/Hexalith.Platform` | github.com/Hexalith/Hexalith.Platform | Approved Dapr hosting source linked by the AppHost |
 | `references/Hexalith.PolymorphicSerializations` | github.com/Hexalith/Hexalith.PolymorphicSerializations | Shared polymorphic serialization dependency |
 | `references/Hexalith.Tenants` | github.com/Hexalith/Hexalith.Tenants | Multi-tenancy primitives and sample/UI services |
 
