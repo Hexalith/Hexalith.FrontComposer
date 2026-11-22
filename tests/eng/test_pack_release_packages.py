@@ -41,10 +41,54 @@ VERSION = "4.3.0-review.compat"
 FIXTURE_BASELINE = "4.2.0"
 # Synthetic fixtures remain on the published baseline's hotfix line. Real-tree checks
 # use the explicitly planned major release so a stale currentRelease fails closed.
-CHECKED_IN_RELEASE_VERSION = "6.0.0"
+CHECKED_IN_RELEASE_VERSION = "6.1.0"
 _BASELINE_MAJOR, _BASELINE_MINOR, _BASELINE_PATCH = PUBLISHED_BASELINE_VERSION.split(".")
 HOTFIX_VERSION = f"{_BASELINE_MAJOR}.{_BASELINE_MINOR}.{int(_BASELINE_PATCH) + 1}"
 PRODUCTION_VERSION = f"{HOTFIX_VERSION}-review.compat"
+EXPIRED_PKV006 = {
+    "package": "Hexalith.FrontComposer.Shell",
+    "tfm": "net10.0",
+    "oldSignature": "net10.0",
+    "newState": "net11.0 required; net10.0 runtime target removed",
+    "apiCompatDiagnosticId": "PKV006",
+    "targetRelease": "v6.0",
+    "reviewerRationale": "Fixture for the expired v6.0 PKV006 shape.",
+    "ownerStory": "net11-major-release-compatibility-2026-11-14",
+    "expiresAfter": "v6.1",
+    "reason": "intentional-major-break",
+}
+EXPIRED_CP0008 = {
+    "package": "Hexalith.FrontComposer.Contracts",
+    "tfm": "net10.0",
+    "oldSignature": "T:Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot",
+    "newState": "netstandard2.0 enum metadata lacks inherited System.ISpanFormattable; net11.0 retains it",
+    "apiCompatDiagnosticId": "CP0008",
+    "targetRelease": "v6.0",
+    "reviewerRationale": "Fixture for the expired v6.0 CP0008 shape.",
+    "ownerStory": "net11-major-release-compatibility-2026-11-14",
+    "expiresAfter": "v6.1",
+    "reason": "intentional-major-break",
+    "comparisonTfm": "netstandard2.0",
+}
+EXPIRED_PKV006_XML = """<?xml version="1.0" encoding="utf-8"?>
+<Suppressions>
+  <Suppression>
+    <DiagnosticId>PKV006</DiagnosticId>
+    <Target>net10.0</Target>
+  </Suppression>
+</Suppressions>
+"""
+EXPIRED_CP0008_XML = """<?xml version="1.0" encoding="utf-8"?>
+<Suppressions>
+  <Suppression>
+    <DiagnosticId>CP0008</DiagnosticId>
+    <Target>T:Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Contracts.dll</Left>
+    <Right>lib/netstandard2.0/Hexalith.FrontComposer.Contracts.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>
+"""
 
 
 class PackReleasePackagesTests(unittest.TestCase):
@@ -124,7 +168,7 @@ class PackReleasePackagesTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)
         self.assertTrue(payload["releasePolicy"])
-        self.assertEqual("v6.0", payload["releaseLine"])
+        self.assertEqual("v6.1", payload["releaseLine"])
         self.assertEqual(8, len(payload["commands"]))
 
     def test_synthetic_ci_positional_contract_skips_only_release_line_matching(self) -> None:
@@ -303,7 +347,7 @@ class PackReleasePackagesTests(unittest.TestCase):
     def test_policy_accepts_a_hotfix_candidate_against_the_checked_in_tree(self) -> None:
         # Regression guard: the strict preceding-line rule made every candidate unpackable, so
         # the next patch candidate against the published baseline must validate here.
-        self.assertEqual("v6.0", validate_release_policy(ROOT, "6.0.1"))
+        self.assertEqual("v6.1", validate_release_policy(ROOT, "6.1.0"))
 
     def test_major_bump_accepts_any_minor_of_the_previous_major(self) -> None:
         # Documented limitation of `is_preceding_release_line`: the previous major's last minor
@@ -660,22 +704,22 @@ class PackReleasePackagesTests(unittest.TestCase):
 
     @contextlib.contextmanager
     def runtime_pack_fixture(self) -> Iterator[tuple[pathlib.Path, pathlib.Path, list[str], str]]:
-        """Build and successfully qualify the real net10.0-to-net11.0 framework-drop shape."""
+        """Build and successfully qualify the same-TFM net11.0 runtime comparison."""
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             baseline = root / "baseline"
             candidate = root / "candidate"
             baseline.mkdir()
             candidate.mkdir()
-            baseline_package = root / "baseline-packages" / "Hexalith.FrontComposer.Mcp.5.0.0.nupkg"
+            baseline_package = root / "baseline-packages" / "Hexalith.FrontComposer.Mcp.6.0.1.nupkg"
             original = (
                 "namespace Example; public class RetainedApi { public void Stable(int originalName) {} }"
                 " public class UnrelatedRemovedApi {}"
             )
-            for location, tfm in ((baseline, "net10.0"), (candidate, "net11.0")):
+            for location in (baseline, candidate):
                 project = f"""<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>{tfm}</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <PackageId>Hexalith.FrontComposer.Mcp</PackageId>
     <AssemblyName>Hexalith.FrontComposer.Mcp</AssemblyName>
     <IsPackable>true</IsPackable>
@@ -690,18 +734,18 @@ class PackReleasePackagesTests(unittest.TestCase):
             )
             result = subprocess.run([
                 "dotnet", "pack", str(baseline / "Runtime.csproj"), "-c", "Release",
-                "-o", str(baseline_package.parent), "-p:Version=5.0.0", "-m:1", "-nr:false",
+                "-o", str(baseline_package.parent), "-p:Version=6.0.1", "-m:1", "-nr:false",
             ], capture_output=True, text=True, timeout=90)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             command = [
                 "dotnet", "pack", str(candidate / "Runtime.csproj"), "-c", "Release",
-                "-o", str(root / "candidate-packages"), "-p:Version=6.0.0",
+                "-o", str(root / "candidate-packages"), "-p:Version=6.1.0",
                 "-p:EnableFrontComposerPackageValidation=true",
                 f"-p:PackageValidationBaselinePath={baseline_package}", "-m:1", "-nr:false",
             ]
             result = subprocess.run(command, capture_output=True, text=True, timeout=90)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-            self.assertIn("public runtime API: published net10.0 to candidate net11.0", result.stdout)
+            self.assertIn("public runtime API: published net11.0 to candidate net11.0", result.stdout)
             yield root, baseline_package, command, original
 
     def test_net10_to_net11_runtime_pack_refuses_unrelated_api_removal(self) -> None:
@@ -712,7 +756,6 @@ class PackReleasePackagesTests(unittest.TestCase):
             self.assertNotEqual(0, result.returncode, output)
             self.assertIn("error CP0001", output)
             self.assertIn("Example.UnrelatedRemovedApi", output)
-            self.assertIn("Directory.Build.targets", output)
             self.assertNotIn("error PKV006", output)
 
     def test_runtime_comparison_honors_parameter_name_rule(self) -> None:
@@ -741,16 +784,16 @@ class PackReleasePackagesTests(unittest.TestCase):
             ]
             result = subprocess.run(command, capture_output=True, text=True, timeout=90)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-            self.assertNotIn("public runtime API: published net10.0", result.stdout)
+            self.assertNotIn("public runtime API: published net11.0", result.stdout)
 
     def test_runtime_comparison_rejects_missing_assets_after_a_warm_success(self) -> None:
-        for side, tfm in (("baseline", "net10.0"), ("candidate", "net11.0")):
+        for side, tfm in (("baseline", "net11.0"), ("candidate", "net11.0")):
             with self.subTest(side=side), self.runtime_pack_fixture() as (root, baseline_package, _, _):
                 candidate = root / "candidate"
                 assembly = "Hexalith.FrontComposer.Mcp.dll"
                 extracted = list(candidate.rglob(f"frontcomposer-runtime-apicompat/{side}/lib/{tfm}/{assembly}"))
                 self.assertEqual(1, len(extracted), "The successful qualification must warm this exact extraction site.")
-                package = baseline_package if side == "baseline" else root / "candidate-packages/Hexalith.FrontComposer.Mcp.6.0.0.nupkg"
+                package = baseline_package if side == "baseline" else root / "candidate-packages/Hexalith.FrontComposer.Mcp.6.1.0.nupkg"
                 replacement = package.with_suffix(".missing-asset")
                 with zipfile.ZipFile(package) as source, zipfile.ZipFile(replacement, "w") as target:
                     for entry in source.infolist():
@@ -760,13 +803,13 @@ class PackReleasePackagesTests(unittest.TestCase):
                 # Invoke the real target on the already-packed bytes, avoiding a repack that
                 # would restore the deliberately missing candidate asset before qualification.
                 project = candidate / "Runtime.csproj"
-                candidate_package = root / "candidate-packages/Hexalith.FrontComposer.Mcp.6.0.0.nupkg"
+                candidate_package = root / "candidate-packages/Hexalith.FrontComposer.Mcp.6.1.0.nupkg"
                 project.write_text(project.read_text().replace(
                     "</Project>", f'<ItemGroup><NuGetPackOutput Include="{candidate_package}" /></ItemGroup></Project>',
                 ))
                 result = subprocess.run([
                     "dotnet", "msbuild", str(project), "-t:ValidateFrontComposerRuntimeApiCompatibility",
-                    "-p:Configuration=Release", "-p:Version=6.0.0",
+                    "-p:Configuration=Release", "-p:Version=6.1.0",
                     "-p:EnableFrontComposerPackageValidation=true",
                     f"-p:PackageValidationBaselinePath={baseline_package}", "-m:1", "-nr:false",
                 ], capture_output=True, text=True, timeout=90)
@@ -776,11 +819,9 @@ class PackReleasePackagesTests(unittest.TestCase):
                 self.assertFalse(extracted[0].exists(), "A missing asset must not reuse its warm extracted DLL.")
 
     def test_framework_records_require_exact_approved_scope_and_lifecycle(self) -> None:
-        ledger = json.loads((ROOT / "docs/diagnostics/compatibility-suppressions.json").read_text())
-        examples = [
-            next(row for row in ledger["suppressions"] if row["apiCompatDiagnosticId"] == diagnostic)
-            for diagnostic in ("PKV006", "CP0008")
-        ]
+        live = json.loads((ROOT / "docs/diagnostics/compatibility-suppressions.json").read_text())
+        self.assertEqual([], live["suppressions"])
+        examples = [EXPIRED_PKV006, EXPIRED_CP0008]
         for example in examples:
             mutations = {
                 "package": "Hexalith.FrontComposer.Unknown",
@@ -803,12 +844,8 @@ class PackReleasePackagesTests(unittest.TestCase):
 
     def test_framework_xml_requires_exact_sdk_shape(self) -> None:
         examples = {
-            "Hexalith.FrontComposer.Mcp": (
-                ROOT / "src/Hexalith.FrontComposer.Mcp/CompatibilitySuppressions.xml"
-            ).read_text(),
-            "Hexalith.FrontComposer.Contracts": (
-                ROOT / "src/Hexalith.FrontComposer.Contracts/CompatibilitySuppressions.xml"
-            ).read_text(),
+            "Hexalith.FrontComposer.Mcp": EXPIRED_PKV006_XML,
+            "Hexalith.FrontComposer.Contracts": EXPIRED_CP0008_XML,
         }
         for package, document in examples.items():
             mutations = {
@@ -839,18 +876,12 @@ class PackReleasePackagesTests(unittest.TestCase):
                         release_compatibility._suppression_xml_rows({package: path}, {package})
 
     def test_framework_ledger_and_xml_cannot_diverge(self) -> None:
-        source = json.loads((ROOT / "docs/diagnostics/compatibility-suppressions.json").read_text())
-        for diagnostic in ("PKV006", "CP0008"):
-            example = next(row for row in source["suppressions"] if row["apiCompatDiagnosticId"] == diagnostic)
+        for example, document in (
+            (EXPIRED_PKV006, EXPIRED_PKV006_XML),
+            (EXPIRED_CP0008, EXPIRED_CP0008_XML),
+        ):
+            diagnostic = example["apiCompatDiagnosticId"]
             package = example["package"]
-            document = (ROOT / "src" / package / "CompatibilitySuppressions.xml").read_text()
-            # Keep exactly the selected SDK row to exercise both missing and stale parity.
-            import xml.etree.ElementTree as ET
-            xml = ET.fromstring(document)
-            for element in list(xml):
-                if element.findtext("Target") != example["oldSignature"]:
-                    xml.remove(element)
-            document = ET.tostring(xml, encoding="unicode")
             for missing in ("ledger", "xml", "comparison-tfm"):
                 if missing == "comparison-tfm" and diagnostic == "PKV006":
                     continue

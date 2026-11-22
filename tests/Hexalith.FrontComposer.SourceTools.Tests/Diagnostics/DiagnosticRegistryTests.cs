@@ -698,10 +698,10 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
-        json["currentRelease"]!.GetValue<string>().ShouldBe("v6.0");
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v6.1");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
-        suppressions.Count.ShouldBe(32, "only the 28 SDK enum comparisons and four exact framework drops are approved for v6.0.");
+        suppressions.Count.ShouldBe(0, "the v6.0 framework-migration exceptions expired at v6.1 after the 6.0.1 baseline advance.");
 
         HashSet<string> apiCompatDiagnosticIds = ["CP0001", "CP0002", "CP0008", "PKV006"];
         Regex targetReleaseRegex = TargetReleaseRegex();
@@ -902,14 +902,27 @@ public sealed partial class DiagnosticRegistryTests {
     [InlineData("currentRelease", "v6.1", "suppression-expired")]
     public void CompatibilityFrameworkDropValidator_EnforcesExactApprovedScope(string field, string value, string expectedCategory)
     {
-        JsonObject json = JsonNode.Parse(File.ReadAllText(
-            Path.Combine(ProjectRoot().FullName, "docs", "diagnostics", "compatibility-suppressions.json"),
-            Encoding.UTF8))!.AsObject();
-        JsonObject row = json["suppressions"]!.AsArray()
-            .Select(node => node!.AsObject())
-            .First(item => item["apiCompatDiagnosticId"]!.GetValue<string>() == "PKV006");
-        json["suppressions"] = new JsonArray(row.DeepClone());
-        ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty("the exact checked-in framework drop is approved.");
+        JsonObject json = JsonNode.Parse("""
+            {
+              "schemaVersion": "2.0",
+              "currentRelease": "v6.0",
+              "suppressions": [
+                {
+                  "package": "Hexalith.FrontComposer.Shell",
+                  "tfm": "net10.0",
+                  "oldSignature": "net10.0",
+                  "newState": "net11.0 required; net10.0 runtime target removed",
+                  "apiCompatDiagnosticId": "PKV006",
+                  "targetRelease": "v6.0",
+                  "reviewerRationale": "Fixture for the expired v6.0 PKV006 shape.",
+                  "ownerStory": "net11-major-release-compatibility-2026-11-14",
+                  "expiresAfter": "v6.1",
+                  "reason": "intentional-major-break"
+                }
+              ]
+            }
+            """)!.AsObject();
+        ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty("the exact v6.0 framework drop remains the only approved PKV006 shape.");
         if (field == "currentRelease")
         {
             json[field] = value;
@@ -1016,7 +1029,7 @@ public sealed partial class DiagnosticRegistryTests {
             @"<FrontComposerPackageValidationBaselineVersion Condition=""'\$\(FrontComposerPackageValidationBaselineVersion\)' == ''"">(?<version>[^<]+)</FrontComposerPackageValidationBaselineVersion>");
         sharedBaseline.Success.ShouldBeTrue("Directory.Build.targets must default the package-validation baseline.");
         string packageValidationBaseline = sharedBaseline.Groups["version"].Value;
-        packageValidationBaseline.ShouldBe("5.0.0");
+        packageValidationBaseline.ShouldBe("6.0.1");
         directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
         directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\">$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");
@@ -1027,6 +1040,7 @@ public sealed partial class DiagnosticRegistryTests {
         directoryBuildTargets.ShouldNotContain(">4.1.1</FrontComposerPackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldNotContain(">4.2.0</FrontComposerPackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldNotContain(">4.3.0</FrontComposerPackageValidationBaselineVersion>");
+        directoryBuildTargets.ShouldNotContain(">5.0.0</FrontComposerPackageValidationBaselineVersion>");
 
         string contractsUiProject = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"), Encoding.UTF8);
         contractsUiProject.ShouldContain($"<FrontComposerPackageValidationBaselineVersion>{packageValidationBaseline}</FrontComposerPackageValidationBaselineVersion>");
