@@ -2,6 +2,8 @@
 *.verified.txt text eol=lf
 # Generated Pact JSON keeps identical LF bytes on every runner; the EventStore provider reads these files.
 tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json text eol=lf
+# Finite mutation ledger/catalog SHA-256 seals are of LF bytes; CRLF checkout breaks Gate 2b.
+tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/*.json text eol=lf
 # This AppHost source had mixed line endings; keep it stable.
 src/Hexalith.FrontComposer.AppHost/HexalithTenantsSample.cs text eol=lf
 # Shell scripts and husky hooks require LF on Unix runners (CRLF breaks /bin/sh shebangs).
