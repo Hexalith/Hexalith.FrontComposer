@@ -48,7 +48,7 @@ Establish FR-24 publication safety through a secretless builder, protected candi
 
 ## Cross-Story Dependencies
 
-- A Platform pin change consumes one directional transition from the prior policy. The mismatched base at `a9e755da` still requires an Architecture and Release recovery decision.
+- A Platform pin change consumes one directional transition from the prior policy. Both `a79cc810` and `8199bcf7` validate individually, but the restoration from `4cecae4e` to `a79cc810` fails before producing affected-module proof. The Architect and Release Owner must record the recovery disposition. [Story 16.3 evidence](spec-16-3-approve-or-reject-the-exact-runtime-migration.md#dependency-restoration-on-november-22)
 - EXT-BUILDS-1 must supply an accepted immutable split revision before Story 17.3 or caller activation. Source reconciliation, incident readiness, and ledger-model decisions can progress independently of that upstream blocker.
 - GOV-J follows GOV-B through GOV-I. GOV-ACCEPT-1 needs the approved incident runbook; GOV-ACCEPT-2 follows source reconciliation and becomes stale on source-digest changes. Incident readiness does not itself close either acceptance decision.
 - Ledger backfill follows state-model acceptance. Preserve missing evidence and permanent dispositions for every publication-capable attempt, including later discovered releases.

@@ -4222,7 +4222,7 @@ So that partial publication or credential exposure can be contained without dest
 
 ### Story 17.3: [I · GOV-B] Select the Accepted Split Publication Topology
 
-**Dependency qualification, November 21.** The committed Platform selection fails the graph check. The approved prior-policy transition covers upgrades from a matching base. Architecture and Release still need to select a recovery for this already-drifted commit. [Observed failure and proposed transition](sprint-change-proposal-2026-11-21.md#1-admit-a-platform-revision-change)
+**Dependency qualification, November 22.** The restored pins at `a79cc810` and its successor `8199bcf7` each validate. The restoration from `4cecae4e` fails the prior-policy check before producing affected-module proof. Story 17.3 requires the Architect and Release Owner's recovery disposition and, independently, the Builds owner's acceptance of the split revision. [Restoration evidence](../implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md#dependency-restoration-on-november-22) · [Prior-policy transition](sprint-change-proposal-2026-11-21.md#1-admit-a-platform-revision-change)
 
 As a Release Owner,
 I want the FrontComposer caller pinned to the accepted immutable two-job Builds revision,
@@ -4423,6 +4423,11 @@ So that publication conformance cannot be assembled from mixed revisions or sele
 **Then** its source digests, authenticated runs, handoffs, candidate archive, manifest, incident result, and closure rows all bind the same immutable candidate
 **And** stale spine hashes, mixed candidates, unavailable source evidence, or open rows fail the gate.
 
+**Given** the producer and an independent verifier check the same candidate
+**When** they compute policy, catalog, workflow and spine file hashes, each reads the committed Git blob at the recorded revision and path. For CI archives and their members, each hashes the original archive or extracted member bytes from the authenticated run and attempt.
+**Then** both reproduce the policy-file SHA-256. The verifier rejects the digest of the parsed and reserialized policy in that field. A whitespace-only edit changes the file identity and preserves the canonical digest of its parsed value.
+**And** both reproduce `graph_digest` over the prescribed AD-5 graph projection and `seal.hash` over the top-level manifest members excluding `seal`. [Digest rules and policy example](architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#ad-5--adopted-v1-canonical-material-and-digest)
+
 **Given** the deterministic result is available
 **When** adversarial, edge-case, verification-gap, acceptance, and structure/prose reviews run
 **Then** each review cites that same candidate and every finding receives a recorded disposition
@@ -4471,7 +4476,7 @@ So that future execution begins from one agreed publication-safety contract.
 **Acceptance Criteria:**
 
 **Given** GOV-SRC-1 has reconciled all canonical publication sources
-**When** the owners review them
+**When** the Product Owner and Release Owner review the [nine source identities](../implementation-artifacts/spec-17-1-reconcile-publication-governance-sources.md#source-digests-for-the-2026-11-22-course-correction), they reproduce every SHA-256 from its Git blob at the reviewed commit
 **Then** a dated decision cites each exact source path and digest and states accept or reject
 **And** labels, summaries, or later branch content cannot substitute for the reviewed bytes.
 

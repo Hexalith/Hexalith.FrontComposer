@@ -7,7 +7,7 @@ paradigm: 'bounded committed-object graph'
 scope: 'GOV-1 shared-catalog compatibility and dependency provenance'
 status: final
 created: '2026-07-19'
-updated: '2026-11-21'
+updated: '2026-11-22'
 binds: ['GOV-1', 'parent:approved-gov-1-amendment', 'parent:semantic-catalog-compatibility', 'parent:fr-24-exact-artifact-pipeline', 'parent:pre-publication-authorizes-only', 'parent:ownership-boundaries', 'parent:build-rel-1-governed-reusable-mode', 'parent:no-runtime-or-ux-change']
 sources:
   - _bmad-output/planning-artifacts/architecture.md
@@ -195,7 +195,8 @@ The amendment governs the FrontComposer implementation of AD-12/13/16/17/18/19 b
   depths other than integer 1 or 2. Values are ASCII-only: strict lowercase 40-hex commits, strict
   lowercase 64-hex SHA-256, normalized relative POSIX paths, and a `catalog_contract_version` of JSON
   `null` or a token matching `[A-Za-z0-9][A-Za-z0-9._-]{0,63}` until BUILD-CAT-1 tightens it.
-  **Canonical bytes** (used by every digest and seal in this spine) are byte-for-byte the UTF-8 result
+  **Digest inputs.** For a policy, catalog, workflow or spine file identity, hash the Git blob bytes at the named repository, commit and path. For a CI archive, hash the original downloaded archive. For a packet, output, report or sidecar identified as an archive member, hash its exact extracted bytes from the authenticated run and attempt. JSON files can carry both an external file identity and an internal digest over a schema-defined projection.
+  **Canonical bytes** for a digest over a schema-defined structured value are the UTF-8 result
   of Python 3.14 standard-library
   `json.dumps(value, ensure_ascii=True, allow_nan=False, sort_keys=True, separators=(",", ":"))`,
   with no BOM or trailing newline. Closed schemas admit only JSON null, booleans, integers in the
@@ -210,6 +211,8 @@ The amendment governs the FrontComposer implementation of AD-12/13/16/17/18/19 b
   of `{schema, root, edge_count, edges}`. This is project canonicalization v1, not RFC 8785. V1
   requires Git SHA-1 object format; 40-hex identity validation enforces it and a future schema may add
   SHA-256 object IDs.
+
+**Policy regression example.** At FrontComposer `8199bcf7def7d9ddb39b1704429ba611d59fc08e`, the Git blob for `eng/dependency-graph-policy.json` has SHA-256 `ca0b7b7210c592d8431f8042ab350cd360ff255ccada6181804cffb3cdf5d43f`. Its parsed value has AD-5 digest `7a8cadff9a47a35c845fe7e65d3acd0f21d321dd5629f3e35ed565d656bdb023`. The policy-file field accepts the first value and rejects the second. Adding JSON whitespace changes the file hash while preserving the canonical digest of the value.
 
 ### AD-6 — `[ADOPTED]` compatibility and provenance are separate
 
@@ -1066,7 +1069,8 @@ flowchart LR
 | Git identity | Full lowercase 40-hex commit IDs; no abbreviations or symbolic revisions; the all-zero OID is never a valid commit in any evidence member. |
 | Paths | ASCII relative POSIX paths, byte-exact; no absolute, backslash, empty, dot, `..`, or control segments. |
 | Catalog identity | SHA-256 of raw committed blob bytes; optional marker represented as JSON `null`. |
-| Canonical bytes and digests | Every digest and seal uses the AD-5 canonical bytes; arrays are ordered by an explicit tuple, never by serializer behavior. |
+| File and artifact digests | Use the original Git blob, downloaded CI archive or extracted member bytes identified by the field. |
+| Structured digests and seals | Use AD-5 canonical JSON for the projection defined by each schema. The graph projects `schema`, `root`, `edge_count` and the ordered `edges`. The AD-14 manifest seal projects all top-level members except `seal`. |
 | Timestamps | Exactly `YYYY-MM-DDTHH:MM:SSZ` in UTC with second precision; offsets, fractional seconds, leap seconds, and alternate spellings are rejected. |
 | Evidence envelopes | Every GOV-1 evidence object, including `hexalith.publication-candidate.v1`, `hexalith.release-evidence.v4`, `hexalith.release-verification-handoff.v3`, and `frontcomposer.release-ledger-record.v2`, is closed and duplicate-rejecting; raw member SHA-256 is the identity consumers record, while an internal `evidence_digest` is a producer self-check only. |
 | Artifacts | `<base>-<run_id>-<run_attempt>` zip archives; exactly one run/artifact-ID/name/digest match per authenticated run. |

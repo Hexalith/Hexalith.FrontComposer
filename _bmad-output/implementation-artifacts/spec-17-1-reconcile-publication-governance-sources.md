@@ -518,3 +518,19 @@ The operator selected the reviewed Platform transition and CI retention for G-8.
 | `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/nonconformance-register-2026-09-08.md` | `8a708d40f465580dcd1de0d34c9403bc421b326fa81b608af35427a248b0e30a` | `07db58dbc934fb57f0e0c53fc328eb664ff98a4c` |
 | `_bmad-output/implementation-artifacts/gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance.md` | `6745a02be0c2894a8cba751cbfcfbf16c57e25f3fcb728eb6366189e7dd059a2` | `87e1d566cfcfc95451b142f7de60243b2c0c5f1d` |
 | `docs/release-trusted-publishing.md` | `f78e8d3a7efa4f1a9514663098a693e1aa212a0bd4010be4657aad3305753d7c` | `56efbc8bbfdf2156676fb861ff667c52e5b355f7` |
+
+## Source digests for the 2026-11-22 course correction
+
+The operator approved the November 22 planning edits. These nine identities are the resulting working-tree sources prepared on FrontComposer `8199bcf7def7d9ddb39b1704429ba611d59fc08e`. Git clean filters were applied to reproduce the bytes Git stores for each path. The base commit predates the spine edit. For GOV-ACCEPT-2, the Product Owner and Release Owner must identify the reviewed commit, verify each path and blob there, and record their dated decision. [Approved course correction](../planning-artifacts/sprint-change-proposal-2026-11-22.md) · [Story 17.12](../planning-artifacts/epics.md#story-1712-a--gov-accept-2-accept-reconciled-governance-sources)
+
+| Source | SHA-256 of Git blob bytes | Git blob |
+| --- | --- | --- |
+| `_bmad-output/planning-artifacts/prd.md` | `119ad1c8865f50bd5c01092100c8651e370763444ffa57c4eaab4fc0bc3bda98` | `758389309997535f69f38cc2ccef0223dc2834e2` |
+| `_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md` | `761e5e9ce367e5ef6529c588e07059b587108e867407f0fb328a715e43b39ac5` | `4e156a2b98a956f8beec4f45d1d515460aaa848a` |
+| `_bmad-output/planning-artifacts/architecture.md` | `54b595be6650c70337ce7bee51ece9a9f200c2b9f690405cfbfa29688b482ed0` | `f3afb792752cb7e24c2461379766cbeae65a837d` |
+| `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md` | `04ddf0474e5bdbf45848cd799898432a87e8aaa7db75cd6da8aca1d0dab68547` | `a831059dfb5c9d2cbaaeb08a5e249c25ca7c0a19` |
+| `_bmad-output/planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md` | `af68d3b557b00b7b9e4b3d72e16e5e1d19953f85772b030212788fa8f5150a49` | `6e7932f21cbb5bae44ae8571a0948ee7bfca0601` |
+| `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md` | `b627c9b20d939352ff9b84c8bb2e7aed411402ae9c076bac7c2b6c4bbf7fd526` | `9a5ec297b1452ea02571aba42c20f0232ce684c3` |
+| `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/nonconformance-register-2026-09-08.md` | `8a708d40f465580dcd1de0d34c9403bc421b326fa81b608af35427a248b0e30a` | `07db58dbc934fb57f0e0c53fc328eb664ff98a4c` |
+| `_bmad-output/implementation-artifacts/gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance.md` | `6745a02be0c2894a8cba751cbfcfbf16c57e25f3fcb728eb6366189e7dd059a2` | `87e1d566cfcfc95451b142f7de60243b2c0c5f1d` |
+| `docs/release-trusted-publishing.md` | `f78e8d3a7efa4f1a9514663098a693e1aa212a0bd4010be4657aad3305753d7c` | `56efbc8bbfdf2156676fb861ff667c52e5b355f7` |
