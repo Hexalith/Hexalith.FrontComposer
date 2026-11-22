@@ -1,8 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Hexalith.FrontComposer.SourceTools.Emitters;
 
@@ -49,7 +53,10 @@ internal static class GeneratedLogMethodEmitter {
     /// When <see langword="true"/> the wrapper takes an exception as its second parameter, matching
     /// the repository rule that places <c>ILogger</c> first and <c>Exception</c> second.
     /// </param>
-    /// <param name="parameters">Ordered template arguments as fully qualified type / camelCase name pairs.</param>
+    /// <param name="parameters">
+    /// Ordered template arguments as source type / camelCase name pairs. Callers supply types that
+    /// resolve to valid generic arguments in the generated compilation.
+    /// </param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="sb"/>, <paramref name="messageTemplate"/>, or <paramref name="parameters"/> is
     /// <see langword="null"/>.
@@ -61,7 +68,9 @@ internal static class GeneratedLogMethodEmitter {
     /// <exception cref="ArgumentException">
     /// <paramref name="methodName"/> or <paramref name="eventName"/> is null/empty/whitespace,
     /// <paramref name="methodName"/> is not an unescaped, non-keyword C# identifier,
-    /// <paramref name="messageTemplate"/> is malformed, or its placeholder count differs from
+    /// <paramref name="level"/> is not a logging level, or <paramref name="parameters"/> contains
+    /// a conflicting name, an invalid identifier, or invalid type syntax.
+    /// <paramref name="messageTemplate"/> is malformed or its placeholder count differs from
     /// <paramref name="parameters"/>'s length — either shape emits source that does not compile or a
     /// message whose holes never bind. <paramref name="eventName"/> is escaped string data, not an
     /// identifier, so its punctuation is accepted.
@@ -87,9 +96,10 @@ internal static class GeneratedLogMethodEmitter {
             throw new ArgumentNullException(nameof(parameters));
         }
 
-        ValidateArguments(methodName, eventName, messageTemplate, parameters);
+        ValidateArguments(methodName, eventName, level, messageTemplate, parameters);
 
         string fieldName = "_" + char.ToLowerInvariant(methodName[0]) + methodName.Substring(1);
+        ValidateParameters(parameters, fieldName, hasException);
 
         _ = sb.Append("    private static readonly global::System.Action<").Append(LoggerType);
         foreach ((string type, string _) in parameters) {
@@ -204,6 +214,7 @@ internal static class GeneratedLogMethodEmitter {
     private static void ValidateArguments(
         string methodName,
         string eventName,
+        string level,
         string messageTemplate,
         (string Type, string Name)[] parameters) {
         if (string.IsNullOrWhiteSpace(methodName)) {
@@ -212,9 +223,7 @@ internal static class GeneratedLogMethodEmitter {
                 nameof(methodName));
         }
 
-        if (methodName[0] == '@'
-            || !SyntaxFacts.IsValidIdentifier(methodName)
-            || SyntaxFacts.GetKeywordKind(methodName) != SyntaxKind.None) {
+        if (!IsUnescapedIdentifier(methodName)) {
             throw new ArgumentException(
                 "Generated log methodName must be an unescaped, non-keyword C# identifier.",
                 nameof(methodName));
@@ -224,6 +233,12 @@ internal static class GeneratedLogMethodEmitter {
             throw new ArgumentException(
                 "Generated log eventName is required and cannot be empty or whitespace.",
                 nameof(eventName));
+        }
+
+        if (level is not ("Trace" or "Debug" or "Information" or "Warning" or "Error" or "Critical" or "None")) {
+            throw new ArgumentException(
+                "Generated log level must be an unqualified LogLevel member name.",
+                nameof(level));
         }
 
         if (parameters.Length > MaxMessageArguments) {
@@ -246,5 +261,67 @@ internal static class GeneratedLogMethodEmitter {
                 + " placeholder(s): '" + messageTemplate + "'.",
                 nameof(messageTemplate));
         }
+    }
+
+    private static bool IsUnescapedIdentifier(string? name) {
+        if (name is null or "") {
+            return false;
+        }
+
+        SyntaxToken token = SyntaxFactory.ParseToken(name);
+        return token.IsKind(SyntaxKind.IdentifierToken)
+            && token.Text == name
+            && token.ValueText == name;
+    }
+
+    private static void ValidateParameters(
+        (string Type, string Name)[] parameters,
+        string fieldName,
+        bool hasException) {
+        if (parameters.Length == 0) {
+            return;
+        }
+
+        HashSet<string> names = new(StringComparer.Ordinal) { "logger", fieldName };
+        if (hasException) {
+            _ = names.Add("exception");
+        }
+
+        foreach ((string type, string name) in parameters) {
+            if (!IsUnescapedIdentifier(name) || !names.Add(name)) {
+                throw new ArgumentException(
+                    $"Generated log parameter '{name}' must be a distinct, unescaped C# identifier.",
+                    nameof(parameters));
+            }
+
+            if (string.IsNullOrWhiteSpace(type) || !IsParameterType(type)) {
+                throw new ArgumentException(
+                    $"Generated log parameter '{name}' requires complete C# type syntax for a generic argument.",
+                    nameof(parameters));
+            }
+        }
+    }
+
+    private static bool IsParameterType(string type) {
+        TypeSyntax syntax = SyntaxFactory.ParseTypeName(type);
+        return !syntax.ContainsDiagnostics
+            && !syntax.DescendantTrivia().Any(static trivia =>
+                !trivia.IsKind(SyntaxKind.WhitespaceTrivia) && !trivia.IsKind(SyntaxKind.EndOfLineTrivia))
+            && !syntax.DescendantNodesAndSelf().Any(static node =>
+                node.Kind() is SyntaxKind.OmittedTypeArgument or SyntaxKind.RefType
+                    or SyntaxKind.PointerType or SyntaxKind.FunctionPointerType
+                || node is PredefinedTypeSyntax predefined && predefined.Keyword.IsKind(SyntaxKind.VoidKeyword)
+                || node is TupleTypeSyntax tuple && HasDuplicateTupleElementNames(tuple));
+    }
+
+    private static bool HasDuplicateTupleElementNames(TupleTypeSyntax tuple) {
+        HashSet<string> names = new(StringComparer.Ordinal);
+        foreach (TupleElementSyntax element in tuple.Elements) {
+            if (element.Identifier.IsKind(SyntaxKind.IdentifierToken) && !names.Add(element.Identifier.ValueText)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

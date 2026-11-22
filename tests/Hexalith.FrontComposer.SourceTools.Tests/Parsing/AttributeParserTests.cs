@@ -551,7 +551,7 @@ public partial class CompoundTypeProjection
     }
 
     [Fact]
-    public void Parse_NestedNullableReferences_PreserveSourceAnnotations() {
+    public void Parse_NullableReferences_PreserveOnlyNestedSourceAnnotations() {
         const string source = """
             using System.Collections.Generic;
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -564,6 +564,10 @@ public partial class CompoundTypeProjection
                 public List<string?> Values { get; set; } = [];
                 public string?[]? Names { get; set; }
                 public string?[,][]? Matrix { get; set; }
+                public string?[]?[]? Jagged { get; set; }
+                public string?[]?[,]? MixedRanks { get; set; }
+                public string? Note { get; set; }
+                public List<string?[]?> Nested { get; set; } = [];
             }
             """;
 
@@ -573,9 +577,17 @@ public partial class CompoundTypeProjection
         model.Properties.Single(property => property.Name == "Values").SourceTypeName
             .ShouldBe("global::System.Collections.Generic.List<global::System.String?>");
         model.Properties.Single(property => property.Name == "Names").SourceTypeName
-            .ShouldBe("global::System.String?[]?");
+            .ShouldBe("global::System.String?[]");
         model.Properties.Single(property => property.Name == "Matrix").SourceTypeName
-            .ShouldBe("global::System.String?[,][]?");
+            .ShouldBe("global::System.String?[,][]");
+        model.Properties.Single(property => property.Name == "Jagged").SourceTypeName
+            .ShouldBe("global::System.String?[]?[]");
+        model.Properties.Single(property => property.Name == "MixedRanks").SourceTypeName
+            .ShouldBe("global::System.String?[]?[,]");
+        model.Properties.Single(property => property.Name == "Note").SourceTypeName
+            .ShouldBe("global::System.String");
+        model.Properties.Single(property => property.Name == "Nested").SourceTypeName
+            .ShouldBe("global::System.Collections.Generic.List<global::System.String?[]?>");
     }
 
     [Fact]

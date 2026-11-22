@@ -44,7 +44,7 @@ internal static class SourceTypeNameFormatter {
         bool includeNullableAnnotation = true) {
         switch (typeSymbol) {
             case IArrayTypeSymbol arrayType:
-                return FormatArrayType(arrayType, compilation, aliases);
+                return FormatArrayType(arrayType, compilation, aliases, includeNullableAnnotation);
 
             case IPointerTypeSymbol pointerType:
                 return FormatCore(pointerType.PointedAtType, compilation, aliases) + "*";
@@ -70,27 +70,24 @@ internal static class SourceTypeNameFormatter {
     private static string FormatArrayType(
         IArrayTypeSymbol arrayType,
         Compilation compilation,
-        SortedSet<string> aliases) {
-        List<(int Rank, bool IsNullable)> layers = [];
-        ITypeSymbol elementType = arrayType;
-        while (elementType is IArrayTypeSymbol currentArray) {
-            layers.Add((currentArray.Rank, currentArray.NullableAnnotation == NullableAnnotation.Annotated));
-            elementType = currentArray.ElementType;
+        SortedSet<string> aliases,
+        bool includeNullableAnnotation) {
+        // Consecutive rank specifiers run outermost-first within a group. A nullable
+        // inner array starts a separate group that must be written before these ranks.
+        List<int> ranks = [arrayType.Rank];
+        ITypeSymbol elementType = arrayType.ElementType;
+        while (elementType is IArrayTypeSymbol nestedArray
+            && nestedArray.NullableAnnotation != NullableAnnotation.Annotated) {
+            ranks.Add(nestedArray.Rank);
+            elementType = nestedArray.ElementType;
         }
 
         StringBuilder builder = new(FormatCore(elementType, compilation, aliases));
-        for (int i = 0; i < layers.Count; i++) {
-            int rank = layers[i].Rank;
-            // C# writes the outer array's nullable suffix after all nested rank specifiers,
-            // so nullable annotations occupy the reverse positions of Roslyn's outer-first layers.
-            bool isNullable = layers[layers.Count - i - 1].IsNullable;
+        foreach (int rank in ranks) {
             _ = builder.Append('[').Append(',', rank - 1).Append(']');
-            if (isNullable) {
-                _ = builder.Append('?');
-            }
         }
 
-        return builder.ToString();
+        return AppendNullableAnnotation(arrayType, builder.ToString(), includeNullableAnnotation);
     }
 
     private static string AppendNullableAnnotation(

@@ -151,6 +151,9 @@ public partial class GeneratorDriverTests {
                 [DerivedFrom(DerivedFromSource.Context)] public List<string?> Values { get; set; } = [];
                 [DerivedFrom(DerivedFromSource.Context)] public string?[]? Names { get; set; }
                 [DerivedFrom(DerivedFromSource.Context)] public string?[,][]? Matrix { get; set; }
+                [DerivedFrom(DerivedFromSource.Context)] public string?[]?[]? Jagged { get; set; }
+                [DerivedFrom(DerivedFromSource.Context)] public string?[]?[,]? MixedRanks { get; set; }
+                [DerivedFrom(DerivedFromSource.Context)] public string? Note { get; set; }
                 [Obsolete("warning only")]
                 [DerivedFrom(DerivedFromSource.Context)] public int Legacy { get; set; }
                 [Obsolete]
@@ -171,8 +174,11 @@ public partial class GeneratorDriverTests {
         renderer.ShouldContain("#pragma warning disable CS0612, CS0618");
         renderer.ShouldContain("#pragma warning restore CS0612, CS0618");
         renderer.ShouldContain("TryConvertPropertyValue<global::System.Collections.Generic.List<global::System.String?>>");
-        renderer.ShouldContain("TryConvertPropertyValue<global::System.String?[]?>");
-        renderer.ShouldContain("TryConvertPropertyValue<global::System.String?[,][]?>");
+        renderer.ShouldContain("TryConvertPropertyValue<global::System.String?[]>");
+        renderer.ShouldContain("TryConvertPropertyValue<global::System.String?[,][]>");
+        renderer.ShouldContain("TryConvertPropertyValue<global::System.String?[]?[]>");
+        renderer.ShouldContain("TryConvertPropertyValue<global::System.String?[]?[,]>");
+        renderer.ShouldContain("TryConvertPropertyValue<global::System.String>");
         SliceCase(renderer, "Legacy").ShouldContain("_prefilledModel.@Legacy =");
         SliceCase(renderer, "LegacyWithoutMessage").ShouldContain("_prefilledModel.@LegacyWithoutMessage =");
         foreach (string propertyName in (string[])["SetterFatal", "ExperimentalProperty", "ExperimentalSetter"]) {
@@ -414,6 +420,16 @@ public partial class GeneratorDriverTests {
         await task.ConfigureAwait(true);
     }
 
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void SliceCase_WithEitherLineEnding_NormalizesTheReturnedArm(string lineEnding) {
+        string source = string.Join(lineEnding, "            case \"Guarded\":",
+            "                return false;", "            default:", "                return true;");
+
+        SliceCase(source, "Guarded").Trim().ShouldBe("case \"Guarded\":\n                return false;");
+    }
+
     private static string SliceCase(string source, string propertyName) {
         string marker = $"case \"{propertyName}\":";
         int start = source.IndexOf(marker, StringComparison.Ordinal);
@@ -422,7 +438,7 @@ public partial class GeneratorDriverTests {
         int defaultCase = source.IndexOf("            default:", start + marker.Length, StringComparison.Ordinal);
         int end = nextCase >= 0 && nextCase < defaultCase ? nextCase : defaultCase;
         end.ShouldBeGreaterThan(start);
-        return source[start..end];
+        return source[start..end].ReplaceLineEndings("\n");
     }
 
     private interface IRecordingLogger {

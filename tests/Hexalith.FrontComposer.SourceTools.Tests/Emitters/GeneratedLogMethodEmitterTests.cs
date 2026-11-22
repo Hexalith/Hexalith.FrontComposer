@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.SourceTools.Emitters;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.Extensions.Logging;
 
 using Shouldly;
 
@@ -12,8 +13,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 /// <summary>
 /// Story 11.21 (CA1848) — unit coverage for the shared emitter that writes cached
 /// <c>LoggerMessage.Define</c> delegates plus their private static wrappers into generated component
-/// partials. The emitter had no direct tests; these pin both the emitted shape and the two
-/// generation-time guards that keep it from producing source an adopter cannot compile.
+/// partials. These tests pin the emitted shape and the generation-time argument validation.
 /// </summary>
 public sealed class GeneratedLogMethodEmitterTests {
     [Fact]
@@ -293,6 +293,98 @@ public sealed class GeneratedLogMethodEmitterTests {
         emitted.ShouldContain("new global::Microsoft.Extensions.Logging.EventId(5999, \"NameWith\\\"Quote\"),");
         emitted.ShouldContain("\"Message with \\\"quotes\\\"\"");
         ShouldBeAValidClassBody(emitted);
+    }
+
+    [Fact]
+    public void Emit_AcceptsEveryDefinedLogLevelMember() {
+        string[] levels = Enum.GetNames<LogLevel>();
+        StringBuilder sb = new();
+        foreach (string level in levels) {
+            GeneratedLogMethodEmitter.Emit(sb, "Log" + level, 5999, "Event", level, "No holes", hasException: false);
+        }
+
+        string emitted = sb.ToString();
+        foreach (string level in levels) {
+            emitted.ShouldContain($"global::Microsoft.Extensions.Logging.LogLevel.{level},");
+        }
+
+        ShouldCompileAsClassBody(emitted);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("warning")]
+    [InlineData("LogLevel.Warning")]
+    [InlineData("Undefined")]
+    public void Emit_WithAnInvalidLogLevel_LeavesBufferUnchanged(string? level) {
+        StringBuilder sb = new("existing");
+        ArgumentException error = Should.Throw<ArgumentException>(() =>
+            GeneratedLogMethodEmitter.Emit(sb, "LogEvent", 5999, "Event", level!, "No holes", hasException: false));
+
+        error.ParamName.ShouldBe("level");
+        sb.ToString().ShouldBe("existing");
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("two words", false)]
+    [InlineData("class", false)]
+    [InlineData("@value", false)]
+    [InlineData("log\u200Dger", false)]
+    [InlineData("logger", false)]
+    [InlineData("exception", true)]
+    [InlineData("_logEvent", false)]
+    [InlineData("first", false)]
+    public void Emit_WithAnInvalidOrConflictingParameterName_LeavesBufferUnchanged(string? name, bool hasException) {
+        StringBuilder sb = new("existing");
+        ArgumentException error = Should.Throw<ArgumentException>(() => GeneratedLogMethodEmitter.Emit(
+            sb, "LogEvent", 5999, "Event", "Debug", "{First} {Second}", hasException,
+            ("string", "first"), ("string", name!)));
+
+        error.ParamName.ShouldBe("parameters");
+        sb.ToString().ShouldBe("existing");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(" ")]
+    [InlineData("global::System.Collections.Generic.List<string")]
+    [InlineData("string extra")]
+    [InlineData("string // trailing comment")]
+    [InlineData("global::System.Collections.Generic.Dictionary<,>")]
+    [InlineData("ref int")]
+    [InlineData("(int value, string value)")]
+    [InlineData("void")]
+    [InlineData("int*")]
+    public void Emit_WithAnInvalidParameterType_LeavesBufferUnchanged(string? type) {
+        StringBuilder sb = new("existing");
+        ArgumentException error = Should.Throw<ArgumentException>(() => GeneratedLogMethodEmitter.Emit(
+            sb, "LogEvent", 5999, "Event", "Debug", "{Value}", hasException: false, (type!, "value")));
+
+        error.ParamName.ShouldBe("parameters");
+        sb.ToString().ShouldBe("existing");
+    }
+
+    [Fact]
+    public void Emit_WithANullableGenericParameterTypeAndNoException_AcceptsExceptionAsATemplateName() {
+        const string Type = "global::System.Collections.Generic.List<string?[]?>?";
+        StringBuilder sb = new();
+        GeneratedLogMethodEmitter.Emit(
+            sb, "LogEvent", 5999, "Event", "Debug", "{Value}", hasException: false, (Type, "exception"));
+
+        string emitted = sb.ToString();
+        emitted.ShouldContain($"Define<{Type}>(");
+        emitted.ShouldContain($"{Type} exception)");
+        emitted.ShouldContain("=> _logEvent(logger, exception, null);");
+        ShouldCompileAsClassBody(emitted);
+    }
+
+    private static void ShouldCompileAsClassBody(string emitted) {
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation("internal static class Host\n{\n" + emitted + "}");
+        compilation.GetDiagnostics(TestContext.Current.CancellationToken)
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty();
     }
 
     [Fact]

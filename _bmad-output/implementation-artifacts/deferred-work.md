@@ -9066,7 +9066,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Emitters/GeneratedLogMethodEmit
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
 reason: level is appended directly as LogLevel.<value>, so a malformed internal caller value would emit invalid semantic C# after other validation. All current call sites use controlled literals; this was not part of DW-688.
-status: open
+status: done 2026-11-22
+resolution: Validate generated logging levels against the defined LogLevel member names before emission.
 
 ### DW-1944: Generated logging parameter names and type strings remain unvalidated before output mutation.
 origin: spec-deferred 109b1834a076
@@ -9074,7 +9075,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Emitters/GeneratedLogMethodEmit
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
 reason: Keywords, duplicate names, logger/exception collisions, or malformed type strings can still produce uncompilable generated members. Current call sites are internal controlled literals, and this broader pre-existing input contract was not part of DW-688.
-status: open
+status: done 2026-11-22
+resolution: Validate logging parameter names, collisions, and type syntax before writing any generated output.
 
 ### DW-1945: Concurrent metadata hardening does not cover every compiler-unreferenceable property type.
 origin: spec-deferred f048578199c5
@@ -9090,7 +9092,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Parsing/SourceTypeNameFormatter
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
 reason: Format passes includeNullableAnnotation:false, but the array branch ignores the flag and records the outer array annotation. DomainModel documents SourceTypeName as non-nullable; the formatter work was committed independently during this run.
-status: open
+status: done 2026-11-22
+resolution: Omit top-level array nullability while preserving nested nullable annotations and array ranks.
 
 ### DW-1947: Concurrent command-renderer changes suppress obsolete warnings across the entire generated file.
 origin: spec-deferred e28ac3a5dba4
@@ -9122,7 +9125,8 @@ location: tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CommandRend
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
 reason: CommandRendererStaticAssignmentTests compares SliceCase(...).Trim() against a literal 'case "X":\n return false;', while CommandRendererEmitter builds that arm with StringBuilder.AppendLine (Environment.NewLine) and SliceCase does no normalization. Green on Linux, red on Windows. The assertions belong to the independently committed prefill refactor.
-status: open
+status: done 2026-11-22
+resolution: Normalize generated fallback arm line endings before exact assertions and verify LF and CRLF.
 
 ### DW-1951: Concurrent top-level nullable-annotation suppression in SourceTypeNameFormatter is pinned by no test.
 origin: spec-deferred ee19f2780b9a
@@ -9130,7 +9134,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Parsing/SourceTypeNameFormatter
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
 reason: Format now passes includeNullableAnnotation:false, but every fixture asserting an annotated SourceTypeName is an array or inner-generic shape that routes around the flag, and no fixture declares a top-level annotated reference type. Restoring the previous default leaves the whole suite green. A 'public string? Note' property asserting SourceTypeName == "global::System.String" would settle it. Committed independently during this run.
-status: open
+status: done 2026-11-22
+resolution: Pin the unannotated assignment type for a nullable scalar in the parser and compiled renderer.
 
 ### DW-1952: The concurrent HFC1016 documentation shows one of three emitted message variants.
 origin: spec-deferred ee258b6ac725
