@@ -17,6 +17,8 @@ public sealed class GeneratedRenderTreeTextTests {
     [InlineData("builder.AddMultipleAttributes(12, attributes);", "builder.AddMultipleAttributes(#, attributes);")]
     [InlineData("builder.AddElementReferenceCapture(12, capture);", "builder.AddElementReferenceCapture(#, capture);")]
     [InlineData("builder.AddComponentReferenceCapture(12, capture);", "builder.AddComponentReferenceCapture(#, capture);")]
+    [InlineData("builder.AddComponentParameter(12, \"Value\", value);", "builder.AddComponentParameter(#, \"Value\", value);")]
+    [InlineData("builder.AddContent(textContent: \"value\", sequence: /* seq */ 12);", "builder.AddContent(textContent: \"value\", sequence: /* seq */ #);")]
     public void MaskSequenceArguments_MasksEverySupportedLiteralCall(string source, string expected)
         => GeneratedRenderTreeText.MaskSequenceArguments(source).ShouldBe(expected);
 
@@ -26,7 +28,11 @@ public sealed class GeneratedRenderTreeTextTests {
     [InlineData("builder.AddContent(++seq, \"value\");")]
     [InlineData("builder.AddContent(-- seq, \"value\");")]
     [InlineData("builder.AddContent(/* sequence */ ++seq, \"value\");")]
-    public void MaskSequenceArguments_DoesNotMaskRuntimeCounters(string source)
+    [InlineData("builder.AddContent(12 + seq, \"value\");")]
+    [InlineData("builder.AddContent(12 /* inside */ + seq, \"value\");")]
+    [InlineData("builder.AddContent(textContent: \"value\", sequence: 12 + seq);")]
+    [InlineData("// builder.AddContent(12, value);")]
+    public void MaskSequenceArguments_LeavesNonliteralArgumentsAndCommentsUntouched(string source)
         => GeneratedRenderTreeText.MaskSequenceArguments(source).ShouldBe(source);
 
     [Fact]
@@ -52,4 +58,35 @@ public sealed class GeneratedRenderTreeTextTests {
 
         GeneratedRenderTreeText.MaskSequenceArguments(source).ShouldBe(expected);
     }
+
+    [Fact]
+    public void MaskSequenceArguments_HandlesDebugAndReleaseWithoutHidingConditionalArithmetic() {
+        const string source = """
+            #if DEBUG
+            builder.AddContent(12, "debug");
+            #else
+            builder.AddContent(34, "release");
+            #endif
+            builder.AddContent(56
+            #if DEBUG
+                + seq
+            #endif
+                , "conditional expression");
+            """;
+        const string expected = """
+            #if DEBUG
+            builder.AddContent(#, "debug");
+            #else
+            builder.AddContent(#, "release");
+            #endif
+            builder.AddContent(56
+            #if DEBUG
+                + seq
+            #endif
+                , "conditional expression");
+            """;
+
+        GeneratedRenderTreeText.MaskSequenceArguments(source).ShouldBe(expected);
+    }
+
 }

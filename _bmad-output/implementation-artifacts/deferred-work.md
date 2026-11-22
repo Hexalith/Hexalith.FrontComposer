@@ -9015,7 +9015,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewr
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
 reason: The text gate and syntax walk detect ++/-- nodes only, so seq, seq + 1, or GetSequence() can pass. The deferred bundle was limited to comment trivia around increment expressions, and this broader gap predates it.
-status: open
+status: done 2026-11-22
+resolution: The emitter checks every discovered sequence expression for an integer literal. See `spec-five-render-tree-sequence-deferrals.md`.
 
 ### DW-1938: The governed render-tree method catalog omits AddComponentParameter.
 origin: spec-deferred f3db81064974
@@ -9023,7 +9024,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewr
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
 reason: The pinned framework exposes RenderTreeBuilder.AddComponentParameter(int sequence, string name, object? value), while SequenceMethodNames and the masking helper omit it. No SourceTools emitter currently calls it, so this is a pre-existing future-coverage gap.
-status: open
+status: done 2026-11-22
+resolution: The shared render-tree catalog includes AddComponentParameter. See `spec-five-render-tree-sequence-deferrals.md`.
 
 ### DW-1939: GeneratedRenderTreeText can mask the numeric prefix of a runtime arithmetic expression.
 origin: spec-deferred 19719ee54ab0
@@ -9031,7 +9033,8 @@ location: tests/Hexalith.FrontComposer.SourceTools.Tests/GeneratedRenderTreeText
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
 reason: SequenceArgumentPattern has no delimiter after its digit run, so AddContent(12 + seq, ...) becomes AddContent(# + seq, ...). This pre-existing test-helper behavior is outside the four ledger boundaries.
-status: open
+status: done 2026-11-22
+resolution: The snapshot helper masks parsed integer literals and preserves runtime expressions. See `spec-five-render-tree-sequence-deferrals.md`.
 
 ### DW-1940: Literal-sequence test helpers use a weaker postfix-increment regex than the production Roslyn check.
 origin: spec-deferred 9738acb88aa5
@@ -9054,7 +9057,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewr
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
 reason: C# permits named arguments to be reordered, while FindRuntimeSequenceArgument inspects syntax argument zero rather than the parameter named sequence. Current emitters use positional calls, making this a pre-existing low-risk gap.
-status: open
+status: done 2026-11-22
+resolution: The scanner resolves the explicitly named sequence before considering positional arguments. See `spec-five-render-tree-sequence-deferrals.md`.
 
 ### DW-1943: GeneratedLogMethodEmitter does not validate the emitted LogLevel member name.
 origin: spec-deferred 0f4a4c789ccd
@@ -9142,7 +9146,8 @@ location: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RenderTreeSequ
 source_spec: `spec-source-generator-regression-coverage.md`
 severity: medium
 reason: RenderTreeSequenceRewriterTests.RuntimeSequenceArgumentPattern matches an identifier followed by ++. Bare identifiers, prefix increments, decrements, arithmetic, and method calls can therefore pass this test-only gate. This limitation predates the bundle; production emission still runs AssignLiteralsOrFail, and every current badge/expand output passed the gate and Debug/Release parsing.
-status: open
+status: done 2026-11-22
+resolution: The direct generated-output guard checks parsed sequence arguments in Debug and Release. See `spec-five-render-tree-sequence-deferrals.md`.
 
 ### DW-1954: Canonical fingerprint golden coverage does not independently pin the public schema test-vector identifier.
 origin: spec-deferred bd5939f7f5f0

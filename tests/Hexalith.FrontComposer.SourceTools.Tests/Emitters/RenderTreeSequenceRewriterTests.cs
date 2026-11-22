@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.RegularExpressions;
 
 using Hexalith.FrontComposer.SourceTools.Emitters;
 
@@ -15,7 +14,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 /// Story 11.21 (ASP0006) — unit coverage for the central render-tree sequence rewriter that
 /// replaces runtime <c>seq++</c> counters with emitter-assigned literals.
 /// </summary>
-public sealed partial class RenderTreeSequenceRewriterTests {
+public sealed class RenderTreeSequenceRewriterTests {
     [Fact]
     public void AssignLiterals_NumbersCallSitesInDocumentOrderAndDropsTheCounterDeclaration() {
         const string source = """
@@ -513,7 +512,6 @@ public sealed partial class RenderTreeSequenceRewriterTests {
             + invocation
             + "; } }";
 
-        RuntimeSequenceArgumentPattern().IsMatch(invocation).ShouldBeFalse();
         Should.Throw<ShouldAssertException>(() => ShouldUseLiteralRenderTreeSequences(source));
         RenderTreeSequenceRewriter.FindRuntimeSequenceArgument(source).ShouldNotBeNull();
     }
@@ -534,24 +532,91 @@ public sealed partial class RenderTreeSequenceRewriterTests {
             }
             """.Replace("INCREMENT", increment, StringComparison.Ordinal);
 
-        RuntimeSequenceArgumentPattern().IsMatch(source).ShouldBeFalse();
         Should.Throw<ShouldAssertException>(() => ShouldUseLiteralRenderTreeSequences(source));
         RenderTreeSequenceRewriter.FindRuntimeSequenceArgument(source).ShouldNotBeNull();
     }
 
+    [Theory]
+    [InlineData("builder.AddContent(seq, \"a\")")]
+    [InlineData("builder.AddContent(12 + seq, \"a\")")]
+    [InlineData("builder.AddContent(GetSequence(), \"a\")")]
+    [InlineData("builder.AddContent(--seq, \"a\")")]
+    [InlineData("builder.AddContent(textContent: \"a\", sequence: seq)")]
+    [InlineData("builder.AddComponentParameter(name: \"Value\", value: 42, sequence: seq)")]
+    public void AssignLiteralsOrFail_RejectsNonliteralSequenceArguments(string invocation) {
+        string source = "class C { void BuildRenderTree(RenderTreeBuilder builder) { " + invocation + "; } }";
+
+        InvalidOperationException failure = Should.Throw<InvalidOperationException>(
+            () => RenderTreeSequenceRewriter.AssignLiteralsOrFail(source));
+        failure.Message.ShouldContain(invocation);
+        Should.Throw<ShouldAssertException>(() => ShouldUseLiteralRenderTreeSequences(source));
+    }
+
     [Fact]
-    public void RuntimeSequenceArgumentPattern_MatchesSpacedAndTightIncrementArguments() {
-        // Pins the packaged postfix-increment regex as a second gate independently of OrFail.
-        // ShouldUseLiteralRenderTreeSequences uses Roslyn first; this pattern is not that helper's
-        // primary gate. Dropping \s* from the regex would leave
-        // AssignLiteralsOrFail_DetectsSpacedIncrementLeftByFailSafe green while spaced leftovers
-        // bypass the consumer scan.
-        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(seq ++, "a")""").ShouldBeTrue();
-        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(seq++, "a")""").ShouldBeTrue();
-        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(0, "a")""").ShouldBeFalse();
-        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(/* sequence */ ++seq, "a")""").ShouldBeFalse();
-        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(/* sequence */ seq++, "a")""").ShouldBeFalse();
-        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(seq /* c */ ++, "a")""").ShouldBeFalse();
+    public void AssignLiteralsOrFail_AcceptsReorderedLiteralSequenceAndRewritesComponentParameterCounter() {
+        const string source = """
+            class C
+            {
+                void BuildRenderTree(RenderTreeBuilder builder)
+                {
+                    int seq = 0;
+                    builder.AddComponentParameter(name: "Value", value: 42, sequence: seq++);
+                    builder.AddContent(textContent: GetText(), sequence: 1);
+                }
+            }
+            """;
+
+        string rewritten = RenderTreeSequenceRewriter.AssignLiteralsOrFail(source);
+
+        rewritten.ShouldContain("""builder.AddComponentParameter(name: "Value", value: 42, sequence: 0)""");
+        rewritten.ShouldContain("builder.AddContent(textContent: GetText(), sequence: 1)");
+        ShouldUseLiteralRenderTreeSequences(rewritten);
+    }
+
+    [Theory]
+    [InlineData("!DEBUG", "Release (DEBUG undefined)")]
+    [InlineData("DEBUG", "Debug (DEBUG defined)")]
+    public void LiteralSequenceChecks_RejectConfigurationSpecificRuntimeExpression(string condition, string configuration) {
+        string source = """
+            class C
+            {
+                void BuildRenderTree(RenderTreeBuilder builder)
+                {
+            #if CONDITION
+                    builder.AddContent(GetSequence(), "runtime");
+            #else
+                    builder.AddContent(0, "literal");
+            #endif
+                }
+            }
+            """.Replace("CONDITION", condition, StringComparison.Ordinal);
+
+        ShouldAssertException failure = Should.Throw<ShouldAssertException>(() => ShouldUseLiteralRenderTreeSequences(source));
+
+        failure.Message.ShouldContain(configuration);
+        failure.Message.ShouldContain("GetSequence()");
+        Should.Throw<InvalidOperationException>(() => RenderTreeSequenceRewriter.AssignLiteralsOrFail(source))
+            .Message.ShouldContain("GetSequence()");
+    }
+
+    [Fact]
+    public void ShouldUseLiteralRenderTreeSequences_ChecksNet11ConsumerBranch() {
+        const string source = """
+            class C
+            {
+                void BuildRenderTree(RenderTreeBuilder builder)
+                {
+            #if NET11_0_OR_GREATER
+                    builder.AddContent(GetSequence(), "net11");
+            #else
+                    builder.AddContent(0, "previous target");
+            #endif
+                }
+            }
+            """;
+
+        Should.Throw<ShouldAssertException>(() => ShouldUseLiteralRenderTreeSequences(source))
+            .Message.ShouldContain("GetSequence()");
     }
 
     [Fact]
@@ -582,40 +647,30 @@ public sealed partial class RenderTreeSequenceRewriterTests {
     /// <em>both</em> consumer configurations.
     /// </summary>
     /// <param name="generatedSource">Emitted C# source.</param>
-    /// <remarks>
-    /// Roslyn inspection is authoritative for surviving sequence arguments; the packaged regex is a
-    /// second gate that still pins spaced postfix increments. Parsing only with the default options
-    /// leaves <c>#if DEBUG</c> blocks as disabled text, so the dev-mode regions the rewriter
-    /// renumbered would never be inspected. Both configurations are parsed because the rewriter
-    /// assigns literals under <c>DEBUG</c> while a Release consumer compiles the same document
-    /// without it.
-    /// </remarks>
     internal static void ShouldUseLiteralRenderTreeSequences(string generatedSource) {
-        // Roslyn is authoritative for surviving sequence arguments: a text prefilter that stops at
-        // the first identifier after `(` misses increment expressions separated by comment trivia.
-        string? survivingCallSite = RenderTreeSequenceRewriter.FindRuntimeSequenceArgument(generatedSource);
-        survivingCallSite.ShouldBeNull(
-            "Generated source still passes a runtime render-tree sequence argument"
-            + (survivingCallSite is null ? "." : ": " + survivingCallSite + ".")
-            + " ASP0006 requires a compile-time constant that identifies a source location.");
-
-        Match runtimeSequence = RuntimeSequenceArgumentPattern().Match(generatedSource);
-        runtimeSequence.Success.ShouldBeFalse(
-            "Generated source still passes a runtime render-tree sequence argument at "
-            + DescribeSite(generatedSource, runtimeSequence.Index)
-            + ". ASP0006 requires a compile-time constant that identifies a source location.");
-
         generatedSource.ShouldNotContain("ASP0006");
 
-        ShouldParseCleanly(generatedSource, CSharpParseOptions.Default, "Release (DEBUG undefined)");
-        ShouldParseCleanly(
+        CSharpParseOptions releaseOptions = CSharpParseOptions.Default.WithPreprocessorSymbols("TRACE");
+        ShouldParseAndUseLiterals(generatedSource, releaseOptions, "Release (DEBUG undefined)");
+        ShouldParseAndUseLiterals(
             generatedSource,
-            CSharpParseOptions.Default.WithPreprocessorSymbols("DEBUG"),
+            releaseOptions.WithPreprocessorSymbols("TRACE", "DEBUG"),
             "Debug (DEBUG defined)");
+        if (generatedSource.Contains("NET11_0_OR_GREATER", StringComparison.Ordinal)) {
+            ShouldParseAndUseLiterals(
+                generatedSource,
+                CSharpParseOptions.Default.WithPreprocessorSymbols("NET11_0_OR_GREATER", "TRACE"),
+                ".NET 11 Release");
+            ShouldParseAndUseLiterals(
+                generatedSource,
+                CSharpParseOptions.Default.WithPreprocessorSymbols("NET11_0_OR_GREATER", "TRACE", "DEBUG"),
+                ".NET 11 Debug");
+        }
     }
 
-    private static void ShouldParseCleanly(string generatedSource, CSharpParseOptions options, string configuration) {
-        Diagnostic[] diagnostics = [.. CSharpSyntaxTree.ParseText(generatedSource, options).GetDiagnostics()];
+    private static void ShouldParseAndUseLiterals(string generatedSource, CSharpParseOptions options, string configuration) {
+        SyntaxTree tree = CSharpSyntaxTree.ParseText(generatedSource, options);
+        Diagnostic[] diagnostics = [.. tree.GetDiagnostics()];
 
         diagnostics.ShouldBeEmpty(
             $"Generated source does not parse cleanly under {configuration}: "
@@ -626,7 +681,10 @@ public sealed partial class RenderTreeSequenceRewriterTests {
                     + " @ "
                     + DescribeSite(generatedSource, diagnostic.Location.SourceSpan.Start)
                     + " - "
-                    + diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture))));
+                    + diagnostic.GetMessage(CultureInfo.InvariantCulture))));
+
+        string? survivingCall = RenderTreeSequenceRewriter.FindRuntimeSequenceArgument(tree.GetRoot());
+        survivingCall.ShouldBeNull($"Generated source under {configuration} passes a runtime sequence argument: {survivingCall}");
     }
 
     /// <summary>Names an offset by line number and line text so a failure identifies the site.</summary>
@@ -656,9 +714,4 @@ public sealed partial class RenderTreeSequenceRewriterTests {
             + ": "
             + source[lineStart..lineEnd].Trim();
     }
-
-    [GeneratedRegex(
-        @"\.(?:OpenElement|OpenComponent|AddAttribute|AddContent|AddMarkupContent|OpenRegion|AddMultipleAttributes|AddElementReferenceCapture|AddComponentReferenceCapture)(?:<[^(]*>)?\(\s*[A-Za-z_][A-Za-z0-9_]*\s*\+\+",
-        RegexOptions.CultureInvariant)]
-    private static partial Regex RuntimeSequenceArgumentPattern();
 }

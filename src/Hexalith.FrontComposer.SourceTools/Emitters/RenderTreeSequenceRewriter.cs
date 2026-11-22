@@ -54,9 +54,8 @@ namespace Hexalith.FrontComposer.SourceTools.Emitters;
 /// </para>
 /// </remarks>
 internal static class RenderTreeSequenceRewriter {
-    private static readonly CSharpParseOptions ParseOptions =
-        new CSharpParseOptions(LanguageVersion.Latest)
-            .WithPreprocessorSymbols("DEBUG");
+    private static readonly CSharpParseOptions ReleaseParseOptions = new(LanguageVersion.Latest);
+    private static readonly CSharpParseOptions DebugParseOptions = ReleaseParseOptions.WithPreprocessorSymbols("DEBUG");
 
     /// <summary>
     /// <c>RenderTreeBuilder</c> members whose first argument is the sequence number ASP0006 governs.
@@ -70,6 +69,7 @@ internal static class RenderTreeSequenceRewriter {
         "OpenRegion",
         "AddMultipleAttributes",
         "AddElementReferenceCapture",
+        "AddComponentParameter",
         "AddComponentReferenceCapture",
     };
 
@@ -86,7 +86,7 @@ internal static class RenderTreeSequenceRewriter {
             return source;
         }
 
-        SyntaxTree tree = CSharpSyntaxTree.ParseText(source, ParseOptions);
+        SyntaxTree tree = CSharpSyntaxTree.ParseText(source, DebugParseOptions);
         SyntaxNode root = tree.GetRoot();
 
         // Fail safe on unparseable text: every edit below is a span into this tree, so an
@@ -137,7 +137,7 @@ internal static class RenderTreeSequenceRewriter {
     /// leaves a runtime sequence argument behind.
     /// </summary>
     /// <param name="source">Generated C# source text.</param>
-    /// <returns>The rewritten source, which is always free of runtime sequence arguments.</returns>
+    /// <returns>The rewritten source after checking active generated render-tree calls.</returns>
     /// <exception cref="InvalidOperationException">
     /// A runtime sequence argument survived the rewrite.
     /// </exception>
@@ -179,41 +179,62 @@ internal static class RenderTreeSequenceRewriter {
     /// <param name="source">Emitted C# source text.</param>
     /// <returns>The offending call text, or <see langword="null"/> when there is none.</returns>
     internal static string? FindRuntimeSequenceArgument(string source) {
-        // Cheap operator-presence gate only: it skips the parse for output that cannot hold a
-        // surviving counter, and it deliberately over-matches (string, comment, and loop text)
-        // because any narrower text rule reconstructs trivia and reopens the bypass this walk
-        // closes. Both operators are tested here even though AssignLiterals rewrites only '++':
-        // the walk below fails closed on decrements too, so aligning the two gates would silently
-        // drop that arm.
-        if (string.IsNullOrEmpty(source)
-            || (source.IndexOf("++", StringComparison.Ordinal) < 0
-                && source.IndexOf("--", StringComparison.Ordinal) < 0)) {
+        if (string.IsNullOrEmpty(source)) {
             return null;
         }
 
-        SyntaxNode root = CSharpSyntaxTree.ParseText(source, ParseOptions).GetRoot();
-        foreach (InvocationExpressionSyntax invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>()) {
-            if (invocation.ArgumentList.Arguments.Count == 0) {
-                continue;
-            }
+        SyntaxNode root = CSharpSyntaxTree.ParseText(source, DebugParseOptions).GetRoot();
+        string? failure = FindRuntimeSequenceArgument(root);
+        if (failure is not null || !HasUnseenConditionalRegion(root)) {
+            return failure;
+        }
 
+        return FindRuntimeSequenceArgument(CSharpSyntaxTree.ParseText(source, ReleaseParseOptions).GetRoot());
+    }
+
+    /// <summary>Finds the first call whose sequence expression is not an integer literal.</summary>
+    /// <param name="root">The source parsed under the configuration to inspect.</param>
+    /// <returns>The offending call text, or <see langword="null"/> when there is none.</returns>
+    internal static string? FindRuntimeSequenceArgument(SyntaxNode root) {
+        foreach ((InvocationExpressionSyntax invocation, ExpressionSyntax sequence) in GetSequenceArguments(root)) {
+            if (!IsSequenceLiteral(sequence)) {
+                return invocation.ToString();
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Enumerates the sequence expressions of generated render-tree calls.</summary>
+    /// <param name="root">The parsed generated source or source fragment.</param>
+    /// <returns>Each matching invocation and the expression passed as its sequence argument.</returns>
+    internal static IEnumerable<(InvocationExpressionSyntax Invocation, ExpressionSyntax Sequence)> GetSequenceArguments(SyntaxNode root) {
+        foreach (InvocationExpressionSyntax invocation in root.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>()) {
             string? invokedName = InvokedMemberName(invocation.Expression);
             if (invokedName is null || !SequenceMethodNames.Contains(invokedName)) {
                 continue;
             }
 
-            ExpressionSyntax sequenceArgument = invocation.ArgumentList.Arguments[0].Expression;
-            foreach (SyntaxNode node in sequenceArgument.DescendantNodesAndSelf()) {
-                if (node.IsKind(SyntaxKind.PostIncrementExpression)
-                    || node.IsKind(SyntaxKind.PreIncrementExpression)
-                    || node.IsKind(SyntaxKind.PostDecrementExpression)
-                    || node.IsKind(SyntaxKind.PreDecrementExpression)) {
-                    return invocation.ToString();
-                }
+            ArgumentSyntax? sequence = GetSequenceArgument(invocation.ArgumentList.Arguments);
+            if (sequence is not null) {
+                yield return (invocation, sequence.Expression);
+            }
+        }
+    }
+
+    /// <summary>Checks whether an expression is an integer literal suitable for a generated sequence.</summary>
+    /// <param name="expression">The argument expression to check.</param>
+    /// <returns><see langword="true"/> when the expression is an integer literal.</returns>
+    internal static bool IsSequenceLiteral(ExpressionSyntax expression) => TryGetIntLiteral(expression, out _);
+
+    private static ArgumentSyntax? GetSequenceArgument(SeparatedSyntaxList<ArgumentSyntax> arguments) {
+        foreach (ArgumentSyntax argument in arguments) {
+            if (argument.NameColon?.Name.Identifier.ValueText == "sequence") {
+                return argument;
             }
         }
 
-        return null;
+        return arguments.Count > 0 && arguments[0].NameColon is null ? arguments[0] : null;
     }
 
     /// <summary>Extracts the invoked member's simple name, ignoring any generic argument list.</summary>
@@ -221,7 +242,6 @@ internal static class RenderTreeSequenceRewriter {
         SimpleNameSyntax? name = expression switch {
             MemberAccessExpressionSyntax memberAccess => memberAccess.Name,
             MemberBindingExpressionSyntax memberBinding => memberBinding.Name,
-            SimpleNameSyntax simple => simple,
             _ => null,
         };
 
