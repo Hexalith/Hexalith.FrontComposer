@@ -2232,17 +2232,77 @@ _FRONTCOMPOSER_IMMUTABLE_PROJECTS = frozenset({
 })
 
 
+def _assert_unified_sdk11_immutable_version(
+    root: ET.Element, expected_version: str, context: str,
+    catalog_source: tuple[Path, str, int] | None,
+) -> None:
+    """Prove the SDK 11 catalog pin without the retired net10 consumer view."""
+    version_property = "HexalithImmutableVersion"
+    package = "System.Collections.Immutable"
+    nodes = list(root.iter())
+    parents = _parent_map(root)
+    positions = {element: index for index, element in enumerate(nodes)}
+
+    def reject(reason: str) -> None:
+        raise GraphError(f"{context}: {package} FrontComposer SDK 11 catalog {reason}")
+
+    if any(element.tag.casefold() in {"usingtask", "output"} for element in nodes):
+        reject("cannot prove package authority with executable tasks or outputs")
+
+    versions = [element for element in nodes if element.tag.casefold() == version_property.casefold()]
+    if len(versions) != 1 or versions[0].tag != version_property:
+        reject(f"requires exactly one canonical {version_property} declaration")
+    version = versions[0]
+    group = parents.get(version)
+    condition = version.get("Condition")
+    self_default = condition is None
+    if condition is not None:
+        match = _SELF_DEFAULT_CONDITION.match(condition)
+        self_default = match is not None and match.group("name") == version_property
+    extra_attrib = {key: value for key, value in version.attrib.items() if key != "Condition"}
+    if (group is None or group.tag != "PropertyGroup" or parents.get(group) is not root
+            or group.get("Condition") is not None or root.get("Condition") is not None
+            or list(version) or extra_attrib or not self_default
+            or _NUGET_VERSION.fullmatch(version.text or "") is None):
+        reject(f"requires a global unconditional literal {version_property}")
+    if version.text != expected_version:
+        reject(f"must select policy version {expected_version!r}, found {version.text!r}")
+    package_nodes = [element for element in nodes if element.tag.casefold() == "packageversion"]
+    identity_fields = {"include", "update", "remove"}
+    if any(key.casefold() in identity_fields and any(token in value for token in ("$(", "@(", "%"))
+           for element in package_nodes for key, value in element.attrib.items()):
+        reject("cannot prove package identity from dynamic or escaped shared operations")
+    operations = [element for element in package_nodes if any(
+        key.casefold() in identity_fields and _simple_match(value, package) for key, value in element.attrib.items()
+    )]
+    if len(operations) != 1:
+        reject("requires one unmasked package operation")
+    row = operations[0]
+    row_group = parents.get(row)
+    if (row.tag != "PackageVersion" or row.attrib != {"Include": package, "Version": f"$({version_property})"} or list(row)
+            or row_group is None or row_group.tag != "ItemGroup" or parents.get(row_group) is not root
+            or row_group.get("Condition") is not None):
+        reject("requires one unconditional authoritative package row bound to its version property")
+    if positions[version] >= positions[row]:
+        reject("requires version property before package declaration")
+    _validate_catalog_logging_import(root, version, parents, catalog_source, context, package)
+
+
 def assert_frontcomposer_immutable_version(
     root: ET.Element, expected_version: str, context: str,
     catalog_source: tuple[Path, str, int] | None,
 ) -> None:
-    """Prove the named net10 consumer view without evaluating candidate MSBuild."""
+    """Prove the named net10 consumer view or the unified SDK 11 catalog pin."""
     selector = "HexalithFrontComposerImmutable10CatalogView"
     version_property = "HexalithImmutableVersion"
     package = "System.Collections.Immutable"
     nodes = list(root.iter())
-    if not any(element.tag.casefold() in {selector.casefold(), version_property.casefold()} for element in nodes):
-        assert_authoritative_package_version(root, package, expected_version, context)
+    has_selector = any(element.tag.casefold() == selector.casefold() for element in nodes)
+    if not has_selector:
+        if not any(element.tag.casefold() == version_property.casefold() for element in nodes):
+            assert_authoritative_package_version(root, package, expected_version, context)
+            return
+        _assert_unified_sdk11_immutable_version(root, expected_version, context, catalog_source)
         return
     parents = _parent_map(root)
     positions = {element: index for index, element in enumerate(nodes)}

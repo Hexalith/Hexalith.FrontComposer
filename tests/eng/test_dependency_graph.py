@@ -2961,10 +2961,33 @@ class PolicyShapeTests(unittest.TestCase):
         actual = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
         self.assertEqual(1, self._evaluate_frontcomposer_profile(actual, logging_target=self._analyzer_logging_target())["selectors_validated"])
 
+    def test_unified_sdk11_catalog_drops_net10_compatibility_views(self) -> None:
+        catalog = ET.fromstring((ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes())
+        for name in (
+            "HexalithFrontComposerImmutable10CatalogView",
+            "HexalithTimesheetsNet10CatalogView",
+            "HexalithPlatformSdk42CatalogView",
+            "HexalithPartiesSdk42CatalogView",
+        ):
+            self.assertEqual([], list(catalog.iter(name)), name)
+
+    def test_unified_sdk11_immutable_catalog_rejects_package_outputs(self) -> None:
+        root = ET.fromstring((ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes())
+        target = ET.SubElement(root, "Target", {"Name": "ForgeImmutable"})
+        create_item = ET.SubElement(target, "CreateItem", {"Include": "System.Collections.Immutable"})
+        ET.SubElement(create_item, "Output", {"TaskParameter": "Include", "ItemName": "PackageVersion"})
+        self._assert_frontcomposer_profile_failure(
+            self._catalog_xml_bytes(root),
+            "cannot prove package authority with executable tasks or outputs",
+            logging_target=self._analyzer_logging_target(),
+        )
+
     def test_timesheets_catalog_requires_a_qualified_eventstore_and_tenants_pair(self) -> None:
         catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
         # Reconstruct the retired Parties view for replay of the older sealed pairs.
         historical = ET.fromstring(catalog)
+        if historical.find("HexalithPlatformSdk42CatalogView") is None:
+            self.skipTest("unified SDK 11 catalog has no Platform SDK4.2 view")
         properties = next(group for group in historical if group.find("HexalithPlatformSdk42CatalogView") is not None)
         fixture = ET.parse(ROOT / "tests/ci-governance/fixtures/builds-sdk42-current-qualification.props")
         for index, selector in enumerate(fixture.iter("HexalithPartiesSdk42CatalogView")):
@@ -2998,6 +3021,8 @@ class PolicyShapeTests(unittest.TestCase):
 
     def test_current_timesheets_view_requires_latest_eventstore_and_excludes_frontcomposer(self) -> None:
         catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        if ET.fromstring(catalog).find("HexalithTimesheetsNet10CatalogView") is None:
+            self.skipTest("unified SDK 11 catalog has no Timesheets net10 view")
         for change in ("older SDK", "older Tenants", "FrontComposer subject", "retired selector alias"):
             with self.subTest(change=change):
                 root = ET.fromstring(catalog)
@@ -3028,8 +3053,14 @@ class PolicyShapeTests(unittest.TestCase):
         selectors = list(catalog.iter("HexalithFrontComposerImmutable10CatalogView"))
         if not selectors:
             expected = self._frontcomposer_profile()["selected_catalog_required_packages"]["System.Collections.Immutable"]
-            dg.assert_frontcomposer_immutable_version(catalog, expected, "current literal consumer catalog", None)
-            self.assertEqual([], list(catalog.iter("HexalithImmutableVersion")))
+            versions = list(catalog.iter("HexalithImmutableVersion"))
+            if versions:
+                self.assertEqual(1, len(versions))
+                self.assertEqual(expected, versions[0].text)
+                row = next(row for row in catalog.iter("PackageVersion") if row.get("Include") == "System.Collections.Immutable")
+                self.assertEqual("$(HexalithImmutableVersion)", row.get("Version"))
+            else:
+                dg.assert_frontcomposer_immutable_version(catalog, expected, "current literal consumer catalog", None)
             return
         self.assertEqual(2, len(selectors))
         names = re.findall(r"\$\(MSBuildProjectName\.Equals\('([A-Za-z0-9._-]+)'\)\)", selectors[1].get("Condition", ""))
@@ -4479,7 +4510,7 @@ class ApprovedProjectionExpectationTests(unittest.TestCase):
     def test_compiler_immutable_profile_accepts_exact_literal_and_refuses_other_versions(self) -> None:
         policy = dg.load_policy(ROOT / "eng/dependency-graph-policy.json")
         expected = policy["profiles"][policy["semantic_profiles"]["github.com/hexalith/hexalith.frontcomposer"]]["selected_catalog_required_packages"]["System.Collections.Immutable"]
-        self.assertEqual("10.0.15", expected)
+        self.assertEqual("11.0.0", expected)
         for version in ("10.0.15", "10.0.14", "11.0.0", "11.0.1"):
             catalog = ET.fromstring('<Project><ItemGroup><PackageVersion Include="System.Collections.Immutable" Version="'
                                    + version + '" /></ItemGroup></Project>')
@@ -4494,18 +4525,18 @@ class ApprovedProjectionExpectationTests(unittest.TestCase):
         fixture = PolicyShapeTests("test_immutable_consumer_view_satisfies_existing_policy_without_normalization")
         catalog = ET.fromstring(fixture._immutable_consumer_catalog())
         selected = list(catalog.iter("HexalithImmutableVersion"))[1]
-        selected.text = "11.0.0"
-        # A historical policy can still prove its own exact view. The current
-        # compiler compatibility policy refuses those bytes without normalizing them.
-        dg.assert_frontcomposer_immutable_version(catalog, "11.0.0", "historical source profile", None)
+        selected.text = "10.0.15"
+        # A historical net10 policy can still prove its own exact view. The current
+        # SDK 11 catalog policy refuses those bytes without normalizing them.
+        dg.assert_frontcomposer_immutable_version(catalog, "10.0.15", "historical source profile", None)
         with self.assertRaisesRegex(dg.GraphError, "must select policy version"):
-            dg.assert_frontcomposer_immutable_version(catalog, "10.0.15", "compiler compatibility profile", None)
+            dg.assert_frontcomposer_immutable_version(catalog, "11.0.0", "sdk11 catalog profile", None)
 
     def test_exact_two_policy_expectations_and_older_wrong_missing_catalog_negatives(self) -> None:
         policy = dg.load_policy(ROOT / "eng/dependency-graph-policy.json")
         requirements = policy["profiles"]["frontcomposer-catalog-v1"]["selected_catalog_required_packages"]
         for name, approved, newer in (("Microsoft.Extensions.Localization", "11.0.0", "11.0.1"),
-                                      ("System.Collections.Immutable", "10.0.15", "11.0.0")):
+                                      ("System.Collections.Immutable", "11.0.0", "11.0.1")):
             self.assertEqual(requirements[name], approved)
             for version in (approved, "10.0.14", newer, None):
                 catalog = ET.fromstring('<Project><ItemGroup>' + (
