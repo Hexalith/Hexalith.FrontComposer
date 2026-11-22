@@ -496,11 +496,16 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             }
 
             await InvokeAsync(() => {
+                // AM-23 owns the live region until a later query edit. A delayed empty-result
+                // timer must not clear that failure after the palette stays open.
+                if (_liveRegionHoldsFailure) {
+                    return;
+                }
+
                 FrontComposerCommandPaletteState current = PaletteState.Value;
                 if (current.IsOpen && current.LoadState == PaletteLoadState.Ready && current.Results.IsEmpty
                     && string.Equals(current.Query.Trim(), query, StringComparison.OrdinalIgnoreCase)) {
                     _announcedZeroQuery = query;
-                    _liveRegionHoldsFailure = false;
                     _pendingFailureText = null;
                     _liveRegionText = Localizer["PaletteNoCommandsOrPagesText"].Value;
                     StateHasChanged();

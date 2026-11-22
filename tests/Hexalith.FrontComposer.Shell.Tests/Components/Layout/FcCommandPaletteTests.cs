@@ -129,12 +129,16 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
     [Fact]
     public async Task FailedRenderedActivationKeepsTheOpenEditableQueryAndItsEntryFocus()
     {
+        FakeTimeProvider time = new();
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
         EnsureStoreInitialized();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         IState<FrontComposerCommandPaletteState> state = Services.GetRequiredService<IState<FrontComposerCommandPaletteState>>();
         dispatcher.Dispatch(new PaletteOpenedAction("open"));
         IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
         await cut.InvokeAsync(() => cut.FindComponent<FluentTextInput>().Instance.ValueChanged.InvokeAsync("missing"));
+        // Freeze the 150 ms query debounce and the 250 ms empty-result live region. Otherwise the
+        // scorer can replace this injected match with an empty set and overwrite AM-23.
         dispatcher.Dispatch(new PaletteResultsComputedAction(
             "missing", [new PaletteResult(PaletteResultCategory.Recent, "Missing", "", "/missing/page", null, 1, false)]));
         cut.WaitForElement("[data-testid='fc-palette-option']");
