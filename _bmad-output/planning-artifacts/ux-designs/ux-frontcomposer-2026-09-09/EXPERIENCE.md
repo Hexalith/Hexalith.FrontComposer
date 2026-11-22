@@ -17,6 +17,9 @@ sources:
 
 # Hexalith Common Application Experience
 
+> **Current McpCli disposition (Story 5.11 candidate):** Generated command tools, projection/skill resources and lifecycle subscriptions below are historical migration sources. Eligible business data requires an owner-decorated Gateway Query; K07 documentation and K08 synthetic lifecycle are withdrawn. The K13 inspect/migrate compiler is retained local tooling under merged AI.Tools plan 1.2.0, never retired or migrated to generic diagnostics. FK01–FK04 and G4 still couple host and Projects plug-in retirement.
+
+
 This working pair supports the D-8 UX contract. The [canonical UX matrices](../../ux-design.md), [behavior and journey supplement](../../ux-experience-2026-07-05.md), and [visual supplement](../../ux-design-detailed-2026-07-05.md) take precedence over this pair and any visual references.
 
 ## Foundation

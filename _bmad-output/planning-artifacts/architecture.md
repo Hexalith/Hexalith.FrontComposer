@@ -10,6 +10,9 @@ sourceOfRecord:
 
 # Hexalith.FrontComposer Architecture Planning Source
 
+> **Current McpCli disposition (Story 5.11 candidate):** Generated command tools, projection/skill resources and lifecycle subscriptions below are historical migration sources. Eligible business data requires an owner-decorated Gateway Query; K07 documentation and K08 synthetic lifecycle are withdrawn. The K13 inspect/migrate compiler is retained local tooling under merged AI.Tools plan 1.2.0, never retired or migrated to generic diagnostics. FK01–FK04 and G4 still couple host and Projects plug-in retirement.
+
+
 This is the planning source for implementation and readiness reviews. The [brownfield architecture](../project-docs/architecture.md) describes the code and the [GOV-1 spine](architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md) records the release and dependency decisions.
 
 ## Architecture Summary

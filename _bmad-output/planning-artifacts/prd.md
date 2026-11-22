@@ -9,6 +9,9 @@ updated: 2026-11-21
 
 # PRD: Hexalith.FrontComposer
 
+> **Current McpCli disposition (Story 5.11 candidate):** Generated command tools, projection/skill resources and lifecycle subscriptions below are historical migration sources. Eligible business data requires an owner-decorated Gateway Query; K07 documentation and K08 synthetic lifecycle are withdrawn. The K13 inspect/migrate compiler is retained local tooling under merged AI.Tools plan 1.2.0, never retired or migrated to generic diagnostics. FK01–FK04 and G4 still couple host and Projects plug-in retirement.
+
+
 ## 0. Document Purpose
 
 This PRD is for Product, Architecture, UX, developer agents, and downstream BMAD story workflows preparing Hexalith.FrontComposer for the v1.0 readiness milestone. It consolidates the delivered product baseline, the completed post-MVP remediation program, and the remaining milestone gates into one product requirements source of record.
@@ -92,7 +95,7 @@ All six journeys describe delivered baseline behaviour; this PRD adds no new jou
 
 - **UJ-3. Marc executes a command safely.** Marc opens a generated command form, sees only editable fields, confirms destructive intent when required, submits, and follows the command through Submitting, Acknowledged, Syncing, and a terminal or degraded landing: Confirmed, Rejected, IdempotentConfirmed, NeedsReview, Warning, or Degraded. The value lands when the UI distinguishes accepted command transport from projection-confirmed outcome, and a stalled confirmation becomes Degraded after the documented budget instead of spinning.
 
-- **UJ-4. Ravi exposes the domain surface to an AI agent.** Ravi hosts the MCP server behind host authentication, registers tenant and resource visibility gates, and allows an agent to discover visible generated tools and projection resources. The agent can call commands only after admission, schema negotiation, argument validation, and server-side injection of controlled fields, and can follow lifecycle across requests through `frontcomposer.lifecycle.subscribe`. **Edge case:** host authentication challenges unauthenticated HTTP requests; in-handler auth, tenant, and hidden-tool failures collapse to the opaque public shapes in FR-19, so a caller cannot tell "hidden" from "absent" for tools. **Non-goal:** the resource catalog (`resources/list`) is static and not tenant-filtered; FR-19 states exactly what it discloses.
+- **UJ-4. Ravi exposes the domain surface to an AI agent.** For the historical compatibility flow, Ravi hosts the MCP server behind host authentication, registers tenant and resource visibility gates, and allows an agent to discover visible generated tools and projection resources. The agent can call commands only after admission, schema negotiation, argument validation, and server-side injection of controlled fields, and can follow lifecycle across requests through `frontcomposer.lifecycle.subscribe`. **Edge case:** host authentication challenges unauthenticated HTTP requests; in-handler auth, tenant, and hidden-tool failures collapse to the opaque public shapes in FR-19, so a caller cannot tell "hidden" from "absent" for tools. **Non-goal:** the resource catalog (`resources/list`) is static and not tenant-filtered; FR-19 states exactly what it discloses.
 
 - **UJ-5. Camille preserves generator/runtime compatibility.** Camille changes a generator contract. She updates diagnostics, generated-output snapshots, schema fingerprints, public API baselines, and CLI inspect/migrate behavior. The value lands when drift is detected intentionally and consumers get a clear migration path rather than silent mismatch.
 
@@ -115,7 +118,7 @@ All six journeys describe delivered baseline behaviour; this PRD adds no new jou
 - **Domain Manifest** — generated registration data that describes a bounded context's projections, commands, routes, policies, and MCP descriptors.
 - **FrontComposer Shell** — the Blazor runtime frame that composes navigation, layout, projection views, command forms, settings, lifecycle status, and EventStore clients.
 - **EventStore** — Hexalith.EventStore, the command/query/projection backend the Shell talks to over HTTP and SignalR; its runtime identity is governed by D-12.
-- **MCP Surface** — the MCP server tools and resources generated from the same domain descriptors as the human UI.
+- **Legacy MCP Surface** — retained compatibility tools and resources generated from the same domain descriptors as the human UI.
 - **Opaque Failure Token** — the fixed public shape an MCP failure collapses to (`unknown_tool`, `unknown_resource`, `Request failed.`, empty `tools/list`); the exact scope of the guarantee is FR-19.
 - **Schema Fingerprint** — deterministic SHA-256 identity over contract material that binds producer and consumers; algorithms are named in §11.
 - **Drift Baseline** — checked-in snapshot used to detect generated contract drift.
@@ -382,7 +385,7 @@ In the legacy FrontComposer MCP host, each visible generated command appears as 
 
 #### FR-18: Expose projection and skill resources
 
-The legacy FrontComposer MCP surface exposes tenant-scoped projection resources and the embedded FrontComposer skill corpus. These resource capabilities require an approved generic `Hexalith.McpCli` representation or owner-approved withdrawal before the legacy host retires; McpCli v1 does not claim them.
+The legacy FrontComposer MCP surface exposes tenant-scoped projection resources and the embedded FrontComposer skill corpus. Adopted AD-23 withdraws K07 documentation and K08 synthetic lifecycle; eligible business-state reads require decorated Queries and owner evidence before the legacy host retires; McpCli v1 does not claim them.
 
 **Consequences:**
 - Projection resource URIs are `frontcomposer://{bounded-context}/projections/{projection-name}` and match generated descriptors exactly.

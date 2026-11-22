@@ -37,6 +37,9 @@ companions:
 
 # Architecture Spine — GOV-1 Dependency Provenance
 
+> **Current McpCli disposition (Story 5.11 candidate):** Generated command tools, projection/skill resources and lifecycle subscriptions below are historical migration sources. Eligible business data requires an owner-decorated Gateway Query; K07 documentation and K08 synthetic lifecycle are withdrawn. The K13 inspect/migrate compiler is retained local tooling under merged AI.Tools plan 1.2.0, never retired or migrated to generic diagnostics. FK01–FK04 and G4 still couple host and Projects plug-in retirement.
+
+
 `Hexalith.McpCli` owns the target agent-facing transport. FrontComposer owns UI and descriptor semantics and retains `frontcomposer inspect` and `migrate` as local compiler tools. The compatibility HTTP MCP host retires together with the Projects plug-in only after the consumer cutover and its evidence gates pass. [Compatibility inventory and removal criteria](../../../../README.md#legacy-compatibility-surfaces)
 
 ## Design Paradigm
