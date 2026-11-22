@@ -1,5 +1,23 @@
 # Dependency governance source projection
 
+## 2026-11-22 published 6.0.1 package-validation configuration
+
+FrontComposer now validates library packs against published `6.0.1`. That
+baseline lives in `Directory.Build.targets` and
+`src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj`.
+Those two MSBuild inputs are part of the sealed consumer configuration.
+Their digest is
+`1ea2bc5b3e45b67514d1827e92ac0bece0761c1a99ae244bdc0e84696a5f4dba`.
+Root selectors, Platform inventory, canonical source-file digests, and the
+Hexalith catalog pins are unchanged. The graph still contains 76 edges.
+
+The XML advance is `313c907e48d86bf16c23a65ea5a9a7e5d434ae4a`. The matching
+policy reseal is `9fc46b6018429c867f9efa4de68f6499b371c376`. This
+documentation-only child is the later-base activation of that policy. The
+previous event-base policy rejected the changed consumer configuration, as
+expected. Hosted CI and Quality on this commit are the release evidence;
+local validation of 76 edges does not replace those gates.
+
 ## 2026-11-22 SDK 11 catalog and Platform projection
 
 FrontComposer selects the unified .NET 11 Builds catalog at
