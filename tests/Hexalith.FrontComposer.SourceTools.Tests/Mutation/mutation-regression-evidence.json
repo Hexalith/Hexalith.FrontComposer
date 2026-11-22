@@ -7917,18 +7917,18 @@
    }
   },
   "13973": {
-   "identitySha256": "4bde85711ff736b2b79f10bdf51ec0bd92aaee3154076205aa45abc58fedd5da",
+   "identitySha256": "e9c6c18e302dd31db70b5954cb0e2148e28d949f6b45c3a77bade676b5823c23",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/SourceTypeNameFormatter.cs",
     "span": [
-     130,
+     127,
      40,
-     130,
+     127,
      44
     ],
     "original": "\", \"",
     "replacement": "\"\"",
-    "sourceSha256": "b867e4cf543701b4f1a5953387fa96de08d9d4b2ea6d8cd2551b7634fd3cf97a"
+    "sourceSha256": "99c6dba129ce443ad2e60c2e31ff32809ca85da93037f7c3a609285ec8559714"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -8019,18 +8019,18 @@
    }
   },
   "14031": {
-   "identitySha256": "4a529f76ca466999680b6ce672fe4c00a6c54af2d4dbacf9d702b6856c7e08b6",
+   "identitySha256": "bd5e59705c99b7df28fdc4baf100f9f106692613e03a4d6cab196a69df260404",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/SourceTypeNameFormatter.cs",
     "span": [
-     218,
+     215,
      19,
-     218,
+     215,
      22
     ],
     "original": "\"@\"",
     "replacement": "\"\"",
-    "sourceSha256": "b867e4cf543701b4f1a5953387fa96de08d9d4b2ea6d8cd2551b7634fd3cf97a"
+    "sourceSha256": "99c6dba129ce443ad2e60c2e31ff32809ca85da93037f7c3a609285ec8559714"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
