@@ -348,28 +348,16 @@ public sealed class FrontComposerUiAppHostTests {
     [Fact]
     public async Task DisposableReadinessDoesNotFollowHealthRedirectsAsync()
     {
-        using System.Net.Sockets.TcpListener reservation = new(System.Net.IPAddress.Loopback, 0);
-        reservation.Start();
-        int port = ((System.Net.IPEndPoint)reservation.LocalEndpoint).Port;
-        reservation.Stop();
-        using System.Net.HttpListener listener = new();
-        listener.Prefixes.Add($"http://localhost:{port}/");
-        listener.Start();
+        (System.Net.HttpListener listener, int port) = StartLoopbackListener();
         int requests = 0;
-        Task server = Task.Run(async () =>
+        Task server = ServeLoopback(listener, async request =>
         {
-            while (listener.IsListening)
-            {
-                System.Net.HttpListenerContext request;
-                try { request = await listener.GetContextAsync().ConfigureAwait(true); }
-                catch (System.Net.HttpListenerException) { break; }
-                catch (ObjectDisposedException) { break; }
-                Interlocked.Increment(ref requests);
-                request.Response.StatusCode = 302;
-                request.Response.RedirectLocation = $"http://localhost:{port}/redirected";
-                request.Response.Close();
-            }
-        }, TestContext.Current.CancellationToken);
+            Interlocked.Increment(ref requests);
+            request.Response.StatusCode = 302;
+            request.Response.RedirectLocation = $"http://localhost:{port}/redirected";
+            request.Response.Close();
+            await Task.CompletedTask.ConfigureAwait(true);
+        });
         try
         {
             LocalReadinessHealthCheck check = new(() => $"http://localhost:{port}", maintenance: false);
@@ -379,8 +367,7 @@ public sealed class FrontComposerUiAppHostTests {
         }
         finally
         {
-            listener.Stop();
-            await server.ConfigureAwait(true);
+            await StopLoopbackAsync(listener, server).ConfigureAwait(true);
         }
     }
 
@@ -427,28 +414,15 @@ public sealed class FrontComposerUiAppHostTests {
     private static async Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus> ObserveReadinessAsync(
         bool maintenance, int healthStatus, string healthBody, int readyStatus = 200, string readyBody = "{\"status\":\"Healthy\"}")
     {
-        using System.Net.Sockets.TcpListener reservation = new(System.Net.IPAddress.Loopback, 0);
-        reservation.Start();
-        int port = ((System.Net.IPEndPoint)reservation.LocalEndpoint).Port;
-        reservation.Stop();
-        using System.Net.HttpListener listener = new();
-        listener.Prefixes.Add($"http://localhost:{port}/");
-        listener.Start();
-        Task server = Task.Run(async () =>
+        (System.Net.HttpListener listener, int port) = StartLoopbackListener();
+        Task server = ServeLoopback(listener, async request =>
         {
-            while (listener.IsListening)
-            {
-                System.Net.HttpListenerContext request;
-                try { request = await listener.GetContextAsync().ConfigureAwait(true); }
-                catch (System.Net.HttpListenerException) { break; }
-                catch (ObjectDisposedException) { break; }
-                bool health = request.Request.Url?.AbsolutePath == "/health";
-                request.Response.StatusCode = health ? healthStatus : readyStatus;
-                byte[] body = System.Text.Encoding.UTF8.GetBytes(health ? healthBody : readyBody);
-                await request.Response.OutputStream.WriteAsync(body, TestContext.Current.CancellationToken).ConfigureAwait(true);
-                request.Response.Close();
-            }
-        }, TestContext.Current.CancellationToken);
+            bool health = request.Request.Url?.AbsolutePath == "/health";
+            request.Response.StatusCode = health ? healthStatus : readyStatus;
+            byte[] body = System.Text.Encoding.UTF8.GetBytes(health ? healthBody : readyBody);
+            await request.Response.OutputStream.WriteAsync(body, TestContext.Current.CancellationToken).ConfigureAwait(true);
+            request.Response.Close();
+        });
         try
         {
             LocalReadinessHealthCheck check = new(() => $"http://localhost:{port}", maintenance);
@@ -456,9 +430,72 @@ public sealed class FrontComposerUiAppHostTests {
         }
         finally
         {
-            listener.Stop();
-            await server.ConfigureAwait(true);
+            await StopLoopbackAsync(listener, server).ConfigureAwait(true);
         }
+    }
+
+    private static (System.Net.HttpListener Listener, int Port) StartLoopbackListener()
+    {
+        for (int attempt = 0; attempt < 8; attempt++)
+        {
+            using System.Net.Sockets.TcpListener reservation = new(System.Net.IPAddress.Loopback, 0);
+            reservation.Start();
+            int port = ((System.Net.IPEndPoint)reservation.LocalEndpoint).Port;
+            reservation.Stop();
+            System.Net.HttpListener listener = new();
+            listener.Prefixes.Add($"http://localhost:{port}/");
+            try
+            {
+                listener.Start();
+                return (listener, port);
+            }
+            catch (System.Net.HttpListenerException)
+            {
+                TryCloseListener(listener);
+            }
+        }
+
+        throw new InvalidOperationException("Could not bind a loopback HttpListener for AppHost readiness.");
+    }
+
+    private static Task ServeLoopback(
+        System.Net.HttpListener listener,
+        Func<System.Net.HttpListenerContext, Task> handle)
+        => Task.Run(async () =>
+        {
+            while (listener.IsListening)
+            {
+                System.Net.HttpListenerContext request;
+                try { request = await listener.GetContextAsync().ConfigureAwait(true); }
+                catch (System.Net.HttpListenerException) { break; }
+                catch (ObjectDisposedException) { break; }
+                await handle(request).ConfigureAwait(true);
+            }
+        }, TestContext.Current.CancellationToken);
+
+    private static async Task StopLoopbackAsync(System.Net.HttpListener listener, Task server)
+    {
+        TryCloseListener(listener);
+        try { await server.ConfigureAwait(true); }
+        catch (System.Net.HttpListenerException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    private static void TryCloseListener(System.Net.HttpListener listener)
+    {
+        try
+        {
+            if (listener.IsListening)
+            {
+                listener.Stop();
+            }
+        }
+        catch (System.Net.HttpListenerException) { }
+        catch (ObjectDisposedException) { }
+
+        try { listener.Close(); }
+        catch (System.Net.HttpListenerException) { }
+        catch (ObjectDisposedException) { }
     }
 
     [Theory]
