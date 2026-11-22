@@ -11492,3 +11492,9 @@ This is one human-owned continuation of the existing G-3 readiness/approval resi
 - source_spec: `_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md`
   summary: Restore exact release-entry constraints in the generated Epic 17 agent context before downstream publication implementation consumes it.
   evidence: Story 17.2 review BH-7 verified that the refreshed epic-17-context.md omits the prior explicit refs/heads/main requirement, lowercase 40-hex candidate equal to live main, successful candidate CI and Quality runs, and authenticated run-bound CI handoff. Canonical governance sources are unchanged. The review workflow routes agent-context edits to deferred work; consult those authorities until the generated context is repaired.
+
+## Epic 16 stop-record reachability and remaining owner actions — 2026-11-22
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md`
+  summary: The historical stop records are reachable from origin/main. The selected record branch was absent from the remote listing. jpiquot as Release Owner with Architect involvement follows up on the accepted CiCd route and routes the retention disposition to the repository owner. The November 17 slot remains closed. G-3 requires a separately authorized candidate with its own preflight, evidence and human decisions.
+  evidence: The [November 22 reconciliation](spec-16-3-approve-or-reject-the-exact-runtime-migration.md#current-main-and-the-stopped-preflight--2026-11-22) identifies the merge, the current pre-adoption checker policy, and the dependency graph failure on the committed Platform pin at `f73a8f25`. The Architect and Release Owner must decide how to recover the base before selecting it. Story 16.3 and Epic 16 remain in-progress, E11R-AI-1 open and E12R-AI-2 in-progress.

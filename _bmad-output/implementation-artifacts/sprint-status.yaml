@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 11-21-2026 17:27
+# last_updated: 11-22-2026 08:50
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 11-21-2026 17:27
+last_updated: 11-22-2026 08:50
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -1381,3 +1381,7 @@ approved_change_backlog:
 # November 17 qualification slot stays stopped. CiCd action and remote record/receipt durability remain unresolved; no repair, workflow edit, bypass, restart, new deadline, migration approval or release authorized.
 # All semantic states unchanged: 16.1/16.2 done;16.3/Epic16 in-progress; G-3/E11R-AI-1 open; E12R-AI-2 in-progress; G-8 independent. Local record 264411d10d270ee566359cf1f6753d57223b4a9f preserved.
 # Source: spec-16-3-approve-or-reject-the-exact-runtime-migration.md#human-stop-disposition-and-accepted-next-action--2026-11-16.
+
+# 2026-11-22: origin/main contains the November 16 stop records through 66250f89. The selected record branch was absent from the remote listing.
+# Current main is pre-adoption and has different pins. The accepted CiCd and retention actions remain outstanding. The November 17 slot remains closed.
+# 16.3/Epic 16 in-progress, G-3 open. See spec-16-3-approve-or-reject-the-exact-runtime-migration.md#current-main-and-the-stopped-preflight--2026-11-22.
