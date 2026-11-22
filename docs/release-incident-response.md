@@ -5,7 +5,7 @@ genre: how-to
 audience: operator
 ownerStory: 17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook
 status: controlled
-reviewed: 2026-11-17
+reviewed: 2026-11-22
 uid: frontcomposer.release.incident-response
 slug: release-incident-response
 ---
@@ -23,6 +23,14 @@ approval; documentation availability alone proves neither approval nor readiness
 Repository links using `main` below locate the current sources; they are mutable
 navigation, not approval evidence. Read the exact digest/revision named by the
 actual approval or incident receipt before relying on an authority.
+
+To verify a published revision, use a clean, trusted checkout. Compare
+`git rev-parse HEAD:docs/release-incident-response.md` with the Git blob ID
+in the approval receipt. From the repository root, run
+`sha256sum docs/release-incident-response.md` and compare the complete digest
+with the receipt. The approved byte representation is UTF-8 with CRLF line
+endings as specified by the repository's `.gitattributes`. Git stores the text
+blob with LF endings, so hashing the output of `git show` yields a different digest.
 
 ## Recognize and acknowledge
 
@@ -78,8 +86,11 @@ existing restricted incident record. These routes appoint no backup and claim
 no contact has occurred. If acknowledgement is at risk, escalate before T+15 minutes;
 if containment cannot be proven, escalate immediately and again before T+60
 minutes. Record each recipient, channel, UTC time, response and next owner.
-Service outage, inaccessible credentials, continuing jobs, or uncertainty about
-issued keys is an unresolved containment-critical finding, not a target waiver.
+A service outage is containment-critical if it prevents verification of job
+termination, revoked authority or credential expiry. If those checks and the
+other containment checks below have passed, a GitHub Releases outage limited
+to evidence storage allows the verifier to record containment. Preservation
+and product retry stay blocked until immutable storage can be verified.
 The Release Owner gives a status update at acknowledgement, at T+60 minutes, and
 at least every 60 minutes while containment is unproven. Security may require
 an earlier consumer advisory; the lead records the decision and deadline.
@@ -98,7 +109,7 @@ they are instructions, not operations executed by this guide or the tabletop:
 
 | Action | Official administration reference |
 | --- | --- |
-| Stop flag and authenticated readback | GitHub [update repository variable](https://docs.github.com/en/rest/actions/variables#update-a-repository-variable) and [get repository variable](https://docs.github.com/en/rest/actions/variables#get-a-repository-variable), targeting the exact variable/repository below. |
+| Stop flag and authenticated readback | GitHub [create repository variable](https://docs.github.com/en/rest/actions/variables#create-a-repository-variable), [update repository variable](https://docs.github.com/en/rest/actions/variables#update-a-repository-variable) and [get repository variable](https://docs.github.com/en/rest/actions/variables#get-a-repository-variable), targeting the exact variable/repository below. |
 | Refuse pending `production` approval | [Get pending deployments](https://docs.github.com/en/rest/actions/workflow-runs#get-pending-deployments-for-a-workflow-run), then an authorized reviewer uses [review pending deployments](https://docs.github.com/en/rest/actions/workflow-runs#review-pending-deployments-for-a-workflow-run) with `state: rejected` for the recorded environment IDs. |
 | Restrict new release execution | Administrator uses [disable workflow](https://docs.github.com/en/rest/actions/workflows#disable-a-workflow) for the identified publication-capable caller workflow, including `release.yml`, and confirms its state with [get workflow](https://docs.github.com/en/rest/actions/workflows#get-a-workflow). This does not terminate existing jobs or invalidate issued credentials. |
 | Stop and verify in-flight jobs | [Cancel workflow run](https://docs.github.com/en/rest/actions/workflow-runs#cancel-a-workflow-run), [force cancel](https://docs.github.com/en/rest/actions/workflow-runs#force-cancel-a-workflow-run) if needed, then [get run attempt](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt) and [list jobs for that attempt](https://docs.github.com/en/rest/actions/workflow-jobs#list-jobs-for-a-workflow-run-attempt) for terminal status. |
@@ -112,6 +123,10 @@ they are instructions, not operations executed by this guide or the tabletop:
    and readback. Prevent bypass by other writers, automation and dispatch credentials.
 2. **GitHub administrator:** set repository variable
    `HEXALITH_RELEASE_PUBLISH_ENABLED` to the exact lowercase string `false`.
+   Update an existing variable. If an authenticated administrator confirms absence
+   in the complete repository-variable listing, create it with that same value.
+   On a permission error, incomplete listing or ambiguous 404, escalate the
+   missing proof and keep the other restrictions in effect.
    From a separately authenticated read-only request, capture the resulting value,
    `updated_at`, HTTP status, server `Date`, observer and UTC observation time.
    An unset or other non-`true` value may stop a future job mechanically, but does
@@ -122,21 +137,27 @@ they are instructions, not operations executed by this guide or the tabletop:
    gh api --include repos/Hexalith/Hexalith.FrontComposer/actions/variables/HEXALITH_RELEASE_PUBLISH_ENABLED
    ```
 
-3. **GitHub administrator:** cancel active publication-capable runs and confirm
-   every job's terminal status through the Actions API. If normal cancellation
-   does not stop a run, use the authorized force-cancel interface and escalate
-   failures to GitHub support. Capture the request result and subsequent run/job
-   observations; an accepted request is not proof of termination. Preserve
-   available metadata first where possible without delaying containment. Never
+3. **GitHub administrator:** after the dispatch restriction takes effect, list
+   publication-capable runs and attempts again, following all pages. Reconcile
+   both lists, including attempts queued during the restriction change. Cancel
+   active publishers and confirm terminal status for every affected job through
+   the Actions API. If new attempts appear or the restriction is uncertain,
+   recheck the restriction and repeat the inventory before declaring containment.
+   If normal cancellation does not stop a run, use the authorized force-cancel
+   interface and escalate failures to GitHub support. Capture the request result
+   and subsequent run/job observations. Confirm termination before recording it.
+   Preserve available metadata first where possible without delaying containment. Never
    delete runs, logs, artifacts, tags or assets to stop publication.
 4. **NuGet custodian + Security:** block further token exchanges by disabling or
    removing the affected trusted-publishing policy through owner administration;
    preserve its non-secret identity, scopes and original settings. Inventory
    already-issued temporary NuGet keys, static keys and other publication
-   credentials. Revoke/delete or rotate exposed static keys and any affected
-   GitHub App/PAT or dispatch credential. Do not issue replacement credentials to
-   the suspect execution path. Record credential identifiers/scopes, issuance or
-   latest possible issuance, expiry, revocation results and custody, never values.
+   credentials. When exposure is plausible, revoke each affected reusable NuGet
+   key, GitHub App credential, PAT or dispatch credential, or rotate it and
+   verify that its old value is invalid. Include the full scope of each
+   affected credential. Issue replacements only to a trusted execution path. Record the
+   credential identifiers, scopes, latest possible issuance, expiry, revocation
+   results and custody. Keep credential values private.
 5. **Security:** treat an issued temporary key as potentially usable until
    independently confirmed revoked or expired. Stopping the policy prevents new
    exchange; it does not prove a previously issued key is revoked. NuGet documents
@@ -148,10 +169,13 @@ they are instructions, not operations executed by this guide or the tabletop:
    though the current FrontComposer flow does not require author signing.
 6. **Independent verification capacity:** separately read the flag, restrictions,
    run/job termination, credential/policy receipts and external inventories.
-   Confirm that no remaining actor or issued credential can mutate GitHub or
-   NuGet for the affected scope. Record `contained_at` only with evidence for
-   that conjunction and calculate `contained_at - T0`; otherwise record partial
-   containment, the missing proof, owner and next escalation time. Do not test
+   Confirm that affected actors, credentials and publishing paths have lost
+   mutation authority across their full GitHub and NuGet scope. Record the
+   authorized responders who retain trusted administrative access and why.
+   Any unknown scope or still-usable affected credential keeps containment
+   unproven. Once verified, record `contained_at` and calculate `contained_at - T0`.
+   Otherwise record partial containment, the missing proof, owner and next
+   escalation time. Do not test
    revocation with a package push or execute a candidate as verification.
 
 **Cached-true branch:** the current `release-publish.yml` reads the flag during
@@ -222,6 +246,15 @@ quarantined with reason `authentication-failed`, or absent with the applicable
 `not-produced`, `not-recorded`, `expired` or `api-unavailable` reason. Captured API
 responses/transport errors support every absence claim; an absent source can be
 truthfully recorded without pretending its bytes were preserved.
+
+Before uploading any original bytes, Security checks whether the intended
+audience may see them, including quarantined assets, logs and API responses.
+If an asset may contain a credential, a signed URL or other restricted material,
+hold the upload. Keep the original in restricted owner custody and record only a
+support-safe reference in the incident record. Escalate to Security and the
+Release Owner. A redacted copy can support investigation but cannot satisfy
+the original-byte slot. Preservation remains incomplete and product retry
+stays blocked until the contract can be met without disclosing restricted data.
 
 Independently verify every slot/asset identity, the candidate, non-draft status
 and immutability before retry. A failed recovery keeps its partial tag, draft and
@@ -297,9 +330,10 @@ unresolved gaps to the service owner. Classify known incident facts and explicit
 unknowns immediately; append timestamped observations as evidence arrives through
 the existing incident/ledger process without replacing or weakening earlier
 incident observations. An incomplete inventory must not delay incident
-classification. Keep recovery/retry blocked until all effects are reconciled or
-truthfully accounted for in verified immutable incident evidence and approved
-remediation.
+classification. Record an unknown effect and its source in the preservation
+evidence, with an owner and a next check in the inventory. Keep product retry
+blocked until each external effect has been reconciled, even when the evidence
+recording the unknown has been verified immutable.
 
 ## Communicate and recover
 

@@ -11498,3 +11498,12 @@ This is one human-owned continuation of the existing G-3 readiness/approval resi
 - source_spec: `_bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md`
   summary: The historical stop records are reachable from origin/main. The selected record branch was absent from the remote listing. jpiquot as Release Owner with Architect involvement follows up on the accepted CiCd route and routes the retention disposition to the repository owner. The November 17 slot remains closed. G-3 requires a separately authorized candidate with its own preflight, evidence and human decisions.
   evidence: The [November 22 reconciliation](spec-16-3-approve-or-reject-the-exact-runtime-migration.md#current-main-and-the-stopped-preflight--2026-11-22) identifies the merge, the current pre-adoption checker policy, and the dependency graph failure on the committed Platform pin at `f73a8f25`. The Architect and Release Owner must decide how to recover the base before selecting it. Story 16.3 and Epic 16 remain in-progress, E11R-AI-1 open and E12R-AI-2 in-progress.
+
+## Deferred from: code review of spec-17-2-publish-and-exercise-the-release-incident-runbook.md (2026-11-22)
+
+- F1 carries forward the existing BH-7 task. Restore live-main equality, candidate CI/Quality success and authenticated handoff requirements in the generated Epic 17 context.
+- F2. Restore AD-15 classifier precedence in the generated context. Incomplete or unequal external publication takes precedence over a missing handoff.
+- F3. Update the generated context to the November 19 GOV-1 amendment. FrontComposer owns the builder and protected publisher workflows. The accepted Builds revision supplies the implementation actions.
+- F4. The Story 17.8 preservation-gap triage deadline accepted by `jpiquot` was November 18 at 00:00 UTC. No dated disposition was located in the tracked release records on November 22. The Release Owner and Story 17.8 owner retain the follow-up. Verified immutable preservation remains a recovery prerequisite.
+
+November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were applied to the Epic 17 context following the user's instruction. F4 remains overdue with `jpiquot` and the Story 17.8 owner. The user could supply neither a new date nor a triage receipt. The existing recovery hold still applies.

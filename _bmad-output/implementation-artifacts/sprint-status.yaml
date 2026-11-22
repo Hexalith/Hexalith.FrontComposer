@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 11-22-2026 08:50
+# last_updated: 11-22-2026 17:17
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 11-22-2026 08:50
+last_updated: 11-22-2026 17:17
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -283,7 +283,7 @@ development_status:
 
   epic-17: in-progress
   17-1-i-gov-src-1-reconcile-publication-governance-sources: done
-  17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook: review
+  17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook: in-progress
   # 2026-11-21: Directional pin transition adopted. Current-base recovery requires Architecture/Release disposition. EXT-BUILDS-1 is also open.
   # See planning-artifacts/sprint-change-proposal-2026-11-21.md, section 1.
   17-3-i-gov-b-select-the-accepted-split-publication-topology: backlog
@@ -1279,8 +1279,8 @@ approved_change_backlog:
         - {id: "GOV-F", kind: "implementation", status: "proposed"}
         - {id: "GOV-G", kind: "implementation", status: "proposed"}
         - {id: "GOV-H", kind: "implementation", status: "proposed"}
-        - {id: "GOV-I", kind: "implementation-evidence", status: "review", reconciled: "2026-11-17",
-          evidence: "_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md#final-revised-runbook-approval-and-completion-receipt--2026-11-17"}
+        - {id: "GOV-I", kind: "implementation-evidence", status: "open", reconciled: "2026-11-22",
+          evidence: "_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md#review-patch-disposition--2026-11-22"}
         - {id: "GOV-J", kind: "approval-evidence", status: "open"}
         - {id: "GOV-SRC-1", kind: "documentation-traceability", status: "done", reconciled: "2026-11-16",
           closed: "2026-11-16",

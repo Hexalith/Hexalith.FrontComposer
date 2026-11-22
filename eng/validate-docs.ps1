@@ -58,33 +58,16 @@ function Get-FrontMatter([string]$Path) {
 }
 
 function Get-ContentFiles {
-    $patterns = @(
-        'index.md',
-        'fluent-ui-v5-contingency.md',
-        'release-incident-response.md',
-        'tutorials/**/*.md',
-        'how-to/**/*.md',
-        'reference/**/*.md',
-        'concepts/**/*.md',
-        'diagnostics/HFC*.md',
-        'migrations/**/*.md'
-    )
+    Get-ChildItem -Path $DocsRoot -Recurse -File -Filter '*.md' |
+        Where-Object {
+            $rel = ConvertTo-RepoPath $_.FullName
+            foreach ($prefix in @('docs/tutorials/', 'docs/how-to/', 'docs/reference/', 'docs/concepts/', 'docs/diagnostics/HFC', 'docs/migrations/')) {
+                if ($rel.StartsWith($prefix, [System.StringComparison]::Ordinal)) { return $true }
+            }
 
-    $files = New-Object System.Collections.Generic.List[string]
-    foreach ($pattern in $patterns) {
-        Get-ChildItem -Path $DocsRoot -Recurse -File -Filter '*.md' |
-            Where-Object {
-                $rel = ConvertTo-RepoPath $_.FullName
-                foreach ($prefix in @('docs/tutorials/', 'docs/how-to/', 'docs/reference/', 'docs/concepts/', 'docs/diagnostics/HFC', 'docs/migrations/')) {
-                    if ($rel.StartsWith($prefix, [System.StringComparison]::Ordinal)) { return $true }
-                }
-
-                return $rel -in @('docs/index.md', 'docs/fluent-ui-v5-contingency.md', 'docs/release-incident-response.md')
-            } |
-            ForEach-Object { if (-not $files.Contains($_.FullName)) { $files.Add($_.FullName) | Out-Null } }
-    }
-
-    return $files
+            return $rel -in @('docs/index.md', 'docs/fluent-ui-v5-contingency.md', 'docs/release-incident-response.md')
+        } |
+        ForEach-Object { $_.FullName }
 }
 
 function Normalize-Identity([string]$Value) {
@@ -509,25 +492,29 @@ function Assert-FluentContingencyParity([string]$Root, [System.Collections.Gener
     }
 }
 
+function Import-DocFxAssembly([string]$Name) {
+    $toolManifest = Get-Content -LiteralPath (Join-Path $RepoRoot '.config/dotnet-tools.json') -Raw | ConvertFrom-Json
+    $version = [string]$toolManifest.tools.docfx.version
+    if ($version -cnotmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$') { throw 'Unresolved DocFX tool version.' }
+    $packageRoot = $env:NUGET_PACKAGES
+    if ([string]::IsNullOrWhiteSpace($packageRoot)) {
+        $location = Invoke-Process 'dotnet' @('nuget', 'locals', 'global-packages', '--list', '--force-english-output') $RepoRoot
+        $packageRoot = [regex]::Match($location, '(?m)^global-packages: (.+?)\r?$').Groups[1].Value
+    }
+    if ([string]::IsNullOrWhiteSpace($packageRoot)) { throw 'DocFX package cache is unavailable.' }
+    $toolsPath = Join-Path $packageRoot "docfx/$version/tools"
+    if (-not (Test-Path -LiteralPath $toolsPath -PathType Container)) { throw 'Pinned DocFX tools are unavailable.' }
+    $assemblies = @(Get-ChildItem -LiteralPath $toolsPath -Filter $Name -Recurse -File -ErrorAction Stop |
+        Where-Object { $_.Directory.Name -eq 'any' -and $_.Directory.Parent.Name -match '^net[0-9]+\.[0-9]+$' -and [version]$_.Directory.Parent.Name.Substring(3) -le [System.Environment]::Version } |
+        Sort-Object { [version]$_.Directory.Parent.Name.Substring(3) } -Descending)
+    if ($assemblies.Count -eq 0) { throw "Pinned DocFX assembly $Name is unavailable." }
+    [System.Reflection.Assembly]::LoadFrom($assemblies[0].FullName) | Out-Null
+}
+
 function Test-DocFxExclusion([string]$Page, [array]$Patterns) {
     # Reuse the pinned DocFX matcher: **/ includes zero directories, unlike PowerShell -like.
     try {
-        $toolManifest = Get-Content -LiteralPath (Join-Path $RepoRoot '.config/dotnet-tools.json') -Raw | ConvertFrom-Json
-        $version = [string]$toolManifest.tools.docfx.version
-        if ($version -cnotmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$') { throw 'Unresolved DocFX tool version.' }
-        $packageRoot = $env:NUGET_PACKAGES
-        if ([string]::IsNullOrWhiteSpace($packageRoot)) {
-            $location = Invoke-Process 'dotnet' @('nuget', 'locals', 'global-packages', '--list', '--force-english-output') $RepoRoot
-            $packageRoot = [regex]::Match($location, '(?m)^global-packages: (.+?)\r?$').Groups[1].Value
-        }
-        if ([string]::IsNullOrWhiteSpace($packageRoot)) { throw 'DocFX package cache is unavailable.' }
-        $toolsPath = Join-Path $packageRoot "docfx/$version/tools"
-        if (-not (Test-Path -LiteralPath $toolsPath -PathType Container)) { throw 'Pinned DocFX tools are unavailable.' }
-        $assemblies = @(Get-ChildItem -LiteralPath $toolsPath -Filter 'Docfx.Glob.dll' -Recurse -File -ErrorAction Stop |
-            Where-Object { $_.Directory.Name -eq 'any' -and $_.Directory.Parent.Name -match '^net[0-9]+\.[0-9]+$' -and [version]$_.Directory.Parent.Name.Substring(3) -le [System.Environment]::Version } |
-            Sort-Object { [version]$_.Directory.Parent.Name.Substring(3) } -Descending)
-        if ($assemblies.Count -eq 0) { throw 'Pinned DocFX glob matcher is unavailable.' }
-        [System.Reflection.Assembly]::LoadFrom($assemblies[0].FullName) | Out-Null
+        Import-DocFxAssembly 'Docfx.Glob.dll'
     }
     catch {
         # Never expose a runner/cache path or the loader's raw exception in publication diagnostics.
@@ -921,6 +908,48 @@ function Invoke-Process([string]$FileName, [string[]]$Arguments, [string]$Workin
     return ($stdout + $stderr)
 }
 
+function Build-DocsSite([string]$RepoRoot, [System.Collections.Generic.List[string]]$Failures) {
+    $siteRoot = Join-Path $RepoRoot 'docs/_site'
+    $runbook = 'release-incident-response.html'
+    $navigation = @('toc.html', 'how-to/index.html')
+    # A page left over from an earlier build must not satisfy the publication check.
+    foreach ($relative in @($runbook) + $navigation) {
+        $path = Join-Path $siteRoot $relative
+        if (Test-Path -LiteralPath $path -PathType Leaf) { Remove-Item -LiteralPath $path -Force }
+    }
+
+    Invoke-Process 'dotnet' @('docfx', 'build', 'docs/docfx.json') $RepoRoot | Out-Null
+    if (-not (Test-Path -LiteralPath (Join-Path $siteRoot $runbook) -PathType Leaf)) {
+        Add-Failure $Failures "docs/_site/$runbook was not generated."
+    }
+
+    Import-DocFxAssembly 'HtmlAgilityPack.dll'
+    # Resolve links as if the site were deployed under a repository subdirectory.
+    $siteUri = [uri]'https://docs.invalid/FrontComposer/'
+    $target = [uri]::new($siteUri, $runbook)
+    foreach ($relative in $navigation) {
+        $path = Join-Path $siteRoot $relative
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            Add-Failure $Failures "docs/_site/$relative was not generated."
+            continue
+        }
+
+        $html = [HtmlAgilityPack.HtmlDocument]::new()
+        $html.Load($path)
+        $source = [uri]::new($siteUri, $relative)
+        $linked = $false
+        foreach ($anchor in $html.DocumentNode.SelectNodes('//a[@href]')) {
+            $href = [System.Net.WebUtility]::HtmlDecode($anchor.GetAttributeValue('href', ''))
+            $url = $null
+            if ([uri]::TryCreate($source, $href, [ref]$url) -and $url.GetLeftPart([UriPartial]::Path) -ceq $target.AbsoluteUri) {
+                $linked = $true
+                break
+            }
+        }
+        if (-not $linked) { Add-Failure $Failures "docs/_site/$relative is missing a link to $runbook." }
+    }
+}
+
 function Prepare-DocFxReferences {
     # Resolve package/project dependencies from the pinned SDK/catalog. DocFx resolves each
     # assembly's framework itself; a netstandard input can select an older installed runtime
@@ -1241,7 +1270,7 @@ if (-not $SkipDocFx) {
     }
 
     Assert-ApiSummaryBaseline $failures
-    Invoke-Process 'dotnet' @('docfx', 'build', 'docs/docfx.json') $RepoRoot | Out-Null
+    Build-DocsSite $RepoRoot $failures
     $docfxOutput = 'docs/_site'
 }
 

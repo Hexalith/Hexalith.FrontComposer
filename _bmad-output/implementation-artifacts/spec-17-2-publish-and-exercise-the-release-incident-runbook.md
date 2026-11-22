@@ -2,7 +2,7 @@
 title: 'Story 17.2: Publish and Exercise the Release Incident Runbook'
 type: 'chore'
 created: '2026-11-17'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 story_id: '17.2'
 story_key: '17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook'
@@ -178,6 +178,40 @@ All three context-free review layers completed before triage: Blind Hunter, Edge
 
 The surviving patches share no root cause merely because they touch the same guide. Each is a direct correction to demonstrated documentation or executable-validation behavior, adds no public API or new state guard, and preserves the approved intent. BH-2 through BH-6 and VG-1 have now been patched and verified with the focused metadata tests; final documentation verification and replacement-byte approval follow. No intent-gap or bad-spec loopback is required. Runbook patches will supersede the earlier exact-byte approval and require a new digest receipt after verification.
 
+### Review Findings (code review, 2026-11-22)
+
+**Changes requested.** Four independent reviews covered the two story commits through `eae2cccfce573837bf238d195c0bf75267a577f5` and the November 22 verification note. The approval on November 17 covers the current runbook bytes. Any revision to that file needs a new digest-bound owner approval. GOV-I stays open while containment-critical findings are outstanding.
+
+- [x] [Review][Decision] **D1 · Medium · Record the verifier’s T+05 decision.** The participant confirmed the intended stop and credential checks. The separate verifier row reports documentation results and limits on live verification. It leaves the verdict for the *simulated* still-running job and possibly valid key unstated. Obtain the designated verifier’s actual conclusion and the evidence required to change it, or leave this receipt open. Date a new response at receipt. Preserve the November 17 record. [This spec, “Single tabletop record” and “Actual owner tabletop and runbook-approval receipt”] (Blind Hunter 8, Acceptance Auditor 2)
+- [x] [Review][Patch] **P1 · High · Hold immutable evidence publication when original bytes may contain a secret.** AD-15 requires byte-identical assets even for quarantined slots. The runbook also requires restricted custody of sensitive originals. Add an explicit pre-upload decision to retain affected originals privately, escalate and block preservation completion and retry. A redacted copy cannot satisfy the original-byte slot. [docs/release-incident-response.md:220] (Blind Hunter 6)
+- [x] [Review][Patch] **P2 · High · Revoke or rotate reusable credentials on plausible exposure.** The trigger includes suspected exposure, but the execution step limits action on static keys to “exposed” keys. An inconclusive access log could leave a possibly exposed key active. Align the step with the epic and AD-15. Retain the documented revocation or proven-expiry rule for already-issued temporary keys. [docs/release-incident-response.md:136] (Blind Hunter 4)
+- [x] [Review][Patch] **P3 · High · Repeat the run inventory after dispatch restrictions take effect.** The first enumeration precedes the restriction. The later confirmation of job termination does not explicitly discover attempts queued in between. Re-enumerate and reconcile those attempts before declaring containment. [docs/release-incident-response.md:109] (Blind Hunter 3)
+- [x] [Review][Patch] **P4 · Medium · Scope the containment verdict to compromised actors, credentials and publication paths.** The requirement that “no remaining actor” can mutate the affected scope also includes the trusted administrators needed to complete recovery. Identify retained, authorized administrative access separately. [docs/release-incident-response.md:151] (Blind Hunter 1)
+- [x] [Review][Patch] **P5 · Medium · Cover a genuinely absent stop variable.** The referenced GitHub update and read operations cannot create a missing variable. Document creation after authenticated absence, followed by the existing independent literal-false readback. An access failure does not prove absence. [docs/release-incident-response.md:101] (Blind Hunter 2, Edge Case Hunter 1)
+- [x] [Review][Patch] **P6 · Medium · Keep an unresolved external effect separate from permission to retry.** The inventory section permits an effect to be “truthfully accounted for” in immutable evidence. The recovery checklist requires every effect to be reconciled. Explain that recording an unknown preserves the observation while the unresolved effect still blocks product retry. [docs/release-incident-response.md:300] (Blind Hunter 7)
+- [x] [Review][Patch] **P7 · Medium · Distinguish an outage that prevents verification of containment from an outage limited to preservation.** The escalation paragraph calls any service outage containment-critical. An unavailable evidence-release service after independent revocation and job termination blocks preservation and retry. Classify the outage by which proof it prevents. [docs/release-incident-response.md:81] (Acceptance Auditor 3)
+- [x] [Review][Patch] **P8 · Low · Explain how to reproduce the approved runbook digest.** For the reviewed commit, the unfiltered Git blob hashes to `017ea7c196c04884cdf798b8db7387e3c300f7c5febc13479d87967c129e223f`. The checkout with the repository’s CRLF rule hashes to the approved `24814b2f4a13b76b2c88e3ae72dfcd22b52abb09b0ba5b496683bd7fe0c69d5c`. Show the verification procedure using the revision identified in the external receipt. [docs/release-incident-response.md:20] (Blind Hunter 10)
+- [x] [Review][Patch] **P9 · Medium · Verify publication and both rendered navigation links in the recurring docs gate.** The existing negative test proves metadata selection. In a disposable checkout of `6d90c615`, removing the DocFX inclusion and both navigation entries left the content check and DocFX build at exit 0. The How-to index rendered and the runbook HTML was absent. Extend the existing gate to catch a missing page or either missing link in fresh output. [eng/validate-docs.ps1:1244] (Blind Hunter 12, Verification Gap 1)
+- [x] [Review][Patch] **P10 · Low · Enumerate the documentation tree once.** Adding the runbook to the unused pattern list adds another full recursive traversal. Only the path predicate selects the files. Preserve that predicate and remove the redundant traversals. [eng/validate-docs.ps1:74] (Blind Hunter 11, Verification Gap 2)
+- [x] [Review][Defer] **F1 · Medium · Restore the exact release-entry predicates in the Epic 17 context.** The pre-story context specified live-main equality, successful candidate CI and Quality, and the authenticated run-bound handoff. This remains the existing BH-7 agent-context follow-up. [_bmad-output/implementation-artifacts/epic-17-context.md:38] (Edge Case Hunter 3)
+- [x] [Review][Defer] **F2 · Medium · Correct classifier precedence in the Epic 17 context.** The shorthand always maps a missing handoff to `missing-artifact`. AD-15 gives incomplete or unequal externally observed publication precedence as `partial-publish-incident`. Correct the context before a downstream implementation uses it. [_bmad-output/implementation-artifacts/epic-17-context.md:43] (Edge Case Hunter 2)
+- [x] [Review][Defer] **F3 · Medium · Update the publisher identity in the Epic 17 context.** The November 19 amendment assigns the jobs to the FrontComposer workflow pair and requires an owner-accepted Builds actions revision. The generated context still assigns both jobs to a Builds reusable workflow. The operator runbook already names the FrontComposer workflows. [_bmad-output/implementation-artifacts/epic-17-context.md:38] (Acceptance Auditor 1)
+- [x] [Review][Defer] **F4 · Medium · Account for the expired Story 17.8 triage deadline.** The owner accepted November 18 at 00:00 UTC. The review found no dated outcome for that deadline in the tracked release records. This is an outstanding owner follow-up under Story 17.8. Real retry remains blocked. [This spec, “Actual owner tabletop and runbook-approval receipt”] (Blind Hunter 9, Acceptance Auditor 4)
+
+**Rejected**
+
+- Blind Hunter 5 · False. The runbook assigns Release and Security the communication decision, requires the next update time in each consumer update, and requires hourly inventory updates until the inventory is complete (lines 248–249 and 315–320). The 60-minute ceiling applies during unproven containment. The story prescribes no fixed post-containment consumer cadence.
+
+### Review patch disposition — 2026-11-22
+
+**T+05 verifier follow-up (D1).** In response to the explicit recommendation for the synthetic T+05 inject, the user replied **“apply recommended”**. The execution environment clock read `2026-11-22T16:11:31Z` after receipt. The adopted verdict is **containment unproven**. The flag was false, a publisher was running and its temporary NuGet key might still have been usable. A separate read-only verifier must establish that new dispatches and credential exchanges are blocked, all affected jobs have terminated, and each issued key has been revoked or has verifiably expired before recording containment. The response applies to the simulated inject. The November 17 tabletop and approvals remain historical.
+
+**Planning follow-ups.** F1 through F3 are resolved in the Epic 17 context. The entry now requires live-main equality, successful candidate CI/Quality push runs and an authenticated run-bound handoff. It identifies the FrontComposer workflow pair and the accepted Builds actions revision. It gives observed incomplete or unequal publication precedence over a missing handoff.
+
+**Story 17.8 (F4).** The accepted triage deadline was November 18 at 00:00 UTC. Asked for a new date or a dated triage receipt, the user replied **“I dont know”**. The follow-up remains overdue with `jpiquot` and the Story 17.8 owner. A new date and the triage outcome are unconfirmed. Verified immutable preservation remains a prerequisite for product retry.
+
+**Replacement runbook approval.** The November 17 receipt covers the earlier bytes. The revised working file based on FrontComposer `6d90c6154d2ca6155eeae17a3f280dc22ff9560b` has UTF-8/CRLF SHA-256 `24d1e9b5666b89fe16a9382bce0630b83f25bea2f5c9bae476c284785611476e` and Git-normalized blob ID `15b453a464a28a7cd245b5076bfebece3445c094`. The base commit identifies the starting tree. Product/Release approval of these revised bytes is pending. Story 17.2 is in progress and GOV-I is open.
+
 ## Verification
 
 - Run the existing `eng/validate-docs.ps1` gate, including DocFX; confirm the generated runbook page and navigation. Use a disposable repository copy beneath `run-with-temp`; retain useful logs outside its scratch directory.
@@ -225,6 +259,18 @@ Two synthetic tabletop decision prompts and a separate exact-byte runbook approv
 
 After the actual replacement approval, targeted and repository-wide `eng/validate-story-artifacts.py` checks both printed `Story artifact validation passed.` and `git diff --check` passed. The owning repository's lockfile-pinned and installed commitlint CLI **21.2.4** validated the exact completion message with **0 problems / 0 warnings**; successful output is retained in `artifacts/verification/story-17-2/post-review/commitlint.log`. Root-declared submodule working trees are clean and selected HEADs have no unpublished current-HEAD work; unrelated historical side branches are preserved. The workflow's final local commit contains only this story's remaining four paths; no push is part of completion.
 
+
+### Verification on current main — 2026-11-22
+
+At FrontComposer `6d90c6154d2ca6155eeae17a3f280dc22ff9560b`, a clean checkout using the submodule revisions committed by FrontComposer passed `pwsh -NoProfile -File eng/validate-docs.ps1`. All eight snippets compiled. DocFX 2.81.0 rendered the runbook, and the generated table of contents and How-to index both linked to it. The two Fluent catalog errors recorded on November 17 did not recur.
+
+Both focused xUnit tests passed, including the negative case that removes the runbook's `reviewed` field. The repository-wide story-artifact check and the commit-scope check for the original Story 17.2 completion commit `eae2cccfce573837bf238d195c0bf75267a577f5` also passed. The checked-out runbook's SHA-256 matched the final approval receipt (`24814b2f4a13b76b2c88e3ae72dfcd22b52abb09b0ba5b496683bd7fe0c69d5c`). Story 17.2 and GOV-I remain in sprint review.
+
+### Verification of the review patches — 2026-11-22
+
+- A disposable checkout of `6d90c6154d2ca6155eeae17a3f280dc22ff9560b` used the root-selected dependency commits and the revised story sources. The original and revised PowerShell file-selection functions returned the same 148 Markdown paths.
+- `pwsh -NoProfile -File eng/validate-docs.ps1` passed with all eight snippets and zero blocking failures. DocFX 2.81.0 generated the revised runbook. Both `toc.html` and `how-to/index.html` linked to it, as independently checked against the generated files. The runbook used for this build matched the proposed SHA-256 in the patch disposition.
+- The Release build of the SourceTools test project passed with zero warnings and errors. The first build had identified xUnit1030 in the new fixture. After removing the disallowed await configuration, all **71** cases in `DocsSiteValidationTests` passed, with zero skipped or not run. The four new real DocFX fixtures covered successful publication, removing each navigation link independently, and removing the page with stale HTML pre-seeded from a prior build.
 
 ## File List
 

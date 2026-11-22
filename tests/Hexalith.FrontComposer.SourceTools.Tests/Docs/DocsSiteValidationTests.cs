@@ -448,7 +448,7 @@ public sealed partial class DocsSiteValidationTests {
             }
             if (scenario == "MissingBuildsRepository") { Directory.Delete(Path.Combine(builds, ".git"), recursive: true); }
 
-            string[] failures = await RunFluentParityAsync(root).ConfigureAwait(false);
+            string[] failures = await RunDocsCheckAsync(root, "Assert-FluentContingencyParity").ConfigureAwait(false);
 
             if (passes) { failures.ShouldBeEmpty(); }
             else { failures.ShouldNotBeEmpty(scenario); }
@@ -469,7 +469,7 @@ public sealed partial class DocsSiteValidationTests {
             failures.ShouldAllBe(failure => failure.Length < 260);
             string.Join('\n', failures).ShouldNotContain(root);
             // Deterministic diagnostics do not contain Git stderr, XML contents or random fixture paths.
-            (await RunFluentParityAsync(root).ConfigureAwait(false)).ShouldBe(failures);
+            (await RunDocsCheckAsync(root, "Assert-FluentContingencyParity").ConfigureAwait(false)).ShouldBe(failures);
         }
         finally { DeleteFluentFixture(root); }
     }
@@ -493,6 +493,59 @@ public sealed partial class DocsSiteValidationTests {
     public async Task ReleaseIncidentRunbookMetadataIsValidatedByPublicationCommandAsync()
     {
         await AssertFluentPublicationAsync("RunbookMissingMetadata");
+    }
+
+    /// <summary>
+    /// Builds a small DocFX site and checks that both navigation surfaces lead to a freshly rendered runbook.
+    /// </summary>
+    /// <param name="missing">The publication input removed from the fixture.</param>
+    [Theory]
+    [InlineData("none")]
+    [InlineData("toc")]
+    [InlineData("index")]
+    [InlineData("page")]
+    public async Task RenderedReleaseRunbookRequiresPageAndBothNavigationLinksAsync(string missing)
+    {
+        string root = NewFluentFixtureRoot();
+        try
+        {
+            foreach (string input in new[] { ".config/dotnet-tools.json", "global.json" })
+            {
+                CopyFluentPublicationInput(Path.Combine(ProjectRoot(), input), Path.Combine(root, input));
+            }
+            string docs = Path.Combine(root, "docs");
+            string howTo = Directory.CreateDirectory(Path.Combine(docs, "how-to")).FullName;
+            File.WriteAllText(Path.Combine(docs, "docfx.json"), """
+                { "build": { "content": [{ "files": ["*.md", "how-to/*.md", "toc.yml"] }], "dest": "_site", "template": ["default", "modern"] } }
+                """);
+            string toc = "- name: How-to\n  href: how-to/index.md\n";
+            string index = "# How-to\n";
+            if (missing != "page")
+            {
+                File.WriteAllText(Path.Combine(docs, "release-incident-response.md"), "# Release incident response");
+                if (missing != "toc") { toc += "  items:\n  - name: Runbook\n    href: release-incident-response.md\n"; }
+                if (missing != "index") { index += "[Runbook](../release-incident-response.md)"; }
+            }
+            File.WriteAllText(Path.Combine(docs, "toc.yml"), toc);
+            File.WriteAllText(Path.Combine(howTo, "index.md"), index);
+            string site = Directory.CreateDirectory(Path.Combine(docs, "_site")).FullName;
+            File.WriteAllText(Path.Combine(site, "release-incident-response.html"), "stale output");
+
+            string[] failures = await RunDocsCheckAsync(root, "Build-DocsSite");
+            string[] expected = missing switch
+            {
+                "toc" => ["docs/_site/toc.html is missing a link to release-incident-response.html."],
+                "index" => ["docs/_site/how-to/index.html is missing a link to release-incident-response.html."],
+                "page" => [
+                    "docs/_site/release-incident-response.html was not generated.",
+                    "docs/_site/toc.html is missing a link to release-incident-response.html.",
+                    "docs/_site/how-to/index.html is missing a link to release-incident-response.html."
+                ],
+                _ => [],
+            };
+            failures.ShouldBe(expected);
+        }
+        finally { DeleteFluentFixture(root); }
     }
 
     [Theory]
@@ -706,25 +759,26 @@ public sealed partial class DocsSiteValidationTests {
         await RunFluentGitAsync(root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=", "commit", "--quiet", "-m", "test: seed catalog fixture").ConfigureAwait(false);
     }
 
-    private static async Task<string[]> RunFluentParityAsync(string root)
+    private static async Task<string[]> RunDocsCheckAsync(string root, string check)
     {
-        string runner = Path.Combine(root, "fluent-parity.ps1");
+        string runner = Path.Combine(root, "docs-check.ps1");
         await File.WriteAllTextAsync(runner, """
-            param([string]$Validator, [string]$FixtureRoot)
+            param([string]$Validator, [string]$FixtureRoot, [string]$Check)
             $ErrorActionPreference = 'Stop'
             Set-StrictMode -Version Latest
             $tokens = $null; $errors = $null
             $ast = [System.Management.Automation.Language.Parser]::ParseFile($Validator, [ref]$tokens, [ref]$errors)
             if ($errors.Count) { throw 'Publication validator has parse errors.' }
-            $names = @('Add-Failure', 'Get-FrontMatter', 'Invoke-FluentCatalogGit', 'Get-FluentCatalogVersions', 'Assert-FluentContingencyParity')
-            foreach ($function in $ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) {
-                if ($function.Name -in $names) { . ([scriptblock]::Create($function.Extent.Text)) }
+            foreach ($statement in $ast.EndBlock.Statements) {
+                if ($statement -is [System.Management.Automation.Language.FunctionDefinitionAst]) {
+                    . ([scriptblock]::Create($statement.Extent.Text))
+                }
             }
             $failures = [System.Collections.Generic.List[string]]::new()
-            Assert-FluentContingencyParity $FixtureRoot $failures
+            & $Check $FixtureRoot $failures
             ConvertTo-Json -InputObject $failures.ToArray() -Compress
             """, CancellationToken.None).ConfigureAwait(false);
-        (int exitCode, string output, string error) = await RunFluentProcessAsync(root, "pwsh", "-NoProfile", "-File", runner, Path.Combine(ProjectRoot(), "eng", "validate-docs.ps1"), root).ConfigureAwait(false);
+        (int exitCode, string output, string error) = await RunFluentProcessAsync(root, "pwsh", "-NoProfile", "-File", runner, Path.Combine(ProjectRoot(), "eng", "validate-docs.ps1"), root, check).ConfigureAwait(false);
         exitCode.ShouldBe(0, error + output);
         return JsonSerializer.Deserialize<string[]>(output)!;
     }
