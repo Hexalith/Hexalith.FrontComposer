@@ -1,5 +1,30 @@
 # Dependency governance source projection
 
+## 2026-11-22 SDK 11 catalog and Platform projection
+
+FrontComposer selects the unified .NET 11 Builds catalog at
+`6439a71d240a32a7486c4fd437539a56c7a909b8`. That catalog pins
+`System.Collections.Immutable` to `11.0.0` through a single
+`HexalithImmutableVersion` property. The retired net10
+`HexalithFrontComposerImmutable10CatalogView` is no longer present. The
+FrontComposer profile proves the bound package row and allows the catalog's
+framework and EventStore validator targets.
+
+The same seal binds Platform `44dd1e52904cd07ef49be74edd947c75f9b76374` and
+the latest published Hexalith package families from that catalog: Commons
+`3.0.2`, EventStore `5.4.0`, Tenants `8.0.3`, Parties `4.0.1`, Memories
+`4.1.0`, PolymorphicSerializations `2.0.1`, and Projects `2.0.0`. The graph
+contains 76 edges. Root selectors, Platform inventory, canonical source-file
+digests, and consumer configuration match the sealed policy.
+
+The pin reseal is `f3147e728e76feb80fa8980cf6a31ec98d13fc43`. The Immutable
+`11.0.0` policy and reader are `772f283496f94c2c76f44fb58c5f75f3ee4586a3`.
+This documentation-only child is the later-base activation of that policy.
+The previous event-base policy rejected the changed Platform pin, then the
+`10.0.15` compatibility view, as expected. Hosted CI and Quality on this
+commit are the release evidence; local validation of 76 edges does not
+replace those gates.
+
 ## 2026-11-20 FrontComposer EventStore selection
 
 FrontComposer requires EventStore `5.4.0` for source and package builds.
