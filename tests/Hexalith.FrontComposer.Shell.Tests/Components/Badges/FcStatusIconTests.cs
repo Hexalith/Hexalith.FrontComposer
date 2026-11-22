@@ -119,6 +119,7 @@ public sealed class FcStatusIconTests : LayoutComponentTestBase {
             string anchorId = cut.Find("[data-testid='fc-status-icon']").Id!;
 
             tooltip.Instance.Anchor.ShouldBe(anchorId);
+            tooltip.Instance.Positioning.ShouldBe(Positioning.After);
             tooltip.Instance.UseTooltipService.ShouldBeFalse();
             cut.Markup.ShouldContain("id=\"fc-status-icon-", Case.Insensitive);
             cut.Markup.ShouldContain("anchor=\"fc-status-icon-", Case.Insensitive);
