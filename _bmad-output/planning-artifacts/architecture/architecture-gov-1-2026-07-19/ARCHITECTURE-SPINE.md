@@ -393,7 +393,7 @@ The amendment governs the FrontComposer implementation of AD-12/13/16/17/18/19 b
 - **Prevents:** candidate `.gitmodules`, C# tests, Python code, and workflows independently defining trust or compatibility.
 - **Rule:** FrontComposer-owned `eng/dependency-graph-policy.json` (`hexalith.dependency-graph-policy.v1`)
   is the sole declarative policy for trusted identities, owner semantic profiles, the module build
-  registry, optional `consumer_source_projections`, `resource_limits`, `evaluator_authorizations`, `release_owner_logins`, and
+  registry, optional `consumer_source_projections` and `consumer_projection_transition`, `resource_limits`, `evaluator_authorizations`, `release_owner_logins`, and
   `attestation_capability`. The last two fields are target controls pending implementation and prior-base activation. Candidate `.gitmodules`, workflows and action metadata supply data only. The active policy owns the rows.
 
   **Activation.** For a PR the active policy is read from `event_base`; for a push, from the non-zero
@@ -479,6 +479,18 @@ The amendment governs the FrontComposer implementation of AD-12/13/16/17/18/19 b
   follow AD-5. Exactly two normalized C# source paths/hashes and their Compile links are sealed.
   Inventory-only identities are normalized, unique, sorted and disjoint from global trust. The owner
   must remain `evidence-only` in `module_build_registry`; a buildable whole-owner row fails closed.
+- **Direction of a Platform upgrade (November 21).** Architecture and Release review one optional
+  `consumer_projection_transition` with exactly `{owner_repository, to, profiles}`. The active
+  projection for that owner is the old endpoint. `to` is another complete projection for the same
+  consumer with a distinct owner commit. `profiles` supplies reviewed successor definitions for
+  existing semantic profile names. An empty object retains all existing catalog checks. Select the
+  entire endpoint from each committed root, including the Builds source, inventory, canonical files,
+  selector digest and consumer configuration. Evaluate each graph under its endpoint's semantic checks.
+  Record the transition in a policy-only change at the old selection. The next selector change may
+  move from old to new under that prior policy. Both selections admit ordinary same-endpoint changes.
+  Retire the transition in a policy-only change at the new selection. Reject reverse moves, a third pin,
+  mixed endpoints and self-authorization. The separate recovery decision for a base that already
+  fails its policy remains with Architecture and Release.
 - **Identity resolution (AD-3):** only the exact active-policy owner identity/commit, committed
   `.gitmodules` hash, complete raw inventory digest and two canonical source hashes permit recording
   its declared inventory-only identities. They remain globally untrusted: no local resolution,
@@ -1178,17 +1190,18 @@ flowchart TD
 - **Source review and conformance.** GOV-SRC-1 reconciled the parent architecture, FC-DEP-1, the G2 request, the GOV-1 story and the PRD on November 16. GOV-ACCEPT-2 requires fresh review of the exact source digests after changes. Prove the register’s eight closure bundles on the selected topology: accepted Builds actions and delayed activation, the two FrontComposer workflow roles, removal of publication privileges from the builder, archive authentication and hostile-candidate proof, handoff-v3/ledger migration, candidate-free final classification/publication, a pinned verifier, and rejection of duplicate destination asset names. The GOV-ACCEPT-1/2 owner decisions stay open. [Source digest record](../../../implementation-artifacts/spec-17-1-reconcile-publication-governance-sources.md#source-digests-for-the-2026-11-19-trusted-publishing-amendment)
 
   The named **GOV-1 split implementation gate** passes only when
-  `_bmad-output/implementation-artifacts/gov-1-split-publication-conformance.json` exists as duplicate-
+  CI retains `gov-1-split-publication-conformance.json` as a run-bound artifact containing duplicate-
   rejecting AD-5 canonical schema `frontcomposer.gov1-split-conformance.v1`, exactly
   `{schema, spine_sha256, frontcomposer_commit, builds_commit, policy_commit, policy_sha256,
   caller_blob_sha256, register_sha256, validator, checks, reviewer_reports, evidence_runs}`. Commits and hashes
   are strict lowercase 40-/64-hex and bind the final spine bytes, the selected owner-accepted split
   Builds commit, the active policy, the tested/reconciled FrontComposer implementation and caller
   blobs, and the updated nonconformance register. `frontcomposer_commit` is the tested implementation
-  commit before the later evidence-only packet PR; it is not self-referential. `validator` is exactly
+  commit before the later protected PR that records the evidence coordinates. `validator` is exactly
   `{path:"eng/validate_gov1_conformance.py", blob_sha256, command, required_check}` with command
-  `python3 eng/validate_gov1_conformance.py verify --packet _bmad-output/implementation-artifacts/gov-1-split-publication-conformance.json --live`
-  and required check `GOV-1 split conformance`.
+  `python3 eng/validate_gov1_conformance.py verify --packet evidence/gov-1-split-publication-conformance.json --live`
+  and required check `GOV-1 split conformance`. The command's packet path is a temporary download
+  location. The source of record is the authenticated CI artifact.
 
   A run projection used below is exactly
   `{repository, workflow_path, run_id, run_attempt, job_name, head_sha, event, conclusion}` with safe-
@@ -1198,8 +1211,9 @@ flowchart TD
   integer ID, run-bound name, safe relative path, and strict hashes. `checks` is ordinally name-sorted
   unique `{name, command, producer, source_artifact, output_path, output_sha256, conclusion}`;
   `producer` and `source_artifact` are the authenticated projections above, `output_path` is below
-  `_bmad-output/implementation-artifacts/gov-1-split-publication-conformance/`, and its committed raw
-  bytes equal both hashes. Commands must be literal entries in the validator's closed allowlist and
+  the ignored `evidence/gov-1-split-publication-conformance/` scratch directory.
+  The verifier downloads the named archive, verifies its archive digest, and compares the raw member
+  bytes with both `source_artifact.member_sha256` and `output_sha256`. Commands must be literal entries in the validator's closed allowlist and
   include the Governance/static suite, schema fixtures, hostile-candidate credential test, and full
   package/repository verification, all with `conclusion: success`.
 
@@ -1207,7 +1221,7 @@ flowchart TD
   `{lens, path, sha256, sidecar_path, sidecar_sha256, producer, report_source, sidecar_source}` for
   rubric, current-technology, adversarial, security, and code-drift lenses. `producer` is an
   authenticated run projection and each source is an artifact projection; their archive coordinates
-  match and their distinct member bytes equal the committed `path`/`sidecar_path`. The duplicate-
+  match. Retrieve both distinct members into the temporary `path` and `sidecar_path` and verify their hashes. The duplicate-
   rejecting sidecar schema `frontcomposer.gov1-review.v1` is exactly `{schema, header, report_sha256}`;
   `header` is exactly
   `{schema:"frontcomposer.gov1-review-header.v1", lens, spine_sha256, frontcomposer_commit,
@@ -1226,7 +1240,7 @@ flowchart TD
   false, false, and empty array. `verification` is exactly
   `{run, release_run, disposition, incident}` with successful run, the identical gate-frozen Release
   coordinates, `gate-frozen`, and null. The pinned validator authenticates each run/job and artifact
-  through live GitHub APIs, recomputes every tracked output hash, and queries GitHub Release and NuGet
+  through live GitHub APIs, recomputes every retained CI output hash, and queries GitHub Release and NuGet
   to validate the empty external-effect arrays; a successful hostile test means denial was observed,
   never that candidate code reached authority.
 
@@ -1243,21 +1257,29 @@ flowchart TD
   hostile-base negative packets are mandatory fixtures.
 
   The register hash must name an updated register in which every row required above is closed with
-  evidence. An unchanged protected-main packet PR adds the packet, raw outputs, review reports, and
-  sidecars, changes no implementation/policy/workflow blob relative to `frontcomposer_commit`, and passes the exact required live validator check. The packet author must be distinct from its approving Release Owner. The approval body is exactly the AD-5
+  evidence. Retain the canonical packet, raw check outputs, five reports and their sidecars in CI
+  for the scheduled approval window plus a review margin. The first protected-main PR changes only
+  the owning Story 17.10 spec. Record the tested commit, spine and policy identities, commands and
+  counts, authenticated producing workflow/run/attempt/job, packet artifact ID and member path,
+  archive and packet SHA-256 values, and the coordinates and hashes for the required source members.
+  The required live check downloads and authenticates the packet and every referenced artifact and
+  member against those coordinates. An expired artifact, changed bytes or mixed attempts fails. The packet author must be distinct from its approving Release Owner. The approval body is exactly the AD-5
   canonical JSON of
   `{schema:"frontcomposer.gov1-conformance-approval.v1", packet_sha256, spine_sha256,
   frontcomposer_commit, builds_commit, decision:"accepted", signer}` with no surrounding text. The API
   review user equals `signer` in the packet policy's `release_owner_logins`, state is `APPROVED`, and it
   covers the unchanged non-squashed head merged through protected `main`.
 
-  After that merge, pinned validator tooling opens a distinct protected-main projection PR adding
-  `_bmad-output/implementation-artifacts/gov-1-split-publication-conformance-approval.json` as exact
+  After that merge, pinned validator tooling opens a distinct protected-main projection PR appending
+  the authenticated review coordinate to the owning spec as exact
   `frontcomposer.gov1-conformance-approval-record.v1`
   `{schema, packet_sha256, approving_review}`; `approving_review` is
   `{repository, pull_number, head_sha, review_id, state, submitted_at}` from the authenticated first-PR
-  API response. The projection PR changes no prior evidence or implementation byte, passes required
-  check `GOV-1 conformance approval projection`, and merges unchanged without squash/rebase through the
+  API response. At the second PR, fetch the original packet, raw outputs and five report/sidecar pairs
+  again. Repeat their provenance, identity and byte checks against the first PR's unchanged record.
+  A previous green check cannot replace this retrieval. After expiry, the merged spec identifies the
+  historical decision. Any required new verification needs a fresh complete qualification and reviews.
+  The projection PR preserves the earlier record and implementation bytes, passes required check `GOV-1 conformance approval projection`, and merges unchanged without squash/rebase through the
   no-bypass ruleset. Only then does the implementation gate pass. Direct push, stale or forged review
   data, a stale spine hash, unavailable/expired source evidence, missing run or raw check output, or any
   open row fails the gate. Release remains ineligible until this exact gate and the other Adoption

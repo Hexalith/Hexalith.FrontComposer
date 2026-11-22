@@ -173,8 +173,8 @@ register records this as NC-34 to NC-36, routed to the Release Owner. This reque
 
 The upstream revision is necessary but not sufficient. FrontComposer may claim adoption only after the
 spine-defined **GOV-1 split implementation gate** passes. The gate requires the canonical
-`frontcomposer.gov1-split-conformance.v1` packet at
-`_bmad-output/implementation-artifacts/gov-1-split-publication-conformance.json`, a spine hash, exact
+`frontcomposer.gov1-split-conformance.v1` packet retained in CI and independently retrieved and
+rehash-verified at both protected PRs, a spine hash, exact
 FrontComposer/Builds/policy/caller identities, authenticated checks and evidence runs, five passing
 review lenses, a closed nonconformance register, an unchanged protected-main evidence PR with Release
 Owner approval, and a distinct approval-projection PR. Stale, mixed, unavailable, direct-push,

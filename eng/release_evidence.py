@@ -1574,7 +1574,7 @@ def _live_manifest_v2_diagnostics(
         _, policy = _load_active_policy(graph_root, projection)
         engine = _load_dependency_graph_engine()
         root = graph["root"]
-        recomputed = engine.collect_graph(graph_root, root["repository"], manifest["commit_sha"], policy)
+        recomputed = engine.collect_graph(graph_root, root["repository"], manifest["commit_sha"], policy, event_base=projection["commit"])
         if recomputed != graph:
             diagnostics.append("dependency-graph drift: live exact-commit graph/catalog evidence differs from the sealed graph")
         if manifest.get("manifest_schema") == CURRENT_MANIFEST_SCHEMA:
@@ -3338,7 +3338,7 @@ def prepare_manifest(args: argparse.Namespace) -> int:
                 provenance_diagnostics.extend(_evaluator_authorization_diagnostics(policy, release_evaluator, "release"))
                 engine = _load_dependency_graph_engine()
                 root_identity = handoff["dependency_graph"]["root"]["repository"]
-                recomputed_graph = engine.collect_graph(graph_root, root_identity, commit_sha, policy)
+                recomputed_graph = engine.collect_graph(graph_root, root_identity, commit_sha, policy, event_base=projection["commit"])
                 if recomputed_graph != handoff["dependency_graph"]:
                     provenance_diagnostics.append(
                         "authenticated CI handoff graph differs from the exact prepare-manifest candidate graph/catalog evidence"

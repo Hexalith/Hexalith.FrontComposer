@@ -10293,9 +10293,15 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
   summary: Restore Story 13.8's canonical sprint-tracking key after its pre-existing committed spelling change.
   evidence: F-BH-1/F-EC-2/F-VG-O2: Git blame attributes `13-8-a-e9-app-1-accept-the-completed-fresh-row-live-prrevokwg` to the human's pre-run commit `9a64a112980fd49441689fd0a3c41dd2ab88148d`. It prevents lookup by the declared `13-8-a-e9-app-1-accept-the-completed-fresh-row-live-proof` identity; this run preserves the unrelated committed change.
+  status: done
+  resolved: 2026-11-21
+  resolution: The tracker uses the canonical live-proof key. Story 13.8 retains its done status and the sprint generator reports zero orphaned rows.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
   summary: Separate the sprint-status last_updated and project header comments and correct the malformed date.
   evidence: F-BH-2: the pre-run human commit `9a64a112980fd49441689fd0a3c41dd2ab88148d` introduced `# last_updated: 2026-10-124# project: frontcomposer`. The authoritative YAML fields remain readable; preserve the committed text here and handle this independent metadata cleanup separately.
+  status: done
+  resolved: 2026-11-21
+  resolution: The header fields occupy separate lines and the last_updated comment matches the validated tracker timestamp.
 
 ## Deferred from: code review of spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes (2026-10-15)
 

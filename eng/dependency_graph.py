@@ -615,12 +615,24 @@ def _collect_raw_graph(root_dir: Path, root_identity: str, root_commit: str, pol
     return envelope
 
 
-def collect_graph(root_dir: Path, root_identity: str, root_commit: str, policy: dict[str, Any]) -> dict[str, Any]:
+def collect_graph(root_dir: Path, root_identity: str, root_commit: str, policy: dict[str, Any],
+                  *, event_base: str | None = None) -> dict[str, Any]:
     """Collect raw v1 provenance and enforce any active consumer projection.
 
     Every live handoff/release consumer shares this gate. The private raw collector
     is diagnostic metadata only and never authorizes materialization or execution.
     """
+    if "consumer_projection_transition" in policy:
+        base = root_commit if event_base is None else event_base
+        if event_base is not None and base != root_commit:
+            validate_transition_policy_change(root_dir, base, root_commit, policy)
+        base_policy, policy = projection_policies(root_dir, policy, base, root_commit)
+        if event_base is not None and base != root_commit:
+            base_graph = _collect_raw_graph(root_dir, root_identity, base, base_policy)
+            evaluate_semantics(root_dir, base_policy, base_graph)
+        envelope = _collect_raw_graph(root_dir, root_identity, root_commit, policy)
+        evaluate_semantics(root_dir, policy, envelope)
+        return envelope
     envelope = _collect_raw_graph(root_dir, root_identity, root_commit, policy)
     evaluate_consumer_projections(root_dir, policy, envelope)
     return envelope
@@ -766,6 +778,83 @@ def load_policy_at_commit(root_dir: Path, commit: str) -> tuple[dict[str, Any], 
         raise GraphError(f"dependency policy is absent at {commit}:{POLICY_PATH}")
     policy = load_policy_bytes(raw, f"{commit}:{POLICY_PATH}", allow_legacy_registry=True)
     return policy, raw, policy_projection(policy, commit, raw)
+
+
+def projection_policies(
+    root_dir: Path, policy: dict[str, Any], base: str, candidate: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Resolve both endpoints from committed root trees under the same immutable prior policy."""
+    transition = policy.get("consumer_projection_transition")
+    if transition is None:
+        return policy, policy
+    owner = transition["owner_repository"]
+    current = policy["consumer_source_projections"][owner]
+    target = transition["to"]
+    selections = {}
+    for commit in dict.fromkeys((base, candidate)):
+        direct = _owner_edges(root_dir, commit, current["consumer_repository"], 1, policy, root_dir)
+        pins = [edge["commit"] for edge in direct if edge["repository"] == owner]
+        if pins == [current["owner_commit"]]:
+            row = current
+        elif pins == [target["owner_commit"]]:
+            row = target
+        else:
+            raise GraphError("projection transition requires exactly one authorized owner revision")
+        selectors = [{key: edge[key] for key in ("path", "repository", "commit")} for edge in direct]
+        if canonical_digest(selectors) != row["root_selectors_sha256"]:
+            raise GraphError("projection transition root selectors differ from the selected endpoint")
+        if canonical_digest(consumer_configuration(root_dir, commit, policy)) != row["consumer_configuration_sha256"]:
+            raise GraphError("projection transition consumer configuration differs from the selected endpoint")
+        selections[commit] = row
+    if selections[base] is target and selections[candidate] is current:
+        raise GraphError("reverse consumer projection transition is not authorized")
+    active = policy.copy()
+    del active["consumer_projection_transition"]
+    successor = {
+        **active,
+        "consumer_source_projections": {**active["consumer_source_projections"], owner: target},
+        "profiles": {**active["profiles"], **transition["profiles"]},
+    }
+    return (successor if selections[base] is target else active,
+            successor if selections[candidate] is target else active)
+
+
+def validate_transition_policy_change(
+    root_dir: Path, base: str, candidate: str, policy: dict[str, Any], base_raw: bytes | None = None,
+) -> None:
+    """Staging and retirement may change only policy, while the selected endpoint stays valid."""
+    if base_raw is None:
+        base_raw = read_blob(root_dir, base, POLICY_PATH, 4 * 1024 * 1024, "active dependency policy")
+    candidate_raw = read_blob(root_dir, candidate, POLICY_PATH, 4 * 1024 * 1024, "candidate dependency policy")
+    if candidate_raw == base_raw:
+        return
+    previous = policy.get("consumer_projection_transition")
+    if candidate_raw is None:
+        if previous is not None:
+            raise GraphError("projection transition retirement requires a policy at the selected endpoint")
+        return
+    document = load_json_bytes(candidate_raw, "candidate dependency policy")
+    if previous is None and (not isinstance(document, dict) or "consumer_projection_transition" not in document):
+        return
+    reviewed = load_policy_bytes(candidate_raw, "candidate transition policy")
+    transition_fields = ("consumer_projection_transition", "consumer_source_projections", "semantic_profiles", "profiles")
+    if all(policy.get(field) == reviewed.get(field) for field in transition_fields):
+        return  # Other policy decisions still follow the normal delayed-activation rule.
+    changed_paths = _git_ok(["diff", "--no-ext-diff", "--no-renames", "--name-only", "-z", base, candidate], root_dir)
+    if changed_paths != POLICY_PATH.encode() + b"\x00":
+        raise GraphError("stage or retire a projection transition in a policy-only change")
+    _, selected = projection_policies(root_dir, policy, base, candidate)
+    next_transition = reviewed.get("consumer_projection_transition")
+    owner = (previous or next_transition)["owner_repository"]
+    if reviewed.get("consumer_source_projections", {}).get(owner) != selected.get("consumer_source_projections", {}).get(owner):
+        raise GraphError("transition policy change must preserve the currently selected projection")
+    if any(reviewed[field] != selected[field] for field in ("profiles", "semantic_profiles")):
+        raise GraphError("transition policy change must preserve the selected endpoint's semantic checks")
+    if next_transition is not None:
+        if previous is not None and next_transition["owner_repository"] != owner:
+            raise GraphError("retire the existing projection transition before selecting another owner")
+        # A staged transition must also work prospectively with this exact root as its active base.
+        projection_policies(root_dir, reviewed, candidate, candidate)
 
 
 def _logical_edge_map(graph: dict[str, Any]) -> dict[tuple[str, str, str], dict[str, Any]]:
@@ -1055,6 +1144,8 @@ def acquire_catalog_objects(root_dir: Path, event_base: str, candidate: str) -> 
                 )
         _git_ok(["cat-file", "-e", f"{commit}^{{commit}}"], builds_local)
 
+    base_policy, candidate_policy = projection_policies(root_dir, policy, event_base, candidate)
+    endpoints = {event_base: base_policy, candidate: candidate_policy}
     root_commits: set[str] = set()
     owner_requirements: set[tuple[str, str]] = set()
     for revision in dict.fromkeys((event_base, candidate)):
@@ -1094,8 +1185,8 @@ def acquire_catalog_objects(root_dir: Path, event_base: str, candidate: str) -> 
         _git_ok(["cat-file", "-e", f"{commit}^{{commit}}"], local)
 
     commits: set[str] = set()
-    for revision in dict.fromkeys((event_base, candidate)):
-        edges = _collect_edges(root_dir, "github.com/hexalith/hexalith.frontcomposer", revision, policy)
+    for revision, selected_policy in endpoints.items():
+        edges = _collect_edges(root_dir, "github.com/hexalith/hexalith.frontcomposer", revision, selected_policy)
         commits.update(edge["commit"] for edge in edges if edge["repository"] == builds_identity)
 
     for commit in sorted(commits):
@@ -1128,6 +1219,7 @@ def acquire_object_stores(
     if zero_base and policy.get("consumer_source_projections"):
         raise GraphError("consumer source projection requires an active base; candidate diagnostics cannot authorize acquisition")
 
+    base_policy, candidate_policy = projection_policies(root_dir, policy, event_base, candidate)
     # Validate both root mappings before any network operation.
     root_identity = "github.com/hexalith/hexalith.frontcomposer"
     base_root_edges = [] if zero_base else _owner_edges(root_dir, event_base, root_identity, 1, policy, root_dir)
@@ -1165,25 +1257,25 @@ def acquire_object_stores(
         local = resolve_local_path(policy, edge["repository"], destination)
         _ensure_commit_available(local, edge["commit"])
 
-    direct_edges: list[dict[str, Any]] = []
-    for edge in root_edges:
-        if not _walk_depth2_inventory(policy, edge["repository"]):
-            continue
-        owner_local = resolve_local_path(policy, edge["repository"], destination)
-        direct_edges.extend(
-            _owner_edges(owner_local, edge["commit"], edge["repository"], 2, policy, destination)
-        )
+    direct_edges: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    for root_set, endpoint in ((base_root_edges, base_policy), (candidate_root_edges, candidate_policy)):
+        for edge in root_set:
+            if not _walk_depth2_inventory(endpoint, edge["repository"]):
+                continue
+            owner_local = resolve_local_path(endpoint, edge["repository"], destination)
+            nested = _owner_edges(owner_local, edge["commit"], edge["repository"], 2, endpoint, destination)
+            direct_edges.extend((item, endpoint) for item in nested)
     if len(root_edges) + len(direct_edges) > policy["resource_limits"]["max_edges"] * 2:
         raise GraphError("base/candidate acquisition exceeds the doubled AD-7 graph-edge ceiling")
-    for edge in direct_edges:
-        if _inventory_only_edge(edge, policy):
+    for edge, endpoint in direct_edges:
+        if _inventory_only_edge(edge, endpoint):
             continue
         local = resolve_local_path(policy, edge["repository"], destination)
         _ensure_commit_available(local, edge["commit"])
 
     if policy.get("consumer_source_projections"):
-        for revision in ([event_base] if not zero_base else []) + [candidate]:
-            collect_graph(destination, root_identity, revision, policy)
+        for revision, endpoint in {event_base: base_policy, candidate: candidate_policy}.items():
+            collect_graph(destination, root_identity, revision, endpoint)
 
     candidate_builds = [edge for edge in candidate_root_edges if edge["repository"] == policy["builds_identity"]]
     if len(candidate_builds) != 1:
@@ -1227,7 +1319,7 @@ def validate_diff_evidence(root_dir: Path, evidence: Any) -> tuple[dict[str, Any
         "affected-module dependency_policy",
     )
     policy_commit = require_commit(policy_coordinate["commit"], "affected-module policy commit")
-    policy, _raw, expected_coordinate = load_policy_at_commit(root_dir, policy_commit)
+    policy, policy_raw, expected_coordinate = load_policy_at_commit(root_dir, policy_commit)
     if policy_coordinate != expected_coordinate:
         raise GraphError("affected-module evidence policy coordinate/hash drift")
     root_identities = [
@@ -1260,9 +1352,16 @@ def validate_diff_evidence(root_dir: Path, evidence: Any) -> tuple[dict[str, Any
             )
     if policy_commit != revisions["event_base"] and revisions["event_base"] != "0" * 40:
         raise GraphError("affected-module active policy commit does not match event base")
+    if "consumer_projection_transition" in policy and revisions["event_base"] != "0" * 40:
+        validate_transition_policy_change(root_dir, expected_base_commit, candidate, policy, policy_raw)
+    base_policy, candidate_policy = projection_policies(root_dir, policy, expected_base_commit, candidate)
     if policy.get("consumer_source_projections"):
-        for label, graph in (("base", base_graph), ("candidate", candidate_graph)):
-            actual_projection = evaluate_consumer_projections(root_dir, policy, graph)
+        for label, graph, endpoint in (("base", base_graph, base_policy), ("candidate", candidate_graph, candidate_policy)):
+            if "consumer_projection_transition" in policy:
+                if evaluate_semantics(root_dir, endpoint, graph) != evidence.get(label + "_semantics"):
+                    raise GraphError("projection transition semantics differ from committed inputs")
+                continue
+            actual_projection = evaluate_consumer_projections(root_dir, endpoint, graph)
             semantic_document = evidence.get(label + "_semantics")
             if not isinstance(semantic_document, dict):
                 raise GraphError("affected-module consumer source projection semantics are missing")
@@ -1283,7 +1382,7 @@ def validate_diff_evidence(root_dir: Path, evidence: Any) -> tuple[dict[str, Any
     )
     if expected["changes"] != evidence.get("changes") or expected["affected_modules"] != evidence.get("affected_modules"):
         raise GraphError("affected-module changes/proof do not match canonical AD-8 projection")
-    return policy, evidence
+    return candidate_policy, evidence
 
 
 def materialize_consumer_sources(
@@ -2597,6 +2696,8 @@ def assert_policy_well_formed(policy: dict[str, Any], *, allow_migration_marker:
         expected.add("__legacy_registry_migration__")
     if "consumer_source_projections" in policy:
         expected.add("consumer_source_projections")
+    if "consumer_projection_transition" in policy:
+        expected.add("consumer_projection_transition")
     _require_closed_object(policy, expected, "dependency policy")
     assert_profiles_well_formed(policy)
 
@@ -2635,7 +2736,23 @@ def assert_policy_well_formed(policy: dict[str, Any], *, allow_migration_marker:
     projection_members = {"owner_commit", "gitmodules_sha256", "inventory_sha256", "inventory_only_identities",
                           "source_files", "consumer_repository", "consumer_project", "source_root_property",
                           "compile_links", "builds_commit", "builds_project", "root_selectors_sha256", "consumer_configuration_sha256"}
-    for identity, value in projections.items():
+    projection_rows = list(projections.items())
+    if "consumer_projection_transition" in policy:
+        transition = _require_closed_object(policy["consumer_projection_transition"],
+            {"owner_repository", "to", "profiles"}, "consumer projection transition")
+        owner = transition["owner_repository"]
+        if not isinstance(owner, str) or owner not in projections:
+            raise GraphError("projection transition requires an already sealed owner")
+        target = _require_closed_object(transition["to"], projection_members, "transition target")
+        current = _require_closed_object(projections[owner], projection_members, "transition source")
+        if target["owner_commit"] == current["owner_commit"] or target["consumer_repository"] != current["consumer_repository"]:
+            raise GraphError("transition requires distinct owner revisions for the same consumer")
+        overrides = transition["profiles"]
+        if not isinstance(overrides, dict) or not set(overrides).issubset(policy["profiles"]):
+            raise GraphError("transition profiles must name existing semantic profiles")
+        assert_profiles_well_formed({"profiles": overrides})
+        projection_rows.append((owner, target))
+    for identity, value in projection_rows:
         if identity not in identities or identity == policy["builds_identity"]:
             raise GraphError("consumer projection owner must be an existing trusted non-Builds identity")
         row = _require_closed_object(value, projection_members, f"consumer projection {identity}")
@@ -3039,10 +3156,12 @@ def main(argv: list[str] | None = None) -> int:
 
             event_base = require_commit(args.event_base, "--event-base")
             policy, policy_raw, policy_coordinates = load_policy_at_commit(root_dir, event_base)
-            base_graph = collect_graph(root_dir, args.root_identity, event_base, policy)
-            candidate_graph = collect_graph(root_dir, args.root_identity, candidate, policy)
-            base_semantics = evaluate_semantics(root_dir, policy, base_graph)
-            candidate_semantics = evaluate_semantics(root_dir, policy, candidate_graph)
+            validate_transition_policy_change(root_dir, event_base, candidate, policy, policy_raw)
+            base_policy, candidate_policy = projection_policies(root_dir, policy, event_base, candidate)
+            base_graph = collect_graph(root_dir, args.root_identity, event_base, base_policy)
+            candidate_graph = collect_graph(root_dir, args.root_identity, candidate, candidate_policy)
+            base_semantics = evaluate_semantics(root_dir, base_policy, base_graph)
+            candidate_semantics = evaluate_semantics(root_dir, candidate_policy, candidate_graph)
             merge_base: str | None = None
             if args.event == "pull_request":
                 merge_base = _git_ok(["merge-base", event_base, candidate], root_dir).decode("ascii").strip()
@@ -3085,6 +3204,7 @@ def main(argv: list[str] | None = None) -> int:
             raise GraphError(
                 "validate requires a strict committed policy; legacy policy migration is non-executable"
             )
+        _, policy = projection_policies(root_dir, policy, commit, commit)
         envelope = collect_graph(root_dir, args.root_identity, commit, policy)
         if args.command == "graph":
             print(json.dumps({"ok": True, "envelope": envelope}, indent=2, sort_keys=True))

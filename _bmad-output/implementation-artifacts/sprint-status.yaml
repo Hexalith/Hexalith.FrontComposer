@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-11-16
+# last_updated: 11-21-2026 17:27
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 11-17-2026 08:48
+last_updated: 11-21-2026 17:27
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -215,7 +215,7 @@ development_status:
   # 2026-11-15: H4-correction delta code review applied 2 test-only patches (177/43 checks, red controls); Owner extended acceptance to b22be84b + 31b7fe31; code review done.
   13-6-i-ux-e-verify-responsive-and-assistive-accessibility: done
   13-7-i-ux-f-provide-reusable-ux-assertions-for-adopters: done
-  13-8-a-e9-app-1-accept-the-completed-fresh-row-live-prrevokwg: done
+  13-8-a-e9-app-1-accept-the-completed-fresh-row-live-proof: done
   13-9-a-fluent-app-1-decide-the-exact-fluent-ui-v5-posture: done
   epic-13-retrospective: done
 
@@ -248,7 +248,7 @@ development_status:
   15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: done
   # superseded 2026-10-23 by spec-evidence-storage-simplification.md (PRD §7 evidence policy):
   # committed evidence and its machinery were removed instead of externalized; closed as done.
-  15-6-external-browser-artifacts-and-bounded-accessibility-receipts: done
+  15-6-external-browser-artifacts-and-bounded-accessibility-receipt: done
   15-7-retire-bulky-browser-evidence: done
   epic-15-retrospective: done
 
@@ -284,6 +284,8 @@ development_status:
   epic-17: in-progress
   17-1-i-gov-src-1-reconcile-publication-governance-sources: done
   17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook: review
+  # 2026-11-21: Directional pin transition adopted. Current-base recovery requires Architecture/Release disposition. EXT-BUILDS-1 is also open.
+  # See planning-artifacts/sprint-change-proposal-2026-11-21.md, section 1.
   17-3-i-gov-b-select-the-accepted-split-publication-topology: backlog
   17-4-i-gov-c-remove-publication-authority-from-candidate-executio: backlog
   17-5-i-gov-d-produce-an-authenticated-run-bound-publication-candi: backlog
@@ -291,6 +293,7 @@ development_status:
   17-7-i-gov-f-publish-with-candidate-free-pinned-code: backlog
   17-8-i-gov-g-pin-post-release-verification-and-preserve-incident: backlog
   17-9-i-gov-h-reject-ambiguous-publication-asset-names: backlog
+  # 2026-11-21: G-8 retention decided: both protected checks retrieve original CI evidence. Conformance remains backlog. See planning-artifacts/sprint-change-proposal-2026-11-21.md, section 2.
   17-10-a-gov-j-revalidate-gov-1-on-one-unchanged-candidate: backlog
   17-11-a-gov-accept-1-accept-the-publication-boundary-and-incident: backlog
   17-12-a-gov-accept-2-accept-reconciled-governance-sources: backlog

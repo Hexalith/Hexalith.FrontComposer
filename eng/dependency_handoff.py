@@ -185,7 +185,7 @@ def validate_ci_handoff(value: Any, *, root: Path | None = None) -> dict[str, An
         policy = _load_active_policy(root, projection)
         require_evaluator_authorized(policy, "ci", evaluator)
         _require_committed_caller(root, evaluator, candidate, CI_WORKFLOW_PATH)
-        live = dg.collect_graph(root, graph["root"]["repository"], candidate, policy)
+        live = dg.collect_graph(root, graph["root"]["repository"], candidate, policy, event_base=revisions["base"])
         if live != graph:
             raise HandoffError("CI handoff dependency graph differs from live exact-candidate graph")
     return handoff
@@ -253,7 +253,7 @@ def validate_source_proof(value: Any, *, root: Path | None = None) -> dict[str, 
         raise HandoffError("release source proof policy commit must equal the push base")
     if root is not None:
         policy = _load_active_policy(root, projection)
-        live = dg.collect_graph(root, graph["root"]["repository"], candidate, policy)
+        live = dg.collect_graph(root, graph["root"]["repository"], candidate, policy, event_base=revisions["base"])
         if live != graph:
             raise HandoffError("release source proof graph differs from the live exact candidate")
     return proof

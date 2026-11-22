@@ -44,7 +44,7 @@ publish, verify, and preserve durable attempt evidence.
   - **success:** Handoff v3 supplies closed attempt state to the total classifier, ledger observations are append-only, incidents cannot be overwritten by later green observations, and incomplete publication is preserved in an immutable incident evidence Release before retry.
 - **CAP-6**
   - **intent:** Gate split-publication adoption on authenticated implementation and review evidence.
-  - **success:** The GOV-1 split implementation gate accepts only the canonical conformance packet and approval projection defined by the spine, with every required closure row closed and no Critical or High nonconformance.
+  - **success:** The GOV-1 split implementation gate accepts only the canonical conformance packet and approval projection defined by the spine, with every required closure row closed and no Critical or High nonconformance. Both protected PR checks retrieve the packet and raw members from authenticated CI artifacts. The owning story records coordinates, hashes and the approval. Expired evidence requires a new complete qualification.
 
 ## Constraints
 

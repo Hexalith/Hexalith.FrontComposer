@@ -1,10 +1,10 @@
 ---
 title: Hexalith.FrontComposer Product Requirements Document
 status: final
-product_approval: pending-reapproval (D-9 amendment required for the 2026-11-20 revision)
+product_approval: pending-reapproval (D-9 amendment required for the current revision)
 v1_readiness_milestone_reached: false
 created: 2026-07-05
-updated: 2026-11-20
+updated: 2026-11-21
 ---
 
 # PRD: Hexalith.FrontComposer
@@ -580,6 +580,8 @@ The Shell must scope every operator-facing read, subscription, count, and persis
 - **Generated output:** generated files are not hand-edited; changes flow through SourceTools or Annotated Domain Types.
 
 **Evidence storage (owner decision 2026-10-23; supersedes the 2026-10-21 storage amendment, Stories 15.6/15.7 and `sprint-change-proposal-2026-10-21.md`).** Proof is the repository's tests plus CI. A story or spec records the commands run, pass/fail counts, commit SHA and CI run link; no committed evidence packet, manifest, runtime-identity record, replay lane or external evidence store exists. Every `evidence/` folder is ignored local scratch, and raw output (reports, traces, screenshots, logs, binlogs) stays local or in CI workflow artifacts. `eng/check-committed-files.sh` is the single enforcement point: the Husky `pre-commit` and `pre-merge-commit` hooks run it with `--staged`, and the Quality workflow's `committed-files` job runs it over every tracked file. It rejects any path under an `evidence/` folder (any depth or case, even force-added) and any file over 1 MiB outside its allowlist (`_bmad-output/implementation-artifacts/deferred-work.md`). Source-owned baselines (Pact JSON, visual snapshots, Verify files) remain tracked, and release-pipeline assets are GitHub release attachments, not commits. Any requirement in this PRD that names a committed evidence record now means the owning story or spec plus its CI run. For G-3, the [November 16 record-storage decision](#approved-g-3-candidate-identity-and-record-storage--2026-11-16) specifies which ref holds that story/spec and its receipts.
+
+**G-8 conformance evidence (November 21).** Retain the packet, raw check outputs and five reviewer reports with their sidecars in CI through both protected approval PRs, allowing time for review. The owning Story 17.10 spec records the candidate, policy, producing runs and attempts, artifact and member identities, hashes and the authenticated approval. Both PR checks must retrieve and verify the originals. Expiry before a required verification calls for a complete fresh qualification and reviews. The merged record preserves the historical decision after expiry. Product release assets and incident preservation follow their existing FR-24 rules. [Approved course correction](sprint-change-proposal-2026-11-21.md)
 
 ## 8. MVP And Milestone Scope
 

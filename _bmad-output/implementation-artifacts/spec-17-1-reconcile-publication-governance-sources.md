@@ -502,3 +502,19 @@ source reconciliation is complete.
 | `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/nonconformance-register-2026-09-08.md` | `8a708d40f465580dcd1de0d34c9403bc421b326fa81b608af35427a248b0e30a` | `07db58dbc934fb57f0e0c53fc328eb664ff98a4c` |
 | `_bmad-output/implementation-artifacts/gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance.md` | `a48333cc43b14957e992d5ed20264fe8fc90b91a6d68d21e8db925526d43f821` | `e38512ec20b1a14888ab8100387ff871691326e0` |
 | `docs/release-trusted-publishing.md` | `f78e8d3a7efa4f1a9514663098a693e1aa212a0bd4010be4657aad3305753d7c` | `56efbc8bbfdf2156676fb861ff667c52e5b355f7` |
+
+## Source digests for the 2026-11-21 sprint-planning decision
+
+The operator selected the reviewed Platform transition and CI retention for G-8. These working-tree identities allow GOV-ACCEPT-2 reviewers to reproduce the sources from the eventual reviewed commit. The earlier digest sets retain their dated scope. Current-candidate acceptance and recovery of the drifted Platform base remain open. [Decision record](../planning-artifacts/sprint-change-proposal-2026-11-21.md)
+
+| Source | SHA-256 of Git blob bytes | Git blob |
+| --- | --- | --- |
+| `_bmad-output/planning-artifacts/prd.md` | `16441d68271633b24dd6444cefc4dbccff3a1d7c2d246e70736afac4093f8683` | `602ee4f39b02837272f1d354975e6a2881bac907` |
+| `_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md` | `761e5e9ce367e5ef6529c588e07059b587108e867407f0fb328a715e43b39ac5` | `4e156a2b98a956f8beec4f45d1d515460aaa848a` |
+| `_bmad-output/planning-artifacts/architecture.md` | `5e3e6c592276b96e82a55a8932756a8ebe2d6c62672abd5d065e989a3afb9631` | `ee05a373f76ebc7ca93651d1f9f62537acaba722` |
+| `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md` | `04ddf0474e5bdbf45848cd799898432a87e8aaa7db75cd6da8aca1d0dab68547` | `a831059dfb5c9d2cbaaeb08a5e249c25ca7c0a19` |
+| `_bmad-output/planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md` | `af68d3b557b00b7b9e4b3d72e16e5e1d19953f85772b030212788fa8f5150a49` | `6e7932f21cbb5bae44ae8571a0948ee7bfca0601` |
+| `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md` | `3d65dea8fe1e5ab0bb38c1dabb7819090aba24ca7a412166de8c10a8284f97f0` | `e9e2e228d0491e21d721c20f93f1a45a0cad58e5` |
+| `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/nonconformance-register-2026-09-08.md` | `8a708d40f465580dcd1de0d34c9403bc421b326fa81b608af35427a248b0e30a` | `07db58dbc934fb57f0e0c53fc328eb664ff98a4c` |
+| `_bmad-output/implementation-artifacts/gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance.md` | `6745a02be0c2894a8cba751cbfcfbf16c57e25f3fcb728eb6366189e7dd059a2` | `87e1d566cfcfc95451b142f7de60243b2c0c5f1d` |
+| `docs/release-trusted-publishing.md` | `f78e8d3a7efa4f1a9514663098a693e1aa212a0bd4010be4657aad3305753d7c` | `56efbc8bbfdf2156676fb861ff667c52e5b355f7` |

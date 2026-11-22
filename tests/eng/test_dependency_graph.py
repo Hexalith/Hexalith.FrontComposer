@@ -6,6 +6,7 @@ from __future__ import annotations
 import ast
 import copy
 import hashlib
+import io
 import json
 import os
 import pathlib
@@ -3781,6 +3782,105 @@ class ConsumerProjectionTests(unittest.TestCase):
         self.assertEqual(files, ["references/Source/One.cs", "references/Source/Two.cs"])
         self.assertEqual(sorted(str(path.relative_to(destination)) for path in destination.rglob("*") if path.is_file()), files)
         self.assertFalse((destination / "references/Source/references").exists())
+
+    def test_prior_policy_authorizes_one_forward_projection_transition(self) -> None:
+        owner = self.fixture.identity("Source")
+        root = self.root.root
+        self.fixture.policy["semantic_profiles"][owner] = "owner-sources"
+        self.fixture.policy["profiles"]["owner-sources"] = {
+            "owner_checks": {"canonical_source_files": self.row["source_files"]}}
+        original = self.write_policy()
+        self.source.write_text("One.cs", "// successor\n")
+        new_owner = self.source.commit()
+        self.root.link_gitlink("references/Source", new_owner)
+        unapproved = self.root.commit()
+
+        # Derive the proposed successor from Git objects before staging the policy at A.
+        successor = copy.deepcopy(self.row)
+        successor["owner_commit"] = new_owner
+        successor["source_files"]["One.cs"] = hashlib.sha256(b"// successor\n").hexdigest()
+        inventory = dg._owner_edges(self.source.root, self.owner, owner, 2, self.fixture.policy, root)
+        for edge in inventory:
+            edge["owner_commit"] = new_owner
+        successor["inventory_sha256"] = dg.canonical_digest(inventory)
+        direct = dg._owner_edges(root, unapproved, self.fixture.identity("Root"), 1, self.fixture.policy, root)
+        successor["root_selectors_sha256"] = dg.canonical_digest([
+            {key: edge[key] for key in ("path", "repository", "commit")} for edge in direct])
+        self.fixture.policy["consumer_projection_transition"] = {
+            "owner_repository": owner, "to": successor,
+            "profiles": {"owner-sources": {"owner_checks": {"canonical_source_files": successor["source_files"]}}},
+        }
+
+        def compare(base, candidate, event="push", expected=0):
+            with mock.patch("sys.stdout", new_callable=io.StringIO) as output:
+                code = dg.main(["--root", str(root), "diff", "--event", event,
+                                "--event-base", base, "--candidate", candidate])
+            self.assertEqual(code, expected, output.getvalue())
+            return json.loads(output.getvalue())
+
+        # A candidate policy that introduces B cannot authorize that candidate's B selector.
+        self_authorizing = self.write_policy()
+        compare(original, self_authorizing, expected=1)
+        self.root.link_gitlink("references/Source", self.owner)
+        active = self.root.commit()
+        compare(original, active)
+        self.root.link_gitlink("references/Source", new_owner)
+        moved = self.root.commit()
+        for event in ("pull_request", "push"):
+            with self.subTest(event=event):
+                evidence = compare(active, moved, event)["evidence"]
+                candidate_policy, _ = dg.validate_diff_evidence(root, evidence)
+                self.assertEqual(candidate_policy["consumer_source_projections"][owner], successor)
+
+        import dependency_handoff as handoff
+        proof = handoff.create_source_proof(run_id=7, run_attempt=1, evidence=evidence)
+        self.assertEqual(handoff.validate_source_proof(proof, root=root), proof)
+        self.assertEqual(dg.acquire_catalog_objects(root, active, moved)["candidate"], moved)
+        output = pathlib.Path(self.temp.name) / "materialized"
+        output.mkdir()
+        dg.materialize_consumer_sources(root, candidate_policy, evidence["candidate_graph"], output,
+                                        self.fixture.identity("Root"), moved)
+        self.assertEqual((output / "references/Source/One.cs").read_text(), "// successor\n")
+
+        self.root.write_text("README.md", "ordinary change after the move\n")
+        at_b = self.root.commit()
+        compare(moved, at_b)
+        self.root.link_gitlink("references/Source", self.owner)
+        backwards = self.root.commit()
+        self.assertIn("reverse", compare(at_b, backwards, expected=1)["error"])
+        backward_proof = copy.deepcopy(proof)
+        backward_proof["run"]["candidate"] = backwards
+        backward_proof["revisions"].update(base=at_b, candidate=backwards)
+        _, _, backward_proof["dependency_policy"] = dg.load_policy_at_commit(root, at_b)
+        backward_proof["dependency_graph"] = self.graph(backwards)
+        with self.assertRaisesRegex(dg.GraphError, "reverse"):
+            handoff.validate_source_proof(backward_proof, root=root)
+        self.root.link_gitlink("references/Source", "1" * 40)
+        third = self.root.commit()
+        self.assertIn("authorized owner revision", compare(active, third, expected=1)["error"])
+        self.root.link_gitlink("references/Source", new_owner)
+        self.root.link_gitlink("references/Builds", self.nested_builds)
+        mixed = self.root.commit()
+        self.assertIn("selectors", compare(active, mixed, expected=1)["error"])
+
+        self.root.link_gitlink("references/Builds", self.root_builds)
+        self.fixture.policy["profiles"].update(self.fixture.policy.pop("consumer_projection_transition")["profiles"])
+        self.fixture.policy["consumer_source_projections"][owner] = successor
+        retired = self.write_policy()
+        self.assertIn("policy-only", compare(active, retired, expected=1)["error"])
+        compare(at_b, retired)
+        self.root.write_text("README.md", "single verified selection\n")
+        compare(retired, self.root.commit())
+
+    def test_invalid_transition_targets_fail_policy_validation(self) -> None:
+        owner = self.fixture.identity("Source")
+        target = {**self.row, "owner_commit": "b" * 40}
+        for overrides in ({"owner_repository": "unregistered"}, {"to": self.row},
+                          {"to": {**target, "source_files": {}}}, {"profiles": {"undefined": {}}},
+                          {"profiles": {"fixture": {"typo": True}}}):
+            transition = {"owner_repository": owner, "to": target, "profiles": {}, **overrides}
+            with self.subTest(overrides=overrides), self.assertRaises(dg.GraphError):
+                dg.assert_policy_well_formed({**self.fixture.policy, "consumer_projection_transition": transition})
 
     def test_changed_owner_pin_refuses_before_source_consumption(self) -> None:
         self.source.write_text("README.md", "different owner tree\n")

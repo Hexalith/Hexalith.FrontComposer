@@ -178,13 +178,11 @@ do not substitute for current conformance evidence.
 
 The exact schema, equality map, validator command, allowed checks, reviewer sidecars, evidence runs,
 approval review body, merge requirements, and negative fixtures are defined only in the spine's
-Deferred section. The required packet path is:
-
-`_bmad-output/implementation-artifacts/gov-1-split-publication-conformance.json`
-
-The packet PR must add evidence only and leave every implementation, policy, workflow, and prior
-evidence byte unchanged relative to its tested `frontcomposer_commit`. The later approval-projection PR
-must likewise preserve prior bytes. Release remains ineligible until that gate and every adoption
+Deferred section. CI retains the original packet, raw outputs and all five reviewer reports and sidecars.
+The first protected PR records the tested commit, policy, authenticated CI coordinates and hashes in
+the owning spec. The second appends the authenticated approval. Each check retrieves the original
+bytes and verifies the run/attempt, archive and member digests before accepting its unchanged head.
+Expiry requires a fresh qualification and reviews. Release remains ineligible until that gate and every adoption
 condition pass.
 
 ## Unresolved Owner Decisions

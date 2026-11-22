@@ -4222,6 +4222,8 @@ So that partial publication or credential exposure can be contained without dest
 
 ### Story 17.3: [I · GOV-B] Select the Accepted Split Publication Topology
 
+**Dependency qualification, November 21.** The committed Platform selection fails the graph check. The approved prior-policy transition covers upgrades from a matching base. Architecture and Release still need to select a recovery for this already-drifted commit. [Observed failure and proposed transition](sprint-change-proposal-2026-11-21.md#1-admit-a-platform-revision-change)
+
 As a Release Owner,
 I want the FrontComposer caller pinned to the accepted immutable two-job Builds revision,
 So that candidate construction and protected publication execute under structurally separate authority.
@@ -4408,6 +4410,8 @@ So that one manifest entry cannot overwrite or masquerade as another package or 
 
 ### Story 17.10: [A · GOV-J] Revalidate GOV-1 on One Unchanged Candidate
 
+**Evidence decision, November 21.** CI retains the packet, raw outputs, five reports and their sidecars through both reviews. Git retains their identities, hashes and the approval. [Storage decision and acceptance checks](sprint-change-proposal-2026-11-21.md#2-decide-where-story-1710-keeps-conformance-evidence)
+
 As the Architect, Release Owner, and Security reviewer,
 I want deterministic checks and all required review lenses applied to one unchanged authenticated candidate,
 So that publication conformance cannot be assembled from mixed revisions or selectively refreshed evidence.
@@ -4426,10 +4430,11 @@ So that publication conformance cannot be assembled from mixed revisions or sele
 
 **Given** the evidence candidate is submitted through the protected-main protocol
 **When** the evidence and approval projection are reviewed
-**Then** the evidence PR remains unchanged after Release Owner approval and a distinct approval-projection PR records the outcome
+**Then** the owning spec in the first PR records exact candidate, policy, producer run/attempt, artifact and member coordinates and hashes. The independent Release Owner approves the unchanged head. The second protected PR appends the authenticated review coordinate
+**And** each required check downloads and authenticates the same original CI packet and members, including five report/sidecar pairs. A missing or expired artifact, changed bytes, mixed attempts or a stale approval fails. A later qualification needs fresh complete evidence and reviews
 **And** direct push, squash, rebase, or candidate mutation fails the gate.
 
-**Given** the focused checks and five reviews already produce their own durable outputs
+**Given** the focused checks and five reviews produce their authenticated CI artifacts
 **When** GOV-J is recorded
 **Then** it cites those outputs rather than copying them into another review packet
 **And** no separate sixth review or wrapper report is required.
@@ -4609,13 +4614,13 @@ The structural record-descendant/current-main cycle remains blocked: committing 
 
 The [actual planning receipt](sprint-change-proposal-2026-11-16.md#planning-approval-receipt--2026-11-16), observed at `2026-11-16T12:23:13Z`, records jpiquot's approval separately as Product Owner, Architect and Release Owner. Option A and §§3.1–3.5 are adopted prospectively, with P1–P6 projected into the owning sources and P7 retaining implementation boundaries. Earlier criteria and dated outcomes remain history. No epic is added, removed or renumbered.
 
-### Story 16.1 — prospective capture criteria
+### Prospective capture criteria for 16.1
 
 **Given** a future candidate T with complete prospective admission and an authorized same-repository record ref, **when** EVT-ID-1 records compatibility, **then** append its exact tuple, per-context selection scope and same-attempt evidence to the owning 16.1 spec on that ref, durably within the capture deadline. Main remains T. Q is the capture-storage commit and never replaces T. Any change to main, either gitlink, catalog selection or other committed inputs creates a different candidate requiring its own evidence; preserve all old records. No new capture is authorized by planning adoption alone.
 
 Story 16.1 remains done for its accepted historical engineering capture, with every Tuple Record, D1 acceptance and limitation unchanged. This adoption edits neither that spec nor its records. Future evidence is separately authorized append-only work.
 
-### Story 16.3 — prospective admission and recognition criteria
+### Prospective admission and recognition criteria for 16.3
 
 **Given** an actual approved planning rule but missing execution prerequisites, **when** readiness is assessed, **then** keep 16.3 in-progress and G-3 open and do not start qualification. **Given** all preflight rows are durably satisfied, a separately authorized schedule may start one future attempt. **Given** T's complete timely capture and three actual approvals, **when** Q/S/F are durably reachable within the window and final main/time rechecks pass, **then** human governance may recognize G-3 only for exact T. Every record stays off main through T consumption. Any failure, rejection, expiry or drift preserves history, keeps current-release G-3 open and routes to the named bounded disposition. Story 16.2 retains its done/not-invoked state and conditional reopening rule.
 

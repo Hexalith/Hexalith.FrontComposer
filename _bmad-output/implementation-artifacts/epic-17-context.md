@@ -43,10 +43,12 @@ Establish FR-24 publication safety through a secretless builder, protected candi
 - An always-uploaded `hexalith.release-verification-handoff.v3` and total classifier cover every attempt outcome. Set `publication_started` immediately before the first product mutation. Missing or unauthenticated handoffs are `missing-artifact`; the sole valid deferred sentinel is permanently incident-bearing `deferred-no-ci-handoff`.
 - Extend `frontcomposer.release-ledger-record.v2` with immutable attempt keys and append-only observations. A later green result never erases or weakens an incident. Independent post-release verification never authorizes retroactively. Incomplete publication requires separately authorized candidate-free preservation of immutable evidence in the reserved incident namespace before retry.
 - Builds owns the reusable contract and minimum permissions; FrontComposer owns validation, evidence, publication, and verification; the Release Owner owns production, credentials, and incidents. Runbook and response-target approval remain Product Owner/Release Owner decisions.
+- Both GOV-J approval PRs retrieve and hash the original CI packet, check results and five report/sidecar pairs. The owning spec preserves the coordinates and approval. Expiry requires a complete new qualification.
 - GOV-J binds deterministic conformance and five review lenses to one unchanged candidate, a closed nonconformance register, an unchanged protected-main evidence PR, and a distinct approval-projection PR. Open Critical/High findings, stale or mixed identities, direct push, squash, or rebase fail acceptance.
 
 ## Cross-Story Dependencies
 
+- A Platform pin change consumes one directional transition from the prior policy. The mismatched base at `a9e755da` still requires an Architecture and Release recovery decision.
 - EXT-BUILDS-1 must supply an accepted immutable split revision before Story 17.3 or caller activation. Source reconciliation, incident readiness, and ledger-model decisions can progress independently of that upstream blocker.
 - GOV-J follows GOV-B through GOV-I. GOV-ACCEPT-1 needs the approved incident runbook; GOV-ACCEPT-2 follows source reconciliation and becomes stale on source-digest changes. Incident readiness does not itself close either acceptance decision.
 - Ledger backfill follows state-model acceptance. Preserve missing evidence and permanent dispositions for every publication-capable attempt, including later discovered releases.

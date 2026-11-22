@@ -131,6 +131,11 @@ not be conflated:
 
 **Dependency check on November 21.** The committed FrontComposer tree, its policy, and the local submodule checkouts have distinct identities. Running `python3 eng/dependency_graph.py validate --commit 61dcd07fb412acf2feb66d8ee61513c16ef6ec4d` fails with `consumer source projection owner pin changed`. The commit selects Platform `54d90be3` and Builds `70ce9cb3`. Its policy still binds Platform `9c39cd58` and Builds `6548f248`. The fast-forwarded checkouts were Platform `abb62da8` and Builds `e1380b81`. All ten direct checkouts advanced beyond the superproject’s recorded gitlinks. The committed graph therefore remains unqualified. AD-12 requires a reviewed change and subsequent base-policy activation before a new selection can supply release evidence. [Executable policy](../../eng/dependency-graph-policy.json) · [Previous selection record](../../eng/dependency-governance.md#2026-11-20-frontcomposer-eventstore-selection)
 
+The approved AD-12a upgrade stages a single old-to-new projection in the prior policy, then moves
+the selectors and retires the authorization. The current tree `a9e755da` selects Platform `550b896d`
+against the older seal `9c39cd58`. Its recovery still requires a specific Architecture and Release
+decision. [November 21 disposition](sprint-change-proposal-2026-11-21.md) · [Projection contract](architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md)
+
 Pointer-change CI compares the base and candidate dependency graphs and runs the affected module's
 supported standalone restore/build gate. Repository resolution is closed-world from the active
 policy's explicit identity allowlist, including approved depth-2 targets absent from the root
@@ -359,9 +364,11 @@ Production publication is halted. The November 19 authenticated read returned `H
 
 The **GOV-1 split implementation gate** is the canonical packet and approval-projection protocol in the
 spine's Deferred section. It requires
-`_bmad-output/implementation-artifacts/gov-1-split-publication-conformance.json`, authenticated live
-checks and five reviewer reports, a closed nonconformance register, an unchanged protected-main
-evidence PR with Release Owner approval, and a distinct protected-main approval-projection PR. A stale
+a CI-retained packet, authenticated live checks, five reviewer reports and a closed nonconformance register.
+The first protected-main PR records the artifact coordinates and reviewed hashes in the owning spec.
+An independent Release Owner approves the unchanged head. The second PR records the authenticated
+review. Both required checks retrieve and rehash the original CI bytes. If a required artifact has
+expired, qualify a fresh complete set and obtain fresh reviews. A stale
 spine hash, mixed candidate/Builds/policy/evaluator evidence, unavailable source evidence, any open row,
 direct push, or squash/rebase fails the gate.
 
