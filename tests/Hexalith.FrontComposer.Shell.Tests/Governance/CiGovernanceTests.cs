@@ -1267,8 +1267,6 @@ public sealed class CiGovernanceTests {
     [Fact]
     public void ToolchainPins_MatchApprovedDotnetAndAspireVersions() {
         const string expectedDotnetSdk = "11.0.100";
-        const string sourceResourceCompatibilitySdk = "10.0.302";
-        const string dependencySourceResourceSdk = "10.0.404";
         const string expectedAspire = "17.0.0";
         const string expectedAspireHosting = "17.0.0";
         const string expectedDaprCli = "1.18.0";
@@ -1279,44 +1277,31 @@ public sealed class CiGovernanceTests {
             globalJson.RootElement.GetProperty("sdk").GetProperty("version").GetString().ShouldBe(expectedDotnetSdk);
         }
 
-        Regex dotnetVersionPin = new(
-            @"(?m)^[ \t]*dotnet-version[ \t]*:[ \t]*(?<quote>['""]?)(?<version>[^'""#\s]+)\k<quote>[ \t]*(?:#.*)?\r?$",
+        Regex globalJsonPin = new(
+            @"(?m)^[ \t]*global-json-file[ \t]*:[ \t]*(?<quote>['""]?)global\.json\k<quote>[ \t]*(?:#.*)?\r?$",
             RegexOptions.CultureInvariant);
-        foreach (string quotingVariant in new[] {
-            "dotnet-version: '11.0.100'",
-            "dotnet-version: \"11.0.100\"",
-            "dotnet-version: 11.0.100",
-        }) {
-            Match sample = dotnetVersionPin.Match(quotingVariant);
-            sample.Success.ShouldBeTrue($"active dotnet-version parser must support valid YAML quoting: {quotingVariant}");
-            sample.Groups["version"].Value.ShouldBe(expectedDotnetSdk);
-        }
+        Regex leftoverDotnetVersion = new(
+            @"(?m)^[ \t]*dotnet-version[ \t]*:",
+            RegexOptions.CultureInvariant);
 
         string workflowsRoot = Path.Combine(root, ".github", "workflows");
         string[] workflowPaths = Directory.EnumerateFiles(workflowsRoot, "*.yml", SearchOption.TopDirectoryOnly)
             .Concat(Directory.EnumerateFiles(workflowsRoot, "*.yaml", SearchOption.TopDirectoryOnly))
             .Order(StringComparer.Ordinal)
             .ToArray();
-        var dotnetPins = workflowPaths
-            .SelectMany(path => dotnetVersionPin.Matches(File.ReadAllText(path)).Cast<Match>()
-                .Select(match => (
-                    Workflow: Path.GetFileName(path),
-                    Version: match.Groups["version"].Value)))
+        var globalJsonPins = workflowPaths
+            .SelectMany(path => globalJsonPin.Matches(File.ReadAllText(path)).Cast<Match>()
+                .Select(_ => Path.GetFileName(path)))
             .ToArray();
-        dotnetPins.ShouldNotBeEmpty("active dotnet-version pins must be discovered across every workflow file");
-        dotnetPins.Count(pin => string.Equals(pin.Version, sourceResourceCompatibilitySdk, StringComparison.Ordinal))
-            .ShouldBe(1, "only the full source-resource topology may install the 10.0.302 compatibility SDK");
-        dotnetPins.Count(pin => string.Equals(pin.Version, dependencySourceResourceSdk, StringComparison.Ordinal))
-            .ShouldBe(1, "only the full source-resource topology may install the dependency 10.0.404 SDK");
-        dotnetPins
-            .Where(pin => !string.Equals(pin.Version, sourceResourceCompatibilitySdk, StringComparison.Ordinal)
-                && !string.Equals(pin.Version, dependencySourceResourceSdk, StringComparison.Ordinal))
-            .ShouldAllBe(pin => string.Equals(pin.Version, expectedDotnetSdk, StringComparison.Ordinal));
+        globalJsonPins.ShouldNotBeEmpty("FrontComposer workflows must pin the SDK through global.json");
+        foreach (string path in workflowPaths) {
+            leftoverDotnetVersion.IsMatch(File.ReadAllText(path)).ShouldBeFalse(
+                $"{Path.GetFileName(path)} must not install a second SDK with dotnet-version");
+        }
 
         foreach (string workflowName in new[] { "quality.yml", "nightly.yml", "mutation-property-nightly.yml", "quarantine-governance-nightly.yml" }) {
             string workflow = File.ReadAllText(Path.Combine(workflowsRoot, workflowName));
-            int sdkSetupCount = dotnetVersionPin.Matches(workflow).Cast<Match>()
-                .Count(match => string.Equals(match.Groups["version"].Value, expectedDotnetSdk, StringComparison.Ordinal));
+            int sdkSetupCount = globalJsonPin.Count(workflow);
             Regex.Count(workflow, @"(?m)^      - name: Install \.NET 11 runtimes\r?$", RegexOptions.CultureInvariant)
                 .ShouldBe(sdkSetupCount, $"Every SDK 11 lane in {workflowName} must explicitly install its net11.0 test runtimes.");
             workflow.ShouldContain("run: ./eng/install-net11-runtime.ps1");
@@ -1328,24 +1313,9 @@ public sealed class CiGovernanceTests {
         runtimeInstaller.ShouldContain("--skip-non-versioned-files");
 
         string quality = File.ReadAllText(Path.Combine(workflowsRoot, "quality.yml"));
-        quality.ShouldMatch(
-            @"(?ms)^[ \t]*- name:[ \t]*Install source-resource compatibility SDK[ \t]*\r?\n[ \t]*uses:[ \t]*actions/setup-dotnet@[^\r\n]+\r?\n[ \t]*with:[ \t]*\r?\n[ \t]*dotnet-version[ \t]*:[ \t]*(?:'10\.0\.302'|""10\.0\.302""|10\.0\.302)[ \t]*\r?$",
-            customMessage: "the sole 10.0.302 pin must stay attached to the explicitly named source-resource compatibility step");
-
-        string dependencySdkStep = ExtractNamedStep(quality, "Install dependency source-resource SDK");
-        dependencySdkStep.ShouldContain("dotnet-version: '10.0.404'");
-
-        string sdkVerificationStep = ExtractNamedStep(quality, "Verify root and source-resource SDKs");
-        sdkVerificationStep.ShouldContain("set -euo pipefail");
-        sdkVerificationStep.ShouldContain("active_sdk=\"$(dotnet --version)\"");
-        sdkVerificationStep.ShouldContain("^11\\.0\\.([0-9]+)$");
-        sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} < 100");
-        sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} >= 200");
-        sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^10\\.0\\.302\\s'");
-        sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^10\\.0\\.404\\s'");
-        sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^11\\.0\\.100\\s'");
-        sdkVerificationStep.ShouldNotContain("test \"$(dotnet --version)\" = \"11.0.100\"");
-        sdkVerificationStep.ShouldNotContain("test \"$(dotnet --version)\" = \"10.0.403\"");
+        quality.ShouldNotContain("Install source-resource compatibility SDK");
+        quality.ShouldNotContain("Install dependency source-resource SDK");
+        quality.ShouldNotContain("Verify root and source-resource SDKs");
 
         Regex aspireCliInstall = new(
             @"(?m)^[^#\r\n]*\bdotnet\s+tool\s+install\s+--global\s+Aspire\.Cli\s+--version\s+(?<quote>['""]?)(?<version>[^'""#\s]+)\k<quote>(?:\s|$)",
