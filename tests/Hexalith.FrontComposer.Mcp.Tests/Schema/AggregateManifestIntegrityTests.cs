@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Mcp.Schema;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 using Shouldly;
 
@@ -184,16 +185,10 @@ public sealed class AggregateManifestIntegrityTests {
 
     [Fact]
     public void RuntimeAggregate_TamperedNestedFingerprint_TripsIntegrityMismatch() {
-        // 8-6a re-review D6: the integrity check is per-manifest scope. The build-time emitter
-        // computes the manifest's claimed Fingerprint over its OWN nested fingerprints (no corpus
-        // — the emitter cannot see runtime corpus). The runtime check must catch tampering with
-        // those nested fingerprints (a forged resource fp inside an otherwise-signed manifest).
-        // The cross-manifest+corpus invariant lives in `FrontComposerMcpRuntimeManifestAggregator
-        // .Compute(...)` and is tested separately in
-        // `RuntimeAggregate_IncludesCorpusFingerprints_WhenSkillCorpusIsLoaded`.
+        // A manifest hashes its nested fingerprints before any runtime skill corpus is available.
         SchemaFingerprint nestedResourceFp = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('a', 64));
-        SchemaFingerprint forgedNestedFp = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('z', 64));
-        McpManifest signed = new(
+        SchemaFingerprint forgedNestedFp = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('b', 64));
+        McpManifest original = new(
             "frontcomposer.mcp.v1",
             [],
             [new McpResourceDescriptor(
@@ -204,47 +199,20 @@ public sealed class AggregateManifestIntegrityTests {
                 "Invoices",
                 null,
                 [new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false)],
-                Fingerprint: nestedResourceFp)],
-            Fingerprint: FrontComposerMcpRuntimeManifestAggregator.Compute(
-                [new McpManifest(
-                    "frontcomposer.mcp.v1",
-                    [],
-                    [new McpResourceDescriptor(
-                        "frontcomposer://Billing/projections/InvoiceProjection",
-                        "InvoiceProjection",
-                        "Hexalith.FrontComposer.Sample.InvoiceProjection",
-                        "Billing",
-                        "Invoices",
-                        null,
-                        [new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false)],
-                        Fingerprint: nestedResourceFp)])],
-                []));
-
-        // Tamper: swap the nested resource fingerprint after signing. The manifest's claimed
-        // fingerprint no longer matches the recomputed per-manifest aggregate.
-        McpManifest tampered = signed with {
-            Resources = [signed.Resources[0] with { Fingerprint = forgedNestedFp }],
+                Fingerprint: nestedResourceFp)]);
+        McpManifest fingerprinted = original with { Fingerprint = FrontComposerMcpRuntimeManifestAggregator.Compute([original], []) };
+        McpManifest tampered = fingerprinted with {
+            Resources = [fingerprinted.Resources[0] with { Fingerprint = forgedNestedFp }],
         };
 
-        ServiceCollection services = [];
-        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(tampered));
-        _ = services.AddSingleton<ISkillCorpusFingerprintProvider>(
-            new StaticCorpusFingerprintProvider([new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('b', 64))]));
-        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        var options = Options.Create(new FrontComposerMcpOptions());
+        options.Value.Manifests.Add(fingerprinted);
+        _ = new FrontComposerMcpDescriptorRegistry(options);
 
-        // CK4-P2: pin to the typed FrontComposerMcpException so DI activation wrappers, NREs, or
-        // localized message rewrites cannot silently satisfy the assertion.
+        options.Value.Manifests[0] = tampered;
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(
-            () => services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>());
-
-        ex.Category.ShouldBe(
-            FrontComposerMcpFailureCategory.SchemaIntegrityMismatch,
-            "AC7 (D6 per-manifest scope): tampered nested fingerprint must surface as SchemaIntegrityMismatch.");
-    }
-
-    private sealed class StaticCorpusFingerprintProvider(IReadOnlyList<SchemaFingerprint> fingerprints) : ISkillCorpusFingerprintProvider {
-        public IReadOnlyList<SchemaFingerprint> GetFingerprints() => fingerprints;
+            () => new FrontComposerMcpDescriptorRegistry(options));
+        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.SchemaIntegrityMismatch);
     }
 
     private sealed class CountingCorpusFingerprintProvider(IReadOnlyList<SchemaFingerprint> fingerprints) : ISkillCorpusFingerprintProvider {

@@ -31,7 +31,8 @@ public sealed class InMemorySchemaBaselineProvider : ISchemaBaselineProvider {
     // implementation used `char.IsLetterOrDigit` which accepts Unicode letters/digits — a non-ASCII
     // identifier would pass the provider but be rejected by the contract constructor. Matching the
     // contract regex closes the divergence and keeps fail-closed posture consistent across layers.
-    private static bool IsSafeIdentifier(string value) {
+    /// <summary>Checks whether a package owner or fixture ID can be used for baseline lookup.</summary>
+    internal static bool IsSafeIdentifier(string value) {
         if (string.IsNullOrWhiteSpace(value) || value.Length > 128) {
             return false;
         }

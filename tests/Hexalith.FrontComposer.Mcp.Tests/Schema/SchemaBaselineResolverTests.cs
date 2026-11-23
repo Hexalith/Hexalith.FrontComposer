@@ -89,6 +89,28 @@ public sealed class SchemaBaselineResolverTests {
             .Resolved.ShouldBeFalse();
     }
 
+    [Theory]
+    [InlineData(128, true)]
+    [InlineData(129, false)]
+    public void BaselineIdentifierAcceptsUpTo128Characters(int length, bool expected) {
+        InMemorySchemaBaselineProvider.IsSafeIdentifier(new string('a', length)).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData("a\0b")]
+    [InlineData("a\u00A0b")]
+    [InlineData("a\u200Bb")]
+    [InlineData(@"safe\..\baseline")]
+    public void ResolverRejectsMalformedOwnerAndFixtureId(string identifier) {
+        // The default store is empty, so check validation independently of a lookup miss.
+        InMemorySchemaBaselineProvider.IsSafeIdentifier(identifier).ShouldBeFalse();
+        var resolver = new InMemorySchemaBaselineProvider();
+        resolver.TryResolve(SchemaContractFamily.ProjectionResource, identifier, "baseline-known-v1", out var snapshot).ShouldBeFalse();
+        snapshot.ShouldBeNull();
+        resolver.TryResolve(SchemaContractFamily.ProjectionResource, "Hexalith.FrontComposer", identifier, out snapshot).ShouldBeFalse();
+        snapshot.ShouldBeNull();
+    }
+
     [Fact]
     public void Resolver_RejectsExternalPackageOwners() {
         // AC4: only package-owned identifiers are accepted. A different package owner must not
