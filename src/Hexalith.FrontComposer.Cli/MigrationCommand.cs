@@ -73,6 +73,10 @@ internal static class MigrationCommand {
         int diffBudget = MigrationJson.MaxAggregateDiffChars;
         foreach (MigrationEntry entry in result.Entries.OrderBy(x => x.Path, StringComparer.Ordinal).ThenBy(x => x.DiagnosticId, StringComparer.Ordinal)) {
             output.WriteLine($"- {entry.Kind} {entry.DiagnosticId} {OutputSanitizer.Sanitize(entry.Path)}: {OutputSanitizer.Sanitize(entry.What)}");
+            if (entry.Kind == "manual-only") {
+                output.WriteLine($"  {OutputSanitizer.Sanitize(entry.Fix)}");
+            }
+
             if (string.IsNullOrWhiteSpace(entry.Diff)) {
                 continue;
             }

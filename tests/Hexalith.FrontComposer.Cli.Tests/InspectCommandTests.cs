@@ -652,7 +652,8 @@ public sealed class InspectCommandTests {
               "diagnostics": [
                 { "id": "CS1001", "severity": "Error", "path": "Projection.cs", "what": "ignored" },
                 { "id": "HFC1002", "severity": "Warning", "path": "Projection.cs" },
-                { "id": "HFC1003", "severity": "Error", "path": "file:///tmp/secret.cs", "what": "bad\u0001path" }
+                { "id": "HFC1003", "severity": "Error", "path": "file:///tmp/secret.cs", "what": "bad\u0001path" },
+                { "id": "HFC1004", "severity": "Info", "path": "/bad\u0000.cs" }
               ]
             }
             """);
@@ -670,7 +671,7 @@ public sealed class InspectCommandTests {
 
         using var document = JsonDocument.Parse(output.ToString());
         JsonElement[] diagnostics = document.RootElement.GetProperty("diagnostics").EnumerateArray().ToArray();
-        diagnostics.Length.ShouldBe(2);
+        diagnostics.Length.ShouldBe(3);
         diagnostics.Select(x => x.GetProperty("id").GetString()).ShouldNotContain("CS1001");
 
         JsonElement missingOptional = diagnostics.Single(x => x.GetProperty("id").GetString() == "HFC1002");
@@ -683,6 +684,8 @@ public sealed class InspectCommandTests {
         JsonElement hostile = diagnostics.Single(x => x.GetProperty("id").GetString() == "HFC1003");
         hostile.GetProperty("path").GetString().ShouldBe(PathUtilities.RedactedPathSentinel);
         hostile.GetProperty("what").GetString().ShouldNotBeNull().ShouldContain("\\u0001");
+        diagnostics.Single(x => x.GetProperty("id").GetString() == "HFC1004")
+            .GetProperty("path").GetString().ShouldBe(PathUtilities.RedactedPathSentinel);
         output.ToString().ShouldNotContain("/tmp/secret.cs", Case.Sensitive);
         output.ToString().ShouldNotContain(fixture.Root, Case.Sensitive);
     }
@@ -706,12 +709,144 @@ public sealed class InspectCommandTests {
         output.ToString().ShouldBeEmpty();
     }
 
+    [Theory]
+    [InlineData(false, "../outside")]
+    [InlineData(true, "../outside")]
+    [InlineData(true, "")]
+    [InlineData(true, ".")]
+    [InlineData(true, "C:\\outside")]
+    [InlineData(true, "Debug,Other")]
+    [InlineData(true, "Debug%3B")]
+    public async Task Inspect_RejectsUnsafeConfigurations(bool build, string configuration) {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string[] args = ["inspect", "--project", project, "--configuration=" + configuration];
+        using StringWriter output = new();
+        using StringWriter error = new();
+
+        int exitCode = await CliApplication.RunAsync(build ? [.. args, "--build"] : args, output, error, CancellationToken.None);
+
+        exitCode.ShouldBe(ExitCodes.InvalidArguments, error.ToString());
+        error.ToString().ShouldStartWith("--configuration");
+        output.ToString().ShouldBeEmpty();
+    }
+
     [Fact]
-    public async Task Inspect_EmitsSentinelForMalformedDiagnosticsSidecars() {
+    public async Task Inspect_RejectsMissingConfigurationValue() {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteGenerated("Acme.App", "true", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        using StringWriter output = new();
+        using StringWriter error = new();
+
+        int exitCode = await CliApplication.RunAsync(["inspect", "--project", project, "--configuration"],
+            output, error, CancellationToken.None);
+
+        exitCode.ShouldBe(ExitCodes.InvalidArguments, error.ToString());
+        error.ToString().ShouldContain("--configuration requires a value");
+        output.ToString().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("QA Local.1")]
+    [InlineData("true")]
+    public async Task Inspect_AcceptsCustomConfigurationName(string configuration) {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteGenerated("Acme.App", configuration, "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        using StringWriter output = new();
+        using StringWriter error = new();
+
+        int exitCode = await CliApplication.RunAsync(
+            ["inspect", "--project", project, "--configuration", configuration], output, error, CancellationToken.None);
+
+        exitCode.ShouldBe(ExitCodes.Success, error.ToString());
+        output.ToString().ShouldContain("Configuration: " + configuration);
+    }
+
+    [Fact]
+    public async Task Inspect_TypeFilterRetainsGlobalDiagnostics() {
         using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Broken.diagnostics.json", "{not-json");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Mixed.diagnostics.json", """
+            [
+              {"id":"HFC1001","severity":"Warning"},
+              {"id":"HFC1002","severity":"Info","relatedType":null},
+              {"id":"HFC1003","severity":"Info","relatedType":"Acme.Shipping.ShipmentProjection"},
+              {"id":"HFC1004","severity":"Error","relatedType":"Acme.Shipping.OtherProjection"}
+            ]
+            """);
+
+        (int exitCode, string output, string error) = await RunInspectCaptureAsync(project,
+            ["--type", "Acme.Shipping.ShipmentProjection", "--format", "json", "--fail-on-warning"]);
+
+        exitCode.ShouldBe(ExitCodes.ActionableFindings, error);
+        using var document = JsonDocument.Parse(output);
+        JsonElement[] diagnostics = document.RootElement.GetProperty("diagnostics").EnumerateArray().ToArray();
+        diagnostics.Select(x => x.GetProperty("id").GetString()).ShouldBe(["HFC1001", "HFC1002", "HFC1003"]);
+        diagnostics[0].GetProperty("relatedType").ValueKind.ShouldBe(JsonValueKind.Null);
+        diagnostics[1].GetProperty("relatedType").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public void DiagnosticFileReader_ReportsUnavailableGeneratedDirectory() {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string generated = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "FrontComposer.diagnostics.json", "[]");
+        string generatedDirectory = Path.GetDirectoryName(generated)!;
+        DiagnosticFileReader.Read(Path.GetDirectoryName(project)!, generatedDirectory).ShouldNotBeNull().ShouldBeEmpty();
+
+        Directory.Delete(generatedDirectory, recursive: true);
+
+        DiagnosticFileReader.Read(Path.GetDirectoryName(project)!, generatedDirectory).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Inspect_ReportsUnavailableFrameworkDirectory() {
+        if (OperatingSystem.IsWindows()) {
+            return;
+        }
+
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        string configuration = Path.Combine(Path.GetDirectoryName(project)!, "obj", "Debug");
+        UnixFileMode originalMode = File.GetUnixFileMode(configuration);
+        try {
+            File.SetUnixFileMode(configuration, UnixFileMode.UserExecute);
+            try {
+                _ = Directory.GetFileSystemEntries(configuration);
+                Assert.Skip("The current account can read directories without permissions.");
+            }
+            catch (UnauthorizedAccessException) {
+            }
+
+            using StringWriter output = new();
+            using StringWriter error = new();
+            int exitCode = await CliApplication.RunAsync(["inspect", "--project", project], output, error, CancellationToken.None);
+
+            exitCode.ShouldBe(ExitCodes.GeneratedOutputUnavailable, error.ToString());
+            error.ToString().ShouldContain("Re-run with --build");
+            output.ToString().ShouldBeEmpty();
+        }
+        finally {
+            File.SetUnixFileMode(configuration, originalMode);
+        }
+    }
+
+    [Theory]
+    [InlineData("{not-json", false)]
+    [InlineData("null", false)]
+    [InlineData("42", false)]
+    [InlineData("{}", false)]
+    [InlineData("""{"diagnostics":false}""", false)]
+    [InlineData("""[null, 42, {}, {"id":"\uD800"}, {"id":"HFC1002","relatedType":42}, {"id":"HFC1001"}]""", true)]
+    public async Task Inspect_EmitsSentinelForMalformedDiagnosticsSidecars(string payload, bool hasReadableEntry) {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Broken.diagnostics.json", payload);
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -726,10 +861,15 @@ public sealed class InspectCommandTests {
         exitCode.ShouldBe(0);
         error.ToString().ShouldBeEmpty();
         using var document = JsonDocument.Parse(output.ToString());
-        JsonElement diagnostics = document.RootElement.GetProperty("diagnostics");
-        diagnostics.GetArrayLength().ShouldBe(1);
-        diagnostics[0].GetProperty("id").GetString().ShouldBe("HFCM0002");
-        diagnostics[0].GetProperty("severity").GetString().ShouldBe("Warning");
+        JsonElement[] diagnostics = document.RootElement.GetProperty("diagnostics").EnumerateArray().ToArray();
+        diagnostics.Length.ShouldBe(hasReadableEntry ? 2 : 1);
+        JsonElement sentinel = diagnostics.Single(x => x.GetProperty("id").GetString() == "HFCM0002");
+        sentinel.GetProperty("severity").GetString().ShouldBe("Warning");
+        diagnostics.Any(x => x.GetProperty("id").GetString() == "HFC1001").ShouldBe(hasReadableEntry);
+
+        (exitCode, string text, string textError) = await RunInspectCaptureAsync(project, []);
+        exitCode.ShouldBe(ExitCodes.Success, textError);
+        text.ShouldContain("! HFCM0002 Warning obj/Debug/net10.0/generated/HexalithFrontComposer/Broken.diagnostics.json:");
     }
 
     [Fact]

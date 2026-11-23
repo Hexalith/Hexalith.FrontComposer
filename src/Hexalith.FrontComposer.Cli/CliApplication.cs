@@ -18,7 +18,7 @@ public static class CliApplication {
         // Failure diagnostics remain available after the caller cancels the operation.
         try {
             return args[0] switch {
-                "inspect" => await InspectCommand.RunAsync(CommandOptions.Parse(args.Skip(1)), output, error, cancellationToken)
+                "inspect" => await InspectCommand.RunAsync(CommandOptions.Parse(args.Skip(1), requiredValueOption: "configuration"), output, error, cancellationToken)
                     .ConfigureAwait(false),
                 "migrate" => await MigrationCommand.RunAsync(CommandOptions.Parse(args.Skip(1)), output, error, cancellationToken)
                     .ConfigureAwait(false),

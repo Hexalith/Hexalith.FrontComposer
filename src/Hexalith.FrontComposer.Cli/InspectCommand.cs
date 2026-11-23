@@ -104,7 +104,10 @@ internal static class InspectCommand {
         }
 
         foreach (InspectDiagnostic diagnostic in report.Diagnostics) {
-            output.WriteLine($"! {diagnostic.Id} {diagnostic.Severity}: What: {OutputSanitizer.Sanitize(diagnostic.What)} Expected: {OutputSanitizer.Sanitize(diagnostic.Expected)} Got: {OutputSanitizer.Sanitize(diagnostic.Got)} Fix: {OutputSanitizer.Sanitize(diagnostic.Fix)} DocsLink: {OutputSanitizer.Sanitize(diagnostic.DocsLink)}");
+            string location = diagnostic.Id == DiagnosticFileReader.UnreadableSidecarId && diagnostic.RelativePath is not null
+                ? " " + diagnostic.RelativePath
+                : string.Empty;
+            output.WriteLine($"! {diagnostic.Id} {diagnostic.Severity}{location}: What: {OutputSanitizer.Sanitize(diagnostic.What)} Expected: {OutputSanitizer.Sanitize(diagnostic.Expected)} Got: {OutputSanitizer.Sanitize(diagnostic.Got)} Fix: {OutputSanitizer.Sanitize(diagnostic.Fix)} DocsLink: {OutputSanitizer.Sanitize(diagnostic.DocsLink)}");
         }
     }
 }

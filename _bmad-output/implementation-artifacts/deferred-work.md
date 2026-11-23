@@ -6552,7 +6552,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-pa
 location: src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:14-20
 source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
 reason: summary: Treat non-object diagnostic JSON roots and entries as unreadable sidecars. evidence: `DiagnosticFileReader.Read` calls `TryGetProperty` on every non-array root and on every array entry without first requiring `JsonValueKind.Object`; valid scalar, `null`, string, or numeric JSON therefore throws `InvalidOperationException` outside the reader's catches and aborts `frontcomposer inspect` instead of emitting `HFCM0002` (`src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:14-20,64-67`). Both paths are byte-for-byte pre-existing in the bundled baseline.
-status: open
+status: done 2026-11-23
+resolution: Inspect reports one `HFCM0002` per malformed sidecar, retains readable diagnostics, and identifies the affected sidecar in text and JSON. See `spec-cli-diagnostic-reporting.md`.
 
 ### DW-1625: Handle diagnostic-sidecar directory enumeration races inside the reader.
 
@@ -6560,7 +6561,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-pa
 location: src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:8-10
 source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
 reason: summary: Handle diagnostic-sidecar directory enumeration races inside the reader. evidence: The lazy `Directory.EnumerateFiles(...).Order(...)` enumeration runs outside the per-file `try`, so deletion, permission changes, or I/O failure while enumeration advances escapes `DiagnosticFileReader` and is mapped by the outer CLI to the generic apply/write failure path rather than the generated-output-unavailable contract (`src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:8-10`; `CliApplication.cs:35-38`). The placement predates the mechanical split.
-status: open
+status: done 2026-11-23
+resolution: The reader distinguishes an unavailable directory from an empty diagnostic set. Inspect returns exit code 3 with retry guidance for directory enumeration failures. See `spec-cli-diagnostic-reporting.md`.
 
 ### DW-1626: Normalize absent or null diagnostic related types so type filtering retains global diagnostics.
 
@@ -6568,7 +6570,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-pa
 location: src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:29
 source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
 reason: summary: Normalize absent or null diagnostic related types so type filtering retains global diagnostics. evidence: Missing or JSON-null `relatedType` becomes `string.Empty` in `DiagnosticFileReader`, while `TypeMatcher.Filter` retains global diagnostics only when `RelatedType is null`; a valid global diagnostic therefore disappears whenever `frontcomposer inspect --type` is used (`src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:29,64-67`; `TypeMatcher.cs:35`). This behavior predates the split.
-status: open
+status: done 2026-11-23
+resolution: Missing and null related types remain visible as global diagnostics under `inspect --type`. Invalid related-type values are reported as malformed entries. See `spec-cli-diagnostic-reporting.md`.
 
 ### DW-1627: Validate the requested framework before invoking `dotnet build`.
 
@@ -6584,7 +6587,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-pa
 location: src/Hexalith.FrontComposer.Cli/GeneratedOutputLoader.cs:131-153
 source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
 reason: summary: Reject path-like configuration names before building or resolving generated output. evidence: User-controlled `configuration` is passed to `dotnet build`, embedded in `CompilerGeneratedFilesOutputPath`, and combined under the project `obj` directory without the framework validator's traversal/separator checks (`src/Hexalith.FrontComposer.Cli/GeneratedOutputLoader.cs:131-153`). A path-like configuration can therefore redirect generated-output writes or inspection outside the intended configuration subtree. The behavior predates the split.
-status: open
+status: done 2026-11-23
+resolution: Inspect rejects missing and unsafe configuration values before generated-output resolution or SDK invocation. Named custom configurations still work. See `spec-cli-diagnostic-reporting.md`.
 
 ### DW-1629: Preserve evaluated conditional-compilation symbols when scanning migration sources.
 
@@ -11588,3 +11592,5 @@ November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were ap
 - source_spec: `_bmad-output/implementation-artifacts/spec-migration-diagnostics-and-results.md`
   summary: Report well-formed migration diagnostics whose source is absent from the eligible project documents.
   evidence: MigrationPlanner joins normalized source keys against scanned documents. A diagnostic for a deleted, skipped, or uncompiled source has no match and is omitted. A follow-up can report that case with guidance to regenerate the sidecar.
+  status: done 2026-11-23
+  resolution: Unmatched diagnostics are reported as manual findings for the affected source path, with regeneration guidance in text and JSON. See `spec-cli-diagnostic-reporting.md`.

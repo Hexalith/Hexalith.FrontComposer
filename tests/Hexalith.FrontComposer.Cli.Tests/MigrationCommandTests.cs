@@ -361,6 +361,39 @@ public sealed class MigrationCommandTests {
     }
 
     [Fact]
+    public async Task Migrate_ReportsSidecarDiagnosticsForUnavailableSources()
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+        _ = fixture.WriteSource("Acme.App", "obj/Excluded.cs", "namespace Acme.App;");
+        _ = fixture.WriteGeneratedDiagnosticSidecar("Acme.App", "Debug", "net10.0", "sources.diagnostics.json", """
+            [
+              {"id":"HFCM9002","path":"Program.cs","what":"Matched source finding"},
+              {"id":"HFCM9002","path":"./Missing.cs","what":"Missing source finding"},
+              {"id":"HFCM9002","path":"obj/Excluded.cs"}
+            ]
+            """);
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, ["--format", "json", "--fail-on-findings"]);
+
+        exitCode.ShouldBe(ExitCodes.ActionableFindings, error);
+        using var document = JsonDocument.Parse(output);
+        JsonElement[] entries = document.RootElement.GetProperty("entries").EnumerateArray().ToArray();
+        entries.Select(entry => entry.GetProperty("path").GetString()).ShouldBe(["Missing.cs", "Program.cs", "obj/Excluded.cs"]);
+        entries.ShouldAllBe(entry => entry.GetProperty("kind").GetString() == "manual-only");
+        entries[0].GetProperty("what").GetString().ShouldBe("Missing source finding");
+        entries[0].GetProperty("fix").GetString().ShouldNotBeNull().ShouldContain("Regenerate");
+        entries[1].GetProperty("what").GetString().ShouldBe("Matched source finding");
+        entries[1].GetProperty("fix").GetString().ShouldNotBeNull().ShouldContain("manually");
+        entries[2].GetProperty("fix").GetString().ShouldNotBeNull().ShouldContain("Regenerate");
+
+        (exitCode, string text, error) = await RunMigrateCaptureAsync(project, ["--fail-on-findings"]);
+        exitCode.ShouldBe(ExitCodes.ActionableFindings, error);
+        text.ShouldContain("Missing source finding" + Environment.NewLine + "  Regenerate FrontComposer diagnostics");
+    }
+
+    [Fact]
     public async Task Migrate_SidecarDirectoryEnumerationFailureReportsManualEntry()
     {
         using var fixture = CliFixture.Create();

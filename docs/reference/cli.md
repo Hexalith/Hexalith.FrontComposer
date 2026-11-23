@@ -20,7 +20,9 @@ The CLI reads generated `.g.cs` and `.g.razor.cs` files directly under that root
 `Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.FrontComposerGenerator/`
 subdirectory. If both contain the same filename, the compiler-emitted copy is used.
 With `--build`, the CLI can infer a single target framework from the project. Supply `--framework`
-to select among multiple targets. Other generators are excluded.
+to select among multiple targets. Pass a single MSBuild configuration name such as `Debug` or
+`Release` to `--configuration`. Paths and MSBuild property separators are rejected with exit code 2.
+Other generators are excluded.
 
 `inspect --format json` emits `schemaVersion: frontcomposer.cli.inspect.v1`, `project`,
 `summary`, `generatedFiles[]`, and `diagnostics[]`. The summary counts generated files, forms
@@ -33,21 +35,19 @@ lifecycle bridges, last-used subscribers, Fluxor features, actions, reducers, an
 Text and JSON share ordinal file ordering by related type, family name, then path. Diagnostics
 are ordered ordinally by ID, then path. Counts reflect the filtered report. `--type` accepts an
 exact metadata name or an unambiguous simple name; unknown or ambiguous names fail with code 2.
-Global MCP/template manifests and the `HFCM0002` sentinel remain in type-filtered output.
-Diagnostics with null related type, such as `HFCM0002`, remain in type-filtered output.
-Ordinary sidecar diagnostics without `relatedType` receive an empty string and are excluded by `--type`.
-Ordinary sidecar diagnostics without a related type have an empty type string and are removed by `--type`.
+Global MCP/template manifests and diagnostics remain in type-filtered output. Global diagnostics,
+including the `HFCM0002` warning, report a null `relatedType` in JSON.
 `--severity` filters diagnostics by minimum severity: `hidden` keeps all, `info` (or `information`)
 keeps Info/Warning/Error, `warning` keeps Warning/Error, and `error` keeps Error.
 Both severity and type filters run before fail flags.
 
 Top-level `*.diagnostics.json` sidecars accept arrays or `{ "diagnostics": [] }` documents.
-Only IDs starting with `HFC` are reported. Missing optional string fields become empty strings;
-handled malformed-JSON or read failures produce the warning sentinel `HFCM0002`. Only the
-documented shapes with diagnostic object entries are supported. Unsupported valid JSON shapes,
-such as scalar roots or non-object diagnostic entries, may throw outside handled failures without
-a structured report or the documented exit-code guarantees. Unsafe sidecar paths are redacted. `--absolute-paths` explicitly opts generated-file paths into absolute output;
-project and sidecar paths retain their relative/redacted behavior.
+Only IDs starting with `HFC` are reported. Missing optional string fields other than `relatedType`
+become empty strings. Malformed entries, unsupported JSON shapes, and per-file read errors produce
+one `HFCM0002` warning per affected sidecar. Readable findings are still included. If the generated
+directory cannot be enumerated, inspection returns exit code 3. Unsafe sidecar paths are redacted.
+`--absolute-paths` opts generated-file paths into absolute output. Project and sidecar paths retain
+their relative or redacted form.
 
 `frontcomposer migrate` requires explicit `--from` and `--to` versions. Use the
 [classified index](../migrations/index.md) to find and select executable CLI-supported edges and manual-only upgrades.
@@ -63,7 +63,8 @@ without an unchanged entry.
 Migration sidecars accept arrays of diagnostic objects or objects containing a `diagnostics`
 array. Malformed or unreadable payloads produce one manual-only sentinel per sidecar while
 valid sibling entries are still reported. An inaccessible sidecar directory produces a
-manual-only sentinel for `obj`.
+manual-only sentinel for `obj`. A valid diagnostic whose source was missing or excluded is reported
+as a manual finding with guidance to regenerate the diagnostics for the selected project.
 
 Exit codes:
 

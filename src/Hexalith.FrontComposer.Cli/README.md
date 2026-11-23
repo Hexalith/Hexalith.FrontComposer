@@ -22,9 +22,10 @@ manifest source file. `__FrontComposerProjectionTemplatesRegistration.g.cs` is r
 as `TemplateManifest`.
 
 `inspect` reads top-level `*.diagnostics.json` sidecars from the generated-output directory. Only
-diagnostics whose IDs start with `HFC` are reported. Missing optional fields emit empty strings,
-malformed or unreadable sidecars emit the deterministic warning sentinel `HFCM0002`, and unsafe
-sidecar paths are redacted rather than trusted. `--severity` and `--type` filtering are applied
+diagnostics whose IDs start with `HFC` are reported. Missing optional fields emit empty strings
+except that global diagnostics have a null `relatedType` and remain visible under `--type`.
+Malformed or unreadable sidecars produce one `HFCM0002` warning each, and unsafe sidecar paths
+are redacted. `--severity` and `--type` filtering are applied
 before `--fail-on-warning` or `--fail-on-error` determines the final exit code. Severity filtering
 uses threshold semantics: `hidden` includes all diagnostics, `info` includes Info/Warning/Error,
 `warning` includes Warning/Error, and `error` includes Error only.
@@ -97,7 +98,8 @@ will generate migration sidecars.
 
 Each unreadable sidecar or sidecar with malformed JSON or diagnostic entries produces one
 manual-only sentinel. Valid entries in the same sidecar are still reported. A failure to enumerate
-the sidecar directory produces a manual-only sentinel for `obj`.
+the sidecar directory produces a manual-only sentinel for `obj`. If a valid diagnostic refers to
+a source the migration could not scan, its manual finding asks you to regenerate the diagnostics.
 
 Sidecar `path` values are matched using normalized project-relative source paths. Drive-relative
 paths (`C:foo.cs`), URI-shaped paths, control characters, traversal, and paths outside the selected

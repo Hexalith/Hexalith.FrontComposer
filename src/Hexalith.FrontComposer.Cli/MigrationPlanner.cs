@@ -21,6 +21,7 @@ internal static class MigrationPlanner {
     public static async Task<MigrationPlan> PlanAsync(string projectPath, MigrationEdge edge, CancellationToken cancellationToken) {
         ProjectDocumentSet documentSet = ProjectDocumentLoader.Load(projectPath);
         var (generatedDiagnostics, unreadableSidecars) = MigrationDiagnosticSidecarReader.Read(documentSet.ProjectDirectory);
+        HashSet<string> unmatchedDiagnosticPaths = new(generatedDiagnostics.Keys, PathUtilities.PathComparer);
         HashSet<string> submoduleRoots = SubmoduleBoundaryReader.Read(documentSet.ProjectDirectory);
         List<MigrationEntry> entries = [];
         List<PlannedFileEdit> fileEdits = [];
@@ -98,20 +99,17 @@ internal static class MigrationPlanner {
             ImmutableArray<Diagnostic> diagnostics = await MigrationDiagnosticScanner.ScanAsync(document, cancellationToken).ConfigureAwait(false);
             if (generatedDiagnostics.TryGetValue(projectDocument.RelativePath, out ImmutableArray<Diagnostic> sourceToolDiagnostics)) {
                 diagnostics = diagnostics.AddRange(sourceToolDiagnostics);
+                _ = unmatchedDiagnosticPaths.Remove(projectDocument.RelativePath);
             }
 
             List<MigrationEntry> fileEntries = [];
 
             foreach (Diagnostic manual in diagnostics.Where(x => x.Id == MigrationDiagnostics.ManualMigration.Id).OrderBy(x => x.Location.SourceSpan.Start)) {
-                // If the sidecar reader preserved the source-side `what`, surface it; otherwise fall back to the generic message.
-                string sidecarWhat = manual.Properties.TryGetValue("what", out string? value) && !string.IsNullOrWhiteSpace(value)
-                    ? value
-                    : "Customization-sensitive FrontComposer API requires manual migration.";
                 fileEntries.Add(new MigrationEntry(
                     manual.Id,
                     "manual-only",
                     projectDocument.RelativePath,
-                    sidecarWhat,
+                    ManualMigrationWhat(manual, "Customization-sensitive FrontComposer API requires manual migration."),
                     "Developer reviews customization semantics before changing behavior.",
                     "A manual-only migration diagnostic was found.",
                     "Review the migration guide and update the affected call site manually.",
@@ -225,6 +223,22 @@ internal static class MigrationPlanner {
                 fixEntries));
         }
 
+        foreach (string path in unmatchedDiagnosticPaths.Order(StringComparer.Ordinal)) {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (Diagnostic diagnostic in generatedDiagnostics[path]) {
+                entries.Add(new MigrationEntry(
+                    diagnostic.Id,
+                    "manual-only",
+                    path,
+                    ManualMigrationWhat(diagnostic, "Migration diagnostic refers to unavailable project source."),
+                    "Sidecar diagnostics refer to source files eligible for migration in the selected project.",
+                    "The source file was not available in the migration scan.",
+                    "Regenerate FrontComposer diagnostics for the selected project and rerun migration.",
+                    edge.DocsLink,
+                    null));
+            }
+        }
+
         foreach (string sidecarPath in unreadableSidecars.Order(StringComparer.Ordinal)) {
             entries.Add(new MigrationEntry(
                 MigrationDiagnostics.ManualMigration.Id,
@@ -254,6 +268,11 @@ internal static class MigrationPlanner {
 
         return new MigrationPlan(documentSet.ProjectDirectory, edge, fileEdits, entries);
     }
+
+    private static string ManualMigrationWhat(Diagnostic diagnostic, string fallback)
+        => diagnostic.Properties.TryGetValue("what", out string? value) && !string.IsNullOrWhiteSpace(value)
+            ? value
+            : fallback;
 
     private static bool IsWorkspaceCompositionFailure(Exception exception)
         => exception is FileLoadException or FileNotFoundException or TypeLoadException or System.Reflection.ReflectionTypeLoadException

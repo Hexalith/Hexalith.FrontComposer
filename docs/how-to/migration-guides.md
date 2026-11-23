@@ -69,7 +69,8 @@ emitted reports. Cancellation during planning can return code 4 before a report 
 If cancellation stops apply, the report lists completed writes and each planned file left
 unwritten. Migration sidecars support arrays of diagnostic objects or objects containing a
 `diagnostics` array. Malformed payloads and directory read failures appear as manual-only
-sentinels in the report. Other readable diagnostics are still included.
+sentinels in the report. Other readable diagnostics are still included. If their source is
+unavailable to the migration scan, the report asks you to regenerate the diagnostics.
 
 Generated output, `bin`, `obj`, `.git`, package caches, submodules and other nested repositories, paths outside the project,
 file symlinks, and linked ancestor directories below the project directory (including junctions) are ineligible. Paths below the selected project directory are ineligible when they are generated output, nested repositories, file symlinks, or linked directories. Explicit `Compile` Link metadata does not authorize an outside-root or
@@ -81,10 +82,9 @@ BOM), UTF-16 LE/BE, and UTF-32 LE/BE; unknown encodings and files over 16 MiB ar
 For inspection without migration, use `inspect --format json` and its
 `frontcomposer.cli.inspect.v1` contract. See [CLI reference](../reference/cli.md) for generated
 families, ordering, filters, sidecar handling, bounded output, and path opt-in. Sidecars support
-arrays of diagnostic objects or objects containing a `diagnostics` array of objects. Handled parse
-and read failures produce sanitized findings; unsupported valid JSON shapes, such as scalar roots
-or non-object diagnostic entries, may throw outside handled failures without a structured report
-or the documented exit-code guarantees.
+arrays of diagnostic objects or objects containing a `diagnostics` array of objects. Parse errors,
+read errors, and unsupported JSON shapes produce an `HFCM0002` warning for the affected sidecar.
+If the generated directory cannot be enumerated, inspection exits with code 3.
 
 Skill-corpus evidence: `docs/skills/frontcomposer/migration/versioned-corpus-rules.md` remains the producer input.
 

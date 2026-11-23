@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
@@ -11,6 +12,7 @@ namespace Hexalith.FrontComposer.Cli;
 internal static class GeneratedOutputLoader {
     private const string GeneratedRoot = "generated";
     private const string FrontComposerGeneratedRoot = "HexalithFrontComposer";
+    private static readonly SearchValues<char> InvalidConfigurationChars = SearchValues.Create("/\\:;,%=*?$<>|\"'");
 
     public static async Task<InspectLoadResult> LoadAsync(
         string projectPath,
@@ -20,6 +22,10 @@ internal static class GeneratedOutputLoader {
         bool absolutePaths,
         TextWriter error,
         CancellationToken cancellationToken) {
+        if (!IsValidConfigurationName(configuration)) {
+            return InspectLoadResult.Fail("--configuration must be a single MSBuild configuration name.", ExitCodes.InvalidArguments);
+        }
+
         string projectFullPath = Path.GetFullPath(projectPath);
         string projectDirectory = Path.GetDirectoryName(projectFullPath)!;
 
@@ -65,21 +71,23 @@ internal static class GeneratedOutputLoader {
             }
         }
 
-        FrameworkSelection selectedFramework = SelectFramework(projectDirectory, configuration, framework);
-        if (!selectedFramework.Success) {
-            return InspectLoadResult.Fail(selectedFramework.Error, selectedFramework.ExitCode);
-        }
-
-        string generatedDirectory = selectedFramework.GeneratedDirectory!;
-        if (!Directory.Exists(generatedDirectory)) {
-            string reason = ProjectLooksFrontComposerAnnotated(projectDirectory)
-                ? "Generated output is missing. Run 'dotnet build' or pass --build so FrontComposer can emit files."
-                : "Generated output is missing and no obvious FrontComposer annotations were found in project source. Run 'dotnet build' or pass --build if generated output is expected.";
-            return InspectLoadResult.Fail(reason, ExitCodes.GeneratedOutputUnavailable);
-        }
-
+        FrameworkSelection selectedFramework;
+        string generatedDirectory;
         List<GeneratedFileInfo> files;
         try {
+            selectedFramework = SelectFramework(projectDirectory, configuration, framework);
+            if (!selectedFramework.Success) {
+                return InspectLoadResult.Fail(selectedFramework.Error, selectedFramework.ExitCode);
+            }
+
+            generatedDirectory = selectedFramework.GeneratedDirectory!;
+            if (!Directory.Exists(generatedDirectory)) {
+                string reason = ProjectLooksFrontComposerAnnotated(projectDirectory)
+                    ? "Generated output is missing. Run 'dotnet build' or pass --build so FrontComposer can emit files."
+                    : "Generated output is missing and no obvious FrontComposer annotations were found in project source. Run 'dotnet build' or pass --build if generated output is expected.";
+                return InspectLoadResult.Fail(reason, ExitCodes.GeneratedOutputUnavailable);
+            }
+
             if (build && !EnumerateGeneratedFiles(generatedDirectory).Any()) {
                 // A warm SDK build can skip CoreCompile when disk emission is first requested.
                 // References were built above, so only the selected project needs recompiling.
@@ -98,7 +106,7 @@ internal static class GeneratedOutputLoader {
                 .ThenBy(x => x.RelativePath, StringComparer.Ordinal)
                 .ToList();
         }
-        catch (Exception ex) when (ex is DirectoryNotFoundException or IOException or UnauthorizedAccessException) {
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
             return InspectLoadResult.Fail(
                 "Generated output became unavailable while inspecting it. Re-run with --build or retry after the build completes.",
                 ExitCodes.GeneratedOutputUnavailable);
@@ -110,10 +118,12 @@ internal static class GeneratedOutputLoader {
                 ExitCodes.GeneratedOutputUnavailable);
         }
 
-        var diagnostics = DiagnosticFileReader.Read(projectDirectory, generatedDirectory)
-            .OrderBy(x => x.Id, StringComparer.Ordinal)
-            .ThenBy(x => x.RelativePath ?? string.Empty, StringComparer.Ordinal)
-            .ToList();
+        List<InspectDiagnostic>? diagnostics = DiagnosticFileReader.Read(projectDirectory, generatedDirectory);
+        if (diagnostics is null) {
+            return InspectLoadResult.Fail(
+                "Generated diagnostics directory became unavailable while inspecting it. Re-run with --build or retry after the build completes.",
+                ExitCodes.GeneratedOutputUnavailable);
+        }
 
         string relativeProject = PathUtilities.ToProjectRelative(projectDirectory, projectFullPath);
         InspectReport report = new(
@@ -122,7 +132,9 @@ internal static class GeneratedOutputLoader {
             configuration,
             selectedFramework.Framework!,
             files,
-            diagnostics);
+            diagnostics.OrderBy(x => x.Id, StringComparer.Ordinal)
+                .ThenBy(x => x.RelativePath ?? string.Empty, StringComparer.Ordinal)
+                .ToList());
 
         return InspectLoadResult.Ok(report);
     }
@@ -259,6 +271,14 @@ internal static class GeneratedOutputLoader {
             return false;
         }
     }
+
+    private static bool IsValidConfigurationName(string configuration)
+        => !string.IsNullOrWhiteSpace(configuration)
+            && configuration == configuration.Trim()
+            && !configuration.StartsWith('-')
+            && !configuration.EndsWith('.')
+            && !configuration.AsSpan().ContainsAny(InvalidConfigurationChars)
+            && !configuration.Any(char.IsControl);
 
     private static readonly char[] InvalidFrameworkChars = ['/', '\\', ':', ';', '*', '?', '$', '<', '>', '|', '"', '\'', '\0'];
 

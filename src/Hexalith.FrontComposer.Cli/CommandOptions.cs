@@ -8,14 +8,14 @@ internal sealed class CommandOptions {
     private CommandOptions() {
     }
 
-    public static CommandOptions Parse(IEnumerable<string> args) {
+    public static CommandOptions Parse(IEnumerable<string> args, string? requiredValueOption = null) {
         CommandOptions options = new();
         string? pending = null;
         bool positionalOnly = false;
         foreach (string token in args) {
             if (!positionalOnly && token == "--") {
                 if (pending is not null) {
-                    options.Add(pending, "true");
+                    options.AddImplicit(pending, requiredValueOption);
                     pending = null;
                 }
 
@@ -25,7 +25,7 @@ internal sealed class CommandOptions {
 
             if (!positionalOnly && token.StartsWith("--", StringComparison.Ordinal)) {
                 if (pending is not null) {
-                    options.Add(pending, "true");
+                    options.AddImplicit(pending, requiredValueOption);
                 }
 
                 string name = token[2..];
@@ -55,7 +55,7 @@ internal sealed class CommandOptions {
 
             if (!positionalOnly && token.StartsWith('-') && token.Length > 1) {
                 if (pending is not null) {
-                    options.Add(pending, "true");
+                    options.AddImplicit(pending, requiredValueOption);
                 }
 
                 string shortName = token[1..];
@@ -80,7 +80,7 @@ internal sealed class CommandOptions {
         }
 
         if (pending is not null) {
-            options.Add(pending, "true");
+            options.AddImplicit(pending, requiredValueOption);
         }
 
         foreach ((string name, List<string> values) in options._values) {
@@ -105,6 +105,14 @@ internal sealed class CommandOptions {
 
     private static bool IsValidLongName(string name)
         => !string.IsNullOrEmpty(name) && name.All(c => char.IsLetterOrDigit(c) || c is '-' or '_');
+
+    private void AddImplicit(string name, string? requiredValueOption) {
+        if (name == requiredValueOption) {
+            throw new CommandLineException("--" + name + " requires a value.");
+        }
+
+        Add(name, "true");
+    }
 
     private void Add(string name, string value) {
         if (!_values.TryGetValue(name, out List<string>? values)) {
