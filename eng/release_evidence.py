@@ -35,7 +35,8 @@ from typing import Any
 # provenance shape before sealing instead of reusing the historical v2 evaluator shape.
 # 4.2.1: verify the caller-owned publisher from FrontComposer's exact Git source.
 # 4.3.0: fallback approvals retain their immutable owner-recorded digest; drift denies publication.
-__version__ = "4.3.0"
+# 4.3.1: validate release evidence field types and inspect only unconditional project properties.
+__version__ = "4.3.1"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -349,6 +350,14 @@ def sanitize(value: Any, max_len: int = MAX_FIELD) -> str:
     if text.startswith("::"):
         text = "\\" + text
     return text[:max_len] + ("..." if len(text) > max_len else "")
+
+
+def describe_evidence_status(status: Any) -> str:
+    if status is None:
+        return "null"
+    if isinstance(status, str):
+        return sanitize(status) if status.strip() else "blank string"
+    return type(status).__name__
 
 
 def read_json(path: str | pathlib.Path) -> Any:
@@ -1108,29 +1117,14 @@ def require_trusted_context(args: argparse.Namespace) -> None:
 
 
 def project_property(project: pathlib.Path, name: str) -> str:
-    """Return the first UNCONDITIONAL ``PropertyGroup/<name>`` value in the csproj.
-
-    CR-12-4-P201 (round-8): ignore property elements that carry a ``Condition`` attribute
-    (or live under a ``<PropertyGroup Condition="...">``). Conditional declarations only
-    apply for matching MSBuild evaluation contexts (Configuration, TargetFramework, etc.);
-    they do not encode an unconditional release-time invariant. A csproj declaring
-    ``<IsPackable Condition="'$(Configuration)'=='Debug'">false</IsPackable>`` previously
-    read as "non-packable" for AC4 inventory regardless of context, hiding a Release-only
-    packable project. AC4 requires unconditional packability statements.
-    """
+    """Return the first nonblank, unconditional project-level property value."""
     root = ET.parse(project).getroot()
-    for prop in root.findall(".//PropertyGroup/" + name):
-        if prop.attrib.get("Condition"):
+    # Groups nested in Choose or Target depend on MSBuild control flow.
+    for group in root.findall("PropertyGroup"):
+        if "Condition" in group.attrib:
             continue
-        parent = prop  # element-tree lacks parent pointers; re-walk to detect conditional group
-        if prop.text and prop.text.strip():
-            # The parent PropertyGroup may carry the condition. Re-scan top-level
-            # PropertyGroups and check whether this element lives under a conditional one.
-            for group in root.findall(".//PropertyGroup"):
-                if prop in list(group) and group.attrib.get("Condition"):
-                    parent = None
-                    break
-            if parent is not None:
+        for prop in group.findall(name):
+            if "Condition" not in prop.attrib and prop.text and prop.text.strip():
                 return prop.text.strip()
     return ""
 
@@ -2007,6 +2001,13 @@ def read_bounded_evidence(root: pathlib.Path) -> tuple[str, list[str]]:
 
 def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], test_payload: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     diagnostics: list[str] = []
+    test_status = test_payload.get("status", args.test_status)
+    if not isinstance(test_status, str) or not test_status.strip():
+        diagnostics.append(
+            f"test results status must be a nonblank string; actual={describe_evidence_status(test_status)}"
+        )
+        test_status = "invalid"
+
     evidence_root = pathlib.Path(args.evidence_root) if args.evidence_root else None
     root = pathlib.Path(args.root)
     root_exists = root.is_dir()
@@ -2129,7 +2130,7 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
         "sbom_status": sbom_status,
         "semantic_release_state": args.semantic_release_state,
         "test_count": coerced_test_count,
-        "test_status": "passed" if test_payload.get("status", args.test_status) == "valid" else test_payload.get("status", args.test_status),
+        "test_status": "passed" if test_status == "valid" else test_status,
         "trx_present": trx_present_parsed,
     }, diagnostics
 
@@ -2369,19 +2370,24 @@ def fallback_complete(
         "scope",
         "approved_against_fingerprints_sha256",
     ]
-    # CR-12-4-Def107 (review): strip before the presence check so a whitespace-only
-    # required field (e.g. affected_artifact="   ") is treated as MISSING. Without this a
-    # blank-but-truthy value passed completeness here yet was skipped by the downstream
-    # affected_artifact cross-check (it strips to empty), opening a fail-open hole.
-    missing = [field for field in required if not str(fallback.get(field) or "").strip()]
+    missing = []
+    invalid = []
+    for field in required:
+        value = fallback.get(field)
+        if value is None or (isinstance(value, str) and not value.strip()):
+            missing.append(field)
+        elif not isinstance(value, str):
+            invalid.append(field)
     if missing:
         return False, f"fallback missing required field(s): {', '.join(missing)}"
+    if invalid:
+        return False, f"fallback required field(s) must be strings: {', '.join(invalid)}"
     # CR-12-4-P108 (round-5): validate the digest is a well-formed sha256 hex string
     # before comparing. A malformed value (truncated, non-hex, swapped algorithm) used
     # to be reported as a generic "drifted release definition" — operators could spend
     # significant time chasing a release-definition drift that doesn't exist. Now they
     # get a typed reason and a clear corrective action.
-    approved_digest_raw = str(fallback.get("approved_against_fingerprints_sha256", "")).strip()
+    approved_digest_raw = fallback["approved_against_fingerprints_sha256"].strip()
     if not SHA256_RE.fullmatch(approved_digest_raw):
         return False, f"fallback approved_against_fingerprints_sha256 must be a 64-char hex sha256; actual={sanitize(approved_digest_raw)}"
     expiry, expiry_diagnostic = parse_expiry(fallback["expires_at"])
@@ -2417,14 +2423,16 @@ def fallback_complete(
     # file is not present — the document is the record. Phantom evidence pointers used
     # to silently authorize releases under `fallback-approved`; now they fail closed.
     if evidence_root is not None:
-        evidence_name = str(fallback.get("evidence", ""))
-        # CR-12-4-P157 (round-7): detect the legacy double-prefix form
-        # (`release-evidence/attestation-unavailable.md` resolved under an
-        # `--evidence-root ./release-evidence` produces a missing file). Emit a typed
-        # diagnostic so operators get an actionable hint instead of a generic
-        # "evidence file missing" message.
+        evidence_name = fallback["evidence"]
+        try:
+            evidence_path = normalize_under_root(evidence_root, evidence_name)
+        except SystemExit as exc:
+            return False, f"fallback evidence path is not normalizable under root: {sanitize(exc)}"
+        has_evidence_file = evidence_path.is_file()
+        # A real child directory may share the root's name. Offer the legacy
+        # double-prefix hint only when the supplied relative path has no file.
         evidence_root_name = evidence_root.name
-        if evidence_root_name and evidence_name.replace("\\", "/").startswith(
+        if not has_evidence_file and evidence_root_name and evidence_name.replace("\\", "/").startswith(
             evidence_root_name + "/"
         ):
             return False, (
@@ -2432,11 +2440,7 @@ def fallback_complete(
                 f"use the path relative to the evidence root (e.g., 'attestation-unavailable.md'); "
                 f"actual={sanitize(evidence_name)}"
             )
-        try:
-            evidence_path = normalize_under_root(evidence_root, evidence_name)
-        except SystemExit as exc:
-            return False, f"fallback evidence path is not normalizable under root: {sanitize(exc)}"
-        if not evidence_path.is_file() or evidence_path.stat().st_size == 0:
+        if not has_evidence_file or evidence_path.stat().st_size == 0:
             return False, f"fallback evidence file missing or empty: {sanitize(evidence_name)}"
     if fingerprints is not None:
         approved_digest = approved_digest_raw.lower()
@@ -2661,7 +2665,7 @@ def classify_release_payload(
     # The producer (`prepare_manifest`) always writes them in lockstep from a single
     # source (`RELEASE_ATTESTATION_STATUS`), so any divergence at classify time is a
     # tampering signal. Reject before either branch fires.
-    if status in {"attested", "approved-unsupported"} and isinstance(manifest, dict):
+    if status in ("attested", "approved-unsupported") and isinstance(manifest, dict):
         manifest_packages = manifest.get("packages") if isinstance(manifest.get("packages"), list) else []
         discordant = [
             str(row.get("package_id", "<unknown>"))
@@ -2840,7 +2844,8 @@ def classify_release_payload(
         if not isinstance(attestation_bundle, dict) or not attestation_bundle.get("sha256"):
             blocking.append("attested release missing manifest.attestation_bundle evidence")
     else:
-        blocking.append(f"attestation status must be attested or approved-unsupported; actual={sanitize(status)}")
+        actual = describe_evidence_status(status) if "status" in attestation else "missing"
+        blocking.append(f"attestation status must be attested or approved-unsupported; actual={actual}")
 
     classification = "blocked" if blocking else ("fallback-approved" if fallback_reasons else "ready")
     # CR-12-4-P247 (round-10, D21/BH-F2/EC-1): dry-run carve-out. Round-9 P217/P218

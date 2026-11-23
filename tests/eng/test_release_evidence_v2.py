@@ -1034,6 +1034,108 @@ class ReleaseEvidenceCliInputTests(unittest.TestCase):
             "--output", str(self.output), *args,
         )
 
+    def test_classify_release_blocks_malformed_test_result_status(self) -> None:
+        results = self.root / "test-results.json"
+        command = (
+            "classify-release", "--root", str(self.root), "--test-results", str(results),
+            "--test-status", "passed", "--output", str(self.output),
+        )
+        for status, actual in ((None, "null"), (" ", "blank string"), ([], "list")):
+            with self.subTest(status=status):
+                _write_json(results, {"status": status, "test_count": 1, "trx_present": True})
+                result = self.run_cli(*command)
+                self.assertEqual(0, result.returncode, result.stderr)
+                decision = json.loads(self.output.read_text(encoding="utf-8"))
+                self.assertFalse(decision["publish_authorized"])
+                blockers = decision["grouped_reasons"]["blocking"]
+                self.assertIn(f"evidence: test results status must be a nonblank string; actual={actual}", blockers)
+
+        for supplied in ({}, {"status": "valid"}, {"status": "invalid"}):
+            with self.subTest(supplied=supplied):
+                _write_json(results, {**supplied, "test_count": 1, "trx_present": True})
+                result = self.run_cli(*command)
+                self.assertEqual(0, result.returncode, result.stderr)
+                blockers = json.loads(self.output.read_text(encoding="utf-8"))["grouped_reasons"]["blocking"]
+                self.assertFalse(any("test results status" in blocker for blocker in blockers))
+                self.assertEqual(
+                    supplied.get("status") == "invalid",
+                    any("test_status must be passed" in blocker for blocker in blockers),
+                )
+
+    def test_classify_release_explains_missing_and_malformed_attestation_status(self) -> None:
+        evidence = json.loads(
+            (REPOSITORY_ROOT / "tests/ci-governance/fixtures/release-readiness-cases.json").read_text(encoding="utf-8"),
+        )["base_evidence"]
+        source = self.root / "evidence.json"
+        for attestation, actual in (
+            ({}, "missing"),
+            ({"status": None}, "null"),
+            ({"status": " "}, "blank string"),
+            ({"status": []}, "list"),
+            ({"status": "unsupported"}, "unsupported"),
+        ):
+            with self.subTest(attestation=attestation):
+                _write_json(source, {**evidence, "attestation": attestation})
+                result = self.run_cli(
+                    "classify-release", "--root", str(self.root), "--evidence", str(source),
+                    "--output", str(self.output),
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                decision = json.loads(self.output.read_text(encoding="utf-8"))
+                self.assertFalse(decision["publish_authorized"])
+                self.assertIn(
+                    f"attestation status must be attested or approved-unsupported; actual={actual}",
+                    decision["grouped_reasons"]["blocking"],
+                )
+
+    def test_fallback_accepts_nested_file_named_like_evidence_root(self) -> None:
+        evidence_root = self.root / "release-evidence"
+        nested = evidence_root / evidence_root.name / "approval.md"
+        nested.parent.mkdir(parents=True)
+        nested.write_text("fixture approval evidence\n", encoding="utf-8")
+        fallback = self.fallback_record(evidence=nested.relative_to(evidence_root).as_posix())
+        self.assertEqual((True, None), HELPER.fallback_complete(fallback, evidence_root=evidence_root))
+        nested.unlink()
+        complete, diagnostic = HELPER.fallback_complete(fallback, evidence_root=evidence_root)
+        self.assertFalse(complete)
+        self.assertIn("duplicates evidence-root prefix", diagnostic)
+        fallback["evidence"] = "../approval.md"
+        complete, diagnostic = HELPER.fallback_complete(fallback, evidence_root=evidence_root)
+        self.assertFalse(complete)
+        self.assertIn("escapes approved root", diagnostic)
+
+    def test_fallback_requires_text_in_all_required_fields(self) -> None:
+        fallback = self.fallback_record()
+        self.assertEqual((True, None), HELPER.fallback_complete(fallback))
+        for field in fallback:
+            for value in (42, False, ["approval"]):
+                with self.subTest(field=field, value=value):
+                    complete, diagnostic = HELPER.fallback_complete({**fallback, field: value})
+                    self.assertFalse(complete)
+                    self.assertEqual(f"fallback required field(s) must be strings: {field}", diagnostic)
+        for value in (None, "", " \t "):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    (False, "fallback missing required field(s): reason"),
+                    HELPER.fallback_complete({**fallback, "reason": value}),
+                )
+
+    @staticmethod
+    def fallback_record(*, evidence: str = "approval.md") -> dict[str, str]:
+        now = dt.datetime.now(dt.timezone.utc)
+        return {
+            "affected_artifact": "release package set",
+            "approved_at": (now - dt.timedelta(minutes=1)).isoformat(),
+            "approver": "release-owner",
+            "evidence": evidence,
+            "expires_at": (now + dt.timedelta(days=1)).isoformat(),
+            "reason": "fixture",
+            "release_note_impact": "fixture",
+            "reopen_event": "fixture",
+            "scope": "fixture",
+            "approved_against_fingerprints_sha256": "1" * 64,
+        }
+
     def test_incident_output_directory_gets_a_diagnostic_without_creating_files(self) -> None:
         _write_json(self.manifest, {})
         self.output.mkdir()
@@ -1295,6 +1397,38 @@ class BuildsExecutionInventoryExclusionTests(unittest.TestCase):
             )
             unexpected = HELPER.discover_unexpected_packable_outside_src(root)
             self.assertEqual([], unexpected)
+
+    def test_inventory_ignores_properties_nested_inside_msbuild_control_flow(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            project = root / "extras" / "Rogue.csproj"
+            project.parent.mkdir()
+            project.write_text(
+                """<Project Sdk="Microsoft.NET.Sdk">
+  <Choose>
+    <When Condition="'$(Configuration)' == 'Debug'">
+      <PropertyGroup><IsPackable>false</IsPackable><PackageId>Debug.Id</PackageId></PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup><IsPackable>false</IsPackable><PackageId>Other.Id</PackageId></PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Target Name="Override">
+    <PropertyGroup><IsPackable>false</IsPackable><PackageId>Target.Id</PackageId></PropertyGroup>
+  </Target>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <IsPackable>false</IsPackable><PackageId>Conditional.Group.Id</PackageId>
+  </PropertyGroup>
+  <PropertyGroup>
+    <IsPackable Condition="'$(Configuration)' == 'Debug'">false</IsPackable>
+    <PackageId Condition="'$(Configuration)' == 'Debug'">Conditional.Property.Id</PackageId>
+    <PackageId>Release.Id</PackageId>
+  </PropertyGroup>
+</Project>""",
+                encoding="utf-8",
+            )
+            self.assertEqual([project.resolve()], HELPER.discover_unexpected_packable_outside_src(root))
+            self.assertEqual("Release.Id", HELPER.package_id(project))
 
     def test_sibling_packable_outside_src_still_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

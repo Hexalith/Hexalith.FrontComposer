@@ -5599,7 +5599,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: eng/release_evidence.py:1041
 reason: **CR-12-4-Def52 — `test_payload.get("status", args.test_status)` accepts `None`:** Defaults via fallthrough; `BLOCKING_CHECKS` comparison fails-closed when status != "valid". Pick up alongside P204 (trx_present string-bool truthiness). Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1041`.
-status: open
+status: done 2026-11-23
+resolution: Classification reports malformed test-result status as invalid, including explicit null, and uses the CLI fallback when status is absent. Regression covered by tests/eng/test_release_evidence_v2.py.
 
 ### DW-1496: `--pattern` accepting absolute path crashes mid-glob: Checksum subcommand `pathlib.Path.glob(absolute_path)` raises. CLI misuse fail-closed; pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1547`.
 
@@ -5771,14 +5772,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
 location: foo.md
 reason: **CR-12-4-Def61 — `fallback_complete` evidence-root prefix detection uses `.name` (last component):** Blind Hunter BH-013 — collides with directories sharing the leaf name (e.g., `work` dir + `work/foo.md`). Production evidence-root is conventionally `release-evidence`; collisions unlikely. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1566-1574`.
-status: open
+status: done 2026-11-23
+resolution: Fallback validation resolves the evidence file before reporting a duplicate root prefix, allowing a valid same-name child directory. Regression covered by tests/eng/test_release_evidence_v2.py.
 
 ### DW-1521: `project_property` does not handle `<Choose><When><PropertyGroup>` nested constructs: Blind Hunter BH-014 — MSBuild-conditional property declarations wrapped in `<Choose>` rather than on the PropertyGroup itself are read as unconditional. No current csproj uses this pattern. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:884-897`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
 location: eng/release_evidence.py:884-897
 reason: **CR-12-4-Def62 — `project_property` does not handle `<Choose><When><PropertyGroup>` nested constructs:** Blind Hunter BH-014 — MSBuild-conditional property declarations wrapped in `<Choose>` rather than on the PropertyGroup itself are read as unconditional. No current csproj uses this pattern. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:884-897`.
-status: open
+status: done 2026-11-23
+resolution: Package inventory reads unconditional project-level properties and ignores conditional and nested MSBuild groups. Regression covered by tests/eng/test_release_evidence_v2.py.
 
 ### DW-1522: `find ... | sed 's#^#- #'` in summary step would mishandle filenames containing `#`: Blind Hunter BH-019 — operationally extremely rare. Pick up alongside step-summary hardening. Owner: workflow maintainer. Evidence: `.github/workflows/release.yml:616-621`.
 
@@ -5911,14 +5914,16 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
 location: eng/release_evidence.py:1567-1568
 reason: **CR-12-4-Def83 — Attestation `status` fallthrough sanitize(None) yields empty string in diagnostic prose:** Edge Case Hunter EC-34 — UX clarity only. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1567-1568`.
-status: open
+status: done 2026-11-23
+resolution: Readiness reports distinguish missing, null, blank and wrong-type attestation statuses. Regression covered by tests/eng/test_release_evidence_v2.py.
 
 ### DW-1543: Fallback required-field check uses truthy `not fallback.get(f)`; numeric/empty-string types slip past with different diagnostic later: Edge Case Hunter EC-39 — pick up alongside fallback-record schema validation. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1334-1337`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
 location: eng/release_evidence.py:1334-1337
 reason: **CR-12-4-Def84 — Fallback required-field check uses truthy `not fallback.get(f)`; numeric/empty-string types slip past with different diagnostic later:** Edge Case Hunter EC-39 — pick up alongside fallback-record schema validation. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1334-1337`.
-status: open
+status: done 2026-11-23
+resolution: Fallback validation requires nonblank strings for all required fields and names the fields with invalid types. Regression covered by tests/eng/test_release_evidence_v2.py.
 
 ### DW-1544: Heredoc `${#random_hex}` length check is bash-specific; no explicit `shell: bash` directive: Edge Case Hunter EC-41 — ubuntu-latest is bash by default. Pick up if runner image changes. Owner: workflow maintainer. Evidence: `.github/workflows/release.yml:163-171`.
 
