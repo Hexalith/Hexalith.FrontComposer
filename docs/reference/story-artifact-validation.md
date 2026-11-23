@@ -240,7 +240,10 @@ run too. Fix the identity, or delete the contradicting text, rather than switchi
 
 Only real Markdown outside YAML frontmatter, fenced blocks, and four-space indented
 examples is parsed. An example may therefore show a `## File List`, a declaration row, or
-a checked task without injecting one.
+a checked task without injecting one. A blocker mentioned only inside a fenced or
+indented example supplies no task evidence. For general evidence, describe the blocker
+in an evidence section or record it under `## Blockers`. A checked task that claims an
+output path still needs evidence for that path. A new H1 closes the preceding section.
 
 Checked tasks are read from any list marker (`-`, `*`, `+`, `1.`) under a heading named
 `Tasks`, `Tasks / Subtasks`, or `Tasks & Acceptance` at levels 2 to 6, with or without a

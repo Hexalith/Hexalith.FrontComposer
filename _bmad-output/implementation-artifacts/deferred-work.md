@@ -7373,7 +7373,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: eng/validate-story-artifacts.py
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Past-tense irregular-verb table covers only `split`/`write`; future ACTION_VERBS additions stay brittle. evidence: `eng/validate-story-artifacts.py` `_IRREGULAR_PAST`. Pre-existing incomplete hardening surfaced again in Chunk C. Reopen trigger: table is generated from / pinned against the full ACTION_VERBS+CREATION_VERBS set, or irregular stems are rejected at vocabulary-edit time.
-status: open
+status: done 2026-11-23
+resolution: The verb regression pins every supported task verb and its accepted forms, including both past forms of write. See spec-story-markdown-task-evidence.md.
 
 ### DW-1730: Gate 2b / CI advisory pins match only the literal `continue-on-error: true` spelling.
 
@@ -8550,7 +8551,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/validate-story-artifacts.py:1086
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Collapse the repeated document scans and the padded section bodies in story parsing. evidence: `parse_story_metadata` runs the semantic-line scanner four times -- `extract_sections`, `extract_section_headings`, `extract_checked_tasks`, and `scan_semantic_lines` for structural failures -- each discarding what the previous one computed, and `extract_sections` pads bodies to preserve source offsets, so two `## File List` headings 300 lines apart produce a 607-line body. `eng/validate-story-artifacts.py:1086`
-status: open
+status: done 2026-11-23
+resolution: Story metadata indexes semantic lines once and stores disposition source lines directly. Merging repeated sections no longer pads their bodies. See spec-story-markdown-task-evidence.md.
 
 ### DW-1879: Stop building every H1 for a caller that reads only the first.
 
@@ -8558,7 +8560,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/validate-story-artifacts.py:769
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Stop building every H1 for a caller that reads only the first. evidence: `markdown_h1_headings` materializes the full H1 list while `extract_story_id` breaks unconditionally after the first element. `eng/validate-story-artifacts.py:769`
-status: open
+status: done 2026-11-23
+resolution: Story identity uses only the first structural H1. A regression covers an initial heading with no story identity. See spec-story-markdown-task-evidence.md.
 
 ### DW-1880: Derive the bootstrap story path inside the immutable path set from its constant.
 
@@ -8573,7 +8576,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/validate-story-artifacts.py:2111
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Remove the dead second guard in checked-task collection. evidence: `excluded_subsection_level is None` at the task extractor is always true because the preceding branch already continued; it reads as a second guard but is not one. `eng/validate-story-artifacts.py:2111`
-status: open
+status: done 2026-11-23
+resolution: Checked-task collection applies the review exclusion once before deciding whether the item belongs to the active task section. See spec-story-markdown-task-evidence.md.
 
 ### DW-1882: Name the report-delimiter rule at its enforcement point.
 
@@ -8617,7 +8621,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/validate-story-artifacts.py:638
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Decide whether documented-blocker prose inside an example should still exempt a task. evidence: `extract_sections` builds bodies from the semantic-line scanner, so fenced and indented example content is dropped from `evidence_text`; a story whose only `blocker` mention sits inside such a block loses that exemption, and no test observes the old or new behavior. `eng/validate-story-artifacts.py:638`
-status: open
+status: done 2026-11-23
+resolution: The operator reference and regressions distinguish blocker evidence in ordinary prose from fenced and indented examples. See spec-story-markdown-task-evidence.md.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1886, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1887: Report an unsupported git version as a tooling prerequisite.
@@ -11527,3 +11532,9 @@ This is one human-owned continuation of the existing G-3 readiness/approval resi
 - F4. The Story 17.8 preservation-gap triage deadline accepted by `jpiquot` was November 18 at 00:00 UTC. No dated disposition was located in the tracked release records on November 22. The Release Owner and Story 17.8 owner retain the follow-up. Verified immutable preservation remains a recovery prerequisite.
 
 November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were applied to the Epic 17 context following the user's instruction. F4 remains overdue with `jpiquot` and the Story 17.8 owner. The user could supply neither a new date nor a triage receipt. The existing recovery hold still applies.
+
+## Deferred from review of story Markdown task evidence — 2026-11-23
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-story-markdown-task-evidence.md`
+  summary: Exclude hidden HTML authoring comments from general task evidence.
+  evidence: A pathless checked task with only `<!-- Blocker example -->` in its Test Evidence section passes. Cover comment-only sections and comments mixed with visible evidence when defining how the validator handles HTML in Markdown.

@@ -3978,29 +3978,41 @@ class PathMentionRejectionTests(unittest.TestCase):
         text = "Fix: create the seam. The idiomatic `Foo.cs` split stays supported."
         self.assertFalse(self.validator.mention_claims_creation(text, text.index("`")))
 
-    def test_verb_alternation_covers_third_person_and_past_inflections(self) -> None:
-        """`s?` cannot form `modifies` or `touches`; past tense must not evade either."""
-        alternation = self.validator.verb_alternation(("modify", "touch", "update", "create", "write"))
-        for form in (
-            "modifies",
-            "touches",
-            "updates",
-            "creates",
-            "writes",
-            "modified",
-            "touched",
-            "updated",
-            "created",
-            "wrote",
-            "written",
-            "modify",
-            "touch",
-            "update",
-            "create",
-            "write",
-        ):
-            with self.subTest(form=form):
-                self.assertIn(form, alternation.split("|"))
+    def test_task_verb_inflections_cover_the_complete_vocabulary(self) -> None:
+        # Independent expected forms require each vocabulary addition to choose its
+        # past tense and participle explicitly, including irregular spellings.
+        inflections = {
+            "add": "adds added",
+            "change": "changes changed",
+            "create": "creates created",
+            "delete": "deletes deleted",
+            "edit": "edits edited",
+            "extend": "extends extended",
+            "generate": "generates generated",
+            "implement": "implements implemented",
+            "introduce": "introduces introduced",
+            "modify": "modifies modified",
+            "move": "moves moved",
+            "remove": "removes removed",
+            "rename": "renames renamed",
+            "require": "requires required",
+            "retarget": "retargets retargeted",
+            "split": "splits",
+            "touch": "touches touched",
+            "update": "updates updated",
+            "wire": "wires wired",
+            "write": "writes wrote written",
+        }
+        vocabulary = set(self.validator.ACTION_VERBS).union(
+            self.validator.CREATION_VERBS, self.validator.NEGATION_ONLY_VERBS
+        )
+        self.assertEqual(vocabulary, set(inflections))
+        for verb, forms in inflections.items():
+            with self.subTest(verb=verb):
+                self.assertEqual(
+                    set(self.validator.verb_alternation((verb,)).split("|")),
+                    {verb, *forms.split()},
+                )
 
     def test_past_tense_preserve_clause_does_not_hide_action_governed_path(self) -> None:
         # Past-tense "updated" must trip the preserve-clause exception the same way "update" does.
@@ -4095,6 +4107,110 @@ class DocumentParsingHardeningTests(unittest.TestCase):
     structure. A regression in any of them silently changes which paths, tasks, and
     declarations the strict gate sees.
     """
+
+    def test_repeated_sections_are_compact_and_report_original_line_numbers(self) -> None:
+        first_row = "- `first.md`"
+        second_row = "- `second.md`"
+        lines = [
+            "## File List", first_row,
+            "## Commit Scope Dispositions", "- `" + "a" * 40 + "` | `shared` | earlier",
+            "## Notes", *(["other section"] * 300),
+            "## File List", second_row,
+            "### Commit Scope Dispositions", "```", "| example", "```", "| malformed",
+        ]
+        text = "\n".join(lines)
+        with tempfile.TemporaryDirectory() as temp:
+            story = Path(temp) / "story.md"
+            story.write_text(text, encoding="utf-8")
+            metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+
+        self.assertEqual(VALIDATOR_MODULE.extract_sections(text)["file list"], first_row + "\n" + second_row)
+        self.assertEqual(list(metadata.file_list), ["first.md", "second.md"])
+        self.assertEqual(metadata.commit_scope_dispositions, {"a" * 40: ("shared", "earlier")})
+        self.assertEqual(metadata.commit_scope_disposition_failures, [
+            f"malformed Commit Scope Dispositions declaration at line {len(lines)}: "
+            + VALIDATOR_MODULE.format_report_value("| malformed"),
+            f"Commit Scope Dispositions must be a level-2 heading; found level 3 at line {len(lines) - 4}",
+        ])
+
+    def test_only_the_first_real_h1_can_supply_a_story_id(self) -> None:
+        for title, expected_id in [("Overview", ""), ("Story 2.7: First title", "2.7")]:
+            with self.subTest(title=title), tempfile.TemporaryDirectory() as temp:
+                story = Path(temp) / "story.md"
+                story.write_text(
+                    f"```md\n# Story 4.8: Example\n```\n# {title}\n# Story 9.7: Later\n",
+                    encoding="utf-8",
+                )
+                metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+                self.assertEqual((metadata.story_id, metadata.metadata_failures), (expected_id, []))
+
+    def test_h1_closes_evidence_and_reports_a_wrong_level_disposition_heading(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            story = root / "story.md"
+            story.write_text(
+                "## Tasks\n- [x] Run validation.\n## Test Evidence\n# Appendix\n"
+                "Blocker example.\n# Commit Scope Dispositions\n| example\n",
+                encoding="utf-8",
+            )
+            metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+            failures = VALIDATOR_MODULE.check_checked_tasks(root, story, [], metadata)
+        self.assertEqual(metadata.commit_scope_disposition_failures, [
+            "Commit Scope Dispositions must be a level-2 heading; found level 1 at line 6"
+        ])
+        self.assertEqual(len(failures), 1)
+        self.assertIn("checked task lacks evidence in story.md:2", failures[0])
+
+    def test_claimed_outputs_need_path_evidence_across_verb_forms(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            story = root / "story.md"
+            story.write_text(
+                "## Blockers\n- `src/Missing.cs` - outstanding blocker\n## Tasks\n",
+                encoding="utf-8",
+            )
+            metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+            for verb in ("Wrote", "Written", "Modified", "Split", "Introduced", "Updated"):
+                task = f"{verb} `src/Missing.cs`."
+                with self.subTest(verb=verb):
+                    checked = replace(metadata, checked_tasks=[(4, task)])
+                    failures = VALIDATOR_MODULE.check_checked_tasks(root, story, [], checked)
+                    self.assertEqual(len(failures), 1)
+                    self.assertIn("missing evidence path: src/Missing.cs", failures[0])
+                    self.assertEqual(
+                        VALIDATOR_MODULE.check_checked_tasks(root, story, ["src/Missing.cs"], checked),
+                        [],
+                    )
+            for task in (
+                "See `src/Missing.cs`.",
+                "See `tools/write.py` and `src/Missing.cs`.",
+                "Do not modify `src/Missing.cs`.",
+            ):
+                with self.subTest(task=task):
+                    checked = replace(metadata, checked_tasks=[(4, task)])
+                    self.assertEqual(VALIDATOR_MODULE.check_checked_tasks(root, story, [], checked), [])
+
+    def test_fenced_and_indented_blockers_do_not_supply_checked_task_evidence(self) -> None:
+        message = "Blocker recorded by the reviewer."
+        examples = [("fenced", f"```md\n{message}\n```"), ("indented", "    " + message)]
+        for case, evidence in [("prose", message), *examples]:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                story = root / "story.md"
+                story.write_text(
+                    f"## Tasks\n- [x] Run validation.\n## Test Evidence\n\n{evidence}\n",
+                    encoding="utf-8",
+                )
+                metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+                failures = VALIDATOR_MODULE.check_checked_tasks(root, story, [], metadata)
+                self.assertEqual(metadata.checked_tasks, [(2, "Run validation.")])
+                if case == "prose":
+                    self.assertIn(message, metadata.evidence_text)
+                    self.assertEqual(failures, [])
+                else:
+                    self.assertFalse(metadata.evidence_text.strip())
+                    self.assertEqual(len(failures), 1)
+                    self.assertIn("checked task lacks evidence in story.md:2", failures[0])
 
     def test_indented_example_is_not_parsed_as_document_structure(self) -> None:
         text = (

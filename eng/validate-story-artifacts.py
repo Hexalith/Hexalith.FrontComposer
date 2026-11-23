@@ -12,6 +12,7 @@ import re
 import subprocess
 import sys
 import unicodedata
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -283,6 +284,10 @@ NEGATED_ACTION = re.compile(
 POSITIVE_ACTION = re.compile(
     r"\b(?:" + verb_alternation(ACTION_VERBS) + r")\s*$",
     re.IGNORECASE,
+)
+# An action-led task can claim an output even without a general evidence keyword.
+TASK_OUTPUT_ACTION = re.compile(
+    r"^(?:" + verb_alternation(ACTION_VERBS + CREATION_VERBS) + r")\b", re.IGNORECASE
 )
 CREATION_ACTION = re.compile(
     r"\b(?:" + verb_alternation(CREATION_VERBS) + r")\b",
@@ -725,18 +730,11 @@ def parse_repository_story_artifacts(
                 identity_failures.append(
                     f"malformed title Story identity {title!r}"
                 )
-        h1_text = ""
-        for _, line in semantic_lines:
-            heading = match_structural_heading(line)
-            if heading and len(heading.group(1)) == 1:
-                h1_text = heading.group(2).strip()
-                if identity := story_identity_from_heading(h1_text):
-                    identities.append((*identity, "H1"))
-                elif EPIC_11_STORY_CLAIM.match(h1_text):
-                    identity_failures.append(
-                        f"malformed H1 Story identity {h1_text!r}"
-                    )
-                break
+        h1_text = first_markdown_h1(semantic_lines)
+        if identity := story_identity_from_heading(h1_text):
+            identities.append((*identity, "H1"))
+        elif EPIC_11_STORY_CLAIM.match(h1_text):
+            identity_failures.append(f"malformed H1 Story identity {h1_text!r}")
         explicit_present = "story_id" in frontmatter
         explicit = frontmatter.get("story_id", "").strip()
         if explicit_present:
@@ -1813,29 +1811,24 @@ def parse_story_metadata(story: Path) -> StoryMetadata:
         # the same boundary already applied to commit subjects and NUL-delimited paths.
         return empty_story_metadata([f"story artifact cannot be read as UTF-8 text: {exc}"])
     frontmatter, frontmatter_failures, invalid_frontmatter_keys = extract_frontmatter(text)
-    story_id, story_id_failures = extract_story_id(frontmatter, text, story.name)
+    semantic_lines, structure_failures = scan_semantic_lines(text)
+    body = index_story_body(semantic_lines)
+    story_id, story_id_failures = resolve_story_id(frontmatter, body.first_h1, story.name)
     if "story_id" in invalid_frontmatter_keys:
         story_id = ""
-    checked_tasks, checked_task_failures, checked_task_notices = extract_checked_tasks(text)
+    checked_tasks, checked_task_failures, checked_task_notices = collect_checked_tasks(body.task_items)
     metadata_failures = [
-        *scan_semantic_lines(text)[1],
+        *structure_failures,
         *frontmatter_failures,
         *story_id_failures,
         *checked_task_failures,
     ]
-    sections = extract_sections(text)
-    section_headings = extract_section_headings(text)
+    sections = body.sections
     file_list = extract_story_file_list(sections.get("file list", ""))
     unrelated = extract_classified_paths(sections, DOCUMENTED_UNRELATED_HEADINGS)
     blockers = extract_classified_paths(sections, DOCUMENTED_BLOCKER_HEADINGS)
-    disposition_heading = section_headings.get(COMMIT_SCOPE_DISPOSITIONS_HEADING)
-    dispositions, disposition_failures = extract_commit_scope_dispositions(
-        sections.get(COMMIT_SCOPE_DISPOSITIONS_HEADING, ""),
-        line_offset=disposition_heading[0] if disposition_heading else 0,
-    )
-    for occurrence_line, occurrence_level in all_section_heading_occurrences(
-        text, COMMIT_SCOPE_DISPOSITIONS_HEADING
-    ):
+    dispositions, disposition_failures = parse_disposition_lines(body.disposition_lines)
+    for occurrence_line, occurrence_level in body.disposition_headings:
         if occurrence_level == COMMIT_SCOPE_DISPOSITIONS_LEVEL:
             continue
         # The reference and the template both pin the exact `## Commit Scope
@@ -1890,7 +1883,7 @@ def normalize_story_identity(epic: str, story: str) -> str:
 
 def legacy_story_identities(
     frontmatter: dict[str, str],
-    text: str,
+    first_h1: str,
     filename: str,
 ) -> tuple[list[tuple[str, str]], list[str]]:
     """Story identities derivable from the title, the first H1, and the filename."""
@@ -1909,12 +1902,11 @@ def legacy_story_identities(
         elif match := text_story.search(title):
             detected.append(("title", normalize_story_identity(*match.groups())))
 
-    for heading in markdown_h1_headings(text):
-        if malformed_story.search(heading):
-            failures.append(f"invalid legacy story identity in H1: {heading!r}")
-        elif match := text_story.search(heading):
+    if first_h1:
+        if malformed_story.search(first_h1):
+            failures.append(f"invalid legacy story identity in H1: {first_h1!r}")
+        elif match := text_story.search(first_h1):
             detected.append(("H1", normalize_story_identity(*match.groups())))
-        break
 
     malformed_filename = re.match(
         r"^(?:spec-)?\d+[.-]\d+[.-]\d+(?:-|\.md$)",
@@ -1939,6 +1931,13 @@ def extract_story_id(
     text: str,
     filename: str,
 ) -> tuple[str, list[str]]:
+    lines, _ = scan_semantic_lines(text)
+    return resolve_story_id(frontmatter, first_markdown_h1(lines), filename)
+
+
+def resolve_story_id(
+    frontmatter: dict[str, str], first_h1: str, filename: str
+) -> tuple[str, list[str]]:
     explicit = frontmatter.get("story_id", "").strip()
     if "story_id" in frontmatter and not explicit:
         # Falling back to inference here would let a blank canonical field select a
@@ -1958,7 +1957,7 @@ def extract_story_id(
         # is checked against the identities the document itself carries. Malformed
         # legacy spellings are not raised here: the explicit field is authoritative,
         # and only a well-formed contradiction is evidence that it is stale.
-        detected, _ = legacy_story_identities(frontmatter, text, filename)
+        detected, _ = legacy_story_identities(frontmatter, first_h1, filename)
         conflicting = [
             f"{source}={identity}" for source, identity in detected if identity != story_id
         ]
@@ -1969,7 +1968,7 @@ def extract_story_id(
             ]
         return story_id, []
 
-    detected, failures = legacy_story_identities(frontmatter, text, filename)
+    detected, failures = legacy_story_identities(frontmatter, first_h1, filename)
     identities = {identity for _, identity in detected}
     if len(identities) > 1:
         evidence = ", ".join(f"{source}={identity}" for source, identity in detected)
@@ -1980,14 +1979,12 @@ def extract_story_id(
     return next(iter(identities), ""), []
 
 
-def markdown_h1_headings(text: str) -> list[str]:
-    """Return H1 headings outside YAML frontmatter and fenced code blocks."""
-    return [
-        heading.group(2).strip()
-        for _, line in markdown_lines_outside_frontmatter_and_fences(text)
-        if (heading := match_structural_heading(line))
-        and len(heading.group(1)) == 1
-    ]
+def first_markdown_h1(lines: Iterable[tuple[int, str]]) -> str:
+    for _, line in lines:
+        heading = match_structural_heading(line)
+        if heading and len(heading.group(1)) == 1:
+            return heading.group(2).strip()
+    return ""
 
 
 @dataclass(frozen=True)
@@ -2065,16 +2062,9 @@ def _scan_semantic_lines_cached(text: str) -> tuple[tuple[tuple[int, str], ...],
 
 
 def scan_semantic_lines(text: str) -> tuple[list[tuple[int, str]], list[str]]:
-    """Cached wrapper. One `parse_story_metadata` drove the scan five times over the
-    same document -- directly, and once each via the task, section, heading, and H1
-    extractors -- on the blocking gate's hot path."""
+    """Return independent lists of source-numbered semantic lines and scan failures."""
     lines, failures = _scan_semantic_lines_cached(text)
     return list(lines), list(failures)
-
-
-def markdown_lines_outside_frontmatter_and_fences(text: str) -> list[tuple[int, str]]:
-    """Semantic lines only. `scan_semantic_lines` also reports structural failures."""
-    return scan_semantic_lines(text)[0]
 
 
 def _scan_semantic_lines_uncached(
@@ -2165,6 +2155,12 @@ def extract_commit_scope_dispositions(
     *,
     line_offset: int = 0,
 ) -> tuple[dict[str, tuple[str, str]], list[str]]:
+    return parse_disposition_lines(enumerate(body.split("\n"), start=line_offset + 1))
+
+
+def parse_disposition_lines(
+    lines: Iterable[tuple[int, str]],
+) -> tuple[dict[str, tuple[str, str]], list[str]]:
     dispositions: dict[str, tuple[str, str]] = {}
     failures: list[str] = []
     declaration = re.compile(
@@ -2178,7 +2174,7 @@ def extract_commit_scope_dispositions(
     attempt = re.compile(r"`[0-9A-Fa-f]{40}`|\|")
     bootstrap_owned_declarations = 0
     in_html_comment = False
-    for line_number, line in enumerate(body.split("\n"), start=1):
+    for line_number, line in lines:
         line = line.rstrip("\r")
         stripped = line.strip()
         if not stripped:
@@ -2209,7 +2205,7 @@ def extract_commit_scope_dispositions(
                 continue
             failures.append(
                 "malformed Commit Scope Dispositions declaration "
-                f"at line {line_offset + line_number}: {format_report_value(stripped)}"
+                f"at line {line_number}: {format_report_value(stripped)}"
             )
             continue
         sha = match.group(1).lower()
@@ -2359,56 +2355,58 @@ def unescape_double_quoted(value: str) -> str:
     return "".join(resolved)
 
 
-def extract_sections(text: str) -> dict[str, str]:
+@dataclass(frozen=True)
+class StoryBody:
+    first_h1: str
+    sections: dict[str, str]
+    disposition_headings: list[tuple[int, int]]
+    disposition_lines: list[tuple[int, str]]
+    # (source line, heading level, text). Level zero denotes a checked list item.
+    task_items: list[tuple[int, int, str]]
+
+
+def index_story_body(lines: Iterable[tuple[int, str]]) -> StoryBody:
     sections: dict[str, list[str]] = {}
-    heading_lines: dict[str, int] = {}
+    disposition_headings: list[tuple[int, int]] = []
+    disposition_lines: list[tuple[int, str]] = []
+    task_items: list[tuple[int, int, str]] = []
+    first_h1 = ""
     current = ""
-    for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
+    for line_number, line in lines:
         heading = match_structural_heading(line)
-        if heading and 2 <= len(heading.group(1)) <= 6:
-            current = heading.group(2).strip().lower()
-            sections.setdefault(current, [])
-            heading_lines.setdefault(current, line_number)
+        if heading:
+            level = len(heading.group(1))
+            title = heading.group(2).strip()
+            name = title.lower()
+            task_items.append((line_number, level, name))
+            if name == COMMIT_SCOPE_DISPOSITIONS_HEADING:
+                disposition_headings.append((line_number, level))
+            if level == 1:
+                if not first_h1:
+                    first_h1 = title
+                current = ""
+            else:
+                current = name
+                sections.setdefault(current, [])
             continue
+        if checked := CHECKED_TASK.match(line):
+            task_items.append((line_number, 0, checked.group(1).strip()))
         if current:
-            body = sections.setdefault(current, [])
-            body_index = line_number - heading_lines[current] - 1
-            if body_index >= len(body):
-                body.extend("" for _ in range(body_index - len(body) + 1))
-            body[body_index] = line
-    return {key: "\n".join(value) for key, value in sections.items()}
+            sections[current].append(line)
+            if current == COMMIT_SCOPE_DISPOSITIONS_HEADING:
+                disposition_lines.append((line_number, line))
+    return StoryBody(
+        first_h1=first_h1,
+        sections={name: "\n".join(rows) for name, rows in sections.items()},
+        disposition_headings=disposition_headings,
+        disposition_lines=disposition_lines,
+        task_items=task_items,
+    )
 
 
-def extract_section_headings(text: str) -> dict[str, tuple[int, int]]:
-    """Return the first source line and heading level for each Markdown section."""
-    headings: dict[str, tuple[int, int]] = {}
-    for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
-        heading = match_structural_heading(line)
-        if heading and 2 <= len(heading.group(1)) <= 6:
-            headings.setdefault(
-                heading.group(2).strip().lower(), (line_number, len(heading.group(1)))
-            )
-    return headings
-
-
-def all_section_heading_occurrences(text: str, name: str) -> list[tuple[int, int]]:
-    """Every source line and level at which `name` appears as a section heading.
-
-    `extract_section_headings` keeps only the first occurrence, while
-    `extract_sections` merges every occurrence of the same heading text into one
-    section regardless of level. A second `### Commit Scope Dispositions` therefore
-    contributed live declarations that the pinned-level guard never inspected.
-    """
-    occurrences: list[tuple[int, int]] = []
-    for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
-        heading = match_structural_heading(line)
-        if (
-            heading
-            and 2 <= len(heading.group(1)) <= 6
-            and heading.group(2).strip().lower() == name
-        ):
-            occurrences.append((line_number, len(heading.group(1))))
-    return occurrences
+def extract_sections(text: str) -> dict[str, str]:
+    lines, _ = scan_semantic_lines(text)
+    return index_story_body(lines).sections
 
 
 def extract_classified_paths(
@@ -3492,6 +3490,13 @@ def is_accepted_extra_reason(reason: str) -> bool:
 def extract_checked_tasks(
     text: str,
 ) -> tuple[list[tuple[int, str]], list[str], list[str]]:
+    lines, _ = scan_semantic_lines(text)
+    return collect_checked_tasks(index_story_body(lines).task_items)
+
+
+def collect_checked_tasks(
+    items: Iterable[tuple[int, int, str]],
+) -> tuple[list[tuple[int, str]], list[str], list[str]]:
     in_tasks = False
     task_heading_level = 0
     excluded_subsection_level: int | None = None
@@ -3500,17 +3505,12 @@ def extract_checked_tasks(
     checked_task_count = 0
     tasks: list[tuple[int, str]] = []
     notices: list[str] = []
-    for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
-        stripped = line.strip()
-        checked = CHECKED_TASK.match(line)
-        heading = match_structural_heading(line)
-        heading_text = heading.group(2).strip().lower() if heading else ""
-        heading_level = len(heading.group(1)) if heading else 0
+    for line_number, heading_level, text in items:
         # A recognized task heading is a section heading, so it spans levels 2-6 like
         # every other section. A level-1 `# Tasks` is the document title: opening a task
         # section there closed on nothing, so every later checked item in the document
         # became an execution task demanding path evidence.
-        if heading and is_task_heading(heading_text) and 2 <= heading_level <= 6:
+        if heading_level >= 2 and is_task_heading(text):
             if in_tasks and heading_level > task_heading_level:
                 # A nested recognized heading is a subsection of the open task
                 # section. Adopting its level closed the outer section at the next
@@ -3527,7 +3527,7 @@ def extract_checked_tasks(
             outside_review_level = None
             recognized_heading_count += 1
             continue
-        if heading:
+        if heading_level:
             if in_tasks and heading_level <= task_heading_level:
                 in_tasks = False
                 excluded_subsection_level = None
@@ -3537,7 +3537,7 @@ def extract_checked_tasks(
             ):
                 excluded_subsection_level = None
             if in_tasks and any(
-                heading_text.startswith(excluded)
+                text.startswith(excluded)
                 for excluded in EXCLUDED_TASK_SUBSECTION_HEADINGS
             ):
                 excluded_subsection_level = heading_level
@@ -3545,22 +3545,20 @@ def extract_checked_tasks(
                 if outside_review_level is not None and heading_level <= outside_review_level:
                     outside_review_level = None
                 if any(
-                    heading_text.startswith(excluded)
+                    text.startswith(excluded)
                     for excluded in EXCLUDED_TASK_SUBSECTION_HEADINGS
                 ):
                     outside_review_level = heading_level
             continue
-        if not checked:
-            continue
         if excluded_subsection_level is not None or outside_review_level is not None:
             continue
         checked_task_count += 1
-        if in_tasks and excluded_subsection_level is None:
-            tasks.append((line_number, checked.group(1).strip()))
+        if in_tasks:
+            tasks.append((line_number, text))
         else:
             notices.append(
                 "checked item outside recognized task section at line "
-                f"{line_number}: {format_report_value(checked.group(1).strip())}"
+                f"{line_number}: {format_report_value(text)}"
             )
     failures: list[str] = []
     # Checked work must land inside a recognized task section. An empty `## Tasks`
@@ -3616,9 +3614,12 @@ def check_checked_tasks(
     blocker_text = "\n".join(metadata.blockers.values()).lower()
     evidence_text = metadata.evidence_text.lower()
     for line_number, task in metadata.checked_tasks:
-        if not task_needs_evidence(task):
+        needs_general_evidence = task_needs_evidence(task)
+        if not needs_general_evidence and not TASK_OUTPUT_ACTION.match(task):
             continue
         task_paths = extract_path_mentions(task, root=root)
+        if not needs_general_evidence and not task_paths:
+            continue
         if task_is_classified_defer(task):
             # Deferred pre-existing work is intentionally absent from the changed set and
             # File List, so it is exempt from output-path evidence reconciliation. But a
