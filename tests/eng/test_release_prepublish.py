@@ -292,30 +292,16 @@ class CandidatePackageVersionVerifierTests(unittest.TestCase):
             project.parent.mkdir(parents=True)
             project.write_text(
                 "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>"
-                "<TargetFramework>net10.0</TargetFramework>"
+                "<TargetFramework>net11.0</TargetFramework>"
                 "<AssemblyName>Fixture</AssemblyName>"
                 "</PropertyGroup></Project>",
                 encoding="utf-8",
             )
-            (project.parent / "Fixture.cs").write_text("public sealed class Fixture { }\n", encoding="utf-8")
-            assembly_output = root / "assembly"
-            build = subprocess.run(
-                [
-                    "dotnet", "build", str(project), "--configuration", "Release",
-                    "--output", str(assembly_output),
-                    f"-p:Version={self.version}",
-                    f"-p:PackageVersion={self.version}",
-                    "-p:ContinuousIntegrationBuild=true",
-                    "--nologo",
-                ],
-                cwd=ROOT,
-                check=False,
-                capture_output=True,
-                text=True,
+            (project.parent / "Fixture.cs").write_text(
+                "public sealed class Fixture\n{\n#if STALE\n    public void Changed() { }\n#endif\n}\n",
+                encoding="utf-8",
             )
-            self.assertEqual(0, build.returncode, build.stdout + build.stderr)
-            assembly = assembly_output / "Fixture.dll"
-            self.assertTrue(assembly.is_file())
+            assembly = self.build_assembly(project, root / "assembly")
 
             packages = root / "nupkgs"
             packages.mkdir()
@@ -336,51 +322,142 @@ class CandidatePackageVersionVerifierTests(unittest.TestCase):
             self.assertEqual(0, verified.returncode, verified.stdout + verified.stderr)
             self.assertIn("8 candidate packages and 10 primary assembly copies", verified.stdout)
 
-            first_id = release_contract.EXPECTED_PACKAGES[0][0]
-            self.write_candidate(packages, first_id, assembly, "4.2.0-wrong")
-            rejected = subprocess.run(
-                command,
-                cwd=ROOT,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            self.assertNotEqual(0, rejected.returncode)
-            self.assertIn("nuspec id/version", rejected.stderr)
+            package_id = "Hexalith.FrontComposer.Contracts"
+            paths = self.primary_assembly_paths(package_id)
+            for property_override, diagnostic in (
+                ("AssemblyVersion=4.2.0.1", "assembly version"),
+                ("FileVersion=4.2.0.1", "file version"),
+                ("InformationalVersion=4.2.0-wrong", "informational version"),
+            ):
+                with self.subTest(property=property_override):
+                    wrong_assembly = self.build_assembly(project, root / diagnostic, property_override)
+                    self.write_candidate(packages, package_id, assembly, assembly_overrides={paths[-1]: wrong_assembly})
+                    self.assert_rejected(command, f"{paths[-1]}: {diagnostic}")
+
+            for scenario, overrides, diagnostic in (
+                ("wrong nuspec", {"nuspec_version": "4.2.0-wrong"}, "nuspec id/version"),
+                ("missing target", {"assembly_paths": paths[:1]}, "primary assembly paths"),
+                ("extra target", {"assembly_paths": [*paths, f"lib/net10.0/{package_id}.dll"]},
+                 "primary assembly paths"),
+                ("wrong symbol version", {"symbol_version": "4.2.0-wrong"}, "symbol package: nuspec id/version"),
+                ("wrong symbol type", {"symbol_types": ("DotnetTool",)}, "nuspec must declare exactly one SymbolsPackage"),
+                ("duplicate symbol types", {"symbol_types": ("SymbolsPackage", "DotnetTool")},
+                 "nuspec must declare exactly one SymbolsPackage"),
+                ("missing symbol target", {"symbol_paths": [str(pathlib.PurePosixPath(paths[0]).with_suffix(".pdb"))]},
+                 "symbol package PDB paths"),
+                ("missing symbol control part", {"omit_symbol_relationships": True}, "missing required ZIP control parts"),
+                ("unexpected symbol payload", {"extra_symbol_entry": "src/Fixture.cs"},
+                 "unexpected symbol package entry src/Fixture.cs"),
+                ("non-portable symbol", {"symbol_bytes": b"not a pdb"}, "invalid portable PDB"),
+            ):
+                with self.subTest(scenario=scenario):
+                    self.write_candidate(packages, package_id, assembly, **overrides)
+                    self.assert_rejected(command, diagnostic)
+
+            stale = self.build_assembly(project, root / "stale", "DefineConstants=STALE")
+            self.write_candidate(packages, package_id, assembly, symbol_bytes=stale.with_suffix(".pdb").read_bytes())
+            self.assert_rejected(command, "does not match its assembly")
+
+            pdb = assembly.with_suffix(".pdb").read_bytes()
+            self.assertIn(b"Fixture.cs", pdb)
+            self.write_candidate(packages, package_id, assembly, symbol_bytes=pdb.replace(b"Fixture.cs", b"Corrupt.cs"))
+            self.assert_rejected(command, "does not match its assembly")
+            self.write_candidate(packages, package_id, assembly)
+
+            extra_archive = packages / "Unexpected.snupkg"
+            extra_archive.touch()
+            self.assert_rejected(command, "expected exactly 8 root-level symbol packages")
+            extra_archive.unlink()
+
+            analyzer_id = "Hexalith.FrontComposer.SourceTools"
+            analyzer_symbol = pathlib.PurePosixPath(self.primary_assembly_paths(analyzer_id)[0]).with_suffix(".pdb")
+            self.write_candidate(packages, analyzer_id, assembly, symbol_paths=[str(analyzer_symbol)])
+            self.assert_rejected(command, "symbol package PDB paths")
+
+    def assert_rejected(self, command: list[str], diagnostic: str) -> None:
+        result = subprocess.run(command, cwd=ROOT, check=False, capture_output=True, text=True)
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn(diagnostic, result.stderr)
+
+    def build_assembly(self, project: pathlib.Path, output: pathlib.Path, *properties: str) -> pathlib.Path:
+        build = subprocess.run(
+            [
+                "dotnet", "build", str(project), "--configuration", "Release", "--output", str(output),
+                f"-p:Version={self.version}", f"-p:PackageVersion={self.version}",
+                "-p:ContinuousIntegrationBuild=true", "--nologo", *(f"-p:{value}" for value in properties),
+            ],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, build.returncode, build.stdout + build.stderr)
+        return output / "Fixture.dll"
 
     @staticmethod
+    def primary_assembly_paths(package_id: str) -> list[str]:
+        if package_id == "Hexalith.FrontComposer.Cli":
+            return [f"tools/net11.0/any/{package_id}.dll"]
+        if package_id == "Hexalith.FrontComposer.SourceTools":
+            return [f"analyzers/dotnet/cs/{package_id}.dll"]
+        paths = [f"lib/net11.0/{package_id}.dll"]
+        if package_id in {"Hexalith.FrontComposer.Contracts", "Hexalith.FrontComposer.Schema"}:
+            paths.append(f"lib/netstandard2.0/{package_id}.dll")
+        return paths
+
     def write_candidate(
+        self,
         package_directory: pathlib.Path,
         package_id: str,
         assembly: pathlib.Path,
-        nuspec_version: str,
+        nuspec_version: str | None = None,
+        *,
+        assembly_paths: list[str] | None = None,
+        assembly_overrides: dict[str, pathlib.Path] | None = None,
+        symbol_version: str | None = None,
+        symbol_types: tuple[str, ...] = ("SymbolsPackage",),
+        symbol_paths: list[str] | None = None,
+        symbol_bytes: bytes | None = None,
+        extra_symbol_entry: str | None = None,
+        omit_symbol_relationships: bool = False,
     ) -> None:
-        candidate_version = CandidatePackageVersionVerifierTests.version
-        package = package_directory / f"{package_id}.{candidate_version}.nupkg"
-        if package_id == "Hexalith.FrontComposer.Cli":
-            assembly_paths = [f"tools/net10.0/any/{package_id}.dll"]
-        elif package_id == "Hexalith.FrontComposer.SourceTools":
-            assembly_paths = [f"analyzers/dotnet/cs/{package_id}.dll"]
-        elif package_id in {
-            "Hexalith.FrontComposer.Contracts",
-            "Hexalith.FrontComposer.Schema",
-        }:
-            assembly_paths = [
-                f"lib/net10.0/{package_id}.dll",
-                f"lib/netstandard2.0/{package_id}.dll",
-            ]
-        else:
-            assembly_paths = [f"lib/net10.0/{package_id}.dll"]
-        nuspec = (
-            "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
-            "<package><metadata>"
-            f"<id>{package_id}</id><version>{nuspec_version}</version>"
-            "</metadata></package>"
-        )
+        primary_paths = self.primary_assembly_paths(package_id)
+        assembly_overrides = assembly_overrides or {}
+        package = package_directory / f"{package_id}.{self.version}.nupkg"
+
+        def nuspec(version: str, extra: str = "") -> str:
+            return (
+                '<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd"><metadata>'
+                f"<id>{package_id}</id><version>{version}</version>{extra}</metadata></package>"
+            )
+
         with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr(f"{package_id}.nuspec", nuspec)
-            for assembly_path in assembly_paths:
-                archive.write(assembly, assembly_path)
+            archive.writestr(f"{package_id}.nuspec", nuspec(nuspec_version or self.version))
+            for assembly_path in primary_paths if assembly_paths is None else assembly_paths:
+                archive.write(assembly_overrides.get(assembly_path, assembly), assembly_path)
+            if package_id == "Hexalith.FrontComposer.SourceTools":
+                archive.write(assembly, "analyzers/dotnet/cs/Hexalith.FrontComposer.Contracts.dll")
+
+        if symbol_paths is None:
+            symbol_paths = [str(pathlib.PurePosixPath(path).with_suffix(".pdb")) for path in primary_paths]
+            if package_id == "Hexalith.FrontComposer.SourceTools":
+                symbol_paths.append("analyzers/dotnet/cs/Hexalith.FrontComposer.Contracts.pdb")
+        with zipfile.ZipFile(package.with_suffix(".snupkg"), "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            package_types = "".join(f'<packageTypes><packageType name="{name}" /></packageTypes>' for name in symbol_types)
+            archive.writestr(f"{package_id}.nuspec", nuspec(symbol_version or self.version, package_types))
+            archive.writestr(
+                "[Content_Types].xml", '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types" />'
+            )
+            if not omit_symbol_relationships:
+                archive.writestr(
+                    "_rels/.rels", '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships" />'
+                )
+            for symbol_path in symbol_paths:
+                assembly_path = str(pathlib.PurePosixPath(symbol_path).with_suffix(".dll"))
+                pdb = assembly_overrides.get(assembly_path, assembly).with_suffix(".pdb")
+                archive.writestr(symbol_path, pdb.read_bytes() if symbol_bytes is None else symbol_bytes)
+            if extra_symbol_entry is not None:
+                archive.writestr(extra_symbol_entry, b"unexpected")
 
 
 if __name__ == "__main__":

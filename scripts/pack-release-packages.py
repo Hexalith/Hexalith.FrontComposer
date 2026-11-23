@@ -32,6 +32,7 @@ SOLUTION_PATH = REPO_ROOT / "Hexalith.FrontComposer.slnx"
 sys.path.insert(0, str(REPO_ROOT / "eng"))
 
 from release_compatibility import PUBLISHED_BASELINE_VERSION  # noqa: E402
+from release_compatibility import packable_packages  # noqa: E402
 from release_compatibility import packable_projects as inventory_packable_projects  # noqa: E402
 from release_compatibility import release_properties, validate_release_policy  # noqa: E402
 
@@ -99,6 +100,33 @@ def restore_command(version: str) -> list[str]:
     ]
 
 
+def validate_output_inventory(output_directory: Path, version: str) -> None:
+    # NuGet drops SemVer build metadata from package filenames.
+    package_version = version.partition("+")[0]
+    expected = {
+        f"{package_id}.{package_version}{suffix}"
+        for package_id, _ in packable_packages(REPO_ROOT, INVENTORY_PATH)
+        for suffix in (".nupkg", ".snupkg")
+    }
+    observed: set[str] = set()
+    invalid: set[str] = set()
+    for path in output_directory.rglob("*"):
+        if path.is_symlink() and path.is_dir():
+            invalid.add(path.relative_to(output_directory).as_posix())
+            continue
+        if path.suffix.casefold() not in (".nupkg", ".snupkg"):
+            continue
+        name = path.relative_to(output_directory).as_posix()
+        if path.is_symlink() or not path.is_file():
+            invalid.add(name)
+        else:
+            observed.add(name)
+    missing = sorted(expected - observed)
+    unexpected = sorted((observed - expected) | invalid)
+    if missing or unexpected:
+        raise ValueError(f"package output inventory mismatch: missing={missing}; unexpected={unexpected}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Pack FrontComposer release packages.")
     parser.add_argument("output_directory", type=Path, help="Directory where .nupkg files are written.")
@@ -151,6 +179,7 @@ def main() -> int:
     for command in commands:
         subprocess.run(command, check=True, cwd=REPO_ROOT)
 
+    validate_output_inventory(output_directory, args.version)
     return 0
 
 

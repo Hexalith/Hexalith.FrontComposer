@@ -481,9 +481,17 @@ def _resolve(root: pathlib.Path, path: pathlib.Path) -> pathlib.Path:
 
 
 def _read_ledger(path: pathlib.Path) -> dict[str, object]:
+    def unique_members(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        members: dict[str, object] = {}
+        for key, value in pairs:
+            if key in members:
+                raise ReleaseCompatibilityError(f"{path}: duplicate JSON member {key!r}")
+            members[key] = value
+        return members
+
     try:
         with path.open("r", encoding="utf-8") as handle:
-            payload = json.load(handle)
+            payload = json.load(handle, object_pairs_hook=unique_members)
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise ReleaseCompatibilityError(
             f"{path}: cannot read compatibility suppression ledger: {error}"

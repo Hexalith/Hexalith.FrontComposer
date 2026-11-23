@@ -8444,7 +8444,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Add negative candidate-verifier fixtures for assembly, file, and informational version mismatches. evidence: The standalone verifier checks all three binary metadata dimensions, but its negative fixture fails earlier on a nuspec mismatch. Removing any binary comparison leaves the existing verifier tests green.
-status: open
+status: done 2026-11-23
+resolution: independent assembly, file, and informational version failures exercised on the second target assembly in `spec-five-release-package-verification-fixes.md`
 
 ### DW-1862: Pin the exact expected primary-assembly paths and copy count in candidate packages.
 
@@ -8452,7 +8453,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/verify-candidate-packages.cs
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Pin the exact expected primary-assembly paths and copy count in candidate packages. evidence: `eng/verify-candidate-packages.cs` requires at least one primary assembly per package and rejects duplicate paths, but it does not require the expected multitarget path set or the currently asserted total of ten copies. A package can silently lose a target-framework assembly while verification passes.
-status: open
+status: done 2026-11-23
+resolution: exact primary assembly paths enforced for all eight candidate packages in `spec-five-release-package-verification-fixes.md`
 
 ### DW-1863: Reconcile projection-grid header styling with the Fluent UI rc.5 rendered markup.
 
@@ -8514,7 +8516,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Validate symbol-package metadata rather than checking only expected filenames. evidence: The release-prepublish path verifies binary metadata in `.nupkg` files but treats the expected `.snupkg` filename as sufficient. It does not inspect the symbol package nuspec or its expected symbol/source entry shape, so stale or mismatched symbol bytes can reach later sealing. Owned by the release-compatibility work declared `shared`, not by Story 9.7.
-status: open
+status: done 2026-11-23
+resolution: symbol identity, archive layout, and portable PDB checksums verified before sealing in `spec-five-release-package-verification-fixes.md`
 
 ### DW-1871: Refresh the bootstrap-retirement entry to describe the thirteen-entry authorized path set.
 
@@ -8563,7 +8566,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/release_compatibility.py
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Reject duplicate JSON keys in the release compatibility suppression ledger. evidence: `eng/release_compatibility.py` loads the policy with the default JSON decoder, so a duplicate top-level or row key silently keeps the last value and can replace a reviewed compatibility-policy field without a validation error. This belongs to the release-compatibility work declared `shared`, not Story 9.7.
-status: open
+status: done 2026-11-23
+resolution: duplicate JSON keys refused in the suppression ledger and its rows in `spec-five-release-package-verification-fixes.md`
 
 ### DW-1877: Restore exact package-and-symbol inventory validation after shared CI packing.
 
@@ -8571,7 +8575,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/pack_release_packages.py
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Restore exact package-and-symbol inventory validation after shared CI packing. evidence: The removed `eng/pack_release_packages.py` validation asserted the complete expected `.nupkg` and required `.snupkg` inventory, while `scripts/pack-release-packages.py` now returns after `dotnet pack` without an equivalent postcondition. A successful pack can therefore omit a required symbol package without failing that shared CI path. This belongs to the release-compatibility work declared `shared`, not Story 9.7.
-status: open
+status: done 2026-11-23
+resolution: shared packer requires the complete root-level package and symbol inventory in `spec-five-release-package-verification-fixes.md`
 
 ### DW-1878: Collapse the repeated document scans and the padded section bodies in story parsing.
 

@@ -210,6 +210,22 @@ class PackReleasePackagesTests(unittest.TestCase):
                 with self.assertRaisesRegex(ReleaseCompatibilityError, "strict SemVer"):
                     validate_release_policy(root, version, **paths)
 
+    def test_policy_rejects_duplicate_ledger_members_even_when_the_values_agree(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            row = self.suppression("v4.3", "v4.4")
+            paths = self.write_policy_fixture(
+                root, self.ledger(suppressions=[row]), mcp_xml=self.suppression_xml(row)
+            )
+            ledger = root / "compatibility-suppressions.json"
+            valid = ledger.read_text(encoding="utf-8")
+            self.assertEqual("v4.3", validate_release_policy(root, VERSION, **paths))
+            for member in ('"currentRelease": "v4.3"', '"ownerStory": "fixture-story"'):
+                with self.subTest(member=member):
+                    ledger.write_text(valid.replace(member, f"{member}, {member}"), encoding="utf-8")
+                    with self.assertRaisesRegex(ReleaseCompatibilityError, "duplicate JSON member"):
+                        validate_release_policy(root, VERSION, **paths)
+
     def test_checked_in_policy_keeps_the_baseline_current_with_the_planned_release(self) -> None:
         # The checked-in baseline is no longer compared against a literal restated by this test.
         # The static repository rule fails closed as soon as the ledger's planned release line
@@ -1029,6 +1045,9 @@ class PackReleasePackagesTests(unittest.TestCase):
                     self.assertEqual(b"replace after restore", sentinel.read_bytes())
                 else:
                     self.assertFalse(sentinel.exists())
+                    package_id = pathlib.Path(command[2]).stem
+                    for suffix in ("nupkg", "snupkg"):
+                        (output / f"{package_id}.0.0.0-ci-test.{suffix}").touch()
                 observed_commands.append(command)
                 observed_kwargs.append(kwargs)
                 return mock.Mock(returncode=0)
@@ -1047,6 +1066,32 @@ class PackReleasePackagesTests(unittest.TestCase):
             for command in observed_commands[1:]:
                 self.assertEqual(["dotnet", "pack"], command[:2])
             self.assertFalse(sentinel.exists())
+
+    def test_successful_pack_commands_must_produce_exact_root_package_and_symbol_inventory(self) -> None:
+        module = self.load_packer()
+        with tempfile.TemporaryDirectory() as directory:
+            output = pathlib.Path(directory)
+            argv = [str(SCRIPT), str(output), "0.0.0-ci-test"]
+
+            def incomplete_pack(command: list[str], **_: object) -> mock.Mock:
+                if command[:2] == ["dotnet", "pack"]:
+                    package_id = pathlib.Path(command[2]).stem
+                    (output / f"{package_id}.0.0.0-ci-test.nupkg").touch()
+                    symbol = output / f"{package_id}.0.0.0-ci-test.snupkg"
+                    if package_id.endswith(".Cli"):
+                        symbol = output / "nested" / symbol.name
+                        symbol.parent.mkdir()
+                    symbol.touch()
+                return mock.Mock(returncode=0)
+
+            with mock.patch.object(module.subprocess, "run", side_effect=incomplete_pack), \
+                    mock.patch.object(sys, "argv", argv):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    r"inventory mismatch: missing=\['Hexalith.FrontComposer.Cli.0.0.0-ci-test.snupkg'\]; "
+                    r"unexpected=\['nested/Hexalith.FrontComposer.Cli.0.0.0-ci-test.snupkg'\]",
+                ):
+                    module.main()
 
     def test_restore_failure_precedes_package_output_cleanup(self) -> None:
         module = self.load_packer()
