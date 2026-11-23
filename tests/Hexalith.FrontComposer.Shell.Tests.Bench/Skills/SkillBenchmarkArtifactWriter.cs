@@ -19,38 +19,29 @@ public static class SkillBenchmarkArtifactWriter {
         RegexOptions.CultureInvariant | RegexOptions.NonBacktracking | RegexOptions.Compiled,
         TimeSpan.FromMilliseconds(500));
 
-    public static bool CanPersist(SkillBenchmarkResult result) {
+    public static bool CanPersist(SkillBenchmarkResult result)
+        => GetPersistenceDiagnostic(result) is null;
+
+    internal static string? GetPersistenceDiagnostic(SkillBenchmarkResult result) {
         ArgumentNullException.ThrowIfNull(result);
-
         if (result.RedactionStatus != SkillBenchmarkRedactionStatus.Passed) {
-            return false;
-        }
-
-        // P-15: sanity-check the SanitizedDiagnostics shape so a producer that mis-sets the
-        // status can't bypass the persistence gate. We don't try to be a complete redactor —
-        // just block obvious local-path leaks.
-        return !ContainsRawLocalPath(result.SanitizedDiagnostics)
-            && !ContainsUnsafeSummary(result.SanitizedDiagnostics)
-            && HasProviderMetadata(result);
-    }
-
-    public static SkillBenchmarkArtifactBuildResult TryBuildArtifact(SkillBenchmarkResult result) {
-        ArgumentNullException.ThrowIfNull(result);
-
-        if (result.RedactionStatus != SkillBenchmarkRedactionStatus.Passed) {
-            return new SkillBenchmarkArtifactBuildResult(false, [RedactionFailedDiagnostic], null);
+            return RedactionFailedDiagnostic;
         }
 
         if (ContainsRawLocalPath(result.SanitizedDiagnostics)) {
-            return new SkillBenchmarkArtifactBuildResult(false, [SanitizationShapeDiagnostic], null);
+            return SanitizationShapeDiagnostic;
         }
 
         if (ContainsUnsafeSummary(result.SanitizedDiagnostics)) {
-            return new SkillBenchmarkArtifactBuildResult(false, [UnsafeSummaryDiagnostic], null);
+            return UnsafeSummaryDiagnostic;
         }
 
-        if (!HasProviderMetadata(result)) {
-            return new SkillBenchmarkArtifactBuildResult(false, [MissingProviderMetadataDiagnostic], null);
+        return HasProviderMetadata(result) ? null : MissingProviderMetadataDiagnostic;
+    }
+
+    public static SkillBenchmarkArtifactBuildResult TryBuildArtifact(SkillBenchmarkResult result) {
+        if (GetPersistenceDiagnostic(result) is string diagnostic) {
+            return new SkillBenchmarkArtifactBuildResult(false, [diagnostic], null);
         }
 
         // P-5: serialize via the source-gen context to avoid reflection-based metadata, which

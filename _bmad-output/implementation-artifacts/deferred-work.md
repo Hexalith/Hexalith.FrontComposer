@@ -6785,7 +6785,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:22-33
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Reject failed-redaction and contradictory result states in the benchmark gate's pass count. evidence: `SkillBenchmarkGate.Evaluate` counts `Valid` results with compile/validator success without checking `RedactionStatus` or `FailureCategory` at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:22-33`; persistence has a separate redaction guard.
-status: open
+status: done 2026-11-23
+resolution: The gate rejects inconsistent outcomes and evidence that fails the artifact redaction checks. Rejected rows contribute to the invalid count and cannot contribute a pass. See `spec-benchmark-gate-evidence.md`.
 
 ### DW-1654: Require unique prompt IDs at load and gate boundaries.
 
@@ -6793,7 +6794,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkPromptSet.cs:29-36
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Require unique prompt IDs at load and gate boundaries. evidence: The loader and gate sort IDs but do not enforce uniqueness at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkPromptSet.cs:29-36` and `SkillBenchmarkGate.cs:12-20`; the checked-in v1 fixture itself remains unique.
-status: open
+status: done 2026-11-23
+resolution: The embedded loader rejects duplicate IDs. The gate also checks supplied prompt sets and requires the results to match them one for one. See `spec-benchmark-gate-evidence.md`.
 
 ### DW-1655: Sanitize all serialized benchmark artifact string fields, not only SanitizedDiagnostics.
 
@@ -6816,7 +6818,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:379-385
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Pin the exact 20 v1 benchmark prompt IDs. evidence: `PromptSet_LoadsExpectedTwentyIdsByOrdinalOrderingFromFixture` checks only count, a `p` prefix, and uniqueness at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:379-385`; replacing the fixture with different ordered unique IDs still passes. The weak assertion predates the relocation.
-status: open
+status: done 2026-11-23
+resolution: The v1 fixture test asserts the full ordered list of 20 published prompt IDs. See `spec-benchmark-gate-evidence.md`.
 
 ### DW-1658: Bind approved benchmark baselines to the evidence contract before passing the gate.
 
@@ -6824,7 +6827,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:33
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Bind approved benchmark baselines to the evidence contract before passing the gate. evidence: `SkillBenchmarkGate.Evaluate` uses only `InitialPassRate` from the approved baseline at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:33`, so mismatched corpus, scorer, validator, redaction, and provider hashes can still produce `Passed`. The mechanically moved behavior predates Story 11.17c.
-status: open
+status: done 2026-11-23
+resolution: The gate binds every result to the approved scorer, validator, redaction policy, provider configuration and actual prompt corpus hash. See `spec-benchmark-gate-evidence.md`.
 
 ### DW-1659: Add positive cache-reuse verification to the benchmark harness.
 
@@ -6832,7 +6836,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:64-130
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Add positive cache-reuse verification to the benchmark harness. evidence: The cache tests at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:64-130` cover only key changes and cache misses; an implementation of `SkillBenchmarkCachePolicy.CanReuse` that always returns false would remain green. This verification gap predates the relocation.
-status: open
+status: done 2026-11-23
+resolution: The harness creates equivalent cache keys independently and verifies that reuse succeeds with an empty miss reason. See `spec-benchmark-gate-evidence.md`.
 
 ### DW-1660: Convert generated-validator regex timeouts into fail-closed diagnostics.
 

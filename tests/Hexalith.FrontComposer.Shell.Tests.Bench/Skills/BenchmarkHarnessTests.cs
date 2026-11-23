@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text;
 
 using Hexalith.FrontComposer.Mcp.Skills;
 
@@ -8,6 +9,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.Bench.Skills;
 
 [Trait("Category", "Performance")]
 public sealed class BenchmarkHarnessTests {
+    private static readonly string RunCorpusHash = SkillBenchmarkPromptSet.LoadEmbeddedV1().ComputeCorpusHash();
+    private const string ApprovedCorpusHash = "e2da6c611638d71ca8f72345ccdbbec68c926e4fe21bc2c151f9bcf9ab058c71";
+
     private static readonly string[] ExpectedInternalBenchmarkTypeNames = [
         "SkillBenchmarkJsonContext",
         "SkillBenchmarkPromptDto",
@@ -86,6 +90,12 @@ public sealed class BenchmarkHarnessTests {
             "scorer-v1",
             "validator-v1",
             "redaction-v1");
+
+        var equivalent = SkillBenchmarkCacheKey.Create(
+            prompt with { ExpectedShape = [.. prompt.ExpectedShape] }, "1.0.0", "1.0.0", config with { },
+            "scorer-v1", "validator-v1", "redaction-v1");
+        SkillBenchmarkCachePolicy.CanReuse(first, equivalent).ShouldBeTrue();
+        SkillBenchmarkCachePolicy.CacheMissReason(first, equivalent).ShouldBeEmpty();
 
         first.Value.ShouldNotBe(second.Value);
         SkillBenchmarkCachePolicy.CanReuse(first, second).ShouldBeFalse();
@@ -315,18 +325,7 @@ public sealed class BenchmarkHarnessTests {
         candidate.PassedCount.ShouldBe(16);
         candidate.Threshold.ShouldBe(0.80, tolerance: 0.0001);
 
-        var baseline = new SkillBenchmarkBaselineArtifact(
-            InitialPassRate: 0.80,
-            CorpusHash: "corpus",
-            ScorerVersion: "scorer-v1",
-            ValidatorVersion: "validator-v1",
-            RedactionPolicyVersion: "redaction-v1",
-            ProviderConfigHash: "provider",
-            CommitSha: "abc123",
-            ApproverMarker: "approved-by-release-owner",
-            SanitizedSummaryHash: "summary",
-            CapturedAt: DateTimeOffset.Parse("2026-05-10T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture));
-
+        SkillBenchmarkBaselineArtifact baseline = ApprovedBaseline();
         SkillBenchmarkGateResult gate = SkillBenchmarkGate.Evaluate(promptSet, results, baseline);
         gate.Status.ShouldBe(SkillBenchmarkGateStatus.Passed);
         SkillBenchmarkBaselinePolicy.DecideWrite(trustedContext: false, approvedMarkerPresent: true, gate)
@@ -337,8 +336,98 @@ public sealed class BenchmarkHarnessTests {
         SkillBenchmarkGate.Evaluate(promptSet, results[..19], baseline).Status.ShouldBe(SkillBenchmarkGateStatus.InvalidEvidence);
         SkillBenchmarkGate.Evaluate(promptSet, [.. results.Select((r, i) => i == 0 ? r with { EvidenceStatus = SkillBenchmarkEvidenceStatus.BudgetBlocked } : r)], baseline)
             .Status.ShouldBe(SkillBenchmarkGateStatus.InvalidEvidence);
-        SkillBenchmarkGate.Evaluate(promptSet, [.. results.Select((r, i) => i < 15 ? r with { CompileSucceeded = true, ValidatorSucceeded = true } : r with { CompileSucceeded = false, ValidatorSucceeded = false, EvidenceStatus = SkillBenchmarkEvidenceStatus.LegitimateMiss })], baseline)
+        SkillBenchmarkResult[] belowTarget = [.. promptSet.Prompts.Select((prompt, index) => BenchmarkResultFor(prompt.Id, index < 15))];
+        SkillBenchmarkGate.Evaluate(promptSet, belowTarget, baseline).Status.ShouldBe(SkillBenchmarkGateStatus.Failed);
+        SkillBenchmarkGate.Evaluate(promptSet, results, baseline with { InitialPassRate = 0.85 })
             .Status.ShouldBe(SkillBenchmarkGateStatus.Failed);
+    }
+
+    [Fact]
+    public void BenchmarkGate_RejectsContradictoryAndUnredactedResults() {
+        var promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        SkillBenchmarkResult[] results = [.. promptSet.Prompts.Select(prompt => BenchmarkResultFor(prompt.Id, passed: true))];
+        SkillBenchmarkResult pass = results[0];
+        SkillBenchmarkResult miss = BenchmarkResultFor(pass.PromptId, passed: false);
+        SkillBenchmarkResult[] invalidRows = [
+            pass with { RedactionStatus = SkillBenchmarkRedactionStatus.Failed },
+            pass with { SanitizedDiagnostics = ["error in /private/build/file.cs"] },
+            pass with { SanitizedDiagnostics = ["::warning:: rejected summary"] },
+            pass with { ProviderId = "" },
+            pass with { FailureCategory = GeneratedCodeFailureCategory.Compile },
+            pass with { CompileSucceeded = false },
+            pass with { ValidatorSucceeded = false },
+            miss with { RedactionStatus = SkillBenchmarkRedactionStatus.Failed },
+            miss with { CompileSucceeded = true, ValidatorSucceeded = true },
+            miss with { FailureCategory = GeneratedCodeFailureCategory.None },
+            miss with { FailureCategory = (GeneratedCodeFailureCategory)999 },
+        ];
+
+        foreach (SkillBenchmarkResult row in invalidRows) {
+            results[0] = row;
+            SkillBenchmarkGateResult gate = SkillBenchmarkGate.Evaluate(promptSet, results, ApprovedBaseline());
+            gate.Status.ShouldBe(SkillBenchmarkGateStatus.InvalidEvidence);
+            gate.InvalidEvidenceCount.ShouldBe(1);
+            gate.PassedCount.ShouldBe(19);
+        }
+    }
+
+    [Fact]
+    public void BenchmarkGate_RequiresEveryResultToMatchApprovedBaseline() {
+        var promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        SkillBenchmarkResult[] results = [.. promptSet.Prompts.Select((prompt, index) => BenchmarkResultFor(prompt.Id, index < 16))];
+        SkillBenchmarkResult miss = results[^1];
+        SkillBenchmarkResult[] mismatches = [
+            miss with { CorpusHash = new string('f', 64) },
+            miss with { ScorerVersion = "SCORER-v1" },
+            miss with { ValidatorVersion = "validator-v2" },
+            miss with { RedactionPolicyVersion = "redaction-v2" },
+            miss with { ProviderConfigHash = new string('a', 64) },
+        ];
+
+        foreach (SkillBenchmarkResult row in mismatches) {
+            results[^1] = row;
+            SkillBenchmarkGateResult gate = SkillBenchmarkGate.Evaluate(promptSet, results, ApprovedBaseline());
+            gate.Status.ShouldBe(SkillBenchmarkGateStatus.InvalidEvidence);
+            gate.Diagnostics.ShouldContain("benchmark-baseline-contract-mismatch");
+        }
+
+        SkillBenchmarkBaselineArtifact baseline = ApprovedBaseline();
+        SkillBenchmarkResult[] legacy = [.. results.Select(r => r with { CorpusHash = "", RedactionPolicyVersion = "redaction-v1" })];
+        SkillBenchmarkGate.Evaluate(promptSet, legacy, baseline with { CorpusHash = "" }).InvalidEvidenceCount.ShouldBe(20);
+
+        legacy = [.. results.Select(r => r with { CorpusHash = RunCorpusHash, RedactionPolicyVersion = "" })];
+        SkillBenchmarkGate.Evaluate(promptSet, legacy, baseline with { RedactionPolicyVersion = "" }).InvalidEvidenceCount.ShouldBe(20);
+
+        results[^1] = miss;
+        results[0] = results[0] with { ValidatorVersion = "validator-v2" };
+        SkillBenchmarkGateResult mixed = SkillBenchmarkGate.Evaluate(promptSet, results, baseline);
+        mixed.PassedCount.ShouldBe(15);
+        mixed.InvalidEvidenceCount.ShouldBe(1);
+
+        results[0] = BenchmarkResultFor(results[0].PromptId, passed: true);
+        SkillBenchmarkPrompt[] changed = [.. promptSet.Prompts];
+        changed[0] = changed[0] with { Text = "revised prompt" };
+        SkillBenchmarkGateResult stale = SkillBenchmarkGate.Evaluate(promptSet with { Prompts = changed }, results, baseline);
+        stale.Status.ShouldBe(SkillBenchmarkGateStatus.InvalidEvidence);
+        stale.InvalidEvidenceCount.ShouldBe(20);
+    }
+
+    [Fact]
+    public void DuplicatePromptIds_AreRejectedByLoaderAndGate() {
+        const string json = """
+            {"version":"1","prompts":[{"id":"a","text":"first","expectedShape":[]},{"id":"a","text":"second","expectedShape":[]}]}
+            """;
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        Should.Throw<InvalidOperationException>(() => SkillBenchmarkPromptSet.Load(stream)).Message.ShouldContain("unique");
+
+        var promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        SkillBenchmarkPrompt[] prompts = [.. promptSet.Prompts];
+        prompts[^1] = prompts[^2];
+        SkillBenchmarkResult[] duplicates = [.. prompts.Select(prompt => BenchmarkResultFor(prompt.Id, passed: true))];
+        SkillBenchmarkGate.Evaluate(promptSet, duplicates, ApprovedBaseline()).Status.ShouldBe(SkillBenchmarkGateStatus.InvalidEvidence);
+        SkillBenchmarkGateResult gate = SkillBenchmarkGate.Evaluate(promptSet with { Prompts = prompts }, duplicates, ApprovedBaseline());
+        gate.Status.ShouldBe(SkillBenchmarkGateStatus.InvalidEvidence);
+        gate.Diagnostics.ShouldContain("prompt-ids-must-be-unique");
     }
 
     [Fact]
@@ -382,12 +471,35 @@ public sealed class BenchmarkHarnessTests {
 
     [Fact]
     public void PromptSet_LoadsExpectedTwentyIdsByOrdinalOrderingFromFixture() {
-        // Better than asserting "the loader sorted its own output": pin the actual 20 IDs.
-        var promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        string[] expectedIds = [
+            "p01-new-billing-context",
+            "p02-action-queue",
+            "p03-destructive-command",
+            "p04-policy-command",
+            "p05-tenant-safe-command",
+            "p06-validation-rules",
+            "p07-counter-like-sample",
+            "p08-markdown-projection",
+            "p09-lifecycle-flow",
+            "p10-generated-boundary",
+            "p11-registration",
+            "p12-source-tools-manifest",
+            "p13-test-scaffold",
+            "p14-package-boundary",
+            "p15-validation-negative",
+            "p16-projection-badges",
+            "p17-empty-state",
+            "p18-no-direct-eventstore",
+            "p19-team-overlay-aware",
+            "p20-migration-aware",
+        ];
+        SkillBenchmarkPromptSet promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        promptSet.Prompts.Select(prompt => prompt.Id).ShouldBe(expectedIds);
+        promptSet.ComputeCorpusHash().ShouldBe(ApprovedCorpusHash);
 
-        promptSet.Prompts.Count.ShouldBe(20);
-        promptSet.Prompts[0].Id.ShouldStartWith("p");
-        promptSet.Prompts.Select(p => p.Id).Distinct().Count().ShouldBe(20);
+        // Independent Python v1 hash including JSON escapes, an astral character and ordered shapes.
+        var unicode = new SkillBenchmarkPromptSet("1", [new("p01", "\"café\"\n😀\\", ["α", "A"])]);
+        unicode.ComputeCorpusHash().ShouldBe("412707e037adb5c821539b63bdd240ccf9cca8c99cefaf0df162197a1db3d382");
     }
 
     private static SkillBenchmarkResult BenchmarkResultFor(string promptId, bool passed)
@@ -413,6 +525,8 @@ public sealed class BenchmarkHarnessTests {
             SeedSupported = true,
             FingerprintSupported = true,
             ProviderFingerprint = "fp-test",
+            CorpusHash = RunCorpusHash,
+            RedactionPolicyVersion = "redaction-v1",
             EvidenceStatus = passed ? SkillBenchmarkEvidenceStatus.Valid : SkillBenchmarkEvidenceStatus.LegitimateMiss,
         };
 
@@ -436,7 +550,7 @@ public sealed class BenchmarkHarnessTests {
     private static SkillBenchmarkBaselineArtifact ApprovedBaseline()
         => new(
             InitialPassRate: 0.80,
-            CorpusHash: "corpus",
+            CorpusHash: ApprovedCorpusHash,
             ScorerVersion: "scorer-v1",
             ValidatorVersion: "validator-v1",
             RedactionPolicyVersion: "redaction-v1",

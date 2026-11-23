@@ -14,6 +14,12 @@ public sealed record SkillBenchmarkResult(
     SkillBenchmarkRedactionStatus RedactionStatus,
     string GeneratedArtifactToken,
     IReadOnlyList<string> SanitizedDiagnostics) {
+    /// <summary>Gets the corpus hash recorded by the benchmark run.</summary>
+    public string CorpusHash { get; init; } = string.Empty;
+
+    /// <summary>Gets the redaction policy version applied to this result.</summary>
+    public string RedactionPolicyVersion { get; init; } = string.Empty;
+
     public string ProviderId { get; init; } = string.Empty;
 
     public double Temperature { get; init; }
