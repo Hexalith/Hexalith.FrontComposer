@@ -18,7 +18,8 @@ public static class UxAccessibilityAssertions
     }
 
     /// <summary>Names the failed AE-04 checks without measured values.</summary>
-    internal static List<string> Failures(AccessibilityTargetEvidence target)
+    internal static List<string> Failures(AccessibilityTargetEvidence target,
+        IReadOnlyList<AccessibilityTargetEvidence>? inventory = null)
     {
         bool sized = Valid(target.Bounds) && Sized(target.Bounds);
         bool keyboard = target.KeyboardPath is { Count: > 0 } path && path.All(Enum.IsDefined);
@@ -29,9 +30,13 @@ public static class UxAccessibilityAssertions
             UxTargetSizeExceptionKind.Essential => target.Rationale == UxTargetSizeRationale.EssentialPresentation,
             UxTargetSizeExceptionKind.Equivalent => target.Rationale == UxTargetSizeRationale.SameFunctionConformingControl
                 && target.EquivalentControlNumber is > 0 && target.EquivalentControlNumber != target.TargetNumber
-                && target.EquivalentControlBounds is { } equivalent && Valid(equivalent) && Sized(equivalent),
+                && target.EquivalentControlBounds is { } equivalent && Valid(equivalent) && Sized(equivalent)
+                && Valid(target.Bounds) && !target.Bounds.Overlaps(equivalent)
+                && (inventory is null || inventory.All(other =>
+                    other.TargetNumber != target.EquivalentControlNumber || other.Bounds == equivalent)),
             UxTargetSizeExceptionKind.Spacing => target.Rationale == UxTargetSizeRationale.SeparatedFromNeighbors
-                && target.Neighbors is not null && HasSpacing(target.Bounds, target.Neighbors),
+                && target.Neighbors is not null && HasSpacing(target.Bounds, target.Neighbors)
+                && (inventory is null || HasInventorySpacing(target, inventory)),
             _ => false,
         };
         List<string> failed = [];
@@ -43,7 +48,19 @@ public static class UxAccessibilityAssertions
         return failed;
     }
 
-    private static bool HasSpacing(UxRect bounds, IReadOnlyList<UxRect> neighbors)
+    private static bool HasInventorySpacing(AccessibilityTargetEvidence target, IReadOnlyList<AccessibilityTargetEvidence> inventory)
+    {
+        IEnumerable<UxRect> otherBounds = inventory.Where(other => other.TargetNumber != target.TargetNumber)
+            .Select(other => other.Bounds);
+        IEnumerable<UxRect> equivalentBounds = inventory
+            .Where(other => other.Exception == UxTargetSizeExceptionKind.Equivalent
+                && other.EquivalentControlNumber != target.TargetNumber)
+            .Select(other => other.EquivalentControlBounds)
+            .OfType<UxRect>();
+        return HasSpacing(target.Bounds, otherBounds.Concat(equivalentBounds));
+    }
+
+    private static bool HasSpacing(UxRect bounds, IEnumerable<UxRect> neighbors)
     {
         double x = bounds.X + bounds.Width / 2, y = bounds.Y + bounds.Height / 2;
         return neighbors.All(n => Valid(n) && CircleClear(x, y, n)

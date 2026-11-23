@@ -65,7 +65,7 @@ public static class UxFocusAssertions
         => viewportAndScrollports.Count > 0 && Valid(target) && Valid(focusIndicator)
             && viewportAndScrollports.All(r => Valid(r) && Contains(r, target) && Contains(r, focusIndicator))
             && occluders.All(r => Finite(r) && r.Width >= 0 && r.Height >= 0
-                && (r.Width == 0 || r.Height == 0 || !Intersects(r, target) && !Intersects(r, focusIndicator)));
+                && (r.Width == 0 || r.Height == 0 || !r.Overlaps(target) && !r.Overlaps(focusIndicator)));
 
     private static bool HasUsableOrigin(UxFocusTarget? origin, UxFocusTarget captured)
         => origin is not null && ReferenceEquals(origin.Handle, captured.Handle) && Usable(origin);
@@ -78,6 +78,4 @@ public static class UxFocusAssertions
     private static bool Valid(UxRect? r) => Finite(r) && r!.Width > 0 && r.Height > 0;
     private static bool Contains(UxRect outer, UxRect inner) => inner.X >= outer.X && inner.Y >= outer.Y
         && inner.X + inner.Width <= outer.X + outer.Width && inner.Y + inner.Height <= outer.Y + outer.Height;
-    private static bool Intersects(UxRect a, UxRect b) => a.X < b.X + b.Width && a.X + a.Width > b.X
-        && a.Y < b.Y + b.Height && a.Y + a.Height > b.Y;
 }

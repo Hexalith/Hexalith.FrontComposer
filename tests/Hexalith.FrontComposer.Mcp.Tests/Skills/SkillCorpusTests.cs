@@ -476,6 +476,25 @@ public sealed class SkillCorpusTests {
         result.Diagnostics.Count(d => d.IsInformational).ShouldBe(hasBaseline ? 0 : 1);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReleaseValidationPreservesSuppliedBaselineParserErrors(bool hasResource)
+    {
+        SkillCorpusSnapshot current = SkillCorpusLoader.LoadEmbedded();
+        SkillCorpusSnapshot baseline = SkillCorpusParser.Parse([new SkillCorpusSource("bad-baseline.md", "missing front matter")]);
+        if (hasResource)
+        {
+            SkillCorpusResource index = current.Resources.Single(r => r.ResourceUri == "frontcomposer://skills/index");
+            baseline = baseline with { Resources = [index with { Version = "0.0.0" }] };
+        }
+
+        SkillCorpusValidationResult result = SkillCorpusReleaseGuard.ValidateAgainstBaseline(current, new StubBaselineProvider(baseline));
+
+        result.IsValid.ShouldBeFalse();
+        result.Diagnostics.ShouldBe(baseline.Diagnostics);
+    }
+
     [Fact]
     public void AggregateManifest_ExposesSchemaVersionAndAllResources() {
         // P-43: aggregate manifest is derived at runtime, exposes a stable manifestSchemaVersion,

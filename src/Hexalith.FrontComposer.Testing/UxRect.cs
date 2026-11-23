@@ -5,4 +5,9 @@ namespace Hexalith.FrontComposer.Testing;
 /// <param name="Y">Top coordinate.</param>
 /// <param name="Width">Measured width.</param>
 /// <param name="Height">Measured height.</param>
-public sealed record UxRect(double X, double Y, double Width, double Height);
+public sealed record UxRect(double X, double Y, double Width, double Height)
+{
+    /// <summary>Checks whether two measured rectangles share positive area.</summary>
+    internal bool Overlaps(UxRect other) => other.X - X < Width && X - other.X < other.Width
+        && other.Y - Y < Height && Y - other.Y < other.Height;
+}

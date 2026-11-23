@@ -1261,6 +1261,10 @@ public sealed class TestingFailureModeTests {
         {
             AccessibilityMeasurements measured = CompleteAccessibilityMeasurements(row);
             _ = recorder.Record(row, ContextFor(row), measured);
+            if (fact == nameof(AccessibilityMeasurements.CriticalFindingCount))
+            {
+                typeof(AccessibilityMeasurements).GetProperty(nameof(AccessibilityMeasurements.FindingCount))!.SetValue(measured, 1);
+            }
             typeof(AccessibilityMeasurements).GetProperty(fact)!.SetValue(measured, failedValue);
             ArgumentException contradiction = Should.Throw<ArgumentException>(() => recorder.Record(row, ContextFor(row), measured));
             contradiction.Message.ShouldContain("cannot be Passed");
@@ -1312,6 +1316,108 @@ public sealed class TestingFailureModeTests {
                     UxTargetSizeRationale.SameFunctionConformingControl, EquivalentControlNumber: ordinal, EquivalentControlBounds: new(40, 0, 24, 24))] }))
                 .Message.ShouldContain("EquivalentControlNumber");
         }
+    }
+
+    [Fact]
+    public void TargetSize_EquivalentControl_MustNotOverlapTarget()
+    {
+        AccessibilityTargetEvidence target = new(1, new(10, 10, 12, 12), [UxKeyboardKey.Tab],
+            UxTargetSizeExceptionKind.Equivalent, UxTargetSizeRationale.SameFunctionConformingControl,
+            EquivalentControlNumber: 2, EquivalentControlBounds: new(21, 10, 24, 24));
+
+        Should.Throw<InvalidOperationException>(() => UxAccessibilityAssertions.AssertTargetSize(target))
+            .Message.ShouldContain("EquivalentException");
+        UxAccessibilityAssertions.AssertTargetSize(target with { EquivalentControlBounds = new(22, 10, 24, 24) });
+
+        double distantX = Math.ScaleB(1, 58);
+        Should.Throw<InvalidOperationException>(() => UxAccessibilityAssertions.AssertTargetSize(target with
+        {
+            Bounds = new(distantX, 10, 12, 12),
+            EquivalentControlBounds = new(distantX, 10, 24, 24),
+        })).Message.ShouldContain("EquivalentException");
+    }
+
+    [Fact]
+    public void AccessibilityEvidence_Ae04_EquivalentBoundsMustMatchTheRecordedControl()
+    {
+        TestAccessibilityEvidenceRecorder recorder = new(new());
+        AccessibilityEvidenceContext context = new(1, 1, UxTheme.Light);
+        AccessibilityTargetEvidence target = new(1, new(0, 0, 12, 12), [UxKeyboardKey.Tab],
+            UxTargetSizeExceptionKind.Equivalent, UxTargetSizeRationale.SameFunctionConformingControl,
+            EquivalentControlNumber: 2, EquivalentControlBounds: new(40, 0, 24, 24));
+        AccessibilityTargetEvidence equivalent = new(2, new(8, 0, 24, 24), [UxKeyboardKey.Tab]);
+
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE04, context,
+            new() { Passed = true, Targets = [target, equivalent] })).Message.ShouldContain("EquivalentException");
+        _ = recorder.Record(AccessibilityEvidenceRow.AE04, context,
+            new() { Passed = true, Targets = [target, equivalent with { Bounds = new(40, 0, 24, 24) }] });
+        recorder.Evidence.ShouldHaveSingleItem();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AccessibilityEvidence_Ae04_RequiresDistinctTargetOrdinals(bool passed)
+    {
+        TestAccessibilityEvidenceRecorder recorder = new(new());
+        AccessibilityTargetEvidence first = new(1, new(0, 0, 24, 24), [UxKeyboardKey.Tab]);
+        AccessibilityTargetEvidence second = first with { Bounds = new(50, 0, 24, 24) };
+
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE04, new(1, 1, UxTheme.Light),
+            new() { Passed = passed, Targets = [first, second] })).Message.ShouldContain("Targets.TargetNumber");
+        recorder.Evidence.ShouldBeEmpty();
+        _ = recorder.Record(AccessibilityEvidenceRow.AE04, new(1, 1, UxTheme.Light),
+            new() { Passed = passed, Targets = [first, second with { TargetNumber = 2 }] });
+        recorder.Evidence.ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public void AccessibilityEvidence_Ae04_ChecksSpacingAgainstOmittedRecordedTargets()
+    {
+        TestAccessibilityEvidenceRecorder recorder = new(new());
+        AccessibilityTargetEvidence spaced = new(1, new(0, 0, 12, 12), [UxKeyboardKey.Tab],
+            UxTargetSizeExceptionKind.Spacing, UxTargetSizeRationale.SeparatedFromNeighbors, Neighbors: []);
+        AccessibilityTargetEvidence neighbor = new(2, new(8, 0, 24, 24), [UxKeyboardKey.Tab]);
+        AccessibilityEvidenceContext context = new(1, 1, UxTheme.Light);
+
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE04, context,
+            new() { Passed = true, Targets = [spaced, neighbor] })).Message.ShouldContain("SpacingException");
+        AccessibilityTargetEvidence separated = neighbor with { Bounds = new(18, 0, 24, 24) };
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE04, context,
+            new() { Passed = true, Targets = [spaced with { Neighbors = [neighbor.Bounds] }, separated] }))
+            .Message.ShouldContain("SpacingException");
+        AccessibilityTargetEvidence reference = new(2, new(50, 0, 12, 12), [UxKeyboardKey.Tab],
+            UxTargetSizeExceptionKind.Equivalent, UxTargetSizeRationale.SameFunctionConformingControl,
+            EquivalentControlNumber: 3, EquivalentControlBounds: neighbor.Bounds);
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE04, context,
+            new() { Passed = true, Targets = [spaced, reference] })).Message.ShouldContain("SpacingException");
+        recorder.Evidence.ShouldBeEmpty();
+        _ = recorder.Record(AccessibilityEvidenceRow.AE04, context,
+            new() { Passed = true, Targets = [spaced, separated] });
+        _ = recorder.Record(AccessibilityEvidenceRow.AE04, context,
+            new() { Passed = false, Targets = [spaced, neighbor] });
+        recorder.Evidence.Count.ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData(-1, 0, 0, true, "FindingCount")]
+    [InlineData(0, -1, 0, false, "CriticalFindingCount")]
+    [InlineData(0, 0, -1, true, "AnnouncementCount")]
+    [InlineData(1, 2, 1, false, "CriticalFindingCount")]
+    public void AccessibilityEvidence_Ae09_RefusesMalformedAuditCounts(int findingCount, int criticalCount,
+        int announcementCount, bool passed, string failedFact)
+    {
+        TestAccessibilityEvidenceRecorder recorder = new(new());
+        AccessibilityEvidenceContext context = new(1, 1, UxTheme.Light);
+        AccessibilityMeasurements measurements = new()
+        {
+            Passed = passed, Wcag22Aa = true, KeyboardPassed = true, AxePassed = true, NoHoverOnlyAction = true,
+            FindingCount = findingCount, CriticalFindingCount = criticalCount, AnnouncementCount = announcementCount,
+        };
+
+        Should.Throw<ArgumentException>(() => recorder.Record(AccessibilityEvidenceRow.AE09, context, measurements))
+            .Message.ShouldContain(failedFact);
+        recorder.Evidence.ShouldBeEmpty();
     }
 
     [Theory]

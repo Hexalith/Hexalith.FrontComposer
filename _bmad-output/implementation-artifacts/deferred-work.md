@@ -11290,10 +11290,14 @@ The user chose to defer the two residuals left after the Story 13.6 corrections 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
   summary: Align the Story 13.7 reusable Equivalent target-size assertion with reachable non-overlapping equivalent-control geometry.
   evidence: H2-BH09 code inspection confirms UxAccessibilityAssertions.cs accepts distinct ordinals and conforming dimensions without rejecting overlapping target/equivalent bounds. This public adopter helper was introduced by separate Story 13.7 at 7f57da411c3abf8e1d459d0611c49632c07393a7 and predates the heading-reflow continuation; the browser validator already rejects overlap. Add a focused overlapping/valid-equivalent regression in the owning Testing work.
+  status: done 2026-11-23
+  resolution: Equivalent bounds must be disjoint and must match the cited control when it appears in the inventory. Tests cover overlap, edge contact, large finite coordinates and conflicting ordinal evidence. See `spec-five-deferred-validation-fixes.md`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
   summary: Reject negative or inconsistent AE09 audit counts in the Story 13.7 reusable evidence recorder.
   evidence: H2-BH10 code inspection confirms TestAccessibilityEvidenceRecorder.cs requires FindingCount/CriticalFindingCount/AnnouncementCount presence but permits negatives, including a Passed record, and does not compare critical totals with overall findings. This separate Story 13.7 public helper predates the current continuation; add owning recorder regression cases and reject malformed totals without changing Story 13.6 browser evidence authority.
+  status: done 2026-11-23
+  resolution: AE-09 refuses negative totals, negative announcement counts and critical findings above the total, including in failed packets. Genuine failed audit outcomes remain recordable. See `spec-five-deferred-validation-fixes.md`.
 
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
@@ -11312,10 +11316,14 @@ The user chose to defer the two residuals left after the Story 13.6 corrections 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
   summary: Reject duplicate target ordinals in the Story 13.7 reusable AE04 evidence recorder.
   evidence: H5-BH09 confirms TestAccessibilityEvidenceRecorder.Validate checks each target independently and accepts two distinct targets with TargetNumber=1. This separate adopter-helper capability predates the current heading correction. Add an owning full-inventory uniqueness regression so recorded target references are unambiguous.
+  status: done 2026-11-23
+  resolution: AE-04 requires distinct target ordinals in both passed and failed packets. A refused packet is never retained. See `spec-five-deferred-validation-fixes.md`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md`
   summary: Cross-check spacing exceptions against the complete Story 13.7 AE04 target inventory.
   evidence: H5-BH10 confirms a 12x12 Spacing target with Neighbors=[] passes even when another recorded 24x24 target overlaps it. UxAccessibilityAssertions trusts the supplied neighbor list and the recorder does not compare the full inventory. This separate adopter-helper capability predates the current heading correction; prove overlapping omitted-neighbor rejection and a valid separated-inventory positive in the owning work.
+  status: done 2026-11-23
+  resolution: Spacing checks both supplied neighbors and other recorded controls, including equivalent controls recorded by reference. Regressions cover each conflicting source and a valid boundary separation. See `spec-five-deferred-validation-fixes.md`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-16-1-capture-the-current-eventstore-runtime-tuple.md`
   summary: Workspace auto-commits carried submodule gitlink moves into Story 16.1's commits, so its AC 3 ('touches only `_bmad-output/` record files') fails in pushed history and strict `--candidate` attribution exits 1 (medium).
@@ -11567,3 +11575,5 @@ November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were ap
 - source_spec: `_bmad-output/implementation-artifacts/spec-skill-corpus-validation-and-discovery.md`
   summary: Report errors in a supplied skill corpus baseline during release validation.
   evidence: A baseline returned by the parser after a file fails validation has diagnostics and an empty resource list. ValidateAgainstBaseline currently compares only its resources. A valid current corpus can therefore pass comparison against a malformed baseline.
+  status: done 2026-11-23
+  resolution: The release guard returns supplied baseline diagnostics and stops comparison on errors. Regression cases include an invalid parser result and an invalid provider snapshot that still has resources. See `spec-five-deferred-validation-fixes.md`.

@@ -30,8 +30,8 @@ public sealed class TestAccessibilityEvidenceRecorder
             throw new ArgumentException("AE evidence requires safe positive surface/state ordinals and a supported active theme.", nameof(context));
         }
         ValidateMeasurements(row, context.Theme, measurements);
-        AccessibilityEvidence evidence = new(row, _options.TimeProvider.GetUtcNow(), context,
-            RedactedEvidenceFormatter.FormatAccessibility(measurements, _options));
+        string redactedMeasurements = RedactedEvidenceFormatter.FormatAccessibility(measurements, _options);
+        AccessibilityEvidence evidence = new(row, _options.TimeProvider.GetUtcNow(), context, redactedMeasurements);
         _evidence.Enqueue(evidence);
         while (_evidence.Count > Math.Max(0, _options.MaxEvidenceRecords) && _evidence.TryDequeue(out _)) { }
         return evidence;
@@ -91,6 +91,8 @@ public sealed class TestAccessibilityEvidenceRecorder
                 break;
             case AccessibilityEvidenceRow.AE04:
                 Check(m.Targets.Count > 0, nameof(m.Targets));
+                Check(m.Targets.Select(target => target.TargetNumber).Distinct().Count() == m.Targets.Count,
+                    "Targets.TargetNumber");
                 break;
             case AccessibilityEvidenceRow.AE05:
                 Check(m.FocusTarget is not null, nameof(m.FocusTarget));
@@ -113,9 +115,9 @@ public sealed class TestAccessibilityEvidenceRecorder
                 break;
             case AccessibilityEvidenceRow.AE09:
                 Check(m.Wcag22Aa.HasValue, nameof(m.Wcag22Aa));
-                Check(m.FindingCount.HasValue, nameof(m.FindingCount));
-                Check(m.CriticalFindingCount.HasValue, nameof(m.CriticalFindingCount));
-                Check(m.AnnouncementCount.HasValue, nameof(m.AnnouncementCount));
+                Check(m.FindingCount is >= 0, nameof(m.FindingCount));
+                Check(m.CriticalFindingCount is >= 0 && !(m.CriticalFindingCount > m.FindingCount), nameof(m.CriticalFindingCount));
+                Check(m.AnnouncementCount is >= 0, nameof(m.AnnouncementCount));
                 Check(m.KeyboardPassed.HasValue, nameof(m.KeyboardPassed));
                 Check(m.AxePassed.HasValue, nameof(m.AxePassed));
                 Check(m.NoHoverOnlyAction.HasValue, nameof(m.NoHoverOnlyAction));
@@ -125,7 +127,7 @@ public sealed class TestAccessibilityEvidenceRecorder
         }
         if (failed.Count > 0)
         {
-            throw new ArgumentException("AE evidence is missing required measured facts or was measured under another row's setup or theme: "
+            throw new ArgumentException("AE evidence has missing or invalid measured facts or was measured under another row's setup or theme: "
                 + string.Join(", ", failed.Distinct(StringComparer.Ordinal)) + ".", nameof(m));
         }
         if (!m.Passed) { return; }
@@ -152,7 +154,7 @@ public sealed class TestAccessibilityEvidenceRecorder
         {
             for (int i = 0; i < m.Targets.Count; i++)
             {
-                failed.AddRange(UxAccessibilityAssertions.Failures(m.Targets[i]).Select(fact => $"Targets[{i + 1}].{fact}"));
+                failed.AddRange(UxAccessibilityAssertions.Failures(m.Targets[i], m.Targets).Select(fact => $"Targets[{i + 1}].{fact}"));
             }
         }
         if (row == AccessibilityEvidenceRow.AE05)

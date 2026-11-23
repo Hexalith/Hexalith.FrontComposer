@@ -30,7 +30,7 @@ public static class SkillCorpusReleaseGuard {
     /// and require a migration owner; resources present only in the current snapshot are treated
     /// as additive and skipped. Baseline-not-supplied is a no-op so a release pipeline that has
     /// not yet wired the baseline does not block the build, but the absence is reported so the
-    /// gap is visible.
+    /// gap is visible. A supplied baseline with errors fails before comparison.
     /// </summary>
     public static SkillCorpusValidationResult ValidateAgainstBaseline(
         SkillCorpusSnapshot current,
@@ -47,6 +47,12 @@ public static class SkillCorpusReleaseGuard {
                 SkillCorpusDiagnosticCategory.BaselineMismatch,
                 SkillCorpusAggregateManifestBuilder.ManifestResourceUri,
                 "No skill corpus baseline configured — skipping breaking-change comparison.") { IsInformational = true });
+            return new SkillCorpusValidationResult(diagnostics);
+        }
+
+        diagnostics.AddRange(baseline.Diagnostics);
+        if (baseline.Diagnostics.Any(d => !d.IsInformational))
+        {
             return new SkillCorpusValidationResult(diagnostics);
         }
 
