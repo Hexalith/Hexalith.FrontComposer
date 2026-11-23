@@ -89,6 +89,20 @@ class ReleasePrepublishTests(unittest.TestCase):
         with self.assertRaises(prepublish.PhaseFailure):
             prepublish._validate_unsigned_candidates(self.root, "bundle")
 
+    def test_record_incident_preserves_the_placeholder_if_the_writer_fails(self) -> None:
+        incident = self.root / "release-evidence/partial-publish-incident.json"
+        placeholder = '{"classification":"none","failed_phase":"none"}'
+        incident.write_text(placeholder, encoding="utf-8")
+
+        with (
+            mock.patch.object(prepublish.subprocess, "run", return_value=subprocess.CompletedProcess([], 1)),
+            mock.patch.object(prepublish, "log") as log,
+        ):
+            prepublish._record_incident("package-push")
+
+        self.assertEqual(placeholder, incident.read_text(encoding="utf-8"))
+        log.assert_called_once_with("publish", "incident writer failed for package-push with exit 1")
+
     def test_package_push_suppresses_automatic_symbols_but_symbol_push_does_not(self) -> None:
         package = pathlib.Path("nupkgs/Package.2.0.0.nupkg")
         symbols = pathlib.Path("nupkgs/Package.2.0.0.snupkg")

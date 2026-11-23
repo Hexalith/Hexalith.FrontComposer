@@ -36,7 +36,8 @@ from typing import Any
 # 4.2.1: verify the caller-owned publisher from FrontComposer's exact Git source.
 # 4.3.0: fallback approvals retain their immutable owner-recorded digest; drift denies publication.
 # 4.3.1: validate release evidence field types and inspect only unconditional project properties.
-__version__ = "4.3.1"
+# 4.3.2: preserve incident evidence and distinguish budget and local retry outcomes.
+__version__ = "4.3.2"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -367,8 +368,8 @@ def read_json(path: str | pathlib.Path) -> Any:
         raise SystemExit(f"invalid JSON evidence {path}: {exc}") from exc
 
 
-def write_json(path: str | pathlib.Path, payload: Any) -> None:
-    """Stage each write on the destination filesystem and atomically replace the report."""
+def write_json(path: str | pathlib.Path, payload: Any, *, replace_existing: bool = True) -> None:
+    """Stage a complete report and publish it atomically on the destination filesystem."""
     output = pathlib.Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
     staged_report = output.parent / f".release-evidence-{secrets.token_hex(16)}.tmp"
@@ -376,7 +377,10 @@ def write_json(path: str | pathlib.Path, payload: Any) -> None:
     try:
         with stream:
             stream.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
-        os.replace(staged_report, output)
+        if replace_existing:
+            os.replace(staged_report, output)
+        else:
+            os.link(staged_report, output)
     finally:
         staged_report.unlink(missing_ok=True)
 
@@ -2221,7 +2225,12 @@ def classify_context(context: dict[str, Any]) -> tuple[str, list[str]]:
     # Fork status takes precedence over rerun status: remediation paths differ.
     if from_fork:
         return "fork-pr", diagnostics
-    if partial_publish != "none" or run_attempt > 1:
+    if partial_publish != "none":
+        return "rerun-review", diagnostics
+    if run_attempt > 1:
+        if event_name in {"local", ""}:
+            diagnostics.append("run_attempt greater than 1 requires a hosted release event")
+            return "local-candidate", diagnostics
         return "rerun-review", diagnostics
     if event_name in {"pull_request", "pull_request_target"}:
         return "pr-same-repo", diagnostics
@@ -3482,6 +3491,40 @@ def _parse_budget_timestamp(value: str, option: str) -> dt.datetime:
     return parsed
 
 
+def _read_budget_manifest(args: argparse.Namespace) -> Any:
+    if args.manifest is None:
+        return {}
+    manifest_path = sanitize(args.manifest) if args.manifest else "(empty path)"
+    if args.manifest:
+        try:
+            return read_json(args.manifest)
+        except SystemExit as exc:
+            if not isinstance(exc.__cause__, (FileNotFoundError, NotADirectoryError)):
+                reason = f"release budget --manifest could not be read as JSON: {manifest_path}"
+                if args.diagnostics_output:
+                    _write_budget_skip_record(args, reason)
+                raise SystemExit(reason) from None
+    if args.append_current:
+        print(f"release budget --manifest is missing: {manifest_path}. Using CLI tag and package count.", file=sys.stderr)
+    return {}
+
+
+def _write_budget_skip_record(args: argparse.Namespace, reason: str) -> None:
+    try:
+        diagnostics_path = pathlib.Path(args.diagnostics_output).resolve()
+        protected_paths = (args.evidence, args.manifest, args.output)
+        if any(diagnostics_path == pathlib.Path(path).resolve() for path in protected_paths if path):
+            raise SystemExit(f"{reason}. --diagnostics-output must name a separate file.")
+        write_json(args.diagnostics_output, {
+            "decision_contract": "frontcomposer.release-budget-skipped.v1",
+            "classification": "budget-unavailable",
+            "reason": reason,
+            "skipped_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        })
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise SystemExit(f"{reason}. Could not write --diagnostics-output ({type(exc).__name__}).") from None
+
+
 def release_budget(args: argparse.Namespace) -> int:
     if pathlib.Path(args.evidence).exists():
         raw = read_json(args.evidence)
@@ -3492,9 +3535,7 @@ def release_budget(args: argparse.Namespace) -> int:
     releases = raw.get("releases", raw) if isinstance(raw, dict) else raw
     if not isinstance(releases, list):
         raise SystemExit("invalid release budget evidence: expected releases list")
-    manifest_payload: Any = {}
-    if args.manifest and pathlib.Path(args.manifest).exists():
-        manifest_payload = read_json(args.manifest)
+    manifest_payload = _read_budget_manifest(args)
     if args.append_current:
         if args.started_at is None:
             raise SystemExit("--started-at or RELEASE_STARTED_AT must be set before --append-current")
@@ -3646,32 +3687,6 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
         # runs so semantic-release's `@semantic-release/github` asset upload sees
         # stable checksums. Drop run-bound fields (manifest_seal sealed_at, run_id,
         # tag) from the placeholder. Real incidents keep all forensic provenance.
-        # CR-12-4-P155 (round-7): refuse to overwrite an existing real incident
-        # record. If the target path holds a JSON document with `failed_phase != "none"`
-        # (a real incident), writing a placeholder over it silently destroys forensic
-        # state. Operator copy-pasting the prepareCmd placeholder invocation as manual
-        # recovery is the trigger; force the operator to pick a different output path.
-        if output_path.is_file():
-            try:
-                existing = read_json(output_path)
-            except SystemExit:
-                # CR-12-4-P224 (round-9, BH-031/EC-12): the prior `existing = None`
-                # fallback let a corrupted/truncated real incident be silently
-                # overwritten by the placeholder, destroying forensic state. Fail
-                # closed: the operator must investigate whether the unreadable file
-                # is a partial-write of a real incident before clearing it.
-                raise SystemExit(
-                    f"--classification none refuses to overwrite an unreadable existing file at {sanitize(str(output_path))}; "
-                    "the file may be a corrupted real partial-publish incident — investigate before clearing"
-                )
-            if (
-                isinstance(existing, dict)
-                and str(existing.get("failed_phase", "")).strip().lower() not in {"", "none"}
-            ):
-                raise SystemExit(
-                    f"--classification none refuses to overwrite an existing real partial-publish incident at {sanitize(str(output_path))}; "
-                    "pick a different --output path or remove the existing file deliberately"
-                )
         # CR-12-4-P169 (round-7): split placeholder vs real-incident contract names so
         # consumers can dispatch on `decision_contract` instead of having to read
         # `failed_phase` / `classification` to disambiguate.
@@ -3704,7 +3719,37 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
         diagnostics.append(run_attempt_diag)
     if diagnostics:
         payload["diagnostics"] = diagnostics
-    write_json(output_path, payload)
+    if classification != "none":
+        write_json(output_path, payload)
+        return 0
+
+    # A placeholder has lower precedence than every existing report. An atomic
+    # create protects a real incident that lands while the placeholder is staged.
+    try:
+        write_json(output_path, payload, replace_existing=False)
+    except FileExistsError:
+        output_label = sanitize(str(output_path))
+        if not output_path.is_file() or output_path.is_symlink():
+            raise SystemExit(
+                f"--classification none refuses to overwrite a non-regular file at {output_label}; "
+                "pick a different --output path"
+            ) from None
+        try:
+            existing = read_json(output_path)
+        except SystemExit:
+            raise SystemExit(
+                f"--classification none refuses to overwrite an unreadable existing file at {output_label}; "
+                "investigate before clearing it"
+            ) from None
+        if not (
+            isinstance(existing, dict)
+            and type(existing.get("run_attempt")) is int
+            and all(existing.get(key) == value for key, value in payload.items() if key != "diagnostics")
+        ):
+            raise SystemExit(
+                f"--classification none refuses to overwrite existing partial-publish evidence at {output_label}; "
+                "pick a different --output path"
+            ) from None
     return 0
 
 
@@ -4099,7 +4144,11 @@ def main() -> int:
     budget.add_argument("--tag", default=os.environ.get("GITHUB_REF_NAME", "local"))
     budget.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", "local"))
     budget.add_argument("--package-count", type=int, default=0)
-    budget.add_argument("--manifest")
+    budget.add_argument("--manifest", help="Use release metadata from this manifest when present")
+    budget.add_argument(
+        "--diagnostics-output",
+        help="Write a budget-unavailable record on a manifest JSON read error. A successful run leaves earlier records intact.",
+    )
     budget.add_argument("--publish-status", default="unknown")
     budget.add_argument("--publish-latency-minutes", type=float)
     budget.add_argument("--slow-job", action="append")

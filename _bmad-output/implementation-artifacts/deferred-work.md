@@ -5456,7 +5456,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 5 (2026-05-18)"), 2026-08-27
 location: eng/release_evidence.py
 reason: **CR-12-4-Def16 — `classify_context` returns `rerun-review` for local-candidate evidence when `run_attempt > 1`:** A developer running `python eng/release_evidence.py classify-release --run-attempt 2` locally is classified as `rerun-review` (never publish-authorized) with `next_owner_action="create a fresh dispatch or new tag"` — misleading for the local case where no real prior run exists. Deferred: low-impact UX issue; classification is still fail-closed. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:617-622`.
-status: open
+status: done 2026-11-23
+resolution: A local retry remains a local candidate and reports the hosted-event requirement. Hosted reruns, fork evidence and partial publication retain their existing precedence.
 
 ### DW-1475: `parse_expiry` has no upper bound on accepted year (9999+): A fallback approval can be authored with effectively infinite expiry. Operationally low risk because fingerprint drift forces re-approval on real config changes regardless. Deferred: defense-in-depth; pick up if a future audit demands explicit max-expiry. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:911-922`.
 
@@ -5819,7 +5820,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2649-2680
 reason: **CR-12-4-Def68 — `ReleaseBudgetUsesManifestTagWhenAppending` test doesn't exercise manifest-tag-missing fallback:** Blind Hunter BH-036 + Edge Case Hunter EC-29 — coverage gap. Pick up alongside Def67. Owner: governance-tests maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2649-2680`.
-status: open
+status: done 2026-11-23
+resolution: The release-budget CLI regression checks a manifest without a tag that still supplies a package count, alongside the existing precedence and fallback cases.
 
 ### DW-1528: `attested-without-bundle` fixture uses `attestation_bundle: false` instead of `null`/`{}`: Blind Hunter BH-038 + Edge Case Hunter EC-31 — fixture hygiene. Pick up alongside fixture-shape audit. Owner: governance-tests maintainer. Evidence: `tests/ci-governance/fixtures/release-readiness-cases.json:2862-2877`.
 
@@ -5985,7 +5987,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 10)"), 2026-08-27
 location: sealed-manifest.json
 reason: **CR-12-4-Def93 — `release_budget` crashes on malformed `sealed-manifest.json` because `read_json` raises SystemExit; budget step exits opaquely instead of writing a typed budget-skipped marker:** Edge Case Hunter EC-11 — P228 guards `packages` shape but not JSON parse. Pick up alongside P239's broader budget-skip taxonomy. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:2007-2009` + `.github/workflows/release.yml:609-630`.
-status: open
+status: done 2026-11-23
+resolution: Malformed manifest JSON returns a budget-specific failure and can emit the typed skipped record through `--diagnostics-output`. The prior summary survives.
 
 ### DW-1553: `release_budget` step records `tag="<github.ref_name>"` (e.g., `"main"`) when no sealed-manifest produced before the step runs: Edge Case Hunter EC-14 — P192 fixed the success-path; failed-run records keep the misleading branch-name-as-tag value. Pick up alongside P239 / budget-skipped-marker. Owner: release-evidence maintainer. Evidence: `.github/workflows/release.yml:609-630` + `eng/release_evidence.py:2007-2008`.
 
@@ -11474,6 +11477,14 @@ November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were ap
 - source_spec: `spec-five-release-evidence-output-fixes.md`
   summary: Coordinate the incident placeholder check with other writers to the incident path.
   evidence: Both the baseline and current code allow a placeholder to overwrite a real incident written between its existence check and its atomic replacement. Exclusive staging keeps each report intact but does not coordinate the two operations.
+  status: done 2026-11-23
+  resolution: A staged placeholder can create the destination only when it is absent. Existing placeholders make retries idempotent. The publisher now delegates replacement to the atomic incident writer.
 - source_spec: `spec-five-release-evidence-output-fixes.md`
   summary: Decide how release budget appends should handle a missing path explicitly supplied with `--manifest`.
   evidence: An absent file already selects the CLI tag and package-count fallbacks, including when the operator supplied the path. A distinct diagnostic for an explicit missing path needs a compatibility decision for callers running without a manifest.
+  status: done 2026-11-23
+  resolution: An explicitly missing manifest still permits the append using CLI values and emits a diagnostic on stderr. Omission keeps the same fallback silent.
+
+- source_spec: `spec-five-deferred-release-evidence-followups.md`
+  summary: Record an incident when verification of a restored release manifest fails.
+  evidence: The existing `cmd_verify_prepared` passes `post-restore-verification` to `_record_incident`, and `_PARTIAL_PUBLISH_PHASES` rejects that value. Align the producer with the release evidence phase contract and verify that the failure path preserves the resulting incident.

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import concurrent.futures
 import copy
 import datetime as dt
@@ -1034,6 +1035,30 @@ class ReleaseEvidenceCliInputTests(unittest.TestCase):
             "--output", str(self.output), *args,
         )
 
+    def test_local_retry_has_local_context_and_remains_blocked(self) -> None:
+        for event, ref, other_args, context in (
+            ("local", "local", (), "local-candidate"),
+            ("workflow_dispatch", "refs/heads/main", (), "rerun-review"),
+            ("workflow_dispatch", "refs/heads/main", ("--dry-run", "true"), "rerun-review"),
+            ("local", "local", ("--partial-publish-state", "partial"), "rerun-review"),
+            ("pull_request", "refs/pull/1/merge", ("--from-fork", "true"), "fork-pr"),
+        ):
+            with self.subTest(event=event, other_args=other_args):
+                result = self.run_cli(
+                    "classify-release", "--root", str(self.root), "--output", str(self.output),
+                    "--event-name", event, "--ref", ref, "--run-attempt", "2", *other_args,
+                    "--require-publishable",
+                )
+                self.assertEqual(1, result.returncode, result.stderr)
+                decision = json.loads(self.output.read_text(encoding="utf-8"))
+                self.assertEqual(context, decision["context_class"])
+                self.assertFalse(decision["publish_authorized"])
+                self.assertEqual(
+                    context == "local-candidate",
+                    any("run_attempt greater than 1 requires a hosted release event" in reason
+                        for reason in decision["grouped_reasons"]["blocking"]),
+                )
+
     def test_classify_release_blocks_malformed_test_result_status(self) -> None:
         results = self.root / "test-results.json"
         command = (
@@ -1210,6 +1235,7 @@ class ReleaseEvidenceCliInputTests(unittest.TestCase):
         for manifest, tag, count in (
             ({"tag": "v3.0.0", "packages": []}, "v3.0.0", 0),
             ({"tag": " ", "packages": [{}]}, "v2.0.0", 1),
+            ({"packages": [{}, {}]}, "v2.0.0", 2),
             ({}, "v2.0.0", 3),
         ):
             with self.subTest(manifest=manifest):
@@ -1220,6 +1246,122 @@ class ReleaseEvidenceCliInputTests(unittest.TestCase):
                 self.assertEqual(0, result.returncode, result.stderr)
                 release, = json.loads(self.output.read_text(encoding="utf-8"))["releases"]
                 self.assertEqual((tag, count), (release["tag"], release["package_count"]))
+
+    def test_explicit_missing_budget_manifest_uses_cli_fallback_and_reports_it(self) -> None:
+        self.history.write_text("[]", encoding="utf-8")
+        for manifest_args, expected_path in (
+            ((), None),
+            (("--manifest", self.manifest.name), self.manifest.name),
+            (("--manifest", f"{self.history.name}/manifest.json"), f"{self.history.name}/manifest.json"),
+            (("--manifest", ""), "(empty path)"),
+        ):
+            with self.subTest(manifest_args=manifest_args):
+                result = self.run_budget_append("--tag", "v2.0.0", "--package-count", "3", *manifest_args)
+                self.assertEqual(0, result.returncode, result.stderr)
+                release, = json.loads(self.output.read_text(encoding="utf-8"))["releases"]
+                self.assertEqual(("v2.0.0", 3), (release["tag"], release["package_count"]))
+                if expected_path is None:
+                    self.assertEqual("", result.stderr)
+                else:
+                    self.assertIn(f"--manifest is missing: {expected_path}. Using CLI tag and package count.", result.stderr)
+
+    def test_malformed_budget_manifest_reports_a_skip_and_preserves_the_summary(self) -> None:
+        _write_json(self.output, {"prior": "summary"})
+        original = self.output.read_bytes()
+        malformed = b'{"tag":'
+        self.manifest.write_bytes(malformed)
+        diagnostics = self.root / "release-budget-skipped.json"
+        with self.subTest("opt-in marker"):
+            result = self.run_budget_append("--manifest", self.manifest.name, "--diagnostics-output", str(diagnostics))
+            self.assertEqual(1, result.returncode, result.stderr)
+            reason = "release budget --manifest could not be read as JSON: manifest.json"
+            self.assertEqual(reason, result.stderr.strip())
+            payload = json.loads(diagnostics.read_text(encoding="utf-8"))
+            self.assertEqual("frontcomposer.release-budget-skipped.v1", payload["decision_contract"])
+            self.assertEqual("budget-unavailable", payload["classification"])
+            self.assertEqual(reason, payload["reason"])
+            self.assertEqual(dt.timedelta(0), dt.datetime.fromisoformat(payload["skipped_at"]).utcoffset())
+        with self.subTest("same path as summary"):
+            result = self.run_budget_append("--manifest", self.manifest.name, "--diagnostics-output", self.output.name)
+            self.assertEqual(1, result.returncode, result.stderr)
+            self.assertIn("--diagnostics-output must name a separate file", result.stderr)
+        with self.subTest("marker write failure"):
+            result = self.run_budget_append("--manifest", self.manifest.name, "--diagnostics-output", str(self.root))
+            self.assertEqual(1, result.returncode, result.stderr)
+            self.assertIn(f"{reason}. Could not write --diagnostics-output", result.stderr)
+        self.assertEqual(original, self.output.read_bytes())
+        self.assertEqual(malformed, self.manifest.read_bytes())
+
+        prior_skip = diagnostics.read_bytes()
+        _write_json(self.manifest, {"tag": "v2.0.0"})
+        result = self.run_budget_append("--manifest", self.manifest.name, "--diagnostics-output", str(diagnostics))
+        self.assertEqual(0, result.returncode, result.stderr)
+        release, = json.loads(self.output.read_text(encoding="utf-8"))["releases"]
+        self.assertEqual("v2.0.0", release["tag"])
+        self.assertEqual(prior_skip, diagnostics.read_bytes())
+
+    def test_partial_publish_placeholders_are_idempotent_and_preserve_existing_evidence(self) -> None:
+        args = (
+            "partial-publish-incident", "--manifest", str(self.manifest), "--output", str(self.output),
+            "--phase", "none", "--classification", "none",
+        )
+        _write_json(self.manifest, {})
+        first = self.run_cli(*args)
+        self.assertEqual(0, first.returncode, first.stderr)
+        placeholder = self.output.read_bytes()
+        self.manifest.write_text("{", encoding="utf-8")
+        second = self.run_cli(*args)
+        self.assertEqual(0, second.returncode, second.stderr)
+        self.assertEqual(placeholder, self.output.read_bytes())
+
+        for existing in (
+            b"{}", b"{", b'{"classification":"partial-publish-incident","failed_phase":"package-push"}',
+            b'{"classification":"none","failed_phase":"none","decision_contract":"frontcomposer.partial-publish-placeholder.v1"}',
+        ):
+            with self.subTest(existing=existing):
+                self.output.write_bytes(existing)
+                result = self.run_cli(*args)
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("refuses to overwrite", result.stderr)
+                self.assertEqual(existing, self.output.read_bytes())
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "requires named pipes")
+    def test_placeholder_refuses_a_named_pipe_without_reading_it(self) -> None:
+        _write_json(self.manifest, {})
+        os.mkfifo(self.output)
+        placeholder = argparse.Namespace(
+            classification="none", phase="none", output=str(self.output), manifest=str(self.manifest),
+            run_attempt="1", run_id="42", tag="v2.0.0",
+        )
+        with unittest.mock.patch.object(HELPER, "read_json", return_value={}) as read:
+            with self.assertRaisesRegex(SystemExit, "refuses to overwrite a non-regular file"):
+                HELPER.partial_publish_incident(placeholder)
+            read.assert_called_once_with(str(self.manifest))
+        self.assertTrue(self.output.is_fifo())
+
+    def test_real_incident_takes_precedence_over_a_staged_placeholder(self) -> None:
+        _write_json(self.manifest, {})
+        placeholder = argparse.Namespace(
+            classification="none", phase="none", output=str(self.output), manifest=str(self.manifest),
+            run_attempt="1", run_id="42", tag="v2.0.0",
+        )
+        incident = argparse.Namespace(**vars(placeholder))
+        incident.classification = "partial-publish-incident"
+        incident.phase = "package-push"
+        link = os.link
+
+        def record_incident_then_link(source, destination):
+            self.assertEqual(0, HELPER.partial_publish_incident(incident))
+            return link(source, destination)
+
+        with unittest.mock.patch.object(HELPER.os, "link", side_effect=record_incident_then_link):
+            with self.assertRaisesRegex(SystemExit, "refuses to overwrite"):
+                HELPER.partial_publish_incident(placeholder)
+
+        report = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertEqual(("partial-publish-incident", "package-push", "42"),
+                         (report["classification"], report["failed_phase"], report["run_id"]))
+        self.assertCountEqual((self.manifest, self.output), self.root.iterdir())
 
     def test_invalid_artifact_root_is_the_only_diagnostic(self) -> None:
         manifest = {"packages": [{"version": []}]}

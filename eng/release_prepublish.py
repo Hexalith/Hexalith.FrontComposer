@@ -736,14 +736,7 @@ def cmd_verify_prepared(args: argparse.Namespace) -> int:
 def _record_incident(phase: str, base: pathlib.Path | None = None) -> None:
     base = base or REPO_ROOT
     incident = base / EVIDENCE_DIR / "partial-publish-incident.json"
-    if incident.is_file():
-        try:
-            existing = json.loads(incident.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            existing = None
-        if isinstance(existing, dict) and str(existing.get("failed_phase", "none")).lower() in {"", "none"}:
-            incident.unlink()
-    subprocess.run(
+    result = subprocess.run(
         ["python3", "eng/release_evidence.py", "partial-publish-incident",
          "--manifest", str(base / EVIDENCE_DIR / "sealed-manifest.json"),
          "--output", str(base / EVIDENCE_DIR / "partial-publish-incident.json"),
@@ -751,6 +744,9 @@ def _record_incident(phase: str, base: pathlib.Path | None = None) -> None:
          "--classification", "partial-publish-incident"],
         cwd=REPO_ROOT, check=False,
     )
+    if result.returncode != 0:
+        log("publish", f"incident writer failed for {phase} with exit {result.returncode}")
+        return
     # Publisher-side durability (review BH-4): when the publish aborts here,
     # semantic-release stops before @semantic-release/github can attach any asset and
     # the runner is discarded — so surface the sanitized incident record in the job
