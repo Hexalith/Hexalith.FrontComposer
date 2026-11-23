@@ -20,8 +20,7 @@ internal static class MigrationPlanner {
 
     public static async Task<MigrationPlan> PlanAsync(string projectPath, MigrationEdge edge, CancellationToken cancellationToken) {
         ProjectDocumentSet documentSet = ProjectDocumentLoader.Load(projectPath);
-        IReadOnlyDictionary<string, ImmutableArray<Diagnostic>> generatedDiagnostics =
-            MigrationDiagnosticSidecarReader.Read(documentSet.ProjectDirectory);
+        var (generatedDiagnostics, unreadableSidecars) = MigrationDiagnosticSidecarReader.Read(documentSet.ProjectDirectory);
         HashSet<string> submoduleRoots = SubmoduleBoundaryReader.Read(documentSet.ProjectDirectory);
         List<MigrationEntry> entries = [];
         List<PlannedFileEdit> fileEdits = [];
@@ -226,24 +225,21 @@ internal static class MigrationPlanner {
                 fixEntries));
         }
 
-        foreach ((string sidecarPath, ImmutableArray<Diagnostic> diagnostics) in generatedDiagnostics
-            .Where(x => x.Key.StartsWith(MigrationDiagnosticSidecarReader.SentinelPrefix, StringComparison.Ordinal))
-            .OrderBy(x => x.Key, StringComparer.Ordinal)) {
-            foreach (Diagnostic diagnostic in diagnostics.OrderBy(x => x.Id, StringComparer.Ordinal)) {
-                entries.Add(new MigrationEntry(
-                    diagnostic.Id,
-                    "manual-only",
-                    sidecarPath,
-                    "Migration sidecar path or payload was not trusted.",
-                    "Sidecar diagnostics use project-relative source paths inside the selected project.",
-                    "Untrusted, malformed, or unreadable sidecar data was found.",
-                    "Regenerate FrontComposer diagnostics and rerun migration.",
-                    edge.DocsLink,
-                    null));
-            }
+        foreach (string sidecarPath in unreadableSidecars.Order(StringComparer.Ordinal)) {
+            entries.Add(new MigrationEntry(
+                MigrationDiagnostics.ManualMigration.Id,
+                "manual-only",
+                sidecarPath,
+                "Migration sidecar path or payload was not trusted.",
+                "Sidecar diagnostics use project-relative source paths inside the selected project.",
+                "Untrusted, malformed, or unreadable sidecar data was found.",
+                "Regenerate FrontComposer diagnostics and rerun migration.",
+                edge.DocsLink,
+                null));
         }
 
-        if (!entries.Any(x => x.Kind is "safe-fix" or "manual-only" or "failed" or "conflict")) {
+        bool allDocumentsSkipped = documentsById.Count == 0 && entries.Any(x => x.Kind == "skipped");
+        if (!allDocumentsSkipped && !entries.Any(x => x.Kind is "safe-fix" or "manual-only" or "failed" or "conflict")) {
             entries.Add(new MigrationEntry(
                 "HFCM0001",
                 "unchanged",

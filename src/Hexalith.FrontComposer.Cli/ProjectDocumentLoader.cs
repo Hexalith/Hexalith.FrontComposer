@@ -65,7 +65,7 @@ internal static class ProjectDocumentLoader {
             : projectRoot + Path.DirectorySeparatorChar;
 
         foreach (string pattern in include.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
-            foreach (string path in Expand(projectDirectory, pattern)) {
+            foreach (string path in Expand(projectDirectory, pattern, excludes)) {
                 string canonical = PathUtilities.Canonical(path);
                 bool insideProject = string.Equals(canonical, projectRoot, PathUtilities.PathComparison)
                     || canonical.StartsWith(projectRootWithSep, PathUtilities.PathComparison);
@@ -97,7 +97,7 @@ internal static class ProjectDocumentLoader {
         }
     }
 
-    private static IEnumerable<string> Expand(string projectDirectory, string pattern) {
+    private static IEnumerable<string> Expand(string projectDirectory, string pattern, string[] excludes) {
         string normalized = pattern.Replace('\\', '/');
         if (!normalized.Contains('*', StringComparison.Ordinal)) {
             string path;
@@ -112,7 +112,7 @@ internal static class ProjectDocumentLoader {
         }
 
         if (normalized is "**/*.cs" or "**.cs") {
-            return Directory.EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories);
+            return EnumerateFiles(projectDirectory, projectDirectory, "*.cs", SearchOption.AllDirectories, excludes);
         }
 
         string filePattern = Path.GetFileName(normalized);
@@ -131,7 +131,32 @@ internal static class ProjectDocumentLoader {
             return [];
         }
 
-        return Directory.Exists(searchRoot) ? Directory.EnumerateFiles(searchRoot, filePattern, search) : [];
+        return Directory.Exists(searchRoot) ? EnumerateFiles(projectDirectory, searchRoot, filePattern, search, excludes) : [];
+    }
+
+    private static IEnumerable<string> EnumerateFiles(string projectDirectory, string searchRoot, string pattern, SearchOption search, string[] excludes) {
+        if (search == SearchOption.TopDirectoryOnly || excludes.Length == 0) {
+            return Directory.EnumerateFiles(searchRoot, pattern, search);
+        }
+
+        return EnumerateIncludedDirectories(projectDirectory, searchRoot, pattern, excludes);
+    }
+
+    private static IEnumerable<string> EnumerateIncludedDirectories(string projectDirectory, string searchRoot, string pattern, string[] excludes) {
+        Stack<string> pendingDirectories = new();
+        pendingDirectories.Push(searchRoot);
+        while (pendingDirectories.TryPop(out string? directory)) {
+            foreach (string path in Directory.EnumerateFiles(directory, pattern)) {
+                yield return path;
+            }
+
+            foreach (string child in Directory.EnumerateDirectories(directory)) {
+                string relativePath = PathUtilities.ToProjectRelative(projectDirectory, child);
+                if (!IsExcluded(relativePath + "/", excludes)) {
+                    pendingDirectories.Push(child);
+                }
+            }
+        }
     }
 
     private static bool IsExcluded(string relativePath, string[] excludes) {

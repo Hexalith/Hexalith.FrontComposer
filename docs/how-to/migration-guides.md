@@ -65,12 +65,11 @@ then replace `--dry-run` with `--apply` to write eligible source changes. Each f
 atomically through a same-directory temporary file after revalidating its path and source hash.
 This is per-file atomicity: earlier successful writes remain after a later failure or cancellation;
 there is no whole-run rollback. Handled write failures return code 4 and set `applied=false` on
-emitted reports. Cancellation can return code 4 before any report is emitted; interrupted output
-may leave an absent or partial report. Do not require an `applied` field when no complete report
-was emitted. Migration sidecars support arrays of diagnostic objects or objects containing a
-`diagnostics` array of objects. Unsupported valid JSON shapes, such as scalar roots or non-object
-diagnostic entries, may throw outside handled failures without a structured report or the
-documented exit-code guarantees.
+emitted reports. Cancellation during planning can return code 4 before a report is emitted.
+If cancellation stops apply, the report lists completed writes and each planned file left
+unwritten. Migration sidecars support arrays of diagnostic objects or objects containing a
+`diagnostics` array. Malformed payloads and directory read failures appear as manual-only
+sentinels in the report. Other readable diagnostics are still included.
 
 Generated output, `bin`, `obj`, `.git`, package caches, submodules and other nested repositories, paths outside the project,
 file symlinks, and linked ancestor directories below the project directory (including junctions) are ineligible. Paths below the selected project directory are ineligible when they are generated output, nested repositories, file symlinks, or linked directories. Explicit `Compile` Link metadata does not authorize an outside-root or

@@ -5,8 +5,9 @@ internal static class MigrationApplier {
         List<MigrationEntry> entries = [.. plan.Entries.Where(x => x.Kind != "safe-fix")];
         List<MigrationEntry> changed = [];
         HashSet<string> submoduleSnapshot = SubmoduleBoundaryReader.Read(plan.ProjectDirectory);
-        bool cancelled = false;
-        foreach (PlannedFileEdit edit in plan.FileEdits.OrderBy(x => x.RelativePath, StringComparer.Ordinal)) {
+        PlannedFileEdit[] orderedEdits = plan.FileEdits.OrderBy(x => x.RelativePath, StringComparer.Ordinal).ToArray();
+        for (int index = 0; index < orderedEdits.Length; index++) {
+            PlannedFileEdit edit = orderedEdits[index];
             try {
                 cancellationToken.ThrowIfCancellationRequested();
                 string canonicalNow = PathUtilities.Canonical(edit.FullPath);
@@ -34,8 +35,11 @@ internal static class MigrationApplier {
                 changed.AddRange(edit.Entries);
             }
             catch (OperationCanceledException) {
-                cancelled = true;
-                entries.Add(Failed(edit, plan.Edge, "Migration apply was cancelled after writing " + changed.Count + " file(s)."));
+                entries.AddRange(orderedEdits.Skip(index).Select(unwritten =>
+                    Failed(unwritten, plan.Edge, "Migration apply was cancelled before this file was written.") with {
+                        Got = "Cancellation requested.",
+                        Fix = "Rerun migration to apply the remaining edits.",
+                    }));
                 break;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
@@ -48,7 +52,7 @@ internal static class MigrationApplier {
         // `Applied` reports whether apply ran to completion AND every planned write succeeded.
         // Cancellation OR any per-file Failed entry flips it to false so callers cannot mistake
         // a partial-write run for a clean apply.
-        bool appliedClean = !cancelled && !final.Any(x => x.Kind == "failed");
+        bool appliedClean = !final.Any(x => x.Kind == "failed");
         return new MigrationResult(appliedClean, final, MigrationSummary.From(final));
     }
 

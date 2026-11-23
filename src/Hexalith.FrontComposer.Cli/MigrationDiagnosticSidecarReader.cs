@@ -6,143 +6,141 @@ using Microsoft.CodeAnalysis;
 namespace Hexalith.FrontComposer.Cli;
 
 internal static class MigrationDiagnosticSidecarReader {
-    public const string SentinelPrefix = "__sidecar__/";
+    private const string SentinelPrefix = "__sidecar__/";
 
-    public static IReadOnlyDictionary<string, ImmutableArray<Diagnostic>> Read(string projectDirectory) {
+    public static (IReadOnlyDictionary<string, ImmutableArray<Diagnostic>> Diagnostics, IReadOnlySet<string> UnreadablePaths)
+        Read(string projectDirectory) {
         // D7 (Story 9-2 third pass): manual-migration HFCM9002 sidecars are read here as a
         // **test-only synthetic** contract until Story 9-4 governs the final HFC ID assignment
         // and SourceTools generator emits real adopter sidecars. AC11 fires today only against
         // hand-crafted fixtures (`tests/Hexalith.FrontComposer.Cli.Tests/MigrationCommandTests.cs`).
         // See Known Gaps row "P-D4 SourceTools-emitted manual-only diagnostic" — owner Story 9-4.
         string objDirectory = Path.Combine(projectDirectory, "obj");
-        if (!Directory.Exists(objDirectory)) {
-            return new Dictionary<string, ImmutableArray<Diagnostic>>(PathUtilities.PathComparer);
-        }
-
         Dictionary<string, ImmutableArray<Diagnostic>.Builder> builders = new(PathUtilities.PathComparer);
-        IEnumerable<string> sidecarPaths;
+        HashSet<string> unreadablePaths = new(PathUtilities.PathComparer);
+        List<string> sidecarPaths = [];
+        Stack<string> pendingDirectories = new();
         try {
-            sidecarPaths = Directory.EnumerateFiles(objDirectory, "*.diagnostics.json", SearchOption.AllDirectories)
-                .Where(IsGeneratedDiagnosticsSidecar)
-                .Order(StringComparer.Ordinal)
-                .ToArray();
+            _ = File.GetAttributes(objDirectory);
+            pendingDirectories.Push(objDirectory);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException) {
+            // A project that has never been built normally has no obj directory.
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
-            return new Dictionary<string, ImmutableArray<Diagnostic>>(PathUtilities.PathComparer);
+            AddSentinel(unreadablePaths, objDirectory, projectDirectory);
         }
 
-        foreach (string path in sidecarPaths) {
+        while (pendingDirectories.TryPop(out string? directory)) {
+            try {
+                foreach (string child in Directory.EnumerateDirectories(directory)) {
+                    pendingDirectories.Push(child);
+                }
+
+                sidecarPaths.AddRange(Directory.EnumerateFiles(directory, "*.diagnostics.json")
+                    .Where(IsGeneratedDiagnosticsSidecar));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+                AddSentinel(unreadablePaths, objDirectory, projectDirectory);
+            }
+        }
+
+        foreach (string path in sidecarPaths.Order(StringComparer.Ordinal)) {
             try {
                 using FileStream stream = File.OpenRead(path);
                 using var document = JsonDocument.Parse(stream);
-                JsonElement root = document.RootElement;
-                IEnumerable<JsonElement> entries = root.ValueKind == JsonValueKind.Array
-                    ? root.EnumerateArray()
-                    : root.TryGetProperty("diagnostics", out JsonElement diagnostics) && diagnostics.ValueKind == JsonValueKind.Array
-                        ? diagnostics.EnumerateArray()
-                        : [];
+                JsonElement entries = document.RootElement;
+                if (entries.ValueKind == JsonValueKind.Object && entries.TryGetProperty("diagnostics", out JsonElement diagnostics)) {
+                    entries = diagnostics;
+                }
 
-                foreach (JsonElement entry in entries) {
-                    if (!IsManualMigrationDiagnostic(entry)) {
-                        continue;
+                if (entries.ValueKind != JsonValueKind.Array) {
+                    AddSentinel(unreadablePaths, path, projectDirectory);
+                    continue;
+                }
+
+                foreach (JsonElement entry in entries.EnumerateArray()) {
+                    try {
+                        string id = entry.ValueKind == JsonValueKind.Object ? Get(entry, "id") : string.Empty;
+                        if (string.IsNullOrWhiteSpace(id)) {
+                            AddSentinel(unreadablePaths, path, projectDirectory);
+                            continue;
+                        }
+
+                        if (!string.Equals(id, MigrationDiagnostics.ManualMigration.Id, StringComparison.Ordinal)) {
+                            continue;
+                        }
+
+                        string? relativePath = NormalizeSourcePath(Get(entry, "path"), projectDirectory);
+                        if (relativePath is null) {
+                            AddSentinel(unreadablePaths, path, projectDirectory);
+                            continue;
+                        }
+
+                        // Preserve the sidecar's source-side message in `Properties` so the planner
+                        // can surface it via the resulting MigrationEntry.What.
+                        string what = Get(entry, "what");
+                        ImmutableDictionary<string, string?> properties = string.IsNullOrEmpty(what)
+                            ? ImmutableDictionary<string, string?>.Empty
+                            : ImmutableDictionary<string, string?>.Empty.Add("what", what);
+                        if (!builders.TryGetValue(relativePath, out ImmutableArray<Diagnostic>.Builder? builder)) {
+                            builder = ImmutableArray.CreateBuilder<Diagnostic>();
+                            builders.Add(relativePath, builder);
+                        }
+
+                        builder.Add(Diagnostic.Create(
+                            MigrationDiagnostics.ManualMigration,
+                            Location.None,
+                            properties: properties,
+                            messageArgs: null));
                     }
-
-                    string relativePath = NormalizePath(Get(entry, "path"), projectDirectory);
-                    if (string.IsNullOrWhiteSpace(relativePath) || relativePath == PathUtilities.RedactedPathSentinel) {
-                        AddSentinel(builders, path, projectDirectory);
-                        continue;
+                    catch (InvalidOperationException) {
+                        // JSON string decoding can fail after the surrounding document has been parsed.
+                        AddSentinel(unreadablePaths, path, projectDirectory);
                     }
-
-                    if (!builders.TryGetValue(relativePath, out ImmutableArray<Diagnostic>.Builder? builder)) {
-                        builder = ImmutableArray.CreateBuilder<Diagnostic>();
-                        builders.Add(relativePath, builder);
-                    }
-
-                    // Preserve the sidecar's source-side message in `Properties` so the planner
-                    // can surface it via the resulting MigrationEntry.What.
-                    string what = Get(entry, "what");
-                    ImmutableDictionary<string, string?> properties = string.IsNullOrEmpty(what)
-                        ? ImmutableDictionary<string, string?>.Empty
-                        : ImmutableDictionary<string, string?>.Empty.Add("what", what);
-                    builder.Add(Diagnostic.Create(
-                        MigrationDiagnostics.ManualMigration,
-                        Location.None,
-                        properties: properties,
-                        messageArgs: null));
                 }
             }
-            catch (JsonException) {
-                // Surface a single sentinel entry per unreadable sidecar instead of silently dropping it.
-                AddSentinel(builders, path, projectDirectory);
-            }
-            catch (IOException) {
-                AddSentinel(builders, path, projectDirectory);
-            }
-            catch (UnauthorizedAccessException) {
-                AddSentinel(builders, path, projectDirectory);
+            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or InvalidOperationException) {
+                AddSentinel(unreadablePaths, path, projectDirectory);
             }
         }
 
-        return builders.ToDictionary(
-            x => x.Key,
-            x => x.Value.ToImmutable(),
-            PathUtilities.PathComparer);
+        return (builders.ToDictionary(x => x.Key, x => x.Value.ToImmutable(), PathUtilities.PathComparer), unreadablePaths);
     }
 
-    private static void AddSentinel(
-        Dictionary<string, ImmutableArray<Diagnostic>.Builder> builders,
-        string sidecarPath,
-        string projectDirectory) {
-        string sentinelKey = NormalizePath(sidecarPath, projectDirectory);
-        if (string.IsNullOrWhiteSpace(sentinelKey) || sentinelKey == PathUtilities.RedactedPathSentinel) {
-            sentinelKey = OutputSanitizer.Sanitize(Path.GetFileName(sidecarPath), 120);
-        }
-
-        sentinelKey = SentinelPrefix + sentinelKey;
-
-        if (!builders.TryGetValue(sentinelKey, out ImmutableArray<Diagnostic>.Builder? builder)) {
-            builder = ImmutableArray.CreateBuilder<Diagnostic>();
-            builders.Add(sentinelKey, builder);
-        }
-
-        builder.Add(Diagnostic.Create(MigrationDiagnostics.ManualMigration, Location.None));
-    }
+    private static void AddSentinel(HashSet<string> unreadablePaths, string sidecarPath, string projectDirectory)
+        => unreadablePaths.Add(SentinelPrefix + (NormalizeSourcePath(sidecarPath, projectDirectory) ?? Path.GetFileName(sidecarPath)));
 
     private static bool IsGeneratedDiagnosticsSidecar(string path) {
         string normalized = path.Replace('\\', '/');
         return normalized.Contains("/generated/HexalithFrontComposer/", PathUtilities.PathComparison);
     }
 
-    private static bool IsManualMigrationDiagnostic(JsonElement entry)
-        => string.Equals(Get(entry, "id"), MigrationDiagnostics.ManualMigration.Id, StringComparison.Ordinal);
-
     private static string Get(JsonElement entry, string property)
         => entry.TryGetProperty(property, out JsonElement value) && value.ValueKind == JsonValueKind.String
             ? value.GetString() ?? string.Empty
             : string.Empty;
 
-    private static string NormalizePath(string path, string projectDirectory) {
-        if (string.IsNullOrWhiteSpace(path)) {
-            return string.Empty;
+    private static string? NormalizeSourcePath(string path, string projectDirectory) {
+        if (string.IsNullOrWhiteSpace(path) || path.Any(char.IsControl) || path.Contains("://", StringComparison.Ordinal)) {
+            return null;
         }
 
-        string trimmed = path.Trim();
-        if (trimmed.Length >= 2 && char.IsAsciiLetter(trimmed[0]) && trimmed[1] == ':') {
-            return PathUtilities.RedactedPathSentinel;
+        string normalized = path.Replace('\\', '/');
+        bool hasDrivePrefix = normalized.Length >= 2 && char.IsAsciiLetter(normalized[0]) && normalized[1] == ':';
+        if (((hasDrivePrefix || Path.IsPathRooted(normalized)) && !Path.IsPathFullyQualified(normalized))
+            || (!OperatingSystem.IsWindows() && path.StartsWith('\\'))
+            || normalized.Split('/').Contains("..", StringComparer.Ordinal)) {
+            return null;
         }
 
-        if (trimmed.Contains("://", StringComparison.Ordinal)) {
-            return PathUtilities.RedactedPathSentinel;
+        try {
+            string fullPath = Path.GetFullPath(normalized, projectDirectory);
+            string relative = PathUtilities.ToProjectRelative(projectDirectory, fullPath);
+            return relative is "" or PathUtilities.RedactedPathSentinel ? null : relative;
         }
-
-        string relative = Path.IsPathRooted(path)
-            ? PathUtilities.ToProjectRelative(projectDirectory, path)
-            : trimmed.Replace('\\', '/').TrimStart('/');
-        // Reject `..` segments after normalization; AC23 disallows project-root escape.
-        if (relative.Split('/').Any(segment => segment == "..")) {
-            return PathUtilities.RedactedPathSentinel;
+        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException) {
+            return null;
         }
-
-        return OutputSanitizer.Sanitize(relative, 240);
     }
 }

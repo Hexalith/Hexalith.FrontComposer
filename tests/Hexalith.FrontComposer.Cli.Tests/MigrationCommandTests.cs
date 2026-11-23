@@ -192,7 +192,7 @@ public sealed class MigrationCommandTests {
 
         string json = JsonSerializer.Serialize(MigrationJson.From(result), JsonOptions.Stable);
         using StringWriter writer = new();
-        MigrationCommand.RenderText(result, writer);
+        MigrationCommand.RenderText(result, writer, apply: false);
         string text = writer.ToString();
 
         using var document = JsonDocument.Parse(json);
@@ -311,9 +311,118 @@ public sealed class MigrationCommandTests {
     }
 
     [Theory]
+    [InlineData("null")]
+    [InlineData("42")]
+    [InlineData("{}")]
+    [InlineData("""{"diagnostics": false}""")]
+    public async Task Migrate_MalformedSidecarRootReportsOneManualEntry(string payload)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteGeneratedDiagnosticSidecar("Acme.App", "Debug", "net10.0", "bad.diagnostics.json", payload);
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, ["--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error);
+        using var document = JsonDocument.Parse(output);
+        JsonElement entry = document.RootElement.GetProperty("entries").EnumerateArray().Single();
+        entry.GetProperty("kind").GetString().ShouldBe("manual-only");
+        entry.GetProperty("path").GetString().ShouldEndWith("/bad.diagnostics.json");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Migrate_NormalizesSidecarPathsAndKeepsValidEntriesBesideMalformedEntries(bool absolutePath)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string firstDirectory = new('a', 125);
+        string secondDirectory = new('b', 125);
+        string relativePath = firstDirectory + "/" + secondDirectory + "/Program.cs";
+        string source = fixture.WriteSource("Acme.App", relativePath, "namespace Acme.App;");
+        string sidecarPath = absolutePath ? source : $"{firstDirectory}\\.//{secondDirectory}//Program.cs";
+        string payload = $$"""
+            [null, {}, {"id":42}, {"id":"\uD800"}, {"id":"HFCM9002","path":{{JsonSerializer.Serialize(sidecarPath)}},"what":"Canonical source diagnostic"}]
+            """;
+        _ = fixture.WriteGeneratedDiagnosticSidecar("Acme.App", "Debug", "net10.0", "mixed.diagnostics.json", payload);
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, ["--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error);
+        using var document = JsonDocument.Parse(output);
+        JsonElement[] entries = document.RootElement.GetProperty("entries").EnumerateArray().ToArray();
+        entries.Length.ShouldBe(2);
+        entries.ShouldAllBe(entry => entry.GetProperty("kind").GetString() == "manual-only");
+        entries.Count(entry => entry.GetProperty("path").GetString()!.StartsWith("__sidecar__/", StringComparison.Ordinal)).ShouldBe(1);
+        entries.Single(entry => entry.GetProperty("what").GetString() == "Canonical source diagnostic")
+            .GetProperty("path").GetString().ShouldBe(OutputSanitizer.Sanitize(relativePath));
+        output.ShouldNotContain(fixture.Root);
+    }
+
+    [Fact]
+    public async Task Migrate_SidecarDirectoryEnumerationFailureReportsManualEntry()
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteSource("Acme.App", "obj", "This file occupies the sidecar directory path.");
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, ["--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error);
+        using var document = JsonDocument.Parse(output);
+        JsonElement entry = document.RootElement.GetProperty("entries").EnumerateArray().Single();
+        entry.GetProperty("kind").GetString().ShouldBe("manual-only");
+        entry.GetProperty("path").GetString().ShouldBe("__sidecar__/obj");
+    }
+
+    [Fact]
+    public async Task Migrate_ContinuesReadingSidecarsAfterAnInaccessibleDirectory()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteSource("Acme.App", "__sidecar__/Program.cs", "namespace Acme.App;");
+        _ = fixture.WriteGeneratedDiagnosticSidecar("Acme.App", "Debug", "net10.0", "good.diagnostics.json",
+            """[{"id":"HFCM9002","path":"__sidecar__/Program.cs","what":"A readable source diagnostic"}]""");
+        string inaccessible = Path.Combine(Path.GetDirectoryName(project)!, "obj", "Blocked");
+        _ = Directory.CreateDirectory(inaccessible);
+        UnixFileMode originalMode = File.GetUnixFileMode(inaccessible);
+        try
+        {
+            File.SetUnixFileMode(inaccessible, UnixFileMode.None);
+            try
+            {
+                _ = Directory.GetFileSystemEntries(inaccessible);
+                Assert.Skip("The current account can read directories without permissions.");
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+
+            (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, ["--format", "json"]);
+
+            exitCode.ShouldBe(ExitCodes.Success, error);
+            using var document = JsonDocument.Parse(output);
+            JsonElement[] entries = document.RootElement.GetProperty("entries").EnumerateArray().ToArray();
+            entries.Select(entry => entry.GetProperty("path").GetString()).ShouldBe(["__sidecar__/Program.cs", "__sidecar__/obj"]);
+            entries[0].GetProperty("what").GetString().ShouldBe("A readable source diagnostic");
+        }
+        finally
+        {
+            File.SetUnixFileMode(inaccessible, originalMode);
+        }
+    }
+
+    [Theory]
     [InlineData("C:Program.cs")]
     [InlineData("../Program.cs")]
     [InlineData("file:///Program.cs")]
+    [InlineData(@"src/\u0000Program.cs")]
     public async Task Migrate_SidecarHostilePathsSurfaceManualOnlySentinel(string sidecarPath) {
         using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
@@ -903,7 +1012,7 @@ public sealed class MigrationCommandTests {
         MigrationResult result = new(false, entries, MigrationSummary.From(entries));
 
         using StringWriter writer = new();
-        MigrationCommand.RenderText(result, writer);
+        MigrationCommand.RenderText(result, writer, apply: false);
         string text = writer.ToString();
 
         // Per-entry cap: at least one rendered diff is truncated to the 8,000-char budget.
@@ -1780,6 +1889,72 @@ public sealed class MigrationCommandTests {
         exitCode.ShouldNotBe(0, output + error);
         using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "artifacts", "docs", "validation-manifest.json")));
         return manifest.RootElement.GetProperty("blockingFailures").EnumerateArray().Select(value => value.GetString()!).ToArray();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MigrationApply_ReportsEveryUnwrittenFileAfterCancellation(bool firstWriteCompleted)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        const string original = "services.AddFrontComposerDebugOverlay();";
+        string firstSource = fixture.WriteSource("Acme.App", "A.cs", original);
+        string secondSource = fixture.WriteSource("Acme.App", "B.cs", original);
+        string thirdSource = fixture.WriteSource("Acme.App", "C.cs", original);
+        MigrationPlan plan = await MigrationPlanner.PlanAsync(project, MigrationCatalog.Resolve("9.1.0", "9.2.0")!, CancellationToken.None);
+        plan.FileEdits.Count.ShouldBe(3);
+        using CancellationTokenSource cancellation = new();
+        if (firstWriteCompleted)
+        {
+            PlannedFileEdit firstEdit = plan.FileEdits.First(edit => edit.RelativePath == "A.cs");
+            plan = plan with {
+                FileEdits = [
+                    firstEdit with { Entries = new CancelAfterReadingMigrationEntries(firstEdit.Entries, cancellation) },
+                    .. plan.FileEdits.Where(edit => edit.RelativePath != "A.cs"),
+                ],
+            };
+        }
+        else
+        {
+            cancellation.Cancel();
+        }
+
+        MigrationResult result = await MigrationApplier.ApplyAsync(plan, cancellation.Token);
+
+        result.Applied.ShouldBeFalse();
+        result.Summary.Changed.ShouldBe(firstWriteCompleted ? 1 : 0);
+        result.Summary.Failed.ShouldBe(firstWriteCompleted ? 2 : 3);
+        result.Entries.Select(entry => entry.Path).ShouldBe(["A.cs", "B.cs", "C.cs"]);
+        result.Entries.Where(entry => entry.Kind == "failed").ShouldAllBe(entry => entry.Got == "Cancellation requested.");
+        File.ReadAllText(firstSource).ShouldBe(firstWriteCompleted ? "services.AddFrontComposerDevMode();" : original);
+        File.ReadAllText(secondSource).ShouldBe(original);
+        File.ReadAllText(thirdSource).ShouldBe(original);
+
+        using StringWriter writer = new();
+        MigrationCommand.RenderText(result, writer, apply: true);
+        writer.ToString().ShouldStartWith("Migration apply ended with failures.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Migrate_OnlyReportsUnchangedWhenAnEligibleDocumentWasScanned(bool includeEligibleDocument)
+    {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string includes = includeEligibleDocument ? "bin/Excluded.cs;Program.cs" : "bin/Excluded.cs";
+        File.WriteAllText(project, $$"""<Project><ItemGroup><Compile Include="{{includes}}" /></ItemGroup></Project>""");
+        _ = fixture.WriteSource("Acme.App", "bin/Excluded.cs", "services.AddFrontComposerDebugOverlay();");
+        _ = fixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+
+        (int exitCode, string output, string error) = await RunMigrateCaptureAsync(project, ["--format", "json"]);
+
+        exitCode.ShouldBe(ExitCodes.Success, error);
+        using var document = JsonDocument.Parse(output);
+        JsonElement summary = document.RootElement.GetProperty("summary");
+        summary.GetProperty("skipped").GetInt32().ShouldBe(1);
+        summary.GetProperty("unchanged").GetInt32().ShouldBe(includeEligibleDocument ? 1 : 0);
     }
 
     [Theory]

@@ -43,10 +43,12 @@ internal static class MigrationCommand {
 
         if (format == "json") {
             string json = JsonSerializer.Serialize(MigrationJson.From(result), JsonOptions.Stable);
-            await output.WriteLineAsync(json.AsMemory(), cancellationToken).ConfigureAwait(false);
+            // Once apply returns, finish reporting which files were written even if cancellation stopped the writes.
+            CancellationToken reportCancellation = apply ? CancellationToken.None : cancellationToken;
+            await output.WriteLineAsync(json.AsMemory(), reportCancellation).ConfigureAwait(false);
         }
         else {
-            RenderText(result, output);
+            RenderText(result, output, apply);
         }
 
         if (result.Summary.Failed > 0) {
@@ -58,8 +60,13 @@ internal static class MigrationCommand {
             : ExitCodes.Success;
     }
 
-    internal static void RenderText(MigrationResult result, TextWriter output) {
-        output.WriteLine(result.Applied ? "Migration apply completed." : "Migration dry-run completed.");
+    internal static void RenderText(MigrationResult result, TextWriter output, bool apply) {
+        string heading = (apply, result.Applied) switch {
+            (false, _) => "Migration dry-run completed.",
+            (true, true) => "Migration apply completed.",
+            _ => "Migration apply ended with failures.",
+        };
+        output.WriteLine(heading);
         output.WriteLine($"Changed: {result.Summary.Changed}; Unchanged: {result.Summary.Unchanged}; Skipped: {result.Summary.Skipped}; Failed: {result.Summary.Failed}; Manual-only: {result.Summary.ManualOnly}; Conflicts: {result.Summary.Conflicts}");
         // AC6: text output honors the same per-entry (8,000) and aggregate (64,000) diff budgets as JSON,
         // so "many changed files" cannot grow terminal output beyond the contracted aggregate cap.

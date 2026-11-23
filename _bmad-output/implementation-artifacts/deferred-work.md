@@ -6624,7 +6624,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-pa
 location: src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:37-46
 source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
 reason: summary: Treat primitive migration-sidecar roots and entries as unreadable payloads. evidence: The reader calls `TryGetProperty` on non-object roots and array entries; scalar or `null` JSON throws `InvalidOperationException` outside the existing catches (`src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:37-46,74-83`). The behavior predates the split.
-status: open
+status: done 2026-11-23
+resolution: Malformed sidecars produce one manual-only sentinel and readable sibling diagnostics are retained. See `spec-migration-diagnostics-and-results.md`.
 
 ### DW-1634: Canonicalize and validate migration-sidecar source keys before lookup so diagnostics cannot be silently disconnected.
 
@@ -6632,7 +6633,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-pa
 location: src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:50-59
 source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
 reason: summary: Canonicalize and validate migration-sidecar source keys before lookup so diagnostics cannot be silently disconnected. evidence: Relative dot segments and redundant separators are not canonicalized, long/control-bearing keys are sanitized before dictionary lookup, and rooted path normalization can throw; the planner consumes only exact document-key matches (`src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:50-59,124-146`; `MigrationPlanner.cs:100-103`). These cases can silently drop or abort manual diagnostics and predate the split.
-status: open
+status: done 2026-11-23
+resolution: Sidecar lookup uses normalized project-relative paths before display sanitization. See `spec-migration-diagnostics-and-results.md`.
 
 ### DW-1635: Surface migration-sidecar directory enumeration failures instead of returning an empty diagnostic set.
 
@@ -6640,7 +6642,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-pa
 location: src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:21-31
 source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
 reason: summary: Surface migration-sidecar directory enumeration failures instead of returning an empty diagnostic set. evidence: I/O or access failure while materializing the diagnostics directory returns an empty dictionary, making all generated manual diagnostics disappear without a sentinel (`src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:21-31`). The behavior predates the split.
-status: open
+status: done 2026-11-23
+resolution: Enumeration failures produce an obj sentinel and readable sibling directories are still scanned. See `spec-migration-diagnostics-and-results.md`.
 
 ### DW-1636: Refresh submodule boundaries immediately before each migration write.
 
@@ -6656,7 +6659,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-pa
 location: src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:5-9
 source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
 reason: summary: Preserve unapplied planned entries in cancellation results. evidence: Apply removes all planned safe-fix entries up front, then on cancellation records only the current edit and breaks, so later unapplied edits disappear from the result and summary (`src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:5-9,36-39`). The behavior predates the split.
-status: open
+status: done 2026-11-23
+resolution: Cancellation preserves applied changes and reports every unwritten planned file. See `spec-migration-diagnostics-and-results.md`.
 
 ### DW-1638: Escape multiline filenames before emitting unified-diff headers.
 
@@ -6680,7 +6684,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-pa
 location: src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:246-257
 source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
 reason: summary: Avoid reporting unchanged when every discovered project document was skipped. evidence: The final fallback ignores `skipped` entries when deciding to add `HFCM0001 unchanged`, so a plan that scanned no eligible source can contain both skipped and unchanged claims (`src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:246-257`). The behavior predates the split.
-status: open
+status: done 2026-11-23
+resolution: Plans that skip every discovered source file report the skips without an unchanged entry. See `spec-migration-diagnostics-and-results.md`.
 
 ### DW-1641: Harden the SourceTools Drift organization guard against namespace nesting and multi-dot filenames (future-proofing).
 
@@ -11577,3 +11582,9 @@ November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were ap
   evidence: A baseline returned by the parser after a file fails validation has diagnostics and an empty resource list. ValidateAgainstBaseline currently compares only its resources. A valid current corpus can therefore pass comparison against a malformed baseline.
   status: done 2026-11-23
   resolution: The release guard returns supplied baseline diagnostics and stops comparison on errors. Regression cases include an invalid parser result and an invalid provider snapshot that still has resources. See `spec-five-deferred-validation-fixes.md`.
+
+## Deferred from review of migration diagnostics and results — 2026-11-23
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-migration-diagnostics-and-results.md`
+  summary: Report well-formed migration diagnostics whose source is absent from the eligible project documents.
+  evidence: MigrationPlanner joins normalized source keys against scanned documents. A diagnostic for a deleted, skipped, or uncompiled source has no match and is omitted. A follow-up can report that case with guidance to regenerate the sidecar.

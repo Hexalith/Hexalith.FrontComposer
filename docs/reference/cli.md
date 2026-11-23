@@ -55,12 +55,15 @@ Dry-run is the default (`--dry-run` makes it explicit) and writes no source. `--
 replaces each eligible file through a same-directory temporary file after path/hash revalidation.
 Earlier successful writes remain if a later file fails or cancellation occurs; there is no whole-run
 rollback. Handled apply failures return code 4 and set `applied=false` on emitted reports.
-Cancellation can return code 4 before any report is emitted; interrupted output may leave an
-absent or partial report. Consumers must not require `applied` when no complete report is emitted.
-Migration sidecars also require the documented diagnostic-object shapes: arrays of objects or
-objects containing a `diagnostics` array of objects. Migration sidecars support arrays of diagnostic objects or objects containing a `diagnostics` array
-of objects. Unsupported valid JSON shapes, such as scalar roots or non-object diagnostic entries,
-may throw outside handled failures without a structured report or the documented exit-code guarantees.
+Cancellation during planning can return code 4 before a report is emitted. If cancellation
+stops apply, the report lists completed writes and a failed entry for each planned file that
+was left unwritten. A plan that skips every discovered document reports the skipped documents
+without an unchanged entry.
+
+Migration sidecars accept arrays of diagnostic objects or objects containing a `diagnostics`
+array. Malformed or unreadable payloads produce one manual-only sentinel per sidecar while
+valid sibling entries are still reported. An inaccessible sidecar directory produces a
+manual-only sentinel for `obj`.
 
 Exit codes:
 

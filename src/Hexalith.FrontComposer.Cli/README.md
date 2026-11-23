@@ -95,15 +95,13 @@ SourceTools HFCM9002 sidecars. Until a production emitter is implemented and pin
 manual-only migration contract for hand-crafted sidecar evidence, not a promise that normal builds
 will generate migration sidecars.
 
-Sidecar files that fail to parse or read are surfaced as a single sentinel
-manual-only entry per file rather than being silently dropped, so corrupted
-sidecars are visible in the migration output. Only arrays of diagnostic objects, or objects
-containing a `diagnostics` array of objects, are supported; other valid JSON shapes, such as scalar
-roots or non-object entries, may throw outside handled failures without a structured report.
+Each unreadable sidecar or sidecar with malformed JSON or diagnostic entries produces one
+manual-only sentinel. Valid entries in the same sidecar are still reported. A failure to enumerate
+the sidecar directory produces a manual-only sentinel for `obj`.
 
-Sidecar `path` values must normalize to project-relative source paths. Drive-relative paths
-(`C:foo.cs`), URI-shaped paths, traversal, and paths outside the selected project are reported as
-sentinel manual-only entries under `__sidecar__/...` instead of being trusted.
+Sidecar `path` values are matched using normalized project-relative source paths. Drive-relative
+paths (`C:foo.cs`), URI-shaped paths, control characters, traversal, and paths outside the selected
+project produce a manual-only sentinel under `__sidecar__/`.
 
 On SDKs that provide `dnx`, `dnx frontcomposer ...` can be used as a convenience after the package
 is available from a feed. Local tool manifests and `dotnet tool install` remain the primary
