@@ -73,6 +73,7 @@ CI_WORKFLOW_PATH = ".github/workflows/ci.yml"
 MAX_MANIFEST_BYTES = 16 * 1024 * 1024
 MAX_HANDOFF_BYTES = 16 * 1024 * 1024
 MAX_WORKFLOW_ACTIONS = 256
+_MANIFEST_ROOT_DIAGNOSTIC = "--root must be an existing directory"
 REQUIRED_ROW_FIELDS = [
     "package_id",
     "version",
@@ -1648,6 +1649,8 @@ def manifest_diagnostics(
     graph_root: pathlib.Path | None = None,
     enforce_v2: bool = True,
 ) -> list[str]:
+    if root is not None and not os.path.isdir(root):
+        return [_MANIFEST_ROOT_DIAGNOSTIC]
     diagnostics: list[str] = []
     if enforce_v2:
         diagnostics.extend(_manifest_v2_diagnostics(manifest, require_seal=True))
@@ -1656,9 +1659,6 @@ def manifest_diagnostics(
     typed_rows = [row for row in row_items if isinstance(row, dict)]
     if isinstance(rows, list) and len(typed_rows) != len(rows):
         diagnostics.append("package rows must be objects")
-    root_exists = root is None or root.is_dir()
-    if root is not None and not root_exists:
-        diagnostics.append("--root must be an existing directory")
     if not isinstance(rows, list) or not rows:
         diagnostics.append("package rows are required")
     if isinstance(rows, list):
@@ -1693,7 +1693,7 @@ def manifest_diagnostics(
             diagnostics.append(
                 f"{row.get('package_id')}: manifest artifact must be a normalized {expected_directory}/*.nupkg path"
             )
-        if root is not None and root_exists:
+        if root is not None:
             artifact_path = str(row.get("artifact_path", ""))
             # CR-12-4-P93 (round-5): the symlink-rejection check MUST happen on the
             # unresolved candidate path. `normalize_under_root` calls `.resolve()` which
@@ -1746,7 +1746,7 @@ def manifest_diagnostics(
             symbol_checksum_value = row.get("symbol_checksum")
             if not looks_like_sha256(symbol_checksum_value):
                 diagnostics.append(f"{row.get('package_id')}: symbol_checksum must be a concrete sha256 for symbol packages")
-            elif root is not None and root_exists:
+            elif root is not None:
                 if os.path.isabs(symbol_artifact_value):
                     diagnostics.append(f"{row.get('package_id')}: symbol path invalid: evidence path must be relative")
                 else:
@@ -1790,11 +1790,11 @@ def manifest_diagnostics(
         diagnostics.append("manifest release_definition_fingerprints must be an object")
     elif not embedded:
         diagnostics.append("manifest release_definition_fingerprints must not be empty")
-    elif root is not None and root_exists:
+    elif root is not None:
         current = release_definition_fingerprints(root)
         for drift in fingerprint_diff(current, embedded):
             diagnostics.append(f"release-definition drift: {drift}")
-    if root is not None and root_exists:
+    if root is not None:
         # CR-12-4-P215 (round-8): verify the sealed `helper_version` against the live
         # helper. Mismatch on `version` OR `content_sha256` means either the helper
         # was edited post-seal or someone forgot to bump `__version__`. Both fail
@@ -3144,7 +3144,21 @@ def test_results(args: argparse.Namespace) -> int:
     return 0 if not diagnostics else 1
 
 
+def _report_manifest_verification(output: str | None, diagnostics: list[str]) -> int:
+    if output:
+        write_json(output, {"status": "invalid" if diagnostics else "valid", "diagnostics": diagnostics})
+    else:
+        for diagnostic in diagnostics:
+            print(diagnostic)
+    return 1 if diagnostics else 0
+
+
 def verify_manifest(args: argparse.Namespace) -> int:
+    root = None
+    if args.root is not None:
+        root = pathlib.Path(args.root)
+        if not args.root or not os.path.isdir(root):
+            return _report_manifest_verification(args.output, [_MANIFEST_ROOT_DIAGNOSTIC])
     diagnostics: list[str] = []
     try:
         _, manifest = _read_bounded_strict_json(
@@ -3163,12 +3177,7 @@ def verify_manifest(args: argparse.Namespace) -> int:
     # release-definition blocker. Treat as invalid and surface a typed diagnostic.
     if not isinstance(manifest, dict):
         diagnostics.append("sealed manifest must be an object")
-        if args.output:
-            write_json(args.output, {"status": "invalid", "diagnostics": diagnostics})
-        else:
-            for diagnostic in diagnostics:
-                print(diagnostic)
-        return 1
+        return _report_manifest_verification(args.output, diagnostics)
     if manifest.get("manifest_schema") not in {MANIFEST_SCHEMA, CURRENT_MANIFEST_SCHEMA} and args.audit_legacy:
         audit_diagnostics = manifest_diagnostics(manifest, None, enforce_v2=False)
         audit_diagnostics.append(
@@ -3181,29 +3190,13 @@ def verify_manifest(args: argparse.Namespace) -> int:
             for diagnostic in audit_diagnostics:
                 print(diagnostic)
         return 0
-    if args.no_root:
-        root = None
-    elif args.root:
-        root = pathlib.Path(args.root)
-        if not root.is_dir():
-            diagnostics.append("--root must be an existing directory")
-    else:
-        root = None
+    if root is None and not args.no_root:
         diagnostics.append("--root is required for live manifest verification; pass --no-root only for offline fixture verification")
     graph_root = pathlib.Path(args.graph_root) if args.graph_root else pathlib.Path(".")
     if root is not None and not graph_root.is_dir():
         diagnostics.append("--graph-root must be an existing directory")
     diagnostics.extend(manifest_diagnostics(manifest, root, graph_root=graph_root))
-    if args.output:
-        write_json(args.output, {"status": "valid" if not diagnostics else "invalid", "diagnostics": diagnostics})
-    # CR-12-4-Def23: when no --output sink is given, surface the diagnostics on stdout so
-    # the operator (and offline --no-root verification) can see WHY verification failed.
-    # Printed to stdout, never stderr, to preserve the empty-stderr contract asserted by
-    # the existing manifest-verification tests.
-    elif diagnostics:
-        for diagnostic in diagnostics:
-            print(diagnostic)
-    return 0 if not diagnostics else 1
+    return _report_manifest_verification(args.output, diagnostics)
 
 
 def seal_manifest(args: argparse.Namespace) -> int:
@@ -3463,6 +3456,24 @@ def prepare_manifest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _parse_budget_timestamp(value: str, option: str) -> dt.datetime:
+    diagnostic = f"{option} must be an ISO 8601 timestamp"
+    try:
+        dt.date.fromisoformat(value)
+    except ValueError:
+        pass
+    else:
+        raise SystemExit(diagnostic)
+    try:
+        parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is not None and not value.endswith("Z"):
+            # datetime.fromisoformat normalizes out-of-range offset minutes and seconds.
+            dt.time.fromisoformat(re.split(r"[+-]", value)[-1])
+    except ValueError:
+        raise SystemExit(diagnostic) from None
+    return parsed
+
+
 def release_budget(args: argparse.Namespace) -> int:
     if pathlib.Path(args.evidence).exists():
         raw = read_json(args.evidence)
@@ -3478,11 +3489,22 @@ def release_budget(args: argparse.Namespace) -> int:
         raw_manifest = read_json(args.manifest)
         manifest_payload = raw_manifest if isinstance(raw_manifest, dict) else None
     if args.append_current:
-        if not args.started_at:
-            raise SystemExit("RELEASE_STARTED_AT must be set before --append-current")
-        started = dt.datetime.fromisoformat(args.started_at.replace("Z", "+00:00"))
-        ended = dt.datetime.fromisoformat(args.ended_at.replace("Z", "+00:00")) if args.ended_at else dt.datetime.now(dt.timezone.utc)
-        minutes = max(0, (ended - started).total_seconds() / 60)
+        if args.started_at is None:
+            raise SystemExit("--started-at or RELEASE_STARTED_AT must be set before --append-current")
+        started = _parse_budget_timestamp(args.started_at, "--started-at")
+        ended = (
+            dt.datetime.now(dt.timezone.utc)
+            if args.ended_at is None
+            else _parse_budget_timestamp(args.ended_at, "--ended-at")
+        )
+        if (started.tzinfo is None) != (ended.tzinfo is None):
+            raise SystemExit(
+                "--started-at and --ended-at must both include a UTC offset or both omit it. "
+                "When omitted, --ended-at defaults to the current UTC time."
+            )
+        if ended < started:
+            raise SystemExit("--ended-at must be at or after --started-at")
+        minutes = (ended - started).total_seconds() / 60
         package_count = int(args.package_count)
         tag = args.tag
         if manifest_payload is not None:
@@ -3496,6 +3518,8 @@ def release_budget(args: argparse.Namespace) -> int:
             if isinstance(packages_field, list):
                 package_count = len(packages_field)
             tag = str(manifest_payload.get("tag") or args.tag)
+        if package_count < 0:
+            raise SystemExit("--package-count must be a non-negative integer")
         releases = [
             *releases,
             {
@@ -3509,14 +3533,26 @@ def release_budget(args: argparse.Namespace) -> int:
             },
         ]
     normalized = []
-    for release in releases:
+    for row_number, release in enumerate(releases, start=1):
+        if not isinstance(release, dict):
+            raise SystemExit(f"invalid release budget evidence: release row {row_number} must be an object")
+        count = release.get("package_count", 0)
+        if isinstance(count, str):
+            try:
+                count = int(count)
+            except ValueError:
+                count = None
+        elif isinstance(count, float) and count.is_integer():
+            count = int(count)
+        if type(count) is not int or count < 0:
+            raise SystemExit(f"invalid release budget evidence: release row {row_number} package_count must be a non-negative integer")
         minutes = float(release.get("billable_minutes", 0))
         latency = float(release.get("publish_latency_minutes", 0))
         breach = minutes > 90 or latency > 120
         normalized.append({
             "tag": sanitize(release.get("tag", "")),
             "run_id": sanitize(release.get("run_id", "")),
-            "package_count": int(release.get("package_count", 0)),
+            "package_count": count,
             "slow_jobs": [sanitize(v) for v in release.get("slow_jobs", [])[:10]],
             "publish_status": sanitize(release.get("publish_status", "")),
             "billable_minutes": minutes,
@@ -4007,9 +4043,10 @@ def main() -> int:
 
     ver = sub.add_parser("verify-manifest")
     ver.add_argument("--manifest", required=True)
-    ver.add_argument("--root")
+    verification_mode = ver.add_mutually_exclusive_group()
+    verification_mode.add_argument("--root")
+    verification_mode.add_argument("--no-root", action="store_true")
     ver.add_argument("--graph-root")
-    ver.add_argument("--no-root", action="store_true")
     ver.add_argument("--audit-legacy", action="store_true")
     ver.add_argument("--output")
     ver.set_defaults(func=verify_manifest)
@@ -4046,7 +4083,7 @@ def main() -> int:
     budget.add_argument("--output")
     budget.add_argument("--apply", action="store_true")
     budget.add_argument("--append-current", action="store_true")
-    budget.add_argument("--started-at", default=os.environ.get("RELEASE_STARTED_AT", ""))
+    budget.add_argument("--started-at", default=os.environ.get("RELEASE_STARTED_AT"))
     budget.add_argument("--ended-at")
     budget.add_argument("--tag", default=os.environ.get("GITHUB_REF_NAME", "local"))
     budget.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", "local"))

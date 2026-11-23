@@ -1011,6 +1011,120 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         self.assertIn("cannot be sealed", reseal.stdout)
 
 
+class ReleaseEvidenceCliInputTests(unittest.TestCase):
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = pathlib.Path(temporary.name)
+        self.manifest = self.root / "manifest.json"
+        self.history = self.root / "history.json"
+        self.output = self.root / "output.json"
+
+    def run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return _run("python3", str(REPOSITORY_ROOT / "eng/release_evidence.py"), *args, cwd=self.root)
+
+    def test_invalid_artifact_root_is_the_only_diagnostic(self) -> None:
+        manifest = {"packages": [{"version": []}]}
+        _write_json(self.manifest, manifest)
+        diagnostic = "--root must be an existing directory"
+        overlong = self.root / ("a" * 512)
+        for root in (str(self.root / "missing"), str(self.manifest), str(overlong), ""):
+            with self.subTest(root=root):
+                args = ("verify-manifest", "--manifest", str(self.manifest), "--root", root)
+                result = self.run_cli(*args, "--output", str(self.output))
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual("", result.stderr)
+                self.assertEqual(
+                    {"status": "invalid", "diagnostics": [diagnostic]},
+                    json.loads(self.output.read_text(encoding="utf-8")),
+                )
+                result = self.run_cli(*args, "--audit-legacy")
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(diagnostic, result.stdout.strip())
+        self.assertEqual([diagnostic], HELPER.manifest_diagnostics(manifest, self.root / "missing"))
+        self.assertEqual([diagnostic], HELPER.manifest_diagnostics(manifest, overlong))
+
+    def test_live_and_offline_manifest_options_are_mutually_exclusive(self) -> None:
+        result = self.run_cli(
+            "verify-manifest", "--manifest", str(self.manifest), "--root", str(self.root), "--no-root",
+        )
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn("argument --no-root: not allowed with argument --root", result.stderr)
+
+    def test_release_budget_names_invalid_timestamp_arguments(self) -> None:
+        valid = "2026-11-23T10:00:00Z"
+        for start, end, option in (
+            ("invalid", valid, "--started-at"),
+            ("", valid, "--started-at"),
+            ("2026-11-23", valid, "--started-at"),
+            (valid, "", "--ended-at"),
+            (valid, "2026-11-23T14:00:00+01:60", "--ended-at"),
+        ):
+            with self.subTest(option=option):
+                result = self.run_cli(
+                    "release-budget", "--evidence", str(self.history), "--append-current",
+                    "--started-at", start, "--ended-at", end, "--output", str(self.output),
+                )
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"{option} must be an ISO 8601 timestamp", result.stderr)
+                self.assertFalse(self.output.exists())
+
+    def test_release_budget_rejects_reversed_and_mixed_timezone_ranges(self) -> None:
+        for end, diagnostic in (
+            ("2026-11-23T10:00:00+02:00", "--ended-at must be at or after --started-at"),
+            ("2026-11-23T10:00:00", "must both include a UTC offset or both omit it"),
+        ):
+            with self.subTest(end=end):
+                result = self.run_cli(
+                    "release-budget", "--evidence", str(self.history), "--append-current",
+                    "--started-at", "2026-11-23T10:00:00Z", "--ended-at", end,
+                    "--output", str(self.output),
+                )
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(diagnostic, result.stderr)
+                self.assertFalse(self.output.exists())
+
+    def test_release_budget_identifies_invalid_historical_package_counts(self) -> None:
+        _write_json(self.output, {"prior": "summary"})
+        for count in ("unknown", None, True, 2.5, -1):
+            with self.subTest(count=count):
+                _write_json(self.history, {"releases": [{}, {"package_count": count}]})
+                result = self.run_cli(
+                    "release-budget", "--evidence", str(self.history), "--output", str(self.output),
+                )
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn("release row 2 package_count must be a non-negative integer", result.stderr)
+                self.assertEqual({"prior": "summary"}, json.loads(self.output.read_text(encoding="utf-8")))
+
+    def test_release_budget_identifies_negative_current_package_count(self) -> None:
+        result = self.run_cli(
+            "release-budget", "--evidence", str(self.history), "--append-current",
+            "--started-at", "2026-11-23T10:00:00Z", "--ended-at", "2026-11-23T10:00:00Z",
+            "--package-count", "-1", "--output", str(self.output),
+        )
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("--package-count must be a non-negative integer", result.stderr)
+        self.assertFalse(self.output.exists())
+
+    def test_release_budget_preserves_valid_legacy_counts_and_durations(self) -> None:
+        _write_json(self.history, {"releases": [{"package_count": "8"}, {}, {"package_count": 7.0}]})
+        for start, end, minutes in (
+            ("2026-11-23T10:00:00Z", "2026-11-23T12:00:00+02:00", 0),
+            ("2026-11-23T10:00:00Z", "2026-11-23T12:02:00+02:00", 2),
+            ("2026-11-23T10:00:00", "2026-11-23T10:03:00", 3),
+        ):
+            with self.subTest(start=start, end=end):
+                result = self.run_cli(
+                    "release-budget", "--evidence", str(self.history), "--append-current",
+                    "--started-at", start, "--ended-at", end, "--package-count", "2", "--output", str(self.output),
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                payload = json.loads(self.output.read_text(encoding="utf-8"))
+                self.assertEqual("record-only", payload["action"])
+                self.assertEqual([8, 0, 7, 2], [release["package_count"] for release in payload["releases"]])
+                self.assertEqual(minutes, payload["releases"][-1]["billable_minutes"])
+
+
 class BuildsExecutionInventoryExclusionTests(unittest.TestCase):
     """Release prepare-candidate checks Builds out under `.hexalith/builds-execution`."""
 

@@ -5416,7 +5416,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 4 (2026-05-17)"), 2026-08-27
 location: eng/release_evidence.py:314-316
 reason: **CR-12-4-Def8 — `manifest_diagnostics` continues evaluating after `--root must be an existing directory` diagnostic:** P52 promised an early exit; the implementation queues the diagnostic and continues, producing extra noise that confuses operators about whether the bogus `--root` is the root cause or one symptom of many. Deferred: UX issue, not a correctness defect; pick up when the diagnostics output is restructured. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:314-316` approx (manifest_diagnostics `--root` check path).
-status: open
+status: done 2026-11-23
+resolution: Return one artifact-root diagnostic before reading or validating manifest evidence. See `spec-five-release-evidence-cli-validations.md`.
 
 ### DW-1467: Operator-facing `fingerprint-digest` helper subcommand absent: Operators computing fallback `approved_against_fingerprints_sha256` by hand can produce serialization mismatches versus `canonical_sha256` (separator order, key sort order). Deferred: add a CLI subcommand emitting the canonical hex when the first fallback approval is needed in production. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:117-119` `canonical_sha256`.
 
@@ -5429,7 +5430,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 4 (2026-05-17)"), 2026-08-27
 location: eng/release_evidence.py
 reason: **CR-12-4-Def10 — `verify-manifest` accepts both `--root` and `--no-root` simultaneously:** `--no-root` silently wins; operator awareness is incidental. Deferred: add a mutually-exclusive argparse group when a real misuse surfaces. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py` `verify-manifest` argparse handlers.
-status: open
+status: done 2026-11-23
+resolution: Reject combined live-root and offline verification options at argument parsing. See `spec-five-release-evidence-cli-validations.md`.
 
 ### DW-1469: Documentation drift in Dev Agent Cheat Sheet: The "Current workflow state" entry says "Release runs on `main` push or `workflow_dispatch`", but `push: main` is now read-only since round-2 P2 (only `workflow_dispatch` can produce a release-owner-approved env). Deferred: documentation pass during epic-12 retrospective. Owner: story 12.4 author. Evidence: `_bmad-output/implementation-artifacts/12-4-trusted-release-evidence-dry-run.md` cheat sheet section.
 
@@ -5501,21 +5503,24 @@ decision: 2026-08-27 Implement the change — Implement the behavior requested b
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: eng/release_evidence.py:1808-1810
 reason: **CR-12-4-Def35 — `--started-at`/`--ended-at` malformed ISO crashes via raw `ValueError`:** `release-budget` argparse handlers call `dt.datetime.fromisoformat(...)` directly on operator-supplied strings; an invalid/whitespace value crashes the helper with exit-2 "helper crashed" instead of a typed CLI diagnostic. Pre-existing pattern; fail-closed via outer `__main__` catch is correct, but operators lose the typed-diagnostic UX. Pick up when typed CLI-input diagnostic layer is added. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1808-1810`.
-status: open
+status: done 2026-11-23
+resolution: Name the invalid timestamp flag for malformed, empty, date-only or invalid-offset values. See `spec-five-release-evidence-cli-validations.md`.
 
 ### DW-1479: `started_at > ended_at` produces silent `minutes=0`: Inverted timing inputs (clock skew, copy/paste swap) record zero release minutes with no diagnostic. Tangential to release-readiness gates. Pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1811`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: eng/release_evidence.py:1811
 reason: **CR-12-4-Def36 — `started_at > ended_at` produces silent `minutes=0`:** Inverted timing inputs (clock skew, copy/paste swap) record zero release minutes with no diagnostic. Tangential to release-readiness gates. Pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1811`.
-status: open
+status: done 2026-11-23
+resolution: Reject reversed instants before writing the budget summary and preserve valid zero and positive durations. See `spec-five-release-evidence-cli-validations.md`.
 
 ### DW-1480: Non-numeric `package_count` in historical release-budget entries crashes: Legacy/corrupted history entries trigger `int(...)` `ValueError`; release-budget exits 2 with generic crash. Defensible because release-budget is monitoring-only. Pick up if historical-entry corruption surfaces. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1837`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: eng/release_evidence.py:1837
 reason: **CR-12-4-Def37 — Non-numeric `package_count` in historical release-budget entries crashes:** Legacy/corrupted history entries trigger `int(...)` `ValueError`; release-budget exits 2 with generic crash. Defensible because release-budget is monitoring-only. Pick up if historical-entry corruption surfaces. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1837`.
-status: open
+status: done 2026-11-23
+resolution: Identify the invalid history row and preserve legacy integer strings and whole-valued JSON counts. See `spec-five-release-evidence-cli-validations.md`.
 
 ### DW-1481: Empty/truncated existing `partial-publish-incident.json` evades P155 overwrite protection: P155 prevents overwriting a real incident with the placeholder, but a 0-byte or corrupted file passes the `failed_phase != "none"` check trivially. Threat model: operator/attacker truncating the file mid-investigation; low likelihood. Pick up when forensic-integrity hardening is prioritized. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1917-1930`.
 
