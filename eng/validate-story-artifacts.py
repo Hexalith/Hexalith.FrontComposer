@@ -1643,6 +1643,7 @@ def main() -> int:
         print(notice)
 
     if failures:
+        sys.stdout.flush()
         for failure in failures:
             print(failure, file=sys.stderr)
         return 1
@@ -3027,15 +3028,6 @@ def collect_commit_scope_evidence(
         workspace_snapshot_collected = False
 
     try:
-        candidate_after_collection = canonical_commit(root, candidate_ref, "candidate after evidence collection")
-        if candidate_after_collection != candidate:
-            failures.append(
-                f"candidate ref moved during validation: {candidate} -> {candidate_after_collection}"
-            )
-    except RuntimeError as exc:
-        failures.append(str(exc))
-
-    try:
         workspace_after_collection = collect_workspace_evidence(root)
         if workspace_snapshot_collected and workspace_after_collection != workspace:
             failures.append(
@@ -3044,6 +3036,14 @@ def collect_commit_scope_evidence(
             )
     except RuntimeError as exc:
         failures.append(str(exc))
+
+    for label, ref, original in (("baseline", base_ref, baseline), ("candidate", candidate_ref, candidate)):
+        try:
+            current = canonical_commit(root, ref, f"{label} after evidence collection")
+            if current != original:
+                failures.append(f"{label} ref moved during validation: {original} -> {current}")
+        except RuntimeError as exc:
+            failures.append(str(exc))
 
     return (
         CommitScopeEvidence(
@@ -3256,7 +3256,7 @@ def format_git_path(path: str) -> str:
     rendering independent of which property triggered the quoting.
     """
     needs_quoting = (
-        contains_terminal_control(path)
+        contains_report_delimiter_or_control(path)
         or path != path.strip()
         or any(character in path for character in ('"', "\\", "\n", "\r", "\t"))
     )
@@ -3264,13 +3264,14 @@ def format_git_path(path: str) -> str:
 
 
 def format_report_value(value: str) -> str:
-    """Quote values containing terminal or format controls while preserving ordinary output."""
-    if contains_terminal_control(value):
+    """Quote values that contain report delimiters or control characters."""
+    if contains_report_delimiter_or_control(value):
         return json.dumps(value, ensure_ascii=True)
     return value
 
 
-def contains_terminal_control(value: str) -> bool:
+def contains_report_delimiter_or_control(value: str) -> bool:
+    """Detect the pipe separating report fields and characters unsafe in a single output line."""
     # `Cs` covers surrogates left by `surrogateescape` on undecodable git output:
     # printing one raw raises, so it must reach the ASCII-escaping branch.
     return any(
@@ -3283,11 +3284,17 @@ def contains_terminal_control(value: str) -> bool:
 
 
 def classified_path_reason(path: str, classified: dict[str, str]) -> str:
+    """Return the reason for the closest matching directory or the exact path."""
+    best_length = -1
+    best_reason = ""
     for entry, reason in classified.items():
         normalized = entry.rstrip("/")
-        if path == normalized or path.startswith(normalized + "/"):
+        if path == normalized:
             return reason
-    return ""
+        if len(normalized) > best_length and path.startswith(normalized + "/"):
+            best_length = len(normalized)
+            best_reason = reason
+    return best_reason
 
 
 def unmapped_touched_paths(

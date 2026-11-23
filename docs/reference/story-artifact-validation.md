@@ -5,7 +5,7 @@ genre: reference
 audience: framework-contributor
 ownerStory: 9-7-add-story-id-and-commit-scope-evidence
 status: published
-reviewed: 2026-10-21
+reviewed: 2026-11-23
 uid: frontcomposer.reference.story-artifact-validation
 slug: reference/story-artifact-validation/
 ---
@@ -24,7 +24,9 @@ python3 eng/validate-story-artifacts.py --story <story-file> --candidate HEAD
 
 Strict mode is the `--candidate` form above. It requires a story artifact and a
 resolvable baseline, and it reports every commit in `baseline..candidate` plus the
-current workspace.
+current workspace. After collecting the evidence, the validator resolves both refs again.
+If a ref resolves to a different commit, validation fails and reports both commits.
+A ref that can no longer be resolved also fails validation.
 
 Legacy, best-effort mode omits `--candidate`. Use it for a freeform spec, a missing,
 `NO_VCS`, or unresolvable `baseline_commit`, or an environment without git. It compares
@@ -57,8 +59,10 @@ contributes no ownership, so it has no matching story-owned change. Resolve it b
 removing the entry or narrowing the exclusion — the failure names both edits.
 
 Exit code `0` means validation passed and `1` means it failed. Failures print to stderr,
-the evidence report and notices print to stdout. An invalid invocation prints only the
-invocation error and validates nothing.
+and the evidence report and notices print to stdout. The validator flushes the report
+before writing failures. Redirect stderr to stdout (`2>&1`) to preserve that order
+in a single stream. An invalid invocation prints only the invocation error and
+validates nothing.
 
 ## Repository integrity mode
 
@@ -203,6 +207,9 @@ Each reported path is labelled independently:
 For compatibility, each non-merge row renders its classification through the stable
 `disposition=<classification>` text field. A merge row uses `disposition` only when the
 story contains an actual declaration for that merge.
+
+When documented workspace paths overlap, each affected path shows the reason for
+its exact entry or, if absent, the closest enclosing classified directory.
 
 A bare canonical story ID anywhere in a commit subject counts as a story match. This
 includes prose and generated subjects: `Revert "fix(9.7): ..."` and

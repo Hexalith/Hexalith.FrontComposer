@@ -8581,7 +8581,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/validate-story-artifacts.py:1857
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Name the report-delimiter rule at its enforcement point. evidence: `contains_terminal_control` also returns true for `|`, the report field delimiter, which is neither a terminal control nor covered by its docstring, so the delimiter-escaping contract is undocumented where it is enforced. `eng/validate-story-artifacts.py:1857`
-status: open
+status: done 2026-11-23
+resolution: Named and documented the shared pipe and control-character check used for paths and report values. See spec-story-scope-evidence-reliability.md.
 
 ### DW-1883: Order the report and its failures deterministically under CI buffering.
 
@@ -8589,7 +8590,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/validate-story-artifacts.py:458
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Order the report and its failures deterministically under CI buffering. evidence: `main` writes notices to stdout and failures to stderr with no flush between them; when stdout is piped in CI it is block-buffered while stderr is not, so failures can appear before the evidence report they reference. `eng/validate-story-artifacts.py:458`
-status: open
+status: done 2026-11-23
+resolution: The validator flushes its evidence before writing failures. A combined-stream CLI test verifies their order. See spec-story-scope-evidence-reliability.md.
 
 ### DW-1884: Return the most specific classification reason when entries overlap.
 
@@ -8597,7 +8599,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/validate-story-artifacts.py:1869
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Return the most specific classification reason when entries overlap. evidence: `classified_path_reason` returns an arbitrary dict-order reason when two classified entries overlap (`a` and `a/b`) instead of the most specific match. `eng/validate-story-artifacts.py:1869`
-status: open
+status: done 2026-11-23
+resolution: Workspace reports use the exact path or closest matching directory, independent of declaration order. See spec-story-scope-evidence-reliability.md.
 
 ### DW-1885: Detect a baseline ref that moves during evidence collection.
 
@@ -8605,7 +8608,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/validate-story-artifacts.py:1619
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Detect a baseline ref that moves during evidence collection. evidence: Candidate ref movement is re-checked after collection, but a baseline given as a branch or tag that moves mid-run silently changes the commit range. `eng/validate-story-artifacts.py:1619`
-status: open
+status: done 2026-11-23
+resolution: Strict validation re-resolves both refs after collecting evidence and reports their original and current commits if they move. See spec-story-scope-evidence-reliability.md.
 
 ### DW-1886: Decide whether documented-blocker prose inside an example should still exempt a task.
 
@@ -8674,7 +8678,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-26)"), 2026-08-27
 location: eng/validate-story-artifacts.py:2040
 reason: The permissive direction of `is_accepted_extra_reason` (`eng/validate-story-artifacts.py:2040`) is unpinned: forcing it to `return False` leaves all 175 tests green, so no test exercises a listed path exempted by a reason containing `unrelated`, `pre-existing`, `exception` or `blocker`. Only the strict direction is covered. Pre-existing.
-status: open
+status: done 2026-11-23
+resolution: A CLI fixture accepts unchanged File List entries with each of the four reasons identified in this item. See spec-story-scope-evidence-reliability.md.
 
 ### DW-1895: Two submodule gitlinks claimed story-owned by Story 9.7 (`references/Hexalith.EventStore` `516f2489`->`64a21632`, `references/Hexalith.Tenants` `536e5c33`->`865a80ac`) are compiled by no CI lane: their only consumers (`src/Hexalith.FrontComposer.AppHost`, `src/Hexalith.FrontComposer.UI`) are among the 25 projects marked `Build Solution="Release|*" Project="false"` in `Hexalith.FrontComposer.slnx`, while every workflow builds Release. Follow-up: add a Debug build of the Debug-only projects to a lane, which requires initializing `references/Hexalith.EventStore` and `references/Hexalith.Tenants` non-recursively (CI currently initializes only `references/Hexalith.Builds`). Deferred 2026-08-26 (review loop 10): the blast radius is a local dev-build break, and the fix needs CI submodule-init infrastructure outside a story about story-ID evidence.
 

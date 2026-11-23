@@ -733,6 +733,23 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertIn("src/not-changed.txt", result.stderr)
             self.assertIn("no matching story-owned change", result.stderr)
 
+    def test_file_list_reasons_account_for_unchanged_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            init_repo(root)
+            reasons = ("Unrelated maintenance", "Pre-existing dependency", "Documented exception", "Build blocker")
+            entries = {f"src/input-{i}.txt": reason for i, reason in enumerate(reasons)}
+            baseline = commit_files(root, "fixture inputs", dict.fromkeys(entries, "existing"))
+            story_path = "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
+            file_list = [f"- `{story_path}`"]
+            file_list.extend(f"- `{path}` - {reason}" for path, reason in entries.items())
+            write(root / story_path, story_text(baseline=baseline, file_list="\n".join(file_list)))
+
+            result = run([sys.executable, str(VALIDATOR), "--project-root", str(root),
+                          "--story", story_path, "--skip-sentinel"], root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_documented_unrelated_dirty_file_is_visible_but_not_required_in_file_list(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -1626,6 +1643,24 @@ class CommitScopeEvidenceTests(unittest.TestCase):
             command.extend(("--exclude", pattern))
         return run(command, root)
 
+    def test_combined_output_prints_evidence_before_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            self.write_story(root, baseline, ["src/unchanged.txt"])
+
+            result = subprocess.run(
+                [sys.executable, "-E", str(VALIDATOR), "--project-root", str(root),
+                 "--story", self.story_path, "--candidate", "HEAD", "--skip-sentinel"],
+                cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+            )
+
+            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertIn("Commit scope evidence:", result.stdout)
+            self.assertIn("File List entries with no matching", result.stdout)
+            self.assertLess(result.stdout.index("Commit scope evidence:"),
+                            result.stdout.index("File List entries with no matching"))
+
     def test_matching_story_commit_reports_full_sha_match_and_owned_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -1985,6 +2020,24 @@ class CommitScopeEvidenceTests(unittest.TestCase):
             for raw in ("\u2028", "\u2029", "\n    - owned | spoofed.txt"):
                 self.assertNotIn(raw, result.stdout)
 
+    def test_overlapping_classifications_name_the_closest_reason_in_both_reports(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            self.write_story(
+                root, baseline, [],
+                unrelated="- `notes/local` - editor files\n- `notes/local/cache` - cached output",
+            )
+            path = "notes/local/cache/index.txt"
+            write(root / path, "cache")
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            rows = result.stdout.splitlines()
+            self.assertIn(f"  - {path}: cached output", rows)
+            self.assertIn(f"      - {path} | documented-unrelated=cached output", rows)
+
     def test_documented_unrelated_reasons_are_escaped_at_every_report_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -2317,57 +2370,46 @@ class CommitScopeEvidenceTests(unittest.TestCase):
             self.assertIn(f"{owned} | story-id=match | disposition=owned", result.stdout)
             self.assertNotIn("docs: before story", result.stdout)
 
-    def test_candidate_ref_movement_after_collection_fails_closed(self) -> None:
+    def test_moving_refs_report_the_original_range(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
+            baseline = init_repo(root)
+            candidate = commit_files(root, "fix(9.7): add input", {"input.txt": "input"})
+            self.write_story(root, baseline, ["input.txt"])
             story = root / self.story_path
-            write(story, "# Fixture\n")
-            baseline = "0" * 40
-            candidate = "1" * 40
-            moved_candidate = "2" * 40
-            metadata = VALIDATOR_MODULE.StoryMetadata(
-                baseline_commit=baseline,
-                story_id="9.7",
-                metadata_failures=[],
-                file_list={self.story_path: ""},
-                unrelated={},
-                blockers={},
-                commit_scope_dispositions={},
-                commit_scope_disposition_failures=[],
-                checked_tasks=[],
-                notices=[],
-                evidence_text="",
-            )
-            completed = subprocess.CompletedProcess([], 0, stdout="", stderr="")
-            workspace = VALIDATOR_MODULE.WorkspaceEvidence([], [], [], [])
+            metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+            snapshot = VALIDATOR_MODULE.collect_workspace_evidence(root)
+            original = {"baseline": baseline, "candidate": candidate}
+            moved = {"baseline": candidate, "candidate": baseline}
 
-            with (
-                mock.patch.object(
-                    VALIDATOR_MODULE,
-                    "canonical_commit",
-                    side_effect=(baseline, candidate, moved_candidate),
-                ),
-                mock.patch.object(VALIDATOR_MODULE, "run_subprocess", return_value=completed),
-                mock.patch.object(VALIDATOR_MODULE, "run_git_checked", return_value=completed),
-                mock.patch.object(
-                    VALIDATOR_MODULE,
-                    "collect_workspace_evidence",
-                    return_value=workspace,
-                ),
-            ):
-                evidence, failures = VALIDATOR_MODULE.collect_commit_scope_evidence(
-                    root,
-                    baseline,
-                    "moving-ref",
-                    metadata,
-                    story,
-                )
+            def set_ref(name: str, sha: str) -> None:
+                result = git(root, "update-ref", f"refs/heads/fixture-{name}", sha)
+                self.assertEqual(result.returncode, 0, result.stderr)
 
-            self.assertIsNotNone(evidence)
-            self.assertIn(
-                f"candidate ref moved during validation: {candidate} -> {moved_candidate}",
-                failures,
-            )
+            def snapshots_while_refs_move(moving):
+                yield snapshot
+                for name in moving:
+                    set_ref(name, moved[name])
+                yield snapshot
+
+            for moving in (("baseline",), ("candidate",), ("baseline", "candidate")):
+                with self.subTest(moving=moving):
+                    for name, sha in original.items():
+                        set_ref(name, sha)
+                    with mock.patch.object(
+                        VALIDATOR_MODULE, "collect_workspace_evidence",
+                        side_effect=snapshots_while_refs_move(moving),
+                    ):
+                        evidence, failures = VALIDATOR_MODULE.collect_commit_scope_evidence(
+                            root, "fixture-baseline", "fixture-candidate", metadata, story,
+                        )
+
+                    self.assertIsNotNone(evidence)
+                    self.assertEqual((evidence.baseline, evidence.candidate), (baseline, candidate))
+                    self.assertCountEqual(failures, [
+                        f"{name} ref moved during validation: {original[name]} -> {moved[name]}"
+                        for name in moving
+                    ])
 
     def test_stable_workspace_snapshots_pass_commit_evidence_collection(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -2396,7 +2438,7 @@ class CommitScopeEvidenceTests(unittest.TestCase):
                 mock.patch.object(
                     VALIDATOR_MODULE,
                     "canonical_commit",
-                    side_effect=(baseline, candidate, candidate),
+                    side_effect=(baseline, candidate, baseline, candidate),
                 ),
                 mock.patch.object(VALIDATOR_MODULE, "run_subprocess", return_value=completed),
                 mock.patch.object(VALIDATOR_MODULE, "run_git_checked", return_value=completed),
@@ -2447,7 +2489,7 @@ class CommitScopeEvidenceTests(unittest.TestCase):
                 mock.patch.object(
                     VALIDATOR_MODULE,
                     "canonical_commit",
-                    side_effect=(baseline, candidate, candidate),
+                    side_effect=(baseline, candidate, baseline, candidate),
                 ),
                 mock.patch.object(VALIDATOR_MODULE, "run_subprocess", return_value=completed),
                 mock.patch.object(VALIDATOR_MODULE, "run_git_checked", return_value=completed),
@@ -2978,7 +3020,7 @@ class CommitScopeEvidenceTests(unittest.TestCase):
                 mock.patch.object(
                     VALIDATOR_MODULE,
                     "canonical_commit",
-                    side_effect=(baseline, candidate, candidate),
+                    side_effect=(baseline, candidate, baseline, candidate),
                 ),
                 mock.patch.object(VALIDATOR_MODULE, "run_subprocess", return_value=completed),
                 mock.patch.object(VALIDATOR_MODULE, "run_git_checked", return_value=log),
@@ -4573,6 +4615,20 @@ class ClassifiedUnrelatedTests(unittest.TestCase):
             {"references/Hexalith.Builds"},
         )
         self.assertTrue(covered)
+
+    def test_report_reason_uses_the_most_specific_matching_path(self) -> None:
+        entries = [("dir/parent", "parent"), ("dir/parent/child/", "child"),
+                   ("dir/parent/child/file", "file")]
+        for ordered in (entries, list(reversed(entries))):
+            classified = dict(ordered)
+            for path, expected in (
+                ("dir/parent/child/file", "file"),
+                ("dir/parent/child/other", "child"),
+                ("dir/parent/childish/file", "parent"),
+                ("dir/parental/file", ""),
+            ):
+                with self.subTest(path=path, order=list(classified)):
+                    self.assertEqual(self.validator.classified_path_reason(path, classified), expected)
 
     def test_classification_matches_whole_segments_only(self) -> None:
         """`references/Hexalith.BuildsExtra` is not covered by `references/Hexalith.Builds`."""
