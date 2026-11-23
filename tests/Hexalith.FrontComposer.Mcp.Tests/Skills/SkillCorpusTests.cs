@@ -189,6 +189,42 @@ public sealed class SkillCorpusTests {
         snapshot.Resources.ShouldBeEmpty();
     }
 
+    [Theory]
+    [InlineData("one", "two", "one")]
+    [InlineData("two", "MANIFEST", "frontcomposer://skills/manifest")]
+    [InlineData("skills-manifest", "two", "skills-manifest")]
+    public void ManifestValidationRejectsResourceIdentityCollisions(string id, string slug, string collision) {
+        static SkillCorpusSource Source(string file, string id, string slug) => new(file, $$"""
+            ---
+            id: {{id}}
+            title: Example
+            version: 1.0.0
+            audience: agent
+            docfx: true
+            mcpResource: true
+            resourceUri: frontcomposer://skills/{{slug}}
+            order: 1
+            sourceDoc: first.md
+            narrative: true
+            references: true
+            ---
+            <!-- frontcomposer:section agent-reference -->
+            Example
+            <!-- /frontcomposer:section -->
+            """);
+
+        SkillCorpusSnapshot snapshot = SkillCorpusParser.Parse([
+            Source("first.md", "one", "one"),
+            Source("second.md", id, slug),
+        ]);
+
+        SkillCorpusDiagnostic diagnostic = snapshot.Diagnostics.ShouldHaveSingleItem();
+        diagnostic.Category.ShouldBe(SkillCorpusDiagnosticCategory.DuplicateResource);
+        diagnostic.Source.ShouldBe("second.md");
+        diagnostic.Message.ShouldContain($"'{collision}'");
+        snapshot.Resources.ShouldBeEmpty();
+    }
+
     [Fact]
     public void ParseOne_DoesNotDiscardLaterValidFilesAfterEarlierFailure() {
         // P-2: the parser uses a per-file diagnostic delta so one bad file no longer nukes
@@ -224,6 +260,20 @@ public sealed class SkillCorpusTests {
         // bad doc no longer means the parser silently drops every later doc as well.
         snapshot.Diagnostics.ShouldContain(d => d.Source == "docs/skills/frontcomposer/bad.md");
         snapshot.Diagnostics.Count(d => d.Source == "docs/skills/frontcomposer/good.md").ShouldBe(0);
+    }
+
+    [Fact]
+    public void ProviderAcceptsAnAdvisoryButRejectsAMixedSnapshot() {
+        SkillCorpusSnapshot valid = SkillCorpusLoader.LoadEmbedded();
+        SkillCorpusDiagnostic advisory = SkillCorpusReleaseGuard.ValidateAgainstBaseline(
+            valid, new EmptySkillCorpusBaselineProvider()).Diagnostics.ShouldHaveSingleItem();
+        var provider = new FrontComposerSkillResourceProvider(valid with { Diagnostics = [advisory] });
+        provider.Read(valid.Resources[0].ResourceUri, CancellationToken.None).IsSuccess.ShouldBeTrue();
+
+        SkillCorpusSnapshot invalid = SkillCorpusParser.Parse([new SkillCorpusSource("bad.md", "missing front matter")]);
+        SkillCorpusSnapshot mixed = invalid with { Diagnostics = [advisory, .. invalid.Diagnostics] };
+        var error = Should.Throw<InvalidSkillCorpusException>(() => new FrontComposerSkillResourceProvider(mixed));
+        error.Diagnostics.ShouldContain(invalid.Diagnostics.Single());
     }
 
     [Fact]
@@ -389,6 +439,7 @@ public sealed class SkillCorpusTests {
             current,
             new StubBaselineProvider(baseline));
 
+        result.IsValid.ShouldBeFalse();
         result.Diagnostics.ShouldContain(d =>
             d.Category == SkillCorpusDiagnosticCategory.MigrationGuideMissing
             && d.Message.Contains(indexResource.ResourceUri, StringComparison.Ordinal));
@@ -404,8 +455,25 @@ public sealed class SkillCorpusTests {
             current,
             new EmptySkillCorpusBaselineProvider());
 
+        result.IsValid.ShouldBeTrue();
         _ = result.Diagnostics.ShouldHaveSingleItem();
         result.Diagnostics.Single().Category.ShouldBe(SkillCorpusDiagnosticCategory.BaselineMismatch);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ReleaseValidationPreservesCurrentParserErrors(bool hasBaseline) {
+        SkillCorpusSnapshot current = SkillCorpusParser.Parse([new SkillCorpusSource("bad.md", "missing front matter")]);
+        ISkillCorpusBaselineProvider baseline = hasBaseline
+            ? new StubBaselineProvider(SkillCorpusLoader.LoadEmbedded())
+            : new EmptySkillCorpusBaselineProvider();
+
+        SkillCorpusValidationResult result = SkillCorpusReleaseGuard.ValidateAgainstBaseline(current, baseline);
+
+        result.IsValid.ShouldBeFalse();
+        result.Diagnostics.Where(d => !d.IsInformational).ShouldBe(current.Diagnostics);
+        result.Diagnostics.Count(d => d.IsInformational).ShouldBe(hasBaseline ? 0 : 1);
     }
 
     [Fact]

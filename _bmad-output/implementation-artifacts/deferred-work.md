@@ -6760,7 +6760,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusParser.cs:57-67
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Reject reserved manifest URIs and duplicate corpus IDs during corpus parsing. evidence: `SkillCorpusParser` deduplicates resource URIs but not IDs and accepts `frontcomposer://skills/manifest` at `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusParser.cs:57-67,165-173`, allowing ambiguous descriptors or collision with the synthetic manifest.
-status: open
+status: done 2026-11-23
+resolution: The parser reserves the aggregate URI and ID and detects duplicate skill IDs. Collision diagnostics identify the actual source file. See `spec-skill-corpus-validation-and-discovery.md`.
 
 ### DW-1651: Select the aggregate corpus version semantically and ordinally rather than with default string Max.
 
@@ -6847,7 +6848,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: src/Hexalith.FrontComposer.Mcp/Skills/FrontComposerSkillResourceProvider.cs:25-30
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Snapshot mutable corpus resources when constructing the resource provider. evidence: `FrontComposerSkillResourceProvider` retains `snapshot.Resources` while separately freezing its URI lookup and rendering its manifest (`src/Hexalith.FrontComposer.Mcp/Skills/FrontComposerSkillResourceProvider.cs:25-30`); mutation through a caller-supplied mutable `IReadOnlyList` can make discovery disagree with reads. The behavior predates the split.
-status: open
+status: done 2026-11-23
+resolution: The provider copies its resource list and nested metadata once for discovery, lookup and manifest rendering. See `spec-skill-corpus-validation-and-discovery.md`.
 
 ### DW-1662: Preserve dots in embedded skill-corpus filenames during logical-name reconstruction.
 
@@ -6879,7 +6881,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:41-49
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Reconcile the documented no-op baseline mode with `SkillCorpusValidationResult.IsValid`. evidence: `ValidateAgainstBaseline` describes a missing baseline as a benign no-op but returns a `BaselineMismatch` diagnostic (`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:41-49`), while `SkillCorpusValidationResult.IsValid` treats every diagnostic as invalid. There is no production caller today, and both declarations predate the split.
-status: open
+status: done 2026-11-23
+resolution: A missing baseline still produces the existing BaselineMismatch diagnostic. Its informational flag allows validation to succeed when the current corpus is valid. See `spec-skill-corpus-validation-and-discovery.md`.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1665, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1666: Carry current corpus diagnostics through baseline release validation.
@@ -6888,7 +6891,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:52-73
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Carry current corpus diagnostics through baseline release validation. evidence: `ValidateAgainstBaseline` starts with an empty diagnostic list and iterates `current.Resources` (`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:52-73`); a parser-invalid snapshot has no resources and can therefore produce an apparently valid release result. The release-guard body is unchanged from baseline.
-status: open
+status: done 2026-11-23
+resolution: Baseline comparison returns all current parser diagnostics whether a baseline exists or is absent. See `spec-skill-corpus-validation-and-discovery.md`.
 
 ### DW-1667: Reject negative skill-resource character limits at construction.
 
@@ -6896,7 +6900,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceReadOptions.cs:10-13
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Reject negative skill-resource character limits at construction. evidence: `SkillResourceReadOptions` accepts any integer (`src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceReadOptions.cs:10-13`); a negative cap causes every resource read to return `SkillResourceTooLarge`. This public-boundary validation gap predates the relocation.
-status: open
+status: done 2026-11-23
+resolution: Read limits reject negative values in the positional constructor and during record initialization or copying. A zero limit admits an empty resource. See `spec-skill-corpus-validation-and-discovery.md`.
 
 ### DW-1668: Verify JSON-formatted parse failures for Hexalith.Builds command applications.
 
@@ -11551,3 +11556,9 @@ November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were ap
   evidence: A pathless checked task with only `<!-- Blocker example -->` in its Test Evidence section passes. Cover comment-only sections and comments mixed with visible evidence when defining how the validator handles HTML in Markdown.
   status: done 2026-11-23
   resolution: General evidence and blocker entries ignore hidden comments while preserving surrounding visible text. See `spec-checked-task-evidence.md`.
+
+## Deferred from review of skill corpus validation and discovery — 2026-11-23
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-skill-corpus-validation-and-discovery.md`
+  summary: Report errors in a supplied skill corpus baseline during release validation.
+  evidence: A baseline returned by the parser after a file fails validation has diagnostics and an empty resource list. ValidateAgainstBaseline currently compares only its resources. A valid current corpus can therefore pass comparison against a malformed baseline.

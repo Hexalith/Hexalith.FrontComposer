@@ -18,15 +18,19 @@ public sealed class FrontComposerSkillResourceProvider {
 
         // P-45: fail fast at startup with a structured exception that carries the diagnostics
         // list, so an operator can triage which file failed without rebuilding under a debugger.
-        if (snapshot.Diagnostics.Count > 0) {
+        var validation = new SkillCorpusValidationResult(snapshot.Diagnostics);
+        if (!validation.IsValid) {
             throw new InvalidSkillCorpusException(snapshot.Diagnostics);
         }
 
-        _resources = snapshot.Resources;
+        _resources = [.. snapshot.Resources.Select(resource => resource with {
+            PublicApiReferences = [.. resource.PublicApiReferences],
+            SamplePaths = [.. resource.SamplePaths],
+        })];
         // P-37: URIs are canonicalized to lowercase at parse time, so all lookups use Ordinal.
-        _byUri = snapshot.Resources.ToFrozenDictionary(r => r.ResourceUri, StringComparer.Ordinal);
+        _byUri = _resources.ToFrozenDictionary(r => r.ResourceUri, StringComparer.Ordinal);
         _readOptions = readOptions;
-        AggregateManifest = SkillCorpusAggregateManifestBuilder.Build(snapshot);
+        AggregateManifest = SkillCorpusAggregateManifestBuilder.Build(snapshot with { Resources = _resources });
         _aggregateMarkdown = SkillCorpusAggregateManifestBuilder.Render(AggregateManifest);
     }
 
@@ -100,7 +104,7 @@ public sealed class FrontComposerSkillResourceProvider {
             resource.Fingerprint);
 
     private static readonly SkillResourceDescriptor AggregateDescriptor = new(
-        "skills-manifest",
+        SkillCorpusAggregateManifestBuilder.ManifestResourceId,
         "FrontComposer skill corpus manifest",
         "Aggregate index of all FrontComposer skill resources with manifestSchemaVersion.",
         SkillCorpusAggregateManifestBuilder.ManifestResourceUri,

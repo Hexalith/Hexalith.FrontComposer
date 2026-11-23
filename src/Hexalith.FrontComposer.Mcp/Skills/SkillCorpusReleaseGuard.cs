@@ -38,19 +38,19 @@ public static class SkillCorpusReleaseGuard {
         ArgumentNullException.ThrowIfNull(current);
         ArgumentNullException.ThrowIfNull(baselineProvider);
 
+        List<SkillCorpusDiagnostic> diagnostics = [.. current.Diagnostics];
         SkillCorpusSnapshot? baseline = baselineProvider.GetBaseline();
         if (baseline is null) {
             // Stub mode: nothing to compare. Surface this as a benign info diagnostic so the
             // release pipeline knows it is running without a baseline.
-            return new SkillCorpusValidationResult([
-                new SkillCorpusDiagnostic(
-                    SkillCorpusDiagnosticCategory.BaselineMismatch,
-                    SkillCorpusAggregateManifestBuilder.ManifestResourceUri,
-                    "No skill corpus baseline configured — skipping breaking-change comparison.")]);
+            diagnostics.Add(new SkillCorpusDiagnostic(
+                SkillCorpusDiagnosticCategory.BaselineMismatch,
+                SkillCorpusAggregateManifestBuilder.ManifestResourceUri,
+                "No skill corpus baseline configured — skipping breaking-change comparison.") { IsInformational = true });
+            return new SkillCorpusValidationResult(diagnostics);
         }
 
         var baselineByUri = baseline.Resources.ToDictionary(r => r.ResourceUri, StringComparer.Ordinal);
-        List<SkillCorpusDiagnostic> diagnostics = [];
 
         foreach (SkillCorpusResource currentResource in current.Resources) {
             if (!baselineByUri.TryGetValue(currentResource.ResourceUri, out SkillCorpusResource? baselineResource)) {

@@ -5,6 +5,7 @@ namespace Hexalith.FrontComposer.Mcp.Skills;
 
 public static class SkillCorpusAggregateManifestBuilder {
     public const string ManifestSchemaVersion = "frontcomposer.skill-corpus.manifest.v1";
+    internal const string ManifestResourceId = "skills-manifest";
     public const string ManifestResourceUri = "frontcomposer://skills/manifest";
 
     public static SkillCorpusAggregateManifest Build(SkillCorpusSnapshot snapshot) {

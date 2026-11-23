@@ -14,6 +14,45 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Skills;
 
 public sealed class SkillResourceTests {
     [Fact]
+    public void ProviderKeepsTheCorpusItWasConstructedWith() {
+        List<string> api = ["Example.Command"];
+        List<string> samples = ["samples/example"];
+        SkillCorpusResource resource = SkillCorpusLoader.LoadEmbedded().Resources[0]
+            with { PublicApiReferences = api, SamplePaths = samples };
+        List<SkillCorpusResource> resources = [resource];
+        var provider = new FrontComposerSkillResourceProvider(new SkillCorpusSnapshot(resources, []));
+
+        resources.Clear();
+        api.Clear();
+        samples.Clear();
+
+        string[] uris = [resource.ResourceUri, SkillCorpusAggregateManifestBuilder.ManifestResourceUri];
+        provider.ListResources().Select(d => d.ResourceUri).ShouldBe(uris);
+        provider.CreateMcpResources().Select(r => r.Descriptor.ResourceUri).ShouldBe(uris);
+        provider.ResourceUris.Order(StringComparer.Ordinal).ShouldBe(uris.Order(StringComparer.Ordinal));
+        provider.Read(resource.ResourceUri, CancellationToken.None).Markdown.ShouldBe(resource.Markdown);
+        SkillCorpusManifestEntry entry = provider.AggregateManifest.Resources.ShouldHaveSingleItem();
+        entry.PublicApiReferences.ShouldBe(["Example.Command"]);
+        entry.SamplePaths.ShouldBe(["samples/example"]);
+        provider.Read(SkillCorpusAggregateManifestBuilder.ManifestResourceUri, CancellationToken.None).Markdown
+            .ShouldBe(SkillCorpusAggregateManifestBuilder.Render(provider.AggregateManifest));
+    }
+
+    [Fact]
+    public void ReadLimitAcceptsZeroAndRejectsNegativeValues() {
+        var zero = new SkillResourceReadOptions(MaxCharacters: 0);
+        SkillCorpusResource empty = SkillCorpusLoader.LoadEmbedded().Resources[0] with { Markdown = string.Empty };
+        var provider = new FrontComposerSkillResourceProvider(new SkillCorpusSnapshot([empty], []), zero);
+        provider.Read(empty.ResourceUri, CancellationToken.None).IsSuccess.ShouldBeTrue();
+        provider.Read(SkillCorpusAggregateManifestBuilder.ManifestResourceUri, CancellationToken.None).Category
+            .ShouldBe(FrontComposerMcpFailureCategory.SkillResourceTooLarge);
+        Should.Throw<ArgumentOutOfRangeException>(() => new SkillResourceReadOptions(-1)).ParamName
+            .ShouldBe(nameof(SkillResourceReadOptions.MaxCharacters));
+        Should.Throw<ArgumentOutOfRangeException>(() => { _ = zero with { MaxCharacters = -1 }; }).ParamName
+            .ShouldBe(nameof(SkillResourceReadOptions.MaxCharacters));
+    }
+
+    [Fact]
     public void Provider_ListsAndReadsSkillResourcesWithoutTenantContext() {
         SkillCorpusSnapshot snapshot = SkillCorpusLoader.LoadEmbedded();
         var provider = new FrontComposerSkillResourceProvider(snapshot);

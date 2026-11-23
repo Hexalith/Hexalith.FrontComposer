@@ -11,4 +11,15 @@ public sealed record SkillResourceReadOptions(int MaxCharacters) {
     public const int DefaultMaxCharacters = 32 * 1024;
 
     public static SkillResourceReadOptions Default { get; } = new(DefaultMaxCharacters);
+
+    /// <summary>Gets the inclusive character limit for each resource read.</summary>
+    public int MaxCharacters {
+        get;
+        init => field = ValidateLimit(value);
+    } = ValidateLimit(MaxCharacters);
+
+    private static int ValidateLimit(int value) {
+        ArgumentOutOfRangeException.ThrowIfNegative(value, nameof(MaxCharacters));
+        return value;
+    }
 }

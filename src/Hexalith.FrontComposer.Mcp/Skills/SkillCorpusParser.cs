@@ -44,24 +44,32 @@ public static partial class SkillCorpusParser {
         List<SkillCorpusResource> resources = [];
         List<SkillCorpusDiagnostic> diagnostics = [];
 
+        // P-37: URIs are canonicalized to lowercase at parse time so lookup, dedupe, and
+        // dispatch all use Ordinal comparisons consistently.
+        HashSet<string> resourceUris = new(StringComparer.Ordinal) { SkillCorpusAggregateManifestBuilder.ManifestResourceUri };
+        HashSet<string> resourceIds = new(StringComparer.Ordinal) { SkillCorpusAggregateManifestBuilder.ManifestResourceId };
+
         foreach (SkillCorpusSource source in sources.OrderBy(s => s.Path, StringComparer.Ordinal)) {
             // P-2: track per-file diagnostics so a prior file's failure does not silently nuke
             // every subsequent valid file. ParseOne consults the delta against this baseline.
             int initialDiagnosticCount = diagnostics.Count;
             SkillCorpusResource? resource = ParseOne(source, diagnostics, initialDiagnosticCount);
-            if (resource is not null) {
-                resources.Add(resource);
+            if (resource is null) {
+                continue;
             }
-        }
 
-        // P-37: URIs are canonicalized to lowercase at parse time so lookup, dedupe, and
-        // dispatch all use Ordinal comparisons consistently.
-        HashSet<string> resourceUris = new(StringComparer.Ordinal);
-        foreach (SkillCorpusResource resource in resources) {
+            resources.Add(resource);
+            if (!resourceIds.Add(resource.Id)) {
+                diagnostics.Add(new SkillCorpusDiagnostic(
+                    SkillCorpusDiagnosticCategory.DuplicateResource,
+                    source.Path,
+                    $"Duplicate skill resource ID '{resource.Id}'."));
+            }
+
             if (!resourceUris.Add(resource.ResourceUri)) {
                 diagnostics.Add(new SkillCorpusDiagnostic(
                     SkillCorpusDiagnosticCategory.DuplicateResource,
-                    resource.SourceDoc,
+                    source.Path,
                     $"Duplicate skill resource URI '{resource.ResourceUri}'."));
             }
         }
