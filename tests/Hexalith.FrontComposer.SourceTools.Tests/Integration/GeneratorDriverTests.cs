@@ -11,7 +11,7 @@ public partial class GeneratorDriverTests {
     [Fact]
     public void RunGenerators_LiteralEdgeCases_ViewAndMcpSourcesCompileAndRoundTripConstants() {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        const string edge = "quote:\" slash:\\ controls:\0\a\b\f\n\r\t\v next:\u0085 line:\u2028 paragraph:\u2029";
+        const string edge = "quote:\" slash:\\ controls:\0\a\b\f\n\r\t\v next:\u0085 line:\u2028 paragraph:\u2029 end";
         string inputLiteral = Hexalith.FrontComposer.SourceTools.Emitters.GeneratedLiteral.Escape(edge);
         string source = $$"""
             using System.ComponentModel.DataAnnotations;
@@ -23,6 +23,19 @@ public partial class GeneratorDriverTests {
             public partial class LiteralProjection {
                 [Display(Name = "{{inputLiteral}}")]// Literal edge-case input.
                 public string Value { get; set; } = string.Empty;
+                [Display(Name = " \t ")]
+                public string BlankLabel { get; set; } = string.Empty;
+                [Display(Name = " \u2029 Visible label \u2029")]
+                public string PaddedLabel { get; set; } = string.Empty;
+            }
+
+            [Command]
+            public sealed class LabelCommand {
+                public string MessageId { get; set; } = string.Empty;
+                [Display(Name = " \t ")]
+                public string BlankLabel { get; set; } = string.Empty;
+                [Display(Name = " \u2029 Visible label \u2029")]
+                public string PaddedLabel { get; set; } = string.Empty;
             }
             """;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
@@ -47,6 +60,19 @@ public partial class GeneratorDriverTests {
                 .Select(token => token.ValueText)
                 .ShouldContain(edge, $"{hintName} must recover the original runtime string constant.");
         }
+
+        SyntaxTree projectionView = result.GeneratedTrees.Single(tree =>
+            Path.GetFileName(tree.FilePath) == "LiteralFixtures.LiteralProjection.g.razor.cs");
+        string[] projectionLabels = projectionView.GetRoot(cancellationToken).DescendantTokens()
+            .Where(token => token.IsKind(SyntaxKind.StringLiteralToken))
+            .Select(token => token.ValueText).ToArray();
+        projectionLabels.ShouldContain("Blank Label");
+        projectionLabels.ShouldContain("Visible label");
+
+        string commandForm = result.GeneratedTrees.Single(tree =>
+            Path.GetFileName(tree.FilePath) == "LiteralFixtures.LabelCommand.CommandForm.g.razor.cs").ToString();
+        commandForm.ShouldContain("ResolveLabel(\"BlankLabel\", \"Blank Label\", false)");
+        commandForm.ShouldContain("ResolveLabel(\"PaddedLabel\", \"Visible label\", true)");
     }
 
     [Fact]

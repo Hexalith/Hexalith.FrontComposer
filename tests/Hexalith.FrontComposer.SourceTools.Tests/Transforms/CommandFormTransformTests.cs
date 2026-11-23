@@ -44,14 +44,19 @@ public class CommandFormTransformTests {
         result.Fields.Single().TypeCategory.ShouldBe(FormFieldTypeCategory.Placeholder);
     }
 
-    [Fact]
-    public void Transform_UsesDisplayNameWhenSet() {
-        PropertyModel property = BuildProperty(name: "CustomerName", typeName: "String", displayName: "Customer Name");
+    [Theory]
+    [InlineData(null, "Customer Name", false)]
+    [InlineData("", "Customer Name", false)]
+    [InlineData(" \t", "Customer Name", false)]
+    [InlineData("  Account holder  ", "Account holder", true)]
+    public void Transform_UsesDisplayNameWhenSet(string? displayName, string expected, bool isExplicit) {
+        PropertyModel property = BuildProperty(name: "CustomerName", typeName: "String", displayName: displayName);
         CommandModel command = BuildCommand(nonDerivable: [property]);
 
-        CommandFormModel result = CommandFormTransform.Transform(command);
+        FormFieldModel field = CommandFormTransform.Transform(command).Fields.Single();
 
-        result.Fields.Single().StaticLabel.ShouldBe("Customer Name");
+        field.StaticLabel.ShouldBe(expected);
+        field.HasExplicitDisplayName.ShouldBe(isExplicit);
     }
 
     [Fact]

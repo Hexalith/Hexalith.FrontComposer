@@ -483,6 +483,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
 
     private void OnStateChanged(object? sender, EventArgs e)
     {
+        if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; }
         _ = InvokeAsync(() =>
         {
             if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; }

@@ -50,8 +50,10 @@ public static class CommandFormTransform {
 
     private static FormFieldModel MapField(PropertyModel property) {
         FormFieldTypeCategory category = MapCategory(property);
-        bool hasExplicitDisplay = !string.IsNullOrEmpty(property.DisplayName);
-        string staticLabel = ResolveLabel(property);
+        bool hasExplicitDisplay = !string.IsNullOrWhiteSpace(property.DisplayName);
+        string staticLabel = hasExplicitDisplay
+            ? property.DisplayName!.Trim()
+            : CamelCaseHumanizer.Humanize(property.Name) ?? property.Name;
         bool isRequired = !property.IsNullable && !property.IsUnsupported;
 
         return new FormFieldModel(
@@ -86,15 +88,6 @@ public static class CommandFormTransform {
             "Guid" => FormFieldTypeCategory.MonospaceText,
             _ => FormFieldTypeCategory.Placeholder,
         };
-    }
-
-    private static string ResolveLabel(PropertyModel property) {
-        if (!string.IsNullOrEmpty(property.DisplayName)) {
-            return property.DisplayName!;
-        }
-
-        string? humanized = CamelCaseHumanizer.Humanize(property.Name);
-        return string.IsNullOrEmpty(humanized) ? property.Name : humanized!;
     }
 
     /// <summary>

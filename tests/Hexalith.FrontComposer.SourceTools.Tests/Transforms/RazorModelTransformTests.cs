@@ -53,10 +53,14 @@ public class RazorModelTransformTests {
         result.Columns[0].FormatHint.ShouldBe("N2");
     }
 
-    [Fact]
-    public void Transform_DisplayNameTakesPriority_OverHumanized() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("OrderDate", "DateTime", displayName: "Date Ordered")));
-        result.Columns[0].Header.ShouldBe("Date Ordered");
+    [Theory]
+    [InlineData(null, "Order Date")]
+    [InlineData("", "Order Date")]
+    [InlineData(" \t", "Order Date")]
+    [InlineData("  Date Ordered  ", "Date Ordered")]
+    public void Transform_DisplayNameTakesPriority_OverHumanized(string? displayName, string expected) {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("OrderDate", "DateTime", displayName: displayName)));
+        result.Columns[0].Header.ShouldBe(expected);
     }
 
     [Fact]

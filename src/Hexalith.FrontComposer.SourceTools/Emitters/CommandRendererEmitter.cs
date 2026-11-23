@@ -27,7 +27,6 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("// Do not edit directly");
         _ = sb.AppendLine();
         _ = sb.AppendLine("#nullable enable");
-        _ = sb.AppendLine("#pragma warning disable CS0612, CS0618 // Warning-obsolete derivable properties remain supported by typed prefill.");
         _ = sb.AppendLine();
         SortedSet<string> requiredExternAliases = [];
         foreach (PropertyModel property in model.DerivableProperties) {
@@ -409,13 +408,17 @@ public static class CommandRendererEmitter {
         // DW-1137 — property names, types, and assignment capability are pure renderer IR. Safe
         // properties assign statically; unsafe-to-reference properties retain provider fall-through
         // through type- and member-free false arms.
+        PropertyModel[] sortedDerivableProperties = model.DerivableProperties
+            .OrderBy(static property => property.Name, StringComparer.Ordinal)
+            .ToArray();
+        bool hasStaticAssignments = sortedDerivableProperties.Any(static property => property.SupportsStaticAssignment);
+        if (hasStaticAssignments) {
+            _ = sb.AppendLine("#pragma warning disable CS0612, CS0618 // Warning-obsolete derivable properties remain supported by typed prefill.");
+        }
         _ = sb.AppendLine("    private bool TrySetPropertyValue(string propertyName, object? value)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        switch (propertyName)");
         _ = sb.AppendLine("        {");
-        PropertyModel[] sortedDerivableProperties = model.DerivableProperties
-            .OrderBy(static property => property.Name, StringComparer.Ordinal)
-            .ToArray();
         for (int i = 0; i < sortedDerivableProperties.Length; i++) {
             PropertyModel property = sortedDerivableProperties[i];
             _ = sb.AppendLine("            case \"" + EscapeString(property.Name) + "\":");
@@ -443,8 +446,11 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("                return false;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
+        if (hasStaticAssignments) {
+            _ = sb.AppendLine("#pragma warning restore CS0612, CS0618");
+        }
         _ = sb.AppendLine();
-        if (sortedDerivableProperties.Any(static property => property.SupportsStaticAssignment)) {
+        if (hasStaticAssignments) {
             // Story 2-2 code-review P25 — use CurrentCulture for DateTime/number parse (matches CommandFormEmitter numeric binding).
             _ = sb.AppendLine("    private static bool TryConvertPropertyValue<T>(object value, out T converted)");
             _ = sb.AppendLine("    {");
@@ -839,8 +845,6 @@ public static class CommandRendererEmitter {
         EmitLogMethods(sb, model, densityName, hasAuthorizationPolicy);
 
         _ = sb.AppendLine("}");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("#pragma warning restore CS0612, CS0618");
 
         // Story 11.21 ASP0006 — the emitters above write runtime `seq++` counters; the rewriter
         // converts each call site to the literal for its position in this document, which is what

@@ -9142,7 +9142,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
 reason: The new CS0612/CS0618 pragma begins after #nullable and restores at end of file, so unrelated obsolete API use in generated code can be hidden. This separately committed parser/renderer work is outside the four-entry bundle.
-status: open
+status: done 2026-11-23
+resolution: Scope CS0612 and CS0618 suppression to typed prefill in the generated command renderer.
 
 ### DW-1948: Generated OnStateChanged handlers have no disposed guard, so a state notification racing teardown can still reach InvokeAsync(StateHasChanged).
 origin: spec-deferred 5039cc96e10a
@@ -9150,7 +9151,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:1060
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
 reason: Both the grid and non-grid OnStateChanged bodies call InvokeAsync unconditionally, and Dispose unsubscribes only after claiming the guard. The window predates this bundle: the unsubscribe order is unchanged and the discarded Task makes any ObjectDisposedException unobserved. Only OnNewItemIndicatorsChanged carries a Volatile.Read guard.
-status: open
+status: done 2026-11-23
+resolution: Guard grid and non-grid state change callbacks before scheduling and inside the renderer callback.
 
 ### DW-1949: The fail-closed render-tree gate's decrement arm is exercised by no test.
 origin: spec-deferred 2c74f33ff97a
@@ -9158,7 +9160,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewr
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
 reason: No SourceTools test feeds a decrement sequence argument through AssignLiteralsOrFail, so the '--' half of both the text gate and the Post/PreDecrementExpression walk is unpinned. This is pre-existing: the retired HasIncrementInFirstArgumentPosition prefilter also scanned '--' and was equally uncovered. One theory row on the existing AssignLiteralsOrFail tests would close it.
-status: open
+status: done 2026-11-23
+resolution: Verify prefix and postfix decrement sequence arguments both fail generation.
 
 ### DW-1950: Concurrent soft-fail arm assertions hardcode a bare LF and fail on a CRLF test host.
 origin: spec-deferred 81de6011a523
@@ -9184,7 +9187,8 @@ location: docs/diagnostics/HFC1016.md
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
 reason: CommandParser emits "has no public setter", "is declared with an 'init' accessor", and "has a non-public setter", but the corrected example documents only the first, and the page does not describe where the diagnostic points for a member that comes from metadata rather than source. The doc edit belongs to the independently committed prefill refactor.
-status: open
+status: done 2026-11-23
+resolution: Document all three HFC1016 messages and where inherited metadata diagnostics appear.
 
 ### DW-1953: The direct literal-sequence test gate recognizes only identifier postfix-increment arguments and can miss other runtime expressions.
 origin: spec-deferred 44c1ff2eca18
@@ -9735,7 +9739,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFormTransform
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: low
 reason: summary: Command-level `[Display(Name)]` now uses `IsNullOrWhiteSpace` plus `Trim()`, but field mapping still uses `IsNullOrEmpty` for `hasExplicitDisplay` and `ResolveLabel`. evidence: `CommandFormTransform.cs:53-54` and `:88-90`; `RazorModelTransform.cs:343-344` is the same field path. Pre-existing; this story did not change field labels. Settled by applying the same trim/fallback to property display names, or by leaving field labels on the original empty-string rule.
-status: open
+status: done 2026-11-23
+resolution: Trim nonblank form-field and projection-column display names and fall back for blank values.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
   summary: Add a canonical File List to Story 11.27.

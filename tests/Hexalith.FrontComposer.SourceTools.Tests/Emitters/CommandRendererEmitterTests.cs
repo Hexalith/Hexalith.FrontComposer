@@ -195,6 +195,9 @@ public class CommandRendererEmitterTests {
         arm.ShouldNotContain("Int32*");
         arm.ShouldNotContain("@Danger");
         source.ShouldNotContain("extern alias UnsafeAlias;");
+        source.ShouldNotContain("#pragma warning disable CS0612, CS0618");
+        source.ShouldNotContain("#pragma warning restore CS0612, CS0618");
+        source.ShouldNotContain("TryConvertPropertyValue<");
     }
 
     [Fact]

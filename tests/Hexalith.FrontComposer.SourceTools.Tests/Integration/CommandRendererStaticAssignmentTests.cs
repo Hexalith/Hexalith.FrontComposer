@@ -171,8 +171,24 @@ public partial class GeneratorDriverTests {
 
         AssertNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
         string renderer = GetRenderer(result, "WarningFixtures.WarningCommand.CommandRenderer.g.razor.cs");
-        renderer.ShouldContain("#pragma warning disable CS0612, CS0618");
-        renderer.ShouldContain("#pragma warning restore CS0612, CS0618");
+        string[] lines = renderer.ReplaceLineEndings("\n").Split('\n');
+        int assignment = Array.FindIndex(lines, static line => line.Contains("private bool TrySetPropertyValue(", StringComparison.Ordinal));
+        int conversion = Array.FindIndex(lines, static line => line.Contains("private static bool TryConvertPropertyValue<", StringComparison.Ordinal));
+        assignment.ShouldBeGreaterThan(0);
+        conversion.ShouldBeGreaterThan(assignment + 2);
+        lines.Where(static line => line.StartsWith("#pragma warning disable CS0612, CS0618", StringComparison.Ordinal))
+            .ShouldHaveSingleItem().ShouldBe(lines[assignment - 1]);
+        lines.Where(static line => line == "#pragma warning restore CS0612, CS0618")
+            .ShouldHaveSingleItem().ShouldBe(lines[conversion - 2]);
+        SyntaxTree rendererTree = outputCompilation.SyntaxTrees.Single(tree =>
+            Path.GetFileName(tree.FilePath) == "WarningFixtures.WarningCommand.CommandRenderer.g.razor.cs");
+        const string unrelatedObsoleteUse = "public static class UnrelatedUse { public static int Read(WarningCommand command) => command.Legacy; }";
+        SyntaxTree treeWithUnrelatedUse = rendererTree.WithChangedText(
+            Microsoft.CodeAnalysis.Text.SourceText.From(renderer + Environment.NewLine + unrelatedObsoleteUse));
+        outputCompilation.ReplaceSyntaxTree(rendererTree, treeWithUnrelatedUse)
+            .GetDiagnostics(TestContext.Current.CancellationToken)
+            .ShouldContain(diagnostic => diagnostic.Id == "CS0618" && diagnostic.Location.SourceTree == treeWithUnrelatedUse);
+
         renderer.ShouldContain("TryConvertPropertyValue<global::System.Collections.Generic.List<global::System.String?>>");
         renderer.ShouldContain("TryConvertPropertyValue<global::System.String?[]>");
         renderer.ShouldContain("TryConvertPropertyValue<global::System.String?[,][]>");

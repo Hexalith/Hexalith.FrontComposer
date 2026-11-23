@@ -1057,20 +1057,18 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("    private void OnStateChanged(object? sender, EventArgs e)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; }");
+        _ = sb.AppendLine("        _ = InvokeAsync(() =>");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; }");
+        _ = sb.AppendLine("            AnnounceProjectionState();");
         if (isGrid) {
-            _ = sb.AppendLine("    {");
-            _ = sb.AppendLine("        _ = InvokeAsync(() =>");
-            _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; }");
-            _ = sb.AppendLine("            AnnounceProjectionState();");
             _ = sb.AppendLine("            DismissMaterializedIndicators(" + model.TypeName + "State.Value.Items);");
-            _ = sb.AppendLine("            StateHasChanged();");
-            _ = sb.AppendLine("        });");
-            _ = sb.AppendLine("    }");
         }
-        else {
-            _ = sb.AppendLine("    { _ = InvokeAsync(() => { if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; } AnnounceProjectionState(); StateHasChanged(); }); }");
-        }
+        _ = sb.AppendLine("            StateHasChanged();");
+        _ = sb.AppendLine("        });");
+        _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
         string surfaceExpression = isGrid ? "_viewKey" : "(typeof(" + model.TypeName + ").FullName ?? typeof(" + model.TypeName + ").Name)";

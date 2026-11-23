@@ -2,7 +2,6 @@
 // Do not edit directly
 
 #nullable enable
-#pragma warning disable CS0612, CS0618 // Warning-obsolete derivable properties remain supported by typed prefill.
 
 using System;
 using System.Collections.Generic;
@@ -104,6 +103,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
         }
     }
 
+#pragma warning disable CS0612, CS0618 // Warning-obsolete derivable properties remain supported by typed prefill.
     private bool TrySetPropertyValue(string propertyName, object? value)
     {
         switch (propertyName)
@@ -136,6 +136,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                 return false;
         }
     }
+#pragma warning restore CS0612, CS0618
 
     private static bool TryConvertPropertyValue<T>(object value, out T converted)
     {
@@ -503,5 +504,3 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
         => _logReturnPathRejected(logger, path, correlationId, null);
 
 }
-
-#pragma warning restore CS0612, CS0618

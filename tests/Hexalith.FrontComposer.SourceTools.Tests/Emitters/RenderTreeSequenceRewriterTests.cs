@@ -541,10 +541,12 @@ public sealed class RenderTreeSequenceRewriterTests {
     [InlineData("builder.AddContent(12 + seq, \"a\")")]
     [InlineData("builder.AddContent(GetSequence(), \"a\")")]
     [InlineData("builder.AddContent(--seq, \"a\")")]
+    [InlineData("builder.AddContent(seq--, \"a\")")]
     [InlineData("builder.AddContent(textContent: \"a\", sequence: seq)")]
     [InlineData("builder.AddComponentParameter(name: \"Value\", value: 42, sequence: seq)")]
     public void AssignLiteralsOrFail_RejectsNonliteralSequenceArguments(string invocation) {
-        string source = "class C { void BuildRenderTree(RenderTreeBuilder builder) { " + invocation + "; } }";
+        string source = "class C { void BuildRenderTree(RenderTreeBuilder builder) { int seq = 0; "
+            + invocation + "; builder.AddContent(seq++, \"later\"); } }";
 
         InvalidOperationException failure = Should.Throw<InvalidOperationException>(
             () => RenderTreeSequenceRewriter.AssignLiteralsOrFail(source));

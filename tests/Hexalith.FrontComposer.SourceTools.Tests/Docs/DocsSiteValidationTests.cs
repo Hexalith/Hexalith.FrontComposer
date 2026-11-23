@@ -254,6 +254,10 @@ public sealed partial class DocsSiteValidationTests {
         page.ShouldContain("Suppression cannot restore generation");
         page.ShouldContain("Breaking derivable-setter migration");
         page.ShouldContain("public non-init setter");
+        page.ShouldContain("has no public setter");
+        page.ShouldContain("is declared with an 'init' accessor");
+        page.ShouldContain("has a non-public setter");
+        page.ShouldContain("it points to the command declaration and names the inherited property");
         registry.ShouldContain("suppression cannot restore command generation");
         registry.ShouldContain("including derivable properties");
         apiContracts.ShouldContain("including derivable properties");

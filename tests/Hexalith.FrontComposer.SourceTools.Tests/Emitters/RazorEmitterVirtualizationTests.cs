@@ -191,6 +191,20 @@ public sealed class RazorEmitterVirtualizationTests {
             .ShouldBeLessThan(nonGrid.IndexOf("State.StateChanged -= OnStateChanged;", StringComparison.Ordinal));
         nonGrid.IndexOf(Guard, StringComparison.Ordinal)
             .ShouldBeLessThan(nonGrid.IndexOf("System.GC.SuppressFinalize(this);", StringComparison.Ordinal));
+        AssertStateChangeDisposalGuards(grid);
+        AssertStateChangeDisposalGuards(nonGrid);
+    }
+
+    private static void AssertStateChangeDisposalGuards(string source) {
+        const string Guard = "if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; }";
+        MethodDeclarationSyntax handler = CSharpSyntaxTree.ParseText(source).GetRoot().DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .Single(method => method.Identifier.ValueText == "OnStateChanged");
+
+        handler.Body!.Statements[0].ToString().ShouldBe(Guard);
+        ParenthesizedLambdaExpressionSyntax rendererCallback = handler.DescendantNodes()
+            .OfType<ParenthesizedLambdaExpressionSyntax>().Single();
+        rendererCallback.Block!.Statements[0].ToString().ShouldBe(Guard);
     }
 
     [Fact]
@@ -205,10 +219,19 @@ public sealed class RazorEmitterVirtualizationTests {
         object fixture = Activator.CreateInstance(fixtureType)!;
         MethodInfo dispose = fixtureType.GetMethod("Dispose", BindingFlags.Public | BindingFlags.Instance)!;
 
+        MethodInfo notify = fixtureType.GetMethod("NotifyStateChanged")!;
+        MethodInfo render = fixtureType.GetMethod("RunPendingRender")!;
+        _ = notify.Invoke(fixture, null);
+        _ = render.Invoke(fixture, null);
+        _ = notify.Invoke(fixture, null);
         _ = dispose.Invoke(fixture, null);
         _ = dispose.Invoke(fixture, null);
+        _ = render.Invoke(fixture, null);
+        _ = notify.Invoke(fixture, null);
 
         fixtureType.GetProperty("StateRemoveCount")!.GetValue(fixture).ShouldBe(1);
+        fixtureType.GetProperty("QueuedRenderCount")!.GetValue(fixture).ShouldBe(2);
+        fixtureType.GetProperty("RenderCount")!.GetValue(fixture).ShouldBe(1);
     }
 
     [Fact]
@@ -257,12 +280,23 @@ public sealed class RazorEmitterVirtualizationTests {
         MethodDeclarationSyntax disposeMethod = root.DescendantNodes()
             .OfType<MethodDeclarationSyntax>()
             .Single(method => method.Identifier.ValueText == "Dispose" && method.ParameterList.Parameters.Count == 0);
-        string fixture = "using System;\r\n\r\npublic sealed class NonGridDisposeFixture\r\n{\r\n"
+        MethodDeclarationSyntax stateChangedMethod = root.DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .Single(method => method.Identifier.ValueText == "OnStateChanged");
+        string fixture = "using System;\r\nusing System.Threading.Tasks;\r\n\r\npublic sealed class NonGridDisposeFixture\r\n{\r\n"
             + disposedField.ToFullString()
             + "    public RecordingState OrderProjectionState { get; } = new();\r\n"
             + "    public int StateRemoveCount => OrderProjectionState.RemoveCount;\r\n\r\n"
             + "    public NonGridDisposeFixture() => OrderProjectionState.StateChanged += OnStateChanged;\r\n\r\n"
-            + "    private void OnStateChanged(object? sender, EventArgs e) { }\r\n\r\n"
+            + "    private Action? _pendingRender;\r\n"
+            + "    public int QueuedRenderCount { get; private set; }\r\n"
+            + "    public int RenderCount { get; private set; }\r\n"
+            + "    public void NotifyStateChanged() => OnStateChanged(this, EventArgs.Empty);\r\n"
+            + "    public void RunPendingRender() => _pendingRender?.Invoke();\r\n"
+            + "    private Task InvokeAsync(Action callback) { QueuedRenderCount++; _pendingRender = callback; return Task.CompletedTask; }\r\n"
+            + "    private void AnnounceProjectionState() { }\r\n"
+            + "    private void StateHasChanged() => RenderCount++;\r\n\r\n"
+            + stateChangedMethod.ToFullString()
             + "    private void CancelOwnedAnnouncements() { }\r\n\r\n"
             + disposeMethod.ToFullString()
             + "}\r\n\r\npublic sealed class RecordingState\r\n{\r\n"

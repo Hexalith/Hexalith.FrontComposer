@@ -340,8 +340,8 @@ public static class RazorModelTransform {
 
     private static string ResolveHeader(PropertyModel property) {
         // Priority 1: [Display(Name)] attribute value
-        if (!string.IsNullOrEmpty(property.DisplayName)) {
-            return property.DisplayName!;
+        if (!string.IsNullOrWhiteSpace(property.DisplayName)) {
+            return property.DisplayName!.Trim();
         }
 
         // Priority 2: Humanized CamelCase

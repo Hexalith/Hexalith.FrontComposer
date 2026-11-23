@@ -408,7 +408,15 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
     }
 
     private void OnStateChanged(object? sender, EventArgs e)
-    { _ = InvokeAsync(() => { if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; } AnnounceProjectionState(); StateHasChanged(); }); }
+    {
+        if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; }
+        _ = InvokeAsync(() =>
+        {
+            if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; }
+            AnnounceProjectionState();
+            StateHasChanged();
+        });
+    }
 
     private static string AnnouncementSurface => "projection:" + (typeof(DetailRecordProjection).FullName ?? typeof(DetailRecordProjection).Name);
     private static bool CanClaimUnstampedInitialState(DetailRecordProjectionState state)
