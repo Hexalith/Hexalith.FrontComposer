@@ -3,15 +3,19 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import copy
 import datetime as dt
 import hashlib
 import importlib.util
 import json
+import os
 import pathlib
 import subprocess
 import tempfile
+import threading
 import unittest
+import unittest.mock
 import zipfile
 
 
@@ -1023,6 +1027,98 @@ class ReleaseEvidenceCliInputTests(unittest.TestCase):
     def run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
         return _run("python3", str(REPOSITORY_ROOT / "eng/release_evidence.py"), *args, cwd=self.root)
 
+    def run_budget_append(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return self.run_cli(
+            "release-budget", "--evidence", str(self.history), "--append-current",
+            "--started-at", "2026-11-23T10:00:00Z", "--ended-at", "2026-11-23T10:01:00Z",
+            "--output", str(self.output), *args,
+        )
+
+    def test_incident_output_directory_gets_a_diagnostic_without_creating_files(self) -> None:
+        _write_json(self.manifest, {})
+        self.output.mkdir()
+        existing = self.output / "existing.json"
+        _write_json(existing, {"incident": "keep"})
+        for classification in ("none", "partial-publish-incident"):
+            with self.subTest(classification=classification):
+                result = self.run_cli(
+                    "partial-publish-incident", "--manifest", str(self.manifest),
+                    "--output", str(self.output), "--phase", "none", "--classification", classification,
+                )
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("--output must name a file", result.stderr)
+                self.assertEqual({"incident": "keep"}, json.loads(existing.read_text(encoding="utf-8")))
+                self.assertCountEqual([self.manifest, self.output], self.root.iterdir())
+                self.assertEqual([existing], list(self.output.iterdir()))
+        missing = self.root / "missing-directory"
+        result = self.run_cli(
+            "partial-publish-incident", "--manifest", str(self.manifest),
+            "--output", f"{missing}{os.sep}", "--phase", "none",
+        )
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("--output must name a file", result.stderr)
+        self.assertFalse(missing.exists())
+
+    def test_checksums_reject_absolute_patterns_and_preserve_relative_patterns(self) -> None:
+        for name in ("b.txt", "a.txt"):
+            (self.root / name).write_bytes(name.encode("ascii"))
+        args = ("checksums", "--root", str(self.root), "--output", str(self.output), "--pattern", "*.txt")
+        result = self.run_cli(*args)
+        self.assertEqual(0, result.returncode, result.stderr)
+        original = self.output.read_bytes()
+        self.assertEqual(
+            [{"path": name, "sha256": hashlib.sha256(name.encode("ascii")).hexdigest()}
+             for name in ("a.txt", "b.txt")],
+            json.loads(original)["files"],
+        )
+        for bad_pattern in (str(self.root / "*.txt"), r"C:\drop\*.txt", r"\\server\share\*.txt"):
+            with self.subTest(pattern=bad_pattern):
+                result = self.run_cli(*args, "--pattern", bad_pattern)
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("--pattern must be a relative glob", result.stderr)
+                self.assertEqual(original, self.output.read_bytes())
+
+    def test_release_budget_refuses_malformed_manifest_fields(self) -> None:
+        _write_json(self.output, {"prior": "summary"})
+        original = self.output.read_bytes()
+        for manifest, diagnostic in (
+            ([], "manifest must be an object"),
+            ({"tag": 123}, "manifest tag must be a string"),
+            ({"tag": None}, "manifest tag must be a string"),
+            ({"packages": {}}, "manifest packages must be a list"),
+            ({"packages": None}, "manifest packages must be a list"),
+        ):
+            with self.subTest(manifest=manifest):
+                _write_json(self.manifest, manifest)
+                result = self.run_budget_append("--manifest", str(self.manifest), "--tag", "v2.0.0")
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn(diagnostic, result.stderr)
+                self.assertEqual(original, self.output.read_bytes())
+
+    def test_release_budget_rejects_a_blank_effective_tag(self) -> None:
+        for manifest, args in (({}, ()), ({"tag": " "}, ("--manifest", str(self.manifest)))):
+            with self.subTest(manifest=manifest):
+                _write_json(self.manifest, manifest)
+                result = self.run_budget_append(*args, "--tag", " \t ")
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("--tag or a manifest tag must be nonblank", result.stderr)
+                self.assertFalse(self.output.exists())
+
+    def test_release_budget_preserves_manifest_precedence_and_cli_fallbacks(self) -> None:
+        for manifest, tag, count in (
+            ({"tag": "v3.0.0", "packages": []}, "v3.0.0", 0),
+            ({"tag": " ", "packages": [{}]}, "v2.0.0", 1),
+            ({}, "v2.0.0", 3),
+        ):
+            with self.subTest(manifest=manifest):
+                _write_json(self.manifest, manifest)
+                result = self.run_budget_append(
+                    "--manifest", str(self.manifest), "--tag", "v2.0.0", "--package-count", "3",
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                release, = json.loads(self.output.read_text(encoding="utf-8"))["releases"]
+                self.assertEqual((tag, count), (release["tag"], release["package_count"]))
+
     def test_invalid_artifact_root_is_the_only_diagnostic(self) -> None:
         manifest = {"packages": [{"version": []}]}
         _write_json(self.manifest, manifest)
@@ -1123,6 +1219,53 @@ class ReleaseEvidenceCliInputTests(unittest.TestCase):
                 self.assertEqual("record-only", payload["action"])
                 self.assertEqual([8, 0, 7, 2], [release["package_count"] for release in payload["releases"]])
                 self.assertEqual(minutes, payload["releases"][-1]["billable_minutes"])
+
+
+class ReleaseEvidenceJsonOutputTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "posix", "requires POSIX file permissions")
+    def test_report_writes_respect_the_caller_umask(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = pathlib.Path(temporary) / "report.json"
+            prior_mask = os.umask(0o127)
+            try:
+                HELPER.write_json(output, {"report": "written"})
+            finally:
+                os.umask(prior_mask)
+            self.assertEqual(0o640, output.stat().st_mode & 0o777)
+
+    def test_concurrent_writes_stage_independently(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            output = root / ".report.json"
+            payloads = ({"release": "first"}, {"release": "second"})
+            both_staged = threading.Barrier(2, timeout=10)
+            real_replace = HELPER.os.replace
+
+            def replace_after_both_writes(source, destination):
+                both_staged.wait()
+                real_replace(source, destination)
+
+            with unittest.mock.patch.object(HELPER.os, "replace", side_effect=replace_after_both_writes):
+                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                    writes = [executor.submit(HELPER.write_json, output, payload) for payload in payloads]
+                    for write in writes:
+                        write.result()
+
+            self.assertIn(json.loads(output.read_text(encoding="utf-8")), payloads)
+            self.assertEqual([output], list(root.iterdir()))
+
+    def test_failed_replace_preserves_report_and_cleans_staging(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            output = root / "report.json"
+            _write_json(output, {"prior": "report"})
+            original = output.read_bytes()
+            with unittest.mock.patch.object(HELPER.os, "replace", side_effect=PermissionError("blocked")):
+                with self.assertRaises(PermissionError):
+                    HELPER.write_json(output, {"new": "report"})
+
+            self.assertEqual(original, output.read_bytes())
+            self.assertEqual([output], list(root.iterdir()))
 
 
 class BuildsExecutionInventoryExclusionTests(unittest.TestCase):

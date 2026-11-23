@@ -13,6 +13,7 @@ import json
 import os
 import pathlib
 import re
+import secrets
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -358,20 +359,17 @@ def read_json(path: str | pathlib.Path) -> Any:
 
 
 def write_json(path: str | pathlib.Path, payload: Any) -> None:
-    """Write JSON atomically: serialize to a sibling .tmp file, then replace the target.
-
-    A partial write followed by an error would otherwise leave a corrupt file that the
-    next pipeline step would read; the tmp+replace pattern guarantees the target either
-    holds the previous valid content or the complete new content.
-    """
-    # CR-12-4-P117 (round-5): `with_suffix(suffix + ".tmp")` mangles dot-prefixed names
-    # (`/.hidden` → `/.tmp`, losing the original name). Construct the tmp sibling via
-    # `parent / (name + ".tmp")` so any filename round-trips correctly.
-    p = pathlib.Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.parent / (p.name + ".tmp")
-    tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(tmp, p)
+    """Stage each write on the destination filesystem and atomically replace the report."""
+    output = pathlib.Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staged_report = output.parent / f".release-evidence-{secrets.token_hex(16)}.tmp"
+    stream = staged_report.open("x", encoding="utf-8")
+    try:
+        with stream:
+            stream.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        os.replace(staged_report, output)
+    finally:
+        staged_report.unlink(missing_ok=True)
 
 
 def sha256_file(path: pathlib.Path) -> str:
@@ -3046,6 +3044,11 @@ def inventory(args: argparse.Namespace) -> int:
 
 def checksums(args: argparse.Namespace) -> int:
     root = pathlib.Path(args.root)
+    if any(
+        not pattern or pathlib.Path(pattern).anchor or pathlib.PureWindowsPath(pattern).is_absolute()
+        for pattern in args.pattern
+    ):
+        raise SystemExit("--pattern must be a relative glob")
     files = [p for pattern in args.pattern for p in root.glob(pattern)]
     payload = [{"path": str(p.relative_to(root)).replace("\\", "/"), "sha256": sha256_file(p)} for p in sorted(files)]
     write_json(args.output, {"files": payload})
@@ -3484,10 +3487,9 @@ def release_budget(args: argparse.Namespace) -> int:
     releases = raw.get("releases", raw) if isinstance(raw, dict) else raw
     if not isinstance(releases, list):
         raise SystemExit("invalid release budget evidence: expected releases list")
-    manifest_payload: dict[str, Any] | None = None
+    manifest_payload: Any = {}
     if args.manifest and pathlib.Path(args.manifest).exists():
-        raw_manifest = read_json(args.manifest)
-        manifest_payload = raw_manifest if isinstance(raw_manifest, dict) else None
+        manifest_payload = read_json(args.manifest)
     if args.append_current:
         if args.started_at is None:
             raise SystemExit("--started-at or RELEASE_STARTED_AT must be set before --append-current")
@@ -3505,19 +3507,20 @@ def release_budget(args: argparse.Namespace) -> int:
         if ended < started:
             raise SystemExit("--ended-at must be at or after --started-at")
         minutes = (ended - started).total_seconds() / 60
+        if not isinstance(manifest_payload, dict):
+            raise SystemExit("release budget manifest must be an object")
+        manifest_tag = manifest_payload.get("tag", "")
+        if not isinstance(manifest_tag, str):
+            raise SystemExit("release budget manifest tag must be a string")
+        tag = manifest_tag if manifest_tag.strip() else args.tag
+        if not tag.strip():
+            raise SystemExit("--tag or a manifest tag must be nonblank")
         package_count = int(args.package_count)
-        tag = args.tag
-        if manifest_payload is not None:
-            # CR-12-4-P228 (round-9, EC-27): the prior `len(manifest_payload.get("packages", []))`
-            # crashes with TypeError if the manifest has `"packages": null` or any other
-            # non-list value. Guard via isinstance(list) and fall back to the CLI
-            # --package-count argument with a typed diagnostic in the future readiness
-            # surface (release_budget itself is monitoring-only; downstream consumers
-            # see package_count from --package-count instead).
-            packages_field = manifest_payload.get("packages")
-            if isinstance(packages_field, list):
-                package_count = len(packages_field)
-            tag = str(manifest_payload.get("tag") or args.tag)
+        if "packages" in manifest_payload:
+            packages = manifest_payload["packages"]
+            if not isinstance(packages, list):
+                raise SystemExit("release budget manifest packages must be a list")
+            package_count = len(packages)
         if package_count < 0:
             raise SystemExit("--package-count must be a non-negative integer")
         releases = [
@@ -3610,6 +3613,10 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
     if phase not in _PARTIAL_PUBLISH_PHASES:
         accepted_phases = sorted(_PARTIAL_PUBLISH_PHASES)
         raise SystemExit(f"--phase must be one of {accepted_phases}; actual={sanitize(args.phase)}")
+    output_path = pathlib.Path(args.output)
+    separators = (os.sep, os.altsep) if os.altsep else (os.sep,)
+    if args.output.endswith(separators) or output_path.is_dir():
+        raise SystemExit("--output must name a file for the partial-publish incident")
     # CR-12-4-P143 (round-6): validate --run-attempt via safe_run_attempt so a typo
     # or negative value gets a typed diagnostic instead of landing unsanitized in
     # forensic JSON. Placeholders (classification=none) use 1 because they have no
@@ -3639,7 +3646,6 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
         # (a real incident), writing a placeholder over it silently destroys forensic
         # state. Operator copy-pasting the prepareCmd placeholder invocation as manual
         # recovery is the trigger; force the operator to pick a different output path.
-        output_path = pathlib.Path(args.output)
         if output_path.is_file():
             try:
                 existing = read_json(output_path)
@@ -3693,7 +3699,7 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
         diagnostics.append(run_attempt_diag)
     if diagnostics:
         payload["diagnostics"] = diagnostics
-    write_json(args.output, payload)
+    write_json(output_path, payload)
     return 0
 
 

@@ -5533,7 +5533,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: eng/release_evidence.py:1917
 reason: **CR-12-4-Def39 — `args.output` directory path crashes with cryptic OSError:** Operator misuse (passing a dir instead of file) crashes `write_json`'s `os.replace`; helper exits 2 instead of typed error. Pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1917`.
-status: open
+status: done 2026-11-23
+resolution: Reject incident output directories with a named --output diagnostic before writing. See `spec-five-release-evidence-output-fixes.md`.
 
 ### DW-1483: `_file_matches_evidence_glob` recursive `` fallback over-broadens: P128 tightened the bespoke matcher but `` recursive walk still scans interior segments. Defensible because allowlist is narrow. Pick up alongside P162 (replace bespoke matcher with `pathspec`). Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:822-828` area.
 
@@ -5627,7 +5628,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: eng/release_evidence.py:1547
 reason: **CR-12-4-Def53 — `--pattern` accepting absolute path crashes mid-glob:** Checksum subcommand `pathlib.Path.glob(absolute_path)` raises. CLI misuse fail-closed; pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1547`.
-status: open
+status: done 2026-11-23
+resolution: Reject absolute checksum patterns before globbing and preserve the prior checksum report. See `spec-five-release-evidence-output-fixes.md`.
 
 ### DW-1497: 1/2^128 brute-force heredoc-delim collision: Astronomically unlikely; defense-in-depth already addressed via P148 entropy assertion. Pick up only if a future audit demands explicit per-input validation. Owner: release-evidence/workflow maintainer. Evidence: `.github/workflows/release.yml:130-182`.
 
@@ -5819,7 +5821,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
 location: eng/release_evidence.py:1853
 reason: **CR-12-4-Def65 — `release_budget` tag/packages polymorphism — `str(manifest.get('tag') or args.tag)` short-circuits on empty string and accepts non-list packages:** Blind Hunter BH-025 + Edge Case Hunter EC-26 — typed validation would be cleaner. Current path emits `package_count=0` rather than crashing. Pick up alongside typed-CLI hardening. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1853`.
-status: open
+status: done 2026-11-23
+resolution: Validate the manifest object, tag and package list while retaining CLI fallbacks for omitted fields. See `spec-five-release-evidence-output-fixes.md`.
 
 ### DW-1525: `evidence_section` only top-level type check; nested members (e.g., `attestation.fallback`) not type-checked: Blind Hunter BH-033 + Edge Case Hunter EC-21/EC-37 — defense-in-depth. Pick up alongside structured-evidence validation pass. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1601-1606`.
 
@@ -5885,7 +5888,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
 location: eng/release_evidence.py:262-276
 reason: **CR-12-4-Def75 — `write_json` tmp filename suffix could collide under concurrent writers:** Edge Case Hunter EC-10 — single-writer pattern by design. Pick up if release evidence becomes multi-writer. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:262-276`.
-status: open
+status: done 2026-11-23
+resolution: Stage each JSON write independently on the destination filesystem and clean up after failure. See `spec-five-release-evidence-output-fixes.md`.
 
 ### DW-1535: `CURRENT_BRANCH` fallback to `github.event.repository.default_branch` could be empty for some event payloads: Edge Case Hunter EC-18 — `workflow_dispatch` always carries repository. Pick up if trigger surface expands. Owner: workflow maintainer. Evidence: `.github/workflows/release.yml:194`.
 
@@ -5991,7 +5995,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 10)"), 2026-08-27
 location: release-budget-summary.json
 reason: **CR-12-4-Def91 — `release_budget` `tag = str(manifest.get('tag') or args.tag)` writes empty-string tag when both are falsy:** Blind Hunter BH-F20 — downstream consumers of `release-budget-summary.json` would compare empty-tag rows. No diagnostic emitted today. Pick up alongside typed-CLI hardening (Def65 territory). Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1715`.
-status: open
+status: done 2026-11-23
+resolution: Require a nonblank effective tag before appending a current budget row. See `spec-five-release-evidence-output-fixes.md`.
 
 ### DW-1551: P219 inverse `attestation_bundle` check fixture inheritance: any `approved-unsupported` fixture that doesn't explicitly override `attestation_bundle` inherits the populated bundle from base: Blind Hunter BH-F23 — tests only assert `classification=blocked` (still expected), so the new reason hides until reason-specific assertions land. Pick up alongside Def69 fixture-shape audit and Def67 exact-reasons-set strengthening. Owner: governance-tests maintainer. Evidence: `tests/ci-governance/fixtures/release-readiness-cases.json:base + per-case`.
 
@@ -11614,3 +11619,12 @@ November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were ap
   evidence: MigrationPlanner joins normalized source keys against scanned documents. A diagnostic for a deleted, skipped, or uncompiled source has no match and is omitted. A follow-up can report that case with guidance to regenerate the sidecar.
   status: done 2026-11-23
   resolution: Unmatched diagnostics are reported as manual findings for the affected source path, with regeneration guidance in text and JSON. See `spec-cli-diagnostic-reporting.md`.
+
+## Deferred from review of release evidence outputs — 2026-11-23
+
+- source_spec: `spec-five-release-evidence-output-fixes.md`
+  summary: Coordinate the incident placeholder check with other writers to the incident path.
+  evidence: Both the baseline and current code allow a placeholder to overwrite a real incident written between its existence check and its atomic replacement. Exclusive staging keeps each report intact but does not coordinate the two operations.
+- source_spec: `spec-five-release-evidence-output-fixes.md`
+  summary: Decide how release budget appends should handle a missing path explicitly supplied with `--manifest`.
+  evidence: An absent file already selects the CLI tag and package-count fallbacks, including when the operator supplied the path. A distinct diagnostic for an explicit missing path needs a compatibility decision for callers running without a manifest.
