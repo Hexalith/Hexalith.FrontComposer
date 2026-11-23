@@ -8506,7 +8506,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: step-04-review.md
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Emit the commit-scope report in a machine-readable form for the calling skill. evidence: `format_commit_scope_evidence` produces free-form English that `step-04-review.md` must pattern-match to assert classifications, and `json` is imported solely for control escaping. A `--json` or `--report <path>` emission of `CommitScopeEvidence` would let the review workflow assert on `classification` and path labels directly, and would remove the current stdout-notice / stderr-failure interleaving as a parsing concern.
-status: open
+status: done 2026-11-23
+resolution: Strict mode emits JSON evidence, path labels and failures with the --json option. See `spec-strict-merge-scope-evidence.md`.
 
 ### DW-1873: Gate story completion on the mechanical commit-scope report by CI machinery, not workflow convention.
 
@@ -8528,7 +8529,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Decide whether an unresolved merge-conflict path should be a hard validation failure. evidence: `collect_workspace_evidence` collects unmerged paths into `unresolved` and `collect_reconciled_changed_files` folds them into the changed set, but nothing fails on them, so a run performed mid-merge-conflict exits 0 whenever the conflicted paths happen to be listed in the File List. The evidence then describes a tree that is not in a reviewable state. Human decision 2026-08-25: fix the duplicate reporting now and treat failing closed on conflict as a separate policy decision rather than a review patch, because it is a behavior change with no failing test today and would red-flag anyone running the report mid-rebase.
-status: open
+status: done 2026-11-23
+resolution: Strict review fails on unresolved Git index entries and reports their paths. See `spec-strict-merge-scope-evidence.md`.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1875, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1876: Reject duplicate JSON keys in the release compatibility suppression ledger.
@@ -8633,7 +8635,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/validate-story-artifacts.py:1276
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Report an unsupported git version as a tooling prerequisite. evidence: `canonical_commit` passes `--end-of-options` unconditionally; on git < 2.24 this surfaces as an opaque "git failure while resolving baseline ref" rather than a prerequisite message. `eng/validate-story-artifacts.py:1276`
-status: open
+status: done 2026-11-23
+resolution: Revision lookup checks for Git versions older than 2.30, the first release with rev-parse --end-of-options. See `spec-strict-merge-scope-evidence.md`.
 
 ### DW-1888: Reconcile merge-commit content that belongs to neither parent.
 
@@ -8641,7 +8644,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: Directory.Packages.props
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Reconcile merge-commit content that belongs to neither parent. evidence: Merge commits are appended to `merges` and skipped before path collection, so conflict resolutions and evil merges never enter classification or File List reconciliation. Both merges in Story 9.7's own range are clean, so nothing is currently mis-attributed, but 9 of the last 60 merges in this repository carry combined-diff content touching `Directory.Packages.props`, `CiGovernanceTests.cs`, `sprint-status.yaml`, and release test files. The fix must read the combined diff (`git diff-tree --cc`), which is empty for a clean merge and yields only neither-parent content; `git diff-tree -m` is the wrong tool because it diffs against each parent and would flood classification with every path in the merged branch. `eng/validate-story-artifacts.py:1506`
-status: open
+status: done 2026-11-23
+resolution: Combined-diff paths on merge rows participate in classification and File List reconciliation. See `spec-strict-merge-scope-evidence.md`.
 
 ### DW-1889: Decide what a disposition declared on a merge SHA should mean.
 
@@ -8649,7 +8653,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: eng/validate-story-artifacts.py:1506
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Decide what a disposition declared on a merge SHA should mean. evidence: A `shared` or `process` declaration whose SHA is a merge is accepted by the parser, passes the in-range staleness check, and is rendered on the merge row as `disposition=...`, but merges are never path-reconciled, so the declaration changes nothing. It reads as an effective exception while being inert. Either reject a disposition on a merge, or give it meaning once merge reconciliation exists -- the two decisions are coupled, so this waits on the merge-reconciliation entry above. `eng/validate-story-artifacts.py:1506`
-status: open
+status: done 2026-11-23
+resolution: Shared and process declarations classify nonmatching merge resolutions. A declaration on a pathless merge fails validation. See `spec-strict-merge-scope-evidence.md`.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1889, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1890: Retire ledger entries that later loops resolved.

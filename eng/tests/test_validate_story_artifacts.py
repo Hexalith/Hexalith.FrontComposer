@@ -1643,6 +1643,7 @@ class CommitScopeEvidenceTests(unittest.TestCase):
         root: Path,
         candidate: str = "HEAD",
         *,
+        json_report: bool = False,
         base: str | None = None,
         changed_files: tuple[str, ...] = (),
         excludes: tuple[str, ...] = (),
@@ -1658,6 +1659,8 @@ class CommitScopeEvidenceTests(unittest.TestCase):
             candidate,
             "--skip-sentinel",
         ]
+        if json_report:
+            command.append("--json")
         if base is not None:
             command.extend(("--base", base))
         for path in changed_files:
@@ -2225,6 +2228,179 @@ class CommitScopeEvidenceTests(unittest.TestCase):
             self.assertIn(f"{unrelated} | story-id=no-match | disposition=unrelated", result.stdout)
             self.assertIn(f"    - {merge_sha} | Merge side fixture", result.stdout)
 
+    def test_merge_resolutions_use_commit_classification_in_text_and_json(self) -> None:
+        cases = [
+            ("fix(9.7): resolve", "", True, "owned", "owned", 0),
+            ("fix(9.7): resolve", "shared", False, "interleaved", "unowned", 1),
+            ("Merge side", "", True, "unmapped", "listed-unowned", 1),
+            ("Merge side", "shared", True, "shared", "listed-unowned", 0),
+            ("Merge side", "process", True, "process", "listed-unowned", 0),
+        ]
+        for subject, declaration, listed, classification, label, status in cases:
+            with self.subTest(subject=subject, declaration=declaration, listed=listed), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                baseline = init_repo(root)
+                main_branch = git(root, "branch", "--show-current").stdout.strip()
+                git(root, "checkout", "-b", "side")
+                side = commit_files(root, "docs: side", {"side.txt": "side"})
+                git(root, "checkout", main_branch)
+                merge = git(root, "merge", "--no-commit", "--no-ff", "side")
+                self.assertEqual(merge.returncode, 0, merge.stderr)
+                resolved = "merge result.txt"
+                sha = commit_files(root, subject, {resolved: "resolution", "docs/_site/cache": "generated"})
+                reason = "separate work"
+                self.write_story(
+                    root, baseline, [resolved] if listed else [],
+                    dispositions=f"- `{sha}` | `{declaration}` | {reason}" if declaration else "",
+                )
+
+                result = self.validate(root, json_report=True)
+                self.assertEqual(result.returncode, status, result.stdout + result.stderr)
+                self.assertEqual(result.stderr, "")
+                report = json.loads(result.stdout)
+                self.assertEqual(bool(report["failures"]), bool(status))
+                evidence = report["evidence"]
+                self.assertEqual((evidence["baseline"], evidence["candidate"]), (baseline, sha))
+                self.assertEqual([commit["sha"] for commit in evidence["commits"]], [side])
+                [row] = evidence["merges"]
+                self.assertEqual((row["sha"], row["classification"]), (sha, classification))
+                self.assertEqual(row["paths"], [
+                    {"path": "docs/_site/cache", "label": "excluded"},
+                    {"path": resolved, "label": label},
+                ])
+                if classification == "interleaved":
+                    self.assertEqual(row["ignored_declaration"], declaration)
+                if classification in {"shared", "process"}:
+                    self.assertEqual(row["disposition_reason"], reason)
+                text = self.validate(root)
+                self.assertEqual(text.returncode, status, text.stderr)
+                merge_section = text.stdout.split("  merges:", 1)[1].split("  workspace:", 1)[0]
+                self.assertIn(f"disposition={classification}", merge_section)
+                self.assertIn(f"{label} | {resolved}", merge_section)
+                self.assertNotIn("side.txt", merge_section)
+                if classification == "interleaved":
+                    self.assertIn(f"ignored-declaration={declaration}", merge_section)
+                self.assertNotIn("File List entries with no matching", text.stderr)
+
+    def test_conflict_resolution_paths_must_differ_from_every_parent(self) -> None:
+        for resolution, expected in (("third", ["README.md"]), ("main", []), ("side", [])):
+            with self.subTest(resolution=resolution), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                baseline = init_repo(root)
+                main = git(root, "branch", "--show-current").stdout.strip()
+                git(root, "checkout", "-b", "side")
+                commit_files(root, "fix(9.7): side", {"README.md": "side"})
+                git(root, "checkout", main)
+                commit_files(root, "fix(9.7): main", {"README.md": "main"})
+                conflict = git(root, "merge", "side")
+                self.assertNotEqual(conflict.returncode, 0)
+                commit_files(root, "fix(9.7): resolve", {"README.md": resolution})
+                self.write_story(root, baseline, ["README.md"])
+
+                result = self.validate(root, json_report=True)
+                self.assertEqual(result.returncode, 0, result.stdout)
+                [row] = json.loads(result.stdout)["evidence"]["merges"]
+                self.assertEqual([p["path"] for p in row["paths"]], expected)
+                self.assertEqual(row["classification"], "owned" if expected else "no-resolution")
+
+    @unittest.skipUnless(os.name == "posix", "Git filename bytes require a POSIX filesystem")
+    def test_json_round_trips_distinct_filename_bytes_and_reserved_prefix(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            names = [b"file-\xe9", b"file-\xea", b"git-bytes:00"]
+            commit_files(root, "docs: fixture", {os.fsdecode(n): "content" for n in names})
+            write(root / os.fsdecode(b"workspace-\xff"), "scratch")
+            self.write_story(root, baseline, [])
+            result = self.validate(root, json_report=True)
+            report = json.loads(result.stdout)
+            [commit] = report["evidence"]["commits"]
+            self.assertEqual([row["path"] for row in commit["paths"]],
+                             ["git-bytes:" + n.hex() for n in names])
+            self.assertIn("git-bytes:" + b"workspace-\xff".hex(), report["evidence"]["workspace"]["untracked"])
+            # Every decoded JSON string is valid Unicode, including diagnostics.
+            json.dumps(report, ensure_ascii=False).encode("utf-8")
+
+    def test_json_workspace_reasons_are_stable_between_processes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            names = ["zeta.txt", "beta.txt", "alpha.txt"]
+            for name in names:
+                write(root / name, "scratch")
+            self.write_story(root, baseline, [], unrelated="\n".join(f"- `{name}` - scratch." for name in names))
+            with mock.patch.dict(os.environ, PYTHONHASHSEED="101"):
+                first = self.validate(root, json_report=True)
+            with mock.patch.dict(os.environ, PYTHONHASHSEED="202"):
+                second = self.validate(root, json_report=True)
+            self.assertEqual(first.returncode, 0, first.stdout)
+            self.assertEqual(first.stdout, second.stdout)
+            self.assertEqual(list(json.loads(first.stdout)["evidence"]["documented_unrelated"]), sorted(names))
+
+    def test_json_reports_paths_outside_the_project_as_validation_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            result = run([sys.executable, str(VALIDATOR), "--project-root", str(root), "--json",
+                          "--story", "../outside.md", "--candidate", "HEAD", "--skip-sentinel"], root)
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(result.stderr, "")
+            self.assertEqual(json.loads(result.stdout), {
+                "evidence": None, "notices": [], "failures": ["Path escapes project root: ../outside.md"]
+            })
+
+    def test_pathless_merge_rejects_non_owning_declarations(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            main_branch = git(root, "branch", "--show-current").stdout.strip()
+            git(root, "checkout", "-b", "side")
+            commit_files(root, "docs: side", {"side.txt": "side"})
+            git(root, "checkout", main_branch)
+            merge = git(root, "merge", "--no-ff", "side", "-m", "Merge side")
+            self.assertEqual(merge.returncode, 0, merge.stderr)
+            sha = git(root, "rev-parse", "HEAD").stdout.strip()
+            for kind in ("shared", "process"):
+                with self.subTest(kind=kind):
+                    self.write_story(root, baseline, [], dispositions=f"- `{sha}` | `{kind}` | fixture")
+                    result = self.validate(root, json_report=True)
+                    self.assertEqual(result.returncode, 1)
+                    report = json.loads(result.stdout)
+                    self.assertIn(f"{kind} declaration for merge {sha} has no resolution paths", report["failures"])
+                    [row] = report["evidence"]["merges"]
+                    self.assertEqual((row["classification"], row["ignored_declaration"], row["paths"]),
+                                     ("no-resolution", kind, []))
+
+    def test_json_includes_diagnostics_when_evidence_cannot_be_collected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            self.write_story(root, baseline, [])
+            for ref in ("missing-ref", ""):
+                with self.subTest(ref=ref):
+                    result = self.validate(root, candidate=ref, json_report=True)
+                    self.assertEqual(result.returncode, 1)
+                    report = json.loads(result.stdout)
+                    self.assertIsNone(report["evidence"])
+                    self.assertTrue(report["failures"])
+                    self.assertEqual(result.stderr, "")
+
+    def test_ref_resolution_checks_git_before_interpreting_a_ref(self) -> None:
+        sha = "a" * 40
+        for version in ("2.29.3.windows.1", "2.30.0"):
+            with self.subTest(version=version), tempfile.TemporaryDirectory() as temp, mock.patch.object(
+                VALIDATOR_MODULE, "run_subprocess",
+                side_effect=[
+                    subprocess.CompletedProcess([], 0, f"git version {version}", ""),
+                    subprocess.CompletedProcess([], 0, sha, ""),
+                ],
+            ) as execute:
+                if version.startswith("2.29"):
+                    with self.assertRaisesRegex(RuntimeError, "Git 2.30 or newer"):
+                        VALIDATOR_MODULE.canonical_commit(Path(temp), "HEAD", "candidate")
+                    execute.assert_called_once_with(["git", "--version"], Path(temp))
+                else:
+                    self.assertEqual(VALIDATOR_MODULE.canonical_commit(Path(temp), "HEAD", "candidate"), sha)
+
     def test_bootstrap_owned_disposition_on_a_merge_fails_closed_end_to_end(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -2682,10 +2858,18 @@ class CommitScopeEvidenceTests(unittest.TestCase):
 
             result = self.validate(root)
 
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn("strict review requires resolving index conflicts: README.md", result.stderr)
             self.assertIn("    unresolved:\n      - README.md", result.stdout)
             self.assertNotIn("    staged:\n      - README.md", result.stdout)
             self.assertNotIn("    unstaged:\n      - README.md", result.stdout)
+
+            report = json.loads(self.validate(root, json_report=True).stdout)
+            self.assertEqual(report["evidence"]["workspace"]["unresolved"], ["README.md"])
+            self.assertIn("strict review requires resolving index conflicts: README.md", report["failures"])
+            git(root, "add", "README.md")
+            resolved = self.validate(root)
+            self.assertEqual(resolved.returncode, 0, resolved.stderr)
 
     def test_documented_unrelated_directory_covers_changed_descendants_consistently(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -3074,6 +3258,10 @@ class CommitScopeEvidenceTests(unittest.TestCase):
             self.assertIn("\\udce9", report)
             # The escaped rendering is what makes the report printable at all.
             report.encode("utf-8")
+            [row] = VALIDATOR_MODULE.commit_scope_json(evidence, {}, {})["commits"]
+            self.assertEqual(row["subject"], "git-bytes:" + evidence.commits[0].subject.encode(
+                "utf-8", errors="surrogateescape"
+            ).hex())
 
 
 class BootstrapOwnedAuthorizationTests(unittest.TestCase):
@@ -3085,7 +3273,9 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
 
     def test_canonical_commit_rejects_non_full_sha_output(self) -> None:
         completed = subprocess.CompletedProcess([], 0, stdout="abc123\n", stderr="")
-        with mock.patch.object(self.validator, "run_git_checked", return_value=completed):
+        with mock.patch.object(self.validator, "require_revision_lookup_git"), mock.patch.object(
+            self.validator, "run_git_checked", return_value=completed
+        ):
             with self.assertRaisesRegex(RuntimeError, "expected a full 40-character SHA"):
                 self.validator.canonical_commit(REPO_ROOT, "HEAD", "candidate")
 

@@ -13,7 +13,7 @@ import subprocess
 import sys
 import unicodedata
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from functools import lru_cache
 from pathlib import Path
 
@@ -455,14 +455,6 @@ class CommitEvidence:
 
 
 @dataclass(frozen=True)
-class MergeEvidence:
-    sha: str
-    subject: str
-    declared_disposition: str
-    disposition_reason: str
-
-
-@dataclass(frozen=True)
 class WorkspaceEvidence:
     staged: list[str]
     unstaged: list[str]
@@ -476,7 +468,7 @@ class CommitScopeEvidence:
     baseline: str
     candidate: str
     commits: list[CommitEvidence]
-    merges: list[MergeEvidence]
+    merges: list[CommitEvidence]
     workspace: WorkspaceEvidence
 
 
@@ -1490,6 +1482,26 @@ def validate_repository_integrity(root: Path) -> list[str]:
 
 def main() -> int:
     args = parse_args()
+    try:
+        evidence, notices, failures = validate(args)
+    except (argparse.ArgumentTypeError, OSError) as exc:
+        evidence, notices, failures = None, [], [str(exc)]
+
+    if args.json:
+        print(json.dumps({"evidence": evidence, "notices": notices, "failures": failures}, sort_keys=True))
+    else:
+        for notice in notices:
+            print(notice)
+        if failures:
+            sys.stdout.flush()
+            for failure in failures:
+                print(failure, file=sys.stderr)
+        else:
+            print("Story artifact validation passed.")
+    return int(bool(failures))
+
+
+def validate(args: argparse.Namespace) -> tuple[dict | None, list[str], list[str]]:
     root = Path(args.project_root).resolve()
     failures: list[str] = []
     notices: list[str] = []
@@ -1508,13 +1520,10 @@ def main() -> int:
         invocation_failures.append("--changed-file cannot be combined with --candidate")
     if not base_override_valid:
         invocation_failures.append("--base requires a non-empty ref")
+    if args.json and not candidate_mode:
+        invocation_failures.append("--json requires --candidate")
     if invocation_failures:
-        # Reconciling against an invocation that was already rejected produced a page of
-        # derived failures -- every File List entry reported unmatched -- around the one
-        # real error. Nothing downstream can be true, so nothing downstream runs.
-        for failure in invocation_failures:
-            print(failure, file=sys.stderr)
-        return 1
+        return None, [], invocation_failures
 
     if not args.skip_sentinel:
         failures.extend(scan_sentinels(root, args.sentinel_root, args.exclude))
@@ -1525,6 +1534,7 @@ def main() -> int:
     if not args.story:
         failures.extend(validate_repository_integrity(root))
 
+    json_evidence = None
     if args.story:
         story = resolve_under_root(root, args.story)
         metadata = parse_story_metadata(story)
@@ -1635,25 +1645,19 @@ def main() -> int:
             )
 
         if commit_evidence is not None:
-            notices.append(format_commit_scope_evidence(commit_evidence, metadata.file_list, bounded_unrelated))
+            if args.json:
+                json_evidence = commit_scope_json(commit_evidence, metadata.file_list, bounded_unrelated)
+            else:
+                notices.append(format_commit_scope_evidence(commit_evidence, metadata.file_list, bounded_unrelated))
 
-    for notice in notices:
-        print(notice)
-
-    if failures:
-        sys.stdout.flush()
-        for failure in failures:
-            print(failure, file=sys.stderr)
-        return 1
-
-    print("Story artifact validation passed.")
-    return 0
+    return json_evidence, notices, failures
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project-root", default=".", help="Repository root. Defaults to current directory.")
     parser.add_argument("--story", help="Story markdown file whose File List should be checked.")
+    parser.add_argument("--json", action="store_true", help="Emit strict review evidence and diagnostics as JSON.")
     parser.add_argument("--base", help="Optional git base ref for changed-file discovery.")
     parser.add_argument(
         "--candidate",
@@ -1706,7 +1710,7 @@ def resolve_under_root(root: Path, value: str | Path) -> Path:
     try:
         resolved.relative_to(root)
     except ValueError as exc:
-        raise SystemExit(f"Path escapes project root: {value}") from exc
+        raise argparse.ArgumentTypeError(f"Path escapes project root: {value}") from exc
     return resolved
 
 
@@ -2678,9 +2682,22 @@ def decode_nul_paths(output: bytes) -> list[str]:
     ]
 
 
+@lru_cache(maxsize=1)
+def require_revision_lookup_git(root: Path) -> None:
+    # Before 2.30 rev-parse --verify could silently ignore --end-of-options
+    # and still resolve ordinary refs. Check before passing it a caller's ref.
+    version = run_git_checked(root, ["git", "--version"], "checking the Git version").stdout.strip()
+    match = re.match(r"git version (\d+)\.(\d+)", version)
+    if not match or tuple(map(int, match.groups())) < (2, 30):
+        raise RuntimeError(
+            f"Git 2.30 or newer is required for rev-parse --end-of-options (found {version!r})"
+        )
+
+
 def canonical_commit(root: Path, ref: str, label: str) -> str:
     if not ref.strip():
         raise RuntimeError(f"git failure while resolving {label}: ref is empty")
+    require_revision_lookup_git(root)
     result = run_git_checked(
         root,
         ["git", "rev-parse", "--verify", "--end-of-options", f"{ref}^{{commit}}"],
@@ -2933,7 +2950,7 @@ def collect_commit_scope_evidence(
             )
 
     commits: list[CommitEvidence] = []
-    merges: list[MergeEvidence] = []
+    merges: list[CommitEvidence] = []
     listed = set(metadata.file_list)
     story_path = story.relative_to(root).as_posix()
     bootstrap_declaration_count = sum(
@@ -2947,45 +2964,14 @@ def collect_commit_scope_evidence(
             HISTORICAL_OWNED_DELIVERY_COMMIT,
             HISTORICAL_OWNED_MIXED_COMMIT,
         )
-        if len(parents) > 1:
-            if historical_target:
-                failures.append(f"invalid historical-owned authorization for {sha}: merges are not authorized")
-            if disposition and disposition[0] == "bootstrap-owned":
-                authorization_failures = bootstrap_owned_authorization_failures(
-                    story_path=story_path,
-                    story_id=metadata.story_id,
-                    declared_baseline=metadata.baseline_commit,
-                    resolved_baseline=baseline,
-                    sha=sha,
-                    parents=parents,
-                    subject_matches=matcher.search(subject) is not None,
-                    paths=None,
-                    file_list=listed,
-                    disposition_failures=metadata.commit_scope_disposition_failures,
-                    bootstrap_declaration_count=bootstrap_declaration_count,
-                )
-                failures.extend(
-                    f"invalid bootstrap-owned disposition for {sha}: {failure}"
-                    for failure in authorization_failures
-                )
-                disposition = None
-            merges.append(
-                MergeEvidence(
-                    sha=sha,
-                    subject=subject,
-                    declared_disposition=disposition[0] if disposition else "",
-                    disposition_reason=disposition[1] if disposition else "",
-                )
-            )
-            continue
-
+        is_merge = len(parents) > 1
         try:
             diff = run_git_checked_bytes(
                 root,
                 [
                     "git",
                     "diff-tree",
-                    "--root",
+                    "--cc" if is_merge else "--root",
                     "--no-commit-id",
                     "--name-only",
                     "-z",
@@ -3027,7 +3013,7 @@ def collect_commit_scope_evidence(
                 subject_matches=matches,
                 # Unfiltered on purpose: a CLI flag must not be able to reshape the
                 # immutable bootstrap intersection.
-                paths=set(paths),
+                paths=None if is_merge else set(paths),
                 file_list=listed,
                 disposition_failures=metadata.commit_scope_disposition_failures,
                 bootstrap_declaration_count=bootstrap_declaration_count,
@@ -3058,11 +3044,17 @@ def collect_commit_scope_evidence(
             )
             historical_authorized = not authorization_failures
 
-        if historical_authorized:
+        if is_merge and not paths:
+            classification = "no-resolution"
+            reason = ""
+            if disposition:
+                failures.append(
+                    f"{disposition[0]} declaration for merge {sha} has no resolution paths"
+                )
+                inert_declaration = disposition[0]
+        elif historical_authorized:
             classification = "historical-owned"
             reason = "maintainer-authorized recovery; ownership is limited to the immutable listed-path intersection"
-            if disposition and disposition[0] in NON_OWNING_DECLARED_CLASSIFICATIONS:
-                inert_declaration = disposition[0]
         elif matches and unowned_paths:
             classification = "interleaved"
             reason = ""
@@ -3073,13 +3065,6 @@ def collect_commit_scope_evidence(
         elif matches:
             classification = "owned"
             reason = ""
-            if disposition and disposition[0] in NON_OWNING_DECLARED_CLASSIFICATIONS:
-                # Interleaved precedence means a matching subject always wins, so this
-                # declaration changes nothing. It is not an error -- loop 5 decided a
-                # matching commit stays owned -- but staying entirely silent let the
-                # author believe the commit had been dispositioned, so the report says
-                # the declaration was ignored.
-                inert_declaration = disposition[0]
         elif disposition:
             classification = disposition[0]
             reason = disposition[1]
@@ -3094,7 +3079,12 @@ def collect_commit_scope_evidence(
             classification = "unrelated"
             reason = ""
 
-        commits.append(
+        if (disposition and disposition[0] in NON_OWNING_DECLARED_CLASSIFICATIONS
+                and classification in OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS):
+            inert_declaration = disposition[0]
+
+        rows = merges if is_merge else commits
+        rows.append(
             CommitEvidence(
                 sha=sha,
                 subject=subject,
@@ -3110,6 +3100,11 @@ def collect_commit_scope_evidence(
     try:
         workspace = collect_workspace_evidence(root)
         workspace_snapshot_collected = True
+        if workspace.unresolved:
+            failures.append(
+                "strict review requires resolving index conflicts: "
+                + ", ".join(format_git_path(path) for path in workspace.unresolved)
+            )
     except RuntimeError as exc:
         failures.append(str(exc))
         workspace = WorkspaceEvidence([], [], [], [])
@@ -3222,7 +3217,7 @@ def collect_reconciled_changed_files(
         listed = set(file_list)
         changed.update(
             path
-            for commit in evidence.commits
+            for commit in (*evidence.commits, *evidence.merges)
             if commit.classification in OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS
             for path in commit.paths
             # Exclusions bound the whole gate, not only its workspace half: a default
@@ -3231,6 +3226,84 @@ def collect_reconciled_changed_files(
             if path in listed and not is_excluded(path, patterns)
         )
     return ChangedFiles(sorted(changed), "story commits plus workspace", base or "")
+
+
+def labelled_commit_paths(commit: CommitEvidence, file_list: dict[str, str]) -> Iterable[tuple[str, str]]:
+    excluded = set(commit.excluded_paths)
+    for path in commit.paths:
+        if path in excluded:
+            label = "excluded"
+        elif path not in file_list:
+            label = "unowned"
+        elif commit.classification in OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS:
+            label = "owned"
+        else:
+            label = "listed-unowned"
+        yield path, label
+
+
+def format_commit_row(commit: CommitEvidence, file_list: dict[str, str]) -> list[str]:
+    if commit.classification == "no-resolution" and not commit.inert_declaration:
+        return [f"    - {commit.sha} | {format_report_value(commit.subject)}"]
+    lines = []
+    match = "match" if commit.story_id_matches else "no-match"
+    disposition = (
+        f" | reason={format_report_value(commit.disposition_reason)}"
+        if commit.disposition_reason
+        else ""
+    )
+    inert = (
+        f" | ignored-declaration={commit.inert_declaration}"
+        if commit.inert_declaration
+        else ""
+    )
+    lines.append(
+        f"    - {commit.sha} | story-id={match} | disposition={commit.classification}{disposition}{inert} | "
+        f"{format_report_value(commit.subject)}"
+    )
+    if not commit.paths:
+        lines.append("      - (no paths)")
+    for path, label in labelled_commit_paths(commit, file_list):
+        lines.append(f"      - {label} | {format_git_path(path)}")
+    return lines
+
+
+def json_git_text(value: str) -> str:
+    """Use a reversible byte representation for Git text outside Unicode."""
+    if contains_undecodable_bytes(value) or value.startswith("git-bytes:"):
+        return "git-bytes:" + value.encode("utf-8", errors="surrogateescape").hex()
+    return value
+
+
+def commit_scope_json(
+    evidence: CommitScopeEvidence, file_list: dict[str, str], unrelated: dict[str, str],
+) -> dict:
+    def row(commit: CommitEvidence) -> dict:
+        return {
+            "sha": commit.sha,
+            "subject": json_git_text(commit.subject),
+            "story_id_matches": commit.story_id_matches,
+            "classification": commit.classification,
+            "disposition_reason": commit.disposition_reason,
+            "ignored_declaration": commit.inert_declaration,
+            "paths": [
+                {"path": json_git_text(path), "label": label}
+                for path, label in labelled_commit_paths(commit, file_list)
+            ],
+        }
+
+    return {
+        "story_id": evidence.story_id,
+        "baseline": evidence.baseline,
+        "candidate": evidence.candidate,
+        "commits": [row(commit) for commit in evidence.commits],
+        "merges": [row(merge) for merge in evidence.merges],
+        "workspace": {
+            state: [json_git_text(path) for path in paths]
+            for state, paths in asdict(evidence.workspace).items()
+        },
+        "documented_unrelated": {json_git_text(path): reason for path, reason in unrelated.items()},
+    }
 
 
 def format_commit_scope_evidence(
@@ -3248,51 +3321,13 @@ def format_commit_scope_evidence(
     if not evidence.commits:
         lines.append("    - (none)")
     for commit in evidence.commits:
-        match = "match" if commit.story_id_matches else "no-match"
-        # `disposition=` is the frozen human-readable report key for a non-merge
-        # classification. MergeEvidence uses `declared_disposition` internally so an
-        # actual story declaration is not confused with this compatibility label.
-        disposition = (
-            f" | reason={format_report_value(commit.disposition_reason)}"
-            if commit.disposition_reason
-            else ""
-        )
-        inert = (
-            f" | ignored-declaration={commit.inert_declaration}"
-            if commit.inert_declaration
-            else ""
-        )
-        lines.append(
-            f"    - {commit.sha} | story-id={match} | disposition={commit.classification}{disposition}{inert} | "
-            f"{format_report_value(commit.subject)}"
-        )
-        if not commit.paths:
-            lines.append("      - (no paths)")
-        excluded = set(commit.excluded_paths)
-        for path in commit.paths:
-            if path in excluded:
-                path_kind = "excluded"
-            elif path not in file_list:
-                path_kind = "unowned"
-            elif commit.classification in OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS:
-                path_kind = "owned"
-            else:
-                path_kind = "listed-unowned"
-            lines.append(f"      - {path_kind} | {format_git_path(path)}")
+        lines.extend(format_commit_row(commit, file_list))
 
     lines.append("  merges:")
     if not evidence.merges:
         lines.append("    - (none)")
     for merge in evidence.merges:
-        disposition = ""
-        if merge.declared_disposition:
-            disposition = (
-                f" | disposition={merge.declared_disposition} | "
-                f"reason={format_report_value(merge.disposition_reason)}"
-            )
-        lines.append(
-            f"    - {merge.sha}{disposition} | {format_report_value(merge.subject)}"
-        )
+        lines.extend(format_commit_row(merge, file_list))
 
     lines.append("  workspace:")
     for label, paths in (
@@ -3394,7 +3429,7 @@ def unmapped_touched_paths(
     listed = set(file_list)
     return frozenset(
         path
-        for commit in evidence.commits
+        for commit in (*evidence.commits, *evidence.merges)
         if commit.classification == "unmapped"
         for path in commit.paths
         if path in listed
@@ -3414,7 +3449,7 @@ def declared_non_owning_paths(
     listed = set(file_list)
     return frozenset(
         path
-        for commit in evidence.commits
+        for commit in (*evidence.commits, *evidence.merges)
         if commit.classification in NON_OWNING_DECLARED_CLASSIFICATIONS
         for path in commit.paths
         if path in listed

@@ -22,8 +22,8 @@ python3 eng/validate-story-artifacts.py --story <story-file> --candidate HEAD
 
 ## Invocation
 
-Strict mode is the `--candidate` form above. It requires a story artifact and a
-resolvable baseline, and it reports every commit in `baseline..candidate` plus the
+Strict mode is the `--candidate` form above. It uses Git 2.30 or later for
+option-safe revision lookup. It requires a story artifact and a resolvable baseline, and it reports every commit in `baseline..candidate` plus the
 current workspace. After collecting the evidence, the validator resolves both refs again.
 If a ref resolves to a different commit, validation fails and reports both commits.
 A ref that can no longer be resolved also fails validation.
@@ -36,6 +36,7 @@ bare workspace diff, saying so on stdout. It reports no commit evidence.
 | Option | Effect |
 | --- | --- |
 | `--candidate <ref>` | Strict mode. Requires `--story`; rejects an empty ref and `--changed-file`. |
+| `--json` | With `--candidate`, write one JSON review result to stdout. |
 | `--base <commit>` | Override the story's `baseline_commit`. An empty or unresolvable value fails; a story-declared baseline that cannot resolve degrades to the reported bare-diff fallback instead. |
 | `--changed-file <path>` | Supply changed paths directly instead of discovering them. Legacy mode only. |
 | `--unrelated <path> --reason <text>` | Classify a dirty path as unrelated from the command line, pairwise, as an alternative to a story section. |
@@ -58,11 +59,30 @@ A File List entry that an exclusion pattern covers still fails: the change to it
 contributes no ownership, so it has no matching story-owned change. Resolve it by
 removing the entry or narrowing the exclusion — the failure names both edits.
 
-Exit code `0` means validation passed and `1` means it failed. Failures print to stderr,
+Exit code `0` means validation passed and `1` means it failed. In text mode failures print to stderr,
 and the evidence report and notices print to stdout. The validator flushes the report
 before writing failures. Redirect stderr to stdout (`2>&1`) to preserve that order
 in a single stream. An invalid invocation prints only the invocation error and
 validates nothing.
+
+For automation, add `--json` to the strict command. Read `failures` and `notices`
+as arrays of strings. The `evidence` object contains the resolved `baseline` and
+`candidate`, the `story_id`, and separate `commits` and `merges` arrays. Each row
+provides its SHA, subject, story-ID match, classification, disposition reason,
+ignored declaration and a list of paths with their labels. For example,
+`{"path": "src/Editor.cs", "label": "owned"}` identifies a listed delivery path.
+`workspace` groups paths by index and working-tree state. `documented_unrelated`
+maps declared entries to their reasons. Git paths and subjects normally appear as
+Unicode strings. For a value containing non-UTF-8 bytes or beginning with the
+reserved prefix `git-bytes:`, the report uses that prefix followed by the complete
+original byte sequence in lowercase hexadecimal.
+
+A failed validation can still supply
+reviewable evidence. When the range cannot be collected, `evidence` is `null`.
+
+An unresolved index conflict fails strict review, including conflicts on listed
+or excluded paths. The workspace report names each conflicted path. Stage the
+resolution and run the command again.
 
 ## Repository integrity mode
 
@@ -204,9 +224,9 @@ Each reported path is labelled independently:
 - `excluded` means an exclusion pattern covers the path, so it is reported but never
   reconciled or classified.
 
-For compatibility, each non-merge row renders its classification through the stable
-`disposition=<classification>` text field. A merge row uses `disposition` only when the
-story contains an actual declaration for that merge.
+The text report uses `disposition=<classification>` for ordinary commits and merges
+with resolution paths. A merge with no resolution paths has the JSON classification
+`no-resolution`. Its ordinary text row shows the SHA and subject.
 
 When documented workspace paths overlap, each affected path shows the reason for
 its exact entry or, if absent, the closest enclosing classified directory.
@@ -296,9 +316,13 @@ Excluded paths — the defaults and any `--exclude` pattern — bound committed 
 workspace paths alike. An excluded path stays visible in the report and contributes no
 reconciliation evidence in either half.
 
-Merge commits are listed separately. The current gate does not derive merge-resolution
-paths from merge commits; that limitation remains tracked as deferred work and must not
-be mistaken for whole-merge ownership.
+Merge rows contain the paths whose final Git entry differs from every parent.
+This includes edits made during the merge and automatic combinations of changes
+to the same file. Inherited paths remain on their original commit rows. A listed
+resolution can satisfy the File List under the usual ownership rules. A reasoned
+`shared` or `process` declaration can explain a nonmatching merge's resolution.
+A declaration on a merge with no resolution paths fails validation. A story-matching
+merge that resolves an unlisted, nonexcluded path still fails as `interleaved`.
 
 ## Story 13.7 historical recovery
 
