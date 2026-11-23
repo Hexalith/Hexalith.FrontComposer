@@ -186,11 +186,14 @@ public sealed partial class DocsSiteValidationTests {
         howTo.ShouldContain("Migration sidecars support arrays of diagnostic objects");
         howTo.ShouldContain("below the selected project directory are ineligible");
         howTo.ShouldContain("linked ancestor directories below the project directory");
-        guide.ShouldContain("may make `migrate` throw outside handled failures");
-        howTo.ShouldContain("before any report is emitted");
-        howTo.ShouldContain("absent or partial report");
-        howTo.ShouldContain("unsupported valid JSON shapes");
-        howTo.ShouldContain("may throw outside handled failures");
+        guide.ShouldContain("one manual-only finding per affected sidecar");
+        guide.ShouldContain("report retains valid sibling entries");
+        guide.ShouldContain("report identifies completed writes and each planned file left unwritten");
+        howTo.ShouldContain("Cancellation during planning can return code 4 before a report is emitted");
+        howTo.ShouldContain("report lists completed writes and each planned file left unwritten");
+        howTo.ShouldContain("unsupported JSON shapes produce an `HFCM0002` warning for the affected sidecar");
+        howTo.ShouldContain("Malformed payloads and directory read failures appear as manual-only sentinels");
+        howTo.ShouldContain("Other readable diagnostics are still included");
     }
 
     [Fact]
@@ -206,9 +209,9 @@ public sealed partial class DocsSiteValidationTests {
         reference.ShouldContain("`mcpManifestEntries` counts files");
         reference.ShouldContain("share ordinal file ordering by related type, family name, then path");
         reference.ShouldContain("Both severity and type filters run before fail flags");
-        reference.ShouldContain("warning sentinel `HFCM0002`");
-        reference.ShouldContain("Unsupported valid JSON shapes");
-        reference.ShouldContain("may throw outside handled failures");
+        reference.ShouldContain("one `HFCM0002` warning per affected sidecar");
+        reference.ShouldContain("Malformed entries, unsupported JSON shapes, and per-file read errors");
+        reference.ShouldContain("If the generated directory cannot be enumerated, inspection returns exit code 3");
         reference.ShouldContain("Handled CLI failures print messages without stack traces");
         reference.ShouldContain("echoed without escaping or a length budget");
         reference.ShouldContain("Single-line fields escape C0 controls (`U+0000`–`U+001F`) and DEL (`U+007F`)");
@@ -216,21 +219,22 @@ public sealed partial class DocsSiteValidationTests {
         reference.ShouldContain("C1 controls (`U+0080`–`U+009F`) remain unchanged");
         reference.ShouldNotContain("terminal-safe");
         reference.ShouldContain("filesystem exception messages may still contain private absolute paths");
-        reference.ShouldContain("Migration sidecars also require the documented diagnostic-object shapes");
-        reference.ShouldContain("Ordinary sidecar diagnostics without `relatedType` receive an empty string and are excluded by `--type`");
+        reference.ShouldContain("Migration sidecars accept arrays of diagnostic objects or objects containing a `diagnostics` array");
+        reference.ShouldContain("Missing optional string fields other than `relatedType` become empty strings");
         reference.ShouldContain("linked ancestor directories/junctions below the selected project directory");
         reference.ShouldContain("Handled filesystem failures print exception messages with escaped control characters");
         reference.ShouldContain("those messages can include absolute filesystem paths");
-        reference.ShouldContain("Migration sidecars support arrays of diagnostic objects");
-        reference.ShouldContain("Global MCP/template manifests and the `HFCM0002` sentinel remain in type-filtered output");
-        reference.ShouldContain("Ordinary sidecar diagnostics without a related type have an empty type string and are removed by `--type`");
+        reference.ShouldContain("one manual-only sentinel per sidecar while valid sibling entries are still reported");
+        reference.ShouldContain("An inaccessible sidecar directory produces a manual-only sentinel for `obj`");
+        reference.ShouldContain("Global MCP/template manifests and diagnostics remain in type-filtered output");
+        reference.ShouldContain("Global diagnostics, including the `HFCM0002` warning, report a null `relatedType` in JSON");
         reference.ShouldContain("linked ancestor directories/junctions below the project directory");
         reference.ShouldNotContain("The only executable edge");
         reference.ShouldContain("`applied=false` on emitted reports");
-        reference.ShouldContain("before any report is emitted");
-        reference.ShouldContain("absent or partial report");
+        reference.ShouldContain("Cancellation during planning can return code 4 before a report is emitted");
+        reference.ShouldContain("report lists completed writes and a failed entry for each planned file that was left unwritten");
         reference.ShouldContain("`--absolute-paths`");
-        reference.ShouldContain("project and sidecar paths retain their relative/redacted behavior");
+        reference.ShouldContain("Project and sidecar paths retain their relative or redacted form");
         reference.ShouldContain("64,000-character aggregate budget");
         reference.ShouldContain("do not semantically scrub", Case.Insensitive);
         reference.ShouldNotContain("reports generated-output paths, project metadata, schema fingerprints");
@@ -240,7 +244,8 @@ public sealed partial class DocsSiteValidationTests {
         readme.ShouldNotContain("log-safe");
         readme.ShouldNotContain("bounded/redacted");
         readme.ShouldContain("not semantically scrubbed");
-        readme.ShouldContain("may throw outside handled failures");
+        readme.ShouldContain("one manual-only sentinel");
+        readme.ShouldContain("Valid entries in the same sidecar are still reported");
     }
 
     [Fact]
