@@ -924,11 +924,9 @@ archived: 2026-09-18
 
 ### DW-806: Precedence matrix Row 4 forbidden set does not include `unknown-version` [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs:1300-1307`] — Lower-priority `unknown-version` not blocked by Row 4's forbidden set. Owner: Defense-in-depth on negative-test coverage of precedence matrix. Sources: auditor. Reconciliation: Row: DW-0075; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
-location: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs:1300-1307
-reason: **DEF-CK4-9 — Precedence matrix Row 4 forbidden set does not include `unknown-version`** [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs:1300-1307`] — Lower-priority `unknown-version` not blocked by Row 4's forbidden set. **Owner:** Defense-in-depth on negative-test coverage of precedence matrix. Sources: auditor. Reconciliation: Row: DW-0075; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 status: done 2026-11-23
-resolution: The precedence matrix checks that an unsupported server algorithm wins over a missing client version and denies side effects. See spec-mcp-schema-negotiation-regressions.md.
+origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-807: `SchemaFingerprintCrossPackageTests` State row split on `|` brittle to future pipe-bearing payloads [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaFingerprintCrossPackageTests.cs:1190-1201`] — Future enum value containing `|` would silently split rows. C# enum identifier rules disallow `|` today. Owner: Revisit if cell format ever changes. Sources: edge. Reconciliation: Row: DW-0076; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.4 SourceTools/schema-fingerprint follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.4 SourceTools/schema-fingerprint follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -939,35 +937,27 @@ status: open
 
 ### DW-808: Resolver tests lack 128-char length-cap, null-byte, NBSP/ZWSP, Windows backslash-traversal coverage [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaBaselineResolverTests.cs:1006-1070`] — `SafeIdentifier` regex enforces strict ASCII; coverage gaps are defensive. Owner: v1.x identifier-policy hardening. Sources: edge. Reconciliation: Row: DW-0077; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
-location: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaBaselineResolverTests.cs:1006-1070
-reason: **DEF-CK4-11 — Resolver tests lack 128-char length-cap, null-byte, NBSP/ZWSP, Windows backslash-traversal coverage** [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaBaselineResolverTests.cs:1006-1070`] — `SafeIdentifier` regex enforces strict ASCII; coverage gaps are defensive. **Owner:** v1.x identifier-policy hardening. Sources: edge. Reconciliation: Row: DW-0077; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 status: done 2026-11-23
-resolution: Baseline resolver tests cover the 128/129-character boundary, embedded NUL, nonbreaking space, zero-width space and Windows separators. Invalid owner and fixture lookups return false with a null snapshot. See spec-mcp-schema-negotiation-regressions.md.
+origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-809: Precedence matrix lacks client-side unsupported-algorithm row [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs:1257-1361`] — Only server-side algorithm flip is exercised. Owner: Defense-in-depth. Sources: edge. Reconciliation: Row: DW-0078; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
-location: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs:1257-1361
-reason: **DEF-CK4-12 — Precedence matrix lacks client-side unsupported-algorithm row** [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs:1257-1361`] — Only server-side algorithm flip is exercised. **Owner:** Defense-in-depth. Sources: edge. Reconciliation: Row: DW-0078; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 status: done 2026-11-23
-resolution: The matrix exercises an unsupported client algorithm against a supported server with the same digest and no trusted baseline. It requires the unsupported-algorithm result and denies side effects. See spec-mcp-schema-negotiation-regressions.md.
+origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-810: Precedence matrix Row 7 weak — asserts `Kind` only, not `MessageKey` [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs:1330-1338`] — A misclassification to CompatibleWarning could pass undetected. Owner: v1.x defense-in-depth. Sources: edge. Reconciliation: Row: DW-0079; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
-location: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs:1330-1338
-reason: **DEF-CK4-13 — Precedence matrix Row 7 weak — asserts `Kind` only, not `MessageKey`** [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs:1330-1338`] — A misclassification to CompatibleWarning could pass undetected. **Owner:** v1.x defense-in-depth. Sources: edge. Reconciliation: Row: DW-0079; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 status: done 2026-11-23
-resolution: The additive snapshot case checks the exact schema.compatible-additive message key and permits side effects. See spec-mcp-schema-negotiation-regressions.md.
+origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-811: `RuntimeAggregate_TamperedNestedFingerprint_TripsIntegrityMismatch` registers irrelevant corpus fingerprint [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs:946-957`] — Per D6 integrity check is per-manifest. Cosmetic; misleads readers. Owner: Drop corpus provider registration on next touch. Sources: auditor. Reconciliation: Row: DW-0080; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
-location: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs:946-957
-reason: **DEF-CK4-14 — `RuntimeAggregate_TamperedNestedFingerprint_TripsIntegrityMismatch` registers irrelevant corpus fingerprint** [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs:946-957`] — Per D6 integrity check is per-manifest. Cosmetic; misleads readers. **Owner:** Drop corpus provider registration on next touch. Sources: auditor. Reconciliation: Row: DW-0080; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 status: done 2026-11-23
-resolution: The registry loads an intact manifest without a corpus provider and rejects a change to one nested fingerprint with SchemaIntegrityMismatch. See spec-mcp-schema-negotiation-regressions.md.
+origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-812: `Manifest(...)` factory couples test fixture to literal hint prefix via `StartsWith` checks [`tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerSchemaGateTests.cs:113-117`, `ProjectionReaderSchemaGateTests.cs:417-422`] — Opaque indirection. Future readers must trace the prefix-matching logic. Owner: Refactor to explicit scenario enum / parameter on next test refactor cycle. Sources: blind+auditor. Reconciliation: Row: DW-0081; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -5413,11 +5403,9 @@ archived: 2026-09-18
 
 ### DW-1466: `manifest_diagnostics` continues evaluating after `--root must be an existing directory` diagnostic: P52 promised an early exit; the implementation queues the diagnostic and continues, producing extra noise that confuses operators about whether the bogus `--root` is the root cause or one symptom of many. Deferred: UX issue, not a correctness defect; pick up when the diagnostics output is restructured. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:314-316` approx (manifest_diagnostics `--root` check path).
 
-origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 4 (2026-05-17)"), 2026-08-27
-location: eng/release_evidence.py:314-316
-reason: **CR-12-4-Def8 — `manifest_diagnostics` continues evaluating after `--root must be an existing directory` diagnostic:** P52 promised an early exit; the implementation queues the diagnostic and continues, producing extra noise that confuses operators about whether the bogus `--root` is the root cause or one symptom of many. Deferred: UX issue, not a correctness defect; pick up when the diagnostics output is restructured. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:314-316` approx (manifest_diagnostics `--root` check path).
 status: done 2026-11-23
-resolution: Return one artifact-root diagnostic before reading or validating manifest evidence. See `spec-five-release-evidence-cli-validations.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 4 (2026-05-17)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-1467: Operator-facing `fingerprint-digest` helper subcommand absent: Operators computing fallback `approved_against_fingerprints_sha256` by hand can produce serialization mismatches versus `canonical_sha256` (separator order, key sort order). Deferred: add a CLI subcommand emitting the canonical hex when the first fallback approval is needed in production. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:117-119` `canonical_sha256`.
 
@@ -5427,11 +5415,9 @@ archived: 2026-09-18
 
 ### DW-1468: `verify-manifest` accepts both `--root` and `--no-root` simultaneously: `--no-root` silently wins; operator awareness is incidental. Deferred: add a mutually-exclusive argparse group when a real misuse surfaces. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py` `verify-manifest` argparse handlers.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 4 (2026-05-17)"), 2026-08-27
-location: eng/release_evidence.py
-reason: **CR-12-4-Def10 — `verify-manifest` accepts both `--root` and `--no-root` simultaneously:** `--no-root` silently wins; operator awareness is incidental. Deferred: add a mutually-exclusive argparse group when a real misuse surfaces. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py` `verify-manifest` argparse handlers.
 status: done 2026-11-23
-resolution: Reject combined live-root and offline verification options at argument parsing. See `spec-five-release-evidence-cli-validations.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 4 (2026-05-17)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-1469: Documentation drift in Dev Agent Cheat Sheet: The "Current workflow state" entry says "Release runs on `main` push or `workflow_dispatch`", but `push: main` is now read-only since round-2 P2 (only `workflow_dispatch` can produce a release-owner-approved env). Deferred: documentation pass during epic-12 retrospective. Owner: story 12.4 author. Evidence: `_bmad-output/implementation-artifacts/12-4-trusted-release-evidence-dry-run.md` cheat sheet section.
 
@@ -5500,27 +5486,21 @@ decision: 2026-08-27 Implement the change — Implement the behavior requested b
 
 ### DW-1478: `--started-at`/`--ended-at` malformed ISO crashes via raw `ValueError`: `release-budget` argparse handlers call `dt.datetime.fromisoformat(...)` directly on operator-supplied strings; an invalid/whitespace value crashes the helper with exit-2 "helper crashed" instead of a typed CLI diagnostic. Pre-existing pattern; fail-closed via outer `__main__` catch is correct, but operators lose the typed-diagnostic UX. Pick up when typed CLI-input diagnostic layer is added. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1808-1810`.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
-location: eng/release_evidence.py:1808-1810
-reason: **CR-12-4-Def35 — `--started-at`/`--ended-at` malformed ISO crashes via raw `ValueError`:** `release-budget` argparse handlers call `dt.datetime.fromisoformat(...)` directly on operator-supplied strings; an invalid/whitespace value crashes the helper with exit-2 "helper crashed" instead of a typed CLI diagnostic. Pre-existing pattern; fail-closed via outer `__main__` catch is correct, but operators lose the typed-diagnostic UX. Pick up when typed CLI-input diagnostic layer is added. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1808-1810`.
 status: done 2026-11-23
-resolution: Name the invalid timestamp flag for malformed, empty, date-only or invalid-offset values. See `spec-five-release-evidence-cli-validations.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-1479: `started_at > ended_at` produces silent `minutes=0`: Inverted timing inputs (clock skew, copy/paste swap) record zero release minutes with no diagnostic. Tangential to release-readiness gates. Pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1811`.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
-location: eng/release_evidence.py:1811
-reason: **CR-12-4-Def36 — `started_at > ended_at` produces silent `minutes=0`:** Inverted timing inputs (clock skew, copy/paste swap) record zero release minutes with no diagnostic. Tangential to release-readiness gates. Pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1811`.
 status: done 2026-11-23
-resolution: Reject reversed instants before writing the budget summary and preserve valid zero and positive durations. See `spec-five-release-evidence-cli-validations.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-1480: Non-numeric `package_count` in historical release-budget entries crashes: Legacy/corrupted history entries trigger `int(...)` `ValueError`; release-budget exits 2 with generic crash. Defensible because release-budget is monitoring-only. Pick up if historical-entry corruption surfaces. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1837`.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
-location: eng/release_evidence.py:1837
-reason: **CR-12-4-Def37 — Non-numeric `package_count` in historical release-budget entries crashes:** Legacy/corrupted history entries trigger `int(...)` `ValueError`; release-budget exits 2 with generic crash. Defensible because release-budget is monitoring-only. Pick up if historical-entry corruption surfaces. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1837`.
 status: done 2026-11-23
-resolution: Identify the invalid history row and preserve legacy integer strings and whole-valued JSON counts. See `spec-five-release-evidence-cli-validations.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-1481: Empty/truncated existing `partial-publish-incident.json` evades P155 overwrite protection: P155 prevents overwriting a real incident with the placeholder, but a 0-byte or corrupted file passes the `failed_phase != "none"` check trivially. Threat model: operator/attacker truncating the file mid-investigation; low likelihood. Pick up when forensic-integrity hardening is prioritized. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1917-1930`.
 
@@ -5530,11 +5510,9 @@ archived: 2026-09-18
 
 ### DW-1482: `args.output` directory path crashes with cryptic OSError: Operator misuse (passing a dir instead of file) crashes `write_json`'s `os.replace`; helper exits 2 instead of typed error. Pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1917`.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
-location: eng/release_evidence.py:1917
-reason: **CR-12-4-Def39 — `args.output` directory path crashes with cryptic OSError:** Operator misuse (passing a dir instead of file) crashes `write_json`'s `os.replace`; helper exits 2 instead of typed error. Pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1917`.
 status: done 2026-11-23
-resolution: Reject incident output directories with a named --output diagnostic before writing. See `spec-five-release-evidence-output-fixes.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-1483: `_file_matches_evidence_glob` recursive `` fallback over-broadens: P128 tightened the bespoke matcher but `` recursive walk still scans interior segments. Defensible because allowlist is narrow. Pick up alongside P162 (replace bespoke matcher with `pathspec`). Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:822-828` area.
 
@@ -5625,11 +5603,9 @@ status: open
 
 ### DW-1496: `--pattern` accepting absolute path crashes mid-glob: Checksum subcommand `pathlib.Path.glob(absolute_path)` raises. CLI misuse fail-closed; pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1547`.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
-location: eng/release_evidence.py:1547
-reason: **CR-12-4-Def53 — `--pattern` accepting absolute path crashes mid-glob:** Checksum subcommand `pathlib.Path.glob(absolute_path)` raises. CLI misuse fail-closed; pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1547`.
 status: done 2026-11-23
-resolution: Reject absolute checksum patterns before globbing and preserve the prior checksum report. See `spec-five-release-evidence-output-fixes.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-1497: 1/2^128 brute-force heredoc-delim collision: Astronomically unlikely; defense-in-depth already addressed via P148 entropy assertion. Pick up only if a future audit demands explicit per-input validation. Owner: release-evidence/workflow maintainer. Evidence: `.github/workflows/release.yml:130-182`.
 
@@ -5818,11 +5794,9 @@ archived: 2026-09-18
 
 ### DW-1524: `release_budget` tag/packages polymorphism — `str(manifest.get('tag') or args.tag)` short-circuits on empty string and accepts non-list packages: Blind Hunter BH-025 + Edge Case Hunter EC-26 — typed validation would be cleaner. Current path emits `package_count=0` rather than crashing. Pick up alongside typed-CLI hardening. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1853`.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
-location: eng/release_evidence.py:1853
-reason: **CR-12-4-Def65 — `release_budget` tag/packages polymorphism — `str(manifest.get('tag') or args.tag)` short-circuits on empty string and accepts non-list packages:** Blind Hunter BH-025 + Edge Case Hunter EC-26 — typed validation would be cleaner. Current path emits `package_count=0` rather than crashing. Pick up alongside typed-CLI hardening. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1853`.
 status: done 2026-11-23
-resolution: Validate the manifest object, tag and package list while retaining CLI fallbacks for omitted fields. See `spec-five-release-evidence-output-fixes.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-1525: `evidence_section` only top-level type check; nested members (e.g., `attestation.fallback`) not type-checked: Blind Hunter BH-033 + Edge Case Hunter EC-21/EC-37 — defense-in-depth. Pick up alongside structured-evidence validation pass. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1601-1606`.
 
@@ -5885,11 +5859,9 @@ status: open
 
 ### DW-1534: `write_json` tmp filename suffix could collide under concurrent writers: Edge Case Hunter EC-10 — single-writer pattern by design. Pick up if release evidence becomes multi-writer. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:262-276`.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
-location: eng/release_evidence.py:262-276
-reason: **CR-12-4-Def75 — `write_json` tmp filename suffix could collide under concurrent writers:** Edge Case Hunter EC-10 — single-writer pattern by design. Pick up if release evidence becomes multi-writer. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:262-276`.
 status: done 2026-11-23
-resolution: Stage each JSON write independently on the destination filesystem and clean up after failure. See `spec-five-release-evidence-output-fixes.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-1535: `CURRENT_BRANCH` fallback to `github.event.repository.default_branch` could be empty for some event payloads: Edge Case Hunter EC-18 — `workflow_dispatch` always carries repository. Pick up if trigger surface expands. Owner: workflow maintainer. Evidence: `.github/workflows/release.yml:194`.
 
@@ -5992,11 +5964,9 @@ status: open
 
 ### DW-1550: `release_budget` `tag = str(manifest.get('tag') or args.tag)` writes empty-string tag when both are falsy: Blind Hunter BH-F20 — downstream consumers of `release-budget-summary.json` would compare empty-tag rows. No diagnostic emitted today. Pick up alongside typed-CLI hardening (Def65 territory). Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1715`.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 10)"), 2026-08-27
-location: release-budget-summary.json
-reason: **CR-12-4-Def91 — `release_budget` `tag = str(manifest.get('tag') or args.tag)` writes empty-string tag when both are falsy:** Blind Hunter BH-F20 — downstream consumers of `release-budget-summary.json` would compare empty-tag rows. No diagnostic emitted today. Pick up alongside typed-CLI hardening (Def65 territory). Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1715`.
 status: done 2026-11-23
-resolution: Require a nonblank effective tag before appending a current budget row. See `spec-five-release-evidence-output-fixes.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 10)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-1551: P219 inverse `attestation_bundle` check fixture inheritance: any `approved-unsupported` fixture that doesn't explicitly override `attestation_bundle` inherits the populated bundle from base: Blind Hunter BH-F23 — tests only assert `classification=blocked` (still expected), so the new reason hides until reason-specific assertions land. Pick up alongside Def69 fixture-shape audit and Def67 exact-reasons-set strengthening. Owner: governance-tests maintainer. Evidence: `tests/ci-governance/fixtures/release-readiness-cases.json:base + per-case`.
 
@@ -6558,30 +6528,24 @@ status: open
 
 ### DW-1624: Treat non-object diagnostic JSON roots and entries as unreadable sidecars.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-14)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:14-20
-source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
-reason: summary: Treat non-object diagnostic JSON roots and entries as unreadable sidecars. evidence: `DiagnosticFileReader.Read` calls `TryGetProperty` on every non-array root and on every array entry without first requiring `JsonValueKind.Object`; valid scalar, `null`, string, or numeric JSON therefore throws `InvalidOperationException` outside the reader's catches and aborts `frontcomposer inspect` instead of emitting `HFCM0002` (`src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:14-20,64-67`). Both paths are byte-for-byte pre-existing in the bundled baseline.
 status: done 2026-11-23
-resolution: Inspect reports one `HFCM0002` per malformed sidecar, retains readable diagnostics, and identifies the affected sidecar in text and JSON. See `spec-cli-diagnostic-reporting.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-14)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+archived: 2026-11-23
 
 ### DW-1625: Handle diagnostic-sidecar directory enumeration races inside the reader.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-14)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:8-10
-source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
-reason: summary: Handle diagnostic-sidecar directory enumeration races inside the reader. evidence: The lazy `Directory.EnumerateFiles(...).Order(...)` enumeration runs outside the per-file `try`, so deletion, permission changes, or I/O failure while enumeration advances escapes `DiagnosticFileReader` and is mapped by the outer CLI to the generic apply/write failure path rather than the generated-output-unavailable contract (`src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:8-10`; `CliApplication.cs:35-38`). The placement predates the mechanical split.
 status: done 2026-11-23
-resolution: The reader distinguishes an unavailable directory from an empty diagnostic set. Inspect returns exit code 3 with retry guidance for directory enumeration failures. See `spec-cli-diagnostic-reporting.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-14)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+archived: 2026-11-23
 
 ### DW-1626: Normalize absent or null diagnostic related types so type filtering retains global diagnostics.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-14)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:29
-source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
-reason: summary: Normalize absent or null diagnostic related types so type filtering retains global diagnostics. evidence: Missing or JSON-null `relatedType` becomes `string.Empty` in `DiagnosticFileReader`, while `TypeMatcher.Filter` retains global diagnostics only when `RelatedType is null`; a valid global diagnostic therefore disappears whenever `frontcomposer inspect --type` is used (`src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:29,64-67`; `TypeMatcher.cs:35`). This behavior predates the split.
 status: done 2026-11-23
-resolution: Missing and null related types remain visible as global diagnostics under `inspect --type`. Invalid related-type values are reported as malformed entries. See `spec-cli-diagnostic-reporting.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-14)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+archived: 2026-11-23
 
 ### DW-1627: Validate the requested framework before invoking `dotnet build`.
 
@@ -6593,12 +6557,10 @@ status: open
 
 ### DW-1628: Reject path-like configuration names before building or resolving generated output.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-14)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Cli/GeneratedOutputLoader.cs:131-153
-source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
-reason: summary: Reject path-like configuration names before building or resolving generated output. evidence: User-controlled `configuration` is passed to `dotnet build`, embedded in `CompilerGeneratedFilesOutputPath`, and combined under the project `obj` directory without the framework validator's traversal/separator checks (`src/Hexalith.FrontComposer.Cli/GeneratedOutputLoader.cs:131-153`). A path-like configuration can therefore redirect generated-output writes or inspection outside the intended configuration subtree. The behavior predates the split.
 status: done 2026-11-23
-resolution: Inspect rejects missing and unsafe configuration values before generated-output resolution or SDK invocation. Named custom configurations still work. See `spec-cli-diagnostic-reporting.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-14)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+archived: 2026-11-23
 
 ### DW-1629: Preserve evaluated conditional-compilation symbols when scanning migration sources.
 
@@ -6634,30 +6596,24 @@ status: open
 
 ### DW-1633: Treat primitive migration-sidecar roots and entries as unreadable payloads.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-15)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:37-46
-source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
-reason: summary: Treat primitive migration-sidecar roots and entries as unreadable payloads. evidence: The reader calls `TryGetProperty` on non-object roots and array entries; scalar or `null` JSON throws `InvalidOperationException` outside the existing catches (`src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:37-46,74-83`). The behavior predates the split.
 status: done 2026-11-23
-resolution: Malformed sidecars produce one manual-only sentinel and readable sibling diagnostics are retained. See `spec-migration-diagnostics-and-results.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-15)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+archived: 2026-11-23
 
 ### DW-1634: Canonicalize and validate migration-sidecar source keys before lookup so diagnostics cannot be silently disconnected.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-15)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:50-59
-source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
-reason: summary: Canonicalize and validate migration-sidecar source keys before lookup so diagnostics cannot be silently disconnected. evidence: Relative dot segments and redundant separators are not canonicalized, long/control-bearing keys are sanitized before dictionary lookup, and rooted path normalization can throw; the planner consumes only exact document-key matches (`src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:50-59,124-146`; `MigrationPlanner.cs:100-103`). These cases can silently drop or abort manual diagnostics and predate the split.
 status: done 2026-11-23
-resolution: Sidecar lookup uses normalized project-relative paths before display sanitization. See `spec-migration-diagnostics-and-results.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-15)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+archived: 2026-11-23
 
 ### DW-1635: Surface migration-sidecar directory enumeration failures instead of returning an empty diagnostic set.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-15)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:21-31
-source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
-reason: summary: Surface migration-sidecar directory enumeration failures instead of returning an empty diagnostic set. evidence: I/O or access failure while materializing the diagnostics directory returns an empty dictionary, making all generated manual diagnostics disappear without a sentinel (`src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:21-31`). The behavior predates the split.
 status: done 2026-11-23
-resolution: Enumeration failures produce an obj sentinel and readable sibling directories are still scanned. See `spec-migration-diagnostics-and-results.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-15)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+archived: 2026-11-23
 
 ### DW-1636: Refresh submodule boundaries immediately before each migration write.
 
@@ -6669,12 +6625,10 @@ status: open
 
 ### DW-1637: Preserve unapplied planned entries in cancellation results.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-15)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:5-9
-source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
-reason: summary: Preserve unapplied planned entries in cancellation results. evidence: Apply removes all planned safe-fix entries up front, then on cancellation records only the current edit and breaks, so later unapplied edits disappear from the result and summary (`src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:5-9,36-39`). The behavior predates the split.
 status: done 2026-11-23
-resolution: Cancellation preserves applied changes and reports every unwritten planned file. See `spec-migration-diagnostics-and-results.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-15)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+archived: 2026-11-23
 
 ### DW-1638: Escape multiline filenames before emitting unified-diff headers.
 
@@ -6694,12 +6648,10 @@ status: open
 
 ### DW-1640: Avoid reporting unchanged when every discovered project document was skipped.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-15)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:246-257
-source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
-reason: summary: Avoid reporting unchanged when every discovered project document was skipped. evidence: The final fallback ignores `skipped` entries when deciding to add `HFCM0001 unchanged`, so a plan that scanned no eligible source can contain both skipped and unchanged claims (`src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:246-257`). The behavior predates the split.
 status: done 2026-11-23
-resolution: Plans that skip every discovered source file report the skips without an unchanged entry. See `spec-migration-diagnostics-and-results.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-cli-package-split.md (2026-07-15)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+archived: 2026-11-23
 
 ### DW-1641: Harden the SourceTools Drift organization guard against namespace nesting and multi-dot filenames (future-proofing).
 
@@ -6775,12 +6727,10 @@ status: open
 
 ### DW-1650: Reject reserved manifest URIs and duplicate corpus IDs during corpus parsing.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusParser.cs:57-67
-source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
-reason: summary: Reject reserved manifest URIs and duplicate corpus IDs during corpus parsing. evidence: `SkillCorpusParser` deduplicates resource URIs but not IDs and accepts `frontcomposer://skills/manifest` at `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusParser.cs:57-67,165-173`, allowing ambiguous descriptors or collision with the synthetic manifest.
 status: done 2026-11-23
-resolution: The parser reserves the aggregate URI and ID and detects duplicate skill IDs. Collision diagnostics identify the actual source file. See `spec-skill-corpus-validation-and-discovery.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+archived: 2026-11-23
 
 ### DW-1651: Select the aggregate corpus version semantically and ordinally rather than with default string Max.
 
@@ -6800,21 +6750,17 @@ status: open
 
 ### DW-1653: Reject failed-redaction and contradictory result states in the benchmark gate's pass count.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
-location: tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:22-33
-source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
-reason: summary: Reject failed-redaction and contradictory result states in the benchmark gate's pass count. evidence: `SkillBenchmarkGate.Evaluate` counts `Valid` results with compile/validator success without checking `RedactionStatus` or `FailureCategory` at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:22-33`; persistence has a separate redaction guard.
 status: done 2026-11-23
-resolution: The gate rejects inconsistent outcomes and evidence that fails the artifact redaction checks. Rejected rows contribute to the invalid count and cannot contribute a pass. See `spec-benchmark-gate-evidence.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+archived: 2026-11-23
 
 ### DW-1654: Require unique prompt IDs at load and gate boundaries.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
-location: tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkPromptSet.cs:29-36
-source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
-reason: summary: Require unique prompt IDs at load and gate boundaries. evidence: The loader and gate sort IDs but do not enforce uniqueness at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkPromptSet.cs:29-36` and `SkillBenchmarkGate.cs:12-20`; the checked-in v1 fixture itself remains unique.
 status: done 2026-11-23
-resolution: The embedded loader rejects duplicate IDs. The gate also checks supplied prompt sets and requires the results to match them one for one. See `spec-benchmark-gate-evidence.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+archived: 2026-11-23
 
 ### DW-1655: Sanitize all serialized benchmark artifact string fields, not only SanitizedDiagnostics.
 
@@ -6833,30 +6779,24 @@ archived: 2026-09-18
 
 ### DW-1657: Pin the exact 20 v1 benchmark prompt IDs.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
-location: tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:379-385
-source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
-reason: summary: Pin the exact 20 v1 benchmark prompt IDs. evidence: `PromptSet_LoadsExpectedTwentyIdsByOrdinalOrderingFromFixture` checks only count, a `p` prefix, and uniqueness at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:379-385`; replacing the fixture with different ordered unique IDs still passes. The weak assertion predates the relocation.
 status: done 2026-11-23
-resolution: The v1 fixture test asserts the full ordered list of 20 published prompt IDs. See `spec-benchmark-gate-evidence.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+archived: 2026-11-23
 
 ### DW-1658: Bind approved benchmark baselines to the evidence contract before passing the gate.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
-location: tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:33
-source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
-reason: summary: Bind approved benchmark baselines to the evidence contract before passing the gate. evidence: `SkillBenchmarkGate.Evaluate` uses only `InitialPassRate` from the approved baseline at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:33`, so mismatched corpus, scorer, validator, redaction, and provider hashes can still produce `Passed`. The mechanically moved behavior predates Story 11.17c.
 status: done 2026-11-23
-resolution: The gate binds every result to the approved scorer, validator, redaction policy, provider configuration and actual prompt corpus hash. See `spec-benchmark-gate-evidence.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+archived: 2026-11-23
 
 ### DW-1659: Add positive cache-reuse verification to the benchmark harness.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
-location: tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:64-130
-source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
-reason: summary: Add positive cache-reuse verification to the benchmark harness. evidence: The cache tests at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:64-130` cover only key changes and cache misses; an implementation of `SkillBenchmarkCachePolicy.CanReuse` that always returns false would remain green. This verification gap predates the relocation.
 status: done 2026-11-23
-resolution: The harness creates equivalent cache keys independently and verifies that reuse succeeds with an empty miss reason. See `spec-benchmark-gate-evidence.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+archived: 2026-11-23
 
 ### DW-1660: Convert generated-validator regex timeouts into fail-closed diagnostics.
 
@@ -6868,12 +6808,10 @@ status: open
 
 ### DW-1661: Snapshot mutable corpus resources when constructing the resource provider.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation — chunk 1 (2026-07-17)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Mcp/Skills/FrontComposerSkillResourceProvider.cs:25-30
-source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
-reason: summary: Snapshot mutable corpus resources when constructing the resource provider. evidence: `FrontComposerSkillResourceProvider` retains `snapshot.Resources` while separately freezing its URI lookup and rendering its manifest (`src/Hexalith.FrontComposer.Mcp/Skills/FrontComposerSkillResourceProvider.cs:25-30`); mutation through a caller-supplied mutable `IReadOnlyList` can make discovery disagree with reads. The behavior predates the split.
 status: done 2026-11-23
-resolution: The provider copies its resource list and nested metadata once for discovery, lookup and manifest rendering. See `spec-skill-corpus-validation-and-discovery.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation — chunk 1 (2026-07-17)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+archived: 2026-11-23
 
 ### DW-1662: Preserve dots in embedded skill-corpus filenames during logical-name reconstruction.
 
@@ -6901,31 +6839,24 @@ status: open
 
 ### DW-1665: Reconcile the documented no-op baseline mode with `SkillCorpusValidationResult.IsValid`.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation — chunk 1 (2026-07-17)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:41-49
-source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
-reason: summary: Reconcile the documented no-op baseline mode with `SkillCorpusValidationResult.IsValid`. evidence: `ValidateAgainstBaseline` describes a missing baseline as a benign no-op but returns a `BaselineMismatch` diagnostic (`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:41-49`), while `SkillCorpusValidationResult.IsValid` treats every diagnostic as invalid. There is no production caller today, and both declarations predate the split.
 status: done 2026-11-23
-resolution: A missing baseline still produces the existing BaselineMismatch diagnostic. Its informational flag allows validation to succeed when the current corpus is valid. See `spec-skill-corpus-validation-and-discovery.md`.
-decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1665, update affected contracts and consumers, and add focused regression evidence.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation — chunk 1 (2026-07-17)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+archived: 2026-11-23
 
 ### DW-1666: Carry current corpus diagnostics through baseline release validation.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation — chunk 1 (2026-07-17)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:52-73
-source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
-reason: summary: Carry current corpus diagnostics through baseline release validation. evidence: `ValidateAgainstBaseline` starts with an empty diagnostic list and iterates `current.Resources` (`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:52-73`); a parser-invalid snapshot has no resources and can therefore produce an apparently valid release result. The release-guard body is unchanged from baseline.
 status: done 2026-11-23
-resolution: Baseline comparison returns all current parser diagnostics whether a baseline exists or is absent. See `spec-skill-corpus-validation-and-discovery.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation — chunk 1 (2026-07-17)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+archived: 2026-11-23
 
 ### DW-1667: Reject negative skill-resource character limits at construction.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation — chunk 1 (2026-07-17)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceReadOptions.cs:10-13
-source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
-reason: summary: Reject negative skill-resource character limits at construction. evidence: `SkillResourceReadOptions` accepts any integer (`src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceReadOptions.cs:10-13`); a negative cap causes every resource read to return `SkillResourceTooLarge`. This public-boundary validation gap predates the relocation.
 status: done 2026-11-23
-resolution: Read limits reject negative values in the positional constructor and during record initialization or copying. A zero limit admits an empty resource. See `spec-skill-corpus-validation-and-discovery.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation — chunk 1 (2026-07-17)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+archived: 2026-11-23
 
 ### DW-1668: Verify JSON-formatted parse failures for Hexalith.Builds command applications.
 
@@ -7194,13 +7125,10 @@ archived: 2026-09-18
 
 ### DW-1702: Support a partial type legally split across two files in the Shell organization guard, or record the one-file contract as deliberate.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion delta (2026-08-01)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Shell
-source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
-reason: summary: Support a partial type legally split across two files in the Shell organization guard, or record the one-file contract as deliberate. evidence: The all-`partial` same-identity collapse added in `48862e9a` lives inside the per-file parse (`ShellTypeOrganizationGovernanceTests.ParseDirectDeclarations`, via `IsCollapsiblePartialGroup`), while `SplitDeclarations_SourceShapes_MatchExactPinnedManifest` flattens declarations across every source file before matching and asserts exactly one match per pinned identity; `ShellTypeOrganizationGovernanceTests.FindOrganizationViolations` additionally requires filename==typename. The idiomatic two-file partial split therefore still false-fails. Citations are symbol-based: line coordinates in this ledger have repeatedly gone stale within days. Deferred because AC4 scopes the guard to one direct declaration per file with a matching filename, so this is a design tension rather than a defect. Reopen trigger: a two-file partial type is introduced under `src/Hexalith.FrontComposer.Shell`, or AC4 is extended to cross-file partial identities.
 status: done 2026-11-23
-resolution: Enforce one handwritten file per Shell type identity, including partial types. File-local types keep their per-file identities.
-decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1702, update affected contracts and consumers, and add focused regression evidence.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion delta (2026-08-01)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+archived: 2026-11-23
 
 ### DW-1703: Bind the analyzer-policy identifier inventory to a committed revision and assert the delta, instead of hashing working-tree line numbers.
 
@@ -7211,21 +7139,17 @@ archived: 2026-09-18
 
 ### DW-1704: Distinguish compiler-synthesized record-struct PrintMembers methods from matching hand-written methods.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion delta (2026-08-01)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Shell
-source_spec: `_bmad-output/implementation-artifacts/spec-actions-30689929161-fix-ca1822.md`
-reason: summary: Distinguish compiler-synthesized record-struct PrintMembers methods from matching hand-written methods. evidence: `ShellTypeOrganizationGovernanceTests.DeclaresSynthesizedPrintMembers` recognizes only the method name, exact `bool (StringBuilder)` signature, and declaring type; a plain struct can hand-write that same legal signature and be classified as a record struct. Reflection alone cannot resolve this: the synthesized and hand-written members are indistinguishable at runtime. The 2026-08-01 promotion-delta re-review narrowed the surface — the binder now pins the parameter list and return type, so only an exact-signature duplicate collides, and an unrelated overload no longer throws `AmbiguousMatchException` — and added `RuntimeKind_ValueTypeWithLookalikePrintMembers_RemainsStruct` plus `RuntimeKind_RecordStructWithExtraPrintMembersOverload_DoesNotThrow` to pin both constraints. The residual exact-signature collision remains open because no production type or manifest entry exercises it. Reopen trigger: a plain struct under `src/Hexalith.FrontComposer.Shell` declares `bool PrintMembers(StringBuilder)`, or the pin set gains a plain-struct row.
 status: done 2026-11-23
-resolution: Identify record structs by their compiler-generated equality operator and cover handwritten PrintMembers methods on both struct kinds.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion delta (2026-08-01)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-actions-30689929161-fix-ca1822.md`
+archived: 2026-11-23
 
 ### DW-1705: Same-shape conditional-branch duplicates escape the Shell organization guard entirely when the author writes `partial`, defeating the mutually-exclusive-duplicate reporting the collapse comment claims to preserve.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion-delta re-review (2026-08-01)"), 2026-08-27
-location: src/Hexalith.FrontComposer.Shell
-source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
-reason: summary: Same-shape conditional-branch duplicates escape the Shell organization guard entirely when the author writes `partial`, defeating the mutually-exclusive-duplicate reporting the collapse comment claims to preserve. evidence: `ShellTypeOrganizationGovernanceTests.IsCollapsiblePartialGroup` collapses a same-identity group whenever every member is `partial` and all members agree on kind, accessibility, and modifiers. A single file containing `#if FIRST` / `public sealed partial record ConditionalOwner(string First);` / `#else` / `public sealed partial record ConditionalOwner(string Second);` / `#endif` satisfies both conditions, so the group collapses to the lowest-`SpanStart` branch and nothing is reported; the identical non-partial source is reported by `OrganizationGuard_ConditionalDeclarationsWithSameIdentity_AreReported`. The collapse key is the declaration identity only, so divergent positional parameters are invisible. Pre-existing: the predicate introduced in `48862e9a` collapsed the same input via `group.All(d => d.Modifiers.Contains("partial"))`, so this pass narrows rather than introduces the hole. Deferred because closing it requires deciding whether conditional `partial` branches are legal Shell source at all, which is beyond AC4's declaration/file-parity scope. Reopen trigger: a conditionally-compiled `partial` declaration is introduced under `src/Hexalith.FrontComposer.Shell`, or AC4 is extended to conditional-branch shape divergence.
 status: done 2026-11-23
-resolution: Keep same-shape partial declarations separate when their identifier spans cannot coexist under any preprocessor configuration.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion-delta re-review (2026-08-01)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+archived: 2026-11-23
 
 ### DW-1706: The Story 11.17d-only GOV-1 promotion waiver exists only as prose inside a `waiver:` string, so any consumer reading the action item's structured fields still sees an unmet gate blocking the promotion that already happened.
 
@@ -7251,40 +7175,31 @@ status: open
 
 ### DW-1709: Distinguish a submodule gitlink path from an ordinary directory before the scan-scope rejection rule discards it.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion-delta commit re-review (2026-08-01)"), 2026-08-27
-location: references/Hexalith.Builds
-source_spec: `eng/validate-story-artifacts.py`
-reason: summary: Distinguish a submodule gitlink path from an ordinary directory before the scan-scope rejection rule discards it. evidence: A gitlink bump is reported by `git diff --name-only` as the bare submodule path, but that path is a directory on disk, so `mention_is_not_an_output_path` rejects it as "a directory names a scan scope, not a produced file". Verified directly: the probe returns `True` for `references/Hexalith.Builds`. A checked task claiming to have advanced a gitlink therefore contributes no path to reconcile and falls through to the general-evidence branch. The File List side already pins the opposite behaviour via `test_submodule_pointer_path_is_not_silently_ignored`, so the two halves of the gate disagree. Deferred because closing it requires reading `.gitmodules` inside the shape-based rule, which is a design change beyond correcting this commit's rules. Reopen trigger: a story's only evidence for a gitlink change is a checked review-follow-up line, or the directory rule is revisited.
 status: done 2026-11-23
-resolution: The validator reads the Git index mode to reconcile named submodule pointers. The checked-task fixture covers nested and root-level pointers alongside an ordinary directory. See `spec-checked-task-evidence.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion-delta commit re-review (2026-08-01)"), 2026-08-27
+source_spec: `eng/validate-story-artifacts.py`
+archived: 2026-11-23
 
 ### DW-1710: Remove or re-pin `TASK_PATH_SUFFIXES`, which is now unreachable while two tests named after it still appear to cover it.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion-delta commit re-review (2026-08-01)"), 2026-08-27
-location: TASK_PATH_SUFFIXES
-source_spec: `eng/validate-story-artifacts.py`
-reason: summary: Remove or re-pin `TASK_PATH_SUFFIXES`, which is now unreachable while two tests named after it still appear to cover it. evidence: Three independent mutations leave the suite green — dropping the dotfile guard, dropping the suffix filter, and replacing the constant with an empty set. The dotfile guard is provably unreachable: a bare dot-token reaches it only after surviving `mention_is_not_an_output_path`, which requires it to be a tracked basename, and the intersection of tracked basenames with the suffix literals is empty. `test_checked_task_ignores_extension_and_assembly_name_tokens` now passes through the tree-absent-basename rule rather than the allow-list its name and fixture describe, and `test_checked_deferred_review_task_accepts_preexisting_path_classification` likewise passes without its defer marker because the cited dotfile is untracked in the temp fixture. Deferred because deleting a constant that three tests transit needs its own verification pass. Reopen trigger: the rejection rules are revised, or a tracked basename collides with a suffix literal.
 status: done 2026-11-23
-resolution: The fixture now tracks a suffix literal, an assembly name and a supported source filename, so it exercises the suffix rules directly. The tracked dotfile fixture also checks that removing its defer marker exposes the missing output. See `spec-checked-task-evidence.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion-delta commit re-review (2026-08-01)"), 2026-08-27
+source_spec: `eng/validate-story-artifacts.py`
+archived: 2026-11-23
 
 ### DW-1711: Decide how the organization guard should treat mutually exclusive conditional modifier branches, which currently merge into a modifier set that compiles in no configuration.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion-delta commit re-review (2026-08-01)"), 2026-08-27
-location: .Modifiers.Sh
-source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
-reason: summary: Decide how the organization guard should treat mutually exclusive conditional modifier branches, which currently merge into a modifier set that compiles in no configuration. evidence: `ShellTypeOrganizationGovernanceTests.ActivateAllConditionalBranches` makes `#if`/`#elif` arms simultaneously active, and the per-`SpanStart` fold then elects the longest modifier list. Measured on a standalone Roslyn re-implementation: `public #if A sealed #elif B abstract #endif partial class Owner` folds to one declaration carrying `public sealed abstract partial` — a combination legal in neither configuration. Were such a type ever pinned, `matches[0].Modifiers.ShouldBe(pin.Modifiers)` would demand that impossible string in the manifest while both real per-configuration shapes failed. Conditional accessibility behaves worse, yielding `public internal partial` alongside a second entry at a different span and reporting one physical type as two. Deferred because no source under `src/Hexalith.FrontComposer.Shell` conditionally compiles any type's modifiers — the three `#if` sites are a property body, a method body, and a using directive — so this is latent, and choosing between reporting and normalising is an AC4 scope decision. Reopen trigger: a Shell type acquires conditionally compiled modifiers or accessibility.
 status: done 2026-11-23
-resolution: Select the most specific observed modifier shape and reserve synthetic parsing for declarations absent from all configurations.
-decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1711, update affected contracts and consumers, and add focused regression evidence.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion-delta commit re-review (2026-08-01)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+archived: 2026-11-23
 
 ### DW-1712: Pin the token-based `partial` match that replaced substring matching, so the requested hardening cannot be silently reverted.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion-delta commit re-review (2026-08-01)"), 2026-08-27
-location: ShellTypeOrganizationGovernanceTests.IsPartial
-source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
-reason: summary: Pin the token-based `partial` match that replaced substring matching, so the requested hardening cannot be silently reverted. evidence: `ShellTypeOrganizationGovernanceTests.IsPartial` was rewritten this commit to `ModifierTokens(declaration).Contains("partial", StringComparer.Ordinal)` in response to an explicit prior-review requirement to match `partial` as a token rather than as a substring of the space-joined modifier text. Measured: reverting to `declaration.Modifiers.Contains("partial", StringComparison.Ordinal)` leaves the guard **23/23 green**, so the fix is unverified in both directions. Deferred because no C# modifier keyword contains `partial` as a proper substring, making the practical regression surface empty; the gap is that the requested hardening carries no test signal. Reopen trigger: the modifier vocabulary gains a token containing `partial`, or `ModifierTokens` is reused where substring collisions are reachable.
 status: done 2026-11-23
-resolution: Exercise complete partial modifier tokens and reject longer tokens containing partial.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split.md — promotion-delta commit re-review (2026-08-01)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+archived: 2026-11-23
 
 ### DW-1713: Reconciled — remove the former GOV-1 Closed Policy Seed drift and establish one executable policy authority.
 
@@ -7405,12 +7320,10 @@ archived: 2026-09-18
 
 ### DW-1729: Past-tense irregular-verb table covers only `split`/`write`; future ACTION_VERBS additions stay brittle.
 
-origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split (2026-08-02, AC6 promotion chunk C)"), 2026-08-27
-location: eng/validate-story-artifacts.py
-source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
-reason: summary: Past-tense irregular-verb table covers only `split`/`write`; future ACTION_VERBS additions stay brittle. evidence: `eng/validate-story-artifacts.py` `_IRREGULAR_PAST`. Pre-existing incomplete hardening surfaced again in Chunk C. Reopen trigger: table is generated from / pinned against the full ACTION_VERBS+CREATION_VERBS set, or irregular stems are rejected at vocabulary-edit time.
 status: done 2026-11-23
-resolution: The verb regression pins every supported task verb and its accepted forms, including both past forms of write. See spec-story-markdown-task-evidence.md.
+origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-bundle-split (2026-08-02, AC6 promotion chunk C)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+archived: 2026-11-23
 
 ### DW-1730: Gate 2b / CI advisory pins match only the literal `continue-on-error: true` spelling.
 
@@ -7718,27 +7631,17 @@ status: open
 
 ### DW-1769: The new 6000-band `ScopeReadinessStorageReadyDispatched` event logs a correlation id verbatim while the Story 11.18 hot-path family always digests correlation ids, so the two cannot be joined and the raw identifier reaches logs.
 
-origin: migrated from legacy ledger ("Deferred from: build review of 11-20-recommended-analyzer-policy-and-exception-ledger.md (2026-08-07)"), 2026-08-27
-location: FrontComposerDiagnosticLog.cs:1181-1190
-source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
-reason: summary: The new 6000-band `ScopeReadinessStorageReadyDispatched` event logs a correlation id verbatim while the Story 11.18 hot-path family always digests correlation ids, so the two cannot be joined and the raw identifier reaches logs. evidence: `FrontComposerDiagnosticLog.cs:1181-1190` passes `correlationId` through `Bounded()`, which returns any value under 512 chars without line-forging characters verbatim — a 26-char ULID is unchanged. `LifecycleStateService.cs:282` documents "Join key with HotPath lifecycle events: same opaque sha256 digest (Decision 2)" and uses `FrontComposerHotPathLog.DigestIdentifier`, which always returns `sha256:<16 hex>`. Not a regression (the pre-migration direct call also logged it raw), but it leaves the 11.18 digest posture unapplied. Fixing it changes operator-visible output, which trades against Story 11.21's migration-fidelity property that values stay unchanged — a Framework Maintainer decision.
 status: done 2026-09-22
-resolution: `ScopeReadinessStorageReadyDispatched` and the diagnostic-correlation event now use the same canonical pseudonymizer as lifecycle-observation and hot-path events; runtime action and transition identifiers remain unchanged.
-closure_evidence: The Story 11.31 focused behavior/security/governance lane passed 21/21, and the diagnostic/hot-path/lifecycle/readiness regression lane passed 45/45. `FrontComposerLogPseudonymizerTests.LogFamilies_SameIdentifier_EmitJoinablePseudonym` proves byte-identical structured tokens and no raw leakage.
-decision: 2026-08-28 Implement requested change — Implement the behavior described by DW-1769 across affected contracts and consumers, and add focused regression evidence.
-decision: 2026-08-28 Implement requested change — Implement the behavior described by DW-1769 across affected contracts and consumers, and add focused regression evidence.
+origin: migrated from legacy ledger ("Deferred from: build review of 11-20-recommended-analyzer-policy-and-exception-ledger.md (2026-08-07)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
+archived: 2026-11-23
 
 ### DW-1770: `FrontComposerDiagnosticLog.Digest` and `FrontComposerHotPathLog.DigestIdentifier` are two independent digest implementations with different token formats.
 
-origin: migrated from legacy ledger ("Deferred from: build review of 11-20-recommended-analyzer-policy-and-exception-ledger.md (2026-08-07)"), 2026-08-27
-location: FrontComposerHotPathLog.cs:588
-source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
-reason: summary: `FrontComposerDiagnosticLog.Digest` and `FrontComposerHotPathLog.DigestIdentifier` are two independent digest implementations with different token formats. evidence: HotPath emits `sha256:<16 hex>` (`FrontComposerHotPathLog.cs:588`); the new family emits `sha256:<16 hex>:len:<n>` with different null/empty handling and a 4096-character pre-hash truncation (`FrontComposerDiagnosticLog.cs:1711-1712`). The same value therefore hashes to different tokens across the two families.
 status: done 2026-09-22
-resolution: `FrontComposerLogPseudonymizer` is the single streaming UTF-8/SHA-256 implementation. Correlation paths use its normalized token while generic diagnostic bounding composes its raw hash core and preserves the existing `:len:` shape and prefix limit.
-closure_evidence: The Story 11.31 focused behavior/security/governance lane passed 21/21, the generic diagnostic and established hot-path token regressions passed in the 45/45 targeted lane, and the Release solution build completed with zero warnings/errors.
-decision: 2026-08-28 Implement requested change — Implement the behavior described by DW-1770 across affected contracts and consumers, and add focused regression evidence.
-decision: 2026-08-28 Implement requested change — Implement the behavior described by DW-1770 across affected contracts and consumers, and add focused regression evidence.
+origin: migrated from legacy ledger ("Deferred from: build review of 11-20-recommended-analyzer-policy-and-exception-ledger.md (2026-08-07)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
+archived: 2026-11-23
 
 ### DW-1771: `SemaphoreSlim.Dispose()` in `ETagCacheService` can strand a caller already awaiting `WaitAsync` rather than faulting it.
 
@@ -8450,21 +8353,17 @@ archived: 2026-09-18
 
 ### DW-1861: Add negative candidate-verifier fixtures for assembly, file, and informational version mismatches.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25)"), 2026-08-27
-location: n/a
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Add negative candidate-verifier fixtures for assembly, file, and informational version mismatches. evidence: The standalone verifier checks all three binary metadata dimensions, but its negative fixture fails earlier on a nuspec mismatch. Removing any binary comparison leaves the existing verifier tests green.
 status: done 2026-11-23
-resolution: independent assembly, file, and informational version failures exercised on the second target assembly in `spec-five-release-package-verification-fixes.md`
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1862: Pin the exact expected primary-assembly paths and copy count in candidate packages.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25)"), 2026-08-27
-location: eng/verify-candidate-packages.cs
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Pin the exact expected primary-assembly paths and copy count in candidate packages. evidence: `eng/verify-candidate-packages.cs` requires at least one primary assembly per package and rejects duplicate paths, but it does not require the expected multitarget path set or the currently asserted total of ten copies. A package can silently lose a target-framework assembly while verification passes.
 status: done 2026-11-23
-resolution: exact primary assembly paths enforced for all eight candidate packages in `spec-five-release-package-verification-fixes.md`
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1863: Reconcile projection-grid header styling with the Fluent UI rc.5 rendered markup.
 
@@ -8522,12 +8421,10 @@ archived: 2026-09-18
 
 ### DW-1870: Validate symbol-package metadata rather than checking only expected filenames.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 5)"), 2026-08-27
-location: n/a
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Validate symbol-package metadata rather than checking only expected filenames. evidence: The release-prepublish path verifies binary metadata in `.nupkg` files but treats the expected `.snupkg` filename as sufficient. It does not inspect the symbol package nuspec or its expected symbol/source entry shape, so stale or mismatched symbol bytes can reach later sealing. Owned by the release-compatibility work declared `shared`, not by Story 9.7.
 status: done 2026-11-23
-resolution: symbol identity, archive layout, and portable PDB checksums verified before sealing in `spec-five-release-package-verification-fixes.md`
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 5)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1871: Refresh the bootstrap-retirement entry to describe the thirteen-entry authorized path set.
 
@@ -8539,12 +8436,10 @@ status: open
 
 ### DW-1872: Emit the commit-scope report in a machine-readable form for the calling skill.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 6)"), 2026-08-27
-location: step-04-review.md
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Emit the commit-scope report in a machine-readable form for the calling skill. evidence: `format_commit_scope_evidence` produces free-form English that `step-04-review.md` must pattern-match to assert classifications, and `json` is imported solely for control escaping. A `--json` or `--report <path>` emission of `CommitScopeEvidence` would let the review workflow assert on `classification` and path labels directly, and would remove the current stdout-notice / stderr-failure interleaving as a parsing concern.
 status: done 2026-11-23
-resolution: Strict mode emits JSON evidence, path labels and failures with the --json option. See `spec-strict-merge-scope-evidence.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 6)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1873: Gate story completion on the mechanical commit-scope report by CI machinery, not workflow convention.
 
@@ -8562,49 +8457,38 @@ archived: 2026-09-18
 
 ### DW-1875: Decide whether an unresolved merge-conflict path should be a hard validation failure.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 6)"), 2026-08-27
-location: n/a
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Decide whether an unresolved merge-conflict path should be a hard validation failure. evidence: `collect_workspace_evidence` collects unmerged paths into `unresolved` and `collect_reconciled_changed_files` folds them into the changed set, but nothing fails on them, so a run performed mid-merge-conflict exits 0 whenever the conflicted paths happen to be listed in the File List. The evidence then describes a tree that is not in a reviewable state. Human decision 2026-08-25: fix the duplicate reporting now and treat failing closed on conflict as a separate policy decision rather than a review patch, because it is a behavior change with no failing test today and would red-flag anyone running the report mid-rebase.
 status: done 2026-11-23
-resolution: Strict review fails on unresolved Git index entries and reports their paths. See `spec-strict-merge-scope-evidence.md`.
-decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1875, update affected contracts and consumers, and add focused regression evidence.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 6)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1876: Reject duplicate JSON keys in the release compatibility suppression ledger.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 7)"), 2026-08-27
-location: eng/release_compatibility.py
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Reject duplicate JSON keys in the release compatibility suppression ledger. evidence: `eng/release_compatibility.py` loads the policy with the default JSON decoder, so a duplicate top-level or row key silently keeps the last value and can replace a reviewed compatibility-policy field without a validation error. This belongs to the release-compatibility work declared `shared`, not Story 9.7.
 status: done 2026-11-23
-resolution: duplicate JSON keys refused in the suppression ledger and its rows in `spec-five-release-package-verification-fixes.md`
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 7)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1877: Restore exact package-and-symbol inventory validation after shared CI packing.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 7)"), 2026-08-27
-location: eng/pack_release_packages.py
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Restore exact package-and-symbol inventory validation after shared CI packing. evidence: The removed `eng/pack_release_packages.py` validation asserted the complete expected `.nupkg` and required `.snupkg` inventory, while `scripts/pack-release-packages.py` now returns after `dotnet pack` without an equivalent postcondition. A successful pack can therefore omit a required symbol package without failing that shared CI path. This belongs to the release-compatibility work declared `shared`, not Story 9.7.
 status: done 2026-11-23
-resolution: shared packer requires the complete root-level package and symbol inventory in `spec-five-release-package-verification-fixes.md`
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 7)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1878: Collapse the repeated document scans and the padded section bodies in story parsing.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
-location: eng/validate-story-artifacts.py:1086
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Collapse the repeated document scans and the padded section bodies in story parsing. evidence: `parse_story_metadata` runs the semantic-line scanner four times -- `extract_sections`, `extract_section_headings`, `extract_checked_tasks`, and `scan_semantic_lines` for structural failures -- each discarding what the previous one computed, and `extract_sections` pads bodies to preserve source offsets, so two `## File List` headings 300 lines apart produce a 607-line body. `eng/validate-story-artifacts.py:1086`
 status: done 2026-11-23
-resolution: Story metadata indexes semantic lines once and stores disposition source lines directly. Merging repeated sections no longer pads their bodies. See spec-story-markdown-task-evidence.md.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1879: Stop building every H1 for a caller that reads only the first.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
-location: eng/validate-story-artifacts.py:769
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Stop building every H1 for a caller that reads only the first. evidence: `markdown_h1_headings` materializes the full H1 list while `extract_story_id` breaks unconditionally after the first element. `eng/validate-story-artifacts.py:769`
 status: done 2026-11-23
-resolution: Story identity uses only the first structural H1. A regression covers an initial heading with no story identity. See spec-story-markdown-task-evidence.md.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1880: Derive the bootstrap story path inside the immutable path set from its constant.
 
@@ -8615,86 +8499,66 @@ archived: 2026-09-18
 
 ### DW-1881: Remove the dead second guard in checked-task collection.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
-location: eng/validate-story-artifacts.py:2111
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Remove the dead second guard in checked-task collection. evidence: `excluded_subsection_level is None` at the task extractor is always true because the preceding branch already continued; it reads as a second guard but is not one. `eng/validate-story-artifacts.py:2111`
 status: done 2026-11-23
-resolution: Checked-task collection applies the review exclusion once before deciding whether the item belongs to the active task section. See spec-story-markdown-task-evidence.md.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1882: Name the report-delimiter rule at its enforcement point.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
-location: eng/validate-story-artifacts.py:1857
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Name the report-delimiter rule at its enforcement point. evidence: `contains_terminal_control` also returns true for `|`, the report field delimiter, which is neither a terminal control nor covered by its docstring, so the delimiter-escaping contract is undocumented where it is enforced. `eng/validate-story-artifacts.py:1857`
 status: done 2026-11-23
-resolution: Named and documented the shared pipe and control-character check used for paths and report values. See spec-story-scope-evidence-reliability.md.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1883: Order the report and its failures deterministically under CI buffering.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
-location: eng/validate-story-artifacts.py:458
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Order the report and its failures deterministically under CI buffering. evidence: `main` writes notices to stdout and failures to stderr with no flush between them; when stdout is piped in CI it is block-buffered while stderr is not, so failures can appear before the evidence report they reference. `eng/validate-story-artifacts.py:458`
 status: done 2026-11-23
-resolution: The validator flushes its evidence before writing failures. A combined-stream CLI test verifies their order. See spec-story-scope-evidence-reliability.md.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1884: Return the most specific classification reason when entries overlap.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
-location: eng/validate-story-artifacts.py:1869
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Return the most specific classification reason when entries overlap. evidence: `classified_path_reason` returns an arbitrary dict-order reason when two classified entries overlap (`a` and `a/b`) instead of the most specific match. `eng/validate-story-artifacts.py:1869`
 status: done 2026-11-23
-resolution: Workspace reports use the exact path or closest matching directory, independent of declaration order. See spec-story-scope-evidence-reliability.md.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1885: Detect a baseline ref that moves during evidence collection.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
-location: eng/validate-story-artifacts.py:1619
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Detect a baseline ref that moves during evidence collection. evidence: Candidate ref movement is re-checked after collection, but a baseline given as a branch or tag that moves mid-run silently changes the commit range. `eng/validate-story-artifacts.py:1619`
 status: done 2026-11-23
-resolution: Strict validation re-resolves both refs after collecting evidence and reports their original and current commits if they move. See spec-story-scope-evidence-reliability.md.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1886: Decide whether documented-blocker prose inside an example should still exempt a task.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
-location: eng/validate-story-artifacts.py:638
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Decide whether documented-blocker prose inside an example should still exempt a task. evidence: `extract_sections` builds bodies from the semantic-line scanner, so fenced and indented example content is dropped from `evidence_text`; a story whose only `blocker` mention sits inside such a block loses that exemption, and no test observes the old or new behavior. `eng/validate-story-artifacts.py:638`
 status: done 2026-11-23
-resolution: The operator reference and regressions distinguish blocker evidence in ordinary prose from fenced and indented examples. See spec-story-markdown-task-evidence.md.
-decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1886, update affected contracts and consumers, and add focused regression evidence.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1887: Report an unsupported git version as a tooling prerequisite.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
-location: eng/validate-story-artifacts.py:1276
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Report an unsupported git version as a tooling prerequisite. evidence: `canonical_commit` passes `--end-of-options` unconditionally; on git < 2.24 this surfaces as an opaque "git failure while resolving baseline ref" rather than a prerequisite message. `eng/validate-story-artifacts.py:1276`
 status: done 2026-11-23
-resolution: Revision lookup checks for Git versions older than 2.30, the first release with rev-parse --end-of-options. See `spec-strict-merge-scope-evidence.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1888: Reconcile merge-commit content that belongs to neither parent.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
-location: Directory.Packages.props
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Reconcile merge-commit content that belongs to neither parent. evidence: Merge commits are appended to `merges` and skipped before path collection, so conflict resolutions and evil merges never enter classification or File List reconciliation. Both merges in Story 9.7's own range are clean, so nothing is currently mis-attributed, but 9 of the last 60 merges in this repository carry combined-diff content touching `Directory.Packages.props`, `CiGovernanceTests.cs`, `sprint-status.yaml`, and release test files. The fix must read the combined diff (`git diff-tree --cc`), which is empty for a clean merge and yields only neither-parent content; `git diff-tree -m` is the wrong tool because it diffs against each parent and would flood classification with every path in the merged branch. `eng/validate-story-artifacts.py:1506`
 status: done 2026-11-23
-resolution: Combined-diff paths on merge rows participate in classification and File List reconciliation. See `spec-strict-merge-scope-evidence.md`.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1889: Decide what a disposition declared on a merge SHA should mean.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 9)"), 2026-08-27
-location: eng/validate-story-artifacts.py:1506
-source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-reason: summary: Decide what a disposition declared on a merge SHA should mean. evidence: A `shared` or `process` declaration whose SHA is a merge is accepted by the parser, passes the in-range staleness check, and is rendered on the merge row as `disposition=...`, but merges are never path-reconciled, so the declaration changes nothing. It reads as an effective exception while being inert. Either reject a disposition on a merge, or give it meaning once merge reconciliation exists -- the two decisions are coupled, so this waits on the merge-reconciliation entry above. `eng/validate-story-artifacts.py:1506`
 status: done 2026-11-23
-resolution: Shared and process declarations classify nonmatching merge resolutions. A declaration on a pathless merge fails validation. See `spec-strict-merge-scope-evidence.md`.
-decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1889, update affected contracts and consumers, and add focused regression evidence.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 9)"), 2026-08-27
+source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+archived: 2026-11-23
 
 ### DW-1890: Retire ledger entries that later loops resolved.
 
@@ -8726,11 +8590,9 @@ status: open
 
 ### DW-1894: The permissive direction of `is_accepted_extra_reason` (`eng/validate-story-artifacts.py:2040`) is unpinned: forcing it to `return False` leaves all 175 tests green, so no test exercises a listed path exempted by a reason containing `unrelated`, `pre-existing`, `exception` or `blocker`. Only the strict direction is covered. Pre-existing.
 
-origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-26)"), 2026-08-27
-location: eng/validate-story-artifacts.py:2040
-reason: The permissive direction of `is_accepted_extra_reason` (`eng/validate-story-artifacts.py:2040`) is unpinned: forcing it to `return False` leaves all 175 tests green, so no test exercises a listed path exempted by a reason containing `unrelated`, `pre-existing`, `exception` or `blocker`. Only the strict direction is covered. Pre-existing.
 status: done 2026-11-23
-resolution: A CLI fixture accepts unchanged File List entries with each of the four reasons identified in this item. See spec-story-scope-evidence-reliability.md.
+origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-26)"), 2026-08-27
+archived: 2026-11-23
 
 ### DW-1895: Two submodule gitlinks claimed story-owned by Story 9.7 (`references/Hexalith.EventStore` `516f2489`->`64a21632`, `references/Hexalith.Tenants` `536e5c33`->`865a80ac`) are compiled by no CI lane: their only consumers (`src/Hexalith.FrontComposer.AppHost`, `src/Hexalith.FrontComposer.UI`) are among the 25 projects marked `Build Solution="Release|*" Project="false"` in `Hexalith.FrontComposer.slnx`, while every workflow builds Release. Follow-up: add a Debug build of the Debug-only projects to a lane, which requires initializing `references/Hexalith.EventStore` and `references/Hexalith.Tenants` non-recursively (CI currently initializes only `references/Hexalith.Builds`). Deferred 2026-08-26 (review loop 10): the blast radius is a local dev-build break, and the fix needs CI submodule-init infrastructure outside a story about story-ID evidence.
 
@@ -9071,31 +8933,28 @@ reason: AssignLiterals deliberately returns conditional documents unchanged, but
 status: open
 
 ### DW-1937: The fail-closed render-tree check accepts nonliteral sequence expressions that contain no increment or decrement.
+
+status: done 2026-11-22
 origin: spec-deferred 2745e2ffd46d
-location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:182
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
-reason: The text gate and syntax walk detect ++/-- nodes only, so seq, seq + 1, or GetSequence() can pass. The deferred bundle was limited to comment trivia around increment expressions, and this broader gap predates it.
-status: done 2026-11-22
-resolution: The emitter checks every discovered sequence expression for an integer literal. See `spec-five-render-tree-sequence-deferrals.md`.
+archived: 2026-11-23
 
 ### DW-1938: The governed render-tree method catalog omits AddComponentParameter.
+
+status: done 2026-11-22
 origin: spec-deferred f3db81064974
-location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:52
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
-reason: The pinned framework exposes RenderTreeBuilder.AddComponentParameter(int sequence, string name, object? value), while SequenceMethodNames and the masking helper omit it. No SourceTools emitter currently calls it, so this is a pre-existing future-coverage gap.
-status: done 2026-11-22
-resolution: The shared render-tree catalog includes AddComponentParameter. See `spec-five-render-tree-sequence-deferrals.md`.
+archived: 2026-11-23
 
 ### DW-1939: GeneratedRenderTreeText can mask the numeric prefix of a runtime arithmetic expression.
+
+status: done 2026-11-22
 origin: spec-deferred 19719ee54ab0
-location: tests/Hexalith.FrontComposer.SourceTools.Tests/GeneratedRenderTreeText.cs:25
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
-reason: SequenceArgumentPattern has no delimiter after its digit run, so AddContent(12 + seq, ...) becomes AddContent(# + seq, ...). This pre-existing test-helper behavior is outside the four ledger boundaries.
-status: done 2026-11-22
-resolution: The snapshot helper masks parsed integer literals and preserves runtime expressions. See `spec-five-render-tree-sequence-deferrals.md`.
+archived: 2026-11-23
 
 ### DW-1940: Literal-sequence test helpers use a weaker postfix-increment regex than the production Roslyn check.
 origin: spec-deferred 9738acb88aa5
@@ -9113,31 +8972,28 @@ reason: Rewritten output can retain unrelated i++ loops, which now pass the chea
 status: open
 
 ### DW-1942: Named render-tree sequence arguments can evade the positional first-argument scan.
+
+status: done 2026-11-22
 origin: spec-deferred 12d8822fcb18
-location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:199
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
-reason: C# permits named arguments to be reordered, while FindRuntimeSequenceArgument inspects syntax argument zero rather than the parameter named sequence. Current emitters use positional calls, making this a pre-existing low-risk gap.
-status: done 2026-11-22
-resolution: The scanner resolves the explicitly named sequence before considering positional arguments. See `spec-five-render-tree-sequence-deferrals.md`.
+archived: 2026-11-23
 
 ### DW-1943: GeneratedLogMethodEmitter does not validate the emitted LogLevel member name.
+
+status: done 2026-11-22
 origin: spec-deferred 0f4a4c789ccd
-location: src/Hexalith.FrontComposer.SourceTools/Emitters/GeneratedLogMethodEmitter.cs:111
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
-reason: level is appended directly as LogLevel.<value>, so a malformed internal caller value would emit invalid semantic C# after other validation. All current call sites use controlled literals; this was not part of DW-688.
-status: done 2026-11-22
-resolution: Validate generated logging levels against the defined LogLevel member names before emission.
+archived: 2026-11-23
 
 ### DW-1944: Generated logging parameter names and type strings remain unvalidated before output mutation.
+
+status: done 2026-11-22
 origin: spec-deferred 109b1834a076
-location: src/Hexalith.FrontComposer.SourceTools/Emitters/GeneratedLogMethodEmitter.cs:126
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
-reason: Keywords, duplicate names, logger/exception collisions, or malformed type strings can still produce uncompilable generated members. Current call sites are internal controlled literals, and this broader pre-existing input contract was not part of DW-688.
-status: done 2026-11-22
-resolution: Validate logging parameter names, collisions, and type syntax before writing any generated output.
+archived: 2026-11-23
 
 ### DW-1945: Concurrent metadata hardening does not cover every compiler-unreferenceable property type.
 origin: spec-deferred f048578199c5
@@ -9148,76 +9004,68 @@ reason: The separately landed metadata fixture covers invalid identifiers/namesp
 status: open
 
 ### DW-1946: Concurrent SourceTypeNameFormatter changes retain top-level array nullability despite the documented non-nullable assignment-type contract.
+
+status: done 2026-11-22
 origin: spec-deferred 50926467b839
-location: src/Hexalith.FrontComposer.SourceTools/Parsing/SourceTypeNameFormatter.cs:35
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
-reason: Format passes includeNullableAnnotation:false, but the array branch ignores the flag and records the outer array annotation. DomainModel documents SourceTypeName as non-nullable; the formatter work was committed independently during this run.
-status: done 2026-11-22
-resolution: Omit top-level array nullability while preserving nested nullable annotations and array ranks.
+archived: 2026-11-23
 
 ### DW-1947: Concurrent command-renderer changes suppress obsolete warnings across the entire generated file.
+
+status: done 2026-11-23
 origin: spec-deferred e28ac3a5dba4
-location: src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs:30
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
-reason: The new CS0612/CS0618 pragma begins after #nullable and restores at end of file, so unrelated obsolete API use in generated code can be hidden. This separately committed parser/renderer work is outside the four-entry bundle.
-status: done 2026-11-23
-resolution: Scope CS0612 and CS0618 suppression to typed prefill in the generated command renderer.
+archived: 2026-11-23
 
 ### DW-1948: Generated OnStateChanged handlers have no disposed guard, so a state notification racing teardown can still reach InvokeAsync(StateHasChanged).
+
+status: done 2026-11-23
 origin: spec-deferred 5039cc96e10a
-location: src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:1060
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
-reason: Both the grid and non-grid OnStateChanged bodies call InvokeAsync unconditionally, and Dispose unsubscribes only after claiming the guard. The window predates this bundle: the unsubscribe order is unchanged and the discarded Task makes any ObjectDisposedException unobserved. Only OnNewItemIndicatorsChanged carries a Volatile.Read guard.
-status: done 2026-11-23
-resolution: Guard grid and non-grid state change callbacks before scheduling and inside the renderer callback.
+archived: 2026-11-23
 
 ### DW-1949: The fail-closed render-tree gate's decrement arm is exercised by no test.
+
+status: done 2026-11-23
 origin: spec-deferred 2c74f33ff97a
-location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:188
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
-reason: No SourceTools test feeds a decrement sequence argument through AssignLiteralsOrFail, so the '--' half of both the text gate and the Post/PreDecrementExpression walk is unpinned. This is pre-existing: the retired HasIncrementInFirstArgumentPosition prefilter also scanned '--' and was equally uncovered. One theory row on the existing AssignLiteralsOrFail tests would close it.
-status: done 2026-11-23
-resolution: Verify prefix and postfix decrement sequence arguments both fail generation.
+archived: 2026-11-23
 
 ### DW-1950: Concurrent soft-fail arm assertions hardcode a bare LF and fail on a CRLF test host.
+
+status: done 2026-11-22
 origin: spec-deferred 81de6011a523
-location: tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CommandRendererStaticAssignmentTests.cs:178
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
-reason: CommandRendererStaticAssignmentTests compares SliceCase(...).Trim() against a literal 'case "X":\n return false;', while CommandRendererEmitter builds that arm with StringBuilder.AppendLine (Environment.NewLine) and SliceCase does no normalization. Green on Linux, red on Windows. The assertions belong to the independently committed prefill refactor.
-status: done 2026-11-22
-resolution: Normalize generated fallback arm line endings before exact assertions and verify LF and CRLF.
+archived: 2026-11-23
 
 ### DW-1951: Concurrent top-level nullable-annotation suppression in SourceTypeNameFormatter is pinned by no test.
+
+status: done 2026-11-22
 origin: spec-deferred ee19f2780b9a
-location: src/Hexalith.FrontComposer.SourceTools/Parsing/SourceTypeNameFormatter.cs:35
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
-reason: Format now passes includeNullableAnnotation:false, but every fixture asserting an annotated SourceTypeName is an array or inner-generic shape that routes around the flag, and no fixture declares a top-level annotated reference type. Restoring the previous default leaves the whole suite green. A 'public string? Note' property asserting SourceTypeName == "global::System.String" would settle it. Committed independently during this run.
-status: done 2026-11-22
-resolution: Pin the unannotated assignment type for a nullable scalar in the parser and compiled renderer.
+archived: 2026-11-23
 
 ### DW-1952: The concurrent HFC1016 documentation shows one of three emitted message variants.
+
+status: done 2026-11-23
 origin: spec-deferred ee258b6ac725
-location: docs/diagnostics/HFC1016.md
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
-reason: CommandParser emits "has no public setter", "is declared with an 'init' accessor", and "has a non-public setter", but the corrected example documents only the first, and the page does not describe where the diagnostic points for a member that comes from metadata rather than source. The doc edit belongs to the independently committed prefill refactor.
-status: done 2026-11-23
-resolution: Document all three HFC1016 messages and where inherited metadata diagnostics appear.
+archived: 2026-11-23
 
 ### DW-1953: The direct literal-sequence test gate recognizes only identifier postfix-increment arguments and can miss other runtime expressions.
+
+status: done 2026-11-22
 origin: spec-deferred 44c1ff2eca18
-location: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RenderTreeSequenceRewriterTests.cs:505
 source_spec: `spec-source-generator-regression-coverage.md`
 severity: medium
-reason: RenderTreeSequenceRewriterTests.RuntimeSequenceArgumentPattern matches an identifier followed by ++. Bare identifiers, prefix increments, decrements, arithmetic, and method calls can therefore pass this test-only gate. This limitation predates the bundle; production emission still runs AssignLiteralsOrFail, and every current badge/expand output passed the gate and Debug/Release parsing.
-status: done 2026-11-22
-resolution: The direct generated-output guard checks parsed sequence arguments in Debug and Release. See `spec-five-render-tree-sequence-deferrals.md`.
+archived: 2026-11-23
 
 ### DW-1954: Canonical fingerprint golden coverage does not independently pin the public schema test-vector identifier.
 origin: spec-deferred bd5939f7f5f0
@@ -9576,13 +9424,12 @@ status: open
   evidence: eng/pact_provider_apphost_smoke.py:1531-1545. Dead surface implying a negotiate-stage negative control that is not executed; the executed control is the WebSocket-upgrade one. Settled by removing it or wiring it to the control the handoff document describes.
 
 ### DW-1958: epics.md story-status prose is stale repo-wide for Epic 11 and the retro trail still lists the analyzer-seal finding
+
+status: done 2026-09-22
 origin: code review of spec-11-26-analyzer-identifier-inventory-reconciliation.md (2026-09-15)
-location: _bmad-output/planning-artifacts/epics.md:2392
 source_spec: `_bmad-output/implementation-artifacts/spec-11-26-analyzer-identifier-inventory-reconciliation.md`
 severity: low
-reason: summary: `epics.md` carries `**Status:** backlog.` for Stories 11.20-11.26 while `sprint-status.yaml` records 11.20-11.25 as `done`, and `epic-11-retro-2026-09-10.md` still lists "analyzer identifier-seal drift" among the findings behind its Rejected acceptance verdict. evidence: a status comparison across Epic 11 shows `epics.md` says `backlog` for every story from 11.20 onward while sprint-status has 11.20-11.25 `done`; stories 11.0-11.19 carry no Status line at all. This is pre-existing repo-wide planning-snapshot staleness that Story 11.26 neither introduced nor worsened - 11.26 is consistent with its five completed predecessors - so `sprint-status.yaml` is the de facto single source of truth. Owned by E11R-AI-8 / Story 11.32 (Epic 11 artifact integrity enforcement), which exists to make exactly this class of metadata contradiction fail closed.
-status: done 2026-09-22
-resolution: Story 11.32 synchronized the maintained Epic 11 planning statuses with the sprint ledger while preserving the rejected 2026-09-10 retrospective as immutable historical evidence.
+archived: 2026-11-23
 
 ### DW-1959: The Story 11.7 route-contract acceptance proof runs in no automated lane
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)
@@ -9673,13 +9520,12 @@ reason: summary: Full-page scanning exposes shell-level nested-interactive findi
 status: open
 
 ### DW-1979: Reconcile Story 11.27 tracking to its owner-approved state
+
+status: done 2026-09-18
 origin: code review of spec-update-latest-submodules-and-package-versions.md (2026-09-18)
-location: _bmad-output/implementation-artifacts/sprint-status.yaml
 source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
 severity: medium
-reason: summary: The dependency-update baseline includes Story 11.27 changing from done/review to in-progress through externally advanced root commit f20a1fc73c6c9be184b6a10949b54799e978e3cb. evidence: The dependency-update worktree did not author that tracking change and could not overwrite concurrent user history; the Story 11.27 owner must reconcile it.
-status: done 2026-09-18
-resolution: Story 11.27 completed its one-shot implementation and review workflow; its spec is done and sprint status is review.
+archived: 2026-11-23
 
 ### DW-1968: Run the generated-command route and focus proof in a compatible automated CI lane
 origin: Blind Hunter review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-17)
@@ -9698,13 +9544,12 @@ reason: summary: The initial implementation note says route generation and appli
 status: open
 
 ### DW-1970: Reconcile the unchecked completion-patch checklist with its delivered state
+
+status: done 2026-09-22
 origin: Blind Hunter review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-17)
-location: _bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: low
-reason: summary: The final Blind Hunter review confirmed the implementation and verification completed the listed patches while their historical checklist remains unchecked. evidence: The review workflow routes fixes to the spec under review to deferred work.
-status: done 2026-09-22
-resolution: Story 11.32 checked the delivered Story 11.27 review patches against their recorded completion and verification evidence; no new delivery was claimed.
+archived: 2026-11-23
 
 ## Deferred from: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18)
 
@@ -9754,13 +9599,12 @@ reason: summary: Generated full-page command routes now emit `FcPageHeader` with
 status: open
 
 ### DW-1981: Field DisplayName still treats whitespace as an explicit label
+
+status: done 2026-11-23
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18, chunk 1)
-location: src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFormTransform.cs:53
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: low
-reason: summary: Command-level `[Display(Name)]` now uses `IsNullOrWhiteSpace` plus `Trim()`, but field mapping still uses `IsNullOrEmpty` for `hasExplicitDisplay` and `ResolveLabel`. evidence: `CommandFormTransform.cs:53-54` and `:88-90`; `RazorModelTransform.cs:343-344` is the same field path. Pre-existing; this story did not change field labels. Settled by applying the same trim/fallback to property display names, or by leaving field labels on the original empty-string rule.
-status: done 2026-11-23
-resolution: Trim nonblank form-field and projection-column display names and fall back for blank values.
+archived: 2026-11-23
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
   summary: Add a canonical File List to Story 11.27.
