@@ -1,5 +1,17 @@
 # Dependency governance source projection
 
+## 2026-11-23 EventStore compatibility in umbrella workspaces
+
+FrontComposer's standalone checkout selects EventStore `5.4.0`. When an
+enclosing workspace supplies the Builds catalog, FrontComposer also supports
+its `5.5.1` default. Restore and build compare the effective version with
+the catalog, including when a parent forwards the version on a project edge.
+The guard rejects an override that differs from that selection.
+
+This commit activates policy `13566d2f8a17c3b9979557ab025c881f3bc48bd6`.
+The consumer configuration digest is
+`75376039b93700fb9f8d986ec8e47744e80a246016c81e87c2e189c528329071`.
+
 ## 2026-11-23 Parties Commons 3.0.2 source selector
 
 FrontComposer now selects Parties `34fe48dbea826019dcbc42396f797ad6d479ea00`.
