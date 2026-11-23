@@ -1184,6 +1184,18 @@ class StoryArtifactValidatorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             baseline = init_repo(root)
+            commit_files(root, "fixture tokens", {
+                ".cs": "suffix literal",
+                "Hexalith.FrontComposer.Cli.Tests": "assembly name",
+                "Tracked.cs": "source",
+            })
+            self.assertEqual(
+                VALIDATOR_MODULE.extract_path_mentions(
+                    "Parse `.cs` and `Tracked.cs` for `Hexalith.FrontComposer.Cli.Tests`.",
+                    root=root,
+                ),
+                {"Tracked.cs"},
+            )
             write(
                 root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
                 story_text(
@@ -1428,6 +1440,7 @@ class StoryArtifactValidatorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             baseline = init_repo(root)
+            commit_files(root, "fixture dotfile", {".gitmodules": ""})
             write(
                 root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
                 story_text(
@@ -1457,6 +1470,16 @@ class StoryArtifactValidatorTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("Story artifact validation passed.", result.stdout)
+
+            path = root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
+            path.write_text(
+                path.read_text(encoding="utf-8").replace("[Review][Defer]", "[Review][Patch]"),
+                encoding="utf-8",
+            )
+            metadata = VALIDATOR_MODULE.parse_story_metadata(path)
+            failures = VALIDATOR_MODULE.check_checked_tasks(root, path, ["README.md"], metadata)
+            self.assertIn("missing evidence path: .gitmodules", "\n".join(failures))
+
 
     def test_checked_task_preserve_clause_does_not_hide_action_governed_path(self) -> None:
         # A preserve/unchanged clause must not exempt a path that a positive action verb
@@ -3866,9 +3889,8 @@ class PathMentionRejectionTests(unittest.TestCase):
     """Pin each non-output-path rejection class directly.
 
     End-to-end story fixtures cannot isolate these: a bare token is rejected by the
-    tree-absent-basename rule before the suffix-literal or invocation-token rule is
-    reached, so deleting either rule leaves an end-to-end suite green. These unit
-    assertions make every rule independently load-bearing.
+    tree-absent-basename rule before the extension filter runs. Qualified tokens
+    and tracked basename fixtures exercise the other rules independently.
     """
 
     def setUp(self) -> None:
@@ -4189,6 +4211,111 @@ class DocumentParsingHardeningTests(unittest.TestCase):
                 with self.subTest(task=task):
                     checked = replace(metadata, checked_tasks=[(4, task)])
                     self.assertEqual(VALIDATOR_MODULE.check_checked_tasks(root, story, [], checked), [])
+
+    def test_dirty_basename_shorthand_needs_a_declared_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            story = root / "story.md"
+            write(story, "## Tasks\n- [x] Add `owned.txt`.")
+            metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+            dirty = ["notes/unrelated/owned.txt"]
+            for changed in ([], dirty):
+                with self.subTest(changed=changed):
+                    failures = VALIDATOR_MODULE.check_checked_tasks(root, story, changed, metadata)
+                    self.assertIn("missing evidence path: owned.txt", "\n".join(failures))
+
+            listed = replace(metadata, file_list={"src/owned.txt": ""})
+            self.assertEqual(VALIDATOR_MODULE.check_checked_tasks(root, story, dirty, listed), [])
+            self.assertEqual(VALIDATOR_MODULE.check_checked_tasks(root, story, ["owned.txt"], metadata), [])
+
+    def test_checked_gitlink_claim_requires_pointer_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            revision = init_repo(root)
+            story = root / "story.md"
+            for path in ("references/Library", "Vendor"):
+                with self.subTest(path=path):
+                    (root / path).mkdir(parents=True)
+                    indexed = git(root, "update-index", "--add", "--cacheinfo", f"160000,{revision},{path}")
+                    self.assertEqual(indexed.returncode, 0, indexed.stderr)
+            (root / "src/Ordinary").mkdir(parents=True)
+            write(story, "## Tasks\n- [x] Update `references/Library` and `Vendor`.\n"
+                  "- [x] Parse `src/Ordinary` for source files.")
+            metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+            failures = VALIDATOR_MODULE.check_checked_tasks(root, story, ["README.md"], metadata)
+            self.assertEqual(len(failures), 1)
+            self.assertIn("missing evidence path: Vendor, references/Library", failures[0])
+            self.assertEqual(VALIDATOR_MODULE.check_checked_tasks(
+                root, story, ["references/Library", "Vendor"], metadata,
+            ), [])
+
+            colliding = replace(metadata, file_list={"elsewhere/Vendor": ""})
+            failures = VALIDATOR_MODULE.check_checked_tasks(root, story, ["references/Library"], colliding)
+            self.assertIn("missing evidence path: Vendor", "\n".join(failures))
+            self.assertEqual(VALIDATOR_MODULE.check_checked_tasks(
+                root, story, ["references/Library"], metadata, {"Vendor": "accepted submodule drift"},
+            ), [])
+
+    def test_only_visible_html_comment_surroundings_supply_general_evidence(self) -> None:
+        cases = [
+            ("<!-- Blocker example -->", False),
+            ("<!-- first --> <!-- second -->", False),
+            ("- <!-- Tests passed -->", False),
+            ("1. <!-- Hidden result -->", False),
+            ("<!-- template -->\n    Blocker example", False),
+            ("<!-- notes\n```example\n-->\nTests passed.", True),
+            ("<!-- Hidden\n## Blockers\n- `report.md` - template only\n-->", False),
+            ("<!-- Hidden\nBlocker example\n-->", False),
+            ("<!-- first --> test passed <!-- second -->", True),
+            ("<!-- hidden\n-->test passed", True),
+            ("The log contains `<!--`. Tests passed.", True),
+            ("<!-- hidden\n## Test Evidence\nBlocker example\n-->", False),
+        ]
+        for body, visible in cases:
+            with self.subTest(body=body), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                story = root / "story.md"
+                write(story, f"## Tasks\n- [x] Run validation.\n## Test Evidence\n{body}\n")
+                metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+                failures = VALIDATOR_MODULE.check_checked_tasks(root, story, [], metadata)
+                self.assertEqual(metadata.metadata_failures, [])
+                self.assertEqual(not failures, visible, failures)
+
+    def test_task_comments_and_literal_multiline_delimiters(self) -> None:
+        cases = [
+            ("- [x] Run validation. <!-- blocker -->", "", False),
+            ("- [x] Run validation. Blocked by SDK setup. <!-- note -->", "", True),
+            ("- [x] Run validation.", "## Notes\n`example\n<!--\nend`\n## Test Evidence\nTests passed.", True),
+            ("- [x] Run validation.", "## Notes\n`unmatched\n\n<!-- template\n## Test Evidence\nresult\n-->", False),
+        ]
+        for task, body, has_evidence in cases:
+            with self.subTest(task=task, body=body), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                story = root / "story.md"
+                write(story, f"## Tasks\n{task}\n{body}")
+                metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+                self.assertEqual(metadata.metadata_failures, [])
+                failures = VALIDATOR_MODULE.check_checked_tasks(root, story, [], metadata)
+                self.assertEqual(not failures, has_evidence, failures)
+
+    def test_comment_tail_cannot_introduce_a_heading_or_file_list_row(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            story = root / "story.md"
+            write(story, "## Tasks\n- [x] Run validation.\n## Notes\n"
+                  "<!-- template -->## Test Evidence\nExample only.\n"
+                  "## File List\n<!-- template -->- `ghost.md`\n"
+                  "<!-- multiline\n-->- `also-ghost.md`\n")
+            metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+            self.assertEqual(metadata.file_list, {})
+            self.assertFalse(metadata.evidence_text.strip())
+            self.assertEqual(len(VALIDATOR_MODULE.check_checked_tasks(root, story, [], metadata)), 1)
+
+    def test_unclosed_html_comment_reports_its_source_line(self) -> None:
+        _, failures = VALIDATOR_MODULE.scan_semantic_lines(
+            "## Test Evidence\n<!-- template\n## Tasks\n- [x] Run validation."
+        )
+        self.assertEqual(failures, ["unterminated HTML comment opened at line 2"])
 
     def test_fenced_and_indented_blockers_do_not_supply_checked_task_evidence(self) -> None:
         message = "Blocker recorded by the reviewer."
@@ -4644,7 +4771,7 @@ class DocumentParsingHardeningTests(unittest.TestCase):
     def test_checked_task_failures_escape_author_controlled_text(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            story = root / "spec-9-7-escaping-fixture.md"
+            story = root / "spec-9-7-escaping\u2028fixture.md"
             write(story, "# Story 9.7: Escaping fixture\n")
             lacks_evidence = "Update the report\x1b[2J | pipe"
             deferred = (
@@ -4670,6 +4797,9 @@ class DocumentParsingHardeningTests(unittest.TestCase):
             rendered = "\n".join(failures)
             self.assertIn("checked task lacks evidence", rendered)
             self.assertIn("deferred review task cites nonexistent path", rendered)
+            self.assertIn(f"lacks evidence in {json.dumps(story.name)}:3:", rendered)
+            self.assertIn(f"nonexistent path in {json.dumps(story.name)}:4:", rendered)
+            self.assertNotIn("\u2028", rendered)
             self.assertIn(json.dumps(lacks_evidence), rendered)
             self.assertIn(json.dumps(deferred), rendered)
             self.assertNotIn("\x1b", rendered)
@@ -4815,7 +4945,7 @@ class ClassifiedUnrelatedTests(unittest.TestCase):
         """When git ls-files fails, a bare name present only in `changed` must not be usable."""
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            # No git repository → tracked_files returns None.
+            # No git repository → the index cannot confirm the path.
             usable = self.validator.usable_classified_paths(
                 root, {"src": "pre-existing"}, {"src"}
             )

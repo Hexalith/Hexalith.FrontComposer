@@ -2067,13 +2067,83 @@ def scan_semantic_lines(text: str) -> tuple[list[tuple[int, str]], list[str]]:
     return list(lines), list(failures)
 
 
+INLINE_TOKEN = re.compile(r"\\[\\<`]|`+|<!--")
+BACKTICK_RUN = re.compile(r"`+")
+BLOCK_MARKER = re.compile(r"^\s*(?:#{1,6}(?=\s|$)|[-+*~`]|\d{1,9}[.)])")
+
+
+def code_span_end(lines: list[str], row: int, start: int, delimiter: str) -> tuple[int, int]:
+    """Find the next equally long backtick run in the same Markdown paragraph."""
+    for index in range(row, len(lines)):
+        line = lines[index]
+        if index > row and (
+            not line.strip()
+            or match_structural_heading(line)
+            or LIST_ITEM.match(line)
+            or MARKDOWN_FENCE.match(line)
+        ):
+            break
+        for match in BACKTICK_RUN.finditer(line, start if row == index else 0):
+            if match.group() == delimiter:
+                return index, match.end()
+        if match_structural_heading(line):
+            break
+    return row, start
+
+
+def visible_markdown_line(
+    lines: list[str], row: int, comment_line: int, literal_end: tuple[int, int],
+) -> tuple[str, int, tuple[int, int]]:
+    """Read visible text while preserving literal comment delimiters in code spans."""
+    line = lines[row]
+    if row < literal_end[0]:
+        return line, comment_line, literal_end
+    pos = literal_end[1] if row == literal_end[0] else 0
+    pieces = [line[:pos]]
+    starts_in_comment = bool(comment_line)
+    had_comment = starts_in_comment
+    while pos < len(line):
+        if comment_line:
+            end = line.find("-->", pos)
+            if end < 0:
+                break
+            pos = end + 3
+            comment_line = 0
+            continue
+        token = INLINE_TOKEN.search(line, pos)
+        if not token:
+            pieces.append(line[pos:])
+            break
+        pieces.append(line[pos:token.start()])
+        pos = token.end()
+        if token.group() == "<!--":
+            comment_line = row + 1
+            had_comment = True
+        elif token.group().startswith("`"):
+            literal_end = code_span_end(lines, row, pos, token.group())
+            pos = literal_end[1] if literal_end[0] == row else len(line)
+            pieces.append(line[token.start():pos])
+        else:
+            pieces.append(token.group())
+    visible = "".join(pieces)
+    # A template bullet whose only content was a comment supplies no evidence.
+    if had_comment:
+        if LIST_ITEM.fullmatch(visible.rstrip()):
+            visible = ""
+        elif marker := BLOCK_MARKER.match(visible):
+            # A block marker exposed by removing a leading comment is literal prose.
+            # Escape it in the semantic Markdown so it cannot create a heading or row.
+            if starts_in_comment or not line.startswith(visible[:marker.end() + 1]):
+                visible = "\\" + visible.lstrip()
+    return visible, comment_line, literal_end
+
+
 def _scan_semantic_lines_uncached(
     text: str,
 ) -> tuple[list[tuple[int, str]], list[str]]:
     """Return source-numbered Markdown lines that can carry document semantics.
 
-    YAML frontmatter, fenced examples, and indented code blocks are author-controlled
-    data, not document structure. A fence closes only with the same marker, at least
+    HTML comments, YAML frontmatter, and code examples supply no document structure. A fence closes only with the same marker, at least
     the opening length, and whitespace after it; an info-like suffix inside a fence is
     content. An indented example opens only where Markdown opens one — four columns of
     indentation after a blank line, outside an open list item — so ordinary nested
@@ -2086,6 +2156,9 @@ def _scan_semantic_lines_uncached(
     fence_length = 0
     fence_opened_at = 0
     in_indented_code = False
+    has_comments = "<!--" in text
+    comment_line = 0
+    literal_end = (-1, 0)
     previous_blank = True
     list_content_indent = 0
     for line_number, line in enumerate(
@@ -2106,6 +2179,14 @@ def _scan_semantic_lines_uncached(
                     fence_length = 0
             previous_blank = blank
             continue
+        # Inside a comment even a fence opener is ordinary hidden text.
+        continued_comment = bool(comment_line)
+        if continued_comment:
+            line, comment_line, literal_end = visible_markdown_line(
+                document.lines, line_number - 1, comment_line, literal_end,
+            )
+            blank = not line.strip()
+            fence = MARKDOWN_FENCE.match(line)
         if blank:
             previous_blank = True
             semantic_lines.append((line_number, line))
@@ -2129,6 +2210,13 @@ def _scan_semantic_lines_uncached(
             fence_length = len(marker)
             fence_opened_at = line_number
             continue
+        if has_comments and not continued_comment and ("`" in line or "<!--" in line):
+            line, comment_line, literal_end = visible_markdown_line(
+                document.lines, line_number - 1, comment_line, literal_end,
+            )
+            if not line.strip():
+                previous_blank = True
+                continue
         if list_marker := LIST_ITEM.match(line):
             # CommonMark measures an indented example from the open list item's
             # content column, not from column zero. Tracking only "a list is open"
@@ -2147,6 +2235,8 @@ def _scan_semantic_lines_uncached(
             f"unterminated fenced code block opened at line {fence_opened_at}; "
             "every line after it is read as example content"
         )
+    if comment_line:
+        failures.append(f"unterminated HTML comment opened at line {comment_line}")
     return semantic_lines, failures
 
 
@@ -3609,8 +3699,9 @@ def check_checked_tasks(
     # usable_classified_paths.
     classified_unrelated = usable_classified_paths(root, unrelated or {}, changed)
     evidence_basenames = {
-        path.rsplit("/", 1)[-1] for path in (changed | listed | classified_unrelated)
+        path.rsplit("/", 1)[-1] for path in (listed | classified_unrelated)
     }
+    story_label = format_git_path(story.relative_to(root).as_posix())
     blocker_text = "\n".join(metadata.blockers.values()).lower()
     evidence_text = metadata.evidence_text.lower()
     for line_number, task in metadata.checked_tasks:
@@ -3633,7 +3724,7 @@ def check_checked_tasks(
             if nonexistent_paths:
                 failures.append(
                     "deferred review task cites nonexistent path in "
-                    f"{story.relative_to(root).as_posix()}:{line_number}: "
+                    f"{story_label}:{line_number}: "
                     f"{format_report_value(task)}"
                     "\n  - deferred path does not exist: "
                     + ", ".join(format_git_path(path) for path in nonexistent_paths)
@@ -3645,9 +3736,8 @@ def check_checked_tasks(
             if path not in changed
             and path not in listed
             and not path_is_classified_unrelated(path, classified_unrelated)
-            # A bare basename (no directory) is evidenced when a changed/listed path shares it,
-            # so "`checklist.md`" shorthand beside a full path is not flagged as brittle overreach.
-            and not ("/" not in path and path in evidence_basenames)
+            # Basename shorthand must resolve to a path the author explicitly accounted for.
+            and not ("/" not in path and path in evidence_basenames and not is_gitlink(root, path))
         )
         has_path_evidence = bool(task_paths) and not missing_paths
         has_general_evidence = bool(changed or metadata.file_list or metadata.evidence_text.strip())
@@ -3655,7 +3745,7 @@ def check_checked_tasks(
         if missing_paths or not (has_path_evidence or has_general_evidence or has_blocker):
             failures.append(
                 "checked task lacks evidence in "
-                f"{story.relative_to(root).as_posix()}:{line_number}: "
+                f"{story_label}:{line_number}: "
                 f"{format_report_value(task)}"
                 + (
                     "\n  - missing evidence path: "
@@ -3697,7 +3787,7 @@ def extract_path_mentions(text: str, *, root: Path | None = None) -> set[str]:
             continue
         if any(token in normalized for token in ("*", "?")):
             continue
-        if "/" in normalized:
+        if "/" in normalized or (root is not None and is_gitlink(root, normalized)):
             paths.add(normalized)
             continue
         if normalized.startswith("."):
@@ -3722,7 +3812,7 @@ def usable_classified_paths(root: Path, classified: dict[str, str], changed: set
     natural way (`references/Hexalith.Builds/`) must cover the same paths as without.
     """
     usable: set[str] = set()
-    tracked = tracked_files(root)
+    tracked = tracked_file_modes(root)
     for entry in classified:
         path = entry.strip().rstrip("/")
         if not path or path == ".":
@@ -3730,7 +3820,7 @@ def usable_classified_paths(root: Path, classified: dict[str, str], changed: set
         # Bare top-level names that cover nested paths are refused. Do not depend on
         # working-tree is_dir() alone: a deleted checkout of `src` while `src/...` remains
         # tracked must still refuse a bare `src` classification.
-        if "/" not in path:
+        if "/" not in path and not is_gitlink(root, path):
             covers_nested = tracked is not None and path not in tracked and any(
                 tracked_path.startswith(path + "/") for tracked_path in tracked
             )
@@ -3831,9 +3921,9 @@ def mention_is_not_an_output_path(
     if "..." in normalized or "…" in normalized:
         return True
     if root is not None:
-        # A directory names a scan scope, not a produced file.
+        # Git records the pointer itself as a versioned output for a submodule directory.
         if (root / normalized).is_dir():
-            return True
+            return not is_gitlink(root, normalized)
         # A bare basename that matches nothing in the tree is a hypothetical used to
         # describe a scenario ("the idiomatic `Foo.cs` + `Foo.Handlers.cs` split").
         # Qualified paths keep full strictness, so a fabricated `src/NewThing.cs` claim
@@ -3848,24 +3938,33 @@ def mention_is_not_an_output_path(
 
 
 @lru_cache(maxsize=1)
-def tracked_files(root: Path) -> frozenset[str] | None:
-    """Every tracked path, or None when the tree cannot be listed.
+def tracked_file_modes(root: Path) -> dict[str, str] | None:
+    """Index modes by exact path, or None when the index cannot be listed.
 
     None is distinct from "no files": a missing git binary, a non-repository root, or a
     failed invocation must not read as "nothing is tracked", because every caller treats
     absence as grounds to relax. Callers fail closed on None instead.
     """
     try:
-        result = run_subprocess(["git", "-C", str(root), "ls-files"])
+        result = run_subprocess(["git", "ls-files", "--stage", "-z"], root, text=False)
     except (FileNotFoundError, OSError):
         return None
     if result.returncode != 0:
         return None
-    return frozenset(line for line in result.stdout.splitlines() if line)
+    modes = {}
+    for entry in decode_nul_paths(result.stdout):
+        header, path = entry.split("\t", 1)
+        modes[path] = header.split(" ", 1)[0]
+    return modes
+
+
+def is_gitlink(root: Path, path: str) -> bool:
+    modes = tracked_file_modes(root)
+    return modes is not None and modes.get(path) == "160000"
 
 
 def tracked_basenames(root: Path) -> frozenset[str] | None:
-    paths = tracked_files(root)
+    paths = tracked_file_modes(root)
     if paths is None:
         return None
     return frozenset(path.rsplit("/", 1)[-1] for path in paths)
@@ -3882,7 +3981,7 @@ def basename_exists_in_tree(basename: str, root: Path) -> bool:
 
 def path_is_tracked(path: str, root: Path) -> bool:
     """True when the path is a tracked file, or a directory containing tracked files."""
-    paths = tracked_files(root)
+    paths = tracked_file_modes(root)
     # Fail closed in the other direction: without a listing no classification can be
     # shown to be real, so none is granted evidence.
     if paths is None:

@@ -7223,7 +7223,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: references/Hexalith.Builds
 source_spec: `eng/validate-story-artifacts.py`
 reason: summary: Distinguish a submodule gitlink path from an ordinary directory before the scan-scope rejection rule discards it. evidence: A gitlink bump is reported by `git diff --name-only` as the bare submodule path, but that path is a directory on disk, so `mention_is_not_an_output_path` rejects it as "a directory names a scan scope, not a produced file". Verified directly: the probe returns `True` for `references/Hexalith.Builds`. A checked task claiming to have advanced a gitlink therefore contributes no path to reconcile and falls through to the general-evidence branch. The File List side already pins the opposite behaviour via `test_submodule_pointer_path_is_not_silently_ignored`, so the two halves of the gate disagree. Deferred because closing it requires reading `.gitmodules` inside the shape-based rule, which is a design change beyond correcting this commit's rules. Reopen trigger: a story's only evidence for a gitlink change is a checked review-follow-up line, or the directory rule is revisited.
-status: open
+status: done 2026-11-23
+resolution: The validator reads the Git index mode to reconcile named submodule pointers. The checked-task fixture covers nested and root-level pointers alongside an ordinary directory. See `spec-checked-task-evidence.md`.
 
 ### DW-1710: Remove or re-pin `TASK_PATH_SUFFIXES`, which is now unreachable while two tests named after it still appear to cover it.
 
@@ -7231,7 +7232,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: TASK_PATH_SUFFIXES
 source_spec: `eng/validate-story-artifacts.py`
 reason: summary: Remove or re-pin `TASK_PATH_SUFFIXES`, which is now unreachable while two tests named after it still appear to cover it. evidence: Three independent mutations leave the suite green — dropping the dotfile guard, dropping the suffix filter, and replacing the constant with an empty set. The dotfile guard is provably unreachable: a bare dot-token reaches it only after surviving `mention_is_not_an_output_path`, which requires it to be a tracked basename, and the intersection of tracked basenames with the suffix literals is empty. `test_checked_task_ignores_extension_and_assembly_name_tokens` now passes through the tree-absent-basename rule rather than the allow-list its name and fixture describe, and `test_checked_deferred_review_task_accepts_preexisting_path_classification` likewise passes without its defer marker because the cited dotfile is untracked in the temp fixture. Deferred because deleting a constant that three tests transit needs its own verification pass. Reopen trigger: the rejection rules are revised, or a tracked basename collides with a suffix literal.
-status: open
+status: done 2026-11-23
+resolution: The fixture now tracks a suffix literal, an assembly name and a supported source filename, so it exercises the suffix rules directly. The tracked dotfile fixture also checks that removing its defer marker exposes the missing output. See `spec-checked-task-evidence.md`.
 
 ### DW-1711: Decide how the organization guard should treat mutually exclusive conditional modifier branches, which currently merge into a modifier set that compiles in no configuration.
 
@@ -10659,10 +10661,14 @@ resolution (2026-10-22): The approved Epic 13 follow-through decision supersedes
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-1-restore-current-artifact-integrity-validation.md`
   summary: Resolve pre-existing checked-task basename evidence attribution that depends on unrelated dirty paths.
   evidence: Story 15.1 review BH-01 reproduced identical behavior in HEAD and the candidate: an empty-list story claiming add `owned.txt` loses its checked-task evidence error when notes/unrelated/owned.txt is dirtied. The missing-File-List diagnostic remains stable; check_checked_tasks intentionally accepts basename shorthand from all discovered paths.
+  status: done 2026-11-23
+  resolution: Basename shorthand now uses listed or explicitly classified paths. A dirty path with the same basename still needs an exact match. See `spec-checked-task-evidence.md`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-1-restore-current-artifact-integrity-validation.md`
   summary: Escape artifact paths in pre-existing checked-task diagnostics.
   evidence: Story 15.1 review BH-02 reproduced a raw U+2028 artifact-path separator from check_checked_tasks in both HEAD and the candidate, while the repaired File List diagnostic escapes it. Cover both lacks-evidence and deferred-nonexistent-path branches.
+  status: done 2026-11-23
+  resolution: Both failure messages use the shared Git-path formatter and have source-line assertions for an artifact name containing U+2028. See `spec-checked-task-evidence.md`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-1-restore-current-artifact-integrity-validation.md`
   summary: Extend pre-existing repository artifact-to-queue reconciliation beyond the maintained Epic 11 corpus.
@@ -11538,3 +11544,5 @@ November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were ap
 - source_spec: `_bmad-output/implementation-artifacts/spec-story-markdown-task-evidence.md`
   summary: Exclude hidden HTML authoring comments from general task evidence.
   evidence: A pathless checked task with only `<!-- Blocker example -->` in its Test Evidence section passes. Cover comment-only sections and comments mixed with visible evidence when defining how the validator handles HTML in Markdown.
+  status: done 2026-11-23
+  resolution: General evidence and blocker entries ignore hidden comments while preserving surrounding visible text. See `spec-checked-task-evidence.md`.

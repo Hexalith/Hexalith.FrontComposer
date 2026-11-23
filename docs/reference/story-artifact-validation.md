@@ -238,12 +238,20 @@ run too. Fix the identity, or delete the contradicting text, rather than switchi
 
 ## What counts as document structure
 
-Only real Markdown outside YAML frontmatter, fenced blocks, and four-space indented
-examples is parsed. An example may therefore show a `## File List`, a declaration row, or
-a checked task without injecting one. A blocker mentioned only inside a fenced or
-indented example supplies no task evidence. For general evidence, describe the blocker
-in an evidence section or record it under `## Blockers`. A checked task that claims an
-output path still needs evidence for that path. A new H1 closes the preceding section.
+The validator reads Markdown outside YAML frontmatter, HTML comments, fenced blocks,
+and four-space indented examples. An example may therefore show a `## File List`, a declaration row, or
+a checked task without injecting one. For general task evidence, the validator reads
+visible text in evidence sections and entries under `## Blockers`. Fenced and indented
+examples and hidden HTML authoring comments supply no evidence. Text beside a comment
+still counts. A new H1 closes the preceding section.
+
+A checked task that claims an output needs evidence for the path it names. Prefer the
+repository-relative path. For basename shorthand such as `Widget.cs`, list the full
+path in the File List or explicitly account for it in the workspace classification.
+A changed file at the repository root can also match by exact name. A checked-out
+submodule is an output when the task names its Git pointer. An ordinary directory can
+describe the scope of a search. Suffix literals such as `.cs` and assembly names
+such as `Widget.Tests` can appear in task prose.
 
 Checked tasks are read from any list marker (`-`, `*`, `+`, `1.`) under a heading named
 `Tasks`, `Tasks / Subtasks`, or `Tasks & Acceptance` at levels 2 to 6, with or without a
@@ -253,9 +261,8 @@ section is reported as a notice, and checked work that no recognized section col
 fails closed -- naming whether no heading matched, or whether one matched but the checked
 items sit outside it.
 
-An unterminated fenced code block, unterminated frontmatter, and a story artifact that
-cannot be read as UTF-8 are each reported as their own failure rather than surfacing as
-a missing File List.
+An unterminated HTML comment or fenced code block reports its opening line. The
+validator also reports unterminated frontmatter and story artifacts it cannot read as UTF-8.
 
 ## Commit Scope Dispositions grammar
 
