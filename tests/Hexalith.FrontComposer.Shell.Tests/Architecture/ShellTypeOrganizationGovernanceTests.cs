@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 using Microsoft.CodeAnalysis;
@@ -290,6 +291,58 @@ public sealed class ShellTypeOrganizationGovernanceTests
     }
 
     [Fact]
+    public void OrganizationGuard_UnreachableBranch_KeepsItsOwnNamespaceAndNesting()
+    {
+        SourceFile source = new(
+            "Services/Owner.cs",
+            """
+            #if true
+            namespace Example.Live;
+            public class Owner
+            {
+            #else
+            namespace Example.Dead;
+            public class Extra { }
+            public class Owner
+            {
+            #endif
+            }
+            """);
+
+        ParseDirectDeclarations(source).Select(declaration => declaration.Identity).ShouldBe(
+            ["Example.Live.Owner", "Example.Dead.Extra", "Example.Dead.Owner"]);
+    }
+
+    [Theory]
+    [InlineData("#if false\npublic partial class Owner { }\npublic partial class Owner { }\n#endif")]
+    [InlineData("public partial class Owner { }\n#if false\npublic partial class Owner { }\n#endif")]
+    public void OrganizationGuard_UnreachablePartialFragmentsThatCanCoexist_Collapse(string declarations)
+    {
+        SourceFile source = new("Services/Owner.cs", "namespace Example;\n" + declarations);
+
+        ParseDirectDeclarations(source).ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public void OrganizationGuard_UnreachableBranch_CanChangeEnclosingTypeOfLaterDeclarations()
+    {
+        SourceFile source = new(
+            "Services/Owner.cs",
+            """
+            public class Owner
+            {
+            #if false
+            }
+            namespace Example {
+            #endif
+            public class Hidden { }
+            }
+            """);
+
+        ParseDirectDeclarations(source).Select(declaration => declaration.Identity).ShouldBe(["Owner", "Example.Hidden"]);
+    }
+
+    [Fact]
     public void OrganizationGuard_NestedNamespaceDeclarations_AreReported()
     {
         SourceFile[] sources =
@@ -417,6 +470,88 @@ public sealed class ShellTypeOrganizationGovernanceTests
             .ShouldBeEmpty();
     }
 
+    [Theory]
+    [InlineData("Hexalith.FrontComposer.Shell.Services", "public")]
+    [InlineData("Hexalith.FrontComposer . @Shell.Services", "public")]
+    [InlineData("Hexalith.FrontComposer.Shell.Services", "#if LOCAL\nfile\n#else\npublic\n#endif")]
+    public void OrganizationGuard_PartialDeclarationsAcrossHandwrittenFiles_AreReported(
+        string secondNamespace, string modifiers)
+    {
+        string declaration = $"{modifiers}\npartial class PartialOwner {{ }}";
+        SourceFile[] sources =
+        [
+            new("Services/PartialOwner.cs", $"namespace Hexalith.FrontComposer.Shell.Services;\n{declaration}"),
+            new("Services/Companions/PartialOwner.cs", $"namespace {secondNamespace};\n{declaration}"),
+        ];
+
+        List<string> violations = FindOrganizationViolations(
+            sources,
+            new Dictionary<string, string[]>(StringComparer.Ordinal));
+
+        string violation = violations.ShouldHaveSingleItem();
+        violation.ShouldContain("must be declared in one handwritten file");
+        violation.ShouldContain("Services/PartialOwner.cs");
+        violation.ShouldContain("Services/Companions/PartialOwner.cs");
+    }
+
+    [Fact]
+    public void OrganizationGuard_FileLocalTypesCanShareNamesAcrossFiles()
+    {
+        const string declaration = "namespace Hexalith.FrontComposer.Shell.Services; file sealed class LocalOwner { }";
+        SourceFile[] sources =
+        [
+            new("Services/LocalOwner.cs", declaration),
+            new("Services/Companions/LocalOwner.cs", declaration),
+        ];
+
+        FindOrganizationViolations(sources, new Dictionary<string, string[]>(StringComparer.Ordinal))
+            .ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(
+        "#if FIRST\npublic sealed partial class PartialOwner { }\n#endif\n"
+        + "#if SECOND\npublic sealed partial class PartialOwner { }\n#endif\n"
+        + "#if !(FIRST && SECOND)\npublic sealed partial class PartialOwner { }\n#endif")]
+    [InlineData(
+        "public\n#if FIRST\nsealed\n#endif\npartial class PartialOwner { }\n"
+        + "public\n#if !FIRST\nsealed\n#endif\npartial class PartialOwner { }")]
+    public void OrganizationGuard_CompatiblePartialDeclarationsCanCoexistInDifferentConfigurations(string declarations)
+    {
+        SourceFile source = new(
+            "Services/PartialOwner.cs",
+            "namespace Hexalith.FrontComposer.Shell.Services;\n" + declarations);
+
+        ParseDirectDeclarations(source).ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public void OrganizationGuard_SameShapePartialDeclarationsInExclusiveBranches_AreReported()
+    {
+        SourceFile[] sources =
+        [
+            new(
+                "Services/ConditionalOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "#if FIRST\npublic sealed partial record ConditionalOwner(string First);\n"
+                + "#else\npublic sealed partial record ConditionalOwner(string Second);\n#endif"),
+        ];
+
+        AssertSyntheticViolation(sources, "Services/ConditionalOwner.cs", "2 direct declarations");
+    }
+
+    [Theory]
+    [InlineData("public sealed partial", true)]
+    [InlineData("public partialValue", false)]
+    [InlineData("public impartial", false)]
+    [InlineData("public", false)]
+    public void OrganizationGuard_PartialMustBeACompleteModifierToken(string modifiers, bool expected)
+    {
+        DirectDeclaration declaration = new("Owner.cs", string.Empty, "Owner", "Owner", "class", "public", modifiers, 0, 0);
+
+        IsPartial(declaration).ShouldBe(expected);
+    }
+
     [Fact]
     public void OrganizationGuard_MixedPartialAndNonPartialSameIdentity_AreReported()
     {
@@ -472,18 +607,20 @@ public sealed class ShellTypeOrganizationGovernanceTests
     [Fact]
     public void RuntimeKind_ValueTypeWithLookalikePrintMembers_RemainsStruct()
     {
-        // Pins the binder's parameter list and return type. Without either constraint a
-        // plain struct carrying an unrelated PrintMembers is misread as a record struct.
         RuntimeKind(typeof(SampleStructWithWrongPrintMembersParameter)).ShouldBe("struct");
         RuntimeKind(typeof(SampleStructWithWrongPrintMembersReturn)).ShouldBe("struct");
     }
 
     [Fact]
-    public void RuntimeKind_RecordStructWithExtraPrintMembersOverload_DoesNotThrow()
+    public void RuntimeKind_UsesRecordEvidenceWhenBothStructKindsDeclareTheirOwnPrintMembers()
     {
-        // An unbound GetMethod("PrintMembers") throws AmbiguousMatchException here and
-        // aborts the whole 111-pin loop; the signature-bound probe resolves the
-        // synthesized member instead.
+        RuntimeKind(typeof(SampleStructWithExactPrintMembers)).ShouldBe("struct");
+        RuntimeKind(typeof(SampleRecordStructWithCustomPrintMembers)).ShouldBe("record struct");
+    }
+
+    [Fact]
+    public void RuntimeKind_RecordStructWithExtraPrintMembersOverload_RemainsRecordStruct()
+    {
         RuntimeKind(typeof(SampleRecordStructWithExtraOverload)).ShouldBe("record struct");
     }
 
@@ -558,11 +695,9 @@ public sealed class ShellTypeOrganizationGovernanceTests
     }
 
     [Fact]
-    public void OrganizationGuard_ConditionalModifierFold_KeepsTheAllBranchesActiveVariant()
+    public void OrganizationGuard_ConditionalModifierFold_KeepsTheMostSpecificObservedVariant()
     {
-        // The fold's selection rule, not merely its existence. Asserting only that nothing
-        // is reported cannot distinguish which variant survived, because the collapsed
-        // count is 1 either way — so inverting the ordering left the suite green.
+        // When adding a modifier produces a real shape, the fold keeps that richer shape.
         SourceFile source = new(
             "Services/ConditionalModifierOwner.cs",
             "namespace Hexalith.FrontComposer.Shell.Services;\n"
@@ -572,6 +707,22 @@ public sealed class ShellTypeOrganizationGovernanceTests
 
         declarations.Length.ShouldBe(1);
         declarations[0].Modifiers.ShouldBe("public sealed partial");
+    }
+
+    [Theory]
+    [InlineData("public", "sealed", "abstract", "public abstract partial")]
+    [InlineData("", "public", "internal", "internal partial")]
+    public void OrganizationGuard_ExclusiveConditionalModifiers_KeepAnObservedShape(
+        string commonModifiers, string first, string second, string expectedModifiers)
+    {
+        SourceFile source = new(
+            "Services/ConditionalModifierOwner.cs",
+            "namespace Hexalith.FrontComposer.Shell.Services;\n"
+            + $"{commonModifiers}\n#if FIRST\n{first}\n#else\n{second}\n#endif\n"
+            + "partial class ConditionalModifierOwner { }");
+
+        DirectDeclaration declaration = ParseDirectDeclarations(source).ShouldHaveSingleItem();
+        declaration.Modifiers.ShouldBe(expectedModifiers);
     }
 
     [Fact]
@@ -695,18 +846,20 @@ public sealed class ShellTypeOrganizationGovernanceTests
         string reportPathPrefix = "")
     {
         List<string> violations = [];
-        Dictionary<string, SourceFile> sourceByPath = sources.ToDictionary(source => source.Path, StringComparer.Ordinal);
+        Dictionary<string, DirectDeclaration[]> declarationsByPath = sources.ToDictionary(
+            source => source.Path,
+            ParseDirectDeclarations,
+            StringComparer.Ordinal);
 
         foreach ((string path, string[] expectedNames) in actionGroupExceptions)
         {
             string reportPath = $"{reportPathPrefix}{path}";
-            if (!sourceByPath.TryGetValue(path, out SourceFile? source))
+            if (!declarationsByPath.TryGetValue(path, out DirectDeclaration[]? declarations))
             {
                 violations.Add($"{reportPath}: exact action-group exception file is missing");
                 continue;
             }
 
-            DirectDeclaration[] declarations = ParseDirectDeclarations(source);
             string expectedNamespace = NamespaceFromPath(path);
             if (declarations.Length != expectedNames.Length)
             {
@@ -754,7 +907,7 @@ public sealed class ShellTypeOrganizationGovernanceTests
                 continue;
             }
 
-            DirectDeclaration[] declarations = ParseDirectDeclarations(source);
+            DirectDeclaration[] declarations = declarationsByPath[source.Path];
             if (declarations.Length > 1)
             {
                 violations.Add(
@@ -771,6 +924,22 @@ public sealed class ShellTypeOrganizationGovernanceTests
                     violations.Add(
                         $"{reportPath}: normalized file owner {ownerName} must match direct declaration {declarations[0].Name}");
                 }
+            }
+        }
+
+        // The declaration/file parity rule also applies to partial types. Razor-generated
+        // declarations have already been excluded by the caller's source scan.
+        foreach (IGrouping<string, DirectDeclaration> group in declarationsByPath.Values
+            .SelectMany(declarations => declarations)
+            .Where(declaration => !declaration.IsFileLocal)
+            .GroupBy(declaration => declaration.Identity, StringComparer.Ordinal))
+        {
+            string[] paths = [.. group.Select(declaration => declaration.Path).Distinct(StringComparer.Ordinal)
+                .OrderBy(path => path, StringComparer.Ordinal)];
+            if (paths.Length > 1)
+            {
+                string locations = string.Join(", ", paths.Select(path => $"{reportPathPrefix}{path}"));
+                violations.Add($"{group.Key} must be declared in one handwritten file. Found in {locations}");
             }
         }
 
@@ -828,8 +997,8 @@ public sealed class ShellTypeOrganizationGovernanceTests
             8,
             $"{source.Path} has too many conditional symbols for exhaustive organization analysis");
 
-        Dictionary<(string Identity, string Kind, string Accessibility, string Modifiers, int SpanStart), DirectDeclaration>
-            declarations = [];
+        List<DirectDeclaration[]> configurations = [];
+        HashSet<int> activeBranches = [];
         int combinations = 1 << conditionalSymbols.Length;
         for (int mask = 0; mask < combinations; mask++)
         {
@@ -837,116 +1006,171 @@ public sealed class ShellTypeOrganizationGovernanceTests
             [
                 .. conditionalSymbols.Where((_, index) => (mask & (1 << index)) != 0),
             ];
-            CSharpParseOptions options = new(LanguageVersion.Latest, preprocessorSymbols: activeSymbols);
-            CompilationUnitSyntax root = CSharpSyntaxTree.ParseText(
-                source.Content,
-                options,
-                source.Path).GetCompilationUnitRoot();
-
-            foreach (MemberDeclarationSyntax member in root.DescendantNodes().OfType<MemberDeclarationSyntax>()
-                .Where(IsDirectDeclaration))
-            {
-                DirectDeclaration declaration = CreateDeclaration(source.Path, member);
-                var key = (
-                    declaration.Identity,
-                    declaration.Kind,
-                    declaration.Accessibility,
-                    declaration.Modifiers,
-                    declaration.SpanStart);
-                declarations.TryAdd(key, declaration);
-            }
+            CompilationUnitSyntax root = mask == 0
+                ? initialRoot
+                : CSharpSyntaxTree.ParseText(
+                    source.Content,
+                    initialOptions.WithPreprocessorSymbols(activeSymbols),
+                    source.Path).GetCompilationUnitRoot();
+            configurations.Add(ReadDirectDeclarations(root, source.Path));
+            activeBranches.UnionWith(ReadDirectives(root)
+                .OfType<BranchingDirectiveTriviaSyntax>()
+                .Where(branch => branch.IsActive && branch.BranchTaken)
+                .Select(branch => branch.SpanStart));
         }
 
-        string allBranchesActive = ActivateAllConditionalBranches(source.Content, initialRoot);
-        CompilationUnitSyntax allBranchesRoot = CSharpSyntaxTree.ParseText(
-            allBranchesActive,
-            initialOptions,
-            source.Path).GetCompilationUnitRoot();
-        foreach (MemberDeclarationSyntax member in allBranchesRoot.DescendantNodes().OfType<MemberDeclarationSyntax>()
-            .Where(IsDirectDeclaration))
-        {
-            DirectDeclaration declaration = CreateDeclaration(source.Path, member);
-            var key = (
-                declaration.Identity,
-                declaration.Kind,
-                declaration.Accessibility,
-                declaration.Modifiers,
-                declaration.SpanStart);
-            declarations.TryAdd(key, declaration);
-        }
+        IEnumerable<DirectDeclaration> observed = configurations.SelectMany(declarations => declarations);
+        HashSet<(string Identity, int SpanStart)> observedDeclarations =
+            [.. observed.Select(declaration => (declaration.Identity, declaration.SpanStart))];
+        List<DirectDeclaration[]> isolatedConfigurations = ReadUnreachableConfigurations(
+            source, initialRoot, initialOptions, activeBranches);
+        IEnumerable<DirectDeclaration> unreachable = isolatedConfigurations.SelectMany(declarations => declarations)
+            .Where(declaration => !observedDeclarations.Contains((declaration.Identity, declaration.SpanStart)));
 
-        // Collapse the multiple `partial` declarations of a single type into one candidate so a
-        // legally partial type in one file is not miscounted as several declarations. Collapsing is
-        // deliberately narrow: every member of the group must be `partial` AND agree on kind,
-        // accessibility, and modifiers. Same-identity declarations that are NOT partial (e.g.
-        // mutually exclusive conditional-branch duplicates), or that disagree on shape (e.g. a
-        // `#if DEBUG public partial` / `#else internal partial` pair), are kept separate so the
-        // guard still reports them rather than silently pinning whichever branch parsed first.
-        // One physical declaration can yield several dictionary entries when its own
-        // MODIFIERS are conditionally compiled (`public #if FOO sealed #endif partial class C`):
-        // the mask sweep parses it once per symbol combination and the dedup key includes
-        // Modifiers, so the same SpanStart appears with "public partial" and
-        // "public sealed partial". Those are one declaration, not two, and must be folded
-        // before shape agreement is judged — otherwise a single legal type is reported as
-        // "2 direct declarations". Keep the richest variant, which is what the
-        // all-branches-active pass represents.
-        DirectDeclaration[] perSpan =
+        // Keep an observed shape for each identifier and count it as file-local only
+        // if all of its shapes are file-local.
+        return
         [
-            .. declarations.Values
+            .. observed.Concat(unreachable)
                 .GroupBy(declaration => (declaration.Identity, declaration.SpanStart))
                 .Select(group => group
                     .OrderByDescending(declaration => ModifierTokens(declaration).Length)
                     .ThenBy(declaration => declaration.Modifiers, StringComparer.Ordinal)
-                    .First()),
-        ];
-
-        return
-        [
-            .. perSpan
+                    .First() with { IsFileLocal = group.All(declaration => declaration.IsFileLocal) })
                 .GroupBy(declaration => declaration.Identity, StringComparer.Ordinal)
-                .SelectMany(group => IsCollapsiblePartialGroup(group)
-                    ? [group.OrderBy(declaration => declaration.SpanStart).First()]
-                    : (IEnumerable<DirectDeclaration>)group)
+                .SelectMany(group => CollapseCompatiblePartialDeclarations(group, configurations, isolatedConfigurations))
                 .OrderBy(declaration => declaration.SpanStart),
         ];
     }
 
+    private static DirectDeclaration[] ReadDirectDeclarations(CompilationUnitSyntax root, string path)
+        => [.. root.DescendantNodes().OfType<MemberDeclarationSyntax>()
+            .Where(IsDirectDeclaration)
+            .Select(member => CreateDeclaration(path, member))];
+
     private static string[] ModifierTokens(DirectDeclaration declaration)
         => declaration.Modifiers.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-    private static bool IsCollapsiblePartialGroup(IEnumerable<DirectDeclaration> group)
+    private static DirectDeclaration[] CollapseCompatiblePartialDeclarations(
+        IEnumerable<DirectDeclaration> group,
+        List<DirectDeclaration[]> configurations,
+        List<DirectDeclaration[]> isolatedConfigurations)
     {
         DirectDeclaration[] members = [.. group];
-        return Array.TrueForAll(members, IsPartial)
+        if (members.Length > 1
+            && Array.TrueForAll(members, IsPartial)
             && members.DistinctBy(
                 declaration => (declaration.Kind, declaration.Accessibility, declaration.Modifiers))
-                .Count() == 1;
+                .Count() == 1
+            && PartialDeclarationsCanCoexist(members, configurations, isolatedConfigurations))
+        {
+            return [members.MinBy(declaration => declaration.SpanStart)! with
+            {
+                IsFileLocal = Array.TrueForAll(members, declaration => declaration.IsFileLocal),
+            }];
+        }
+
+        return members;
     }
 
-    private static bool IsPartial(DirectDeclaration declaration)
-        => ModifierTokens(declaration).Contains("partial", StringComparer.Ordinal);
-
-    private static string ActivateAllConditionalBranches(string content, CompilationUnitSyntax root)
+    private static bool PartialDeclarationsCanCoexist(
+        DirectDeclaration[] members,
+        List<DirectDeclaration[]> configurations,
+        List<DirectDeclaration[]> isolatedConfigurations)
     {
-        char[] activated = content.ToCharArray();
-        foreach (DirectiveTriviaSyntax directive in root.DescendantTrivia(descendIntoTrivia: true)
-            .Select(trivia => trivia.GetStructure())
-            .OfType<DirectiveTriviaSyntax>()
-            .Where(directive => directive.IsKind(SyntaxKind.IfDirectiveTrivia)
-                || directive.IsKind(SyntaxKind.ElifDirectiveTrivia)
-                || directive.IsKind(SyntaxKind.ElseDirectiveTrivia)
-                || directive.IsKind(SyntaxKind.EndIfDirectiveTrivia)))
+        // Independent partial fragments can be optional. If both appear in real parses,
+        // only a real parse can establish that they are present together.
+        for (int left = 0; left < members.Length; left++)
         {
-            for (int index = directive.FullSpan.Start; index < directive.FullSpan.End && index < activated.Length; index++)
+            DirectDeclaration first = members[left];
+            for (int right = left + 1; right < members.Length; right++)
             {
-                if (activated[index] is not ('\r' or '\n'))
+                DirectDeclaration second = members[right];
+                if (configurations.Exists(configuration =>
+                    HasDeclaration(configuration, first) && HasDeclaration(configuration, second)))
                 {
-                    activated[index] = ' ';
+                    continue;
+                }
+
+                if ((configurations.Exists(configuration => HasDeclaration(configuration, first))
+                    && configurations.Exists(configuration => HasDeclaration(configuration, second)))
+                    || !isolatedConfigurations.Exists(configuration =>
+                        HasDeclaration(configuration, first) && HasDeclaration(configuration, second)))
+                {
+                    return false;
                 }
             }
         }
 
-        return new string(activated);
+        return true;
+    }
+
+    private static bool HasDeclaration(DirectDeclaration[] configuration, DirectDeclaration candidate)
+        => Array.Exists(configuration, declaration => declaration.SpanStart == candidate.SpanStart
+            && declaration.Identity == candidate.Identity);
+
+    private static bool IsPartial(DirectDeclaration declaration)
+        => ModifierTokens(declaration).Contains("partial", StringComparer.Ordinal);
+
+    private static IEnumerable<DirectiveTriviaSyntax> ReadDirectives(CompilationUnitSyntax root)
+        => root.DescendantTrivia(descendIntoTrivia: true)
+            .Select(trivia => trivia.GetStructure())
+            .OfType<DirectiveTriviaSyntax>();
+
+    private static List<DirectDeclaration[]> ReadUnreachableConfigurations(
+        SourceFile source,
+        CompilationUnitSyntax initialRoot,
+        CSharpParseOptions options,
+        HashSet<int> activeBranches)
+    {
+        List<DirectDeclaration[]> configurations = [];
+        Stack<BranchingDirectiveTriviaSyntax> branchPath = new();
+        foreach (DirectiveTriviaSyntax directive in ReadDirectives(initialRoot))
+        {
+            if (directive is ElifDirectiveTriviaSyntax or ElseDirectiveTriviaSyntax or EndIfDirectiveTriviaSyntax)
+            {
+                _ = branchPath.Pop();
+            }
+
+            if (directive is not BranchingDirectiveTriviaSyntax branch)
+            {
+                continue;
+            }
+
+            branchPath.Push(branch);
+            if (activeBranches.Contains(branch.SpanStart))
+            {
+                continue;
+            }
+
+            // Mask only the competing arms of this branch and its enclosing branches.
+            // This keeps the selected arm's namespace and braces intact at original offsets.
+            char[] isolated = source.Content.ToCharArray();
+            foreach (BranchingDirectiveTriviaSyntax selected in branchPath)
+            {
+                List<DirectiveTriviaSyntax> related = selected.GetRelatedDirectives();
+                int index = related.FindIndex(candidate => candidate.SpanStart == selected.SpanStart);
+                BlankRange(isolated, related[0].FullSpan.Start, selected.FullSpan.End);
+                BlankRange(isolated, related[index + 1].FullSpan.Start, related[^1].FullSpan.End);
+            }
+
+            CompilationUnitSyntax root = CSharpSyntaxTree.ParseText(new string(isolated), options, source.Path)
+                .GetCompilationUnitRoot();
+            configurations.Add(ReadDirectDeclarations(root, source.Path));
+        }
+
+        return configurations;
+    }
+
+    private static void BlankRange(char[] content, int start, int end)
+    {
+        for (int index = start; index < end; index++)
+        {
+            if (content[index] is not ('\r' or '\n'))
+            {
+                content[index] = ' ';
+            }
+        }
     }
 
     private static bool IsDirectDeclaration(MemberDeclarationSyntax member)
@@ -1014,7 +1238,9 @@ public sealed class ShellTypeOrganizationGovernanceTests
             member.Ancestors()
                 .OfType<BaseNamespaceDeclarationSyntax>()
                 .Reverse()
-                .Select(declaration => declaration.Name.ToString()));
+                .SelectMany(declaration => declaration.Name.DescendantTokens())
+                .Where(token => token.IsKind(SyntaxKind.IdentifierToken))
+                .Select(token => token.ValueText));
         string modifierText = string.Join(' ', modifiers.Select(modifier => modifier.ValueText));
         string accessibility = modifiers.Any(SyntaxKind.PublicKeyword) ? "public" : "internal";
         int arity = member switch
@@ -1033,7 +1259,8 @@ public sealed class ShellTypeOrganizationGovernanceTests
             accessibility,
             modifierText,
             arity,
-            spanStart);
+            spanStart,
+            modifiers.Any(SyntaxKind.FileKeyword));
     }
 
     private static List<string> FindManifestUniquenessViolations(IReadOnlyList<DeclarationPin> pins)
@@ -1125,34 +1352,20 @@ public sealed class ShellTypeOrganizationGovernanceTests
             return "interface";
         }
 
-        // Record classes expose the synthesized "<Clone>$" clone method, whose name is not a legal
-        // C# identifier and therefore cannot be declared, shadowed, or overloaded by user code. Use
-        // it for reference types. Record structs are copied by value and have no "<Clone>$", so the
-        // value-type branch falls back to the synthesized "PrintMembers". That name IS a legal
-        // identifier this repository hand-writes for redaction (see CommandAuthorizationRequest and
-        // QueryRequest), so bind it to the exact synthesized signature — instance, taking a single
-        // StringBuilder, returning bool. Those three constraints are each load-bearing and covered
-        // by fixtures below. DeclaredOnly is also passed, but it is inert by construction on this
-        // path and no fixture can reach it: a value type inherits only from ValueType and object,
-        // neither of which declares PrintMembers. It is kept because the branch is a declaration
-        // probe and the flag states that intent. That narrows the misread
-        // surface to a hand-written member matching the synthesized signature EXACTLY, and stops an
-        // unrelated overload from throwing AmbiguousMatchException and aborting the pin loop. It
-        // does NOT make a plain struct indistinguishable from a record struct: a struct that
-        // hand-writes that exact signature still classifies as "record struct", which reflection
-        // alone cannot resolve. That residual collision is tracked in deferred-work.md.
+        // Record classes expose the compiler's reserved clone method. Record structs
+        // synthesize an equality operator even when they supply their own PrintMembers.
         return type.IsValueType
-            ? DeclaresSynthesizedPrintMembers(type) ? "record struct" : "struct"
+            ? DeclaresSynthesizedEqualityOperator(type) ? "record struct" : "struct"
             : type.GetMethod("<Clone>$") is not null ? "record" : "class";
     }
 
-    private static bool DeclaresSynthesizedPrintMembers(Type type)
+    private static bool DeclaresSynthesizedEqualityOperator(Type type)
         => type.GetMethod(
-            "PrintMembers",
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly,
+            "op_Equality",
+            BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly,
             binder: null,
-            [typeof(StringBuilder)],
-            modifiers: null) is { ReturnType: Type returnType } && returnType == typeof(bool);
+            [type, type],
+            modifiers: null)?.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false) == true;
 
     private static string NormalizeOwnerName(string path)
     {
@@ -1192,7 +1405,8 @@ public sealed class ShellTypeOrganizationGovernanceTests
         string Accessibility,
         string Modifiers,
         int Arity,
-        int SpanStart);
+        int SpanStart,
+        bool IsFileLocal = false);
 
     private sealed record DeclarationPin(
         string Path,
@@ -1234,13 +1448,6 @@ public sealed class ShellTypeOrganizationGovernanceTests
 
     private sealed class SampleClassInheritingPrintMembers : SampleClassWithPrintMembers;
 
-    // Value-type fixtures for DeclaresSynthesizedPrintMembers. Each diverges from the
-    // synthesized signature in exactly one dimension, so every constraint in the binder
-    // (parameter list, return type, and the presence of an unrelated overload) is
-    // independently load-bearing.
-    // Every member below reads instance state deliberately: CA1822 is warning-as-error in
-    // this repository, and a constant-returning fixture member is what broke the Release
-    // build during the previous remediation pass.
     private readonly struct SampleStructWithWrongPrintMembersParameter
     {
         public int Value { get; }
@@ -1257,6 +1464,30 @@ public sealed class ShellTypeOrganizationGovernanceTests
             ArgumentNullException.ThrowIfNull(builder);
             builder.Append(Value);
         }
+    }
+
+    private readonly struct SampleStructWithExactPrintMembers(int value) : IEquatable<SampleStructWithExactPrintMembers>
+    {
+        private int Value { get; } = value;
+
+        public static bool operator ==(SampleStructWithExactPrintMembers left, SampleStructWithExactPrintMembers right)
+            => left.Equals(right);
+
+        public static bool operator !=(SampleStructWithExactPrintMembers left, SampleStructWithExactPrintMembers right)
+            => !left.Equals(right);
+
+        public bool Equals(SampleStructWithExactPrintMembers other) => Value == other.Value;
+
+        public override bool Equals(object? obj) => obj is SampleStructWithExactPrintMembers other && Equals(other);
+
+        public override int GetHashCode() => Value;
+
+        public bool PrintMembers(StringBuilder builder) => builder.Append(Value).Length > 0;
+    }
+
+    private readonly record struct SampleRecordStructWithCustomPrintMembers(int Value)
+    {
+        private bool PrintMembers(StringBuilder builder) => builder.Append(Value).Length > 0;
     }
 
     private readonly record struct SampleRecordStructWithExtraOverload(string Value)

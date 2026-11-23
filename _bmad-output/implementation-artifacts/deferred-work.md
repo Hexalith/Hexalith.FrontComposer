@@ -7188,7 +7188,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: src/Hexalith.FrontComposer.Shell
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Support a partial type legally split across two files in the Shell organization guard, or record the one-file contract as deliberate. evidence: The all-`partial` same-identity collapse added in `48862e9a` lives inside the per-file parse (`ShellTypeOrganizationGovernanceTests.ParseDirectDeclarations`, via `IsCollapsiblePartialGroup`), while `SplitDeclarations_SourceShapes_MatchExactPinnedManifest` flattens declarations across every source file before matching and asserts exactly one match per pinned identity; `ShellTypeOrganizationGovernanceTests.FindOrganizationViolations` additionally requires filename==typename. The idiomatic two-file partial split therefore still false-fails. Citations are symbol-based: line coordinates in this ledger have repeatedly gone stale within days. Deferred because AC4 scopes the guard to one direct declaration per file with a matching filename, so this is a design tension rather than a defect. Reopen trigger: a two-file partial type is introduced under `src/Hexalith.FrontComposer.Shell`, or AC4 is extended to cross-file partial identities.
-status: open
+status: done 2026-11-23
+resolution: Enforce one handwritten file per Shell type identity, including partial types. File-local types keep their per-file identities.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1702, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1703: Bind the analyzer-policy identifier inventory to a committed revision and assert the delta, instead of hashing working-tree line numbers.
@@ -7204,7 +7205,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: src/Hexalith.FrontComposer.Shell
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-30689929161-fix-ca1822.md`
 reason: summary: Distinguish compiler-synthesized record-struct PrintMembers methods from matching hand-written methods. evidence: `ShellTypeOrganizationGovernanceTests.DeclaresSynthesizedPrintMembers` recognizes only the method name, exact `bool (StringBuilder)` signature, and declaring type; a plain struct can hand-write that same legal signature and be classified as a record struct. Reflection alone cannot resolve this: the synthesized and hand-written members are indistinguishable at runtime. The 2026-08-01 promotion-delta re-review narrowed the surface — the binder now pins the parameter list and return type, so only an exact-signature duplicate collides, and an unrelated overload no longer throws `AmbiguousMatchException` — and added `RuntimeKind_ValueTypeWithLookalikePrintMembers_RemainsStruct` plus `RuntimeKind_RecordStructWithExtraPrintMembersOverload_DoesNotThrow` to pin both constraints. The residual exact-signature collision remains open because no production type or manifest entry exercises it. Reopen trigger: a plain struct under `src/Hexalith.FrontComposer.Shell` declares `bool PrintMembers(StringBuilder)`, or the pin set gains a plain-struct row.
-status: open
+status: done 2026-11-23
+resolution: Identify record structs by their compiler-generated equality operator and cover handwritten PrintMembers methods on both struct kinds.
 
 ### DW-1705: Same-shape conditional-branch duplicates escape the Shell organization guard entirely when the author writes `partial`, defeating the mutually-exclusive-duplicate reporting the collapse comment claims to preserve.
 
@@ -7212,7 +7214,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: src/Hexalith.FrontComposer.Shell
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Same-shape conditional-branch duplicates escape the Shell organization guard entirely when the author writes `partial`, defeating the mutually-exclusive-duplicate reporting the collapse comment claims to preserve. evidence: `ShellTypeOrganizationGovernanceTests.IsCollapsiblePartialGroup` collapses a same-identity group whenever every member is `partial` and all members agree on kind, accessibility, and modifiers. A single file containing `#if FIRST` / `public sealed partial record ConditionalOwner(string First);` / `#else` / `public sealed partial record ConditionalOwner(string Second);` / `#endif` satisfies both conditions, so the group collapses to the lowest-`SpanStart` branch and nothing is reported; the identical non-partial source is reported by `OrganizationGuard_ConditionalDeclarationsWithSameIdentity_AreReported`. The collapse key is the declaration identity only, so divergent positional parameters are invisible. Pre-existing: the predicate introduced in `48862e9a` collapsed the same input via `group.All(d => d.Modifiers.Contains("partial"))`, so this pass narrows rather than introduces the hole. Deferred because closing it requires deciding whether conditional `partial` branches are legal Shell source at all, which is beyond AC4's declaration/file-parity scope. Reopen trigger: a conditionally-compiled `partial` declaration is introduced under `src/Hexalith.FrontComposer.Shell`, or AC4 is extended to conditional-branch shape divergence.
-status: open
+status: done 2026-11-23
+resolution: Keep same-shape partial declarations separate when their identifier spans cannot coexist under any preprocessor configuration.
 
 ### DW-1706: The Story 11.17d-only GOV-1 promotion waiver exists only as prose inside a `waiver:` string, so any consumer reading the action item's structured fields still sees an unmet gate blocking the promotion that already happened.
 
@@ -7260,7 +7263,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: .Modifiers.Sh
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Decide how the organization guard should treat mutually exclusive conditional modifier branches, which currently merge into a modifier set that compiles in no configuration. evidence: `ShellTypeOrganizationGovernanceTests.ActivateAllConditionalBranches` makes `#if`/`#elif` arms simultaneously active, and the per-`SpanStart` fold then elects the longest modifier list. Measured on a standalone Roslyn re-implementation: `public #if A sealed #elif B abstract #endif partial class Owner` folds to one declaration carrying `public sealed abstract partial` — a combination legal in neither configuration. Were such a type ever pinned, `matches[0].Modifiers.ShouldBe(pin.Modifiers)` would demand that impossible string in the manifest while both real per-configuration shapes failed. Conditional accessibility behaves worse, yielding `public internal partial` alongside a second entry at a different span and reporting one physical type as two. Deferred because no source under `src/Hexalith.FrontComposer.Shell` conditionally compiles any type's modifiers — the three `#if` sites are a property body, a method body, and a using directive — so this is latent, and choosing between reporting and normalising is an AC4 scope decision. Reopen trigger: a Shell type acquires conditionally compiled modifiers or accessibility.
-status: open
+status: done 2026-11-23
+resolution: Select the most specific observed modifier shape and reserve synthetic parsing for declarations absent from all configurations.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1711, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1712: Pin the token-based `partial` match that replaced substring matching, so the requested hardening cannot be silently reverted.
@@ -7269,7 +7273,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: ShellTypeOrganizationGovernanceTests.IsPartial
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Pin the token-based `partial` match that replaced substring matching, so the requested hardening cannot be silently reverted. evidence: `ShellTypeOrganizationGovernanceTests.IsPartial` was rewritten this commit to `ModifierTokens(declaration).Contains("partial", StringComparer.Ordinal)` in response to an explicit prior-review requirement to match `partial` as a token rather than as a substring of the space-joined modifier text. Measured: reverting to `declaration.Modifiers.Contains("partial", StringComparison.Ordinal)` leaves the guard **23/23 green**, so the fix is unverified in both directions. Deferred because no C# modifier keyword contains `partial` as a proper substring, making the practical regression surface empty; the gap is that the requested hardening carries no test signal. Reopen trigger: the modifier vocabulary gains a token containing `partial`, or `ModifierTokens` is reused where substring collisions are reachable.
-status: open
+status: done 2026-11-23
+resolution: Exercise complete partial modifier tokens and reject longer tokens containing partial.
 
 ### DW-1713: Reconciled — remove the former GOV-1 Closed Policy Seed drift and establish one executable policy authority.
 
