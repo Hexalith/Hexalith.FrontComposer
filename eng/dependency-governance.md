@@ -1,5 +1,20 @@
 # Dependency governance source projection
 
+## 2026-11-23 Parties Commons 3.0.2 source selector
+
+FrontComposer now selects Parties `34fe48dbea826019dcbc42396f797ad6d479ea00`.
+That revision aligns the unmapped Commons fallback with UniqueIds `3.0.2`,
+matching Tenants.Client `8.0.3`. Root selector digest is
+`141e8daf093ff0cd6ee96a7452eeb50b2dd2ce9f4a5f423cfa31bf7a9ade30e4`.
+Platform inventory, canonical source-file digests, Hexalith catalog pins,
+and consumer configuration are unchanged. The graph still contains 76 edges.
+
+The matching policy reseal is `aa1d94c1cd5944654c826608f94d8b0666695f43`.
+This documentation-only child is the later-base activation of that policy.
+The previous event-base policy rejected the changed Parties selector, as
+expected. Hosted CI and Quality on this commit are the release evidence;
+local validation of 76 edges does not replace those gates.
+
 ## 2026-11-22 published 6.0.1 package-validation configuration
 
 FrontComposer now validates library packs against published `6.0.1`. That
