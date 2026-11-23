@@ -65,13 +65,27 @@
       GenerateSuppressionFile="false" />
   </Target>
 
-  <!-- The shared catalog selects the package version. Reject a command-line override
-       before restore or compilation can mix an older SDK into this host. -->
+  <!-- FrontComposer's own checkout retains its sealed 5.4.0 pin. In an umbrella,
+       compare even forwarded global properties with the sibling catalog's actual default. -->
   <Target Name="ValidateFrontComposerEventStoreVersion"
           BeforeTargets="CollectPackageReferences;PrepareForBuild"
           Condition="'$(FrontComposerRoot)' == 'true'">
-    <Error Condition="'$(HexalithEventStoreVersion)' != '5.4.0'"
-           Text="FrontComposer requires EventStore 5.4.0. Selected version: '$(HexalithEventStoreVersion)'." />
+    <PropertyGroup>
+      <_FrontComposerRequiredEventStore>5.4.0</_FrontComposerRequiredEventStore>
+      <_FrontComposerExternalCatalog Condition="!Exists('$(Hexalith1BuildPackageProps)') And Exists('$(Hexalith2BuildPackageProps)')">$(Hexalith2BuildPackageProps)</_FrontComposerExternalCatalog>
+      <_FrontComposerExternalCatalog Condition="!Exists('$(Hexalith1BuildPackageProps)') And '$(_FrontComposerExternalCatalog)' == '' And Exists('$(Hexalith3BuildPackageProps)')">$(Hexalith3BuildPackageProps)</_FrontComposerExternalCatalog>
+    </PropertyGroup>
+    <XmlPeek Condition="'$(_FrontComposerExternalCatalog)' != ''" XmlInputPath="$(_FrontComposerExternalCatalog)"
+             Query="/Project/PropertyGroup[not(@Condition)]/HexalithEventStoreVersion[not(@Condition) or @Condition=&quot;'%24(HexalithEventStoreVersion)' == ''&quot;]/text()">
+      <Output TaskParameter="Result" PropertyName="_FrontComposerSiblingEventStore" />
+    </XmlPeek>
+    <PropertyGroup Condition="'$(_FrontComposerExternalCatalog)' != ''">
+      <_FrontComposerRequiredEventStore>$(_FrontComposerSiblingEventStore)</_FrontComposerRequiredEventStore>
+    </PropertyGroup>
+    <Error Condition="'$(_FrontComposerRequiredEventStore)' != '5.4.0' And '$(_FrontComposerRequiredEventStore)' != '5.5.1'"
+           Text="FrontComposer has no qualification for the selected catalog's EventStore version '$(_FrontComposerRequiredEventStore)'." />
+    <Error Condition="'$(HexalithEventStoreVersion)' != '$(_FrontComposerRequiredEventStore)'"
+           Text="FrontComposer requires EventStore $(_FrontComposerRequiredEventStore). Selected version: '$(HexalithEventStoreVersion)'." />
   </Target>
 
   <!-- Source mode: Tenants forwards its own EventStore version on every EventStore edge.

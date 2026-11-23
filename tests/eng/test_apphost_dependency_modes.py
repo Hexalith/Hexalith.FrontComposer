@@ -66,7 +66,43 @@ class AppHostDependencyModeTests(unittest.TestCase):
                 cwd=ROOT, capture_output=True, text=True, timeout=240,
             )
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn("FrontComposer requires EventStore 5.4.0. Selected version: '4.2.0'.", result.stdout + result.stderr)
+            selected = evaluate(APPHOST, "Release")["Properties"]["HexalithEventStoreVersion"]
+            self.assertIn(f"FrontComposer requires EventStore {selected}. Selected version: '4.2.0'.", result.stdout + result.stderr)
+
+    def test_eventstore_guard_checks_the_catalog_independently_of_forwarded_versions(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="frontcomposer-catalog-") as directory:
+            workspace = Path(directory)
+            owner = workspace / "FrontComposer"
+            owner.mkdir()
+            for name in ("Directory.Packages.props", "Directory.Build.targets"):
+                (owner / name).write_bytes((ROOT / name).read_bytes())
+            probe = owner / "guard.proj"
+            probe.write_text('<Project><PropertyGroup><FrontComposerRoot>true</FrontComposerRoot></PropertyGroup>'
+                             '<Import Project="Directory.Packages.props"/><Import Project="Directory.Build.targets"/></Project>')
+
+            def catalog(path: Path, version: str) -> None:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('<Project><PropertyGroup><HexalithEventStoreVersion Condition="false">4.2.0</HexalithEventStoreVersion>'
+                                f"""<HexalithEventStoreVersion Condition="'$(HexalithEventStoreVersion)' == ''">{version}</HexalithEventStoreVersion>"""
+                                "<HexalithVersionsLoaded>true</HexalithVersionsLoaded></PropertyGroup></Project>")
+
+            def check(selected: str, allowed: bool) -> None:
+                result = subprocess.run(["dotnet", "msbuild", str(probe), "-nologo",
+                                         "-t:ValidateFrontComposerEventStoreVersion", f"-p:HexalithEventStoreVersion={selected}"],
+                                        cwd=owner, capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode == 0, allowed, result.stdout + result.stderr)
+
+            sibling = workspace / "Hexalith.Builds/Props/Directory.Packages.props"
+            catalog(sibling, "5.5.1")
+            check("5.5.1", True)
+            check("5.4.0", False)
+            catalog(sibling, "5.6.0")
+            check("5.6.0", False)
+            sibling.write_text("<Project />")
+            check("5.4.0", False)
+            catalog(owner / "references/Hexalith.Builds/Props/Directory.Packages.props", "5.4.0")
+            check("5.4.0", True)
+            check("5.5.1", False)
 
     def test_release_restores_only_the_selected_eventstore_version(self) -> None:
         with tempfile.TemporaryDirectory(prefix="frontcomposer-eventstore-release-") as artifacts:

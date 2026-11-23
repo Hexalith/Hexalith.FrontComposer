@@ -3546,7 +3546,7 @@
       "builds_commit": "6439a71d240a32a7486c4fd437539a56c7a909b8",
       "builds_project": "src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj",
       "root_selectors_sha256": "141e8daf093ff0cd6ee96a7452eeb50b2dd2ce9f4a5f423cfa31bf7a9ade30e4",
-      "consumer_configuration_sha256": "1ea2bc5b3e45b67514d1827e92ac0bece0761c1a99ae244bdc0e84696a5f4dba"
+      "consumer_configuration_sha256": "75376039b93700fb9f8d986ec8e47744e80a246016c81e87c2e189c528329071"
     }
   }
 }
