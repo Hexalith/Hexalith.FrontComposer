@@ -8874,7 +8874,8 @@ location: tests/e2e/page-objects/settings.page.ts:126-158
 source_spec: `spec-settings-persistence-ci.md`
 severity: low
 reason: `tenantSegment`, the non-email branch of `userSegment`, and the `!'()*` re-encoding in `escapeDataString` mirror `FrontComposerStorageKey` with no executing CI lane, while the corresponding .NET paths are covered by `StorageKeysTests`. This bundle's intent scoped the fix to the single existing Unicode regression, so closing the remaining three is separate work.
-status: open
+status: done 2026-11-24
+resolution: Pin .NET tenant normalization, non-email user casing, and RFC 3986 escaping in the browserless lane.
 
 ### DW-1927: The seven browser-driven tests in `settings-persistence.spec.ts` -- the AC1 keyboard entry point and the AC2 persist-across-reload claims -- are executed by no CI lane at all.
 origin: spec-deferred 5ffebe87c27f

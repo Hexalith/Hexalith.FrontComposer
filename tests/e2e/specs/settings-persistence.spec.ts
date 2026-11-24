@@ -29,6 +29,10 @@ test('storage key helper matches .NET invariant casing for Unicode email identit
   );
 
   expect(key).toBe('tenant:%C4%B0%CF%83%40example.com:theme');
+  expect(SettingsPage.storageKey({ tenantId: '\u0085Cafe\u0301:EU\u0085', userId: ' \uFEFFAgent.A ' }, 'density'))
+    .toBe('Caf%C3%A9%3AEU:%EF%BB%BFAgent.A:density');
+  expect(SettingsPage.storageKey({ tenantId: "tenant!'()*", userId: "Agent!'()*" }, 'theme'))
+    .toBe('tenant%21%27%28%29%2A:Agent%21%27%28%29%2A:theme');
 });
 
 test.describe('Story 1.6: theme, density, and settings persistence @p1 @smoke', () => {
