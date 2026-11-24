@@ -203,6 +203,19 @@ public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
         routes.ShouldContain(r => r.Template == "/commands/TestCommands/FiveFieldFullPageCommand");
     }
 
+    /// <summary>DW-1980 — the rendered route heading carries the id the page's content label references.</summary>
+    [Fact]
+    public async Task PageLabelsTheMainLandmarkWithItsRouteHeading() {
+        await InitializeStoreAsync();
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/commands/TestCommands/FiveFieldFullPageCommand");
+
+        IRenderedComponent<FiveFieldFullPageCommandPage> cut = Render<FiveFieldFullPageCommandPage>();
+
+        const string headingId = "fc-command-heading-Hexalith-FrontComposer-Shell-Tests-Generated-FiveFieldFullPageCommand";
+        cut.Find("h1").Id.ShouldBe(headingId);
+        cut.FindComponent<Hexalith.FrontComposer.Shell.Components.Layout.FcContentLabel>().Instance.LabelledBy.ShouldBe(headingId);
+    }
+
     [Fact]
     public async Task Page_DispatchesRestoreGridStateOnMount_WhenProjectionFqnQueryPresent() {
         // AC7 + Decision D30 — `{Cmd}Page` dispatches RestoreGridStateAction on init when the

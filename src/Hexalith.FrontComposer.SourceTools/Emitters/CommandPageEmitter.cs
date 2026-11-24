@@ -40,6 +40,8 @@ public static class CommandPageEmitter {
         string rendererFqn = string.IsNullOrEmpty(model.Namespace) ? model.TypeName + "Renderer" : model.Namespace + "." + model.TypeName + "Renderer";
         string route = model.FullPageRoute;
         string pageTitleText = EscapeString(model.DisplayLabel);
+        // DW-1980 — a stable route-heading id lets the page name the shell's main landmark.
+        string headingId = "fc-command-heading-" + CommandRendererEmitter.SanitizeCssId(model.CommandFullyQualifiedName);
 
         _ = sb.AppendLine("/// <summary>Generated routable page composing a route header and FullPage renderer (Story 2-2 Decision D5 + D22).</summary>");
         _ = sb.AppendLine("[Route(\"" + route + "\")]");
@@ -105,8 +107,12 @@ public static class CommandPageEmitter {
         _ = sb.AppendLine("            __page.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Layout.FcPageHeader>(pseq++);");
         _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"PageTitle\", \"" + pageTitleText + "\");");
         _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"Heading\", \"" + pageTitleText + "\");");
+        _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"HeadingId\", \"" + headingId + "\");");
         _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"HeadingTabIndex\", (int?)-1);");
         _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"IsCommandFormHeading\", true);");
+        _ = sb.AppendLine("            __page.CloseComponent();");
+        _ = sb.AppendLine("            __page.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Layout.FcContentLabel>(pseq++);");
+        _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"LabelledBy\", \"" + headingId + "\");");
         _ = sb.AppendLine("            __page.CloseComponent();");
         _ = sb.AppendLine("            __page.OpenComponent<" + rendererFqn + ">(pseq++);");
         _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"RenderMode\", (CommandRenderMode?)CommandRenderMode.FullPage);");

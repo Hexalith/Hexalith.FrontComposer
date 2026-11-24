@@ -1245,8 +1245,11 @@ public static class CommandRendererEmitter {
     private static string EscapeString(string? value)
         => string.IsNullOrEmpty(value) ? string.Empty : GeneratedLiteral.Escape(value!);
 
-    /// <summary>Story 2-2 code-review D12 — reduce a command FQN to a stable CSS/HTML id.</summary>
-    private static string SanitizeCssId(string value) {
+    /// <summary>Replaces every character that is not a letter or digit with <c>-</c> to form a stable CSS/HTML id fragment.</summary>
+    /// <remarks>Story 2-2 code-review D12 — reduces a command FQN to a stable id; the generated command page reuses it for its route heading (DW-1980).</remarks>
+    /// <param name="value">The source text, typically a fully qualified type name.</param>
+    /// <returns>The id fragment, or <c>unknown</c> when <paramref name="value"/> is empty.</returns>
+    internal static string SanitizeCssId(string value) {
         if (string.IsNullOrEmpty(value)) {
             return "unknown";
         }

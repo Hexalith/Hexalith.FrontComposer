@@ -84,6 +84,11 @@ test.describe('Story 11.7: generated command and module route contract', () => {
       .getByRole('heading', { name: 'Configure Counter', exact: true, level: 1 });
     await expect(commandHeading).toBeVisible();
     await expect(commandHeading).toBeFocused();
+    // DW-1980 — the generated route heading names the shell's main landmark through aria-labelledby.
+    const commandHeadingId = await commandHeading.getAttribute('id');
+    expect(commandHeadingId).toMatch(/^fc-command-heading-/);
+    await expect(page.locator('#fc-main-content')).toHaveAttribute('aria-labelledby', commandHeadingId!);
+    await expect(page.getByRole('main', { name: 'Configure Counter', exact: true })).toBeVisible();
     await expect(page.locator('.fc-command-form[aria-label="Configure Counter command form"]')).toBeVisible();
 
     // Palette route navigation skips origin restoration, so it must release its modal reservation.

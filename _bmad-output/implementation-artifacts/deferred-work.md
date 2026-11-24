@@ -9711,7 +9711,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Emitters/CommandPageEmitter.cs:
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: low
 reason: summary: Generated full-page command routes now emit `FcPageHeader` without `HeadingId` and without `FcContentLabel`, so `#fc-main-content` keeps the implicit "main" name. evidence: `CommandPageEmitter.cs:105-109` sets `PageTitle`, `Heading`, and `HeadingTabIndex=-1` only; `FcPageHeader` docs require `HeadingId` plus `ContentLabelledBy`/`FcContentLabel` to name the landmark. Pre-existing unnamed-main default; AC2 requires one route heading, not an ID-contract. Settled by emitting a stable heading id and `FcContentLabel`, or by an explicit decision that generated command routes keep the implicit landmark name. Natural owner: a11y follow-up / Story 11.30.
-status: open
+status: done 2026-11-24
+resolution: Generated command pages now give the route heading a stable id and name `#fc-main-content` from it through `FcContentLabel`.
 
 ### DW-1981: Field DisplayName still treats whitespace as an explicit label
 
@@ -11597,3 +11598,11 @@ November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were ap
 - source_spec: `spec-five-deferred-release-evidence-followups.md`
   summary: Record an incident when verification of a restored release manifest fails.
   evidence: The existing `cmd_verify_prepared` passes `post-restore-verification` to `_record_incident`, and `_PARTIAL_PUBLISH_PHASES` rejects that value. Align the producer with the release evidence phase contract and verify that the failure path preserves the resulting incident.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dw-1980.md`
+  summary: Verify that generated command routes expose the main landmark name before route focus lands.
+  evidence: `FcContentLabel` registers its name from `OnAfterRender`, and the shell applies it on a later render, while `FcRouteFocus` moves focus from its own `OnAfterRenderAsync`; a screen reader could announce the unnamed landmark first. Unverified (medium if confirmed): a native NVDA run on `/commands/Counter/ConfigureCounterCommand` that records the announced landmark name would settle it.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dw-1980.md`
+  summary: Name the shell main landmark on module landing and aggregate list pages.
+  evidence: `FcModuleLandingPage.razor` renders `FcPageHeader` without `HeadingId` or `FcContentLabel`, and `FcAggregateListPage` accepts a `HeadingId` but never emits `FcContentLabel`, so those routes keep the implicit "main" name while generated command routes now name it from their heading.

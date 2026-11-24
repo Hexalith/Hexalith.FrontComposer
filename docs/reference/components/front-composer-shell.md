@@ -160,7 +160,12 @@ The shell banner title is deliberately rendered as non-heading text. Its size an
 from the public `Typography.AppTitle` token, whose `H1` tag mapping remains available to external
 consumers, but the shell overrides that tag to `Span` so routed content owns the page's single `h1`.
 Generated full-page command routes already render a non-blank `FcPageHeader` with
-`HeadingTabIndex="-1"` and must not be wrapped in another page header. Custom route pages should
+`HeadingTabIndex="-1"` and must not be wrapped in another page header. Once the page is interactive,
+they also name `#fc-main-content` from that heading through an `FcContentLabel`; the heading id is
+generated and is not a public contract. A page-level `FcContentLabel` takes precedence over the shell's
+`ContentLabel` and `ContentLabelledBy` parameters while that page is shown. A custom route can name the
+landmark the same way, by setting `HeadingId` on its header and rendering
+`<FcContentLabel LabelledBy="..." />` with the same id. Custom route pages should
 render one such header; this gives Blazor's `FocusOnNavigate Selector="h1"` an unambiguous,
 focusable route-content target.
 

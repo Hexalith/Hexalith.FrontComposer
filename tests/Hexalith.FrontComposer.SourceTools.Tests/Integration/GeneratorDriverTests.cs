@@ -853,6 +853,23 @@ public partial class AllUnsupportedProjection
         pageSource.ShouldContain("\"VerticalGap\", \"24px\"");
     }
 
+    /// <summary>DW-1980 — the generated command page names the shell's main landmark from its route heading.</summary>
+    [Fact]
+    public void GeneratedCommandPageNamesTheMainLandmarkFromItsHeading() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(CommandTestSources.MultiFieldCommand);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator()).RunGenerators(compilation, ct);
+        string pageSource = driver.GetRunResult().GeneratedTrees
+            .Single(t => System.IO.Path.GetFileName(t.FilePath).Contains("CommandPage.g.razor.cs", StringComparison.Ordinal))
+            .GetText(ct)
+            .ToString();
+        const string headingId = "fc-command-heading-TestDomain-PlaceOrderCommand";
+
+        pageSource.ShouldContain("\"HeadingId\", \"" + headingId + "\"");
+        pageSource.ShouldContain("OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Layout.FcContentLabel>");
+        pageSource.ShouldContain("\"LabelledBy\", \"" + headingId + "\"");
+    }
+
     [Fact]
     public void RunGenerators_RenderModeOverride_HostComponentCompilesAgainstGeneratedRenderer() {
         CancellationToken ct = TestContext.Current.CancellationToken;
