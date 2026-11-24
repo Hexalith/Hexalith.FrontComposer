@@ -329,6 +329,7 @@ public sealed class CommandAuthorizationEvaluatorTests {
         entry.Level.ShouldBe(LogLevel.Warning);
         entry.EventId.Id.ShouldBe(5672);
         entry.EventId.Name.ShouldBe("AuthorizationBlocked");
+        entry.State["DiagnosticId"].ShouldBe("HFC2123");
         entry.Exception.ShouldBeNull();
         entry.Message.ShouldNotContain(sentinelTenant);
         entry.Message.ShouldNotContain(sentinelUser);

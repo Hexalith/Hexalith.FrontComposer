@@ -532,6 +532,9 @@ public static class FcDiagnosticIds {
     /// </summary>
     public const string HFC2121_ProjectionViewOverrideRenderFault = "HFC2121";
 
+    /// <summary>Runtime Warning: command authorization blocked a presentation or execution request.</summary>
+    public const string HFC2123CommandAuthorizationBlocked = "HFC2123";
+
     /// <summary>
     /// Runtime Information: defensive log for a dev-mode overlay activation attempt outside a
     /// development environment. Normal gates should prevent this from firing.

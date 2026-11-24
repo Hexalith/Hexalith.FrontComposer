@@ -233,6 +233,7 @@ internal static partial class FrontComposerSecurityLog
 
         LogAuthorizationBlocked(
             logger,
+            FcDiagnosticIds.HFC2123CommandAuthorizationBlocked,
             BoundedReason(reason),
             SanitizeIdentifier(commandType),
             SanitizeIdentifier(policy),
@@ -717,9 +718,10 @@ internal static partial class FrontComposerSecurityLog
         string exceptionType);
 
     [LoggerMessage(EventId = 5672, EventName = "AuthorizationBlocked", Level = LogLevel.Warning,
-        Message = "Command authorization blocked. Reason={Reason} CommandTypeDigest={CommandTypeDigest} PolicyDigest={PolicyDigest} CorrelationDigest={CorrelationDigest}.")]
+        Message = "Command authorization blocked. Reason={Reason} CommandTypeDigest={CommandTypeDigest} PolicyDigest={PolicyDigest} CorrelationDigest={CorrelationDigest}. DiagnosticId={DiagnosticId}.")]
     private static partial void LogAuthorizationBlocked(
         ILogger logger,
+        string diagnosticId,
         string reason,
         string commandTypeDigest,
         string policyDigest,
