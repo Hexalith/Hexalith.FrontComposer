@@ -29,6 +29,7 @@
     <PackageReference Include="FsCheck.Xunit.v3" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="Schema/Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>

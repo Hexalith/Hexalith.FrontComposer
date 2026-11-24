@@ -91,16 +91,6 @@ public sealed class SchemaFixtureCatalogTests {
         return ids;
     }
 
-    private static DirectoryInfo LocateFixtureDirectory() {
-        DirectoryInfo? cursor = new(AppContext.BaseDirectory);
-        for (int i = 0; i < 10 && cursor is not null; i++, cursor = cursor.Parent) {
-            string candidate = Path.Combine(cursor.FullName, "tests", "Hexalith.FrontComposer.SourceTools.Tests", "Schema", "Fixtures");
-            if (Directory.Exists(candidate)) {
-                return new DirectoryInfo(candidate);
-            }
-        }
-
-        throw new DirectoryNotFoundException(
-            "Fixture directory tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures not found from base directory.");
-    }
+    private static DirectoryInfo LocateFixtureDirectory()
+        => new(Path.Combine(AppContext.BaseDirectory, "Schema", "Fixtures"));
 }
