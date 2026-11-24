@@ -9651,7 +9651,8 @@ location: _bmad-output/implementation-artifacts/spec-11-27-generated-command-rou
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: low
 reason: summary: The initial implementation note says route generation and application markup did not change, while the later owner-approved completion patches intentionally add generated `FcPageHeader` markup. evidence: The review workflow routes fixes to the spec under review to deferred work.
-status: open
+status: done 2026-11-24
+resolution: The Story 11.27 note now scopes "no markup or route generation changed" to the initial locator pass and records the later generated-output, label and dependency changes.
 
 ### DW-1970: Reconcile the unchecked completion-patch checklist with its delivered state
 
