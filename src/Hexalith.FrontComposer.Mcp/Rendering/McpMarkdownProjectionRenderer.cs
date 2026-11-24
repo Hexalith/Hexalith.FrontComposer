@@ -8,6 +8,11 @@ using Hexalith.FrontComposer.Contracts.Mcp;
 
 namespace Hexalith.FrontComposer.Mcp.Rendering;
 
+/// <summary>Renders bounded Markdown for MCP projection resources.</summary>
+/// <remarks>
+/// Bearer redaction treats the word after a bearer prefix as a possible credential.
+/// For example, prose such as "Bearer authentication required" loses the word "authentication".
+/// </remarks>
 public static class McpMarkdownProjectionRenderer {
     public static McpProjectionRenderResult Render(
         McpProjectionRenderRequest request,
