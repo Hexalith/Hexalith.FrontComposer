@@ -362,6 +362,8 @@ public static class SchemaFingerprintAlgorithm {
     /// from <see cref="Sha256CanonicalJsonV1"/> because the build-time canonicalizer cannot share
     /// the runtime System.Text.Json source-gen pipeline (Roslyn analyzer hosting constraint).
     /// Documented as the v1 dual-algorithm contract (D23 in Story 8-6).
+    /// Blob v1 retains U+FEFF, U+200B, U+200C, and U+200D in metadata to preserve existing hashes.
+    /// Applying the canonical JSON scalar normalization here would require a new blob algorithm identifier.
     /// </summary>
     public const string Sha256SourceToolsBlobV1 = "frontcomposer.schema.sha256.v1.sourcetools-blob";
 
