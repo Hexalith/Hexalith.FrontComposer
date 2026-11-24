@@ -415,6 +415,49 @@ public sealed class TestingFailureModeTests {
     }
 
     [Fact]
+    public void TestDataBuildersAcceptBoxedValuePropertySelectors() {
+        new CommandTestDataBuilder<BuilderModel>().With<object>(item => item.Count, 7)
+            .Build().Count.ShouldBe(7);
+        new ProjectionTestDataBuilder<BuilderModel>().With<object>(item => item.Count, 11)
+            .Build().Count.ShouldBe(11);
+    }
+
+    [Fact]
+    public void TestDataBuildersRejectNestedReadOnlyAndIncompatibleAssignments() {
+        CommandTestDataBuilder<BuilderModel> command = new();
+        ProjectionTestDataBuilder<BuilderModel> projection = new();
+
+        Should.Throw<ArgumentException>(() => command.With(item => item.Child.Name, "nested"))
+            .ParamName.ShouldBe("property");
+        Should.Throw<ArgumentException>(() => projection.With(item => item.Child.Name, "nested"))
+            .ParamName.ShouldBe("property");
+        Should.Throw<ArgumentException>(() => command.With(item => item.ReadOnlyCount, 7))
+            .ParamName.ShouldBe("property");
+        Should.Throw<ArgumentException>(() => projection.With(item => item.ReadOnlyCount, 7))
+            .ParamName.ShouldBe("property");
+        Should.Throw<ArgumentException>(() => command.With<object>(item => item.Count, "seven"))
+            .ParamName.ShouldBe("value");
+        Should.Throw<ArgumentNullException>(() => projection.With<object?>(item => item.Count, null))
+            .ParamName.ShouldBe("value");
+    }
+
+    [Fact]
+    public void ProjectionDataBuilderValidatesBatchCallbacksBeforeRunningThem() {
+        int callbacks = 0;
+
+        Should.Throw<ArgumentNullException>(() => ProjectionTestDataBuilder<BuilderModel>.BuildMany(null!))
+            .ParamName.ShouldBe("configure");
+        Should.Throw<ArgumentException>(() => ProjectionTestDataBuilder<BuilderModel>.BuildMany(
+            _ => callbacks++, null!)).ParamName.ShouldBe("configure");
+        callbacks.ShouldBe(0);
+
+        ProjectionTestDataBuilder<BuilderModel>.BuildMany(
+            builder => builder.With(item => item.Count, 1),
+            builder => builder.With(item => item.Count, 2))
+            .Select(item => item.Count).ShouldBe([1, 2]);
+    }
+
+    [Fact]
     public void FrontComposerTestBase_DuringHostSetup_DirectsAdoptersToExplicitAsyncInitialization() {
         InvalidOperationException exception = Should.Throw<InvalidOperationException>(() => new DuringSetupTestBase());
         exception.Message.ShouldContain("InitializeStoreAsync");
@@ -1832,6 +1875,9 @@ public sealed class TestingFailureModeTests {
     private sealed class BuilderModel {
         public string? Name { get; set; }
         public string? Code { get; set; }
+        public int Count { get; set; }
+        public int ReadOnlyCount => Count;
+        public BuilderModel Child => this;
     }
 
     private sealed class DuringSetupTestBase : FrontComposerTestBase {

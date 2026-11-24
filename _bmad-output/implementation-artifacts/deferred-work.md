@@ -259,7 +259,8 @@ resolution: Reject malformed chord labels with an argument error.
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 2 (2026-08-08)"), 2026-08-27
 location: CommandTestDataBuilder
 reason: `CommandTestDataBuilder` / `ProjectionTestDataBuilder` `GetProperty` accepts any `MemberExpression` (nested access / boxed value-type Convert shapes fail opaquely); `Build` does not check `CanWrite`; `BuildMany` NREs on a null configure callback. File split + CA1000 SuppressMessage did not introduce these.
-status: open
+status: done 2026-11-24
+resolution: Validate builder selectors, values, and batch callbacks.
 
 ### DW-704: `CommandServiceExtensions.DispatchAsync` CA1510-modernized only `commandService`; `command` remains unchecked at the extension boundary.
 
