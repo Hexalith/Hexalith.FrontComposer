@@ -312,13 +312,12 @@ public static class McpMarkdownProjectionRenderer {
         McpResourceDescriptor descriptor,
         IReadOnlyList<string>? suggestions,
         FrontComposerMcpOptions options) {
-        // R2-P2: redact plural label / title fallback before lower-casing and escaping; both
-        // are operator-supplied descriptor text and must follow the same sanitization path as
-        // the heading title (P-17).
+        // Both labels follow the heading's sanitization path. A title used as a
+        // fallback keeps its original casing so it can contain acronyms and proper names.
         string plural = string.IsNullOrWhiteSpace(descriptor.EntityPluralLabel)
-            ? descriptor.Title
-            : descriptor.EntityPluralLabel!;
-        _ = sb.Append("No ").Append(EscapeMarkdownText(RedactSensitiveText(plural).ToLowerInvariant())).AppendLine(" found.");
+            ? RedactSensitiveText(descriptor.Title)
+            : RedactSensitiveText(descriptor.EntityPluralLabel).ToLowerInvariant();
+        _ = sb.Append("No ").Append(EscapeMarkdownText(plural)).AppendLine(" found.");
 
         IReadOnlyList<string> safeSuggestions = suggestions ?? [];
         int max = Math.Max(0, options.MaxProjectionSuggestions);

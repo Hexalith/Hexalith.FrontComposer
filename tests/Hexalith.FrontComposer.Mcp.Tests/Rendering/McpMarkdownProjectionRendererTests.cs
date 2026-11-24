@@ -183,6 +183,21 @@ public sealed class McpMarkdownProjectionRendererTests {
         result.Document.Text.ShouldNotContain("Suggestions:");
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(" ")]
+    public void Render_EmptyProjection_PreservesTitleCaseInFallback(string? entityPluralLabel) {
+        McpResourceDescriptor descriptor = Descriptor(title: "GDPR [exports]", entityPluralLabel: entityPluralLabel);
+
+        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
+            descriptor,
+            [],
+            TotalCount: 0), new FrontComposerMcpOptions(), TestContext.Current.CancellationToken);
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Document!.Text.ShouldContain(@"No GDPR \[exports\] found.");
+    }
+
     [Fact]
     public void Render_RedactsSecretLookingCellValues() {
         McpResourceDescriptor descriptor = Descriptor();
