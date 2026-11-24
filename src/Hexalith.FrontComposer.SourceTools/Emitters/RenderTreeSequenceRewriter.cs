@@ -54,6 +54,7 @@ namespace Hexalith.FrontComposer.SourceTools.Emitters;
 /// </para>
 /// </remarks>
 internal static class RenderTreeSequenceRewriter {
+    private const int MaxConditionalSymbols = 4;
     private static readonly CSharpParseOptions ReleaseParseOptions = new(LanguageVersion.Latest);
     private static readonly CSharpParseOptions DebugParseOptions = ReleaseParseOptions.WithPreprocessorSymbols("DEBUG");
 
@@ -137,9 +138,9 @@ internal static class RenderTreeSequenceRewriter {
     /// leaves a runtime sequence argument behind.
     /// </summary>
     /// <param name="source">Generated C# source text.</param>
-    /// <returns>The rewritten source after checking active generated render-tree calls.</returns>
+    /// <returns>The rewritten source after checking reachable generated render-tree calls.</returns>
     /// <exception cref="InvalidOperationException">
-    /// A runtime sequence argument survived the rewrite.
+    /// A runtime sequence argument survived the rewrite, or the source has too many conditional symbols to check.
     /// </exception>
     /// <remarks>
     /// The emitters no longer bracket their output with the ASP0006 disable/restore pair, so a
@@ -169,15 +170,17 @@ internal static class RenderTreeSequenceRewriter {
     /// </summary>
     /// <param name="source">Emitted C# source text.</param>
     /// <returns><see langword="true"/> when a runtime sequence argument survived.</returns>
+    /// <exception cref="InvalidOperationException">The source exceeds the conditional symbol limit.</exception>
     internal static bool ContainsRuntimeSequenceArgument(string source)
         => FindRuntimeSequenceArgument(source) is not null;
 
     /// <summary>
     /// Finds the first <c>RenderTreeBuilder</c> call whose sequence argument is still produced by
-    /// execution.
+    /// execution in a reachable consumer configuration.
     /// </summary>
     /// <param name="source">Emitted C# source text.</param>
     /// <returns>The offending call text, or <see langword="null"/> when there is none.</returns>
+    /// <exception cref="InvalidOperationException">The source exceeds the conditional symbol limit.</exception>
     internal static string? FindRuntimeSequenceArgument(string source) {
         if (string.IsNullOrEmpty(source)) {
             return null;
@@ -189,7 +192,53 @@ internal static class RenderTreeSequenceRewriter {
             return failure;
         }
 
-        return FindRuntimeSequenceArgument(CSharpSyntaxTree.ParseText(source, ReleaseParseOptions).GetRoot());
+        // Consumer symbols can enable whole calls or change an argument inline. Parse complete
+        // documents so nested and split conditionals retain their surrounding syntax.
+        HashSet<string> symbols = new(StringComparer.Ordinal);
+        for (DirectiveTriviaSyntax? directive = root.GetFirstDirective();
+            directive is not null;
+            directive = directive.GetNextDirective()) {
+            ExpressionSyntax? condition = directive switch {
+                IfDirectiveTriviaSyntax @if => @if.Condition,
+                ElifDirectiveTriviaSyntax elif => elif.Condition,
+                _ => null,
+            };
+            if (condition is null) {
+                continue;
+            }
+
+            foreach (IdentifierNameSyntax identifier in condition.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>()) {
+                _ = symbols.Add(identifier.Identifier.ValueText);
+                if (symbols.Count > MaxConditionalSymbols) {
+                    throw new InvalidOperationException(
+                        $"Render-tree sequence validation supports at most {MaxConditionalSymbols} conditional symbols per generated document.");
+                }
+            }
+        }
+
+        string[] allSymbols = symbols.OrderBy(static symbol => symbol, StringComparer.Ordinal).ToArray();
+        int combinations = 1 << allSymbols.Length;
+        for (int mask = 0; mask < combinations; mask++) {
+            List<string> defined = new(allSymbols.Length);
+            for (int index = 0; index < allSymbols.Length; index++) {
+                if ((mask & (1 << index)) != 0) {
+                    defined.Add(allSymbols[index]);
+                }
+            }
+
+            // The initial parse already checked the configuration with only DEBUG defined.
+            if (defined.Count == 1 && string.Equals(defined[0], "DEBUG", StringComparison.Ordinal)) {
+                continue;
+            }
+
+            var configuration = ReleaseParseOptions.WithPreprocessorSymbols(defined);
+            failure = FindRuntimeSequenceArgument(CSharpSyntaxTree.ParseText(source, configuration).GetRoot());
+            if (failure is not null) {
+                return failure;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>Finds the first call whose sequence expression is not an integer literal.</summary>

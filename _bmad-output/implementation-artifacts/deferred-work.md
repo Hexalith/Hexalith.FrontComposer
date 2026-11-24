@@ -8941,7 +8941,8 @@ location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewr
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
 reason: AssignLiterals deliberately returns conditional documents unchanged, but FindRuntimeSequenceArgument parses only with DEBUG defined; a counter solely in an inactive #else or non-DEBUG branch remains DisabledTextTrivia. This predates the comment-trivia correction.
-status: open
+status: done 2026-11-24
+resolution: Validate render-tree sequences across reachable conditional branches before emission.
 
 ### DW-1937: The fail-closed render-tree check accepts nonliteral sequence expressions that contain no increment or decrement.
 

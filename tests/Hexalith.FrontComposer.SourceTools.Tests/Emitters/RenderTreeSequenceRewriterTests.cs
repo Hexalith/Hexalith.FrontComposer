@@ -619,6 +619,84 @@ public sealed class RenderTreeSequenceRewriterTests {
 
         Should.Throw<ShouldAssertException>(() => ShouldUseLiteralRenderTreeSequences(source))
             .Message.ShouldContain("GetSequence()");
+        Should.Throw<InvalidOperationException>(() => RenderTreeSequenceRewriter.AssignLiteralsOrFail(source))
+            .Message.ShouldContain("GetSequence()");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AssignLiteralsOrFailChecksMixedConditionalSymbols(bool hasDynamicSequence) {
+        string source = """
+            class C
+            {
+                void Render(RenderTreeBuilder builder)
+                {
+                    builder.AddContent(
+            #if PREVIEW && !DEBUG
+            #if FEATURE
+                        SEQUENCE,
+            #else
+                        1,
+            #endif
+            #else
+                        2,
+            #endif
+                        "content");
+                }
+            }
+            """.Replace("SEQUENCE", hasDynamicSequence ? "NextSequence()" : "0", StringComparison.Ordinal);
+
+        if (hasDynamicSequence) {
+            Should.Throw<InvalidOperationException>(() => RenderTreeSequenceRewriter.AssignLiteralsOrFail(source))
+                .Message.ShouldContain("NextSequence()");
+        }
+        else {
+            RenderTreeSequenceRewriter.AssignLiteralsOrFail(source).ShouldBe(source);
+        }
+    }
+
+    [Theory]
+    [InlineData("A && B && C && D", "0")]
+    [InlineData("A && !A && B && C && D", "NextSequence()")]
+    public void AssignLiteralsOrFailAllowsLiteralReachableBranchesAtTheSymbolLimit(string condition, string sequence) {
+        string source = """
+            #if !A
+            #elif CONDITION
+            builder.AddContent(SEQUENCE, "conditional");
+            #endif
+            """.Replace("CONDITION", condition, StringComparison.Ordinal)
+                .Replace("SEQUENCE", sequence, StringComparison.Ordinal);
+
+        RenderTreeSequenceRewriter.AssignLiteralsOrFail(source).ShouldBe(source);
+    }
+
+    [Fact]
+    public void AssignLiteralsOrFailRejectsASequenceInAnElifOnlyBranch() {
+        const string source = """
+            #if DEBUG
+            builder.AddContent(0, "debug");
+            #elif FEATURE
+            builder.AddContent(NextSequence(), "feature");
+            #else
+            builder.AddContent(1, "release");
+            #endif
+            """;
+
+        Should.Throw<InvalidOperationException>(() => RenderTreeSequenceRewriter.AssignLiteralsOrFail(source))
+            .Message.ShouldContain("NextSequence()");
+    }
+
+    [Fact]
+    public void AssignLiteralsOrFailRejectsAnUnboundedConditionalMatrix() {
+        const string source = """
+            #if A && B && C && D && E
+            builder.AddContent(Sequence(), "unverified");
+            #endif
+            """;
+
+        Should.Throw<InvalidOperationException>(() => RenderTreeSequenceRewriter.AssignLiteralsOrFail(source))
+            .Message.ShouldContain("conditional symbols");
     }
 
     [Fact]
