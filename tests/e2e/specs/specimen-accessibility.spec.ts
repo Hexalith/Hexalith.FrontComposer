@@ -68,6 +68,11 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     const route = getSpecimenRoute('type');
     await gotoSpecimen(page, route);
 
+    const main = page.getByRole('main');
+    await expect(main).toHaveCount(1);
+    await expect(main).toHaveAttribute('id', 'fc-main-content');
+    await expect(main.getByRole('region', { name: 'Type specimen', exact: true }))
+      .toHaveAttribute('data-testid', 'fc-type-specimen');
     await expect(page.getByTestId('fc-type-slot-display')).toContainText('FrontComposer Display');
     await expect(page.getByTestId('fc-token-theme-light')).toBeVisible();
     await expect(page.getByTestId('fc-token-theme-dark')).toBeVisible();

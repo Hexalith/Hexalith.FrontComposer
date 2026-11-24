@@ -9515,7 +9515,8 @@ location: samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor:13
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: medium
 reason: summary: The type specimen emits a nested `main` landmark inside the shell's page-level `main` landmark. evidence: `FrontComposerShell.razor` owns the page-level `role="main"`, while `samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor:13` renders another `<main>` as its route root. The specimen's scoped axe check starts at the inner landmark, so it does not detect the page-level duplication; a full-page accessibility scan or removal of the inner landmark would expose and settle the defect.
-status: open
+status: done 2026-11-24
+resolution: Keep the shell’s single main landmark and give the type specimen a named region.
 
 ### DW-1977: Restore Escape-key closure for the Inline Fluent popover and add live browser coverage
 origin: code review of spec-update-latest-submodules-and-package-versions.md (2026-09-18)
