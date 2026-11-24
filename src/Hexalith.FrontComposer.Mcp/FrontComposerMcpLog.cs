@@ -1,6 +1,9 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 
+using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.Mcp.Schema;
 
 using Microsoft.Extensions.Logging;
@@ -205,6 +208,70 @@ internal static partial class FrontComposerMcpLog {
             boundedDecisionKind);
     }
 
+    /// <summary>Logs bounded outcomes for command invocations and lifecycle reads.</summary>
+    /// <param name="logger">Logger receiving the opt-in debug event.</param>
+    /// <param name="operation">Fixed MCP operation name.</param>
+    /// <param name="successOutcome">Fixed outcome name when the operation succeeded.</param>
+    /// <param name="result">Result from the invocation or lifecycle reader.</param>
+    /// <param name="startedAt">Monotonic timestamp captured before the operation.</param>
+    internal static void OperationCompleted(
+        ILogger? logger,
+        string operation,
+        string successOutcome,
+        FrontComposerMcpResult result,
+        long startedAt) {
+        try {
+            if (logger is null || !logger.IsEnabled(LogLevel.Debug)) {
+                return;
+            }
+
+            string operationName = operation;
+            string descriptorKind = "command";
+            string outcome = result.IsError ? BoundedCategory(result.Category) : OperationOutcome(result.StructuredContent, successOutcome);
+            string durationBucket = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds switch {
+                < 10 => "lt_10ms",
+                < 100 => "10_to_99ms",
+                < 1000 => "100_to_999ms",
+                _ => "gte_1000ms",
+            };
+
+            string correlationIdDigest = DigestHandle(ReadString(result.StructuredContent, "correlationId"));
+            string messageIdDigest = DigestHandle(ReadString(result.StructuredContent, "messageId"));
+            LogOperationCompleted(logger, operationName, descriptorKind, outcome, durationBucket, correlationIdDigest, messageIdDigest);
+        }
+        catch (Exception ex) when (IsNonFatalLoggingFailure(ex)) {
+            // A debug sink failure must not replace an acknowledgement after dispatch.
+        }
+    }
+
+    private static string OperationOutcome(JsonObject? payload, string fallback)
+        => payload?["outcome"] is JsonObject outcome && ReadString(outcome, "category") is
+            "confirmed" or "rejected" or "idempotent_confirmed" or "timed_out" or "needs_review" or "warning" or "degraded_exhausted"
+                ? ReadString(outcome, "category")!
+                : fallback;
+
+    private static string? ReadString(JsonObject? payload, string property)
+        => payload?[property] is JsonValue value && value.TryGetValue(out string? text) ? text : null;
+
+    private static bool IsNonFatalLoggingFailure(Exception exception) {
+        while (exception is not (OutOfMemoryException or StackOverflowException or AccessViolationException)) {
+            if (exception is AggregateException aggregate) {
+                return aggregate.Flatten().InnerExceptions.All(IsNonFatalLoggingFailure);
+            }
+
+            if (exception.InnerException is not { } inner) {
+                return true;
+            }
+
+            exception = inner;
+        }
+
+        return false;
+    }
+
+    private static string DigestHandle(string? handle)
+        => handle is not null && FrontComposerMcpUlid.IsCanonical(handle) ? SanitizeCategoryValue(handle) : "unknown";
+
     private static string BoundedCategory(FrontComposerMcpFailureCategory category)
         => Enum.IsDefined(category) ? category.ToString() : "Unknown";
 
@@ -272,6 +339,11 @@ internal static partial class FrontComposerMcpLog {
         ILogger logger,
         string category,
         string exceptionType);
+
+    [LoggerMessage(EventId = 8319, EventName = "McpOperationCompleted", Level = LogLevel.Debug,
+        Message = "MCP operation {Operation} completed for {DescriptorKind} with {Outcome} in {DurationBucket}. CorrelationIdDigest={CorrelationIdDigest}. MessageIdDigest={MessageIdDigest}.")]
+    private static partial void LogOperationCompleted(
+        ILogger logger, string operation, string descriptorKind, string outcome, string durationBucket, string correlationIdDigest, string messageIdDigest);
 
     [LoggerMessage(EventId = 8318, EventName = "McpSchemaDecision", Level = LogLevel.Information,
         Message = "MCP schema negotiation decision {Category} {MessageKey} {DocsCode} {DecisionKind}.")]

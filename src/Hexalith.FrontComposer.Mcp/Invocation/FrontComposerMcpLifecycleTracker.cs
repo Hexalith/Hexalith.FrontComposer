@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
@@ -44,9 +45,14 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             observer);
     }
 
-    public Task<FrontComposerMcpResult> ReadAsync(
+    public async Task<FrontComposerMcpResult> ReadAsync(
         IReadOnlyDictionary<string, JsonElement>? arguments,
-        CancellationToken cancellationToken = default) => ReadCoreAsync(arguments, cancellationToken);
+        CancellationToken cancellationToken = default) {
+        long startedAt = Stopwatch.GetTimestamp();
+        FrontComposerMcpResult result = await ReadCoreAsync(arguments, cancellationToken).ConfigureAwait(false);
+        FrontComposerMcpLog.OperationCompleted(logger, "lifecycle", "InProgress", result, startedAt);
+        return result;
+    }
 
     private async Task<FrontComposerMcpResult> ReadCoreAsync(
         IReadOnlyDictionary<string, JsonElement>? arguments,

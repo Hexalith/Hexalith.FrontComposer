@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -32,6 +33,16 @@ public sealed class FrontComposerMcpCommandInvoker(
         string toolName,
         IReadOnlyDictionary<string, JsonElement>? arguments,
         CancellationToken cancellationToken = default) {
+        long startedAt = Stopwatch.GetTimestamp();
+        FrontComposerMcpResult result = await InvokeCoreAsync(toolName, arguments, cancellationToken).ConfigureAwait(false);
+        FrontComposerMcpLog.OperationCompleted(logger, "command", "Acknowledged", result, startedAt);
+        return result;
+    }
+
+    private async Task<FrontComposerMcpResult> InvokeCoreAsync(
+        string toolName,
+        IReadOnlyDictionary<string, JsonElement>? arguments,
+        CancellationToken cancellationToken) {
         // D8: capture messageId/correlationId on the outer scope so the catch blocks can emit
         // them in the rejection envelope. ApplyDerivableValues populates them before validation
         // (DN17), so domain-rejection and validation-rejection envelopes both carry the handle;

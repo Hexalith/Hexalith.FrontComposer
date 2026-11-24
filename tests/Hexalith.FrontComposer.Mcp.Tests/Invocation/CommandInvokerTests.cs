@@ -106,7 +106,7 @@ public sealed class CommandInvokerTests {
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
         service.Dispatched.ShouldBeNull();
-        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        CapturedLogEntry entry = logger.Entries.Where(item => item.Level >= LogLevel.Information).ShouldHaveSingleItem();
         entry.Level.ShouldBe(LogLevel.Information);
         entry.EventId.Id.ShouldBe(8315);
         entry.EventId.Name.ShouldBe("McpCommandSchemaFailed");
@@ -129,7 +129,7 @@ public sealed class CommandInvokerTests {
             TestContext.Current.CancellationToken);
 
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.ValidationFailed);
-        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        CapturedLogEntry entry = logger.Entries.Where(item => item.Level >= LogLevel.Information).ShouldHaveSingleItem();
         entry.Level.ShouldBe(LogLevel.Warning);
         entry.EventId.Id.ShouldBe(8316);
         entry.EventId.Name.ShouldBe("McpCommandKnownFailure");
@@ -154,7 +154,7 @@ public sealed class CommandInvokerTests {
             TestContext.Current.CancellationToken);
 
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.DownstreamFailed);
-        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        CapturedLogEntry entry = logger.Entries.Where(item => item.Level >= LogLevel.Information).ShouldHaveSingleItem();
         entry.Level.ShouldBe(LogLevel.Warning);
         entry.EventId.Id.ShouldBe(8317);
         entry.EventId.Name.ShouldBe("McpCommandDownstreamFailed");

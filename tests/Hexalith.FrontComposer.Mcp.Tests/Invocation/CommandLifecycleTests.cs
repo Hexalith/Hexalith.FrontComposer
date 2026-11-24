@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Invocation;
+using Hexalith.FrontComposer.Mcp.Tests.Logging;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -34,6 +35,53 @@ public sealed class CommandLifecycleTests {
         McpTerminalOutcome outcome = McpTerminalOutcome.IdempotentSuccess("\u0001   \u0002");
         outcome.ToJson()["success"]!["message"]!.GetValue<string>()
             .ShouldBe("This item was already updated. No action needed.");
+    }
+
+    [Fact]
+    public async Task LifecycleOperationsLogOutcomesWithOnlyOpaqueOwnedHandles()
+    {
+        CapturingLogger<FrontComposerMcpCommandInvoker> invocationLog = new();
+        CapturingLogger<FrontComposerMcpLifecycleTracker> lifecycleLog = new();
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out LifecycleAwareCommandService service, out ServiceProvider provider,
+            invocationLogger: invocationLog, lifecycleLogger: lifecycleLog);
+        using ServiceProvider ownedProvider = provider;
+        service.CompleteSynchronously = false;
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+        Dictionary<string, JsonElement> ownedHandle = Args($$"""{"correlationId":"{{CorrelationId}}"}""");
+
+        (await invoker.InvokeAsync("Billing.PayInvoiceCommand.Execute", Args("""{"Amount":942971}"""), cancellationToken))
+            .IsError.ShouldBeFalse();
+        (await tracker.ReadAsync(ownedHandle, cancellationToken)).IsError.ShouldBeFalse();
+        RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId);
+        (await tracker.ReadAsync(ownedHandle, cancellationToken)).IsError.ShouldBeFalse();
+        (await tracker.ReadAsync(Args($$"""{"correlationId":"{{NeverIssuedHandle}}"}"""), cancellationToken))
+            .IsError.ShouldBeTrue();
+
+        CapturedLogEntry command = invocationLog.Entries.Single(entry => entry.EventId.Name == "McpOperationCompleted");
+        command.State["Operation"].ShouldBe("command");
+        command.State["Outcome"].ShouldBe("Acknowledged");
+        CapturedLogEntry[] lifecycle = [.. lifecycleLog.Entries.Where(entry => entry.EventId.Name == "McpOperationCompleted")];
+        lifecycle.Select(entry => entry.State["Operation"]).ShouldBe(["lifecycle", "lifecycle", "lifecycle"]);
+        lifecycle.Select(entry => entry.State["Outcome"]).ShouldBe(["InProgress", "confirmed", "UnknownTool"]);
+
+        foreach (string field in new[] { "CorrelationIdDigest", "MessageIdDigest" }) {
+            command.State[field].ShouldBeOfType<string>().ShouldStartWith("sha256:");
+            lifecycle[0].State[field].ShouldBe(command.State[field]);
+            lifecycle[1].State[field].ShouldBe(command.State[field]);
+            lifecycle[2].State[field].ShouldBe("unknown");
+        }
+
+        foreach (CapturedLogEntry entry in lifecycle.Prepend(command)) {
+            entry.State["DescriptorKind"].ShouldBe("command");
+            (entry.State["DurationBucket"] is "lt_10ms" or "10_to_99ms" or "100_to_999ms" or "gte_1000ms").ShouldBeTrue();
+            entry.Exception.ShouldBeNull();
+            string captured = entry.Message + string.Join(" ", entry.State.Values);
+            foreach (string sentinel in new[] { CorrelationId, MessageId, NeverIssuedHandle, "tenant-a", "agent-a", "942971", "PayInvoiceCommand" }) {
+                captured.ShouldNotContain(sentinel);
+            }
+        }
     }
 
     [Fact]
@@ -1705,7 +1753,9 @@ public sealed class CommandLifecycleTests {
         IUlidFactory? ulidFactory = null,
         Action<FrontComposerMcpOptions>? configureOptions = null,
         TimeProvider? timeProvider = null,
-        IFrontComposerMcpAgentContextAccessor? accessor = null) {
+        IFrontComposerMcpAgentContextAccessor? accessor = null,
+        ILogger<FrontComposerMcpCommandInvoker>? invocationLogger = null,
+        ILogger<FrontComposerMcpLifecycleTracker>? lifecycleLogger = null) {
         commandService = new LifecycleAwareCommandService();
         ServiceCollection services = new();
         _ = services.AddSingleton<ICommandService>(commandService);
@@ -1732,6 +1782,14 @@ public sealed class CommandLifecycleTests {
         }
 
         _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        if (invocationLogger is not null) {
+            _ = services.AddSingleton(invocationLogger);
+        }
+
+        if (lifecycleLogger is not null) {
+            _ = services.AddSingleton(lifecycleLogger);
+        }
+
         _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => accessor ?? new StaticAccessor());
         provider = services.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
