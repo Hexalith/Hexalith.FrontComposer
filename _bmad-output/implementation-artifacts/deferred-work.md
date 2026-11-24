@@ -18,6 +18,9 @@ archived: 2026-09-18
 
 ### DW-669: `ExceptionGuard.IsFatal` does not unwrap wrapped process-fatal exceptions
 
+status: done 2026-11-24
+resolution: Duplicate heading for DW-1609, completed in the same change
+
 ### DW-670: Fatal-guard governance test does not flag a filterless `catch (Exception)`
 
 ### DW-671: FC-NIP contract guards duplicate roughly forty literal fragments and two full markdown tables across the C# and Playwright suites with no shared source of truth.
@@ -6429,7 +6432,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-11.16 
 location: src/Hexalith.FrontComposer.Shell/Services/ExceptionGuard.cs:12-16
 source_spec: `_bmad-output/implementation-artifacts/11-16-fatal-hydration-json-and-generated-literal-helper-consolidation.md`
 reason: summary: `ExceptionGuard.IsFatal` classifies only the outer exception type, so a process-fatal exception wrapped in `TargetInvocationException`/`AggregateException` is treated as non-fatal and swallowed. evidence: `ExceptionGuard.IsFatal` (`src/Hexalith.FrontComposer.Shell/Services/ExceptionGuard.cs:12-16`) pattern-matches only the outer type against the four-type fatal set. A fatal one level down — e.g. an `OutOfMemoryException` as the `InnerException` of a `TargetInvocationException` from `type.GetCustomAttribute<...>()` in `Badges/ReflectionActionQueueProjectionCatalog.cs`, or aggregated in an `AggregateException` — returns `false` and is swallowed by the 35 `catch when (!ExceptionGuard.IsFatal(ex))` sites. Deferred: pre-existing — the baseline per-site `ex is not OutOfMemoryException` filters had the identical gap, so Story 11.16 centralizes but does not regress it; academic on .NET 10 where SO/TA/AV are effectively uncatchable. Centralization now makes an `InnerException` unwrap a one-line fix. Evidence: `src/Hexalith.FrontComposer.Shell/Services/ExceptionGuard.cs:12`.
-status: open
+status: done 2026-11-24
+resolution: Traverse exception causes and aggregate siblings with reference deduplication
 
 ### DW-1610: `FatalExceptionGuardGovernanceTests` skips catch clauses with no filter, so AC5's "cannot silently recur" guarantee does not cover a filterless swallow-all that could absorb cancellation.
 
