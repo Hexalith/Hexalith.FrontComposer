@@ -9580,7 +9580,8 @@ location: tests/e2e/specs/specimen-accessibility.spec.ts
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: medium
 reason: summary: Generated full-page command routes now emit `FcPageHeader` plus a 24 px `FluentStack`, but the only regenerated images in this range are the six type-specimen Linux files, which do not show `/commands/...` chrome. evidence: the unified diff updates `frontcomposer-type-*-chromium-linux.png` only; `S6`/`A11Y FullPage route` take screenshots into `artifacts/story-2-2-live` without a governed baseline compare. Settled by an owned command-route visual matrix or an explicit decision that Story 2.2 PNG evidence is enough. Natural owner: Story 11.30.
-status: open
+status: done 2026-11-24
+resolution: Compare the generated Configure Counter route in the three-engine Linux lane.
 
 ### DW-1972: accessibility-visual may exceed its unchanged 25-minute timeout after the live Story 2.2 suite was added
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18)
