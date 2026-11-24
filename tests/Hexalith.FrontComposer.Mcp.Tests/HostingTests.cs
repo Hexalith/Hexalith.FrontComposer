@@ -236,6 +236,25 @@ public sealed class HostingTests {
         ex.Failures.ShouldContain(f => f.Contains("Lifecycle bounds", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void AddFrontComposerMcpRejectsNonPositiveLifecycleTimeout(int timeout)
+    {
+        ServiceCollection services = new();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddFrontComposerMcp(options => {
+            options.Manifests.Add(CreateManifest("billing.invoice.create"));
+            options.MaxLifecycleInProgressMs = timeout;
+        });
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        OptionsValidationException ex = Should.Throw<OptionsValidationException>(() =>
+            provider.GetRequiredService<IOptions<FrontComposerMcpOptions>>().Value);
+        ex.Failures.ShouldContain(f => f.Contains("Lifecycle bounds", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void DescriptorRegistry_DoesNotReflectPostConstructionManifestMutation() {
         FrontComposerMcpOptions options = new();

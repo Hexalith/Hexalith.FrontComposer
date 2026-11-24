@@ -916,6 +916,25 @@ public sealed class CommandLifecycleTests {
     }
 
     [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void TrackAcknowledgedRejectsInvalidTimeoutBeforeStoringEntry(int timeout)
+    {
+        FrontComposerMcpOptions currentOptions = new() { MaxLifecycleInProgressMs = timeout };
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        McpCommandDescriptor descriptor = Manifest(policyName: null).Commands.Single();
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => store.TrackAcknowledged(
+            descriptor, OwnerContext, new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId),
+            [], lifecycle, TestContext.Current.CancellationToken));
+
+        lifecycle.ReceivedCalls().ShouldBeEmpty();
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+        store.TryReadSnapshot(MessageId, OwnerContext, currentOptions, out _, out _).ShouldBeFalse();
+    }
+
+    [Theory]
     [InlineData(OverflowUlid, CorrelationId)]
     [InlineData(MessageId, OverflowUlid)]
     [InlineData("", CorrelationId)]

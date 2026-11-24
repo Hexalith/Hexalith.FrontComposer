@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
@@ -218,6 +219,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             }
 
             FrontComposerMcpOptions opts = options.Value;
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(opts.MaxLifecycleInProgressMs);
             LifecycleEntry created = new(
                 descriptor,
                 creator.TenantId,
@@ -225,7 +227,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                 correlationId,
                 messageId,
                 opts.MaxLifecycleTransitionHistory,
-                TimeSpan.FromMilliseconds(Math.Max(1, opts.MaxLifecycleInProgressMs)),
+                TimeSpan.FromMilliseconds(opts.MaxLifecycleInProgressMs),
                 _time,
                 OnEntryTerminalized);
             if (!_byCorrelation.TryAdd(correlationId, created)) {
@@ -262,6 +264,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                         .SequenceEqual(right.BadgeMappings.OrderBy(pair => pair.Key, StringComparer.Ordinal))));
 
     private void EnforceCapacityLocked() {
+        Debug.Assert(Monitor.IsEntered(_capacityGate));
         int max = Math.Max(1, options.Value.MaxActiveLifecycleEntries);
         while (_activeOrder.Count > max) {
             LifecycleEntry oldest = _activeOrder.First!.Value;
