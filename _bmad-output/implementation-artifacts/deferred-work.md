@@ -9524,7 +9524,8 @@ location: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd/run-story-2-2-e2e.cj
 source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
 severity: medium
 reason: summary: Escape does not cross the FluentPopover web-component boundary to the Blazor handler. evidence: Historical Story 2.2 evidence demonstrates the pre-existing product event-propagation defect; the dependency-update gate preserves keyboard-accessible Cancel behavior but does not exercise Escape closure.
-status: open
+status: done 2026-11-24
+resolution: Add live Chromium coverage for Escape closure and return-to-trigger focus.
 
 ### DW-1978: Resolve shell-chrome nested-interactive Axe findings with owned full-shell coverage
 origin: code review of spec-update-latest-submodules-and-package-versions.md (2026-09-18)

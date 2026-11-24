@@ -292,11 +292,19 @@ async function main() {
       await gotoInteractivePage(page, `${baseUrl}/counter`, 'Counter sample');
       const inline = page.locator('fluent-accordion-item.inline-section');
       await inline.waitFor({ state: 'visible', timeout: 60000 });
-      await inline.getByText('Increment', { exact: true }).first().click();
+      const trigger = inline.getByRole('button', { name: 'Increment', exact: true })
+        .and(inline.locator('fluent-button[id^="fc-trigger-"]'));
       const popover = inline.locator('.fc-popover');
+      const cancel = popover.getByRole('button', { name: 'Cancel', exact: true });
+
+      await trigger.click();
       await popover.waitFor({ state: 'visible', timeout: 60000 });
-      const cancel = popover.getByRole('button', { name: 'Cancel' });
-      await cancel.focus();
+      await cancel.press('Escape');
+      await popover.waitFor({ state: 'hidden', timeout: 10000 });
+      await assertFocused(trigger, 'Inline popover trigger after Escape');
+
+      await trigger.click();
+      await popover.waitFor({ state: 'visible', timeout: 60000 });
       await cancel.press('Enter');
       await popover.waitFor({ state: 'hidden', timeout: 10000 });
       return {
