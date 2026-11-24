@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 
 import { expect, test } from '../fixtures/index.js';
 import { fillFieldByLabel } from '../helpers/fluent-fields.js';
+import { CounterPage } from '../page-objects/counter.page.js';
 
 const LEVEL4_BASE_URL = process.env.FC_E2E_LEVEL4_BASE_URL ?? 'http://127.0.0.1:5082';
 const SERVER_READY_TIMEOUT_MS = 120_000;
@@ -71,7 +72,7 @@ test.describe('Story 6.3: Level 4 full-view overrides', () => {
   }) => {
     await page.goto('/counter');
     await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
-    await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+    await expect(new CounterPage(page).heading).toBeVisible();
 
     const form = page.locator('.fc-command-form[aria-label="Batch Increment command form"]');
     await expect(form).toBeVisible();

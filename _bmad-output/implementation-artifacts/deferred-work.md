@@ -9562,7 +9562,8 @@ location: tests/e2e/specs/form-abandonment-guard.spec.ts:29
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: low
 reason: summary: Fourteen inline e2e assertions still use the page-wide `getByRole('heading', { name: 'Counter' })` pattern after Story 11.27 centralized its route-contract proof on `CounterPage.heading`. evidence: `form-abandonment-guard.spec.ts:29,43,81,89`, `command-form-generation.spec.ts:83,139,178`, `lifecycle.spec.ts:14`, `command-lifecycle-budgets.spec.ts:75`, `one-at-a-time-execution-policy.spec.ts:77`, `retry-and-degraded-state-handling.spec.ts:86`, `level-3-field-slot-overrides.spec.ts:72`, `level-4-full-view-overrides.spec.ts:74`, `override-accessibility-safety-diagnostics.spec.ts:45`. The shared page object and Story 11.27 route-contract spec now use the same `main`-scoped exact level-one locator. These remaining sites are consistency debt rather than live breakage because `FrontComposerShell` overrides only its own banner rendering to `TextTag.Span`; the public `Typography.AppTitle` token correctly remains mapped to `TextTag.H1`. No lint rule or guard scans locator shapes anywhere under `tests/e2e/scripts`, `eng` or `scripts`, so nothing flags non-adoption. Settled by repointing the 14 sites at `CounterPage.heading`. Owner: Story 11.30 (Testing and MCP Boundary Hardening).
-status: open
+status: done 2026-11-24
+resolution: The remaining page-wide and non-exact Counter heading checks now use `CounterPage.heading`, and `smoke.spec.ts` asserts a single level-one heading on `/counter`.
 
 ### DW-1963: The visual-baseline governance gate is vacuous on push events
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)

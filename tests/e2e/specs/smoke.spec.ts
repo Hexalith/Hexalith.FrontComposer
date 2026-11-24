@@ -11,8 +11,9 @@ test.describe('smoke: attribute -> generator -> render pipeline', () => {
     const counter = new CounterPage(page);
     await counter.goto();
 
-    // Then the generated command controls are rendered
+    // Then the generated command controls are rendered under the page's only level-one heading
     await expect(counter.heading).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
     await expect(counter.incrementButton).toBeVisible();
     await expect(counter.configureLink).toBeVisible();
 

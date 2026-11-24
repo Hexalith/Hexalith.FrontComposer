@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/index.js';
 import { fillFieldByLabel } from '../helpers/fluent-fields.js';
+import { CounterPage } from '../page-objects/counter.page.js';
 
 test.describe('Story 3.4: command lifecycle UI', () => {
   test('generated compact command surfaces submitting -> acknowledged -> syncing -> confirmed', async ({
@@ -11,7 +12,7 @@ test.describe('Story 3.4: command lifecycle UI', () => {
 
     await page.goto('/counter');
     await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
-    await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+    await expect(new CounterPage(page).heading).toBeVisible();
 
     const commandId = 'batch-increment';
     const indicator = lifecycle.locator(commandId);

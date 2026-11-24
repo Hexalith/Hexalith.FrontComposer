@@ -2,6 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
 import { expectFieldValue, fieldEditorByLabel, fillFieldByLabel } from '../helpers/fluent-fields.js';
+import { CounterPage } from '../page-objects/counter.page.js';
 
 const COMMAND_FORM = '.fc-command-form';
 const FULL_PAGE_ROUTE = /\/commands\/Counter\/ConfigureCounterCommand/;
@@ -26,7 +27,7 @@ test.describe('Story 4.2: unsaved full-page command form abandonment guard', () 
 
     await expect(abandonmentWarning(page)).toHaveCount(0);
     await expect(page).toHaveURL(/\/counter$/);
-    await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+    await expect(new CounterPage(page).heading).toBeVisible();
   });
 
   test('dirty generated full-page command form below threshold navigates without warning', async ({ page, tenant }) => {
@@ -40,7 +41,7 @@ test.describe('Story 4.2: unsaved full-page command form abandonment guard', () 
 
     await expect(abandonmentWarning(page)).toHaveCount(0);
     await expect(page).toHaveURL(/\/counter$/);
-    await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+    await expect(new CounterPage(page).heading).toBeVisible();
   });
 
   test('dirty generated full-page command form after threshold supports stay, Escape, and leave', async ({
@@ -88,7 +89,7 @@ test.describe('Story 4.2: unsaved full-page command form abandonment guard', () 
     await page.getByTestId('fc-form-abandonment-leave').click();
 
     await expect(page).toHaveURL(/\/counter$/);
-    await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+    await expect(new CounterPage(page).heading).toBeVisible();
     await expect(abandonmentWarning(page)).toHaveCount(0);
   });
 
@@ -254,7 +255,7 @@ test.describe('Story 4.2: unsaved full-page command form abandonment guard', () 
 const gotoConfigureCounter = async (page: Page): Promise<void> => {
   await page.goto('/counter');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
-  await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+  await expect(new CounterPage(page).heading).toBeVisible();
 
   await page.getByRole('link', { name: 'Configure Counter' }).click();
   await expect(page).toHaveURL(FULL_PAGE_ROUTE);

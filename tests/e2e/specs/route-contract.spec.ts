@@ -191,7 +191,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page.locator('#fc-settings-heading')).toBeFocused();
     await page.evaluate(() => document.querySelector('[data-testid="fc-settings-button"]')?.remove());
     await page.getByTestId('fc-settings-done').click();
-    await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Counter' })).toBeFocused();
+    await expect(new CounterPage(page).heading).toBeFocused();
   });
 
   test('route focus waits for a delayed incoming heading instead of confirming the outgoing one', async ({ page }) => {
@@ -276,7 +276,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
       document.querySelector('[data-fc-route-content]')?.setAttribute('data-fc-route-content', location.href);
     });
     await expect.poll(() => page.evaluate(() => (window as any).__fcConfirmedHeadings)).toEqual(['/counter', '/counter/overview']);
-    await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Counter' })).toBeFocused();
+    await expect(new CounterPage(page).heading).toBeFocused();
   });
 });
 

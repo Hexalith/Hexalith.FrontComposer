@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/index.js';
 import { expectNoBlockingAxeViolations } from '../helpers/a11y.js';
+import { CounterPage } from '../page-objects/counter.page.js';
 import { PageToolbarSpecimenPage } from '../page-objects/page-toolbar-specimen.page.js';
 
 test.describe('Story 8.6: reusable page toolbar @p1 @smoke', () => {
@@ -76,7 +77,7 @@ test.describe('Story 8.6: reusable page toolbar @p1 @smoke', () => {
 
     await page.goto('/counter');
     await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
-    await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Counter' })).toBeFocused();
+    await expect(new CounterPage(page).heading).toBeFocused();
     const trigger = page.getByTestId('fc-palette-trigger');
     await trigger.focus();
     await page.keyboard.press('/');

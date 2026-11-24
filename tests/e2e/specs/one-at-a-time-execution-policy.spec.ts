@@ -5,6 +5,7 @@ import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
 import { expectFieldValue, fieldEditorByLabel, fillFieldByLabel } from '../helpers/fluent-fields.js';
+import { CounterPage } from '../page-objects/counter.page.js';
 
 const BATCH_COMMAND_ID = 'batch-increment';
 const INCREMENT_COMMAND_ID = 'increment';
@@ -185,7 +186,7 @@ test.describe('Story 13.3: View active command availability', () => {
 const gotoCounter = async (page: Page): Promise<void> => {
   await page.goto('/counter');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
-  await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+  await expect(new CounterPage(page).heading).toBeVisible();
 };
 
 const commandForm = (page: Page, ariaLabel: string): Locator =>

@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 import { expect, test } from '../fixtures/index.js';
 import { submissionTest } from '../fixtures/command-submission.fixture.js';
 import { fieldByLabel, fillFieldByLabel } from '../helpers/fluent-fields.js';
+import { CounterPage } from '../page-objects/counter.page.js';
 
 const COMMAND_FORM = '.fc-command-form';
 const CONFIGURE_FIELD = (name: string): string =>
@@ -98,7 +99,7 @@ test.describe('Story 3.1: generated command forms', () => {
     await fullPageForm.getByRole('button', { name: 'Configure Counter' }).click();
 
     await expect(page).toHaveURL(/\/counter$/);
-    await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+    await expect(new CounterPage(page).heading).toBeVisible();
   });
 
   test('invalid generated editors expose invalid state and their error on the focusable control', async ({
@@ -270,7 +271,7 @@ test.describe('Story 3.2: command form density rule', () => {
 
     await counterReturnLink.click();
     await expect(page).toHaveURL(/\/counter$/);
-    await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+    await expect(new CounterPage(page).heading).toBeVisible();
   });
 });
 
@@ -309,7 +310,7 @@ test.describe('Story 3.3: FC-CMD pending identity and correlation contract', () 
 const gotoCounter = async (page: Page): Promise<void> => {
   await page.goto('/counter');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
-  await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+  await expect(new CounterPage(page).heading).toBeVisible();
 };
 
 const commandForm = (page: Page, ariaLabel: string): Locator =>

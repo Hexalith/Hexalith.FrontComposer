@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 
 import { expect, test } from '../fixtures/index.js';
 import { spawnOwnedProcess, stopOwnedProcess, waitForOwnedServer, type OwnedProcess } from '../helpers/owned-process.js';
+import { CounterPage } from '../page-objects/counter.page.js';
 
 const DEVELOPMENT_BASE_URL = process.env.FC_E2E_STORY_6_4_DEVELOPMENT_BASE_URL ?? 'http://127.0.0.1:5084';
 const NON_DEVELOPMENT_BASE_URL = process.env.FC_E2E_STORY_6_4_NON_DEVELOPMENT_BASE_URL ?? 'http://127.0.0.1:5085';
@@ -57,7 +58,7 @@ test.describe('Story 6.4: override accessibility safety diagnostics', () => {
     await page.goto(new URL('/counter', NON_DEVELOPMENT_BASE_URL).href);
     await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
 
-    await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+    await expect(new CounterPage(page).heading).toBeVisible();
     await expect(page.locator('[data-fc-diagnostic="HFC1041"]')).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Diagnostic documentation' })).toHaveCount(0);
   });

@@ -5,6 +5,7 @@ import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
 import { fillFieldByLabel } from '../helpers/fluent-fields.js';
+import { CounterPage } from '../page-objects/counter.page.js';
 
 const COMMAND_ID = 'batch-increment';
 const CONTRACT_PATH = '../../_bmad-output/contracts/fc-cmd-retry-degraded-state-contract-2026-06-05.md';
@@ -94,7 +95,7 @@ test.describe('Story 4.5: retry and degraded-state handling', () => {
 const gotoCounter = async (page: Page): Promise<void> => {
   await page.goto('/counter');
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
-  await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+  await expect(new CounterPage(page).heading).toBeVisible();
 };
 
 const batchIncrementForm = (page: Page): Locator => page.locator(COMMAND_FORM);
