@@ -492,6 +492,48 @@ public sealed class CommandLifecycleTests {
         result.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TimeoutRejectsRecursiveObservationBeforeMutatingHistory(bool useDispatcherCallback)
+    {
+        FakeTimeProvider timerClock = new();
+        TimeProvider time = Substitute.For<TimeProvider>();
+        time.CreateTimer(Arg.Any<TimerCallback>(), Arg.Any<object>(), Arg.Any<TimeSpan>(), Arg.Any<TimeSpan>())
+            .Returns(call => timerClock.CreateTimer(call.ArgAt<TimerCallback>(0), call[1], call.ArgAt<TimeSpan>(2), call.ArgAt<TimeSpan>(3)));
+        FrontComposerMcpOptions currentOptions = new() { MaxLifecycleInProgressMs = 10 };
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions), time);
+        McpCommandDescriptor descriptor = Manifest(policyName: null).Commands.Single();
+        RecordingLifecycleStateService lifecycle = new();
+        McpDispatchLifecycleObserver observer = new();
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        _ = store.TrackAcknowledged(
+            descriptor, OwnerContext, new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId),
+            [], lifecycle, cancellationToken, observer);
+        int rejectedObservations = 0;
+        _ = time.GetUtcNow().Returns(call => {
+            InvalidOperationException failure = Should.Throw<InvalidOperationException>(() => {
+                if (useDispatcherCallback) {
+                    observer.Observe(CommandLifecycleState.Syncing, MessageId);
+                }
+                else {
+                    _ = store.TryRecordObservedTransition(CreateTransition(CorrelationId, MessageId));
+                }
+            });
+            failure.Message.ShouldContain("recursive transition");
+            rejectedObservations++;
+            return timerClock.GetUtcNow();
+        });
+
+        timerClock.Advance(TimeSpan.FromMilliseconds(10));
+
+        rejectedObservations.ShouldBe(1);
+        store.TryReadSnapshot(CorrelationId, OwnerContext, currentOptions, out _, out McpLifecycleSnapshot snapshot).ShouldBeTrue();
+        snapshot.Outcome!.Kind.ShouldBe(McpTerminalOutcomeKind.TimedOut);
+        snapshot.Transitions.Select(transition => transition.State)
+            .ShouldBe([CommandLifecycleState.Acknowledged, CommandLifecycleState.Rejected]);
+    }
+
     [Fact]
     public async Task ReadAsyncHistoryTruncatedStaysTrueAfterConfiguredLimitIncreases()
     {

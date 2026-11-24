@@ -12,6 +12,12 @@ namespace Hexalith.FrontComposer.Mcp.Invocation;
 /// <summary>
 /// Process-wide MCP lifecycle snapshot store used by scoped MCP request facades.
 /// </summary>
+/// <remarks>
+/// Lifecycle transition recording is non-reentrant for the entry currently being updated.
+/// Recursion into that entry fails before recording the nested observation. Concurrent observations
+/// on different threads are serialized per entry. Custom clocks must return a timestamp
+/// without synchronously publishing another transition for that entry.
+/// </remarks>
 public sealed partial class FrontComposerMcpLifecycleStore(
     IOptions<FrontComposerMcpOptions> options,
     TimeProvider? timeProvider = null) : IDisposable {
@@ -431,7 +437,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                 if (target.TryGetTarget(out LifecycleEntry? entry)
                     && (messageId is null || string.Equals(messageId, entry.MessageId, StringComparison.Ordinal))
                     && (state is CommandLifecycleState.Syncing or CommandLifecycleState.Degraded || IsTerminalState(state))) {
-                    entry.RecordState(state, entry.MessageId, entry._time.GetUtcNow(), state == CommandLifecycleState.IdempotentConfirmed);
+                    entry.RecordState(state, entry.MessageId, timestampUtc: null, state == CommandLifecycleState.IdempotentConfirmed);
                 }
             };
         }
@@ -446,7 +452,8 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             RecordState(transition.NewState, transition.MessageId, transition.TimestampUtc, transition.IdempotencyResolved);
         }
 
-        private void RecordState(CommandLifecycleState state, string? messageId, DateTimeOffset timestampUtc, bool idempotencyResolved) {
+        private void RecordState(CommandLifecycleState state, string? messageId, DateTimeOffset? timestampUtc, bool idempotencyResolved) {
+            ThrowIfRecordingRecursively();
             bool becameTerminal = false;
             lock (_gate) {
                 bool currentTerminal = IsTerminalState(_state);
@@ -454,6 +461,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                     return;
                 }
 
+                DateTimeOffset timestamp = timestampUtc ?? _time.GetUtcNow();
                 _state = state;
                 if (state == CommandLifecycleState.Confirmed) {
                     if (_outcome is null) {
@@ -476,7 +484,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                     _outcome = McpTerminalOutcome.Unconfirmed(state);
                 }
 
-                AppendHistory(state, messageId, timestampUtc, idempotencyResolved);
+                AppendHistory(state, messageId, timestamp, idempotencyResolved);
 
                 if (IsTerminalState(_state) && !_terminalRecorded) {
                     _terminalRecorded = true;
@@ -540,6 +548,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                 or CommandLifecycleState.Warning or CommandLifecycleState.DegradedExhausted;
 
         private bool MarkSyntheticTerminal(McpTerminalOutcome outcome, DateTimeOffset? observedAtUtc = null) {
+            ThrowIfRecordingRecursively();
             if (Volatile.Read(ref _entryDisposed) != 0) {
                 return false;
             }
@@ -549,11 +558,12 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                     return false;
                 }
 
+                DateTimeOffset timestamp = observedAtUtc ?? _time.GetUtcNow();
                 _state = CommandLifecycleState.Rejected;
                 _outcome = outcome;
                 _terminalRecorded = true;
                 Volatile.Write(ref _isTerminal, 1);
-                AppendHistory(CommandLifecycleState.Rejected, MessageId, observedAtUtc ?? _time.GetUtcNow(), idempotencyResolved: false);
+                AppendHistory(CommandLifecycleState.Rejected, MessageId, timestamp, idempotencyResolved: false);
             }
 
             try {
@@ -564,6 +574,12 @@ public sealed partial class FrontComposerMcpLifecycleStore(
 
             _onTerminalized(this);
             return true;
+        }
+
+        private void ThrowIfRecordingRecursively() {
+            if (Monitor.IsEntered(_gate)) {
+                throw new InvalidOperationException("A lifecycle entry cannot record a recursive transition.");
+            }
         }
 
         private void AppendHistory(
