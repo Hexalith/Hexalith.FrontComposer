@@ -174,7 +174,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         try
         {
             var localized = ShellLocalizer[key, argument];
-            if (!localized.ResourceNotFound && !string.IsNullOrEmpty(localized.Value))
+            if (!localized.ResourceNotFound && !string.IsNullOrWhiteSpace(localized.Value))
             {
                 return localized.Value;
             }
@@ -1064,7 +1064,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         builder.AddAttribute(3, "data-fc-command-form", "true");
         builder.AddAttribute(4, "data-fc-validation-summary-id", _formDomId + "-validation-summary");
         builder.AddAttribute(5, "data-fc-interactive", _interactiveReady ? "true" : "false");
-        builder.AddAttribute(6, "aria-label", "Send IncrementCommand command form");
+        builder.AddAttribute(6, "aria-label", ResolveShellLocalized("CommandFormAccessibleName", "{0} command form", "Send IncrementCommand"));
 
         builder.OpenComponent<FcLifecycleWrapper>(7);
         builder.AddAttribute(8, "CorrelationId", _submittedCorrelationId);

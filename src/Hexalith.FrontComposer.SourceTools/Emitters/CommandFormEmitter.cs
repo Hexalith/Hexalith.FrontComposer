@@ -466,7 +466,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            var localized = ShellLocalizer[key, argument];");
-        _ = sb.AppendLine("            if (!localized.ResourceNotFound && !string.IsNullOrEmpty(localized.Value))");
+        _ = sb.AppendLine("            if (!localized.ResourceNotFound && !string.IsNullOrWhiteSpace(localized.Value))");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                return localized.Value;");
         _ = sb.AppendLine("            }");
@@ -2024,7 +2024,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-command-form\", \"true\");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-validation-summary-id\", _formDomId + \"-validation-summary\");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-interactive\", _interactiveReady ? \"true\" : \"false\");");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"aria-label\", \"" + escapedButtonLabel + " command form\");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"aria-label\", ResolveShellLocalized(\"CommandFormAccessibleName\", \"{0} command form\", \"" + escapedButtonLabel + "\"));");
         _ = sb.AppendLine();
         // Story 2-4 ADR-020 / Task 4.1b — wrap the EditForm in FcLifecycleWrapper so lifecycle
         // feedback (spinner, pulse, still-syncing, action prompt, confirmed/rejected message bar)

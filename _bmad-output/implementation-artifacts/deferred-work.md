@@ -3135,7 +3135,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: medium
 reason: **[MED] Hardcoded English `Cancel` popover label + mixed-language `aria-label`** — no `IStringLocalizer` lookup anywhere in the emitted renderer/form. Out-of-scope for Epic 2. **Defer target:** Epic 3 (Shell & UX) i18n pass. Reconciliation: Row: DW-0399; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
-status: open
+status: done 2026-11-24
+resolution: Localized the inline Cancel button and generated form names in English and French.
 
 ### DW-1131: [MED] `ClosePopoverAsync` delegates scroll+focus ordering to Shell `fc-expandinrow.js`
 

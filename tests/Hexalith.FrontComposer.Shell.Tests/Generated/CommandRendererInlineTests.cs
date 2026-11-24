@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Bunit;
 
 using Fluxor;
@@ -56,6 +58,28 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
         cut.Find("fluent-button").Click();
 
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("fc-lifecycle-wrapper", Case.Insensitive));
+    }
+
+    [Theory]
+    [InlineData("en", "Cancel", "One Field Inline command form")]
+    [InlineData("fr", "Annuler", "Formulaire de commande « One Field Inline »")]
+    public async Task InlinePopoverUsesTheCurrentLanguageAsync(string culture, string cancel, string formName) {
+        CultureInfo previous = CultureInfo.CurrentUICulture;
+        try {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+            await InitializeStoreAsync();
+            IRenderedComponent<OneFieldInlineCommandRenderer> cut = Render<OneFieldInlineCommandRenderer>();
+            cut.Find("fluent-button").Click();
+
+            cut.WaitForAssertion(() => {
+                cut.Find(".fc-popover fluent-button[type='button']").TextContent.Trim().ShouldBe(cancel);
+                cut.Find(".fc-popover fluent-button[type='button']").GetAttribute("aria-label").ShouldBe(cancel);
+                cut.Find(".fc-popover .fc-command-form").GetAttribute("aria-label").ShouldBe(formName);
+            });
+        }
+        finally {
+            CultureInfo.CurrentUICulture = previous;
+        }
     }
 
     [Fact]

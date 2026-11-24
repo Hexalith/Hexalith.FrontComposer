@@ -727,6 +727,8 @@
     <value>Leave anyway</value>
     <comment>Story 13.3 VR-06 — explicit action that discards the entered values and continues the requested navigation.</comment>
   </data>
+  <data name="InlinePopoverCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="CommandFormAccessibleName" xml:space="preserve"><value>{0} command form</value></data>
   <data name="DestructiveConfirmationCancel" xml:space="preserve">
     <value>Cancel</value>
     <comment>Story 13.3 OF-03 — the non-destructive dialog action; it starts focused and never confirms.</comment>

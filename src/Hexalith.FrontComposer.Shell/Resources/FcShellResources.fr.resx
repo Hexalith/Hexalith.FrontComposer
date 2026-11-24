@@ -578,6 +578,8 @@
   <data name="FormAbandonmentDescription" xml:space="preserve"><value>Quitter maintenant supprimera les données saisies.</value></data>
   <data name="FormAbandonmentStay" xml:space="preserve"><value>Rester sur le formulaire</value></data>
   <data name="FormAbandonmentLeave" xml:space="preserve"><value>Quitter quand même</value></data>
+  <data name="InlinePopoverCancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="CommandFormAccessibleName" xml:space="preserve"><value>Formulaire de commande « {0} »</value></data>
   <data name="DestructiveConfirmationCancel" xml:space="preserve"><value>Annuler</value></data>
   <data name="DestructiveConfirmationTitleTemplate" xml:space="preserve"><value>{0} ?</value></data>
   <data name="DestructiveConfirmationDefaultBody" xml:space="preserve"><value>Cette action est irréversible.</value></data>
