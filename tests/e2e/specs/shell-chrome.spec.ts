@@ -1,7 +1,9 @@
+import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
 import { SettingsPage, type ThemeLabel } from '../page-objects/settings.page.js';
+import { ShellPage } from '../page-objects/shell.page.js';
 
 type ChromeSnapshot = {
   actionColor: string;
@@ -26,6 +28,34 @@ const SPECIMEN_ROUTE = '/__frontcomposer/specimens/type';
 const DEFAULT_LOGO_ROUTE = '/__frontcomposer/specimens/header-logo/default';
 const CUSTOM_LOGO_ROUTE = '/__frontcomposer/specimens/header-logo/custom';
 const MIN_TEXT_CONTRAST = 4.5;
+
+test.describe('shell navigation accessibility', () => {
+  test('desktop module flyout has no nested interactive controls', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 900 });
+    await page.goto('/counter');
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    await page.getByTestId('fc-nav-flyout-trigger-Counter').click();
+    await expect(new ShellPage(page).counterProjectionItem).toBeVisible();
+
+    await expectNoNestedInteractiveControls(page);
+  });
+
+  test('mobile navigation drawer has no nested interactive controls', async ({ page }) => {
+    await page.setViewportSize({ width: 400, height: 850 });
+    await page.goto('/counter');
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    await page.getByTestId('fc-hamburger-toggle').getByRole('button').click();
+    await expect(page.getByRole('dialog', { name: 'Primary navigation' })).toBeVisible();
+
+    await expectNoNestedInteractiveControls(page);
+  });
+});
+
+async function expectNoNestedInteractiveControls(page: Page): Promise<void> {
+  const result = await new AxeBuilder({ page }).withRules(['nested-interactive']).analyze();
+  expect(result.violations).toEqual([]);
+  expect(result.passes.flatMap(rule => rule.nodes).length).toBeGreaterThan(0);
+}
 
 test.describe('Story 8.1: neutral shell chrome @p1', () => {
   test.beforeEach(async ({ page }) => {

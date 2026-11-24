@@ -9541,7 +9541,8 @@ location: src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.
 source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
 severity: medium
 reason: summary: Full-page scanning exposes shell-level nested-interactive findings outside the Story 2.2 command surfaces. evidence: The repaired dependency gate asserts and scans its exact declared surfaces, while shell header/navigation remediation needs a dedicated UI accessibility change.
-status: open
+status: done 2026-11-24
+resolution: Cover the desktop module flyout and mobile navigation drawer with full-page Axe scans.
 
 ### DW-1979: Reconcile Story 11.27 tracking to its owner-approved state
 
