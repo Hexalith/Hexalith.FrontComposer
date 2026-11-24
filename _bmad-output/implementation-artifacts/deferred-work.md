@@ -23,6 +23,9 @@ resolution: Duplicate heading for DW-1609, completed in the same change
 
 ### DW-670: Fatal-guard governance test does not flag a filterless `catch (Exception)`
 
+status: done 2026-11-24
+resolution: Duplicate heading for DW-1610, completed in the same change
+
 ### DW-671: FC-NIP contract guards duplicate roughly forty literal fragments and two full markdown tables across the C# and Playwright suites with no shared source of truth.
 
 status: done 2026-08-27
@@ -6441,7 +6444,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-11.16 
 location: tests/Hexalith.FrontComposer.Shell.Tests/Architecture/FatalExceptionGuardGovernanceTests.cs:90
 source_spec: `_bmad-output/implementation-artifacts/11-16-fatal-hydration-json-and-generated-literal-helper-consolidation.md`
 reason: summary: `FatalExceptionGuardGovernanceTests` skips catch clauses with no filter, so AC5's "cannot silently recur" guarantee does not cover a filterless swallow-all that could absorb cancellation. evidence: `FatalExceptionGuardGovernanceTests.FindViolations` continues past any unfiltered catch (`if (filter is null) continue;`, `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/FatalExceptionGuardGovernanceTests.cs:90`). A future `catch (Exception) { }` — including one that swallows `OperationCanceledException` — would be neither counted toward the ==35 `IsFatal`-invocation lock nor flagged as an ad-hoc taxonomy, and the synthetic negative only exercises a filtered catch. Deferred: low-priority hardening; existing cancellation/fault-injection tests at the migrated infra owners (`ProjectionSubscriptionServiceTests`/`...FaultTests`, `ReconnectionReconciliationCoordinatorTests`, `ProjectionFallbackPollingDriverTests`, `PendingCommandPollingDriverTests`) substantially mitigate the silent-cancellation-regression risk. Harden by adding a synthetic-negative row for a filterless catch-all. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/FatalExceptionGuardGovernanceTests.cs:90`.
-status: open
+status: done 2026-11-24
+resolution: Check broad catch types, rethrow paths, and Razor code blocks against method-scoped legacy counts
 
 ### DW-1611: Make Release wait for both Commitlint and Quality so malformed commit metadata or a failing release-parser governance check cannot race publication.
 
