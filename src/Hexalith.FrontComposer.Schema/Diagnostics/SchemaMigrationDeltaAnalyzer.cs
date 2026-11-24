@@ -282,9 +282,10 @@ public static class SchemaMigrationDeltaAnalyzer {
         // P-45 (8-6a Group B): UTF-16 Substring at code-unit MaxPathLength can split a surrogate
         // pair and leave an unpaired high surrogate at the truncation boundary. Downstream JSON
         // and structured-log encoders would then emit U+FFFD or non-deterministic escape
-        // sequences. Step back one code unit when the cut would land between paired surrogates.
+        // sequences. Drop any unpaired surrogate at the end of the retained prefix.
         int cut = _maxPathLength;
-        if (char.IsHighSurrogate(path[cut - 1])) {
+        while (cut > 0 && (char.IsHighSurrogate(path[cut - 1])
+            || (char.IsLowSurrogate(path[cut - 1]) && (cut < 2 || !char.IsHighSurrogate(path[cut - 2]))))) {
             cut--;
         }
 

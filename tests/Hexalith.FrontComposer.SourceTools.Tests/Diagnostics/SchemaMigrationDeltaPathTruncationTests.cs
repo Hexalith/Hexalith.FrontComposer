@@ -93,6 +93,16 @@ public sealed class SchemaMigrationDeltaPathTruncationTests {
         HasUnpairedSurrogate(path).ShouldBeFalse("an unpaired surrogate would encode non-deterministically downstream.");
     }
 
+    [Fact]
+    public void Compare_FieldDeltaWithUnpairedLowSurrogatesAtCut_DropsMalformedSuffix()
+    {
+        string leading = new('a', _maxPathLength - PathPrefix.Length - 2);
+        string path = RemovedFieldPath(leading + "\uDC00\uDC01" + new string('b', 64));
+
+        path.ShouldBe(PathPrefix + leading + TruncationMarker);
+        HasUnpairedSurrogate(path).ShouldBeFalse();
+    }
+
     private static bool HasUnpairedSurrogate(string value) {
         for (int i = 0; i < value.Length; i++) {
             char c = value[i];
