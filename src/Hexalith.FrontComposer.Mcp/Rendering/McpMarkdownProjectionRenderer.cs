@@ -121,8 +121,6 @@ public static class McpMarkdownProjectionRenderer {
             _ = sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
         }
 
-        // P-13: tell BoundDocument the marker was already emitted to avoid double-emit when the
-        // document also exceeds the character cap.
         return BoundDocument(sb, options, markerAlreadyEmitted: isTruncated);
     }
 
@@ -630,43 +628,27 @@ public static class McpMarkdownProjectionRenderer {
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ResponseTooLarge);
         }
 
-        // Cut on the last newline before `budget` so the truncation never lands mid-row of a table.
+        // Cut on the last newline within the budget to keep table rows intact. Any
+        // marker previously appended to the overflowing document lies beyond this cut.
         string buffered = sb.ToString();
-        int cut = buffered.LastIndexOf('\n', Math.Min(budget, buffered.Length) - 1);
-        // P-13: when an outer renderer already appended the truncation marker, replicating it
-        // here would produce two consecutive marker lines. Skip the appended marker and keep
-        // the cut prefix only.
-        string suffix = markerAlreadyEmitted ? string.Empty : marker + Environment.NewLine;
-        // P-8: when no newline exists in the budget window, fall back to a Rune-boundary cut and
-        // append the marker rather than discarding the entire document. This preserves the
-        // common "single very long heading" case where the previous code surfaced ResponseTooLarge.
-        string prefix;
-        if (cut < 0) {
-            int safeBudget = Math.Min(budget, buffered.Length);
-            if (safeBudget > 0
-                && safeBudget < buffered.Length
-                && char.IsHighSurrogate(buffered[safeBudget - 1])
-                && char.IsLowSurrogate(buffered[safeBudget])) {
-                safeBudget--;
-            }
-
-            prefix = buffered[..safeBudget];
-            // No trailing newline in the kept prefix; ensure the marker (when emitted) starts on
-            // its own line.
-            if (!markerAlreadyEmitted && safeBudget > 0 && buffered[safeBudget - 1] != '\n') {
-                suffix = Environment.NewLine + suffix;
-            }
-        }
-        else {
-            prefix = buffered[..(cut + 1)];
+        int cut = buffered.LastIndexOf('\n', budget - 1);
+        if (cut >= 0) {
+            return new RenderedMarkdown(buffered[..(cut + 1)] + marker + Environment.NewLine, true);
         }
 
-        string result = prefix + suffix;
-        // P-9: defensive clamp — Environment.NewLine prepending can push the total past `max` by
-        // newlineLength bytes. Trim the trailing whitespace/newline rather than ship a string
-        // longer than the configured cap.
-        if (result.Length > max) {
-            result = result[..max];
+        // Keep the long-heading fallback on a rune boundary and budget a separator
+        // before the complete marker. Add the final newline only when it fits.
+        int prefixLength = budget;
+        char previous = buffered[prefixLength - 1];
+        char next = buffered[prefixLength];
+        if ((char.IsHighSurrogate(previous) && char.IsLowSurrogate(next)) || (previous == '\r' && next == '\n')) {
+            prefixLength--;
+        }
+
+        string separator = prefixLength == 0 ? string.Empty : Environment.NewLine;
+        string result = buffered[..prefixLength] + separator + marker;
+        if (max - result.Length >= newlineLength) {
+            result += Environment.NewLine;
         }
 
         return new RenderedMarkdown(result, true);

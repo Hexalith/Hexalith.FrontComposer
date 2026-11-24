@@ -273,22 +273,66 @@ public sealed class McpMarkdownProjectionRendererTests {
         result.Document.ShouldBeNull();
     }
 
-    [Fact]
-    public void Render_NoNewlineBeforeBudget_TruncatesAtRuneBoundaryWithMarker() {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Render_NoNewlineBeforeBudget_TruncatesAtRuneBoundaryWithMarker(bool requestIsTruncated) {
         // P-8: when the budget contains no newline (e.g. a very long single-line heading),
         // the renderer falls back to a Rune-boundary cut and emits the truncation marker
         // rather than discarding the entire document.
-        McpResourceDescriptor descriptor = Descriptor(title: new string('A', 80));
+        const string Marker = "Truncated \U0001F6D1";
+        const string Title = "\U0001F680 Remaining heading";
+        int maxCharacters = "## ".Length + 1 + Environment.NewLine.Length + Marker.Length;
 
         McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
-            descriptor,
+            Descriptor(title: Title),
             [new InvoiceProjection("INV-1", 42, null, BillingStatus.Pending)],
-            TotalCount: 1), new FrontComposerMcpOptions { MaxProjectionMarkdownCharacters = 64 }, TestContext.Current.CancellationToken);
+            TotalCount: 1,
+            IsTruncated: requestIsTruncated), new FrontComposerMcpOptions {
+                MaxProjectionMarkdownCharacters = maxCharacters,
+                ProjectionTruncationMarker = Marker,
+            }, TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
-        _ = result.Document.ShouldNotBeNull();
         result.Document!.IsTruncated.ShouldBeTrue();
-        result.Document.Text.Length.ShouldBeLessThanOrEqualTo(64);
+        result.Document.Text.TrimEnd().ShouldBe($"## {Environment.NewLine}{Marker}");
+        result.Document.Text.Length.ShouldBeLessThanOrEqualTo(maxCharacters);
+        CountOccurrences(result.Document.Text, Marker).ShouldBe(1);
+    }
+
+    [Fact]
+    public void Render_RowAndCharacterLimits_RetainsCompleteRowAndOneMarker() {
+        const string Marker = "Truncated";
+        const string FirstRow = "| INV-1 | 42 | - | Warning: Pending |";
+        string retained = string.Join(Environment.NewLine, [
+            "## Invoices",
+            string.Empty,
+            "- Total: 3",
+            "- Role: Default",
+            string.Empty,
+            "| Number | Amount | Last paid | Status |",
+            "| --- | --- | --- | --- |",
+            FirstRow,
+            string.Empty,
+        ]);
+        int maxCharacters = retained.Length + 4 + Marker.Length + Environment.NewLine.Length;
+
+        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
+            Descriptor(),
+            [
+                new InvoiceProjection("INV-1", 42, null, BillingStatus.Pending),
+                new InvoiceProjection("INV-2", 43, null, BillingStatus.Pending),
+                new InvoiceProjection("INV-3", 44, null, BillingStatus.Pending),
+            ],
+            TotalCount: 3), new FrontComposerMcpOptions {
+                MaxRowsPerResource = 2,
+                MaxProjectionMarkdownCharacters = maxCharacters,
+                ProjectionTruncationMarker = Marker,
+            }, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Document!.IsTruncated.ShouldBeTrue();
+        result.Document.Text.ShouldBe(retained + Marker + Environment.NewLine);
     }
 
     [Fact]
