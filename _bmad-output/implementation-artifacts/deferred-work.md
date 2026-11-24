@@ -3202,6 +3202,7 @@ location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: medium
 reason: **[MED] `PrefillDerivableFieldsAsync` sequential provider awaits** — per-submit latency scales linearly with derivable property count; `BeforeSubmit` calls the same helper, compounding. **Defer target:** Epic 9 performance pass. Reconciliation: Row: DW-0401; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
 status: open
+decision: 2026-11-24 Skipped. Concurrent prefill would call adopter `IDerivedValueProvider` implementations concurrently, which the public contract does not allow today. The provider concurrency contract needs an owner decision first.
 
 ### DW-1133: [MED] `TimeOnly` end-to-end compile path not verified
 
@@ -3209,7 +3210,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: medium
 reason: **[MED] `TimeOnly` end-to-end compile path not verified** — `FormFieldTypeCategory.TimeInput` routes through `EmitTextInput` which binds `string?` to a `TimeOnly` property without a visible parse/format bridge. No integration-compile test exists for a `TimeOnly`-typed command property. **Defer target:** SourceTools integration-test expansion pass. Reconciliation: Row: DW-0402; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
-status: open
+status: done 2026-11-24
+resolution: Already resolved. `TimeOnly` properties now render through `FluentTimePicker<TimeOnly>`, and `FluentTypedFieldRuntimeTests.TimeEditorPreservesTypedBindingAndFullDayRange` compiles and drives the generated form for nullable and non-nullable cases.
 
 ### DW-1134: [LOW] `EscapeString` helper diverges between `CommandPageEmitter` and `CommandFormEmitter`
 
@@ -8721,6 +8723,7 @@ source_spec: `spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md
 severity: high
 reason: A Release AppHost build probe completed restore but failed compilation with 23 missing Parties/Tenants UI symbols because FrontComposerUiUsePublishedModulePackages defaults to false while Release source references are disabled. The isolated Story 11.24 EventStore restore remained valid and resolved only Hexalith.EventStore.Aspire 3.91.1.
 status: open
+decision: 2026-11-24 Skipped. Blocked outside this repository. A Release AppHost needs `Hexalith.Tenants.UI` and `Hexalith.Parties.UI` package versions, and the Hexalith.Builds catalog defines neither.
 
 ### DW-1903: Regain the newer Builds catalog once a newer EventStore runtime identity is owner-approved, and re-assess the package pins this story had to move backwards.
 
@@ -8735,7 +8738,8 @@ location: n/a
 source_spec: `spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260829-002159-feb7; this entry preserves the lingering recommendation for a deliberate later review.
-status: open
+status: done 2026-11-24
+resolution: No longer relevant. The Story 11.24 runtime-identity evidence this follow-up review would cover was removed by commit 83544c6b.
 
 ### DW-1905: EventStore and Builds gitlink updates currently sit on `fix/cicd-mtp-release` mixed with concurrent CI/MTP files.
 
@@ -8768,7 +8772,8 @@ location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGove
 source_spec: `spec-analyzer-governance-reliability.md`
 severity: medium
 reason: `AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean` carries only `Category=Governance`, so `dotnet test Hexalith.FrontComposer.slnx --filter-trait "Category=Governance"` still rebuilds `Shell.Tests.csproj` and `Testing.Tests.csproj` non-incrementally while other solution test modules run. This predates the story and is the same contention class the `GovernanceBuild` trait isolated for the two solution builds; it was not reclassified here.
-status: open
+status: done 2026-11-24
+resolution: Already resolved. `AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean` carries `Category=GovernanceBuild`, so the solution-wide Governance lane no longer runs its rebuilds.
 
 ### DW-1909: `CiGovernanceTests.EventStoreRuntimeIdentityPinsOwnerApprovedTupleAndTruthfulDriftEvidence` fails on an EventStore gitlink that no longer matches its owner-approved pin.
 
@@ -8784,6 +8789,7 @@ source_spec: `spec-analyzer-governance-reliability.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260830-234810-e850; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
+decision: 2026-11-24 Skipped. Review-only recommendation. It needs a deliberate follow-up review session rather than an implementation change.
 
 ### DW-1911: The generated audit artifact is written with platform line endings and no .gitattributes rule pins them, so regenerating on Windows rewrites all ~170k lines.
 origin: spec-deferred 69a6a2f5d6b4
@@ -8792,6 +8798,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: medium
 reason: Tools/audit-central-package-versions.ps1 terminates the document with [Environment]::NewLine and ConvertTo-Json indents with the platform newline; Tools/.gitattributes pins only Props/Directory.Packages.props. The committed Tools/package-version-audit.json contains zero CR bytes because it was last generated on Linux. Pre-existing: the prior Set-Content -Encoding utf8 write had the same platform dependence, so this change did not introduce it.
 status: open
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1912: Audit history growth has no retention, pruning, or size policy, and the artifact is already ~9.9 MB.
 origin: spec-deferred 42fd1cff974a
@@ -8802,6 +8809,7 @@ reason: Every refreshed family appends family and package historicalContext reco
 status: open
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1912 at references/Hexalith.Builds/Tools/package-version-audit.json, update affected contracts and consumers, and add focused compatibility and regression evidence.
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1912 at references/Hexalith.Builds/Tools/package-version-audit.json, update affected contracts and consumers, and add focused compatibility and regression evidence.
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1913: Almost all stored package history is still v1-schema and is therefore exempt from the new origin ancestry, chronology, and duplicate-identity invariants.
 origin: spec-deferred f218a2755de1
@@ -8810,6 +8818,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: low
 reason: The v2 contract accepts both hexalith.package-audit-*-history.v1 and .v2 records, but only v2 records carry an origin, and Assert-HistoricalOrigin only validates records that have one. The vast majority of committed package history predates v2, so the new integrity guarantees cover only the records written since this change. Pre-existing data, not introduced by it.
 status: open
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1914: The validator only enables historical Git blob reads inside the repository-owned catalog branch, so an out-of-repository catalog combined with git-ls-files consumer discovery silently drops every decl
 origin: spec-deferred 69d02df37e1b
@@ -8818,6 +8827,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: medium
 reason: $historicalBlobReadsAvailable is initialised to $false and set to $true only within "if ($catalogIsRepositoryOwned -and $generatedFromRevision -cmatch ...)". Blob-read availability actually depends on the revision being an available ancestor, not on catalog ownership. Hoisting that determination out of the catalog branch would newly subject every existing out-of-repository fixture to the ancestor check, so it is not a safe review-pass patch. The shipped artifact uses a repository-owned catalog and is unaffected today.
 status: open
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1915: The emitted familyDecisions and packages arrays are ordered with culture-aware, case-insensitive Sort-Object while every fingerprint sorts case-sensitively.
 origin: spec-deferred b6c59d29bcee
@@ -8826,6 +8836,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: medium
 reason: The document is finalised with "Sort-Object family" and "Sort-Object id", whose default comparison is culture-sensitive, whereas packageIds, refreshedFamilies, preservedFamilies and all four origin fingerprints use Sort-Object -CaseSensitive. Regenerating under a different culture can reorder the 141-family / 286-package arrays without any evidence changing. Aligning them risks reordering the 9.9 MB committed artifact, which is out of scope for a review pass that must not touch package selections.
 status: open
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1916: The audit artifact contract changed incompatibly but every commit in the bundle is typed fix(...) with no breaking-change marker.
 origin: spec-deferred 22cc7198ac6d
@@ -8836,6 +8847,7 @@ reason: schemaVersion moved 1 -> 2, top-level auditedAtUtc moved into the snapsh
 status: open
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1916 at references/Hexalith.Builds, update affected contracts and consumers, and add focused compatibility and regression evidence.
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1916 at references/Hexalith.Builds, update affected contracts and consumers, and add focused compatibility and regression evidence.
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1917: The checked-in audit artifact is not re-derivable by any shipped code path.
 
@@ -8851,6 +8863,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: low
 reason: Assert-PriorFamilyHistoryContract and Assert-PriorPackageHistoryContract are reached only through Assert-PriorV2PreservedFamily, which runs for preserved families. A refreshed family's prior history records are copied verbatim, so unknown or wrong-typed legacy fields can reach an emitted v2 document; the independent validator rejects it afterwards, but the generator will have written output it cannot validate.
 status: open
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1919: Preserved family observations have no staleness ceiling, and nothing requires the committed artifact to ever be a complete refresh.
 origin: spec-deferred d28de3380010
@@ -8861,6 +8874,7 @@ reason: The shipped artifact preserves 137 of 141 families against two distinct 
 status: open
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1919 at references/Hexalith.Builds/Tools/package-version-audit.json, update affected contracts and consumers, and add focused compatibility and regression evidence.
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1919 at references/Hexalith.Builds/Tools/package-version-audit.json, update affected contracts and consumers, and add focused compatibility and regression evidence.
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1920: Dead v1-migration residue remains in the generator's preserved-family branch.
 origin: spec-deferred a7879f839e9a
@@ -8869,6 +8883,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: low
 reason: The preserved branch still contains a path that, when a preserved decision has no origin, removes preservation and synthesizes an origin from the prior audit's global revision/time. Incremental refresh now requires a v2 prior, and Assert-PriorV2PreservedFamily's closed shape both requires origin and forbids preservation, so that path can no longer execute. It is the migration path the shipped artifact actually took, left behind after the guard closed it.
 status: open
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1921: Several new fail-closed paths still have no fixture.
 origin: spec-deferred 5f8b14a0d9d0
@@ -8877,6 +8892,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: low
 reason: Untested: "evaluated catalog contains no package families"; the prior/current family-absence pair; the preserved-family "source scope changed without being requested" and "consumer evidence changed without being requested" guards; Assert-RepositoryPathMatchesRevision's "could not be compared" branch; the generator's Get-GitBlobBytes "could not start" branch; and the validator's "Snapshot partition contains unknown family" and "Complete snapshot mode must refresh every family and preserve none" rules. The suites cover the mirror-image cases but not these.
 status: open
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1922: Validation and generation cost scale with total stored history rather than with the refreshed family set on the incremental fast path.
 origin: spec-deferred 4c7674454f19
@@ -8885,6 +8901,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: low
 reason: The validator serializes every history record with ConvertTo-Json -Depth 20 -Compress for duplicate detection (5,756 records on the real artifact) and scans the full package list several times per family across 141 families; the generator re-verifies each preserved family's fingerprints twice and JSON round-trips every preserved package row. An incremental refresh that touches 4 families still pays full-document cost. Related to, but distinct from, the unbounded-history entry above.
 status: open
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1923: The new UTF-8 BOM gate is unconditional for a shared submodule whose sibling catalogs are BOM-free, with no opt-out or migration note.
 origin: spec-deferred 39dcc188f3de
@@ -8895,6 +8912,7 @@ reason: validate-central-package-versions.ps1 now hard-fails any catalog without
 status: open
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1923 at references/Hexalith.Builds/Tools/validate-central-package-versions.ps1:86, update affected contracts and consumers, and add focused compatibility and regression evidence.
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1923 at references/Hexalith.Builds/Tools/validate-central-package-versions.ps1:86, update affected contracts and consumers, and add focused compatibility and regression evidence.
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1924: Follow-up review still recommended for dw-package-audit-provenance-bom after the damping cap was spent
 origin: review-budget-followup
@@ -8903,6 +8921,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260901-072044-3ff7; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
+decision: 2026-11-24 Skipped. The defect lives in `references/Hexalith.Builds`, a separate repository. Fix it in Hexalith.Builds and consume it through a gitlink update.
 
 ### DW-1925: The browserless Playwright guards share `playwright-report/` and `test-results/` with the hosted `test:a11y` run, so a browserless failure leaves artifacts that the `if: always()` accessibility-artifa
 origin: spec-deferred 7fe230957182
@@ -8928,7 +8947,8 @@ location: tests/e2e/specs/settings-persistence.spec.ts:34-213
 source_spec: `spec-settings-persistence-ci.md`
 severity: low
 reason: `test:a11y` resolves to `playwright test specs/specimen-accessibility.spec.ts --project=chromium`, and no other workflow step names this spec, so after this bundle the only executed test in the file is the pure storage-key helper. The file's own header presents AC1/AC2 as the gaps it exists to close. Pre-existing: no lane ever ran them; this bundle's intent scoped execution to the single Unicode regression and its Block If clause forbids starting the Counter web host.
-status: open
+status: done 2026-11-24
+resolution: Already resolved. `browser-regressions-linux` runs every `settings-persistence.spec.ts` test on all three engines, and the file has no skip markers.
 
 ### DW-1928: Follow-up review still recommended for dw-settings-persistence-ci after the damping cap was spent
 origin: review-budget-followup
@@ -8937,6 +8957,7 @@ source_spec: `spec-settings-persistence-ci.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260901-072044-3ff7; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
+decision: 2026-11-24 Skipped. Review-only recommendation. It needs a deliberate follow-up review session rather than an implementation change.
 
 ### DW-1929: Gate 2c authenticated AppHost smoke still fails (`apphost.start.failed`) after EventStore 3.102.0 identity refresh.
 
@@ -9442,7 +9463,8 @@ location: references/Hexalith.EventStore
 source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
 severity: high
 reason: summary: Six dependency gitlinks moved off the sealed active tuple inside the reviewed range, against the frozen Never "Change a gitlink". evidence: over `1b3608c9..HEAD`, `references/Hexalith.EventStore` moved `059f6a89… → 555c9047…` and `references/Hexalith.Builds` `a32cb422… → aee01323…` (commits `a9d844d4`, `ca0a5643`), with Commons, Memories, Parties, and Tenants also advanced, while `frontcomposer-eventstore-approved-runtime-identity-v2.json` still seals `activeTuple` `059f6a89… / 3.103.0 / a32cb422…` and `frontComposerRevision: 1b3608c9`. The spec's Verification block asserts "No gitlink … changed" and separately calls current `main` "a future dependency advance"; both cannot hold. Deferred from chunk 1 because the change is outside the two reviewed files.
-status: open
+status: done 2026-11-24
+resolution: No longer relevant. Commit 83544c6b removed the committed runtime-identity seal (`frontcomposer-eventstore-approved-runtime-identity-v2.json`) and its verification machinery, so no sealed active tuple remains to drift.
 
 ### DW-1956: Orphan-package-directory check may reject a real NuGet cache's internal entries
 origin: code review of spec-11-25-current-eventstore-release-identity-and-evidence.md (2026-09-14), chunk 1 of 5
@@ -9450,7 +9472,8 @@ location: eng/eventstore_runtime_evidence.py:3196
 source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
 severity: unverified (medium if confirmed)
 reason: summary: `actual_version_directories` is compared against `declared_directories` with no skip for NuGet-internal entries, so a legitimate restore could be reported as containing orphan package directories. evidence: `eng/eventstore_runtime_evidence.py:3196-3212` enumerates the package root and treats every unexpected directory as an orphan; CI creates a fresh empty root via `mktemp -d` and exports it as `NUGET_PACKAGES`, but NuGet may still create internal entries such as `.tools` alongside the package directories. Not reproduced in this pass. Settled by running a real restore into a fresh `NUGET_PACKAGES` root and listing its top-level entries.
-status: open
+status: done 2026-11-24
+resolution: No longer relevant. `eng/eventstore_runtime_evidence.py` and its orphan-package-directory check were removed with the committed evidence machinery.
 
 ### DW-1957: quality.yml deletes the stale provider-verification.json but not the stale apphost-smoke.json
 origin: code review of spec-11-25-current-eventstore-release-identity-and-evidence.md (2026-09-14), chunk 1 of 5
@@ -9458,7 +9481,8 @@ location: .github/workflows/quality.yml:197
 source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
 severity: low
 reason: summary: The Gate 2c provider step removes the previous `provider-verification.json` before the run so the current invocation must replace it, but no step removes the previous `apphost-smoke.json` before the AppHost smoke capture. evidence: `.github/workflows/quality.yml:197` runs `rm -f …/pact-provider-reconciliation/provider-verification.json`; the `Gate 2c: Authenticated AppHost smoke` step has no equivalent. Whether this matters depends on whether `eng/pact_provider_apphost_smoke.py` unconditionally overwrites its artifact, which is owned by the AppHost-smoke and CI review chunks.
-status: open
+status: done 2026-11-24
+resolution: No longer relevant. `quality.yml` no longer has an AppHost smoke capture or `apphost-smoke.json` artifact.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
   summary: The governance test now asserts Gate 2c's active lane must fail, and that assertion must be inverted when the genuine v4/v3 recapture lands.
@@ -9510,7 +9534,8 @@ location: tests/e2e/package.json:27
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: medium
 reason: summary: `test:route-contract` is invoked by no workflow, so the generated-command route contract Story 11.27 just repaired has no automated detector. evidence: grepping `.github/workflows/*.yml` for `npm run test:` returns exactly four invocations - `test:fc-nip` (quality.yml:698), `test:settings-persistence-storage-key` (:706), `test:a11y` (:714) and `test:epic-9-evidence` (:806); a grep for `route-contract` across `.github`, `eng`, `scripts`, `tests/e2e/scripts` and `docs` returns zero hits. CI's `npm run typecheck` (quality.yml:688) compiles the spec but never runs it. Delete or misgenerate the `/commands/Counter/ConfigureCounterCommand` route and every CI job stays green - `route-contract.spec.ts` is the only proof that pins the URL, generated route heading, navigation focus, and `.fc-command-form[aria-label="Configure Counter command form"]` element. Pre-existing: Story 11.7 left this lane ungated and Story 11.27 neither introduced nor worsened it. Settle this in Story 11.30 by adding the proof to a non-specimen host lane, or first fixing DW-1966 and then enabling it in the accessibility job. Do not add the current proof directly to that job while it sets `Hexalith__FrontComposer__Specimens__Enabled=true`: the resulting `/counter` request fails with the lifecycle-registration defect recorded in DW-1966. A Test-environment lane would catch route-contract regressions but would not reproduce the original Development-only banner collision because `AppTitle` falls back to `Hexalith FrontComposer`. quality.yml is not pinned by `evaluator_authorizations`, so editing it does not de-authorize the release chain. Natural owner: Story 11.30 (Testing and MCP Boundary Hardening).
-status: open
+status: done 2026-11-24
+resolution: Already resolved. The `browser-regressions-linux` job runs `npx playwright test --project=<engine>` over every spec, which includes `route-contract.spec.ts` on Chromium, Firefox and WebKit.
 
 ### DW-1960: The route-contract projection leg re-asserts the same DOM node and proves nothing projection-specific
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)
@@ -9553,7 +9578,8 @@ location: tests/e2e/specs/specimen-accessibility.spec.ts:14
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: medium
 reason: summary: Story 11.27 cites "six visual baselines" as one of three pins on the banner retag, but the only job that compares them runs on Windows against untouched `*-chromium-win32.png` files with a 76,000-pixel tolerance, so the regenerated Linux baselines gate nothing in CI. evidence: `npm run test:a11y` is invoked by exactly one job, `accessibility-visual`, which is `runs-on: windows-latest` (`.github/workflows/quality.yml:637-638`, step at :714). `specimen-accessibility.spec.ts:434` applies `maxDiffPixels: windowsVisualBaselineMaxDiffPixels` (`= 76_000`, line 14) only when `process.platform === 'win32'`; its inline comment states "Linux baselines are regenerated locally. Windows baselines come from CI artifacts". The story regenerated all six `*-chromium-linux.png` and left all six `*-chromium-win32.png` untouched. Empirically confirmed: the `accessibility-visual` job succeeded on `0122c53a` (run 35118098590) despite the recorded 13,009-pixel structural change, i.e. the tolerance absorbed the very delta the baselines were meant to pin. Consequence: banner typography and route-heading focus treatment can drift with CI green, and the win32 matrix now silently disagrees with shipped markup. Not actionable from a Linux workstation - refreshing the authoritative Windows artifacts requires the Windows lane. Settled by regenerating the six `*-chromium-win32.png` baselines from a CI artifact and re-calibrating `windowsVisualBaselineMaxDiffPixels` below the structural delta it must not hide. Related: the story separately rejected this as "negligible" on rasterization-tolerance grounds; that severity call is independent of the verification gap recorded here. Natural owner: Story 11.30 (Testing and MCP Boundary Hardening).
-status: open
+status: done 2026-11-24
+resolution: Already resolved for the reported gap. `browser-regressions-linux` now compares the Linux visual baselines; `accessibility-visual` still compares the Windows baselines with its documented tolerance.
 
 ### DW-1965: Gate 2b is red on a pre-existing EventStore runtime-identity assertion unrelated to Story 11.27
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)
@@ -9561,7 +9587,8 @@ location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: high
 reason: summary: `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` asserts `eng/pact_provider_apphost_smoke.py` contains `ReferencePath`, but that string was removed from the script before Story 11.27 branched, so the Quality workflow is red independently of this story. evidence: `CiGovernanceTests.cs:3944` reads the script and calls `appHostSmokeSource.ShouldContain("ReferencePath")`; `grep -c ReferencePath eng/pact_provider_apphost_smoke.py` returns `0`. `git log -S "ReferencePath" -- eng/pact_provider_apphost_smoke.py` shows the string was introduced at `12523054` and removed at `a2592f3a`, and `git merge-base --is-ancestor a2592f3a aba29291` confirms the removal predates Story 11.27's baseline. The same "Gate 2b: Infrastructure governance and telemetry contracts" step failed on the pre-story run at `9843841b` (run 35003168322). Consequence: `build-and-test` cannot go green on Story 11.27's HEAD even after this story's own governance drift is resealed, so Story 11.27 must not be accepted on a green-CI basis. Settled by either restoring the `ReferencePath` capture in `eng/pact_provider_apphost_smoke.py` or updating the governance assertion to the current evidence contract - a decision owned by the EventStore runtime-evidence lane, not by a locator story.
-status: open
+status: done 2026-11-24
+resolution: No longer relevant. Commits c1803435 and 83544c6b removed both `eng/pact_provider_apphost_smoke.py` and the `EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` assertion.
 
 ### DW-1966: The specimen-enabled Counter host crashes on `/counter`
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)
@@ -9569,7 +9596,8 @@ location: samples/Counter/Counter.Web/Program.cs
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: medium
 reason: summary: The specimen-enabled Counter host crashes on `/counter` because the base command lifecycle feature is not registered. evidence: Both Test and Development launches with `Hexalith:FrontComposer:Specimens:Enabled=true` returned HTTP 500 for `/counter`; the host log records `InvalidOperationException` resolving `IFeature<CreateCounterCommandLifecycleState>` while activating `State<CreateCounterCommandLifecycleState>`. This is a pre-existing specimen-registration defect outside the generated-route locator fix and blocks adding the route-contract proof directly to the current specimen-enabled accessibility job.
-status: open
+status: done 2026-11-24
+resolution: Already resolved by commit 932e5485. Specimen mode now scans `CreateCounterCommandLifecycleFeature` and the other Counter lifecycle features, and every specimen-enabled browser job loads `/counter`.
 
 ### DW-1967: The type specimen nests a `main` landmark inside the shell's page-level `main`
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)
@@ -9612,7 +9640,8 @@ location: tests/e2e/package.json:27
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: medium
 reason: summary: The final Blind Hunter review confirmed `test:route-contract` remains absent from every workflow, so generated heading, focus, URL, and form regressions can pass CI. evidence: Story 11.30 must add a non-specimen lane or first resolve DW-1966 before reusing the current specimen-enabled accessibility job.
-status: open
+status: done 2026-11-24
+resolution: Already resolved with DW-1959. `route-contract.spec.ts` runs in the specimen-enabled `browser-regressions-linux` job, which became possible once DW-1966 was fixed.
 
 ### DW-1969: Reconcile the historical locator-only implementation note with later route-generation patches
 origin: Blind Hunter review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-17)
@@ -9649,7 +9678,8 @@ location: .github/workflows/quality.yml:639
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: medium
 reason: summary: Unverified. The job still has `timeout-minutes: 25` while this range adds a third `npm ci`, a second `playwright install --with-deps chromium`, `test:runner`, and a live `dotnet run` plus 13-scenario browser suite after `test:a11y`. evidence: `quality.yml:637-732`; timeout was not raised in the diff. A job cancellation would skip the live gate and can skip artifact upload. Settled by a Quality `accessibility-visual` duration on HEAD `c8beb9d9`, then raise the timeout or split `story2.2:e2e` into its own job.
-status: open
+status: done 2026-11-24
+resolution: Already resolved. `accessibility-visual` now has `timeout-minutes: 45`; its successful Quality runs on 2026-11-23 took 13.7 to 23.5 minutes.
 
 ### DW-1973: Unskipped S7 never submits, so post-submit ReturnPath navigation stays unproven
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18)
@@ -9666,7 +9696,8 @@ location: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd/run-story-2-2-e2e.cj
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: medium
 reason: summary: Unverified. `runScenario` records `console` `error` and `pageerror` into `runtimeFailures` and marks the scenario `fail` with no allowlist. evidence: `run-story-2-2-e2e.cjs:142-195`. Fluent/Blazor Development-host noise could fail the new blocking quality step; that emission is not shown on this HEAD. Settled by one live `npm run story2.2:e2e` run's `consoleMatches` on `c8beb9d9`. If the host is quiet, reject; if not, add a narrow allowlist or fix the host.
-status: open
+status: done 2026-11-24
+resolution: Rejected under its settlement rule. The zero-tolerance `Run legacy Story 2.2 live browser gate` step passed in successful Quality runs such as 45229599959, so the host emits no console errors there.
 ## Deferred from: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18, chunk 1 product runtime)
 
 Reconfirmed existing open items without new ids: DW-1964 (Windows visual lane does not pin the banner retag), DW-1971 (no generated-command visual snapshot).
