@@ -144,6 +144,11 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
     private static Dictionary<string, McpResourceDescriptor> BuildResourceMap(IEnumerable<McpManifest> manifests) {
         Dictionary<string, McpResourceDescriptor> map = new(StringComparer.OrdinalIgnoreCase);
         foreach (McpResourceDescriptor descriptor in manifests.SelectMany(m => m.Resources)) {
+            // Advertise only URIs that can pass the reader's control-character validation.
+            if (McpUnicodeSafety.ContainsUnsafeUriCharacters(descriptor.ProtocolUri)) {
+                continue;
+            }
+
             if (!map.TryAdd(descriptor.ProtocolUri, descriptor)) {
                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.DuplicateDescriptor);
             }

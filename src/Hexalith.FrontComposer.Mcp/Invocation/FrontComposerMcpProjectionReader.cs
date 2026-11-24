@@ -134,8 +134,12 @@ public sealed class FrontComposerMcpProjectionReader(
             return true;
         }
 
-        return !string.Equals(parsed.Scheme, "frontcomposer", StringComparison.Ordinal)
-            || string.IsNullOrWhiteSpace(parsed.Host);
+        if (!string.Equals(parsed.Scheme, "frontcomposer", StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(parsed.Host)) {
+            return true;
+        }
+
+        return McpUnicodeSafety.ContainsUnsafeUriCharacters(uri);
     }
 
     private static void ValidateContext(FrontComposerMcpAgentContext context) {

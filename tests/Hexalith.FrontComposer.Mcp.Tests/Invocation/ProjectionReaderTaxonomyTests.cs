@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Mcp.Rendering;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 using Shouldly;
 
@@ -16,6 +17,10 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 public sealed class ProjectionReaderTaxonomyTests {
     [Theory]
     [InlineData("", FrontComposerMcpFailureCategory.MalformedRequest, "malformed_resource", "HFC-MCP-PROJECTION-MALFORMED-RESOURCE", false, false)]
+    [InlineData("frontcomposer://Billing/projections/Invoice%09Projection", FrontComposerMcpFailureCategory.MalformedRequest, "malformed_resource", "HFC-MCP-PROJECTION-MALFORMED-RESOURCE", false, false)]
+    [InlineData("frontcomposer://Billing/projections/Invoice%E2%80%AEProjection", FrontComposerMcpFailureCategory.MalformedRequest, "malformed_resource", "HFC-MCP-PROJECTION-MALFORMED-RESOURCE", false, false)]
+    [InlineData("frontcomposer://Billing/projections/Invoice\u202EProjection", FrontComposerMcpFailureCategory.MalformedRequest, "malformed_resource", "HFC-MCP-PROJECTION-MALFORMED-RESOURCE", false, false)]
+    [InlineData("frontcomposer://Billing/projections/Invoice\tProjection", FrontComposerMcpFailureCategory.MalformedRequest, "malformed_resource", "HFC-MCP-PROJECTION-MALFORMED-RESOURCE", false, false)]
     [InlineData("frontcomposer://Billing/projections/MissingProjection", FrontComposerMcpFailureCategory.UnknownResource, "unknown_resource", "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE", false, true)]
     public async Task AdmissionFailures_ReturnDeterministicTaxonomy_AndDoNotQuery(
         string uri,
@@ -39,6 +44,26 @@ public sealed class ProjectionReaderTaxonomyTests {
         result.StructuredContent!.ContainsKey("contentType").ShouldBeFalse();
         result.Text.ShouldBe(result.StructuredContent!["message"]!.GetValue<string>());
         query.CallCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Registry_AdvertisesProjectionUrisThatPassControlCharacterValidation() {
+        McpResourceDescriptor safe = Manifest().Resources.Single() with {
+            ProtocolUri = "frontcomposer://Billing/projections/Invoice%2DProjection",
+        };
+        McpResourceDescriptor invalid = safe with {
+            ProtocolUri = "frontcomposer://Billing/projections/Invoice%09Projection",
+        };
+        FrontComposerMcpOptions options = new();
+        options.Manifests.Add(new McpManifest("frontcomposer.mcp.v1", [], [safe, invalid]));
+
+        var registry = new FrontComposerMcpDescriptorRegistry(Options.Create(options));
+
+        registry.Resources.ShouldHaveSingleItem().ShouldBe(safe);
+        registry.TryGetResource(safe.ProtocolUri, out McpResourceDescriptor registered).ShouldBeTrue();
+        registered.ShouldBe(safe);
+        registry.TryGetResource("frontcomposer://Billing/projections/Invoice-Projection", out _).ShouldBeFalse();
+        registry.TryGetResource(invalid.ProtocolUri, out _).ShouldBeFalse();
     }
 
     [Theory]
