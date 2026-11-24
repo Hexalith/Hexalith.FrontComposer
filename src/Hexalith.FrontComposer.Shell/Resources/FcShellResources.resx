@@ -661,7 +661,7 @@
   </data>
   <data name="UnauthorizedCommandWarningMessage" xml:space="preserve">
     <value>You do not have permission to {0}.</value>
-    <comment>Story 7-3 — warning body when a protected command is blocked; {0} is the command action label.</comment>
+    <comment>Story 7-3 — warning body when a protected command is blocked; {0} is the command action label. Translations may quote it as an action name so noun and verb labels both read naturally (DW-886).</comment>
   </data>
   <data name="AuthorizationActionUnavailableTitle" xml:space="preserve">
     <value>Action temporarily unavailable</value>
@@ -677,7 +677,7 @@
   </data>
   <data name="UnauthenticatedCommandWarningMessage" xml:space="preserve">
     <value>Please sign in to {0}.</value>
-    <comment>Story 7-3 Pass 3 — warning body when a protected command is blocked because the user is not authenticated; {0} is the command action label.</comment>
+    <comment>Story 7-3 Pass 3 — warning body when a protected command is blocked because the user is not authenticated; {0} is the command action label. Translations may quote it as an action name so noun and verb labels both read naturally (DW-886).</comment>
   </data>
   <data name="AuthorizationCheckingPermissionTitle" xml:space="preserve">
     <value>Checking permission…</value>
@@ -685,7 +685,7 @@
   </data>
   <data name="AuthorizationCheckingPermissionMessage" xml:space="preserve">
     <value>Verifying you can {0}. This usually takes a moment.</value>
-    <comment>Story 7-3 Pass 3 — body when authorization is pending; {0} is the command action label.</comment>
+    <comment>Story 7-3 Pass 3 — body when authorization is pending; {0} is the command action label. Translations may quote it as an action name so noun and verb labels both read naturally (DW-886).</comment>
   </data>
   <data name="ValidationSummaryTitle" xml:space="preserve">
     <value>Validation failed</value>

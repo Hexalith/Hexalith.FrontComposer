@@ -877,7 +877,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
 
     [Theory]
     [InlineData("en", "You do not have permission to Protected Two Field Compact.")]
-    [InlineData("fr", "Vous n'avez pas l'autorisation d'exécuter Protected Two Field Compact.")]
+    [InlineData("fr", "Vous n'avez pas l'autorisation d'exécuter l'action «\u00A0Protected Two Field Compact\u00A0».")]
     public async Task ProtectedGeneratedFormBlankDenialBodyUsesShellPermissionCopy(string culture, string expected) {
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);

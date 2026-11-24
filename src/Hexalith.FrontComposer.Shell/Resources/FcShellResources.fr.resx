@@ -548,7 +548,8 @@
     <value>Autorisation requise</value>
   </data>
   <data name="UnauthorizedCommandWarningMessage" xml:space="preserve">
-    <value>Vous n'avez pas l'autorisation d'exécuter {0}.</value>
+    <value>Vous n'avez pas l'autorisation d'exécuter l'action « {0} ».</value>
+    <comment>DW-886 — the label is quoted as an action name so noun and verb labels both read naturally; U+00A0 NBSP inside the guillemets.</comment>
   </data>
   <data name="AuthorizationActionUnavailableTitle" xml:space="preserve">
     <value>Action momentanément indisponible</value>
@@ -560,13 +561,15 @@
     <value>Connexion requise</value>
   </data>
   <data name="UnauthenticatedCommandWarningMessage" xml:space="preserve">
-    <value>Veuillez vous connecter pour {0}.</value>
+    <value>Veuillez vous connecter pour exécuter l'action « {0} ».</value>
+    <comment>DW-886 — the label is quoted as an action name so noun and verb labels both read naturally; U+00A0 NBSP inside the guillemets.</comment>
   </data>
   <data name="AuthorizationCheckingPermissionTitle" xml:space="preserve">
     <value>Vérification des autorisations…</value>
   </data>
   <data name="AuthorizationCheckingPermissionMessage" xml:space="preserve">
-    <value>Vérification de votre autorisation à {0}. Cela ne prend qu'un instant.</value>
+    <value>Vérification de votre autorisation pour l'action « {0} ». Cela ne prend qu'un instant.</value>
+    <comment>DW-886 — the label is quoted as an action name so noun and verb labels both read naturally; U+00A0 NBSP inside the guillemets.</comment>
   </data>
   <data name="ValidationSummaryTitle" xml:space="preserve"><value>Échec de la validation</value></data>
   <data name="ValidationSummaryMessageSingle" xml:space="preserve"><value>Corrigez les erreurs avant l'envoi. Une erreur.</value></data>

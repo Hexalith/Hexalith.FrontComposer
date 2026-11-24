@@ -355,6 +355,16 @@ public sealed class FcShellResourcesTests {
         ExtractFormatPlaceholderIndices(fr).SetEquals(ExtractFormatPlaceholderIndices(en)).ShouldBeTrue();
     }
 
+    /// <summary>DW-886 — French authorization copy quotes the label as an action name inside no-break-spaced guillemets.</summary>
+    /// <param name="key">The authorization resource key.</param>
+    /// <param name="expected">The exact French value.</param>
+    [Theory]
+    [InlineData("UnauthorizedCommandWarningMessage", "Vous n'avez pas l'autorisation d'exécuter l'action «\u00A0{0}\u00A0».")]
+    [InlineData("UnauthenticatedCommandWarningMessage", "Veuillez vous connecter pour exécuter l'action «\u00A0{0}\u00A0».")]
+    [InlineData("AuthorizationCheckingPermissionMessage", "Vérification de votre autorisation pour l'action «\u00A0{0}\u00A0». Cela ne prend qu'un instant.")]
+    public void FrenchAuthorizationCopyQuotesTheCommandLabel(string key, string expected)
+        => new ResourceManager(typeof(FcShellResources)).GetString(key, new CultureInfo("fr")).ShouldBe(expected);
+
     // Story 7-3 Pass 3 / Pass-2 P35 — placeholder count parity across EN/FR for new authorization
     // resource keys. If EN later adds {1} and FR is missed, runtime IndexOutOfRange at warning render.
     [Theory]
