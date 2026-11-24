@@ -425,6 +425,33 @@ public sealed class CommandLifecycleTests {
         result.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
     }
 
+    [Fact]
+    public async Task ReadAsyncHistoryTruncatedStaysTrueAfterConfiguredLimitIncreases()
+    {
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out LifecycleAwareCommandService service, out ServiceProvider provider,
+            configureOptions: options => options.MaxLifecycleTransitionHistory = 2);
+        using ServiceProvider ownedProvider = provider;
+        service.CompleteSynchronously = false;
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+        Dictionary<string, JsonElement> handle = Args($$"""{"correlationId":"{{CorrelationId}}"}""");
+
+        (await invoker.InvokeAsync("Billing.PayInvoiceCommand.Execute", Args("""{"Amount":42}"""), cancellationToken))
+            .IsError.ShouldBeFalse();
+        FrontComposerMcpResult pending = await tracker.ReadAsync(handle, cancellationToken);
+        pending.StructuredContent!["historyTruncated"]!.GetValue<bool>().ShouldBeTrue();
+
+        provider.GetRequiredService<IOptions<FrontComposerMcpOptions>>().Value.MaxLifecycleTransitionHistory = 10;
+        RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId);
+        FrontComposerMcpResult terminal = await tracker.ReadAsync(handle, cancellationToken);
+
+        terminal.StructuredContent!["historyTruncated"]!.GetValue<bool>().ShouldBeTrue();
+        terminal.StructuredContent["transitions"]!.AsArray()
+            .Select(item => item!["state"]!.GetValue<string>())
+            .ShouldBe(["Syncing", "Confirmed"]);
+    }
+
     [Theory]
     [InlineData(2, true)]
     [InlineData(3, false)]

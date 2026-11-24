@@ -22,5 +22,7 @@ The documentation site can include broader protocol background.
 
 Use MCP tools to submit commands and resources to read projections. For command write flows, expect a two-call lifecycle: invoke the command, then read the framework-issued lifecycle URI or call the lifecycle subscribe tool until terminal state.
 
+Each lifecycle entry captures its history limit when it is created. When the limit evicts an observation, `historyTruncated` becomes `true` for the rest of that entry's lifetime. Increasing the limit for new entries cannot recover evicted observations. Internal `Idle` and `Submitting` observations are omitted from the response and can count toward the history limit.
+
 Treat hidden or unknown tools/resources as safe, sanitized categories. Do not infer hidden command names from policy results.
 <!-- /frontcomposer:section -->
