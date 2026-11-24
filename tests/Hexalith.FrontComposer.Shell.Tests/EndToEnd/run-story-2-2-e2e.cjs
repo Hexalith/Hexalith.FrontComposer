@@ -98,6 +98,7 @@ function startServer(spawnProcess = spawn) {
     env: {
       ...process.env,
       ASPNETCORE_ENVIRONMENT: 'Development',
+      Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs: '2000',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -345,21 +346,50 @@ async function main() {
     });
 
     await runScenario('S7 FullPage ReturnPath safe', async page => {
-      await gotoInteractivePage(
-        page,
-        `${baseUrl}/commands/Counter/ConfigureCounterCommand?returnPath=https%3A%2F%2Fevil.example%2Fpath&projectionTypeFqn=Counter.Domain.CounterProjection`,
-        'Configure Counter');
-      const selectors = ['nav[aria-label="breadcrumb"]', 'nav[aria-label="breadcrumb"] a[href="/"]'];
-      await waitForSelectors(page, selectors);
-      const breadcrumbHrefs = await page.locator('nav[aria-label="breadcrumb"] a').evaluateAll(
+      const route = new URL('/commands/Counter/ConfigureCounterCommand', baseUrl);
+      route.searchParams.set('projectionTypeFqn', 'Counter.Domain.CounterProjection');
+      const externalReturnPath = 'https://evil.example/path';
+      let attemptedExternalNavigation = false;
+      await page.route('https://evil.example/**', async request => {
+        attemptedExternalNavigation ||= request.request().isNavigationRequest();
+        await request.abort();
+      });
+      route.searchParams.set('returnPath', externalReturnPath);
+      await gotoInteractivePage(page, route.href, 'Configure Counter');
+      const breadcrumb = 'nav[aria-label="breadcrumb"]';
+      await waitForSelectors(page, [breadcrumb, `${breadcrumb} a[href="/"]`]);
+      const breadcrumbHrefs = await page.locator(`${breadcrumb} a`).evaluateAll(
         anchors => anchors.map(anchor => anchor.getAttribute('href')));
       const unsafeBreadcrumbHrefs = breadcrumbHrefs.filter(href => href !== '/');
       if (unsafeBreadcrumbHrefs.length > 0) {
         throw new Error(
           `Unsafe returnPath breadcrumbs resolved to ${unsafeBreadcrumbHrefs.map(href => href ?? '<missing>').join(', ')} instead of /`);
       }
+
+      const form = page.getByRole('main').locator('.fc-command-form');
+      const submitAndWaitFor = async (expectedPath, name, expectedHeading) => {
+        await form.locator('fluent-text-input[name="Name"] input').fill(name);
+        await form.getByRole('button', { name: 'Configure Counter', exact: true }).click();
+        await form.locator('[data-fc-active-lifecycle="true"]').waitFor({ state: 'visible' });
+        if (page.url() !== route.href) {
+          throw new Error('Configure Counter navigated while the command was pending.');
+        }
+        await page.waitForURL(new URL(expectedPath, baseUrl).href);
+        await getRouteHeading(page, expectedHeading).waitFor({ state: 'visible' });
+      };
+
+      await submitAndWaitFor('/', 'External return check', 'Hexalith FrontComposer — Counter Sample');
+      if (attemptedExternalNavigation) {
+        throw new Error('Configure Counter attempted external navigation.');
+      }
+
+      route.searchParams.set('returnPath', '/counter');
+      await gotoInteractivePage(page, route.href, 'Configure Counter');
+      await submitAndWaitFor('/counter', 'Local return check', 'Counter');
+
+      const counterHeading = '[role="main"] h1';
       return {
-        domSelectors: selectors,
+        domSelectors: [counterHeading],
       };
     });
 

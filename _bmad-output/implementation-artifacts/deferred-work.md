@@ -9593,7 +9593,8 @@ location: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd/run-story-2-2-e2e.cj
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: medium
 reason: summary: S7 was unskipped as ReturnPath-safe coverage but only asserts first-paint breadcrumb `href` `/` on an evil `returnPath` query. evidence: `run-story-2-2-e2e.cjs:267-280` never submits the generated form or waits for post-submit navigation, which was the original D32 gap behind the skip. Pre-existing product/harness work, not introduced by the locator fix. Settled by a submit-and-navigate assertion once ReturnPath behavior is stable under headless Playwright. Natural owner: leftover Story 2.2 D32 / testing hardening.
-status: open
+status: done 2026-11-24
+resolution: Submit the generated form and verify confirmation-driven local and fallback navigation.
 
 ### DW-1974: Live Story 2.2 scenarios fail closed on any console error or pageerror
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18)
