@@ -21,8 +21,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 /// <summary>
 /// AC1 / AC5 / T3 — wire McpSchemaNegotiator into FrontComposerMcpCommandInvoker. The schema gate
 /// runs between admission resolution and command dispatch. Sanitized failure categories surface
-/// through the command failure adapter; CompatibleAdditive admits dispatch only after server-side
-/// validation/defaulting/bounds re-run.
+/// through the command failure adapter. Matching fingerprints still require valid command inputs.
 /// </summary>
 public sealed class CommandInvokerSchemaGateTests {
     [Fact]
@@ -34,6 +33,7 @@ public sealed class CommandInvokerSchemaGateTests {
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
             dispatcher,
             clientFingerprintHint: SchemaHintFor("stale-client"),
+            serverFingerprint: SchemaHintFor("server-current"),
             ulidFactory: ulids,
             schemaLogger: logger);
 
@@ -70,7 +70,8 @@ public sealed class CommandInvokerSchemaGateTests {
         RecordingCommandService dispatcher = new();
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
             dispatcher,
-            clientFingerprintHint: SchemaHintFor("baseline-missing"));
+            clientFingerprintHint: SchemaHintFor("baseline-missing"),
+            serverFingerprint: null);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
@@ -82,25 +83,44 @@ public sealed class CommandInvokerSchemaGateTests {
         dispatcher.Dispatched.ShouldBeNull();
     }
 
-    [Fact]
-    public async Task CompatibleAdditive_OnCommand_AdmitsDispatch_AfterRevalidation() {
-        // AC5: validation/defaulting/bounds re-run on CompatibleAdditive before any side effect.
-        // The command type clamps Amount to [1, 100]; an out-of-bounds caller value (200) must be
-        // either rejected or normalized — never silently bypass into the dispatcher untouched.
-        // CK4-P1: send 200 (clearly above the [1,100] clamp range) so a SUT that skipped
-        // revalidation entirely fails this test (it would dispatch Amount=200).
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdmittedCommand_StillEnforcesBounds(bool additive)
+    {
         RecordingCommandService dispatcher = new();
+        CapturingLogger<SchemaNegotiationRuntimeGate> schemaLogger = new();
+        SchemaFingerprint serverFingerprint = SchemaHintFor("server-current");
+        InvocationSchemaBaselineProvider? baseline = additive ? new(new SchemaContractDocument(
+            "frontcomposer.schema.contract.v1", SchemaContractFamily.CommandTool,
+            "Billing.PayInvoiceCommand.Execute", "frontcomposer.command-tool.v1", "Billing",
+            typeof(PayInvoiceCommand).FullName!, "Billing.PayInvoiceCommand.Execute",
+            [new SchemaFieldContract("Amount", "Int32", "number", true, false, "Amount")],
+            [new SchemaCollectionContract("parameters", SchemaCollectionOrder.NonStructuralSorted, "name")],
+            new Dictionary<string, string>())) : null;
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
             dispatcher,
-            clientFingerprintHint: SchemaHintFor("compatible-additive"));
+            clientFingerprintHint: baseline?.Fingerprint ?? serverFingerprint,
+            serverFingerprint: serverFingerprint,
+            schemaLogger: schemaLogger,
+            baseline: baseline);
+
+        FrontComposerMcpResult admitted = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute", Args("""{"Amount":1}"""), TestContext.Current.CancellationToken);
+        admitted.IsError.ShouldBeFalse($"Command admission returned {admitted.Category}.");
+        if (additive) {
+            schemaLogger.Entries.ShouldHaveSingleItem().State["DecisionKind"]
+                .ShouldBe(nameof(McpSchemaNegotiationResultKind.CompatibleAdditive));
+        }
+        dispatcher.Dispatched.ShouldBeOfType<PayInvoiceCommand>().Amount.ShouldBe(1);
+        dispatcher.Clear();
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":200}"""),
             TestContext.Current.CancellationToken);
 
-        // AC5 either path is acceptable: full validation rejection, or clamped/normalized dispatch.
-        // What is NOT acceptable: silent dispatch with the out-of-bounds value preserved.
+        // The command can reject or normalize the value. Any dispatched command must be in bounds.
         if (result.IsError) {
             result.Category.ShouldBeOneOf(
                 FrontComposerMcpFailureCategory.ValidationFailed,
@@ -111,7 +131,7 @@ public sealed class CommandInvokerSchemaGateTests {
             _ = dispatcher.Dispatched.ShouldNotBeNull();
             var command = (PayInvoiceCommand)dispatcher.Dispatched!;
             command.Amount.ShouldBeInRange(1, 100,
-                "AC5: post-additive validation/defaulting must clamp/normalize bounds — never silently pass an out-of-bounds caller value through to the dispatcher.");
+                "An admitted schema must not allow an out-of-bounds command through to the dispatcher.");
         }
     }
 
@@ -123,13 +143,15 @@ public sealed class CommandInvokerSchemaGateTests {
 
     private static FrontComposerMcpCommandInvoker BuildInvoker(
         ICommandService dispatcher,
-        SchemaFingerprint? clientFingerprintHint = null,
+        SchemaFingerprint? clientFingerprintHint,
+        SchemaFingerprint? serverFingerprint,
         IUlidFactory? ulidFactory = null,
-        ILogger<SchemaNegotiationRuntimeGate>? schemaLogger = null) {
+        ILogger<SchemaNegotiationRuntimeGate>? schemaLogger = null,
+        InvocationSchemaBaselineProvider? baseline = null) {
         ServiceCollection services = [];
         _ = services.AddSingleton(dispatcher);
         _ = services.AddSingleton(ulidFactory ?? new FixedUlidFactory());
-        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(serverFingerprint)));
         _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         _ = services.AddSingleton<FrontComposerMcpToolAdmissionService>();
         _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
@@ -138,17 +160,15 @@ public sealed class CommandInvokerSchemaGateTests {
         if (schemaLogger is not null) {
             _ = services.AddSingleton(schemaLogger);
         }
+        if (baseline is not null) {
+            _ = services.AddSingleton<ISchemaBaselineProvider>(baseline);
+        }
         _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new SchemaAwareStaticAccessor(clientFingerprintHint));
         ServiceProvider provider = services.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
     }
 
-    private static McpManifest Manifest(SchemaFingerprint? clientFingerprintHint) {
-        SchemaFingerprint? serverFingerprint = clientFingerprintHint?.Value.StartsWith("baseline-missing", StringComparison.Ordinal) == true
-            ? null
-            : clientFingerprintHint?.Value.StartsWith("compatible-additive", StringComparison.Ordinal) == true
-                ? clientFingerprintHint
-                : new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's')[..64]);
+    private static McpManifest Manifest(SchemaFingerprint? serverFingerprint) {
         return new("frontcomposer.mcp.v1", [
             new McpCommandDescriptor(
                 "Billing.PayInvoiceCommand.Execute",
@@ -157,7 +177,10 @@ public sealed class CommandInvokerSchemaGateTests {
                 "Pay invoice",
                 "Pay invoice",
                 null,
-                [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
+                [
+                    new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false),
+                    new McpParameterDescriptor("Memo", "String", "string", false, true, "Memo", null, [], false),
+                ],
                 ["TenantId", "UserId", "MessageId"],
                 Fingerprint: serverFingerprint),
         ], []);
@@ -177,15 +200,17 @@ public sealed class CommandInvokerSchemaGateTests {
         public string UserId { get; set; } = "";
         [Range(1, 100)]
         public int Amount { get; set; }
+        public string? Memo { get; set; }
     }
 
     private sealed class RecordingCommandService : ICommandService {
         public object? Dispatched { get; private set; }
+        public void Clear() => Dispatched = null;
 
         public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
             where TCommand : class {
             Dispatched = command;
-            return Task.FromResult(new CommandResult("message-a", "Accepted", "corr-a"));
+            return Task.FromResult(new CommandResult("01JZ0R5K9N8W4Y7V3Q2P6C1A0C", "Accepted", "01JZ0R5K9N8W4Y7V3Q2P6C1A0D"));
         }
     }
 

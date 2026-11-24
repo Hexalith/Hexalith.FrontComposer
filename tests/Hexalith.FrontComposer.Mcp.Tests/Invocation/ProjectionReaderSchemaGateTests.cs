@@ -5,8 +5,11 @@ using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.Mcp.Rendering;
+using Hexalith.FrontComposer.Mcp.Schema;
+using Hexalith.FrontComposer.Mcp.Tests.Logging;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Shouldly;
 
@@ -16,13 +19,16 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 /// AC1 / AC2 / AC5 / T3 — wire McpSchemaNegotiator into FrontComposerMcpProjectionReader. The
 /// reader must run negotiation between visibility/tenant checks and query dispatch, surface
 /// sanitized schema categories via the failure mapper, preserve Story 8-2 hidden/unknown
-/// precedence, and re-run server-side validation on `CompatibleAdditive`.
+/// precedence, and keep admitted queries bounded.
 /// </summary>
 public sealed class ProjectionReaderSchemaGateTests {
     [Fact]
     public async Task SchemaGate_RunsAfterVisibility_BeforeQueryDispatch() {
         CountingQueryService query = new();
-        FrontComposerMcpProjectionReader reader = BuildReader(query, clientFingerprintHint: SchemaHintFor("stale-client"));
+        FrontComposerMcpProjectionReader reader = BuildReader(
+            query,
+            clientFingerprintHint: SchemaHintFor("stale-client"),
+            serverFingerprint: SchemaHintFor("server-current"));
 
         FrontComposerMcpResult result = await reader.ReadAsync(
             "frontcomposer://Billing/projections/InvoiceProjection",
@@ -44,6 +50,7 @@ public sealed class ProjectionReaderSchemaGateTests {
         FrontComposerMcpProjectionReader reader = BuildReader(
             query,
             clientFingerprintHint: SchemaHintFor("stale-client"),
+            serverFingerprint: SchemaHintFor("server-current"),
             configureServices: services => services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(
                 new ToggleResourceVisibilityGate(visible: false)));
 
@@ -61,22 +68,48 @@ public sealed class ProjectionReaderSchemaGateTests {
         query.CallCount.ShouldBe(0);
     }
 
-    [Fact]
-    public async Task CompatibleAdditive_AdmitsDispatch_AfterRevalidation() {
-        // AC5: CompatibleAdditive admits the request, but server-side validation/defaulting
-        // must run again before the query is invoked. The validator counter proves revalidation.
-        RevalidationCountingQueryService query = new();
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdmittedSchema_DispatchesBoundedQuery(bool additive)
+    {
+        const string Uri = "frontcomposer://Billing/projections/InvoiceProjection";
+        CountingQueryService query = new();
+        CapturingLogger<SchemaNegotiationRuntimeGate> schemaLogger = new();
+        SchemaFingerprint serverFingerprint = SchemaHintFor("server-current");
+        InvocationSchemaBaselineProvider? baseline = additive ? new(new SchemaContractDocument(
+            "frontcomposer.schema.contract.v1", SchemaContractFamily.ProjectionResource,
+            Uri, "frontcomposer.projection-resource.v1", "Billing", typeof(InvoiceProjection).FullName!, Uri,
+            [new SchemaFieldContract("Number", "String", "string", true, false, "Number")],
+            [new SchemaCollectionContract("fields", SchemaCollectionOrder.NonStructuralSorted, "name")],
+            new Dictionary<string, string> { ["renderStrategy"] = nameof(McpProjectionRenderStrategy.Default) })) : null;
         FrontComposerMcpProjectionReader reader = BuildReader(
             query,
-            clientFingerprintHint: SchemaHintFor("compatible-additive"));
+            clientFingerprintHint: baseline?.Fingerprint ?? serverFingerprint,
+            serverFingerprint: serverFingerprint,
+            configureServices: services => {
+                _ = services.Configure<FrontComposerMcpOptions>(options => {
+                    options.DefaultResourceTake = 20;
+                    options.MaxResourceTake = 10;
+                });
+                if (baseline is not null) {
+                    _ = services.AddSingleton<ISchemaBaselineProvider>(baseline);
+                    _ = services.AddSingleton<ILogger<SchemaNegotiationRuntimeGate>>(schemaLogger);
+                }
+            });
 
         FrontComposerMcpResult result = await reader.ReadAsync(
             "frontcomposer://Billing/projections/InvoiceProjection",
             TestContext.Current.CancellationToken);
 
-        result.IsError.ShouldBeFalse();
+        result.IsError.ShouldBeFalse($"Projection admission returned {result.Category}.");
+        if (additive) {
+            schemaLogger.Entries.ShouldHaveSingleItem().State["DecisionKind"]
+                .ShouldBe(nameof(McpSchemaNegotiationResultKind.CompatibleAdditive));
+        }
         query.CallCount.ShouldBe(1);
-        query.RevalidationCount.ShouldBeGreaterThanOrEqualTo(1, "AC5: validation must re-run before dispatch on CompatibleAdditive.");
+        QueryRequest request = query.LastRequest.ShouldNotBeNull();
+        request.Criteria.Take.ShouldBe(10);
     }
 
     [Fact]
@@ -84,7 +117,8 @@ public sealed class ProjectionReaderSchemaGateTests {
         CountingQueryService query = new();
         FrontComposerMcpProjectionReader reader = BuildReader(
             query,
-            clientFingerprintHint: new SchemaFingerprint("frontcomposer.schema.sha512.future", new string('c', 64)));
+            clientFingerprintHint: new SchemaFingerprint("frontcomposer.schema.sha512.future", new string('c', 64)),
+            serverFingerprint: SchemaHintFor("server-current"));
 
         FrontComposerMcpResult result = await reader.ReadAsync(
             "frontcomposer://Billing/projections/InvoiceProjection",
@@ -101,7 +135,8 @@ public sealed class ProjectionReaderSchemaGateTests {
         CountingQueryService query = new();
         FrontComposerMcpProjectionReader reader = BuildReader(
             query,
-            clientFingerprintHint: SchemaHintFor("baseline-missing"));
+            clientFingerprintHint: SchemaHintFor("baseline-missing"),
+            serverFingerprint: null);
 
         FrontComposerMcpResult result = await reader.ReadAsync(
             "frontcomposer://Billing/projections/InvoiceProjection",
@@ -122,6 +157,7 @@ public sealed class ProjectionReaderSchemaGateTests {
         FrontComposerMcpProjectionReader reader = BuildReader(
             query,
             clientFingerprintHint: SchemaHintFor("incompatible"),
+            serverFingerprint: SchemaHintFor("server-current"),
             configureServices: s => s.AddSingleton<IFrontComposerMcpProjectionRenderer>(renderer));
 
         _ = await reader.ReadAsync("frontcomposer://Billing/projections/InvoiceProjection", TestContext.Current.CancellationToken);
@@ -135,11 +171,12 @@ public sealed class ProjectionReaderSchemaGateTests {
 
     private static FrontComposerMcpProjectionReader BuildReader(
         IQueryService queryService,
-        SchemaFingerprint? clientFingerprintHint = null,
+        SchemaFingerprint? clientFingerprintHint,
+        SchemaFingerprint? serverFingerprint,
         Action<IServiceCollection>? configureServices = null) {
         ServiceCollection services = [];
         _ = services.AddSingleton(queryService);
-        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(serverFingerprint)));
         _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor(clientFingerprintHint));
         _ = services.AddScoped<FrontComposerMcpProjectionReader>();
@@ -150,12 +187,7 @@ public sealed class ProjectionReaderSchemaGateTests {
         return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
     }
 
-    private static McpManifest Manifest(SchemaFingerprint? clientFingerprintHint) {
-        SchemaFingerprint? serverFingerprint = clientFingerprintHint?.Value.StartsWith("baseline-missing", StringComparison.Ordinal) == true
-            ? null
-            : clientFingerprintHint?.Value.StartsWith("compatible-additive", StringComparison.Ordinal) == true
-                ? clientFingerprintHint
-                : new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's')[..64]);
+    private static McpManifest Manifest(SchemaFingerprint? serverFingerprint) {
         return new("frontcomposer.mcp.v1", [], [
             new McpResourceDescriptor(
                 "frontcomposer://Billing/projections/InvoiceProjection",
@@ -166,43 +198,22 @@ public sealed class ProjectionReaderSchemaGateTests {
                 null,
                 [
                     new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
+                    new McpParameterDescriptor("Memo", "String", "string", false, true, "Memo", null, [], false),
                 ],
                 RenderStrategy: McpProjectionRenderStrategy.Default,
                 Fingerprint: serverFingerprint),
         ]);
     }
 
-    public sealed record InvoiceProjection(string Number);
+    public sealed record InvoiceProjection(string Number, string? Memo = null);
 
     private sealed class CountingQueryService : IQueryService {
         public int CallCount { get; private set; }
+        public QueryRequest? LastRequest { get; private set; }
 
         public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default) {
             CallCount++;
-            object[] items = [new InvoiceProjection("INV-1")];
-            return Task.FromResult(new QueryResult<T>(items.Cast<T>().ToArray(), 1, null));
-        }
-    }
-
-    /// <summary>
-    /// Counts how many times the host-side validator runs before <see cref="QueryAsync"/>.
-    /// AC5 requires re-validation on CompatibleAdditive; the actual hook will be added in T3
-    /// — this scaffold uses a sentinel <see cref="ProjectionQuery.Take"/> bound to detect the
-    /// re-validation path once it lands.
-    /// </summary>
-    private sealed class RevalidationCountingQueryService : IQueryService {
-        public int CallCount { get; private set; }
-
-        public int RevalidationCount { get; private set; }
-
-        public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default) {
-            CallCount++;
-            // T3 should pin the take bound through the post-additive validator. Until T3 lands,
-            // RevalidationCount stays 0 and this scaffold will fail meaningfully when unskipped.
-            if (request.Criteria.Take is > 0 and <= 1024) {
-                RevalidationCount++;
-            }
-
+            LastRequest = request;
             object[] items = [new InvoiceProjection("INV-1")];
             return Task.FromResult(new QueryResult<T>(items.Cast<T>().ToArray(), 1, null));
         }
