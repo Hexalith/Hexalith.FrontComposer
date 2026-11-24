@@ -378,6 +378,49 @@ public sealed class CommandLifecycleTests {
     }
 
     [Fact]
+    public async Task ReadAsync_SyntheticTimeoutAtHistoryCapacity_RetainsMostRecentTransitionsInOrder() {
+        FakeTimeProvider time = new();
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out LifecycleAwareCommandService service,
+            out ServiceProvider provider,
+            configureOptions: options => {
+                options.MaxLifecycleInProgressMs = 10;
+                options.MaxLifecycleTransitionHistory = 2;
+            },
+            timeProvider: time);
+        using ServiceProvider ownedProvider = provider;
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        service.CompleteSynchronously = false;
+        FrontComposerMcpResult invocation = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute", Args("""{"Amount":42}"""), cancellationToken);
+        invocation.IsError.ShouldBeFalse();
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+        Dictionary<string, JsonElement> handle = Args($$"""{"correlationId":"{{CorrelationId}}"}""");
+        RecordObserved(provider, CommandLifecycleState.Syncing, MessageId);
+
+        FrontComposerMcpResult pending = await tracker.ReadAsync(handle, cancellationToken);
+
+        pending.IsError.ShouldBeFalse();
+        JsonObject pendingSnapshot = pending.StructuredContent!;
+        pendingSnapshot["historyTruncated"]!.GetValue<bool>().ShouldBeFalse();
+        JsonArray pendingHistory = pendingSnapshot["transitions"]!.AsArray();
+        pendingHistory.Select(item => item!["state"]!.GetValue<string>()).ShouldBe(["Acknowledged", "Syncing"]);
+        long syncingSequence = pendingHistory[1]!["sequence"]!.GetValue<long>();
+
+        time.Advance(TimeSpan.FromMilliseconds(11));
+        FrontComposerMcpResult result = await tracker.ReadAsync(handle, cancellationToken);
+
+        result.IsError.ShouldBeFalse();
+        JsonObject snapshot = result.StructuredContent!;
+        snapshot["terminal"]!.GetValue<bool>().ShouldBeTrue();
+        snapshot["outcome"]!["category"]!.GetValue<string>().ShouldBe("timed_out");
+        snapshot["historyTruncated"]!.GetValue<bool>().ShouldBeTrue();
+        JsonArray finalHistory = snapshot["transitions"]!.AsArray();
+        finalHistory.Select(item => item!["state"]!.GetValue<string>()).ShouldBe(["Syncing", "Rejected"]);
+        finalHistory.Select(item => item!["sequence"]!.GetValue<long>()).ShouldBe([syncingSequence, syncingSequence + 1]);
+    }
+
+    [Fact]
     public async Task ReadAsync_RealConfirmedAfterSyntheticTimedOut_TerminalStaysTimedOut() {
         // P38: synthetic-vs-real terminal monotonicity (AC18). Once a synthetic timeout seals the
         // entry, a late real Confirmed observation must not regress or duplicate the terminal.
