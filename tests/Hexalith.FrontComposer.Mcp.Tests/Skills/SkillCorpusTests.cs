@@ -59,6 +59,48 @@ public sealed class SkillCorpusTests {
         snapshot.Resources.Single().Fingerprint!.Value.Length.ShouldBe(64);
     }
 
+    [Theory]
+    [InlineData("2147483647", int.MaxValue)]
+    [InlineData("2147483648", null)]
+    public void Parse_OrderMustFitInInt32(string order, int? expectedOrder)
+    {
+        const string SourcePath = "docs/skills/frontcomposer/order-example.md";
+        string source = $$"""
+            ---
+            id: order-example
+            title: Order example
+            version: 1.0.0
+            audience: agent
+            docfx: true
+            mcpResource: true
+            resourceUri: frontcomposer://skills/order-example
+            order: {{order}}
+            sourceDoc: {{SourcePath}}
+            narrative: true
+            references: true
+            ---
+            <!-- frontcomposer:section agent-reference -->
+            Example reference text.
+            <!-- /frontcomposer:section -->
+            """;
+
+        SkillCorpusSnapshot snapshot = SkillCorpusParser.Parse([new SkillCorpusSource(SourcePath, source)]);
+
+        if (expectedOrder is int parsedOrder)
+        {
+            snapshot.Diagnostics.ShouldBeEmpty();
+            snapshot.Resources.ShouldHaveSingleItem().Order.ShouldBe(parsedOrder);
+        }
+        else
+        {
+            snapshot.Resources.ShouldBeEmpty();
+            SkillCorpusDiagnostic diagnostic = snapshot.Diagnostics.ShouldHaveSingleItem();
+            diagnostic.Category.ShouldBe(SkillCorpusDiagnosticCategory.InvalidFrontMatter);
+            diagnostic.Source.ShouldBe(SourcePath);
+            diagnostic.Message.ShouldBe("Front matter field 'order' must be a non-negative integer.");
+        }
+    }
+
     [Fact]
     public void Extraction_FailsClosedOnUnknownNestedUnterminatedAndDuplicateMarkers() {
         // P-34: AC15 covers nested, overlapping, unterminated, AND duplicated marker blocks. A
