@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO.Compression;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
@@ -326,25 +327,157 @@ public sealed class Ca1822Probe
         return log;
     }
 
-    private static async Task<(int ExitCode, string Log)> RunDotnetAllowingFailureAsync(
+    [Fact]
+    public async Task PackagedAnalyzerProcessDrainsFullStandardErrorBeforeExitAsync() {
+        ProcessStartInfo start = TestShell(
+            "for ((i=0; i<4096; i++)); do printf '%080d\\n' $i >&2; done; printf 'stdout-end'; exit 7",
+            "for ($i = 0; $i -lt 4096; $i++) { [Console]::Error.WriteLine($i.ToString('D80')) }; [Console]::Write('stdout-end'); exit 7");
+        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(20));
+
+        (int exitCode, string log) = await RunProcessAllowingFailureAsync(start, deadline.Token).ConfigureAwait(true);
+
+        exitCode.ShouldBe(7);
+        log.ShouldStartWith("stdout-end" + Environment.NewLine);
+        log.ShouldContain(4095.ToString("D80", CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public async Task PackagedAnalyzerProcessCancellationWaitsForChildExitAsync() {
+        DirectoryInfo scratch = Directory.CreateTempSubdirectory("fc-analyzer-cancel-");
+        string pidFile = Path.Combine(scratch.FullName, "pids");
+        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(20));
+        ProcessStartInfo start = TestShell(
+            """sleep 60 & child=$!; printf '%s %s' "$$" "$child" > "$FC_ANALYZER_TEST_PID.tmp"; mv "$FC_ANALYZER_TEST_PID.tmp" "$FC_ANALYZER_TEST_PID"; wait "$child" """,
+            """
+            $child = Start-Process -FilePath powershell.exe -ArgumentList '-NoProfile -NonInteractive -Command Start-Sleep -Seconds 60' -PassThru
+            [IO.File]::WriteAllText("$env:FC_ANALYZER_TEST_PID.tmp", "$PID $($child.Id)")
+            [IO.File]::Move("$env:FC_ANALYZER_TEST_PID.tmp", $env:FC_ANALYZER_TEST_PID)
+            Wait-Process -Id $child.Id
+            """);
+        start.Environment["FC_ANALYZER_TEST_PID"] = pidFile;
+        Task<(int ExitCode, string Log)> run = RunProcessAllowingFailureAsync(start, deadline.Token);
+        try {
+            while (!File.Exists(pidFile)) {
+                await Task.Delay(25, deadline.Token).ConfigureAwait(true);
+            }
+
+            string pidText = await File.ReadAllTextAsync(pidFile, deadline.Token).ConfigureAwait(true);
+            int[] pids = pidText.Split(' ').Select(value => int.Parse(value, CultureInfo.InvariantCulture)).ToArray();
+            using Process parent = Process.GetProcessById(pids[0]);
+            using Process descendant = Process.GetProcessById(pids[1]);
+            deadline.Cancel();
+
+            OperationCanceledException error = await Should.ThrowAsync<OperationCanceledException>(async () => {
+                _ = await run.ConfigureAwait(true);
+            }).ConfigureAwait(true);
+            error.CancellationToken.ShouldBe(deadline.Token);
+            parent.HasExited.ShouldBeTrue();
+            using CancellationTokenSource reapDeadline = new(TimeSpan.FromSeconds(5));
+            while (!descendant.HasExited && !IsLinuxZombie(descendant.Id)) {
+                await Task.Delay(25, reapDeadline.Token).ConfigureAwait(true);
+            }
+        }
+        finally {
+            await deadline.CancelAsync().ConfigureAwait(true);
+            try {
+                _ = await run.ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (deadline.IsCancellationRequested) {
+            }
+
+            scratch.Delete(recursive: true);
+        }
+    }
+
+    private static bool IsLinuxZombie(int processId) {
+        if (!OperatingSystem.IsLinux()) {
+            return false;
+        }
+
+        try {
+            string status = File.ReadAllText($"/proc/{processId}/stat");
+            int processNameEnd = status.LastIndexOf(')');
+            return processNameEnd >= 0 && status[processNameEnd + 2] == 'Z';
+        }
+        catch (FileNotFoundException) {
+            return true;
+        }
+        catch (DirectoryNotFoundException) {
+            return true;
+        }
+    }
+
+    private static ProcessStartInfo TestShell(string bash, string powerShell) {
+        ProcessStartInfo start;
+        if (OperatingSystem.IsWindows()) {
+            start = new("powershell.exe");
+            start.ArgumentList.Add("-NoProfile");
+            start.ArgumentList.Add("-NonInteractive");
+            start.ArgumentList.Add("-Command");
+            start.ArgumentList.Add(powerShell);
+        }
+        else {
+            start = new("/bin/bash");
+            start.ArgumentList.Add("-c");
+            start.ArgumentList.Add(bash);
+        }
+
+        return start;
+    }
+
+    private static Task<(int ExitCode, string Log)> RunDotnetAllowingFailureAsync(
         string workingDirectory,
         CancellationToken cancellationToken,
         params string[] args) {
         ProcessStartInfo startInfo = new("dotnet") {
             WorkingDirectory = workingDirectory,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
         };
         foreach (string arg in args) {
             startInfo.ArgumentList.Add(arg);
         }
 
-        using Process process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Failed to start dotnet.");
-        string stdout = await process.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(true);
-        string stderr = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(true);
-        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(true);
+        return RunProcessAllowingFailureAsync(startInfo, cancellationToken);
+    }
 
-        return (process.ExitCode, stdout + Environment.NewLine + stderr);
+    private static async Task<(int ExitCode, string Log)> RunProcessAllowingFailureAsync(
+        ProcessStartInfo startInfo,
+        CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+        startInfo.UseShellExecute = false;
+        startInfo.RedirectStandardError = true;
+        startInfo.RedirectStandardOutput = true;
+        using Process process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException($"Failed to start {startInfo.FileName}.");
+
+        Task<string> stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        Task<string> stderr = process.StandardError.ReadToEndAsync(cancellationToken);
+        Task<string[]> output = Task.WhenAll(stdout, stderr);
+        try {
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(true);
+            string[] streams = await output.ConfigureAwait(true);
+            return (process.ExitCode, streams[0] + Environment.NewLine + streams[1]);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            try {
+                if (!process.HasExited) {
+                    process.Kill(entireProcessTree: true);
+                }
+            }
+            catch (InvalidOperationException) when (process.HasExited) {
+                // The child exited before the kill request reached it.
+            }
+
+            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(true);
+            try {
+                _ = await output.ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                // The redirected reads use the same cancellation token.
+            }
+
+            throw;
+        }
     }
 }

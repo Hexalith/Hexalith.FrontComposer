@@ -8703,7 +8703,8 @@ location: tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAna
 source_spec: `spec-analyzer-governance-reliability.md`
 severity: medium
 reason: `RunDotnetAllowingFailureAsync` in `PackagedAnalyzerConsumerTests.cs` awaits stdout, then stderr, then `WaitForExitAsync` with the caller token. This pre-dates the Debug/Release matrix and can deadlock on a full stderr pipe or leave dotnet running when the test token is cancelled.
-status: open
+status: done 2026-11-24
+resolution: Drain both child-process pipes concurrently and terminate the active process tree on cancellation.
 
 ### DW-1908: The untraited hidden-control negative probe still runs two `--no-incremental` project rebuilds inside the solution-wide Governance lane.
 origin: spec-deferred 70cb0d757d1c
