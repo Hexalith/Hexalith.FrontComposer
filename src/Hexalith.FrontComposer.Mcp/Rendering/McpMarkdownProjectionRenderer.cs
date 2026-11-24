@@ -506,6 +506,7 @@ public static class McpMarkdownProjectionRenderer {
 
         var sb = new StringBuilder(value.Length + 8);
         bool prevIsLetterOrDigit = false;
+        int uppercaseRunLength = 0;
         int i = 0;
         while (i < value.Length) {
             int codePoint;
@@ -524,20 +525,32 @@ public static class McpMarkdownProjectionRenderer {
             // and collapsing the whole document to DownstreamFailed.
             bool isValidRune = Rune.TryCreate(codePoint, out Rune rune);
 
-            // Insert space before a new uppercase word only when the previous code point was
-            // a letter/digit; this preserves "OnHold" → "On Hold" while leaving surrogate pairs
-            // intact and avoiding spurious spaces after whitespace/punctuation.
-            if (i > 0 && prevIsLetterOrDigit && isValidRune && Rune.IsUpper(rune)) {
+            bool isUpper = isValidRune && Rune.IsUpper(rune);
+            int nextIndex = i + width;
+            // Keep uppercase runs intact. Split before the final capital when it starts
+            // a word after at least two capitals (IDFraud), while retaining plurals (OrderIDs).
+            bool startsWordAfterAcronym = isUpper && uppercaseRunLength >= 2 && nextIndex < value.Length
+                && Rune.TryGetRuneAt(value, nextIndex, out Rune nextRune)
+                && Rune.IsLower(nextRune)
+                && !IsAcronymPluralSuffix(value, nextIndex);
+            if (isUpper && prevIsLetterOrDigit && (uppercaseRunLength == 0 || startsWordAfterAcronym)) {
                 _ = sb.Append(' ');
             }
 
             _ = sb.Append(value, i, width);
             prevIsLetterOrDigit = isValidRune && Rune.IsLetterOrDigit(rune);
-            i += width;
+            uppercaseRunLength = isUpper ? (startsWordAfterAcronym ? 1 : uppercaseRunLength + 1) : 0;
+            i = nextIndex;
         }
 
         return sb.ToString();
     }
+
+    private static bool IsAcronymPluralSuffix(string value, int index)
+        => value[index] == 's'
+            && (index + 1 == value.Length
+                || !Rune.TryGetRuneAt(value, index + 1, out Rune afterSuffix)
+                || !Rune.IsLower(afterSuffix));
 
     private static bool IsSemanticBadgeSlot(string value)
         => value is "Neutral" or "Info" or "Success" or "Warning" or "Danger" or "Accent";

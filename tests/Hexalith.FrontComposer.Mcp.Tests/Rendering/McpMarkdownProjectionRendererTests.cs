@@ -418,6 +418,27 @@ public sealed class McpMarkdownProjectionRendererTests {
         result.Document.ShouldBeNull();
     }
 
+    [Theory]
+    [InlineData("IDFraud", "ID Fraud")]
+    [InlineData("OrderIDs", "Order IDs")]
+    [InlineData("APIs", "APIs")]
+    [InlineData("APIsEnabled", "APIs Enabled")]
+    [InlineData("XMLStatus", "XML Status")]
+    [InlineData("OnHold", "On Hold")]
+    [InlineData("ID", "ID")]
+    [InlineData("ID\U00010400\U00010428", "ID \U00010400\U00010428")]
+    public void Render_StatusOverview_PreservesAcronymsInLabels(string status, string label) {
+        McpResourceDescriptor descriptor = Descriptor(renderStrategy: McpProjectionRenderStrategy.StatusOverview);
+
+        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
+            descriptor,
+            [new { Status = status }],
+            TotalCount: 1), new FrontComposerMcpOptions(), TestContext.Current.CancellationToken);
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Document!.Text.ShouldContain($"- Neutral: 1 {label}{Environment.NewLine}");
+    }
+
     [Fact]
     public void Render_StatusOverviewGroupCap_EmitsSingleBoundedTruncationMarker() {
         McpResourceDescriptor descriptor = Descriptor(renderStrategy: McpProjectionRenderStrategy.StatusOverview, title: "Invoice status");
