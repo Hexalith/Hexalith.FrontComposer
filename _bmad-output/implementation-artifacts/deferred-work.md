@@ -3255,7 +3255,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW] `LastUsedSubscriberRegistry` partial-init leak** — subscriber ctor that allocates then throws leaves the unmanaged resource undisposed. Low-likelihood given subscriber shapes (no unmanaged resources by convention). **Defer target:** Epic 9. Reconciliation: Row: DW-0414; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group D (Shell services + Fluxor state + JS module) chunk.
-status: open
+status: done 2026-11-24
+resolution: Release partial Fluxor subscriptions and cancellation state on activation failure.
 
 ### DW-1146: [LOW] `DevDiagnosticEvent.Message` verbatim forward to `ILogger`
 

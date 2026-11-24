@@ -34,13 +34,22 @@ public sealed class IncrementCommandLastUsedSubscriber : IDisposable
         _recorder = recorder;
         _logger = logger;
         _timeProvider = timeProvider ?? TimeProvider.System;
-        _subscriber.SubscribeToAction<IncrementCommandActions.SubmittedAction>(this, OnSubmitted);
-        _subscriber.SubscribeToAction<IncrementCommandActions.ConfirmedAction>(this, OnConfirmed);
+        try
+        {
+            _subscriber.SubscribeToAction<IncrementCommandActions.SubmittedAction>(this, OnSubmitted);
+            _subscriber.SubscribeToAction<IncrementCommandActions.ConfirmedAction>(this, OnConfirmed);
+        }
+        catch
+        {
+            // Preserve the registration failure if rollback also fails.
+            try { Dispose(); } catch { }
+            throw;
+        }
     }
 
     private void OnSubmitted(IncrementCommandActions.SubmittedAction action)
     {
-        if (string.IsNullOrEmpty(action.CorrelationId)) { return; }
+        if (_cts.IsCancellationRequested || string.IsNullOrEmpty(action.CorrelationId)) { return; }
         PruneExpiredAndCap();
         _pending[action.CorrelationId!] = new PendingEntry(action.Command, _timeProvider.GetUtcNow());
     }
@@ -106,9 +115,15 @@ public sealed class IncrementCommandLastUsedSubscriber : IDisposable
 
     public void Dispose()
     {
-        _subscriber.UnsubscribeFromAllActions(this);
-        try { _cts.Cancel(); } catch (ObjectDisposedException) { }
-        _cts.Dispose();
+        try
+        {
+            _subscriber.UnsubscribeFromAllActions(this);
+        }
+        finally
+        {
+            try { _cts.Cancel(); } catch (ObjectDisposedException) { }
+            finally { _cts.Dispose(); }
+        }
     }
 }
 

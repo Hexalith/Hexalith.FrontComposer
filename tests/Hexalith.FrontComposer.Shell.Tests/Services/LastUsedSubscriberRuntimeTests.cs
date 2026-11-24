@@ -13,6 +13,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
+using NSubstitute;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Services;
@@ -39,6 +41,36 @@ public sealed class LastUsedSubscriberRuntimeTests {
 
             activations.ShouldBe(1);
         }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SubscriberUnsubscribesThePartialInstanceWhenSecondRegistrationFails(bool cleanupFails) {
+        IActionSubscriber actions = Substitute.For<IActionSubscriber>();
+        ILastUsedRecorder recorder = Substitute.For<ILastUsedRecorder>();
+        InvalidOperationException failure = new("Cannot register confirmation handler");
+        actions.When(subscriber => subscriber.SubscribeToAction(
+                Arg.Any<object>(), Arg.Any<Action<IncrementCommandActions.ConfirmedAction>>()))
+            .Do(_ => throw failure);
+        if (cleanupFails) {
+            actions.When(subscriber => subscriber.UnsubscribeFromAllActions(Arg.Any<object>()))
+                .Do(_ => throw new InvalidOperationException("Cannot remove partial subscriptions"));
+        }
+
+        Should.Throw<InvalidOperationException>(() => new IncrementCommandLastUsedSubscriber(actions, recorder))
+            .ShouldBeSameAs(failure);
+
+        Received.InOrder(() => {
+            actions.SubscribeToAction(Arg.Any<IncrementCommandLastUsedSubscriber>(), Arg.Any<Action<IncrementCommandActions.SubmittedAction>>());
+            actions.SubscribeToAction(Arg.Any<IncrementCommandLastUsedSubscriber>(), Arg.Any<Action<IncrementCommandActions.ConfirmedAction>>());
+            actions.UnsubscribeFromAllActions(Arg.Any<IncrementCommandLastUsedSubscriber>());
+        });
+        object?[] submitted = actions.ReceivedCalls().First().GetArguments();
+        IncrementCommandLastUsedSubscriber partial = submitted[0].ShouldBeOfType<IncrementCommandLastUsedSubscriber>();
+        Action<IncrementCommandActions.SubmittedAction> callback = submitted[1].ShouldBeOfType<Action<IncrementCommandActions.SubmittedAction>>();
+        callback(new IncrementCommandActions.SubmittedAction("corr-rollback", CreateCommand(1)));
+        GetPendingCount(partial).ShouldBe(0);
     }
 
     [Fact]
