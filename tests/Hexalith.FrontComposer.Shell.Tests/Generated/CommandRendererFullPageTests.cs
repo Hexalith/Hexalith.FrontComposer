@@ -6,6 +6,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Forms;
+using Hexalith.FrontComposer.Shell.Tests.Services.Auth;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -163,17 +164,30 @@ public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
 
     [Fact]
     public async Task Renderer_FullPage_ReturnPathProtocolRelative_LogsAndFallsBackToHome() {
-        // Decision D32 — `//evil.com` is protocol-relative and must be rejected by
-        // IsValidRelativeReturnPath. The breadcrumb falls back to "/" and a structured
-        // log is emitted on the post-submit navigation path.
-        TestLogger<FiveFieldFullPageCommandRenderer> logger = new();
+        const string rejectedPath = "//example.invalid/private-return-path";
+        const string correlationId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        CapturingLogger<FiveFieldFullPageCommandRenderer> logger = new();
         _ = Services.AddSingleton<ILogger<FiveFieldFullPageCommandRenderer>>(logger);
-        PageContext.ReturnPath = "//evil.example/path";
+        PageContext.ReturnPath = rejectedPath;
         await InitializeStoreAsync();
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/commands/TestCommands/FiveFieldFullPageCommand");
 
         IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
+        IRenderedComponent<FiveFieldFullPageCommandForm> form = cut.FindComponent<FiveFieldFullPageCommandForm>();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        await cut.InvokeAsync(() => {
+            dispatcher.Dispatch(new FiveFieldFullPageCommandActions.SubmittedAction(correlationId, new FiveFieldFullPageCommand()));
+            return form.Instance.OnConfirmed.InvokeAsync();
+        });
 
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("href=\"/\"", Case.Insensitive));
+        navigation.Uri.ShouldBe(navigation.BaseUri);
+        CapturedLogEntry rejection = logger.Entries.Single(entry => entry.EventId.Id == 5926);
+        rejection.Level.ShouldBe(LogLevel.Error);
+        rejection.State.Count.ShouldBe(2);
+        rejection.State["CorrelationId"].ShouldBe(correlationId);
+        rejection.State.ContainsKey("{OriginalFormat}").ShouldBeTrue();
+        rejection.Message.ShouldNotContain(rejectedPath);
     }
 
     [Fact]
@@ -300,29 +314,4 @@ public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
         }
     }
 
-    private sealed class TestLogger<T> : ILogger<T> {
-        public List<string> WarningMessages { get; } = [];
-
-        IDisposable? ILogger.BeginScope<TState>(TState state) => NullScope.Instance;
-
-        bool ILogger.IsEnabled(LogLevel logLevel) => true;
-
-        void ILogger.Log<TState>(
-            LogLevel logLevel,
-            EventId eventId,
-            TState state,
-            Exception? exception,
-            Func<TState, Exception?, string> formatter) {
-            if (logLevel >= LogLevel.Warning) {
-                WarningMessages.Add(formatter(state, exception));
-            }
-        }
-
-        private sealed class NullScope : IDisposable {
-            public static readonly NullScope Instance = new();
-
-            public void Dispose() {
-            }
-        }
-    }
 }

@@ -3186,7 +3186,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW] `NavigateToReturnPath` log template includes user-controlled `{ReturnPath}`** — theoretical log-forging vector against sinks that do not escape CRLF. **Defer target:** Epic 9 log-audit pass. Reconciliation: Row: DW-0405; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC17-AC20, AC35; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
-status: open
+status: done 2026-11-24
+resolution: Keep the structured correlation ID and omit rejected path input from the fallback event.
 
 ### DW-1137: [HIGH → deferred] `TrySetPropertyValue` compile-time switch refactor (D9)
 

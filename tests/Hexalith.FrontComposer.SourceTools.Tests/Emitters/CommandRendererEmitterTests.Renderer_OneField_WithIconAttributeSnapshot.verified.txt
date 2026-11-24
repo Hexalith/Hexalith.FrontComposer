@@ -292,7 +292,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
 
         if (!string.IsNullOrEmpty(path))
         {
-            if (Logger is not null) { LogReturnPathRejected(Logger, path, ResolveLoggingCorrelationId()); }
+            if (Logger is not null) { LogReturnPathRejected(Logger, ResolveLoggingCorrelationId()); }
         }
         NavigationManager.NavigateTo("/");
     }
@@ -521,13 +521,13 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
     private static void LogIconResolutionFailed(global::Microsoft.Extensions.Logging.ILogger logger, string iconName, string commandType)
         => _logIconResolutionFailed(logger, iconName, commandType, null);
 
-    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string?, string?, global::System.Exception?> _logReturnPathRejected =
-        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string?, string?>(
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string?, global::System.Exception?> _logReturnPathRejected =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string?>(
             global::Microsoft.Extensions.Logging.LogLevel.Error,
             new global::Microsoft.Extensions.Logging.EventId(5926, "CommandRendererReturnPathRejected"),
-            "D32: ReturnPath '{Path}' rejected as invalid-relative; navigating home. CorrelationId={CorrelationId}");
+            "D32: ReturnPath rejected as invalid-relative; navigating home. CorrelationId={CorrelationId}");
 
-    private static void LogReturnPathRejected(global::Microsoft.Extensions.Logging.ILogger logger, string? path, string? correlationId)
-        => _logReturnPathRejected(logger, path, correlationId, null);
+    private static void LogReturnPathRejected(global::Microsoft.Extensions.Logging.ILogger logger, string? correlationId)
+        => _logReturnPathRejected(logger, correlationId, null);
 
 }

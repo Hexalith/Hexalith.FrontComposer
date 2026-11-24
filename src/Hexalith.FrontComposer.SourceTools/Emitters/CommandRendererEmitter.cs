@@ -753,7 +753,7 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("        if (!string.IsNullOrEmpty(path))");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            if (Logger is not null) { LogReturnPathRejected(Logger, path, ResolveLoggingCorrelationId()); }");
+        _ = sb.AppendLine("            if (Logger is not null) { LogReturnPathRejected(Logger, ResolveLoggingCorrelationId()); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        NavigationManager.NavigateTo(\"/\");");
         _ = sb.AppendLine("    }");
@@ -951,9 +951,8 @@ public static class CommandRendererEmitter {
             5926,
             "CommandRendererReturnPathRejected",
             "Error",
-            "D32: ReturnPath '{Path}' rejected as invalid-relative; navigating home. CorrelationId={CorrelationId}",
+            "D32: ReturnPath rejected as invalid-relative; navigating home. CorrelationId={CorrelationId}",
             hasException: false,
-            ("string?", "path"),
             ("string?", "correlationId"));
     }
 
