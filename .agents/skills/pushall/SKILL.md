@@ -87,7 +87,11 @@ Apply this to one repo directory `<dir>` at a time (a submodule path, or `.` for
      `HEAD`. Keep that full ref as the merge target. Keep `<branch>` and the fetched object ID for
      the deletion lease in step 10. Do not shorten the ref.
 7. For every ref in the merge list (full local branch refs first, then full remote-tracking refs):
-   - `git -C <dir> merge --no-ff <ref> -m "build: merge <ref> into <default-branch> via /pushall"`
+   - If `git -C <dir> merge-base --is-ancestor <ref> <default-branch>`, the ref is already contained
+     in the default branch; skip it.
+   - Else if `git -C <dir> merge-base --is-ancestor <default-branch> <ref>`, fast-forward with
+     `git -C <dir> merge --ff-only <ref>`. Do not create a merge commit.
+   - Else `git -C <dir> merge --no-ff <ref> -m "build: merge <ref> into <default-branch> via /pushall"`
    - On conflict, list unresolved paths with `git -C <dir> diff --name-only --diff-filter=U`, inspect
      the base and both sides, and edit the files to preserve compatible changes and intended
      behavior from both branches.
