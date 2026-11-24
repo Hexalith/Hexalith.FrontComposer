@@ -16,6 +16,7 @@ public static class CommandServiceExtensions {
     /// <param name="onLifecycleObservation">Optional typed lifecycle observation callback.</param>
     /// <param name="cancellationToken">A token to observe for cancellation.</param>
     /// <returns>The acknowledgement result for the dispatch.</returns>
+    /// <exception cref="ArgumentNullException">The service or command is null.</exception>
     /// <exception cref="NotSupportedException">
     /// Thrown when a non-null callback is supplied but the service cannot report typed observations.
     /// </exception>
@@ -27,9 +28,13 @@ public static class CommandServiceExtensions {
         where TCommand : class {
 #if NET10_0_OR_GREATER
         ArgumentNullException.ThrowIfNull(commandService);
+        ArgumentNullException.ThrowIfNull(command);
 #else
         if (commandService is null) {
             throw new ArgumentNullException(nameof(commandService));
+        }
+        if (command is null) {
+            throw new ArgumentNullException(nameof(command));
         }
 #endif
 
@@ -81,6 +86,7 @@ public static class CommandServiceExtensions {
     /// <param name="onLifecycleChange">Optional lifecycle callback.</param>
     /// <param name="cancellationToken">A token to observe for cancellation.</param>
     /// <returns>The acknowledgement result for the dispatch.</returns>
+    /// <exception cref="ArgumentNullException">The service or command is null.</exception>
     /// <exception cref="NotSupportedException">
     /// Thrown when a non-null <paramref name="onLifecycleChange"/> is supplied but
     /// <paramref name="commandService"/> does not implement <see cref="ICommandServiceWithLifecycle"/>.
@@ -93,9 +99,13 @@ public static class CommandServiceExtensions {
         where TCommand : class {
 #if NET10_0_OR_GREATER
         ArgumentNullException.ThrowIfNull(commandService);
+        ArgumentNullException.ThrowIfNull(command);
 #else
         if (commandService is null) {
             throw new ArgumentNullException(nameof(commandService));
+        }
+        if (command is null) {
+            throw new ArgumentNullException(nameof(command));
         }
 #endif
 

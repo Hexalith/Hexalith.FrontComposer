@@ -8,6 +8,22 @@ using Xunit;
 namespace Hexalith.FrontComposer.Contracts.Tests;
 
 public class CommandServiceExtensionsTests {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DispatchExtensionsRejectNullCommandBeforeInvokingService(bool lifecycleAware) {
+        BasicCommandService basic = new();
+        ICommandService service = lifecycleAware ? new LifecycleAwareCommandService() : basic;
+
+        Should.Throw<ArgumentNullException>(() => {
+            _ = service.DispatchAsync<object>(null!, onLifecycleChange: (_, _) => { });
+        }).ParamName.ShouldBe("command");
+        Should.Throw<ArgumentNullException>(() => {
+            _ = service.DispatchWithLifecycleObservationsAsync<object>(null!, onLifecycleObservation: _ => { });
+        }).ParamName.ShouldBe("command");
+        basic.DispatchCount.ShouldBe(0);
+    }
+
     [Fact]
     public async Task DispatchAsync_CallbackOverload_Throws_WhenCallbackSuppliedAndLifecycleUnsupported() {
         // Loud-fail contract (ADR-010 amendment 2026-04-15): supplying onLifecycleChange to a

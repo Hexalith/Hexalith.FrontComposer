@@ -267,7 +267,8 @@ resolution: Validate builder selectors, values, and batch callbacks.
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 2 (2026-08-08)"), 2026-08-27
 location: CommandServiceExtensions.DispatchAsync
 reason: `CommandServiceExtensions.DispatchAsync` CA1510-modernized only `commandService`; `command` remains unchecked at the extension boundary.
-status: open
+status: done 2026-11-24
+resolution: Reject null command arguments before lifecycle dispatch.
 
 ### DW-705: `FrontComposerRegistryExtensions.HasFullPageRoute` / `IsCommandWritable` gained `registry` null checks but still forward unchecked `commandTypeName`.
 
