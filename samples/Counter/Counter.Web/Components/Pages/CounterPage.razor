@@ -51,7 +51,7 @@
         </FcPageTab>
         <FcPageTab Id="counter-projection" Header="Projection">
     <div class="page-container" style="display: flex; flex-direction: column; gap: 24px;">
-        <section class="data-section">
+        <section class="data-section" data-testid="fc-counter-projection">
             @if (IsStory13ReadProofEnabled)
             {
                 <FluentButton OnClick="@RefreshProjectionForProofAsync"

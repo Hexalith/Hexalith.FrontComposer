@@ -62,7 +62,12 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(shell.counterProjectionItem).toHaveAttribute('data-href', '/counter/counter-projection');
     await shell.counterProjectionItem.click();
     await expect(page).toHaveURL(/\/counter\/counter-projection$/);
-    await expect(counter.heading).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Projection' })).toHaveAttribute('aria-selected', 'true');
+    const projectionPanel = page.getByRole('tabpanel', { name: 'Projection' });
+    const projection = projectionPanel.getByTestId('fc-counter-projection');
+    await expect(projection.locator('[data-fc-datagrid]').or(projection.getByText(
+      'No counter data yet. Send your first Increment Counter command.', { exact: true },
+    ))).toBeVisible();
 
     await counter.goto();
     await expect(page).toHaveURL(/\/counter$/);

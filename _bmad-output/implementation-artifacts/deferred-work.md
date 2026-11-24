@@ -9473,7 +9473,8 @@ location: tests/e2e/specs/route-contract.spec.ts:28
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: low
 reason: summary: `/counter` and `/counter/counter-projection` are served by one component, so re-asserting the module heading after the flyout click observes the same element and cannot witness projection rendering. evidence: `samples/Counter/Counter.Web/Components/Pages/CounterPage.razor:1-2` declares both `@page "/counter"` and `@page "/counter/counter-projection"` over a single `<h1>Counter</h1>` with no route-dependent branch; Blazor reuses the component instance when `RouteData.PageType` is unchanged, so `route-contract.spec.ts:28` re-checks the same DOM node as `:19`. It still catches the route disappearing (the router would render NotFound and the heading would vanish), so this is a proof-strength gap rather than a broken assertion. `sidebar-responsive.spec.ts:161,182` is the only other spec navigating to that URL and it asserts URL and nav-item state only; no spec asserts projection content there. Not actionable inside a locator-only story: the sample has no projection-specific content to assert, so settling this needs new sample markup or a projection-only test marker. Related: `exact: true` now couples this leg to a heading named literally `Counter`, so a future `Counter Projection` heading would fail the route test.
-status: open
+status: done 2026-11-24
+resolution: Assert projection selection and content inside the live Counter projection panel.
 
 ### DW-1961: The route-contract tenant assertion is a tautology and the fixture establishes no tenant in the app
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)
