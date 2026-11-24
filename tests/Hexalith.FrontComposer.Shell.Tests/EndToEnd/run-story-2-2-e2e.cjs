@@ -313,10 +313,27 @@ async function main() {
       };
     });
 
-    pushBlocked(
-      'S3 Inline popover submit',
-      'skipped: headless Playwright + Fluent popover EditForm submit is unreliable; amount→projection is covered by CounterProjectionEffectsTests.IncrementConfirmed_UsesSubmittedAmount',
-    );
+    await runScenario('S3 Inline popover submit', async page => {
+      await gotoInteractivePage(page, `${baseUrl}/counter`, 'Counter sample');
+      const inline = page.locator('fluent-accordion-item.inline-section');
+      const trigger = inline.getByRole('button', { name: 'Increment', exact: true })
+        .and(inline.locator('fluent-button[id^="fc-trigger-"]'));
+      const popover = inline.locator('.fc-popover');
+      const syncing = '[data-lifecycle-state="syncing"]';
+      const openHostSelector = 'fluent-popover-b[opened="true"]';
+      const openHost = inline.locator(openHostSelector);
+
+      await trigger.click();
+      await openHost.waitFor({ state: 'attached' });
+      await popover.getByRole('button', { name: 'Increment', exact: true }).click();
+      await popover.locator(syncing).waitFor({ state: 'visible' });
+      await openHost.waitFor({ state: 'detached' });
+      await popover.waitFor({ state: 'hidden' });
+      await assertFocused(trigger, 'Inline popover trigger after confirmation');
+      return {
+        domSelectors: ['fluent-accordion-item.inline-section', openHostSelector, '.fc-popover', syncing],
+      };
+    });
 
     await runScenario('S4 Compact inline render', async page => {
       await gotoInteractivePage(page, `${baseUrl}/counter`, 'Counter sample');
