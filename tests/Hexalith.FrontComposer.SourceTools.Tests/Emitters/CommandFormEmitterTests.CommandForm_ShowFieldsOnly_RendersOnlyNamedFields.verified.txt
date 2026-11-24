@@ -414,10 +414,19 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         _ => false,
     };
 
+    private global::System.Collections.Generic.HashSet<string>? _visibleFields;
+
+    /// <inheritdoc />
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        _visibleFields = ShowFieldsOnly is { Length: > 1 } fields ? new(fields, StringComparer.Ordinal) : null;
+    }
+
     /// <summary>Story 2-2 ADR-016: whether a command property renders on this surface (DerivableFieldsHidden / ShowFieldsOnly).</summary>
     private bool IsFieldRendered(string commandPropertyName)
         => (!DerivableFieldsHidden || !IsDerivableField(commandPropertyName))
-            && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, commandPropertyName) >= 0);
+            && (_visibleFields?.Contains(commandPropertyName) ?? (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, commandPropertyName) >= 0));
 
     private bool HasClientParseErrors()
     {

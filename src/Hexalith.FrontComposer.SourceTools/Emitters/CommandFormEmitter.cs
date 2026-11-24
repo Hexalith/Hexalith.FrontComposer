@@ -730,12 +730,22 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    };");
         _ = sb.AppendLine();
         if (form.Fields.Count > 0) {
+            _ = sb.AppendLine("    private global::System.Collections.Generic.HashSet<string>? _visibleFields;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    /// <inheritdoc />");
+            _ = sb.AppendLine("    protected override void OnParametersSet()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        base.OnParametersSet();");
+            _ = sb.AppendLine("        _visibleFields = ShowFieldsOnly is { Length: > 1 } fields ? new(fields, StringComparer.Ordinal) : null;");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+
             // Story 13.3 BH5-05 — the one visibility predicate shared by field rendering and the summary
             // descriptors, so a summary never links to a control that this surface does not render.
             _ = sb.AppendLine("    /// <summary>Story 2-2 ADR-016: whether a command property renders on this surface (DerivableFieldsHidden / ShowFieldsOnly).</summary>");
             _ = sb.AppendLine("    private bool IsFieldRendered(string commandPropertyName)");
             _ = sb.AppendLine("        => (!DerivableFieldsHidden || !IsDerivableField(commandPropertyName))");
-            _ = sb.AppendLine("            && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, commandPropertyName) >= 0);");
+            _ = sb.AppendLine("            && (_visibleFields?.Contains(commandPropertyName) ?? (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, commandPropertyName) >= 0));");
             _ = sb.AppendLine();
         }
 

@@ -222,7 +222,7 @@ public class CommandFormEmitterTests {
         // ShowFieldsOnly, so a hidden field's message stays an unlinked summary entry.
         source.ShouldContain("private bool IsFieldRendered(string commandPropertyName)");
         source.ShouldContain("=> (!DerivableFieldsHidden || !IsDerivableField(commandPropertyName))");
-        source.ShouldContain("&& (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, commandPropertyName) >= 0);");
+        source.ShouldContain("&& (_visibleFields?.Contains(commandPropertyName) ?? (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, commandPropertyName) >= 0));");
         int descriptors = source.IndexOf("private FcValidationFieldDescriptor[] BuildValidationFields()", StringComparison.Ordinal);
         int descriptorsEnd = source.IndexOf("return fields.ToArray();", descriptors, StringComparison.Ordinal);
         descriptorsEnd.ShouldBeGreaterThan(descriptors);

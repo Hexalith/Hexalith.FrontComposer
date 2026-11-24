@@ -15,6 +15,26 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// </summary>
 public sealed class Story21Story22ContractTests : CommandRendererTestBase {
     [Fact]
+    public async Task CommandFormFieldFilterRefreshesWhenTheSameArrayIsResupplied() {
+        await InitializeStoreAsync();
+        string[] fields = [nameof(TwoFieldCompactCommand.Amount), "UnknownField"];
+        IRenderedComponent<TwoFieldCompactCommandForm> form = Render<TwoFieldCompactCommandForm>(
+            parameters => parameters.Add(component => component.ShowFieldsOnly, fields));
+
+        form.FindAll(".fc-command-field").Count.ShouldBe(1);
+        fields[0] = "amount";
+        form.Render(parameters => parameters.Add(component => component.ShowFieldsOnly, fields));
+        form.FindAll(".fc-command-field").ShouldBeEmpty();
+        string[] singleField = [nameof(TwoFieldCompactCommand.Amount)];
+        form.Render(parameters => parameters.Add(component => component.ShowFieldsOnly, singleField));
+        form.FindAll(".fc-command-field").Count.ShouldBe(1);
+        form.Render(parameters => parameters.Add(component => component.ShowFieldsOnly, Array.Empty<string>()));
+        form.FindAll(".fc-command-field").ShouldBeEmpty();
+        form.Render(parameters => parameters.Add(component => component.ShowFieldsOnly, null));
+        form.FindAll(".fc-command-field").Count.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task CommandForm_RendererDelegation_FormBodyStructurallyIdentical() {
         await InitializeStoreAsync();
 

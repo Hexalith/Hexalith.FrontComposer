@@ -3207,7 +3207,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW → deferred] `Array.IndexOf(ShowFieldsOnly, ...)` per-field lookup (P39)** — emitted form field-filter is O(n) per field render. HFC1011 caps commands at 200 properties and `ShowFieldsOnly` arrays are typically 1–5 items, so real-world impact is low. Pre-computing a `HashSet<string>` would require a state field + `OnParametersSet` hook + snapshot re-approval. Defer to next emitter polish pass. Reconciliation: Row: DW-0408; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2, Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
-status: open
+status: done 2026-11-24
+resolution: Use ordinal membership for multi-field filters in generated forms.
 
 ### DW-1140: [MED] Static caches in `ConstructorDefaultValueProvider` / `ExplicitDefaultValueProvider` never invalidated on hot-reload
 
