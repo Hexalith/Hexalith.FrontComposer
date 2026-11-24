@@ -14,6 +14,12 @@ using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Mcp.Invocation;
 
+/// <summary>Reads MCP projections with per-request resource visibility checks.</summary>
+/// <remarks>
+/// Resolve the reader from the active request's service scope so its visibility gate and other
+/// scoped dependencies follow the request lifetime. Enable DI scope validation in custom hosts
+/// to catch root-provider or singleton resolution of this reader.
+/// </remarks>
 public sealed class FrontComposerMcpProjectionReader(
     FrontComposerMcpDescriptorRegistry registry,
     IFrontComposerMcpAgentContextAccessor agentContextAccessor,
