@@ -251,7 +251,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 2 (2026-08-08)"), 2026-08-27
 location: FormatLabel
 reason: `FormatLabel` indexes `parts[0]`/`parts[1]` after a space-split with `RemoveEmptyEntries` and no length check; malformed public inputs (e.g. a lone space) can `IndexOutOfRangeException`. Normalize already enforces two chord parts for registered bindings.
-status: open
+status: done 2026-11-24
+resolution: Reject malformed chord labels with an argument error.
 
 ### DW-703: `CommandTestDataBuilder` / `ProjectionTestDataBuilder` `GetProperty` accepts any `MemberExpression` (nested access / boxed value-type Convert shapes fail opaquely); `Build` does not check `CanWrite`; `BuildMany` NREs on a null configure callback. File split + CA1000 SuppressMessage did not introduce these.
 

@@ -23,13 +23,18 @@ public static class ShortcutBinding {
     /// </summary>
     /// <param name="normalisedBinding">The normalised binding string.</param>
     /// <returns>The human-readable label.</returns>
+    /// <exception cref="ArgumentException">The binding is blank or the chord does not have two parts separated by a single space.</exception>
     public static string FormatLabel(string normalisedBinding) {
         if (string.IsNullOrWhiteSpace(normalisedBinding)) {
             throw new ArgumentException("Binding must be a non-empty, non-whitespace string.", nameof(normalisedBinding));
         }
 
         if (normalisedBinding.Contains(' ')) {
-            string[] parts = normalisedBinding.Split(_chordSeparator, 2, StringSplitOptions.RemoveEmptyEntries);
+            string[] parts = normalisedBinding.Split(_chordSeparator, 3);
+            if (parts.Length != 2 || parts.Any(string.IsNullOrWhiteSpace)) {
+                throw new ArgumentException("Chord binding must have two parts separated by a single space.", nameof(normalisedBinding));
+            }
+
             return $"{Capitalise(parts[0])} {Capitalise(parts[1])}";
         }
 

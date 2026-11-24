@@ -85,6 +85,17 @@ public class ShortcutBindingNormalizeTests {
     }
 
     [Theory]
+    [InlineData(" ")]
+    [InlineData("g ")]
+    [InlineData(" h")]
+    [InlineData("g  h")]
+    [InlineData("g h i")]
+    public void FormatLabelRejectsMalformedChords(string binding) {
+        Should.Throw<ArgumentException>(() => ShortcutBinding.FormatLabel(binding))
+            .ParamName.ShouldBe("normalisedBinding");
+    }
+
+    [Theory]
     [InlineData("ctrl+g ctrl+h")]
     [InlineData("g ctrl+h")]
     [InlineData("ctrl+g h")]
