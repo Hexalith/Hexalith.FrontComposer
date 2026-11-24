@@ -41,6 +41,37 @@ public sealed class SchemaMigrationDeltaTruncationTests {
             "AC12: truncation must not downgrade the aggregate decision; a Breaking delta past index 25 still wins.");
     }
 
+    [Fact]
+    public void Compare_ZeroBudget_RejectsTheArgument()
+    {
+        SchemaBaselineSnapshot baseline = Snapshot([]);
+
+        ArgumentOutOfRangeException error = Should.Throw<ArgumentOutOfRangeException>(
+            () => SchemaMigrationDeltaAnalyzer.Compare(baseline, baseline, maxDeltaCount: 0));
+
+        error.ParamName.ShouldBe("maxDeltaCount");
+    }
+
+    [Theory]
+    [InlineData(25, false)]
+    [InlineData(26, true)]
+    public void Compare_AtAndAboveDefaultBudget_OnlyTruncatesWhenOverBudget(int fieldCount, bool expectedTruncation)
+    {
+        SchemaBaselineSnapshot baseline = Snapshot([]);
+        SchemaBaselineSnapshot current = Snapshot([.. Enumerable.Range(0, fieldCount)
+            .Select(index => new SchemaFieldContract(
+                "Optional" + index.ToString("D2", System.Globalization.CultureInfo.InvariantCulture),
+                "String", "string", false, true))]);
+
+        SchemaMigrationDeltaResult result = SchemaMigrationDeltaAnalyzer.Compare(baseline, current);
+
+        result.Decision.ShouldBe(SchemaCompatibilityDecision.AdditiveCompatible);
+        result.IsTruncated.ShouldBe(expectedTruncation);
+        result.Deltas.Count.ShouldBe(25);
+        result.Deltas.Count(delta => delta.Kind == SchemaDeltaKind.AddedOptionalField).ShouldBe(expectedTruncation ? 24 : 25);
+        result.Deltas.Count(delta => delta.Kind == SchemaDeltaKind.Truncated).ShouldBe(expectedTruncation ? 1 : 0);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
