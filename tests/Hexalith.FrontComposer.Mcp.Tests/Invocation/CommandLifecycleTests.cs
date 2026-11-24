@@ -377,15 +377,19 @@ public sealed class CommandLifecycleTests {
         result.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
     }
 
-    [Fact]
-    public async Task ReadAsync_SyntheticTimeoutAtHistoryCapacity_RetainsMostRecentTransitionsInOrder() {
+    [Theory]
+    [InlineData(2, true)]
+    [InlineData(3, false)]
+    public async Task ReadAsync_SyntheticTimeoutAtHistoryCapacity_RetainsMostRecentTransitionsInOrder(
+        int historyCapacity,
+        bool truncatedBeforeTimeout) {
         FakeTimeProvider time = new();
         FrontComposerMcpCommandInvoker invoker = Build(
             out LifecycleAwareCommandService service,
             out ServiceProvider provider,
             configureOptions: options => {
                 options.MaxLifecycleInProgressMs = 10;
-                options.MaxLifecycleTransitionHistory = 2;
+                options.MaxLifecycleTransitionHistory = historyCapacity;
             },
             timeProvider: time);
         using ServiceProvider ownedProvider = provider;
@@ -396,16 +400,16 @@ public sealed class CommandLifecycleTests {
         invocation.IsError.ShouldBeFalse();
         FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
         Dictionary<string, JsonElement> handle = Args($$"""{"correlationId":"{{CorrelationId}}"}""");
-        RecordObserved(provider, CommandLifecycleState.Syncing, MessageId);
 
         FrontComposerMcpResult pending = await tracker.ReadAsync(handle, cancellationToken);
 
         pending.IsError.ShouldBeFalse();
         JsonObject pendingSnapshot = pending.StructuredContent!;
-        pendingSnapshot["historyTruncated"]!.GetValue<bool>().ShouldBeFalse();
+        // The internal Submitting transition counts toward the cap but is omitted from snapshots.
+        pendingSnapshot["historyTruncated"]!.GetValue<bool>().ShouldBe(truncatedBeforeTimeout);
         JsonArray pendingHistory = pendingSnapshot["transitions"]!.AsArray();
         pendingHistory.Select(item => item!["state"]!.GetValue<string>()).ShouldBe(["Acknowledged", "Syncing"]);
-        long syncingSequence = pendingHistory[1]!["sequence"]!.GetValue<long>();
+        long[] pendingSequences = pendingHistory.Select(item => item!["sequence"]!.GetValue<long>()).ToArray();
 
         time.Advance(TimeSpan.FromMilliseconds(11));
         FrontComposerMcpResult result = await tracker.ReadAsync(handle, cancellationToken);
@@ -416,8 +420,10 @@ public sealed class CommandLifecycleTests {
         snapshot["outcome"]!["category"]!.GetValue<string>().ShouldBe("timed_out");
         snapshot["historyTruncated"]!.GetValue<bool>().ShouldBeTrue();
         JsonArray finalHistory = snapshot["transitions"]!.AsArray();
-        finalHistory.Select(item => item!["state"]!.GetValue<string>()).ShouldBe(["Syncing", "Rejected"]);
-        finalHistory.Select(item => item!["sequence"]!.GetValue<long>()).ShouldBe([syncingSequence, syncingSequence + 1]);
+        string[] lifecycleStates = ["Acknowledged", "Syncing", "Rejected"];
+        finalHistory.Select(item => item!["state"]!.GetValue<string>()).ShouldBe(lifecycleStates.TakeLast(historyCapacity));
+        finalHistory.Select(item => item!["sequence"]!.GetValue<long>())
+            .ShouldBe(pendingSequences.Append(pendingSequences[^1] + 1).TakeLast(historyCapacity));
     }
 
     [Fact]
