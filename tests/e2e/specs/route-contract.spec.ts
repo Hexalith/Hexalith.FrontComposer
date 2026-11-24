@@ -10,8 +10,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     });
   });
 
-  test('Home shortcut opens the directory while the Counter root remains available', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('Home shortcut opens the directory while the Counter root remains available', async ({ page }) => {
     await new CounterPage(page).goto();
 
     await page.keyboard.press('g');
@@ -23,8 +22,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page.getByRole('heading', { name: 'Hexalith FrontComposer — Counter Sample', level: 1 })).toBeVisible();
   });
 
-  test('specimen module tile opens its default Overview tab', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('specimen module tile opens its default Overview tab', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 900 });
     await new CounterPage(page).goto();
 
@@ -40,9 +38,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
   });
 
-  test('module workspace palette activation reaches the generated full-page command', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
-
+  test('module workspace palette activation reaches the generated full-page command', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 900 });
     const counter = new CounterPage(page);
     await counter.goto();
@@ -97,8 +93,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await page.getByTestId('fc-settings-done').click();
   });
 
-  test('invalid module tab selects Overview with one persistent announcement', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('invalid module tab selects Overview with one persistent announcement', async ({ page }) => {
     await page.goto('/counter/unknown-tab');
     await new ShellPage(page).shellRoot.waitFor();
 
@@ -109,8 +104,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(fallback).toContainText('Overview');
   });
 
-  test('keyboard tab selection keeps tab focus while changing the module route', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('keyboard tab selection keeps tab focus while changing the module route', async ({ page }) => {
     await new CounterPage(page).goto();
 
     const overview = page.getByRole('tab', { name: 'Overview' });
@@ -124,8 +118,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page.getByRole('tabpanel', { name: 'Projection' })).toBeVisible();
   });
 
-  test('palette and settings return focus to their captured header triggers', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('palette and settings return focus to their captured header triggers', async ({ page }) => {
     await new ShellPage(page).goto();
 
     const paletteTrigger = page.getByTestId('fc-palette-trigger');
@@ -141,8 +134,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(settingsTrigger).toBeFocused();
   });
 
-  test('mixed-case tab URL selects Projection without fallback', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('mixed-case tab URL selects Projection without fallback', async ({ page }) => {
     await page.goto('/counter/COUNTER-PROJECTION');
     await new ShellPage(page).shellRoot.waitFor();
 
@@ -150,8 +142,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page.getByTestId('fc-module-tab-fallback')).toHaveText('');
   });
 
-  test('failed-route focus confirmation leaves an open palette query and focus intact', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('failed-route focus confirmation leaves an open palette query and focus intact', async ({ page }) => {
     await new CounterPage(page).goto();
     await page.getByTestId('fc-palette-trigger').click();
     const search = page.getByTestId('fc-palette-search').locator('input');
@@ -170,8 +161,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(search).toBeFocused();
   });
 
-  test('denied routed content reports failure without confirming the route', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('denied routed content reports failure without confirming the route', async ({ page }) => {
     await new CounterPage(page).goto();
     await page.evaluate(async () => {
       const modulePath = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
@@ -195,8 +185,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
       .toEqual(['ReportRouteHeadingDenied']);
   });
 
-  test('removed overlay origin restores focus to the current route heading', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('removed overlay origin restores focus to the current route heading', async ({ page }) => {
     await new CounterPage(page).goto();
     await page.getByTestId('fc-settings-button').click();
     await expect(page.locator('#fc-settings-heading')).toBeFocused();
@@ -205,8 +194,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Counter' })).toBeFocused();
   });
 
-  test('route focus waits for a delayed incoming heading instead of confirming the outgoing one', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('route focus waits for a delayed incoming heading instead of confirming the outgoing one', async ({ page }) => {
     await new CounterPage(page).goto();
     await page.evaluate(async () => {
       const modulePath = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
@@ -239,8 +227,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Incoming page' })).toBeFocused();
   });
 
-  test('route focus reports a permanently missing heading after authorization deadline', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('route focus reports a permanently missing heading after authorization deadline', async ({ page }) => {
     await new CounterPage(page).goto();
     await page.clock.install();
     await page.evaluate(async () => {
@@ -267,8 +254,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
       .toEqual(['ReportRouteHeadingMissing']);
   });
 
-  test('route focus confirms a reused heading with identical text after a route parameter change', async ({ page, tenant }) => {
-    expect(tenant.tenantId).toBeTruthy();
+  test('route focus confirms a reused heading with identical text after a route parameter change', async ({ page }) => {
     await new CounterPage(page).goto();
     await page.evaluate(async () => {
       const modulePath = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';

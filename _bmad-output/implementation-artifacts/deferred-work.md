@@ -9482,7 +9482,8 @@ location: tests/e2e/specs/route-contract.spec.ts:13
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: low
 reason: summary: `expect(tenant.tenantId).toBeTruthy()` can never fail, and the fixture behind it never touches the browser or the host. evidence: `tests/e2e/fixtures/tenant.fixture.ts:14-15` returns `process.env.DEFAULT_TENANT_ID ?? 'counter-demo'` and `process.env.DEFAULT_USER_ID ?? 'demo-user'` and hands them to the test process; it issues no navigation, no storage seeding and no host call. Pre-existing and unchanged by Story 11.27. The story's Review Triage Log correctly dispositions the "tenant context is not established" item as out of scope, but its stated rationale - "the unchanged fixture still supplies and asserts its tenant identity" - is not accurate and should not be reused as precedent. Settled by either establishing real tenant/session context in the fixture (a session-contract change well beyond a locator story) or by replacing the tautological assertion with an assertion about applied tenant state in the page.
-status: open
+status: done 2026-11-24
+resolution: Keep the Counter route suite focused on browser navigation and focus behavior.
 
 ### DW-1962: Fourteen e2e assertions keep the page-wide `Counter` heading locator that Story 11.27 replaced
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)
