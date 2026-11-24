@@ -292,6 +292,50 @@ public class CommandParserTests {
         raw.IsUnsupported.ShouldBeTrue();
     }
 
+    [Theory]
+    [InlineData("Other.RequiresPolicyAttribute", false)]
+    [InlineData("Hexalith.FrontComposer.Contracts.Attributes.RequiresPolicyAttribute", true)]
+    public void GeneratorRequiresPolicyAliasToResolveToFrontComposerContracts(string policyAttribute, bool isSupported)
+    {
+        string source = $$"""
+            using Command = Hexalith.FrontComposer.Contracts.Attributes.CommandAttribute;
+            using BoundedContext = Hexalith.FrontComposer.Contracts.Attributes.BoundedContextAttribute;
+            using RequiresPolicy = {{policyAttribute}};
+            namespace Other {
+                public sealed class RequiresPolicyAttribute : System.Attribute {
+                    public RequiresPolicyAttribute(string policy) { }
+                }
+            }
+            namespace Consumer {
+                [Command]
+                [BoundedContext("Orders")]
+                [RequiresPolicy("Orders.Approve")]
+                public sealed class ApproveCommand {
+                    public string MessageId { get; set; } = "";
+                }
+            }
+            """;
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        compilation.GetDiagnostics(cancellationToken).Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .Select(diagnostic => diagnostic.ToString()).ShouldBeEmpty();
+        GeneratorDriverRunResult result = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
+            .RunGenerators(compilation, cancellationToken).GetRunResult();
+
+        if (isSupported) {
+            result.Diagnostics.ShouldNotContain(diagnostic => diagnostic.Id == "HFC1056");
+            result.GeneratedTrees.ShouldContain(tree => tree.GetText(cancellationToken).ToString().Contains("Orders.Approve", StringComparison.Ordinal));
+        }
+        else {
+            Diagnostic failure = result.Diagnostics.Single(diagnostic => diagnostic.Id == "HFC1056");
+            failure.Severity.ShouldBe(DiagnosticSeverity.Error);
+            failure.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("from FrontComposer Contracts");
+            failure.Location.GetLineSpan().StartLinePosition.Line
+                .ShouldBe(source.Split('\n').ToList().FindIndex(line => line.Contains("[RequiresPolicy(", StringComparison.Ordinal)));
+            result.GeneratedTrees.ShouldNotContain(tree => tree.GetText(cancellationToken).ToString().Contains("ApproveCommand", StringComparison.Ordinal));
+        }
+    }
+
     [Fact]
     public void Parse_RequiresPolicyAttribute_CapturesPolicyName() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyProtectedCommand, "TestDomain.ApproveOrderCommand");

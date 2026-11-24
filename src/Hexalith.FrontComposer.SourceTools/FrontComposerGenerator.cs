@@ -31,7 +31,7 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
             .ForAttributeWithMetadataName(
                 "Hexalith.FrontComposer.Contracts.Attributes.CommandAttribute",
                 predicate: static (node, _) => node is TypeDeclarationSyntax,
-                transform: static (ctx, ct) => CommandParser.Parse(ctx, ct))
+                transform: static (ctx, ct) => ParseCommand(ctx, ct))
             .Where(static result => result.Model is not null || result.Diagnostics.Count > 0)
             .WithTrackingName("ParseCommand");
 
@@ -403,6 +403,32 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true),
     };
+
+    private static CommandParseResult ParseCommand(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken) {
+        const string policyAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.RequiresPolicyAttribute";
+        if (context.TargetSymbol is INamedTypeSymbol command && !cancellationToken.IsCancellationRequested) {
+            foreach (AttributeData attribute in command.GetAttributes()) {
+                if (attribute.AttributeClass is not { Name: "RequiresPolicyAttribute" or "RequiresPolicy" } attributeType
+                    || SymbolEqualityComparer.Default.Equals(
+                        attributeType, context.Attributes[0].AttributeClass?.ContainingAssembly.GetTypeByMetadataName(policyAttributeName))) {
+                    continue;
+                }
+
+                SyntaxNode node = attribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken) ?? context.TargetNode;
+                FileLinePositionSpan position = node.GetLocation().GetLineSpan();
+                DiagnosticInfo diagnostic = new(
+                    "HFC1056",
+                    $"Command '{command.Name}' has an invalid [RequiresPolicy] declaration. Use '{policyAttributeName}' from FrontComposer Contracts.",
+                    "Error",
+                    position.Path,
+                    position.StartLinePosition.Line,
+                    position.StartLinePosition.Character);
+                return new CommandParseResult(null, new EquatableArray<DiagnosticInfo>(ImmutableArray.Create(diagnostic)));
+            }
+        }
+
+        return CommandParser.Parse(context, cancellationToken);
+    }
 
     private static DiagnosticDescriptor CreateError(string id, string title) => new(
         id: id,
