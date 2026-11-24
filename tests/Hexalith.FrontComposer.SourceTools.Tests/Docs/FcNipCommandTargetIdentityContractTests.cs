@@ -225,10 +225,31 @@ public sealed class FcNipCommandTargetIdentityContractTests {
         actualRows.ShouldBe(expectedRows);
     }
 
+    [Fact]
+    public void SemanticTableReaderRejectsDuplicateExactHeadings() {
+        const string heading = "## Contract table";
+        const string table = """
+            ## Contract table
+            | Header |
+            | --- |
+            | Approved value |
+
+            ## Contract table notes
+            Different section
+            """;
+        ParseTableRows(table, heading).ShouldHaveSingleItem().ShouldHaveSingleItem().ShouldBe("Approved value");
+
+        InvalidDataException failure = Should.Throw<InvalidDataException>(() =>
+            ParseTableRows(table + "\r\n\r\n  " + heading + "  \r\n| Header |\r\n| --- |\r\n| Conflicting value |", heading));
+        failure.Message.ShouldContain("heading appears more than once");
+    }
+
     private static string[][] ParseTableRows(string document, string heading) {
         string[] lines = document.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-        int headingIndex = Array.FindIndex(lines, line => string.Equals(line.Trim(), heading, StringComparison.Ordinal));
+        int headingIndex = Array.FindIndex(lines, line => line.AsSpan().Trim(" \t".AsSpan()).SequenceEqual(heading));
         Require(headingIndex >= 0, $"'{heading}' heading is missing.");
+        Require(Array.FindIndex(lines, headingIndex + 1, line => line.AsSpan().Trim(" \t".AsSpan()).SequenceEqual(heading)) < 0,
+            $"'{heading}' heading appears more than once.");
         int sectionEnd = Array.FindIndex(lines, headingIndex + 1, line => line.TrimStart().StartsWith('#'));
         sectionEnd = sectionEnd < 0 ? lines.Length : sectionEnd;
         int headerIndex = Array.FindIndex(lines, headingIndex + 1, sectionEnd - headingIndex - 1, line => line.TrimStart().StartsWith('|'));

@@ -9643,7 +9643,8 @@ location: tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcNipCommandTarget
 source_spec: `spec-11-28-fc-nip-semantic-fixture-alignment.md`
 severity: medium
 reason: Both shared-manifest consumers locate only the first exact heading and validate that table. A later conflicting duplicate heading would be ignored, allowing documentation contradiction to escape the governance guard. This behavior predates Story 11.28 and is not caused by its fixture alignment.
-status: open
+status: done 2026-11-24
+resolution: Reject ambiguous FC-NIP semantic table headings in both contract readers.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-repair-builds-governance-prerequisites-blocking-11-29.md`
   summary: Make `dependency_graph.py graph --commit` load its default policy from the selected commit instead of the worktree.

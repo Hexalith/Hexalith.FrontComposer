@@ -34,6 +34,19 @@ test.describe('FC-NIP explicit command-target identity contract', () => {
     }
   });
 
+  test('rejects duplicate exact semantic table headings before reading rows', () => {
+    const heading = '## Contract table';
+    const document = [
+      heading, '| Header |', '| --- |', '| Approved value |', '',
+      '## Contract table notes', 'Different section',
+    ].join('\n');
+
+    expect(parseTableRows(document, heading)).toEqual([['Approved value']]);
+    const conflicting = [document, '', `  ${heading}  `, '| Header |', '| --- |', '| Conflicting value |'].join('\r\n');
+    expect(() => parseTableRows(conflicting, heading))
+      .toThrow(/heading appears more than once/u);
+  });
+
   test('rejects unsafe paths, duplicate table identities, and inconsistent row widths', () => {
     const document = (manifestPath: string): ContractDocument => ({
       path: manifestPath,
@@ -276,8 +289,11 @@ function requireCondition(condition: boolean, message: string): asserts conditio
 
 const parseTableRows = (document: string, heading: string): string[][] => {
   const lines = document.replace(/\r\n/g, '\n').split('\n');
-  const headingIndex = lines.findIndex((line) => line.trim() === heading);
+  const matchesHeading = (line: string): boolean => line.replace(/^[ \t]+|[ \t]+$/gu, '') === heading;
+  const headingIndex = lines.findIndex(matchesHeading);
   expect(headingIndex, `${heading} heading is missing`).toBeGreaterThanOrEqual(0);
+  expect(lines.slice(headingIndex + 1).some(matchesHeading),
+    `${heading} heading appears more than once`).toBe(false);
   const sectionEndOffset = lines.slice(headingIndex + 1).findIndex((line) => line.trimStart().startsWith('#'));
   const sectionEnd = sectionEndOffset < 0 ? lines.length : headingIndex + 1 + sectionEndOffset;
   const headerOffset = lines.slice(headingIndex + 1, sectionEnd).findIndex((line) => line.trimStart().startsWith('|'));
