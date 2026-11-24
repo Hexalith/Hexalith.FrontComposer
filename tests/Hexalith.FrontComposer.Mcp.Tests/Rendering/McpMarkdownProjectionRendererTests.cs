@@ -260,17 +260,54 @@ public sealed class McpMarkdownProjectionRendererTests {
         result.Document.Text.ShouldNotContain("tenant-a");
     }
 
-    [Fact]
-    public void Render_DocumentBudgetTooSmallForMarker_ReturnsResponseTooLargeWithoutPartialDocument() {
+    [Theory]
+    [InlineData(1)]
+    [InlineData(8)]
+    public void Render_DocumentBudgetTooSmallForMarker_ReturnsResponseTooLargeWithoutPartialDocument(int maxCharacters) {
         McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
             Descriptor(),
             [new InvoiceProjection("INV-1", 42, null, BillingStatus.Pending)],
             TotalCount: 10,
-            IsTruncated: true), new FrontComposerMcpOptions { MaxProjectionMarkdownCharacters = 8 }, TestContext.Current.CancellationToken);
+            IsTruncated: true), new FrontComposerMcpOptions { MaxProjectionMarkdownCharacters = maxCharacters }, TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeFalse();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.ResponseTooLarge);
         result.Document.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Render_ZeroCharacterContentBudget_ReturnsResponseTooLarge() {
+        const string Marker = "Truncated";
+
+        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
+            Descriptor(),
+            [],
+            TotalCount: 0), new FrontComposerMcpOptions {
+                MaxProjectionMarkdownCharacters = Environment.NewLine.Length + Marker.Length,
+                ProjectionTruncationMarker = Marker,
+            }, TestContext.Current.CancellationToken);
+
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.ResponseTooLarge);
+        result.Document.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Render_OneCharacterOfContentBudget_RetainsCompleteMarker() {
+        const string Marker = "Truncated";
+        int maxCharacters = 1 + Environment.NewLine.Length + Marker.Length;
+
+        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
+            Descriptor(),
+            [],
+            TotalCount: 0), new FrontComposerMcpOptions {
+                MaxProjectionMarkdownCharacters = maxCharacters,
+                ProjectionTruncationMarker = Marker,
+            }, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Document!.IsTruncated.ShouldBeTrue();
+        result.Document.Text.ShouldBe($"#{Environment.NewLine}{Marker}");
+        result.Document.Text.Length.ShouldBe(maxCharacters);
     }
 
     [Theory]
