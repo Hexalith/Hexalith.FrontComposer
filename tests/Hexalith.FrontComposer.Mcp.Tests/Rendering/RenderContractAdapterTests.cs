@@ -20,7 +20,7 @@ public sealed class RenderContractAdapterTests {
     public void DescriptorRegistry_ExposesRenderContract_PerMarkdownProjectionResource() {
         FrontComposerMcpDescriptorRegistry registry = BuildRegistry(SampleResource());
 
-        IReadOnlyList<FrontComposerRenderContract> contracts = ResolveRenderContracts(registry);
+        IReadOnlyList<FrontComposerRenderContract> contracts = registry.GetRenderContracts();
 
         contracts.ShouldNotBeEmpty("AC14: at least one Markdown projection resource must publish a render contract.");
         contracts.ShouldContain(c => c.Surface == RenderSurfaceKind.McpMarkdown);
@@ -28,16 +28,24 @@ public sealed class RenderContractAdapterTests {
 
     [Fact]
     public void RenderContract_BoundsMatchOptions_AndCarrySanitizedTaxonomy() {
-        FrontComposerMcpDescriptorRegistry registry = BuildRegistry(SampleResource());
+        const int maxRows = 17;
+        const int maxColumns = 5;
+        const int maxCharacters = 4200;
+        const int maxCellCharacters = 121;
+        FrontComposerMcpDescriptorRegistry registry = BuildRegistry(SampleResource(), options => {
+            options.MaxRowsPerResource = maxRows;
+            options.MaxFieldsPerResource = maxColumns;
+            options.MaxProjectionMarkdownCharacters = maxCharacters;
+            options.MaxProjectionCellCharacters = maxCellCharacters;
+        });
 
-        FrontComposerRenderContract contract = ResolveRenderContracts(registry)
+        FrontComposerRenderContract contract = registry.GetRenderContracts()
             .First(c => c.Surface == RenderSurfaceKind.McpMarkdown);
 
         contract.OutputContentType.ShouldBe("text/markdown");
         contract.Capabilities.ShouldContain(RenderCapability.BoundedMarkdown);
         contract.Capabilities.ShouldContain(RenderCapability.SanitizedInertText);
-        contract.Bounds.MaxCharacters.ShouldBeGreaterThan(0,
-            "AC9 / T6 ties bounds to FrontComposerMcpOptions / SkillResourceReadOptions; the adapter must surface the live values.");
+        contract.Bounds.ShouldBe(new RenderBounds(maxRows, maxColumns, maxCharacters, maxCellCharacters));
         contract.Fingerprint.AlgorithmId.ShouldBeOneOf(
             SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
             SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
@@ -49,14 +57,19 @@ public sealed class RenderContractAdapterTests {
         // remain placeholders. The registry must not yet expose a WebBlazor render contract.
         FrontComposerMcpDescriptorRegistry registry = BuildRegistry(SampleResource());
 
-        ResolveRenderContracts(registry)
+        registry.GetRenderContracts()
             .ShouldNotContain(c => c.Surface == RenderSurfaceKind.WebBlazor,
                 "AC14 scope guard: WebBlazor adapter is out of scope for Story 8-6a.");
     }
 
-    private static FrontComposerMcpDescriptorRegistry BuildRegistry(McpResourceDescriptor resource) {
+    private static FrontComposerMcpDescriptorRegistry BuildRegistry(
+        McpResourceDescriptor resource,
+        Action<FrontComposerMcpOptions>? configure = null) {
         ServiceCollection services = [];
-        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(new McpManifest("frontcomposer.mcp.v1", [], [resource])));
+        _ = services.Configure<FrontComposerMcpOptions>(options => {
+            options.Manifests.Add(new McpManifest("frontcomposer.mcp.v1", [], [resource]));
+            configure?.Invoke(options);
+        });
         _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         return services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>();
@@ -75,19 +88,4 @@ public sealed class RenderContractAdapterTests {
             ],
             RenderStrategy: McpProjectionRenderStrategy.Default,
             Fingerprint: new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('a', 64)));
-
-    /// <summary>
-    /// Resolves render contracts from the registry through the seam T7 will introduce. Until T7
-    /// lands, the seam doesn't exist and the assertion fails meaningfully when unskipped.
-    /// </summary>
-    private static IReadOnlyList<FrontComposerRenderContract> ResolveRenderContracts(FrontComposerMcpDescriptorRegistry registry) {
-        // Expected accessor shape: registry.GetRenderContracts() or a sibling provider.
-        System.Reflection.MethodInfo? accessor = registry.GetType()
-            .GetMethod("GetRenderContracts", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        _ = accessor.ShouldNotBeNull(
-            "AC14 / T7 require a public registry accessor for render contracts. Implement T7 before unskipping.");
-
-        object? result = accessor!.Invoke(registry, []);
-        return (IReadOnlyList<FrontComposerRenderContract>)result!;
-    }
 }
