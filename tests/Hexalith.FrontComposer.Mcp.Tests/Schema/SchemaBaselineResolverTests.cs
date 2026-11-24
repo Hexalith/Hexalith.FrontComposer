@@ -122,22 +122,14 @@ public sealed class SchemaBaselineResolverTests {
     }
 
     [Fact]
-    public void Resolver_DefaultProviderReturnsFalseUntilD3MaterializesBaselines() {
-        // C5 (Group D / chunk-2 re-review): the default `InMemorySchemaBaselineProvider` ships
-        // with no snapshots until D3 (build-time baseline materialization) lands. Previously the
-        // provider shipped placeholder snapshots that produced `SchemaMismatch` for every real
-        // adopter request — fail-closed by default. New default behavior: TryResolve returns
-        // false so the gate falls back to descriptor.Fingerprint byte-match. Hosts wanting
-        // fixture-driven baselines must register their own ISchemaBaselineProvider.
+    public void Resolver_WithoutHostRegistration_ReportsBaselineUnavailable() {
         var resolver = ResolverInvoker.CreateOrSkip();
-
         ResolverInvoker.Outcome outcome = resolver.TryResolve(
             SchemaContractFamily.ProjectionResource,
             "Hexalith.FrontComposer",
             "baseline-known-v1");
 
-        outcome.Resolved.ShouldBeFalse(
-            "default provider must return false until D3 materializes real baselines (placeholder snapshots caused SchemaMismatch for every real adopter request).");
+        outcome.Resolved.ShouldBeFalse("The default provider has no shipped baseline snapshots.");
         outcome.Snapshot.ShouldBeNull();
     }
 
