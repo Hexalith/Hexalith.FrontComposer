@@ -35,6 +35,7 @@ public sealed class SchemaFingerprintContractsTests {
         second.Json.ShouldBe(first.Json);
         second.Fingerprint.ShouldBe(first.Fingerprint);
         first.Fingerprint.AlgorithmId.ShouldBe(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1);
+        first.Fingerprint.TestVectorId.ShouldBe("hfc-schema-v1");
         first.Fingerprint.Value.ShouldBe(first.Fingerprint.Value.ToLowerInvariant());
         first.Fingerprint.Value.Length.ShouldBe(64);
     }

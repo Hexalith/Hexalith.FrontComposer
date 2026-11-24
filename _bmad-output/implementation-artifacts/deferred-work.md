@@ -9088,7 +9088,8 @@ location: src/Hexalith.FrontComposer.Contracts/Schema/SchemaFingerprintContracts
 source_spec: `spec-canonical-fingerprint-vector-coverage.md`
 severity: medium
 reason: SchemaFingerprint.TestVectorId defaults to SchemaFingerprintAlgorithm.TestVectorIdV1, and the reviewed tests do not assert the literal hfc-schema-v1 identity. A change to that shared constant could propagate without failing these vectors. This predates DW-695 and is separate from collection and EnumValues ordering.
-status: open
+status: done 2026-11-24
+resolution: Pin the literal identifier in the runtime canonical fingerprint.
 
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-render-tree-generator-hardening.md`
   summary: The packaged and test-helper postfix `++` regex remains a weaker second gate than the Roslyn walk.
