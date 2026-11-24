@@ -9668,7 +9668,8 @@ location: src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/IProjectio
 source_spec: `_bmad-output/implementation-artifacts/spec-11-29-fallback-refresh-and-view-registration-correctness.md`
 severity: medium
 reason: The interface has only a type-level summary; none of its four members (including `RegisterLane`, which now throws `InvalidOperationException` on a conflicting registration) carry XML documentation. Pre-existing gap predating Story 11.29 — the file is unchanged by this diff. Settled by documenting all four members, including the new `RegisterLane` exception contract.
-status: open
+status: done 2026-11-24
+resolution: Document every scheduler member and its validation behavior.
 
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
   summary: Bind every pending and observed lifecycle transition message ID to its owning lifecycle entry.
