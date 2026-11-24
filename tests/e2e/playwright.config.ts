@@ -8,8 +8,11 @@ const BASE_URL = process.env.BASE_URL ?? 'http://127.0.0.1:5070';
 const IS_CI = !!process.env.CI;
 const STORY_3_6_CONFIRM_DELAY_MS = process.env.FC_E2E_STORY_3_6_CONFIRM_DELAY_MS ?? '6500';
 const PROJECTION_RECONNECTED_NOTICE_DURATION_MS = '30000';
-const OUTPUT_DIR = process.env.FC_E2E_OUTPUT_DIR ?? 'test-results';
-const HTML_REPORT_DIR = process.env.FC_E2E_HTML_REPORT_DIR ?? 'playwright-report';
+const reportScope = process.env.FC_E2E_REPORT_SCOPE;
+// Keep browserless failure attachments in the upload trees, away from hosted report files.
+const reportSuffix = reportScope ? `/browserless/${reportScope}` : '';
+const OUTPUT_DIR = process.env.FC_E2E_OUTPUT_DIR ?? `test-results${reportSuffix}`;
+const HTML_REPORT_DIR = process.env.FC_E2E_HTML_REPORT_DIR ?? `playwright-report${reportSuffix}`;
 const JSON_PATH = process.env.FC_E2E_JSON_PATH ?? `${OUTPUT_DIR}/playwright.json`;
 const JUNIT_PATH = process.env.FC_E2E_JUNIT_PATH ?? `${OUTPUT_DIR}/junit.xml`;
 // The approved Firefox/WebKit Linux images use DejaVu fallbacks. Ubuntu 26.04

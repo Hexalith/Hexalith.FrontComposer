@@ -8865,7 +8865,8 @@ location: .github/workflows/quality.yml (accessibility-visual browserless steps)
 source_spec: `spec-settings-persistence-ci.md`
 severity: low
 reason: `tests/e2e/playwright.config.ts` defaults `OUTPUT_DIR`/`HTML_REPORT_DIR`/`JUNIT_PATH` to the same paths for every run, and no browserless step in `accessibility-visual` overrides `FC_E2E_OUTPUT_DIR`/`FC_E2E_HTML_REPORT_DIR`/`FC_E2E_JUNIT_PATH`. Pre-existing: the `Run FC-NIP contract guards (browserless)` step has had this property since it landed; the settings guard follows the same established convention rather than introducing it.
-status: open
+status: done 2026-11-24
+resolution: Write the two browserless guards to scoped output directories within the CI upload trees.
 
 ### DW-1926: Three of the four `SettingsPage` storage-key mirror paths are still typechecked but never executed in CI.
 origin: spec-deferred 748750670f4e

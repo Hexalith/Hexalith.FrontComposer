@@ -738,8 +738,9 @@ public sealed class CiGovernanceTests {
             scripts.GetProperty(scriptName).GetString().ShouldStartWith(
                 "cross-env PLAYWRIGHT_SKIP_WEBSERVER=1 ");
         }
+        scripts.GetProperty("test:fc-nip").GetString().ShouldNotBeNull().ShouldContain("FC_E2E_REPORT_SCOPE=fc-nip ");
         scripts.GetProperty("test:settings-persistence-storage-key").GetString().ShouldBe(
-            "cross-env PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/settings-persistence.spec.ts "
+            "cross-env PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_REPORT_SCOPE=settings-storage-key playwright test specs/settings-persistence.spec.ts "
             + "--project=chromium --grep \"^chromium settings-persistence[.]spec[.]ts storage key helper matches "
             + "[.]NET invariant casing for Unicode email identities$\"");
         Regex.Count(
