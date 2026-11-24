@@ -9482,7 +9482,8 @@ location: tests/e2e/scripts/validate-visual-baseline-governance.mjs:6
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: medium
 reason: summary: On a `push` event `GITHUB_BASE_REF` is unset, so the validator falls back to `git diff --name-only HEAD` plus untracked files, which on a clean CI checkout is empty and the gate exits 0 with "No committed visual baseline changes detected." evidence: `validate-visual-baseline-governance.mjs:6-27` branches on `process.env.GITHUB_BASE_REF`; only the `pull_request` branch fetches a base ref and diffs `FETCH_HEAD...HEAD`. `.github/workflows/quality.yml:20-24` triggers on both `push: branches: [main]` and `pull_request: branches: [main]`, and the `accessibility-visual` job runs `npm run validate:visual-governance` unconditionally (`if: always()`). For any commit pushed directly to `main` - the established practice in this repository - regenerated baselines ship with no rationale requirement enforced. Pre-existing: the file is unchanged by Story 11.27, which neither introduced nor worsened it, but Story 11.27 is exactly the change the gate was supposed to govern. Settled by falling back to `git diff --name-only HEAD~1...HEAD` (or `${{ github.event.before }}...HEAD`) when `GITHUB_BASE_REF` is unset. Natural owner: Story 11.30 (Testing and MCP Boundary Hardening).
-status: open
+status: done 2026-11-24
+resolution: Check committed visual snapshots and rationale over the full GitHub push range.
 
 ### DW-1964: The regenerated Linux visual baselines are compared by no CI job while the enforced Windows matrix stays stale
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)

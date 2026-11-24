@@ -4,26 +4,49 @@ import { join } from 'node:path';
 
 const repoRoot = join(import.meta.dirname, '..', '..', '..');
 const baseRef = process.env.GITHUB_BASE_REF;
-let changed = [];
+const event = process.env.GITHUB_EVENT_NAME;
+let changed;
+let pushedCommit;
+
+function git(...args) {
+  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' });
+}
+
+function paths(...args) {
+  return git(...args).split('\0').filter(Boolean);
+}
+
+function pushRange() {
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  if (!eventPath) {
+    throw new Error('GitHub push event path is missing.');
+  }
+
+  const { before, after } = JSON.parse(readFileSync(eventPath, 'utf8'));
+  const validCommit = (value) => typeof value === 'string' && /^[0-9a-f]{40}$/u.test(value) && !/^0{40}$/u.test(value);
+  if (!validCommit(before) || !validCommit(after) || after !== git('rev-parse', 'HEAD').trim()) {
+    throw new Error('GitHub push event must identify the previous commit and the checked-out commit.');
+  }
+
+  return [before, after];
+}
 
 try {
-  if (baseRef) {
-    execFileSync('git', ['fetch', 'origin', baseRef, '--depth=1'], { cwd: repoRoot, stdio: 'ignore' });
-    changed = execFileSync('git', ['diff', '--name-only', 'FETCH_HEAD...HEAD'], { cwd: repoRoot, encoding: 'utf8' })
-      .split(/\r?\n/)
-      .filter(Boolean);
+  if (event === 'push') {
+    const [before, after] = pushRange();
+    pushedCommit = after;
+    changed = paths('diff', '--name-only', '--no-renames', '-z', before, after, '--');
+  } else if (baseRef) {
+    execFileSync('git', ['fetch', '--depth=1', 'origin', `refs/heads/${baseRef}`], { cwd: repoRoot, stdio: 'ignore' });
+    changed = paths('diff', '--name-only', '--no-renames', '-z', 'FETCH_HEAD...HEAD', '--');
   } else {
-    const tracked = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' })
-      .split(/\r?\n/)
-      .filter(Boolean);
-    const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd: repoRoot, encoding: 'utf8' })
-      .split(/\r?\n/)
-      .filter(Boolean);
+    const tracked = paths('diff', '--name-only', '--no-renames', '-z', 'HEAD', '--');
+    const untracked = paths('ls-files', '--others', '--exclude-standard', '-z');
     changed = [...tracked, ...untracked];
   }
 } catch (error) {
   console.warn(`Visual baseline governance check could not inspect git diff: ${error.message}`);
-  process.exit(process.env.CI ? 1 : 0);
+  process.exit(event === 'push' || process.env.CI ? 1 : 0);
 }
 
 const snapshotChanges = changed.filter((path) =>
@@ -36,14 +59,25 @@ if (snapshotChanges.length === 0) {
 
 const rationalePath = join(repoRoot, 'docs', 'accessibility-verification', 'baseline-change-rationale.md');
 const rationaleRepoPath = 'docs/accessibility-verification/baseline-change-rationale.md';
-if (!existsSync(rationalePath)) {
-  console.error(`Visual baselines changed without ${rationalePath}.`);
+if (!changed.includes(rationaleRepoPath)) {
+  console.error(`Visual baselines changed without updating ${rationaleRepoPath}.`);
   process.exit(1);
 }
 
-const rationale = readFileSync(rationalePath, 'utf8').trim();
-if (!changed.includes(rationaleRepoPath)) {
-  console.error(`Visual baselines changed without updating ${rationaleRepoPath}.`);
+let rationale;
+try {
+  if (pushedCommit) {
+    rationale = git('show', `${pushedCommit}:${rationaleRepoPath}`).trim();
+  } else if (existsSync(rationalePath)) {
+    rationale = readFileSync(rationalePath, 'utf8').trim();
+  }
+} catch (error) {
+  console.error(`Visual baseline rationale could not be read: ${error.message}`);
+  process.exit(1);
+}
+
+if (rationale === undefined) {
+  console.error(`Visual baselines changed without ${rationaleRepoPath}.`);
   process.exit(1);
 }
 
