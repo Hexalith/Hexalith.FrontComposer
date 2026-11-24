@@ -31,6 +31,9 @@ public class DerivedValueProviderChainTests {
         [DefaultValue(1)]
         public int Amount { get; set; }
         public string Note { get; set; } = "default-note";
+
+        [DefaultValue(typeof(Uri), "https://example.com/")]
+        public Uri? Endpoint { get; set; }
     }
 
     public sealed class NullableCommand {

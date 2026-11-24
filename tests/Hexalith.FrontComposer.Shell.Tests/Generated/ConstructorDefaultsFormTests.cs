@@ -1,7 +1,12 @@
+using System.Reflection;
+using System.Reflection.Metadata;
+
 using Bunit;
 
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
+using Hexalith.FrontComposer.Shell.Tests.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -30,6 +35,44 @@ public sealed class ConstructorDefaultsFormTests : CommandRendererTestBase {
             form.RelatedReference.ShouldBe(form.ExternalReference);
             form.Constant.ShouldBe("constant");
         }
+    }
+
+    [Fact]
+    public async Task MetadataUpdateReplacesTheSharedConstructorDefaultsAsync() {
+        var provider = new ConstructorDefaultValueProvider();
+        CancellationToken cancellationToken = Xunit.TestContext.Current.CancellationToken;
+        Task<DerivedValueResult> ResolveAsync(string property) =>
+            provider.ResolveAsync(typeof(ConstructorDefaultsCommand), property, null, cancellationToken);
+
+        object? original = (await ResolveAsync(nameof(ConstructorDefaultsCommand.ExternalReference))).Value;
+        (await ResolveAsync(nameof(ConstructorDefaultsCommand.RelatedReference))).Value.ShouldBe(original);
+
+        MetadataUpdateHandlerAttribute handler = typeof(ConstructorDefaultValueProvider).Assembly
+            .GetCustomAttributes<MetadataUpdateHandlerAttribute>()
+            .Single(attribute => attribute.HandlerType == typeof(DerivedValueMetadataUpdateHandler));
+        handler.HandlerType.GetMethod(nameof(DerivedValueMetadataUpdateHandler.ClearCache))!
+            .Invoke(null, [new[] { typeof(ConstructorDefaultsCommand) }]);
+
+        object? updated = (await ResolveAsync(nameof(ConstructorDefaultsCommand.ExternalReference))).Value;
+        updated.ShouldNotBe(original);
+        (await ResolveAsync(nameof(ConstructorDefaultsCommand.RelatedReference))).Value.ShouldBe(updated);
+    }
+
+    [Fact]
+    public async Task MetadataUpdateReplacesCachedExplicitDefaultsAsync() {
+        var provider = new ExplicitDefaultValueProvider();
+        CancellationToken cancellationToken = Xunit.TestContext.Current.CancellationToken;
+        Task<DerivedValueResult> ResolveAsync() =>
+            provider.ResolveAsync(typeof(DerivedValueProviderChainTests.TestCommand), nameof(DerivedValueProviderChainTests.TestCommand.Endpoint), null, cancellationToken);
+
+        Uri original = (await ResolveAsync()).Value.ShouldBeOfType<Uri>();
+        (await ResolveAsync()).Value.ShouldBeSameAs(original);
+
+        DerivedValueMetadataUpdateHandler.ClearCache(updatedTypes: null);
+
+        Uri refreshed = (await ResolveAsync()).Value.ShouldBeOfType<Uri>();
+        refreshed.ShouldBe(original);
+        refreshed.ShouldNotBeSameAs(original);
     }
 
     private ConstructorDefaultsCommand RenderForm() {

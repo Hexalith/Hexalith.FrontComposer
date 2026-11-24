@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 
@@ -14,7 +15,7 @@ namespace Hexalith.FrontComposer.Shell.Services.DerivedValues;
 /// reset-semantics fields.
 /// </summary>
 public sealed class ExplicitDefaultValueProvider : IDerivedValueProvider {
-    private static readonly ConcurrentDictionary<(Type, string), (bool HasAttribute, object? Value)> Cache = new();
+    private static readonly ConditionalWeakTable<object, ConcurrentDictionary<(Type CommandType, string PropertyName), (bool HasAttribute, object? Value)>> _caches = new();
 
     /// <inheritdoc/>
     [UnconditionalSuppressMessage("Trimming", "IL2070:UnrecognizedReflectionPattern", Justification = "commandType flows from generated code; trim preservation is the renderer's responsibility.")]
@@ -27,9 +28,10 @@ public sealed class ExplicitDefaultValueProvider : IDerivedValueProvider {
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
         ct.ThrowIfCancellationRequested();
 
-        (bool HasAttribute, object? Value) = Cache.GetOrAdd(
+        var cache = _caches.GetOrCreateValue(DerivedValueMetadataUpdateHandler.Generation);
+        (bool HasAttribute, object? Value) = cache.GetOrAdd(
             (commandType, propertyName),
-            static k => LookupDefaultValueAttribute(k.Item1, k.Item2));
+            static key => LookupDefaultValueAttribute(key.CommandType, key.PropertyName));
 
         return Task.FromResult(HasAttribute
             ? new DerivedValueResult(true, Value)

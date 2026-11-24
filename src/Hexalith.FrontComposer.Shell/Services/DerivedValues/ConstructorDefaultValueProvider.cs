@@ -1,6 +1,6 @@
-using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 
@@ -20,8 +20,7 @@ namespace Hexalith.FrontComposer.Shell.Services.DerivedValues;
 /// <c>AddDerivedValueProvider&lt;T&gt;</c> or add parameterless ctors.
 /// </remarks>
 public sealed class ConstructorDefaultValueProvider : IDerivedValueProvider {
-    private readonly ConcurrentDictionary<Type, object?> _instanceCache = new();
-    private readonly ConcurrentDictionary<(Type, string), object?> _valueCache = new();
+    private readonly ConditionalWeakTable<object, ConstructorDefaultValueCache> _caches = new();
 
     /// <inheritdoc/>
     [UnconditionalSuppressMessage("Trimming", "IL2067:UnrecognizedReflectionPattern", Justification = "commandType flows from generated code; trim preservation is delegated to the renderer.")]
@@ -35,12 +34,13 @@ public sealed class ConstructorDefaultValueProvider : IDerivedValueProvider {
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
         ct.ThrowIfCancellationRequested();
 
-        (Type commandType, string propertyName) key = (commandType, propertyName);
-        if (_valueCache.TryGetValue(key, out object? cached)) {
+        ConstructorDefaultValueCache cache = _caches.GetOrCreateValue(DerivedValueMetadataUpdateHandler.Generation);
+        (Type, string) key = (commandType, propertyName);
+        if (cache.Values.TryGetValue(key, out object? cached)) {
             return Task.FromResult(new DerivedValueResult(true, cached));
         }
 
-        object? instance = _instanceCache.GetOrAdd(commandType, static t => {
+        object? instance = cache.Instances.GetOrAdd(commandType, static t => {
             try {
                 return Activator.CreateInstance(t);
             }
@@ -88,6 +88,6 @@ public sealed class ConstructorDefaultValueProvider : IDerivedValueProvider {
             return Task.FromResult(DerivedValueResult.None);
         }
 
-        return Task.FromResult(new DerivedValueResult(true, _valueCache.GetOrAdd(key, value)));
+        return Task.FromResult(new DerivedValueResult(true, cache.Values.GetOrAdd(key, value)));
     }
 }
