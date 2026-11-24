@@ -73,10 +73,11 @@ public sealed class FailClosedLoggingGovernanceTests
             8317,
             8318,
             8319,
+            8320,
         ]);
 
         LoggerEvent[] failClosedEvents = [.. events.Where(static entry => entry.Path.EndsWith("/FrontComposerMcpLog.cs", StringComparison.Ordinal))];
-        failClosedEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(8310, 10));
+        failClosedEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(8310, 11));
         foreach (LoggerEvent entry in failClosedEvents.Where(static entry => entry.EventId >= 8315))
         {
             entry.EventName.ShouldNotBeNullOrWhiteSpace($"{entry.Location} must declare an explicit EventName");

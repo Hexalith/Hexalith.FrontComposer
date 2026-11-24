@@ -297,6 +297,73 @@ public sealed class CommandLifecycleTests {
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CommandRejectionTraceGroupsRepeatedReasonsWithoutDomainText(bool useTypedCode)
+    {
+        CapturingLogger<FrontComposerMcpCommandInvoker> logger = new();
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out LifecycleAwareCommandService service, out ServiceProvider provider, invocationLogger: logger);
+        using ServiceProvider ownedProvider = provider;
+        service.RejectNext = true;
+
+        string[] reasons = useTypedCode
+            ? ["sentinel-reason-a", "sentinel-reason-b", "sentinel-reason-c"]
+            : ["sentinel-reason-a", "sentinel-reason-a", "sentinel-reason-b"];
+        for (int index = 0; index < reasons.Length; index++) {
+            string reason = reasons[index];
+            service.RejectionReason = reason;
+            service.RejectionErrorCode = useTypedCode ? (index < 2 ? "sentinel-code-a" : "sentinel-code-b") : null;
+            FrontComposerMcpResult result = await invoker.InvokeAsync(
+                "Billing.PayInvoiceCommand.Execute", Args("""{"Amount":42}"""), TestContext.Current.CancellationToken);
+            result.Category.ShouldBe(FrontComposerMcpFailureCategory.CommandRejected);
+            result.StructuredContent!.ToJsonString().ShouldNotContain(reason);
+        }
+
+        CapturedLogEntry[] traces = [.. logger.Entries.Where(entry => entry.EventId.Name == "McpCommandRejectionObserved")];
+        traces.Length.ShouldBe(3);
+        CapturedLogEntry[] completions = [.. logger.Entries.Where(entry => entry.EventId.Name == "McpOperationCompleted")];
+        completions.Length.ShouldBe(3);
+        for (int index = 0; index < traces.Length; index++) {
+            CapturedLogEntry entry = traces[index];
+            entry.State["CorrelationIdDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
+            entry.State["CorrelationIdDigest"].ShouldBe(completions[index].State["CorrelationIdDigest"]);
+            entry.Level.ShouldBe(LogLevel.Trace);
+            entry.Exception.ShouldBeNull();
+            entry.State["RejectionDigest"].ShouldBeOfType<string>().ShouldStartWith("hmac-sha256:");
+            string captured = entry.Message + string.Join(" ", entry.State.Values);
+            captured.ShouldNotContain("sentinel-reason");
+            captured.ShouldNotContain("sentinel-code");
+            captured.ShouldNotContain(CorrelationId);
+            captured.ShouldNotContain("raw resolution");
+        }
+
+        traces[0].State["RejectionDigest"].ShouldBe(traces[1].State["RejectionDigest"]);
+        traces[0].State["RejectionDigest"].ShouldNotBe(traces[2].State["RejectionDigest"]);
+    }
+
+    [Theory]
+    [InlineData(false, FrontComposerMcpFailureCategory.None)]
+    [InlineData(true, FrontComposerMcpFailureCategory.CommandRejected)]
+    public async Task InvokeAsyncReturnsProtocolResultWhenOptionalTelemetryFails(
+        bool rejected, FrontComposerMcpFailureCategory expectedCategory)
+    {
+        ILogger<FrontComposerMcpCommandInvoker> logger = Substitute.For<ILogger<FrontComposerMcpCommandInvoker>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(_ => throw new IOException("test log sink unavailable"));
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out LifecycleAwareCommandService service, out ServiceProvider provider, invocationLogger: logger);
+        using ServiceProvider ownedProvider = provider;
+        service.RejectNext = rejected;
+
+        FrontComposerMcpResult result = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute", Args("""{"Amount":42}"""), TestContext.Current.CancellationToken);
+
+        result.Category.ShouldBe(expectedCategory);
+        result.StructuredContent!["correlationId"]!.GetValue<string>().ShouldBe(rejected ? MessageId : CorrelationId);
+        service.DispatchCount.ShouldBe(1);
+    }
+
     [Fact]
     public async Task InvokeAsync_CommandRejected_ReturnsStructuredAgentPayloadWithoutRawExceptionText() {
         FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out _);
@@ -1890,6 +1957,8 @@ public sealed class CommandLifecycleTests {
         public int DispatchCount { get; private set; }
         public Action<CommandLifecycleState, string?>? DispatchObserver { get; private set; }
         public bool RejectNext { get; set; }
+        public string RejectionReason { get; set; } = "raw domain reason with tenant-a and amount 42";
+        public string? RejectionErrorCode { get; set; }
         public bool ValidateRejectNext { get; set; }
         public bool CompleteSynchronously { get; set; } = true;
         public bool OmitCorrelationId { get; set; }
@@ -1910,7 +1979,8 @@ public sealed class CommandLifecycleTests {
             }
 
             if (RejectNext) {
-                throw new CommandRejectedException("raw domain reason with tenant-a and amount 42", "raw resolution");
+                throw new CommandRejectedException(RejectionReason, "raw resolution",
+                    CommandRejectionDetails.FromOptional(RejectionErrorCode, null, null, null));
             }
 
             string messageId = ReadString(command, nameof(PayInvoiceCommand.MessageId)) ?? MessageId;

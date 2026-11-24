@@ -118,7 +118,8 @@ public sealed class FrontComposerMcpCommandInvoker(
 
             return FrontComposerMcpResult.Success("Command acknowledged.", fallback);
         }
-        catch (CommandRejectedException) {
+        catch (CommandRejectedException ex) {
+            FrontComposerMcpLog.CommandRejectionObserved(logger, ex, capturedCorrelationId);
             return FrontComposerMcpResult.Failure(
                 FrontComposerMcpFailureCategory.CommandRejected,
                 BuildRejectionPayload(

@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
 
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.Mcp.Schema;
 
@@ -14,6 +15,8 @@ namespace Hexalith.FrontComposer.Mcp;
 /// Source-generated log helpers for MCP fail-closed branches.
 /// </summary>
 internal static partial class FrontComposerMcpLog {
+    private static readonly Lazy<byte[]> RejectionDigestKey = new(() => RandomNumberGenerator.GetBytes(32));
+
     /// <summary>
     /// Logs a sanitized tools/list fail-closed warning.
     /// </summary>
@@ -269,6 +272,45 @@ internal static partial class FrontComposerMcpLog {
         return false;
     }
 
+    /// <summary>Groups repeated domain rejections within one process without logging domain text.</summary>
+    /// <param name="logger">Logger receiving the opt-in trace event.</param>
+    /// <param name="rejection">Domain rejection whose stable code or legacy reason is fingerprinted.</param>
+    /// <param name="correlationId">Server-issued handle for this invocation, if allocated.</param>
+    internal static void CommandRejectionObserved(ILogger logger, CommandRejectedException rejection, string? correlationId) {
+        try {
+            if (!logger.IsEnabled(LogLevel.Trace)) {
+                return;
+            }
+
+            string reason = rejection.ErrorCode == CommandRejectionDetails.UnknownErrorCode
+                ? rejection.Message
+                : rejection.ErrorCode;
+            string rejectionDigest = DigestRejection(reason);
+            string correlationIdDigest = DigestHandle(correlationId);
+            LogCommandRejectionObserved(logger, rejectionDigest, correlationIdDigest);
+        }
+        catch (Exception ex) when (IsNonFatalLoggingFailure(ex)) {
+            // A trace sink failure must not replace the domain rejection response.
+        }
+    }
+
+    private static string DigestRejection(string reason) {
+        if (string.IsNullOrWhiteSpace(reason) || reason.Length > 256) {
+            return "unknown";
+        }
+
+        byte[] bytes = Encoding.UTF8.GetBytes(reason);
+        Span<byte> digest = stackalloc byte[32];
+        try {
+            _ = HMACSHA256.HashData(RejectionDigestKey.Value, bytes, digest);
+            return "hmac-sha256:" + Convert.ToHexStringLower(digest[..8]);
+        }
+        finally {
+            CryptographicOperations.ZeroMemory(bytes);
+            CryptographicOperations.ZeroMemory(digest);
+        }
+    }
+
     private static string DigestHandle(string? handle)
         => handle is not null && FrontComposerMcpUlid.IsCanonical(handle) ? SanitizeCategoryValue(handle) : "unknown";
 
@@ -344,6 +386,10 @@ internal static partial class FrontComposerMcpLog {
         Message = "MCP operation {Operation} completed for {DescriptorKind} with {Outcome} in {DurationBucket}. CorrelationIdDigest={CorrelationIdDigest}. MessageIdDigest={MessageIdDigest}.")]
     private static partial void LogOperationCompleted(
         ILogger logger, string operation, string descriptorKind, string outcome, string durationBucket, string correlationIdDigest, string messageIdDigest);
+
+    [LoggerMessage(EventId = 8320, EventName = "McpCommandRejectionObserved", Level = LogLevel.Trace,
+        Message = "MCP domain rejection observed. RejectionDigest={RejectionDigest}. CorrelationIdDigest={CorrelationIdDigest}.")]
+    private static partial void LogCommandRejectionObserved(ILogger logger, string rejectionDigest, string correlationIdDigest);
 
     [LoggerMessage(EventId = 8318, EventName = "McpSchemaDecision", Level = LogLevel.Information,
         Message = "MCP schema negotiation decision {Category} {MessageKey} {DocsCode} {DecisionKind}.")]
