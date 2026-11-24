@@ -127,6 +127,8 @@ public static partial class SkillCorpusParser {
                 continue;
             }
 
+            // Strip surrounding whitespace before duplicate detection and lookup in the
+            // ordinal key sets. Front matter key spelling and case still have to match.
             string key = line[..separator].Trim();
             string value = line[(separator + 1)..].Trim();
 
