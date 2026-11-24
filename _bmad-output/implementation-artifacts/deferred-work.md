@@ -3066,7 +3066,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-ac
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **W5 [LOW] `InlinePopoverRegistry` per-circuit memory pinning** — registry has no `IDisposable`; latest popover instance is rooted by `_currentlyOpen` until next `OpenAsync` or scope disposal. Small leak per long-lived circuit; verify Scoped DI scope correctly disposes the registry on circuit teardown. Reconciliation: Row: DW-0388; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC14-AC16, AC30; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) chunk.
-status: open
+status: done 2026-11-24
+resolution: Allow detached renderers to be collected while the circuit registry remains alive.
 
 ### DW-1120: W6 [LOW] `System.Collections.Immutable` `<PackageReference>` lacks explicit `Version`
 

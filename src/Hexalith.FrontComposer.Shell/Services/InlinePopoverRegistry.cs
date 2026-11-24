@@ -9,7 +9,8 @@ namespace Hexalith.FrontComposer.Shell.Services;
 /// </summary>
 public sealed class InlinePopoverRegistry {
     private readonly object _gate = new();
-    private IInlinePopover? _currentlyOpen;
+    // Blazor owns the renderer lifetime, including removal while a popover is open.
+    private WeakReference<IInlinePopover>? _currentlyOpen;
 
     /// <summary>
     /// Records <paramref name="popover"/> as the newly-open popover after closing any previously
@@ -18,10 +19,10 @@ public sealed class InlinePopoverRegistry {
     public async Task OpenAsync(IInlinePopover popover) {
         ArgumentNullException.ThrowIfNull(popover);
 
-        IInlinePopover? previous;
+        IInlinePopover? previous = null;
         lock (_gate) {
-            previous = _currentlyOpen;
-            _currentlyOpen = popover;
+            _ = _currentlyOpen?.TryGetTarget(out previous);
+            _currentlyOpen = new WeakReference<IInlinePopover>(popover);
         }
 
         if (previous is not null && !ReferenceEquals(previous, popover)) {
@@ -41,7 +42,7 @@ public sealed class InlinePopoverRegistry {
     /// <summary>Marks <paramref name="popover"/> as no longer the currently-open popover.</summary>
     public void Released(IInlinePopover popover) {
         lock (_gate) {
-            if (ReferenceEquals(_currentlyOpen, popover)) {
+            if (_currentlyOpen?.TryGetTarget(out IInlinePopover? current) == true && ReferenceEquals(current, popover)) {
                 _currentlyOpen = null;
             }
         }

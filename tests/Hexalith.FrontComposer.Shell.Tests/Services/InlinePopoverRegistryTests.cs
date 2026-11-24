@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services;
@@ -55,6 +57,24 @@ public sealed class InlinePopoverRegistryTests {
 
         await first.Received(1).ClosePopoverAsync().ConfigureAwait(true);
         await second.Received(1).ClosePopoverAsync().ConfigureAwait(true);
+    }
+
+    [Fact]
+    public async Task OpenAsyncDoesNotKeepADetachedPopoverAlive() {
+        InlinePopoverRegistry registry = new();
+        WeakReference<IInlinePopover> detached = RegisterDetachedPopover(registry);
+
+        GC.Collect();
+
+        detached.TryGetTarget(out _).ShouldBeFalse();
+        await registry.OpenAsync(Substitute.For<IInlinePopover>()).ConfigureAwait(true);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WeakReference<IInlinePopover> RegisterDetachedPopover(InlinePopoverRegistry registry) {
+        IInlinePopover popover = Substitute.For<IInlinePopover>();
+        registry.OpenAsync(popover).IsCompletedSuccessfully.ShouldBeTrue();
+        return new WeakReference<IInlinePopover>(popover);
     }
 
     [Fact]
