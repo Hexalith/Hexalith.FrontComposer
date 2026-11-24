@@ -14,6 +14,23 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Registration;
 
 public class FrontComposerRegistryTests {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t")]
+    public void RegistryExtensionsRejectBlankNamesWithoutCallingOptionalCapabilities(string? commandTypeName) {
+        IFrontComposerRegistry registry = NSubstitute.Substitute.For<IFrontComposerRegistry>();
+        IFrontComposerRegistry withCapabilities = NSubstitute.Substitute.For<
+            IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry, IFrontComposerCommandWriteAccessRegistry>();
+
+        foreach (IFrontComposerRegistry candidate in new[] { registry, withCapabilities }) {
+            candidate.HasFullPageRoute(commandTypeName).ShouldBeFalse();
+            candidate.IsCommandWritable(commandTypeName).ShouldBeFalse();
+        }
+
+        NSubstitute.SubstituteExtensions.ReceivedCalls(withCapabilities).ShouldBeEmpty();
+    }
+
 
     [Fact]
     public void HostsCanUseNamesWhichBelongToOtherDomainHosts()

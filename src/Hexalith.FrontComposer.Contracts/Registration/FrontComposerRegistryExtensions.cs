@@ -77,8 +77,8 @@ public static class FrontComposerRegistryExtensions {
     /// </remarks>
     /// <param name="registry">The registry to query.</param>
     /// <param name="commandTypeName">The fully qualified command type name (e.g., <c>Counter.Domain.IncrementCommand</c>).</param>
-    /// <returns><see langword="true"/> when a FullPage route exists; <see langword="false"/> when the command is unreachable.</returns>
-    public static bool HasFullPageRoute(this IFrontComposerRegistry registry, string commandTypeName) {
+    /// <returns><see langword="true"/> when a FullPage route exists or a legacy registry cannot check it. Returns <see langword="false"/> for a blank name or an unreachable command.</returns>
+    public static bool HasFullPageRoute(this IFrontComposerRegistry registry, string? commandTypeName) {
 #if NET10_0_OR_GREATER
         ArgumentNullException.ThrowIfNull(registry);
 #else
@@ -87,7 +87,8 @@ public static class FrontComposerRegistryExtensions {
         }
 #endif
 
-        return registry is not IFrontComposerFullPageRouteRegistry routeAware || routeAware.HasFullPageRoute(commandTypeName);
+        return !string.IsNullOrWhiteSpace(commandTypeName)
+            && (registry is not IFrontComposerFullPageRouteRegistry routeAware || routeAware.HasFullPageRoute(commandTypeName!));
     }
 
     /// <summary>
@@ -102,8 +103,8 @@ public static class FrontComposerRegistryExtensions {
     /// </remarks>
     /// <param name="registry">The registry to query.</param>
     /// <param name="commandTypeName">The fully qualified command type name.</param>
-    /// <returns><see langword="true"/> when the command is writable; <see langword="false"/> for query/read-only commands.</returns>
-    public static bool IsCommandWritable(this IFrontComposerRegistry registry, string commandTypeName) {
+    /// <returns><see langword="true"/> when the command is writable or a legacy registry cannot check it. Returns <see langword="false"/> for a blank name or read-only command.</returns>
+    public static bool IsCommandWritable(this IFrontComposerRegistry registry, string? commandTypeName) {
 #if NET10_0_OR_GREATER
         ArgumentNullException.ThrowIfNull(registry);
 #else
@@ -112,6 +113,7 @@ public static class FrontComposerRegistryExtensions {
         }
 #endif
 
-        return registry is not IFrontComposerCommandWriteAccessRegistry writeAware || writeAware.IsCommandWritable(commandTypeName);
+        return !string.IsNullOrWhiteSpace(commandTypeName)
+            && (registry is not IFrontComposerCommandWriteAccessRegistry writeAware || writeAware.IsCommandWritable(commandTypeName!));
     }
 }

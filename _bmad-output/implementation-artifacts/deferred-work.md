@@ -275,7 +275,8 @@ resolution: Reject null command arguments before lifecycle dispatch.
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 2 (2026-08-08)"), 2026-08-27
 location: FrontComposerRegistryExtensions.HasFullPageRoute
 reason: `FrontComposerRegistryExtensions.HasFullPageRoute` / `IsCommandWritable` gained `registry` null checks but still forward unchecked `commandTypeName`.
-status: open
+status: done 2026-11-24
+resolution: Decline blank names before calling optional registry interfaces.
 
 ### DW-706: Identifier inventory algorithm hashes every underscore-containing C# token under `tests/` (including locals/discards), so routine non-CA1707 test edits force ledger reseals; narrow the sealed token set only under an explicit follow-up that preserves fail-closed CA1707 scope drift detection.
 
