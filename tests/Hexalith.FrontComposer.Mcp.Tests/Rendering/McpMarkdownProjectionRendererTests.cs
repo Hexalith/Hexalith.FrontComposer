@@ -159,18 +159,27 @@ public sealed class McpMarkdownProjectionRendererTests {
             descriptor,
             [],
             TotalCount: 0,
-            SafeCommandSuggestions: ["Create invoice", "[hidden](frontcomposer://x)", "run /danger", "Approve invoice"]),
-            new FrontComposerMcpOptions { MaxProjectionSuggestions = 2 },
+            SafeCommandSuggestions: [
+                "Create invoice",
+                "[hidden](frontcomposer://x)",
+                "run /danger",
+                "\u200E/skip",
+                "review \u200F\u2066/skip",
+                "review\uFEFF\u200F/skip",
+                "Approve credit/debit invoice",
+            ]),
+            new FrontComposerMcpOptions { MaxProjectionSuggestions = 3 },
             TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         result.Document!.Text.ShouldContain("No invoices found.");
         result.Document.Text.ShouldContain("- Create invoice");
-        result.Document.Text.ShouldContain("- Approve invoice");
+        result.Document.Text.ShouldContain("- Approve credit/debit invoice");
         // Link-shaped and slash-command-looking suggestions are dropped, not escaped, per the
         // Inert Untrusted Text Contract.
         result.Document.Text.ShouldNotContain("hidden");
         result.Document.Text.ShouldNotContain("danger");
+        result.Document.Text.ShouldNotContain("/skip");
         result.Document.Text.ShouldNotContain("Suggestions:");
     }
 

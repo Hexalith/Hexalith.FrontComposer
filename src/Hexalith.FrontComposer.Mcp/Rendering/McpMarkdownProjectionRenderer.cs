@@ -358,20 +358,28 @@ public static class McpMarkdownProjectionRenderer {
             return true;
         }
 
-        if (trimmed[0] == '/') {
-            return true;
-        }
+        for (int i = 0; i < trimmed.Length; i++) {
+            if (trimmed[i] != '/') {
+                continue;
+            }
 
-        // Whitespace followed by '/' followed by a non-whitespace char looks like an inline
-        // slash command ("run /danger", "please /approve").
-        for (int i = 1; i < trimmed.Length - 1; i++) {
-            if (trimmed[i] == '/' && char.IsWhiteSpace(trimmed[i - 1]) && !char.IsWhiteSpace(trimmed[i + 1])) {
+            // Bidi controls do not interrupt the start-of-label or whitespace boundary.
+            int previous = i - 1;
+            while (previous >= 0 && McpUnicodeSafety.IsBidirectionalControl(trimmed[previous])) {
+                previous--;
+            }
+
+            if (previous < 0
+                || (IsSuggestionWhitespace(trimmed[previous]) && i + 1 < trimmed.Length && !char.IsWhiteSpace(trimmed[i + 1]))) {
                 return true;
             }
         }
 
         return false;
     }
+
+    private static bool IsSuggestionWhitespace(char character)
+        => char.IsWhiteSpace(character) || char.IsControl(character) || character == '\uFEFF';
 
     private static bool IsDateTimeField(McpParameterDescriptor field)
         => field.TypeName is "DateTime" or "DateTimeOffset" or "DateOnly";
