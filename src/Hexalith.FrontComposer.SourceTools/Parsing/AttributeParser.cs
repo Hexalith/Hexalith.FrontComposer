@@ -599,7 +599,7 @@ public static class AttributeParser {
             && !HasExperimentalAttribute(propertySymbol, compilation)
             && !HasExperimentalAttribute(propertySymbol.SetMethod, compilation)
             && IsSourceNameableIdentifier(propertySymbol.Name)
-            && IsSourceNameableType(propertyType);
+            && IsSourceNameableForStaticAssignment(propertyType, compilation);
 
     private static bool ContainsPointerSyntax(ITypeSymbol typeSymbol)
         => typeSymbol switch {
@@ -1248,4 +1248,20 @@ public static class AttributeParser {
 
     private static Microsoft.CodeAnalysis.Text.LinePosition GetLinePosition(SyntaxNode node)
         => node.GetLocation().GetLineSpan().StartLinePosition;
+
+    private static bool IsSourceNameableForStaticAssignment(ITypeSymbol typeSymbol, Compilation compilation)
+        => IsSourceNameableType(typeSymbol) && CanReferenceTypeFromRenderer(typeSymbol, compilation);
+
+    private static bool CanReferenceTypeFromRenderer(ITypeSymbol typeSymbol, Compilation compilation)
+        => typeSymbol switch {
+            IErrorTypeSymbol => false,
+            IArrayTypeSymbol arrayType => !ContainsNonSzArray(arrayType)
+                && CanReferenceTypeFromRenderer(arrayType.ElementType, compilation),
+            INamedTypeSymbol namedType => compilation.IsSymbolAccessibleWithin(namedType, compilation.Assembly)
+                && !HasErrorObsoleteAttribute(namedType, compilation)
+                && !HasExperimentalAttribute(namedType, compilation)
+                && (namedType.ContainingType is null || CanReferenceTypeFromRenderer(namedType.ContainingType, compilation))
+                && namedType.TypeArguments.All(argument => CanReferenceTypeFromRenderer(argument, compilation)),
+            _ => true,
+        };
 }

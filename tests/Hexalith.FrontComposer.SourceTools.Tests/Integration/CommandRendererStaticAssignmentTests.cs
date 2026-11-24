@@ -232,10 +232,15 @@ public partial class GeneratorDriverTests {
             MetadataAssignmentFixture.InvalidTypePropertyName,
             MetadataAssignmentFixture.InvalidNamespacePropertyName,
             MetadataAssignmentFixture.NonSzArrayPropertyName,
+            MetadataAssignmentFixture.InaccessibleTypePropertyName,
+            MetadataAssignmentFixture.MissingTypePropertyName,
+            MetadataAssignmentFixture.InaccessibleArrayPropertyName,
         ]) {
             SliceCase(renderer, propertyName).Trim().ShouldBe(
                 $"case \"{propertyName}\":\n                return false;");
         }
+
+        SliceCase(renderer, MetadataAssignmentFixture.AccessiblePropertyName).ShouldContain("_prefilledModel.@Accessible =");
     }
 
     [Fact]

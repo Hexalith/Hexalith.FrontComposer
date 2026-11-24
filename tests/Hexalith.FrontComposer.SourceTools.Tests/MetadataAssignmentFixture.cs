@@ -15,6 +15,10 @@ internal static class MetadataAssignmentFixture {
     internal const string InvalidTypePropertyName = "InvalidType";
     internal const string InvalidNamespacePropertyName = "InvalidNamespace";
     internal const string NonSzArrayPropertyName = "NonSzArray";
+    internal const string InaccessibleTypePropertyName = "InaccessibleType";
+    internal const string MissingTypePropertyName = "MissingType";
+    internal const string InaccessibleArrayPropertyName = "InaccessibleArray";
+    internal const string AccessiblePropertyName = "Accessible";
 
     internal static PortableExecutableReference CreateReference() {
         MetadataBuilder metadata = new();
@@ -65,7 +69,12 @@ internal static class MetadataAssignmentFixture {
 
         TypeDefinitionHandle invalidTypeName = MetadataTokens.TypeDefinitionHandle(2);
         TypeDefinitionHandle invalidNamespaceType = MetadataTokens.TypeDefinitionHandle(3);
-        TypeDefinitionHandle baseType = MetadataTokens.TypeDefinitionHandle(4);
+        TypeDefinitionHandle inaccessibleType = MetadataTokens.TypeDefinitionHandle(4);
+        TypeDefinitionHandle baseType = MetadataTokens.TypeDefinitionHandle(5);
+        AssemblyReferenceHandle missingAssembly = AddAssemblyReference(
+            metadata, new AssemblyName("MissingMetadataDependency"));
+        TypeReferenceHandle missingType = metadata.AddTypeReference(
+            missingAssembly, metadata.GetOrAddString("MetadataFixtures"), metadata.GetOrAddString("MissingType"));
         MethodDefinitionHandle firstMethod = MetadataTokens.MethodDefinitionHandle(1);
         FieldDefinitionHandle firstField = MetadataTokens.FieldDefinitionHandle(1);
         _ = metadata.AddTypeDefinition(
@@ -86,6 +95,13 @@ internal static class MetadataAssignmentFixture {
             TypeAttributes.Public | TypeAttributes.Class,
             metadata.GetOrAddString("Bad-Namespace"),
             metadata.GetOrAddString("ValidType"),
+            objectType,
+            firstField,
+            firstMethod);
+        _ = metadata.AddTypeDefinition(
+            TypeAttributes.NotPublic | TypeAttributes.Class,
+            metadata.GetOrAddString("MetadataFixtures"),
+            metadata.GetOrAddString("InaccessibleType"),
             objectType,
             firstField,
             firstMethod);
@@ -124,6 +140,17 @@ internal static class MetadataAssignmentFixture {
             true,
             derivedFromConstructor,
             ref firstProperty);
+        AddProperty(metadata, methodBodies, InaccessibleTypePropertyName, type => type.Type(inaccessibleType, isValueType: false), true, derivedFromConstructor, ref firstProperty);
+        AddProperty(metadata, methodBodies, MissingTypePropertyName, type => type.Type(missingType, isValueType: false), true, derivedFromConstructor, ref firstProperty);
+        AddProperty(
+            metadata,
+            methodBodies,
+            InaccessibleArrayPropertyName,
+            type => type.SZArray().Type(inaccessibleType, isValueType: false),
+            true,
+            derivedFromConstructor,
+            ref firstProperty);
+        AddProperty(metadata, methodBodies, AccessiblePropertyName, static type => type.String(), true, derivedFromConstructor, ref firstProperty);
         metadata.AddPropertyMap(baseType, firstProperty);
 
         ManagedPEBuilder peBuilder = new(

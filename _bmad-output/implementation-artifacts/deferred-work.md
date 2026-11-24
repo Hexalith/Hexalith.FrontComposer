@@ -9013,7 +9013,8 @@ location: tests/Hexalith.FrontComposer.SourceTools.Tests/MetadataAssignmentFixtu
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: medium
 reason: The separately landed metadata fixture covers invalid identifiers/namespaces and non-SZ arrays, but not inaccessible referenced types or unresolved/error types. That work is outside this bundle and was already committed independently during the run.
-status: open
+status: done 2026-11-24
+resolution: Keep inaccessible and unresolved metadata types out of typed generated assignments.
 
 ### DW-1946: Concurrent SourceTypeNameFormatter changes retain top-level array nullability despite the documented non-nullable assignment-type contract.
 

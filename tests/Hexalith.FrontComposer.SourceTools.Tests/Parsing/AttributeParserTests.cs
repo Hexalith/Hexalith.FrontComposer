@@ -649,22 +649,29 @@ public partial class CompoundTypeProjection
         compilation.GetDiagnostics(TestContext.Current.CancellationToken)
             .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ShouldBeEmpty();
-        IPropertySymbol nonSzArrayProperty = compilation.GetTypeByMetadataName("MetadataFixtures.MetadataCommandBase")
-            .ShouldNotBeNull()
-            .GetMembers(MetadataAssignmentFixture.NonSzArrayPropertyName)
-            .OfType<IPropertySymbol>()
-            .Single();
-        ((IArrayTypeSymbol)nonSzArrayProperty.Type).IsSZArray.ShouldBeFalse();
+        INamedTypeSymbol baseType = compilation.GetTypeByMetadataName("MetadataFixtures.MetadataCommandBase")
+            .ShouldNotBeNull();
+        ITypeSymbol PropertyType(string name) => baseType.GetMembers(name).OfType<IPropertySymbol>().Single().Type;
+        ((IArrayTypeSymbol)PropertyType(MetadataAssignmentFixture.NonSzArrayPropertyName)).IsSZArray.ShouldBeFalse();
+        compilation.IsSymbolAccessibleWithin(PropertyType(MetadataAssignmentFixture.InaccessibleTypePropertyName), compilation.Assembly)
+            .ShouldBeFalse();
+        PropertyType(MetadataAssignmentFixture.MissingTypePropertyName).TypeKind.ShouldBe(TypeKind.Error);
 
         foreach (string propertyName in (string[])[
             MetadataAssignmentFixture.InvalidPropertyName,
             MetadataAssignmentFixture.InvalidTypePropertyName,
             MetadataAssignmentFixture.InvalidNamespacePropertyName,
             MetadataAssignmentFixture.NonSzArrayPropertyName,
+            MetadataAssignmentFixture.InaccessibleTypePropertyName,
+            MetadataAssignmentFixture.MissingTypePropertyName,
+            MetadataAssignmentFixture.InaccessibleArrayPropertyName,
         ]) {
             model.DerivableProperties.Single(property => property.Name == propertyName)
                 .SupportsStaticAssignment.ShouldBeFalse(propertyName);
         }
+
+        model.DerivableProperties.Single(property => property.Name == MetadataAssignmentFixture.AccessiblePropertyName)
+            .SupportsStaticAssignment.ShouldBeTrue();
     }
 
     private static async Task VerifyProjectionAsync(string source, string metadataName) {
