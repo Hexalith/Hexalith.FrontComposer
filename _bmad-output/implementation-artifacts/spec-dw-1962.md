@@ -30,4 +30,4 @@ Replace the remaining page-wide `Counter` heading locators in the e2e specs with
 - low, rejected — a locator-shape lint guard is new tooling with little payoff after this cleanup.
 - medium, patched — the main-scoped locator no longer catches a second `Counter` level-one heading in the banner; `smoke.spec.ts` now asserts a single page-wide level-one heading.
 - low, rejected — the locator change does not depend on the browser engine, and CI runs the suite on Chromium, Firefox and WebKit.
-- false — the edited specs were already LF in the working tree before this change, and the index stores LF either way.
+- low, patched after commit — the edit rewrote the working copies with LF against the `eol=crlf` policy; they were restored to CRLF. Committed content is unaffected because the index stores LF either way.
