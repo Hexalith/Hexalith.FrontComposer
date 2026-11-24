@@ -601,21 +601,23 @@ public sealed class RenderTreeSequenceRewriterTests {
             .Message.ShouldContain("GetSequence()");
     }
 
-    [Fact]
-    public void ShouldUseLiteralRenderTreeSequences_ChecksNet11ConsumerBranch() {
-        const string source = """
+    [Theory]
+    [InlineData("NET11_0_OR_GREATER")]
+    [InlineData("NET11_0_OR_GREATER && FEATURE")]
+    public void ShouldUseLiteralRenderTreeSequences_ChecksNet11ConsumerBranch(string condition) {
+        string source = """
             class C
             {
                 void BuildRenderTree(RenderTreeBuilder builder)
                 {
-            #if NET11_0_OR_GREATER
+            #if CONDITION
                     builder.AddContent(GetSequence(), "net11");
             #else
                     builder.AddContent(0, "previous target");
             #endif
                 }
             }
-            """;
+            """.Replace("CONDITION", condition, StringComparison.Ordinal);
 
         Should.Throw<ShouldAssertException>(() => ShouldUseLiteralRenderTreeSequences(source))
             .Message.ShouldContain("GetSequence()");
@@ -727,33 +729,40 @@ public sealed class RenderTreeSequenceRewriterTests {
     /// <em>both</em> consumer configurations.
     /// </summary>
     /// <param name="generatedSource">Emitted C# source.</param>
-    internal static void ShouldUseLiteralRenderTreeSequences(string generatedSource) {
-        generatedSource.ShouldNotContain("ASP0006");
+    /// <param name="sourceName">Name used in assertion failures.</param>
+    internal static void ShouldUseLiteralRenderTreeSequences(string generatedSource, string sourceName = "Generated source") {
+        generatedSource.Contains("ASP0006", StringComparison.Ordinal).ShouldBeFalse($"{sourceName} contains an ASP0006 control");
 
         CSharpParseOptions releaseOptions = CSharpParseOptions.Default.WithPreprocessorSymbols("TRACE");
-        ShouldParseAndUseLiterals(generatedSource, releaseOptions, "Release (DEBUG undefined)");
+        ShouldParseAndUseLiterals(generatedSource, releaseOptions, sourceName, "Release (DEBUG undefined)");
         ShouldParseAndUseLiterals(
             generatedSource,
             releaseOptions.WithPreprocessorSymbols("TRACE", "DEBUG"),
+            sourceName,
             "Debug (DEBUG defined)");
         if (generatedSource.Contains("NET11_0_OR_GREATER", StringComparison.Ordinal)) {
             ShouldParseAndUseLiterals(
                 generatedSource,
                 CSharpParseOptions.Default.WithPreprocessorSymbols("NET11_0_OR_GREATER", "TRACE"),
+                sourceName,
                 ".NET 11 Release");
             ShouldParseAndUseLiterals(
                 generatedSource,
                 CSharpParseOptions.Default.WithPreprocessorSymbols("NET11_0_OR_GREATER", "TRACE", "DEBUG"),
+                sourceName,
                 ".NET 11 Debug");
         }
+
+        string? survivingCall = RenderTreeSequenceRewriter.FindRuntimeSequenceArgument(generatedSource);
+        survivingCall.ShouldBeNull($"{sourceName} passes a runtime sequence argument in a conditional branch: {survivingCall}");
     }
 
-    private static void ShouldParseAndUseLiterals(string generatedSource, CSharpParseOptions options, string configuration) {
+    private static void ShouldParseAndUseLiterals(string generatedSource, CSharpParseOptions options, string sourceName, string configuration) {
         SyntaxTree tree = CSharpSyntaxTree.ParseText(generatedSource, options);
         Diagnostic[] diagnostics = [.. tree.GetDiagnostics()];
 
         diagnostics.ShouldBeEmpty(
-            $"Generated source does not parse cleanly under {configuration}: "
+            $"{sourceName} does not parse cleanly under {configuration}: "
             + string.Join(
                 " | ",
                 diagnostics.Select(diagnostic =>
@@ -764,7 +773,7 @@ public sealed class RenderTreeSequenceRewriterTests {
                     + diagnostic.GetMessage(CultureInfo.InvariantCulture))));
 
         string? survivingCall = RenderTreeSequenceRewriter.FindRuntimeSequenceArgument(tree.GetRoot());
-        survivingCall.ShouldBeNull($"Generated source under {configuration} passes a runtime sequence argument: {survivingCall}");
+        survivingCall.ShouldBeNull($"{sourceName} under {configuration} passes a runtime sequence argument: {survivingCall}");
     }
 
     /// <summary>Names an offset by line number and line text so a failure identifies the site.</summary>

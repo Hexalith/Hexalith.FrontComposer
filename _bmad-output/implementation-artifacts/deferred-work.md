@@ -8987,7 +8987,8 @@ location: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RenderTreeSequ
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
 reason: ShouldUseLiteralRenderTreeSequences and the packaged-consumer gate do not recognize prefix increments, decrements, arithmetic, method calls, or comment-separated expressions. Production AssignLiteralsOrFail still catches the increment/decrement forms addressed here; the duplicate test regex predates this bundle.
-status: open
+status: done 2026-11-24
+resolution: Inspect packaged generated calls for runtime sequences using the shared Roslyn check.
 
 ### DW-1941: The broader increment/decrement prefilter may add a second Roslyn parse for generated documents with ordinary loop increments.
 origin: spec-deferred 42bfb7e0da3e

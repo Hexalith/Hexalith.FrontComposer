@@ -3,14 +3,15 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
-using System.Text.RegularExpressions;
 using System.Xml.Linq;
+
+using Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 
 using Shouldly;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
-public sealed partial class PackagedAnalyzerConsumerTests {
+public sealed class PackagedAnalyzerConsumerTests {
     private const string FluentV5Version = "5.1.0";
     private const string ConsumerTargetFramework = "net11.0";
 
@@ -200,16 +201,11 @@ public sealed partial class CreateOrderCommand
 
         // Story 11.21 AC3 — packaged output must carry emitter-assigned literals, never a runtime
         // counter, and must not reintroduce the ASP0006 pragma the literals replaced.
-        List<string> nonLiteralSequenceSites = [];
         foreach (string generatedFile in generatedFiles) {
             string generatedSource = await File.ReadAllTextAsync(generatedFile, TestContext.Current.CancellationToken).ConfigureAwait(true);
-            generatedSource.ShouldNotContain("ASP0006");
-            foreach (Match match in RuntimeSequenceArgumentPattern().Matches(generatedSource)) {
-                nonLiteralSequenceSites.Add(Path.GetFileName(generatedFile) + ": " + match.Value);
-            }
+            RenderTreeSequenceRewriterTests.ShouldUseLiteralRenderTreeSequences(generatedSource, Path.GetFileName(generatedFile));
         }
 
-        nonLiteralSequenceSites.ShouldBeEmpty();
         projectionSource.ShouldContain("BuildRenderTree");
 
         // Positive control: an injected CA1822 must surface under the template's Recommended mode and
@@ -255,16 +251,6 @@ public sealed class Ca1822Probe
             File.Delete(probePath);
         }
     }
-
-    /// <summary>
-    /// Matches a <c>RenderTreeBuilder</c> call whose sequence argument is a runtime counter
-    /// increment rather than an emitter-assigned literal. Optional whitespace before <c>++</c>
-    /// is included so a leftover <c>seq ++</c> cannot bypass the packaged gate.
-    /// </summary>
-    [GeneratedRegex(
-        @"\.(?:OpenElement|OpenComponent|AddAttribute|AddContent|AddMarkupContent|OpenRegion|AddMultipleAttributes|AddElementReferenceCapture|AddComponentReferenceCapture)(?:<[^(]*>)?\(\s*[A-Za-z_][A-Za-z0-9_]*\s*\+\+",
-        RegexOptions.CultureInvariant)]
-    private static partial Regex RuntimeSequenceArgumentPattern();
 
     private static string[] CollectCaAspDiagnostics(string buildLog)
         => [.. buildLog
