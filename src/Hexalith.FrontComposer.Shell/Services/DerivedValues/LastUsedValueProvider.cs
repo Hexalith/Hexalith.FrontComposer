@@ -51,14 +51,20 @@ public sealed class LastUsedValueProvider : IDerivedValueProvider, ILastUsedReco
         }
 
         string key;
+        string? legacyKey;
         try {
-            key = FrontComposerStorageKey.Build(tenantId, userId, commandType.FullName ?? commandType.Name, propertyName);
+            (key, legacyKey) = FrontComposerStorageKey.BuildWithLegacyFallback(tenantId, userId, commandType.FullName ?? commandType.Name, propertyName);
         }
         catch (InvalidOperationException) {
             return DerivedValueResult.None;
         }
 
         object? value = await _storage.GetAsync<object?>(key, ct).ConfigureAwait(false);
+        if (value is null && legacyKey is not null) {
+            // Values recorded before keys were bounded remain readable until the next record migrates them.
+            value = await _storage.GetAsync<object?>(legacyKey, ct).ConfigureAwait(false);
+        }
+
         return value is null ? DerivedValueResult.None : new DerivedValueResult(true, value);
     }
 
@@ -73,6 +79,9 @@ public sealed class LastUsedValueProvider : IDerivedValueProvider, ILastUsedReco
     /// <c>IStorageService</c> exposes no batch API. The next pre-fill resolves field-by-field via
     /// the chain so an inconsistent snapshot still produces a usable form. Adopters who require
     /// atomic write semantics should not rely on this convenience provider.
+    /// A key longer than <see cref="FrontComposerStorageKey.MaxKeyLength"/> is stored under its bounded
+    /// form, and each record removes the legacy unbounded key that <see cref="ResolveAsync"/> still reads as
+    /// a fallback. After that migration, an earlier release that reads only legacy keys no longer sees the value.
     /// </remarks>
     /// <inheritdoc cref="ILastUsedRecorder.RecordAsync{TCommand}"/>
     [UnconditionalSuppressMessage("Trimming", "IL2091:UnrecognizedReflectionPattern", Justification = "Call site is generated subscriber code with concrete TCommand type; trim preservation is the renderer's responsibility.")]
@@ -97,8 +106,9 @@ public sealed class LastUsedValueProvider : IDerivedValueProvider, ILastUsedReco
             }
 
             string key;
+            string? legacyKey;
             try {
-                key = FrontComposerStorageKey.Build(tenantId, userId, commandFqn, prop.Name);
+                (key, legacyKey) = FrontComposerStorageKey.BuildWithLegacyFallback(tenantId, userId, commandFqn, prop.Name);
             }
             catch (InvalidOperationException) {
                 return;
@@ -106,11 +116,20 @@ public sealed class LastUsedValueProvider : IDerivedValueProvider, ILastUsedReco
 
             object? value = prop.GetValue(command);
             if (value is null) {
+                // Clear the fallback first: an interruption then leaves the newer bounded value, not the legacy one.
+                if (legacyKey is not null) {
+                    await _storage.RemoveAsync(legacyKey, cancellationToken).ConfigureAwait(false);
+                }
+
                 await _storage.RemoveAsync(key, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
             await _storage.SetAsync(key, value, cancellationToken).ConfigureAwait(false);
+            if (legacyKey is not null) {
+                // Remove the legacy value only after the bounded key holds the current one.
+                await _storage.RemoveAsync(legacyKey, cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 

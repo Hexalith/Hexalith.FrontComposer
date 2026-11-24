@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 
 using FsCheck.Xunit;
@@ -283,7 +284,16 @@ public class DerivedValueProviderChainTests {
                 ? normalizedUser.ToLower(CultureInfo.InvariantCulture)
                 : normalizedUser);
 
+        // DW-1142 — keys past MaxKeyLength switch to the bounded format, which hashes segments longer than 96 characters.
+        int legacyLength = FrontComposerStorageKey.LastUsedPrefix.Length + 4
+            + expectedTenantCanon.Length + expectedUserCanon.Length + commandFqn.Length + propertyName.Length;
+        if (legacyLength > FrontComposerStorageKey.MaxKeyLength) {
+            expectedTenantCanon = BoundedSegment(expectedTenantCanon);
+            expectedUserCanon = BoundedSegment(expectedUserCanon);
+        }
+
         return parts is not null
+            && key.Length <= FrontComposerStorageKey.MaxKeyLength
             && parts.Value.TenantCanon == expectedTenantCanon
             && parts.Value.UserCanon == expectedUserCanon
             && parts.Value.CommandTypeFqn == commandFqn
@@ -302,6 +312,13 @@ public class DerivedValueProviderChainTests {
     }
 
     // ===== Helpers ===========================================================
+
+    // Mirrors the bounded-format rule for URL-encoded tenant and user segments only: Uri.EscapeDataString
+    // escapes '!' and ':', so those segments never trigger the marker rule and only the 96-character limit applies.
+    private static string BoundedSegment(string segment)
+        => segment.Length <= 96
+            ? segment
+            : "!" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(segment)));
 
     private static async Task<DerivedValueResult> ResolveChain(string propertyName, ProjectionContext? ctx, params IDerivedValueProvider[] chain) {
         CancellationToken ct = TestContext.Current.CancellationToken;
