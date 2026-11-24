@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Globalization;
+using System.Text;
 
 using Hexalith.FrontComposer.SourceTools.Diagnostics;
 using Hexalith.FrontComposer.SourceTools.Drift;
@@ -427,7 +429,55 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
             }
         }
 
-        return CommandParser.Parse(context, cancellationToken);
+        return RejectDecomposedPolicyName(context, CommandParser.Parse(context, cancellationToken), cancellationToken);
+    }
+
+    // DW-877 — ASP.NET Core matches policy names ordinally (ignoring case) without Unicode normalization, so a
+    // letter-only name outside Normalization Form C (a Kelvin sign, decomposed Hangul) never matches a
+    // registration typed in composed form. Under invariant globalization IsNormalized reports every string
+    // as normalized, so the check needs a compiler host with ICU normalization data. The mutation ledger pins CommandParser.cs,
+    // so this check sits beside the policy-attribute identity check above.
+    private static CommandParseResult RejectDecomposedPolicyName(
+        GeneratorAttributeSyntaxContext context,
+        CommandParseResult result,
+        CancellationToken cancellationToken) {
+        string? policyName = result.Model?.AuthorizationPolicyName;
+        if (policyName is null
+            || policyName.IsNormalized(NormalizationForm.FormC)
+            || context.TargetSymbol is not INamedTypeSymbol command) {
+            return result;
+        }
+
+        SyntaxNode node = context.TargetNode;
+        foreach (AttributeData attribute in command.GetAttributes()) {
+            if (attribute.AttributeClass?.ToDisplayString() == "Hexalith.FrontComposer.Contracts.Attributes.RequiresPolicyAttribute") {
+                node = attribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken) ?? node;
+                break;
+            }
+        }
+
+        FileLinePositionSpan position = node.GetLocation().GetLineSpan();
+        DiagnosticInfo diagnostic = new(
+            "HFC1056",
+            $"Command '{command.Name}' has an invalid [RequiresPolicy] value. Expected a policy name in Unicode Normalization Form C: '{EscapePolicyName(policyName.Normalize(NormalizationForm.FormC))}'. Got: '{EscapePolicyName(policyName)}'. Fix: normalize the attribute value and the matching host policy registration.",
+            "Error",
+            position.Path,
+            position.StartLinePosition.Line,
+            position.StartLinePosition.Character);
+        return new CommandParseResult(null, new EquatableArray<DiagnosticInfo>(result.Diagnostics.AsImmutableArray().Add(diagnostic)));
+    }
+
+    // Shows non-ASCII characters as \uXXXX so the decomposition is visible. The parser has already rejected
+    // control characters, and the whole name is echoed so the received and expected values always differ.
+    private static string EscapePolicyName(string value) {
+        StringBuilder builder = new(value.Length);
+        foreach (char c in value) {
+            _ = c > '~'
+                ? builder.Append("\\u").Append(((int)c).ToString("X4", CultureInfo.InvariantCulture))
+                : builder.Append(c);
+        }
+
+        return builder.ToString();
     }
 
     private static DiagnosticDescriptor CreateError(string id, string title) => new(

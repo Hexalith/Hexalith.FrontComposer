@@ -336,6 +336,49 @@ public class CommandParserTests {
         }
     }
 
+    /// <summary>DW-877 — the generator rejects a decomposed policy name that ordinal lookup could never match.</summary>
+    /// <param name="policyName">The declared policy name.</param>
+    /// <param name="isSupported">Whether the name is in Unicode Normalization Form C.</param>
+    /// <param name="expectedMessage">The escaped got/expected fragment for a rejected name.</param>
+    [Theory]
+    [InlineData("Caf\u00E9.Approve", true, "")]
+    [InlineData("\uD55C.Approve", true, "")]
+    [InlineData("\u212Aelvin.Approve", false, "Expected a policy name in Unicode Normalization Form C: 'Kelvin.Approve'. Got: '\\u212Aelvin.Approve'.")]
+    [InlineData("\u1112\u1161\u11AB.Approve", false, "Expected a policy name in Unicode Normalization Form C: '\\uD55C.Approve'. Got: '\\u1112\\u1161\\u11AB.Approve'.")]
+    public void GeneratorRequiresComposedPolicyNames(string policyName, bool isSupported, string expectedMessage)
+    {
+        string source = $$"""
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace Consumer {
+                [Command]
+                [BoundedContext("Orders")]
+                [RequiresPolicy("{{policyName}}")]
+                public sealed class ApproveCommand {
+                    public string MessageId { get; set; } = "";
+                }
+            }
+            """;
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        GeneratorDriverRunResult result = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
+            .RunGenerators(compilation, cancellationToken).GetRunResult();
+
+        if (isSupported) {
+            result.Diagnostics.ShouldNotContain(diagnostic => diagnostic.Id == "HFC1056");
+            result.GeneratedTrees.ShouldContain(tree => tree.GetText(cancellationToken).ToString().Contains("\"" + policyName + "\"", StringComparison.Ordinal));
+        }
+        else {
+            Diagnostic failure = result.Diagnostics.Single(diagnostic => diagnostic.Id == "HFC1056");
+            failure.Severity.ShouldBe(DiagnosticSeverity.Error);
+            string message = failure.GetMessage(System.Globalization.CultureInfo.InvariantCulture);
+            message.ShouldContain(expectedMessage);
+            message.ShouldContain("Fix: normalize the attribute value and the matching host policy registration.");
+            failure.Location.GetLineSpan().StartLinePosition.Line
+                .ShouldBe(source.Split('\n').ToList().FindIndex(line => line.Contains("[RequiresPolicy(", StringComparison.Ordinal)));
+            result.GeneratedTrees.ShouldNotContain(tree => tree.GetText(cancellationToken).ToString().Contains("ApproveCommand", StringComparison.Ordinal));
+        }
+    }
+
     [Fact]
     public void Parse_RequiresPolicyAttribute_CapturesPolicyName() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyProtectedCommand, "TestDomain.ApproveOrderCommand");

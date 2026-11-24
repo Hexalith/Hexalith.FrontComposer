@@ -31,6 +31,22 @@ public sealed class RequiresPolicyAttributeTests {
         // generator-driven consumers agree on acceptable policy names.
         Should.Throw<ArgumentException>(() => new RequiresPolicyAttribute(value));
 
+    /// <summary>DW-877 — letter-only names outside Normalization Form C would never match their composed registration.</summary>
+    /// <param name="value">The decomposed policy name.</param>
+    [Theory]
+    [InlineData("\u212Aelvin.Approve")]
+    [InlineData(" \u1112\u1161\u11AB.Approve ")]
+    public void ConstructorRejectsAPolicyNameOutsideNormalizationFormC(string value) =>
+        Should.Throw<ArgumentException>(() => new RequiresPolicyAttribute(value)).Message.ShouldContain("Normalization Form C");
+
+    /// <summary>DW-877 — composed non-ASCII letters remain valid policy name characters.</summary>
+    /// <param name="value">The composed policy name.</param>
+    [Theory]
+    [InlineData("Caf\u00E9.Approve")]
+    [InlineData("\uD55C.Approve")]
+    public void ConstructorAcceptsAComposedNonAsciiPolicyName(string value) =>
+        new RequiresPolicyAttribute(value).PolicyName.ShouldBe(value);
+
     [Fact]
     public void AttributeUsage_AllowsCommandClassOnly() {
         AttributeUsageAttribute usage = typeof(RequiresPolicyAttribute)
