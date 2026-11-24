@@ -343,10 +343,45 @@ async function main() {
       };
     });
 
-    pushBlocked(
-      'S5 Compact inline last-used prefill',
-      'skipped: LastUsed read/write is covered by Shell unit tests; reload + Fluent field hydration is flaky under headless automation',
-    );
+    await runScenario('S5 Inline popover last-used prefill', async page => {
+      const counterUrl = `${baseUrl}/counter`;
+      const inline = page.locator('fluent-accordion-item.inline-section');
+      const trigger = inline.getByRole('button', { name: 'Increment', exact: true })
+        .and(inline.locator('fluent-button[id^="fc-trigger-"]'));
+      const popover = inline.locator('.fc-popover');
+      const amountSelector = 'fluent-text-input[name="Amount"] input';
+      const amount = popover.locator(amountSelector);
+      const key = 'frontcomposer:lastused:counter-demo:demo-user:Counter.Domain.IncrementCommand:Amount';
+
+      await gotoInteractivePage(page, counterUrl, 'Counter sample');
+      await trigger.click();
+      if (await amount.inputValue() !== '1') {
+        throw new Error('The Increment popover did not initialize the default amount.');
+      }
+      await amount.fill('7');
+      await amount.blur();
+      await popover.getByRole('button', { name: 'Increment', exact: true }).click();
+      await popover.waitFor({ state: 'hidden' });
+      await page.waitForFunction(storageKey => localStorage.getItem(storageKey) === '7', key);
+
+      await page.goto(baseUrl);
+      await gotoInteractivePage(page, counterUrl, 'Counter sample');
+      await trigger.click();
+      await amount.waitFor({ state: 'visible' });
+      if (await amount.inputValue() !== '7') {
+        throw new Error('The Increment popover did not restore the last confirmed amount.');
+      }
+
+      await page.evaluate(storageKey => localStorage.setItem(storageKey, '"invalid"'), key);
+      await page.goto(baseUrl);
+      await gotoInteractivePage(page, counterUrl, 'Counter sample');
+      await trigger.click();
+      if (await amount.inputValue() !== '1') {
+        throw new Error('The Increment popover did not fall back from an unusable stored amount.');
+      }
+
+      return { domSelectors: ['.fc-popover', amountSelector] };
+    });
 
     await runScenario('S6 FullPage route', async page => {
       await gotoInteractivePage(

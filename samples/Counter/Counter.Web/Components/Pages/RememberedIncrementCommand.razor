@@ -1,0 +1,54 @@
+@using System.Text.Json
+@using Counter.Domain
+@using Hexalith.FrontComposer.Shell.Services.DerivedValues
+@using Microsoft.JSInterop
+
+@inject IServiceProvider Services
+
+@if (_initialValue is not null)
+{
+    <IncrementCommandRenderer InitialValue="_initialValue" />
+}
+
+@code {
+    private IncrementCommand? _initialValue;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var command = new IncrementCommand();
+        if (Services.GetService(typeof(LastUsedValueProvider)) is LastUsedValueProvider lastUsed)
+        {
+            using var readTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            try
+            {
+                // Browser storage becomes available after the interactive render.
+                // The provider uses the same scope and key as the confirmed write.
+                var result = await lastUsed.ResolveAsync(typeof(IncrementCommand), nameof(IncrementCommand.Amount),
+                    projectionContext: null, ct: readTimeout.Token);
+                switch (result.Value)
+                {
+                    case int savedAmount when result.HasValue:
+                        command.Amount = savedAmount;
+                        break;
+                    case JsonElement { ValueKind: JsonValueKind.Number } json
+                        when result.HasValue && json.TryGetInt32(out var parsedAmount):
+                        command.Amount = parsedAmount;
+                        break;
+                }
+            }
+            catch (Exception exception) when (exception is JSException or JSDisconnectedException
+                || (exception is OperationCanceledException && readTimeout.IsCancellationRequested))
+            {
+                // Use the constructor default when browser storage is unavailable.
+            }
+        }
+
+        _initialValue = command;
+        StateHasChanged();
+    }
+}
