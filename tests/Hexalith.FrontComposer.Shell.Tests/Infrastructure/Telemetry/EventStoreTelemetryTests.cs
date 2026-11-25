@@ -337,6 +337,33 @@ public sealed class EventStoreTelemetryTests {
         activity.GetTagItem(FrontComposerTelemetry.CorrelationIdTag).ShouldBe(correlationId);
     }
 
+    [Fact]
+    public async Task MalformedAcceptedResponseUsesTheSameCommandTypeInTheLogAndSpan() {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted) {
+            Content = new StringContent("{invalid", Encoding.UTF8, "application/json"),
+        });
+        CapturingLogger<EventStoreCommandClient> logger = new();
+        EventStoreCommandClient client = new(
+            new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("tenant-secret", "user-secret"), EventStoreTestSupport.CreateClassifier(),
+            logger, Microsoft.Extensions.Options.Options.Create(new FcShellOptions { CommandDispatchRetryAttempts = 0 }));
+        using var parent = new Activity(nameof(MalformedAcceptedResponseUsesTheSameCommandTypeInTheLogAndSpan)).SetIdFormat(ActivityIdFormat.W3C).Start();
+        using var capture = ActivityCapture.Start();
+
+        CommandResult result = await client.DispatchAsync(new GenericCommand<string>(), TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        result.CorrelationId.ShouldBeNull();
+        string rawType = typeof(GenericCommand<string>).FullName!;
+        rawType.ShouldContain("[");
+        Activity activity = capture.Single(FrontComposerTelemetry.CommandDispatchOperation, span => span.TraceId == parent.TraceId);
+        var sanitizedType = activity.GetTagItem(FrontComposerTelemetry.CommandTypeTag).ShouldBeOfType<string>();
+        sanitizedType.ShouldNotBe(rawType);
+        sanitizedType.ShouldNotContain("[");
+        CapturedLogEntry warning = logger.Entries.Where(entry => entry.EventId.Id == 5602).ShouldHaveSingleItem();
+        warning.State["CommandType"].ShouldBe(sanitizedType);
+    }
+
     private static IOptions<EventStoreOptions> Options()
         => Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
             BaseAddress = new Uri("https://eventstore.test"),
@@ -345,6 +372,12 @@ public sealed class EventStoreTelemetryTests {
 
     [BoundedContext("Orders")]
     private sealed class ShipOrderCommand {
+        public string TenantId { get; set; } = "tenant-secret";
+        public string AggregateId { get; set; } = "order-1";
+    }
+
+    [BoundedContext("Orders")]
+    private sealed class GenericCommand<T> {
         public string TenantId { get; set; } = "tenant-secret";
         public string AggregateId { get; set; } = "order-1";
     }

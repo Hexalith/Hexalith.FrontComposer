@@ -186,7 +186,8 @@ internal static class FrontComposerTelemetry {
     public static string? SafeIdentifier(string? value)
         => SanitizeBounded(value, IdentifierLimit, truncationMarker: IdentifierTruncationMarker);
 
-    private static string? SafeTypeName(string? value)
+    /// <summary>Gets the bounded type name shared by activity tags and structured logs.</summary>
+    public static string? SafeTypeName(string? value)
         => SanitizeBounded(value, 256, allowPlus: true);
 
     private static string? SanitizeBounded(string? value, int maxLength, bool allowPlus = false, char? truncationMarker = null) {

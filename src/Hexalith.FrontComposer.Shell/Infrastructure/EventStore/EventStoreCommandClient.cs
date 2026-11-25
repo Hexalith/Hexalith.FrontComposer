@@ -493,7 +493,7 @@ public sealed class EventStoreCommandClient(
             FrontComposerLog.CommandCorrelationBodyParseFailed(
                 logger,
                 response.Content.Headers.ContentType?.MediaType,
-                commandType,
+                FrontComposerTelemetry.SafeTypeName(commandType) ?? "absent",
                 FrontComposerTelemetry.SafeIdentifierOrAbsent(messageId));
             throw;
         }
