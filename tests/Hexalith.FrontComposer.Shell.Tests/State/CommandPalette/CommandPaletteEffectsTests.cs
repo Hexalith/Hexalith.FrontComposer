@@ -165,7 +165,7 @@ public class CommandPaletteEffectsTests {
     [InlineData("fr", "help", true)]
     [InlineData("en-US", "aide", false)]
     [InlineData("fr", "centre d’aide", false)]
-    public async Task ShortcutAliases_RespectTheFrenchUICulture(string culture, string query, bool isAlias) {
+    public async Task ShortcutAliasesRespectTheFrenchUICulture(string culture, string query, bool isAlias) {
         CultureInfo previous = CultureInfo.CurrentUICulture;
         try {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);

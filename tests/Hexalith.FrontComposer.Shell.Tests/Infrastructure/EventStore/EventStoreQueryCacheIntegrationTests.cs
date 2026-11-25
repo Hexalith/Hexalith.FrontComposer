@@ -68,11 +68,11 @@ public class EventStoreQueryCacheIntegrationTests : IDisposable {
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task QueryAsync_DetachedCacheWriteFails_RecordsSafeChildActivity(bool defaultCache) {
+    public async Task QueryAsyncRecordsSafeChildActivityWhenDetachedCacheWriteFails(bool defaultCache) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         TaskCompletionSource pendingWrite = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<Activity> stoppedWrite = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        using Activity trace = new Activity(nameof(QueryAsync_DetachedCacheWriteFails_RecordsSafeChildActivity))
+        using Activity trace = new Activity(nameof(QueryAsyncRecordsSafeChildActivityWhenDetachedCacheWriteFails))
             .SetIdFormat(ActivityIdFormat.W3C)
             .Start();
         ActivityTraceId traceId = trace.TraceId;

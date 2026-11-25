@@ -9,7 +9,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 public sealed class EventStoreIdentityTests
 {
     [Fact]
-    public void GetAggregateId_UsesFreshValuesWithEstablishedPropertyPrecedence()
+    public void GetAggregateIdUsesFreshValuesWithEstablishedPropertyPrecedence()
     {
         EventStoreIdentity.GetAggregateId(new { AggregateId = "first", Id = "", Name = "unused" }).ShouldBe("first");
         EventStoreIdentity.GetAggregateId(new { AggregateId = " ", Id = "second", Name = "unused" }).ShouldBe("second");
@@ -18,7 +18,7 @@ public sealed class EventStoreIdentityTests
     }
 
     [Fact]
-    public void GetAggregateId_ConvertsWithInvariantCulture()
+    public void GetAggregateIdConvertsWithInvariantCulture()
     {
         CultureInfo previous = CultureInfo.CurrentCulture;
         try {
@@ -31,7 +31,7 @@ public sealed class EventStoreIdentityTests
     }
 
     [Fact]
-    public void GetAggregateId_RejectsTheFirstNonemptyInvalidProperty()
+    public void GetAggregateIdRejectsTheFirstNonemptyInvalidProperty()
     {
         Should.Throw<ArgumentException>(() =>
             EventStoreIdentity.GetAggregateId(new { AggregateId = "invalid:segment", Id = "valid" }))

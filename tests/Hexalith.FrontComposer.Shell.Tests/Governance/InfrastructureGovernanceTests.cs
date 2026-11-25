@@ -265,7 +265,7 @@ public sealed class InfrastructureGovernanceTests {
     }
 
     [Fact]
-    public void SourceScan_ExcludesExactBuildDirectoriesAtAnyDepth() {
+    public void SourceScanExcludesExactBuildDirectoriesAtAnyDepth() {
         using var temp = TempRepo.Create();
         _ = temp.Write("bin/Generated.cs", "using Npgsql;");
         _ = temp.Write("obj/Generated.cs", "using Npgsql;");
@@ -281,7 +281,7 @@ public sealed class InfrastructureGovernanceTests {
     }
 
     [Fact]
-    public void SourceScan_RejectsSiblingThatSharesTheRepositoryNamePrefix() {
+    public void SourceScanRejectsSiblingThatSharesTheRepositoryNamePrefix() {
         using var temp = TempRepo.Create();
         _ = temp.Write("repo/Source.cs", "namespace Inside;");
         _ = temp.Write("repo-other/Source.cs", "using Npgsql;");

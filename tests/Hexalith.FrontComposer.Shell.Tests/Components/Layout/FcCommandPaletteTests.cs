@@ -94,7 +94,7 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
     [Theory]
     [InlineData("en", "Close the palette to use this shortcut.")]
     [InlineData("fr", "Fermez la palette pour utiliser ce raccourci.")]
-    public async Task EnterOnInformationalShortcut_AnnouncesWithoutNavigatingOrClosing(string culture, string expected)
+    public async Task EnterOnInformationalShortcutAnnouncesWithoutNavigatingOrClosing(string culture, string expected)
     {
         System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(culture);
         EnsureStoreInitialized();
