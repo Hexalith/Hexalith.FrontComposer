@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
@@ -25,18 +26,13 @@ public sealed class ProjectionConnectionTelemetryTests {
             ReconnectAttempt: 2));
         sut.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
 
-        logger.Messages.Count(message => message.Contains("projection connection state changed", StringComparison.OrdinalIgnoreCase))
-            .ShouldBe(2);
-        // Behavioural assertion: the second visible log MUST be the Connected resolution and
-        // MUST carry the count of suppressed Reconnecting events from the prior window.
-        string connectedLog = logger.Messages.Last(m => m.Contains("Status=Connected", StringComparison.Ordinal));
-        connectedLog.ShouldContain("SuppressedCount=1");
+        logger.Entries.Count.ShouldBe(2);
+        AssertTransition(logger.Entries[0], "Reconnecting", 1, "TimeoutException", 0);
+        AssertTransition(logger.Entries[1], "Connected", 0, "none", 1);
     }
 
     [Fact]
     public void ReconnectingLogs_AfterWindowExpiry_EmitFreshBucketAndCarryPriorSuppression() {
-        // F38 — advance FakeTimeProvider past the 30-second window so the next Reconnecting
-        // arrives in a fresh bucket and emits a visible log carrying the prior window's count.
         FakeTimeProvider time = new(new DateTimeOffset(2026, 04, 26, 12, 0, 0, TimeSpan.Zero));
         CapturingLogger<ProjectionConnectionStateService> logger = new();
         ProjectionConnectionStateService sut = new(time, logger);
@@ -45,24 +41,20 @@ public sealed class ProjectionConnectionTelemetryTests {
             ProjectionConnectionStatus.Reconnecting,
             FailureCategory: "TimeoutException",
             ReconnectAttempt: 1));
+        time.Advance(TimeSpan.FromSeconds(20));
         sut.Apply(new ProjectionConnectionTransition(
             ProjectionConnectionStatus.Reconnecting,
             FailureCategory: "TimeoutException",
             ReconnectAttempt: 2));
-
-        time.Advance(TimeSpan.FromSeconds(31));
-
+        time.Advance(TimeSpan.FromSeconds(10));
         sut.Apply(new ProjectionConnectionTransition(
             ProjectionConnectionStatus.Reconnecting,
             FailureCategory: "TimeoutException",
             ReconnectAttempt: 3));
 
-        // Two visible Reconnecting logs total: the first when the bucket opened, and the third
-        // when the window expired and a new bucket opened. The third visible log MUST carry
-        // the prior bucket's SuppressedCount=1 (the second Reconnecting was rate-limited).
-        List<string> reconnectingLogs = [.. logger.Messages.Where(m => m.Contains("Status=Reconnecting", StringComparison.Ordinal))];
-        reconnectingLogs.Count.ShouldBe(2);
-        reconnectingLogs[1].ShouldContain("SuppressedCount=1");
+        logger.Entries.Count.ShouldBe(2);
+        AssertTransition(logger.Entries[0], "Reconnecting", 1, "TimeoutException", 0);
+        AssertTransition(logger.Entries[1], "Reconnecting", 3, "TimeoutException", 1);
     }
 
     [Fact]
@@ -88,24 +80,18 @@ public sealed class ProjectionConnectionTelemetryTests {
 
         await sut.DisposeAsync();
 
-        string finalLog = logger.Messages.Last();
-        // Two suppressed transitions accumulated (attempt 2 and 3); flush emits SuppressedCount=2.
-        finalLog.ShouldContain("SuppressedCount=2");
+        logger.Entries.Count.ShouldBe(2);
+        AssertTransition(logger.Entries[0], "Reconnecting", 1, "TimeoutException", 0);
+        AssertTransition(logger.Entries[1], "Reconnecting", 3, "TimeoutException", 2);
     }
 
-    private sealed class CapturingLogger<T> : ILogger<T> {
-        public List<string> Messages { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel,
-            EventId eventId,
-            TState state,
-            Exception? exception,
-            Func<TState, Exception?, string> formatter)
-            => Messages.Add(formatter(state, exception));
+    private static void AssertTransition(CapturedLogEntry entry, string status, int attempt, string failureCategory, int suppressedCount) {
+        entry.EventId.Id.ShouldBe(5620);
+        entry.EventId.Name.ShouldBe("ProjectionConnectionChanged");
+        entry.Level.ShouldBe(LogLevel.Information);
+        entry.State["Status"].ShouldBeOfType<string>().ShouldBe(status);
+        entry.State["Attempt"].ShouldBeOfType<int>().ShouldBe(attempt);
+        entry.State["FailureCategory"].ShouldBeOfType<string>().ShouldBe(failureCategory);
+        entry.State["SuppressedCount"].ShouldBeOfType<int>().ShouldBe(suppressedCount);
     }
 }
