@@ -51,6 +51,17 @@ public sealed class CustomizationContractVersionTests {
     }
 
     [Fact]
+    public void ToStringPrintsComponentsEvenWhenPackingFails()
+    {
+        new CustomizationContractVersion(1, 0, 0).ToString()
+            .ShouldBe("CustomizationContractVersion { Major = 1, Minor = 0, Build = 0, Packed = 1000000 }");
+        new CustomizationContractVersion(1, 1000, 0).ToString()
+            .ShouldBe("CustomizationContractVersion { Major = 1, Minor = 1000, Build = 0 }");
+        new CustomizationContractVersion(2148, 0, 0).ToString()
+            .ShouldBe("CustomizationContractVersion { Major = 2148, Minor = 0, Build = 0 }");
+    }
+
+    [Fact]
     public void Compare_ExactMatch_SelectsOverride() {
         CustomizationContractVersionComparison comparison =
             CustomizationContractVersion.Compare(expectedPacked: 1_000_000, actualPacked: 1_000_000);

@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Hexalith.FrontComposer.Contracts.Rendering;
 
 /// <summary>
@@ -35,6 +37,31 @@ public readonly record struct CustomizationContractVersion(int Major, int Minor,
         }
 
         return checked((major * MajorFactor) + (minor * MinorFactor) + build);
+    }
+
+    private bool PrintMembers(StringBuilder builder)
+    {
+        _ = builder.Append("Major = ").Append(Major)
+            .Append(", Minor = ").Append(Minor)
+            .Append(", Build = ").Append(Build);
+
+        // Keep the record printable when the components cannot produce a packed version.
+        int packed;
+        try
+        {
+            packed = Packed;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return true;
+        }
+        catch (OverflowException)
+        {
+            return true;
+        }
+
+        _ = builder.Append(", Packed = ").Append(packed);
+        return true;
     }
 
     /// <summary>Unpacks a packed customization contract version.</summary>
