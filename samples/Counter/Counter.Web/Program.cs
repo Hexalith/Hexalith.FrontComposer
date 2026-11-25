@@ -135,7 +135,15 @@ else {
     // fallback-to-generated evidence lives in the SourceTools test fixtures and in the
     // `CounterProjectionView_LoadedState_RendersColumnsAndFormatting` Shell test which renders
     // the same view without `AddViewOverride`.
-    _ = builder.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
+    if ((builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Test"))
+        && builder.Configuration.GetValue<bool>("Hexalith:FrontComposer:E2E:SeedOverrideRenderFault"))
+    {
+        _ = builder.Services.AddViewOverride<CounterProjection, ThrowingCounterReplacement>();
+    }
+    else
+    {
+        _ = builder.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
+    }
 }
 
 // Story 2-4 Task 6.2 — bind FcShellOptions from configuration so adopters can tune

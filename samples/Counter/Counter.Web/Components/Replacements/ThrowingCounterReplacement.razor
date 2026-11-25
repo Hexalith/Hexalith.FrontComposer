@@ -1,0 +1,10 @@
+@using Counter.Domain
+@using Hexalith.FrontComposer.Contracts.Rendering
+
+@code {
+    [Parameter, EditorRequired]
+    public ProjectionViewContext<CounterProjection> Context { get; set; } = default!;
+
+    protected override void OnParametersSet()
+        => throw new InvalidOperationException("Intentional Counter override fixture fault.");
+}
