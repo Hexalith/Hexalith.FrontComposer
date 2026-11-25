@@ -215,7 +215,7 @@ public class RoleSpecificProjectionApprovalTests {
         return Verify(snapshot.ToString());
     }
 
-    private static (string generatedSource, IReadOnlyList<Diagnostic> diagnostics) RunGenerator(
+    internal static (string generatedSource, IReadOnlyList<Diagnostic> diagnostics) RunGenerator(
         string source,
         string generatedFileName,
         CancellationToken cancellationToken) {
