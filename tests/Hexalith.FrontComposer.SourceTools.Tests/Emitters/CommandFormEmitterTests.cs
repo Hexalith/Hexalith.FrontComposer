@@ -429,7 +429,7 @@ public class CommandFormEmitterTests {
         source.ShouldContain("CommandAuthorizationSurface.GeneratedForm");
         source.ShouldContain("UnauthorizedCommandWarningTitle");
         source.ShouldContain("UnauthorizedCommandWarningMessage");
-        source.ShouldContain("protected override async Task OnInitializedAsync()");
+        source.ShouldContain("protected override Task OnParametersSetAsync()");
         source.ShouldContain("RefreshPresentationAuthorizationAsync");
         source.ShouldContain("|| !_authorizationPresentationReady");
         source.ShouldContain("|| !_authorizationPresentationAllowed");

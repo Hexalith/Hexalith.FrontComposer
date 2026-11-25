@@ -760,6 +760,54 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     }
 
     [Fact]
+    public async Task ProtectedFormRechecksAuthorizationWhenParametersAreRestoredAsync() {
+        MutableAuthorizationEvaluator evaluator = new(CommandAuthorizationDecision.Allowed("initial"));
+        Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(new TestAuthenticationStateProvider()));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(p => p
+            .Add(c => c.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "editable", Amount = 7 }));
+        cut.WaitForAssertion(() => cut.Find("[id$='-submit']").HasAttribute("disabled").ShouldBeFalse());
+        evaluator.Requests.Count.ShouldBe(1);
+
+        evaluator.Decision = CommandAuthorizationDecision.Denied("restored-navigation");
+        cut.Render();
+        evaluator.Requests.Count.ShouldBe(1);
+
+        await cut.InvokeAsync(() => Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>()
+            .NavigateTo("/restored-command"));
+        cut.Render();
+        cut.WaitForAssertion(() => cut.Find("[data-fc-authorization-denied='true']").ShouldNotBeNull());
+        evaluator.Requests.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task ProtectedFormKeepsServerWarningAfterAnAllowedNavigationRecheckAsync() {
+        FixedAuthorizationEvaluator evaluator = new(CommandAuthorizationDecision.Allowed("local-allowed"));
+        RegisterAuthorization(evaluator);
+        ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
+        _ = service.DispatchAsync(Arg.Any<ProtectedTwoFieldCompactCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<CommandResult>(new CommandWarningException(CommandWarningKind.RateLimited,
+                ProblemDetailsPayload.Empty with { Title = "Server asked to retry" }, TimeSpan.FromSeconds(17))));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(p => p
+            .Add(c => c.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "editable", Amount = 7 }));
+        cut.Find("form").Submit();
+        cut.WaitForAssertion(() => cut.FindComponent<FluentMessageBar>().Instance.Title.ShouldBe("Server asked to retry"));
+        int beforeNavigation = evaluator.Requests.Count;
+
+        await cut.InvokeAsync(() => Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>()
+            .NavigateTo("/restored-command"));
+        cut.Render();
+
+        cut.WaitForAssertion(() => evaluator.Requests.Count.ShouldBe(beforeNavigation + 1));
+        cut.FindComponent<FluentMessageBar>().Instance.Title.ShouldBe("Server asked to retry");
+    }
+
+    [Fact]
     public async Task ProtectedGeneratedForm_AllowedAuthorization_DispatchesAfterSubmitChecks() {
         var evaluator = new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Allowed("corr-allowed"));
         RecordingCommandService service = new();

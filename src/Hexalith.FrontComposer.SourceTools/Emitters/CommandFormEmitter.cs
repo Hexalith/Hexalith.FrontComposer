@@ -146,6 +146,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.Services.Authorization.ICommandAuthorizationEvaluator CommandAuthorizationEvaluator { get; set; } = default!;");
             _ = sb.AppendLine("    [Inject] private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> CommandAuthorizationLocalizer { get; set; } = default!;");
             _ = sb.AppendLine("    [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;");
+            _ = sb.AppendLine("    [Inject] private global::Microsoft.AspNetCore.Components.NavigationManager AuthorizationNavigation { get; set; } = default!;");
         }
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private " + commandFqn + " _model = new();");
@@ -179,6 +180,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    private bool _authorizationFocusPending;");
         if (hasAuthorizationPolicy) {
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.ScopeBoundaryService? _authorizationScopeBoundary;");
+            _ = sb.AppendLine("    private string? _authorizationNavigationUri;");
+            _ = sb.AppendLine("    private " + commandFqn + "? _authorizationInitialValue;");
+            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning? _presentationAuthorizationWarning;");
             _ = sb.AppendLine("    private bool _authorizationPresentationReady;");
             _ = sb.AppendLine("    private bool _authorizationPresentationAllowed;");
             _ = sb.AppendLine("    private bool _authorizationReplacementFocusPending;");
@@ -214,18 +218,24 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        LifecycleState.StateChanged += OnStateChanged;");
         _ = sb.AppendLine("        // Story 2-5 Task 5.3 — surface the EditContext to the renderer so it can wire D24 validation + abandonment guard.");
         _ = sb.AppendLine("        if (OnEditContextReady.HasDelegate) { _ = OnEditContextReady.InvokeAsync(_editContext); }");
-        _ = sb.AppendLine("    }");
-        _ = sb.AppendLine();
         if (hasAuthorizationPolicy) {
-            _ = sb.AppendLine("    /// <inheritdoc />");
-            _ = sb.AppendLine("    protected override async Task OnInitializedAsync()");
-            _ = sb.AppendLine("    {");
-            _ = sb.AppendLine("        // Initialize the cancellation source synchronously so the auth probe and disposal can race cleanly.");
             _ = sb.AppendLine("        _cts ??= new CancellationTokenSource();");
             _ = sb.AppendLine("        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;");
             _ = sb.AppendLine("        _authorizationScopeBoundary = ScopeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.Services.ScopeBoundaryService)) as global::Hexalith.FrontComposer.Shell.Services.ScopeBoundaryService;");
             _ = sb.AppendLine("        if (_authorizationScopeBoundary is not null) _authorizationScopeBoundary.Changed += OnAuthorizationScopeChanged;");
-            _ = sb.AppendLine("        await RefreshPresentationAuthorizationAsync().ConfigureAwait(true);");
+        }
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        if (hasAuthorizationPolicy) {
+            _ = sb.AppendLine("    /// <inheritdoc />");
+            _ = sb.AppendLine("    protected override Task OnParametersSetAsync()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        string uri = AuthorizationNavigation.Uri;");
+            _ = sb.AppendLine("        if (string.Equals(uri, _authorizationNavigationUri, StringComparison.Ordinal)");
+            _ = sb.AppendLine("            && ReferenceEquals(InitialValue, _authorizationInitialValue)) return Task.CompletedTask;");
+            _ = sb.AppendLine("        _authorizationNavigationUri = uri;");
+            _ = sb.AppendLine("        _authorizationInitialValue = InitialValue;");
+            _ = sb.AppendLine("        return RefreshPresentationAuthorizationAsync();");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private void OnAuthenticationStateChanged(Task<AuthenticationState> authStateTask) => QueueAuthorizationRefresh();");
@@ -302,9 +312,10 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            // Pass 3 — surface a localized 'Checking permission...' hint so users see why the button is disabled.");
             _ = sb.AppendLine("            SetAuthorizationCheckingHint();");
             _ = sb.AppendLine("        }");
-            _ = sb.AppendLine("        else");
+            _ = sb.AppendLine("        else if (ReferenceEquals(_serverWarning, _presentationAuthorizationWarning))");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            _serverWarning = null;");
+            _ = sb.AppendLine("            _presentationAuthorizationWarning = null;");
             _ = sb.AppendLine("            _authorizationDenied = false;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
@@ -397,7 +408,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        string warningBody = infrastructureFailure");
             _ = sb.AppendLine("            ? ResolveAuthorizationLocalized(bodyKey, fallbackBody)");
             _ = sb.AppendLine("            : ResolveAuthorizationLocalized(bodyKey, fallbackBody, \"" + EscapeString(form.ButtonLabel) + "\");");
-            _ = sb.AppendLine("        _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(");
+            _ = sb.AppendLine("        _serverWarning = _presentationAuthorizationWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(");
             _ = sb.AppendLine("            global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Forbidden,");
             _ = sb.AppendLine("            warningTitle,");
             _ = sb.AppendLine("            warningBody,");
@@ -418,7 +429,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        // Pass 3 DN-7-3-3-5 — surface a localized 'Checking permission...' hint while the evaluator is mid-flight or returns Pending.");
             _ = sb.AppendLine("        string hintTitle = ResolveAuthorizationLocalized(\"AuthorizationCheckingPermissionTitle\", \"Checking permission...\");");
             _ = sb.AppendLine("        string hintBody = ResolveAuthorizationLocalized(\"AuthorizationCheckingPermissionMessage\", \"Verifying you can {0}. This usually takes a moment.\", \"" + EscapeString(form.ButtonLabel) + "\");");
-            _ = sb.AppendLine("        _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(");
+            _ = sb.AppendLine("        _serverWarning = _presentationAuthorizationWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(");
             _ = sb.AppendLine("            global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Pending,");
             _ = sb.AppendLine("            hintTitle,");
             _ = sb.AppendLine("            hintBody,");
