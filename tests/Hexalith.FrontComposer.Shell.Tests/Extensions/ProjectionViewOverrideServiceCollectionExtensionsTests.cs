@@ -112,6 +112,32 @@ public sealed class ProjectionViewOverrideServiceCollectionExtensionsTests {
     }
 
     [Fact]
+    public void RegistryExposesRejectedDescriptorsWithoutSelectingThem()
+    {
+        ServiceCollection services = NewServices();
+        _ = services.AddViewOverride<ViewProjection, ValidReplacement>();
+        ProjectionViewOverrideDescriptor invalidVersion = Descriptor(typeof(ValidReplacement), contractVersion: 0);
+        ProjectionViewOverrideDescriptor wrongMajor = Descriptor(typeof(ValidReplacement),
+            contractVersion: ProjectionViewOverrideContractVersion.Current + 1_000_000);
+        ProjectionViewOverrideDescriptor missingContext = Descriptor(typeof(MissingContextReplacement));
+        _ = services.AddSingleton(new ProjectionViewOverrideDescriptorSource([invalidVersion, wrongMajor, missingContext]));
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IProjectionViewOverrideRegistry registry = provider.GetRequiredService<IProjectionViewOverrideRegistry>();
+        IProjectionViewOverrideDiagnostics diagnostics = registry.ShouldBeAssignableTo<IProjectionViewOverrideDiagnostics>();
+
+        registry.Descriptors.ShouldHaveSingleItem().ComponentType.ShouldBe(typeof(ValidReplacement));
+        registry.Resolve(typeof(ViewProjection), null)!.ComponentType.ShouldBe(typeof(ValidReplacement));
+        diagnostics.RejectedDescriptors.ShouldBe([
+            new ProjectionViewOverrideRejection(invalidVersion, "HFC1045", "Contract version must be positive."),
+            new ProjectionViewOverrideRejection(wrongMajor, "HFC1045", "The declared and installed major contract versions differ."),
+            new ProjectionViewOverrideRejection(missingContext, "HFC1043", "Missing public Context property."),
+        ]);
+        var rejected = diagnostics.RejectedDescriptors.ShouldBeAssignableTo<IList<ProjectionViewOverrideRejection>>();
+        Should.Throw<NotSupportedException>(() => rejected.Clear());
+    }
+
+    [Fact]
     public void DescriptorSource_DefensiveCopiesInputList() {
         ProjectionViewOverrideDescriptor original = Descriptor(typeof(ValidReplacement));
         ProjectionViewOverrideDescriptor replacement = Descriptor(typeof(AnyRoleReplacement), ProjectionRole.DetailRecord);

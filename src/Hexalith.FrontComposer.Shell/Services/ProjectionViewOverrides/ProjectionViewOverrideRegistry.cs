@@ -20,7 +20,7 @@ namespace Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
 /// Runtime Level 4 view override registry. Stores descriptor metadata only and resolves by
 /// projection type and optional role.
 /// </summary>
-public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegistry {
+public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideDiagnostics {
     private readonly ConcurrentDictionary<RegistryKey, RegistryEntry> _entries = new();
     private readonly ILogger<ProjectionViewOverrideRegistry> _logger;
     private readonly ICustomizationContractRejectionLog? _rejectionLog;
@@ -38,6 +38,7 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
         _rejectionLog = rejectionLog;
 
         List<DuplicateReport> duplicates = [];
+        List<ProjectionViewOverrideRejection> rejections = [];
         int sourceIndex = -1;
         foreach (ProjectionViewOverrideDescriptorSource source in sources) {
             sourceIndex++;
@@ -49,7 +50,7 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
             }
 
             foreach (ProjectionViewOverrideDescriptor descriptor in source.Descriptors) {
-                Register(descriptor, duplicates);
+                Register(descriptor, duplicates, rejections);
             }
         }
 
@@ -81,10 +82,14 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
             a.ProjectionType.FullName + "|" + a.Role?.ToString() + "|" + a.ComponentType.FullName,
             b.ProjectionType.FullName + "|" + b.Role?.ToString() + "|" + b.ComponentType.FullName));
         Descriptors = new ReadOnlyCollection<ProjectionViewOverrideDescriptor>(visible);
+        RejectedDescriptors = rejections.AsReadOnly();
     }
 
     /// <inheritdoc />
     public IReadOnlyCollection<ProjectionViewOverrideDescriptor> Descriptors { get; }
+
+    /// <inheritdoc />
+    public IReadOnlyList<ProjectionViewOverrideRejection> RejectedDescriptors { get; }
 
     /// <inheritdoc />
     public ProjectionViewOverrideDescriptor? Resolve(Type projectionType, ProjectionRole? role) {
@@ -106,12 +111,17 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
         return null;
     }
 
-    private void Register(ProjectionViewOverrideDescriptor descriptor, List<DuplicateReport> duplicates) {
+    private void Register(
+        ProjectionViewOverrideDescriptor descriptor,
+        List<DuplicateReport> duplicates,
+        List<ProjectionViewOverrideRejection> rejections) {
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(descriptor.ProjectionType);
         ArgumentNullException.ThrowIfNull(descriptor.ComponentType);
 
         if (descriptor.ContractVersion <= 0) {
+            rejections.Add(new(descriptor, FcDiagnosticIds.HFC1045_ProjectionViewOverrideContractVersionMismatch,
+                "Contract version must be positive."));
             // P10 — include RegistrationSource so adopters can find the originating call site.
             FrontComposerWarningLog.ProjectionViewOverrideInvalidContractVersion(
                 _logger,
@@ -126,6 +136,8 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
         CustomizationContractVersionComparison comparison =
             CustomizationContractVersion.Compare(descriptor.ContractVersion, ProjectionViewOverrideContractVersion.Current);
         if (!comparison.CanSelect) {
+            rejections.Add(new(descriptor, FcDiagnosticIds.HFC1045_ProjectionViewOverrideContractVersionMismatch,
+                "The declared and installed major contract versions differ."));
             // P13 — branch the message on Decision (currently MajorMismatch is the only
             // !CanSelect outcome) so the log identifies the comparison outcome explicitly.
             FrontComposerWarningLog.ProjectionViewOverrideIncompatibleContractVersion(
@@ -184,6 +196,7 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
         }
 
         if (!IsCompatibleComponent(descriptor, out string? reason)) {
+            rejections.Add(new(descriptor, FcDiagnosticIds.HFC1043_ProjectionViewOverrideComponentInvalid, reason));
             FrontComposerWarningLog.ProjectionViewOverrideInvalidComponent(
                 _logger,
                 FcDiagnosticIds.HFC1043_ProjectionViewOverrideComponentInvalid,
@@ -256,7 +269,7 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
         "Trimming",
         "IL2075:DynamicallyAccessedMembers",
         Justification = "View override component types are explicitly registered at startup; ProjectionViewOverrideDescriptor.ComponentType carries all member metadata through validation.")]
-    private static bool IsCompatibleComponent(ProjectionViewOverrideDescriptor descriptor, out string? reason) {
+    private static bool IsCompatibleComponent(ProjectionViewOverrideDescriptor descriptor, [NotNullWhen(false)] out string? reason) {
         Type componentType = descriptor.ComponentType;
 
         if (componentType.ContainsGenericParameters) {
