@@ -25,6 +25,32 @@ public sealed class TenantContextValidationMatrixTests {
     }
 
     [Fact]
+    public void TryGetContext_AcceptsSegmentsAtTheirLengthLimits() {
+        string tenant = new('t', 64);
+        string user = new('u', 1024);
+
+        TenantContextSnapshot snapshot = NewAccessor(tenant, user).TryGetContext(tenant).EnsureSuccess();
+
+        snapshot.TenantId.ShouldBe(tenant);
+        snapshot.UserId.ShouldBe(user);
+    }
+
+    [Theory]
+    [InlineData(65, 8, 8, 't')]
+    [InlineData(8, 1025, 8, 't')]
+    [InlineData(8, 8, 65, 't')]
+    [InlineData(8, 8, 65, ' ')]
+    public void TryGetContext_RejectsAnyOversizedSegment(
+        int tenantLength, int userLength, int requestedLength, char requestedCharacter) {
+        FrontComposerTenantContextAccessor sut = NewAccessor(new string('t', tenantLength), new string('u', userLength));
+
+        TenantContextResult result = sut.TryGetContext(new string(requestedCharacter, requestedLength));
+
+        result.FailureCategory.ShouldBe(TenantContextFailureCategory.MalformedSegment);
+        result.Context.ShouldBeNull();
+    }
+
+    [Fact]
     public void TryGetContext_MixedCaseTenantMismatch_FailsOrdinally() {
         FrontComposerTenantContextAccessor sut = NewAccessor("Acme", "alice");
 

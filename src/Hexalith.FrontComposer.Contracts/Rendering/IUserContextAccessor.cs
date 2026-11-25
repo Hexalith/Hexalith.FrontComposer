@@ -13,6 +13,8 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// publishes a single dev-mode diagnostic. Implementations MUST treat null, empty, and
 /// whitespace as semantically equivalent — do not return <c>"   "</c> when you mean
 /// "unauthenticated."
+/// The default Shell tenant resolver rejects segments longer than 64 UTF-16 code units for tenants
+/// and 1024 for users. Oversized segments are malformed even when they contain only whitespace.
 /// </remarks>
 public interface IUserContextAccessor {
     /// <summary>

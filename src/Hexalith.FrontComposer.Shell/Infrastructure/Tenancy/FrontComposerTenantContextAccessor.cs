@@ -12,8 +12,13 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 
 /// <summary>
 /// Default tenant-context accessor backed by <see cref="IUserContextAccessor"/>.
+/// Accepts tenant identifiers up to 64 UTF-16 code units and user identifiers up to 1024.
 /// </summary>
 public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantContextAccessor {
+    // Match the EventStore command and query request limit for tenant identifiers.
+    private const int MaxTenantLength = 64;
+    private const int MaxUserLength = 1024;
+
     private readonly IUserContextAccessor _userContextAccessor;
     private readonly Func<FcShellOptions> _getOptions;
     private readonly ILogger _logger;
@@ -92,9 +97,9 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
 
         string? tenant = userContextAccessor.TenantId;
         string? user = userContextAccessor.UserId;
-        bool requestedPresent = HasValue(requestedTenant);
-        bool tenantPresent = HasValue(tenant);
-        bool userPresent = HasValue(user);
+        bool requestedPresent = HasValue(requestedTenant, MaxTenantLength);
+        bool tenantPresent = HasValue(tenant, MaxTenantLength);
+        bool userPresent = HasValue(user, MaxUserLength);
         if (!tenantPresent) {
             return Block(logger, TenantContextFailureCategory.TenantMissing, operationKind, requestedPresent, false, userPresent);
         }
@@ -105,9 +110,9 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
 
         // P9 — flags reflect *valid* presence: a malformed segment is "present but unusable",
         // so the diagnostic flag is set to false to surface which segment was rejected.
-        bool tenantValid = IsValidSegment(tenant!);
-        bool userValid = IsValidSegment(user!);
-        bool requestedValid = !requestedPresent || IsValidSegment(requestedTenant!);
+        bool tenantValid = IsValidSegment(tenant!, MaxTenantLength);
+        bool userValid = IsValidSegment(user!, MaxUserLength);
+        bool requestedValid = !requestedPresent || IsValidSegment(requestedTenant!, MaxTenantLength);
         if (!tenantValid || !userValid || !requestedValid) {
             return Block(
                 logger,
@@ -142,16 +147,8 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
             CorrelationId: NewCorrelationId()));
     }
 
-    internal static string RequireValidSegment(string? value, string paramName) {
-        if (string.IsNullOrWhiteSpace(value) || !IsValidSegment(value)) {
-            throw new ArgumentException("Tenant-scoped routing values must not be empty and must not contain ':' or control characters.", paramName);
-        }
-
-        return value!;
-    }
-
-    private static bool IsValidSegment(string value) {
-        if (string.IsNullOrWhiteSpace(value)) {
+    private static bool IsValidSegment(string value, int maxLength) {
+        if (value.Length > maxLength) {
             return false;
         }
 
@@ -168,8 +165,9 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
     private static bool IsSynthetic(string value)
         => SyntheticIdentifiers.Contains(value, StringComparer.OrdinalIgnoreCase);
 
-    private static bool HasValue(string? value)
-        => !string.IsNullOrWhiteSpace(value);
+    private static bool HasValue(string? value, int maxLength)
+        // An oversized value is malformed, even when it consists entirely of whitespace.
+        => value is not null && (value.Length > maxLength || !string.IsNullOrWhiteSpace(value));
 
     private static TenantContextResult Block(
         ILogger logger,
