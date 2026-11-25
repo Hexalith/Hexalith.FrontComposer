@@ -178,6 +178,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    private bool _authorizationDenied;");
         _ = sb.AppendLine("    private bool _authorizationFocusPending;");
         if (hasAuthorizationPolicy) {
+            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.ScopeBoundaryService? _authorizationScopeBoundary;");
             _ = sb.AppendLine("    private bool _authorizationPresentationReady;");
             _ = sb.AppendLine("    private bool _authorizationPresentationAllowed;");
             _ = sb.AppendLine("    private bool _authorizationReplacementFocusPending;");
@@ -222,10 +223,15 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        // Initialize the cancellation source synchronously so the auth probe and disposal can race cleanly.");
             _ = sb.AppendLine("        _cts ??= new CancellationTokenSource();");
             _ = sb.AppendLine("        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;");
-            _ = sb.AppendLine("        await RefreshPresentationAuthorizationAsync().ConfigureAwait(false);");
+            _ = sb.AppendLine("        _authorizationScopeBoundary = ScopeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.Services.ScopeBoundaryService)) as global::Hexalith.FrontComposer.Shell.Services.ScopeBoundaryService;");
+            _ = sb.AppendLine("        if (_authorizationScopeBoundary is not null) _authorizationScopeBoundary.Changed += OnAuthorizationScopeChanged;");
+            _ = sb.AppendLine("        await RefreshPresentationAuthorizationAsync().ConfigureAwait(true);");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
-            _ = sb.AppendLine("    private void OnAuthenticationStateChanged(Task<AuthenticationState> authStateTask)");
+            _ = sb.AppendLine("    private void OnAuthenticationStateChanged(Task<AuthenticationState> authStateTask) => QueueAuthorizationRefresh();");
+            _ = sb.AppendLine("    private void OnAuthorizationScopeChanged(object? sender, System.EventArgs args) => QueueAuthorizationRefresh();");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private void QueueAuthorizationRefresh()");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        if (_disposed) return;");
             _ = sb.AppendLine("        // Pass 3 — wrap the InvokeAsync call itself (not just the lambda body) so a synchronous");
@@ -235,7 +241,14 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            _ = InvokeAsync(async () =>");
             _ = sb.AppendLine("            {");
-            _ = sb.AppendLine("                try { await RefreshPresentationAuthorizationAsync().ConfigureAwait(false); }");
+            _ = sb.AppendLine("                if (_disposed) return;");
+            _ = sb.AppendLine("                try");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    Task refresh = RefreshPresentationAuthorizationAsync();");
+            _ = sb.AppendLine("                    if (!refresh.IsCompleted) StateHasChanged();");
+            _ = sb.AppendLine("                    await refresh.ConfigureAwait(true);");
+            _ = sb.AppendLine("                }");
+            _ = sb.AppendLine("                catch (OperationCanceledException) when (_disposed) { }");
             _ = sb.AppendLine("                catch (Exception ex) when (ex is not OperationCanceledException) { if (Logger is not null) { LogAuthStateRefreshFailed(Logger, ex); } }");
             _ = sb.AppendLine("            });");
             _ = sb.AppendLine("        }");
@@ -258,7 +271,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        bool replacementArmed = false;");
             _ = sb.AppendLine("        if (!_authorizationDenied && sequence > 1)");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            replacementArmed = await CaptureFocusBeforeReplacementAsync().ConfigureAwait(false);");
+            _ = sb.AppendLine("            replacementArmed = await CaptureFocusBeforeReplacementAsync().ConfigureAwait(true);");
             _ = sb.AppendLine("            if (_disposed) return;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        // Pass 3 — capture _cts once so concurrent disposal does not race the post-await access.");
@@ -266,7 +279,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        var token = cts?.Token ?? CancellationToken.None;");
             _ = sb.AppendLine("        var authorization = await CommandAuthorizationEvaluator.EvaluateAsync(");
             _ = sb.AppendLine("            CreateAuthorizationRequest(),");
-            _ = sb.AppendLine("            token).ConfigureAwait(false);");
+            _ = sb.AppendLine("            token).ConfigureAwait(true);");
             _ = sb.AppendLine("        if (_disposed) return;");
             _ = sb.AppendLine("        // Pass 3 — sequence guard: if a newer refresh has been started, drop this stale result.");
             _ = sb.AppendLine("        if (sequence != System.Threading.Volatile.Read(ref _authorizationRefreshSequence)) return;");
@@ -2009,6 +2022,10 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            if (AuthenticationStateProvider is not null)");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            if (_authorizationScopeBoundary is not null)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                _authorizationScopeBoundary.Changed -= OnAuthorizationScopeChanged;");
             _ = sb.AppendLine("            }");
         }
         // Story 11.21 CA1816 — suppress finalization for derived types that add a finalizer. Placed

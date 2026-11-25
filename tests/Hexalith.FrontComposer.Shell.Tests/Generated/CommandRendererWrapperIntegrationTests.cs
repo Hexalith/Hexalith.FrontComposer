@@ -723,6 +723,43 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     }
 
     [Fact]
+    public async Task ProtectedFormRefreshesWhenTenantChangesWithoutAnAuthenticationEventAsync() {
+        Services.RemoveAll<IPendingCommandOutcomeResolver>();
+        Services.RemoveAll<IPendingCommandOutcomeCoordinator>();
+        Services.AddHexalithFrontComposerQuickstart();
+        Services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor>(_ => UserContext));
+        UserContext.TenantId = "tenant-a";
+        UserContext.UserId = "user-a";
+        MutableAuthorizationEvaluator evaluator = new(CommandAuthorizationDecision.Allowed("initial"));
+        Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(new TestAuthenticationStateProvider()));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
+        await InitializeStoreAsync();
+        var boundary = Services.GetRequiredService<Hexalith.FrontComposer.Shell.Services.ScopeBoundaryService>();
+        boundary.Start();
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(p => p
+            .Add(c => c.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "editable", Amount = 7 }));
+        cut.WaitForAssertion(() => cut.Find("[id$='-submit']").HasAttribute("disabled").ShouldBeFalse());
+
+        await cut.InvokeAsync(() => {
+            UserContext.TenantId = "tenant-b";
+            evaluator.Decision = CommandAuthorizationDecision.Denied("new-tenant");
+            boundary.Synchronize();
+        });
+        cut.WaitForAssertion(() => {
+            cut.Find("[data-fc-authorization-denied='true']").ShouldNotBeNull();
+            cut.FindAll("[data-fc-validation-field='true']").ShouldBeEmpty();
+        });
+
+        await cut.InvokeAsync(() => {
+            UserContext.TenantId = "tenant-a";
+            evaluator.Decision = CommandAuthorizationDecision.Allowed("restored");
+            boundary.Synchronize();
+        });
+        cut.WaitForAssertion(() => cut.Find("[id$='-submit']").HasAttribute("disabled").ShouldBeFalse());
+    }
+
+    [Fact]
     public async Task ProtectedGeneratedForm_AllowedAuthorization_DispatchesAfterSubmitChecks() {
         var evaluator = new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Allowed("corr-allowed"));
         RecordingCommandService service = new();
