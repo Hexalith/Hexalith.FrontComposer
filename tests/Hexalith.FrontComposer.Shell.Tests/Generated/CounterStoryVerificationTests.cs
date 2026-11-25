@@ -1011,6 +1011,36 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
     }
 
     [Fact]
+    public async Task Level4DefaultBodyUsesTheCurrentRenderSnapshot()
+    {
+        UseFakeTime(s_fixedNow);
+        Services.AddViewOverride<CounterProjection, DefaultBodyCounterReplacement>();
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new CounterProjectionLoadedAction("first-read",
+            [new CounterProjection { Id = "initial-row", Count = 10, LastUpdated = s_lastUpdated }])
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
+
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
+        await cut.WaitForAssertionAsync(() => cut.Markup.ShouldContain("initial-row"));
+        ProjectionViewContext<CounterProjection> initial = cut.FindComponent<DefaultBodyCounterReplacement>().Instance.Context;
+
+        await cut.InvokeAsync(() => dispatcher.Dispatch(new CounterProjectionLoadedAction("second-read",
+            [new CounterProjection { Id = "updated-row", Count = 20, LastUpdated = s_lastUpdated }])
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" }));
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            ProjectionViewContext<CounterProjection> current = cut.FindComponent<DefaultBodyCounterReplacement>().Instance.Context;
+            current.ShouldNotBeSameAs(initial);
+            current.DefaultBody.ShouldNotBeSameAs(initial.DefaultBody);
+            current.Items.ShouldHaveSingleItem().Id.ShouldBe("updated-row");
+            cut.Markup.ShouldContain("updated-row");
+            cut.Markup.ShouldNotContain("initial-row");
+        });
+    }
+
+    [Fact]
     public async Task CounterProjectionView_Level4InvalidComponent_LogsHfc1043_AndRendersGeneratedDefault() {
         UseFakeTime(s_fixedNow);
 

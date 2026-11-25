@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Components;
 namespace Hexalith.FrontComposer.Contracts.Rendering;
 
 /// <summary>Typed per-render context passed to Level 4 full projection-view replacement components.</summary>
+/// <remarks>
+/// Render using the context supplied for the current render. Its items and renderer delegates
+/// represent that render's snapshot. Discard the context and delegates when the render ends.
+/// </remarks>
 /// <typeparam name="TProjection">Projection record/class type being rendered.</typeparam>
 public sealed class ProjectionViewContext<TProjection> {
     /// <summary>Initializes a new instance of the <see cref="ProjectionViewContext{TProjection}"/> class.</summary>
@@ -81,7 +85,7 @@ public sealed class ProjectionViewContext<TProjection> {
     /// <summary>Gets the localization-safe plural projection label.</summary>
     public string EntityPluralLabel { get; }
 
-    /// <summary>Gets the default generated body renderer.</summary>
+    /// <summary>Gets the default generated body renderer for the current render snapshot.</summary>
     public RenderFragment DefaultBody { get; }
 
     /// <summary>Gets a generated section renderer.</summary>

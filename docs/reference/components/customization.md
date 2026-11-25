@@ -52,6 +52,11 @@ Import `Acme.Orders` and `Hexalith.FrontComposer.Shell.Extensions` in startup. T
 
 In a typed replacement, `DefaultBody` renders generated output. `FieldRenderer`, `RowRenderer` and `SectionRenderer` reuse generated parts. A slot uses `Context.RenderDefault` for its generated field. Never mount the same generated projection component from its replacement: that re-enters Level 4 lookup recursively.
 
+Read `Context` and its renderer delegates during each render. `DefaultBody` captures that render's
+projection state, grid snapshot, and column visibility. Caching the context or a delegate in a field,
+service, or deferred callback can render stale rows or columns after an update. Use the context
+supplied with the next render after state changes.
+
 ## Parameters / slots
 
 The tables describe the public component parameters. Injected services and internal Fluent composition are implementation details.
