@@ -37,3 +37,7 @@ Complete six actionable entries in ledger order after DW-958. Preserve skip reas
 - Low, rejected. The fallback polling span and its structured log are covered. The additional nudge rerun continues to pin the existing budget and verifies its structured log.
 - Medium, deferred. The HTTP 304 corrupt-cache path retries after its wrapper log. The verified existing outer-catch fix covers the fresh HTTP 200 schema parser.
 - Medium, deferred. The existing HTTP 200 response sets the success outcome before parsing. The ledger tracks this alongside the cache-path cause.
+
+## Validation
+
+The hosted dependency graph rejected the shared C# compile links because test project files are included in the sealed consumer configuration. Both test suites read the same JSON fixture and the sealed MSBuild files are restored.

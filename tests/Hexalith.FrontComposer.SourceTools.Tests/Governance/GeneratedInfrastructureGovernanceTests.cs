@@ -1,6 +1,7 @@
+using System.Text.Json;
+
 using Hexalith.FrontComposer.SourceTools.Tests.Integration;
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
-using Hexalith.FrontComposer.Tests.Governance;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -13,6 +14,8 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Governance;
 [Trait("Category", "Governance")]
 public sealed class GeneratedInfrastructureGovernanceTests
 {
+    private static readonly Dictionary<string, string> NamespaceRules = LoadNamespaceRules();
+
     private static readonly string[][] GeneratedSymbolSets =
         [[], ["DEBUG"], ["NET11_0_OR_GREATER"], ["DEBUG", "NET11_0_OR_GREATER"]];
 
@@ -139,7 +142,7 @@ public sealed class GeneratedInfrastructureGovernanceTests
             ISymbol? symbol = model.GetSymbolInfo(node, cancellationToken).Symbol;
             INamespaceSymbol? containingNamespace = symbol as INamespaceSymbol ?? symbol?.ContainingNamespace;
             string name = symbol is not null ? containingNamespace?.ToDisplayString() ?? string.Empty : UnresolvedSpelling(node);
-            foreach ((string forbidden, _) in InfrastructureNamespaceRules.All)
+            foreach (string forbidden in NamespaceRules.Keys)
             {
                 if (string.Equals(name, forbidden, StringComparison.Ordinal)
                     || name.StartsWith(forbidden + ".", StringComparison.Ordinal))
@@ -150,6 +153,25 @@ public sealed class GeneratedInfrastructureGovernanceTests
         }
 
         return violations;
+    }
+
+    private static Dictionary<string, string> LoadNamespaceRules()
+    {
+        DirectoryInfo? root = new(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Hexalith.FrontComposer.slnx")))
+        {
+            root = root.Parent;
+        }
+
+        if (root is null)
+        {
+            throw new InvalidOperationException("Could not locate the repository root for governance fixtures.");
+        }
+
+        string fixture = Path.Combine(root.FullName, "tests", "contract-fixtures", "infrastructure-namespace-rules.json");
+        return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(fixture)) is { Count: > 0 } rules
+            ? rules
+            : throw new InvalidDataException("The shared infrastructure namespace policy is empty.");
     }
 
     private static string UnresolvedSpelling(SyntaxNode reference)

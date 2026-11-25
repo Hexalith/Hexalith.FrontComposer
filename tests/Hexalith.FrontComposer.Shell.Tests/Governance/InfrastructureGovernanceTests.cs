@@ -7,7 +7,6 @@ using System.Xml.Linq;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
-using Hexalith.FrontComposer.Tests.Governance;
 
 using Shouldly;
 
@@ -386,7 +385,8 @@ public sealed class InfrastructureGovernanceTests {
         violations.Single().ProviderFamily.ShouldBe(expectedFamily);
     }
 
-    private static string RepositoryRoot() {
+    /// <summary>Finds the repository that supplies the governance fixtures.</summary>
+    internal static string RepositoryRoot() {
         DirectoryInfo? dir = new(AppContext.BaseDirectory);
         while (dir is not null) {
             if (File.Exists(Path.Combine(dir.FullName, "Hexalith.FrontComposer.slnx"))) {
@@ -544,6 +544,13 @@ internal sealed record GovernanceViolation(
 internal static class InfrastructureGovernance {
     private const string Remediation = "route through EventStore contract/client or deployment/AppHost component configuration";
 
+    private static readonly Dictionary<string, string> NamespaceRules =
+        JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(
+            InfrastructureGovernanceTests.RepositoryRoot(), "tests", "contract-fixtures", "infrastructure-namespace-rules.json")))
+        is { Count: > 0 } rules
+        ? rules
+        : throw new InvalidDataException("The shared infrastructure namespace policy is empty.");
+
     private static readonly ForbiddenRule[] PackageRules = [
         new("Dapr", "Dapr SDK", "Dapr."),
         new("StackExchange.Redis", "Redis", "StackExchange.Redis"),
@@ -680,7 +687,7 @@ internal static class InfrastructureGovernance {
         string relative = RelativePath(file, repositoryRoot);
         string text = File.ReadAllText(file);
         List<GovernanceViolation> violations = [];
-        foreach ((string reference, string providerFamily) in InfrastructureNamespaceRules.All) {
+        foreach ((string reference, string providerFamily) in NamespaceRules) {
             if (allowSignalRClient && reference == "Microsoft.AspNetCore.SignalR.Client") {
                 continue;
             }
