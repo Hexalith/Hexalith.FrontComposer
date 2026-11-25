@@ -338,6 +338,10 @@
     <value>(custom renderer needed)</value>
     <comment>Story 4-6 — appended to unsupported column headers so placeholders are visually distinct. (Note P-29: FieldDescriptionTooltipAriaSuffix and ColumnHeaderWithDescriptionAriaTemplate were removed per DN4-a — D9 anatomy reduced to FluentDataGrid HeaderTooltip; the icon+aria-describedby anatomy is deferred to Story 4-7.)</comment>
   </data>
+  <data name="UnsupportedColumnHeaderTooltipTemplate" xml:space="preserve">
+    <value>{0} — {1}</value>
+    <comment>{0} is the field description. {1} is the unsupported column suffix.</comment>
+  </data>
   <data name="FcProjectionLoadingSkeletonAriaLabel" xml:space="preserve">
     <value>Loading {0}</value>
     <comment>Story 4-1 D18 / AC8 — aria-label on the loading skeleton container (role=status, aria-busy=true). {0}=humanized entity plural.</comment>

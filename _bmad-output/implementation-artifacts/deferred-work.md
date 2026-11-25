@@ -2366,6 +2366,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccomman
 location: fc-keyboard.js:registerShellKeyFilter
 reason: **`registerShellKeyFilter` early-return on `__fcShellKeyFilter` marker after circuit reconnect — sub-finding of C2-D1** [`fc-keyboard.js:registerShellKeyFilter`] — Resolution depends on C2-D1; current behavior acceptable because the orphaned handler runs equivalent logic. Reconciliation: Row: DW-0264; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.7; Evidence: fc-keyboard.js:registerShellKeyFilter.
 status: open
+decision: 2026-11-25 Skipped. The JS filter is circuit-independent and has teardown and repeat-registration coverage. The recorded reconnect regression trigger has not occurred.
 
 ### DW-996: `EmptyStateCtaResolver` reflection on attributes not trim/AOT annotated
 
@@ -2373,6 +2374,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-st
 location: src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs:38-42
 reason: **`EmptyStateCtaResolver` reflection on attributes not trim/AOT annotated** [`src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs:38-42, 151-155`] — `GetCustomAttributes(typeof(ProjectionEmptyStateCtaAttribute), false)` and `GetCustomAttributes(typeof(BoundedContextAttribute), false)` on user types without `[DynamicallyAccessedMembers]`/`[RequiresUnreferencedCode]`. Empty-state CTA may silently disappear under `dotnet publish -p:PublishTrimmed=true`. Story 4-7 trim-safe alternative (registry-companion + source-generator-emitted manifest). Reconciliation: Row: DW-0265; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs:38-42, 151-155.
 status: open
+decision: 2026-11-25 Skipped. Generated views already pass the CTA name explicitly. Trim-safe discovery for hand-authored views requires the deferred registry metadata contract and its compatibility decision.
 
 ### DW-997: `[Description]` on TYPE-level + non-string ctor arguments silently dropped
 
@@ -2380,13 +2382,15 @@ origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-st
 location: src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:743-754
 reason: **`[Description]` on TYPE-level + non-string ctor arguments silently dropped** [`src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:743-754, 1767-1777`] — `[Description(typeof(Resources))]` and class-level `[Description("…")]` are both silently ignored without diagnostic. D19 forbids new HFC IDs in 4-6; revisit when adding informational diagnostics is acceptable (likely Story 9-4 governance analyzer). Reconciliation: Row: DW-0266; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC12, AC23, AC29, AC34; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:743-754, 1767-1777.
 status: open
+decision: 2026-11-25 Skipped. Non-string DescriptionAttribute arguments already fail C# binding. A type-level diagnostic requires the separate HFC policy decision recorded in this item.
 
 ### DW-998: em-dash separator hardcoded English typography in `EmitHeaderDescription`
 
 origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-states-field-descriptions-and-unsupported-types — Pass 3 (2026-04-25 bmad-code-review)"), 2026-08-27
 location: src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs:1626-1630
 reason: **em-dash separator hardcoded English typography in `EmitHeaderDescription`** [`src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs:1626-1630`] — Em-dash separator with no NBSP guard. Already tracked under "Story 4-7 (or follow-up) candidates" — French NBSP for `UnsupportedColumnHeaderSuffix` concatenation. Reconciliation: Row: DW-0267; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs:1626-1630.
-status: open
+status: done 2026-11-25
+resolution: Localized the unsupported-column tooltip template with French nonbreaking spacing and preserved the default composition for custom localizers.
 
 ### DW-999: `OnParametersSet` sync-only override on `FcProjectionEmptyPlaceholder`
 

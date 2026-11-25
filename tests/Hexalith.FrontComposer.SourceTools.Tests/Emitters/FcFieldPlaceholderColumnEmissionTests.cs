@@ -41,6 +41,15 @@ public sealed class FcFieldPlaceholderColumnEmissionTests {
     }
 
     [Fact]
+    public void UnsupportedColumnUsesLocalizedDescriptionTooltip() {
+        string output = RazorEmitter.Emit(Model(Unsupported("Metadata", "System.Object", description: "Integration details")));
+
+        output.ShouldContain("tooltip = FcShellLocalizer[\"UnsupportedColumnHeaderTooltipTemplate\", \"Integration details\", FcShellLocalizer[\"UnsupportedColumnHeaderSuffix\"].Value]");
+        output.ShouldContain("tooltip.ResourceNotFound || tooltip.Value == \"UnsupportedColumnHeaderTooltipTemplate\"");
+        output.ShouldContain("\"Integration details\" + \" — \" + FcShellLocalizer[\"UnsupportedColumnHeaderSuffix\"].Value : tooltip.Value");
+    }
+
+    [Fact]
     public void AllUnsupportedColumns_DoNotCollapseToEmptyStateOnly() {
         string output = RazorEmitter.Emit(Model(
             Unsupported("Metadata", "System.Collections.Generic.Dictionary<string, string>"),
@@ -88,7 +97,7 @@ public sealed class FcFieldPlaceholderColumnEmissionTests {
             ProjectionRenderStrategy.Default,
             NoWhenStates);
 
-    private static ColumnModel Unsupported(string name, string typeName, string? header = null)
+    private static ColumnModel Unsupported(string name, string typeName, string? header = null, string? description = null)
         => new(
             name,
             header ?? name,
@@ -96,6 +105,7 @@ public sealed class FcFieldPlaceholderColumnEmissionTests {
             formatHint: null,
             isNullable: false,
             EmptyBadges,
+            description: description,
             unsupportedTypeFullyQualifiedName: typeName);
 
     private static ColumnModel Col(string name, string header, TypeCategory category)

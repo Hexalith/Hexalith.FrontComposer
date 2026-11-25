@@ -297,6 +297,10 @@
     <value>(rendu personnalisé requis)</value>
     <comment>Story 4-6 D8 — French translation aligned with spec (P-8 Pass-3 review fix).</comment>
   </data>
+  <data name="UnsupportedColumnHeaderTooltipTemplate" xml:space="preserve">
+    <value>{0} — {1}</value>
+    <comment>{0} is the field description. {1} is the unsupported column suffix.</comment>
+  </data>
   <data name="FcProjectionLoadingSkeletonAriaLabel" xml:space="preserve">
     <value>Chargement de {0}</value>
   </data>

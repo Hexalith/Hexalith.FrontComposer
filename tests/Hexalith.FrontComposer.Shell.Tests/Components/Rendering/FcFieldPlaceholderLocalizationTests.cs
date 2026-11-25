@@ -3,7 +3,11 @@ using System.Globalization;
 using Bunit;
 
 using Hexalith.FrontComposer.Shell.Components.Rendering;
+using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Tests.Components.Layout;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 
 using Shouldly;
 
@@ -48,6 +52,22 @@ public sealed class FcFieldPlaceholderLocalizationTests : LayoutComponentTestBas
         }
         finally {
             CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
+    }
+
+    [Theory]
+    [InlineData("en", "Details — (custom renderer needed)")]
+    [InlineData("fr-FR", "Details\u00a0—\u00a0(rendu personnalisé requis)")]
+    public void UnsupportedHeaderTooltipUsesCultureSpecificSpacing(string cultureName, string expected) {
+        CultureInfo originalUiCulture = CultureInfo.CurrentUICulture;
+        try {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(cultureName);
+            IStringLocalizer<FcShellResources> localizer = Services.GetRequiredService<IStringLocalizer<FcShellResources>>();
+            string suffix = localizer["UnsupportedColumnHeaderSuffix"].Value;
+            localizer["UnsupportedColumnHeaderTooltipTemplate", "Details", suffix].Value.ShouldBe(expected);
+        }
+        finally {
             CultureInfo.CurrentUICulture = originalUiCulture;
         }
     }

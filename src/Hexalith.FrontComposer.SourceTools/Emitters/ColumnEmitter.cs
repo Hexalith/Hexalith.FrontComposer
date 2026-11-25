@@ -442,10 +442,17 @@ internal static class ColumnEmitter {
         }
 
         string descriptionLiteral = "\"" + RoleBodyHelpers.EscapeString(col.Description!) + "\"";
-        string tooltipExpression = mergeWith is null
-            ? descriptionLiteral
-            : descriptionLiteral + " + \" \\u2014 \" + " + mergeWith;
-        _ = sb.AppendLine(indent + "b.AddAttribute(colSeq++, \"HeaderTooltip\", " + tooltipExpression + ");");
+        if (mergeWith is null) {
+            _ = sb.AppendLine(indent + "b.AddAttribute(colSeq++, \"HeaderTooltip\", " + descriptionLiteral + ");");
+            return;
+        }
+
+        const string tooltipTemplate = "\"UnsupportedColumnHeaderTooltipTemplate\"";
+        _ = sb.AppendLine(indent + "{");
+        _ = sb.AppendLine(indent + "    var tooltip = " + ShellLocalizerFieldName + "[" + tooltipTemplate + ", " + descriptionLiteral + ", " + mergeWith + "];");
+        _ = sb.AppendLine(indent + "    b.AddAttribute(colSeq++, \"HeaderTooltip\", tooltip.ResourceNotFound || tooltip.Value == " + tooltipTemplate
+            + " ? " + descriptionLiteral + " + \" \u2014 \" + " + mergeWith + " : tooltip.Value);");
+        _ = sb.AppendLine(indent + "}");
     }
 
     private static void EmitSortAttributes(
