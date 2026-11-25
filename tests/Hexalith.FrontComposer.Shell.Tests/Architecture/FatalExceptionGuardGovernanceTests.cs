@@ -14,7 +14,7 @@ public sealed partial class FatalExceptionGuardGovernanceTests {
     // Story 13.5 adds the fresh-row ledger's fail-closed scope read.
     // .NET 11 account-state observation adds its shared fatal filter for asynchronous authentication failures.
     // DW-900 adds a guard for authorization failures during ranked command selection.
-    private const int ExpectedCatchFilterCount = 81;
+    private const int ExpectedCatchFilterCount = 82;
     private const string ExceptionGuardPath = "Services/ExceptionGuard.cs";
     private static readonly HashSet<string> FatalTypeNames = new(StringComparer.Ordinal) {
         nameof(OutOfMemoryException),
