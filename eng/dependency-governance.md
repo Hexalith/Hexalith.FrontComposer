@@ -4,7 +4,7 @@
 
 FrontComposer's standalone checkout selects EventStore `5.4.0`. When an
 enclosing workspace supplies the Builds catalog, FrontComposer also supports
-its `5.5.1` default. Restore and build compare the effective version with
+its `5.5.1` and `5.5.2` defaults. Restore and build compare the effective version with
 the catalog, including when a parent forwards the version on a project edge.
 The guard rejects an override that differs from that selection.
 
