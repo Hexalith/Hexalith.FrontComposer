@@ -72,7 +72,7 @@ even when its base class declares the same policy.
 
 Hosts can opt in to Information-level logging of successful named-policy evaluations:
 
-```csharp
+```csharp no-compile reason="illustrative host options configuration"
 builder.Services.Configure<FrontComposerAuthorizationOptions>(options =>
     options.LogAllowedDecisions = true);
 ```

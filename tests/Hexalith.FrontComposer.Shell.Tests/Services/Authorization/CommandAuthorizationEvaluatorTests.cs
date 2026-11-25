@@ -105,7 +105,7 @@ public sealed class CommandAuthorizationEvaluatorTests {
     }
 
     [Fact]
-    public async Task EvaluateAsync_AllowedAuditIsOffByDefault()
+    public async Task AllowedAuditIsOffByDefaultAsync()
     {
         IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
@@ -120,7 +120,7 @@ public sealed class CommandAuthorizationEvaluatorTests {
     }
 
     [Fact]
-    public async Task EvaluateAsync_OptedInAuditRecordsOnlySuccessfulNamedPolicies()
+    public async Task OptedInAuditRecordsOnlySuccessfulNamedPoliciesAsync()
     {
         const string policy = "private-policy-name";
         IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
@@ -176,7 +176,7 @@ public sealed class CommandAuthorizationEvaluatorTests {
     }
 
     [Fact]
-    public async Task EvaluateAsync_OptionalAuditSinkFailurePreservesAllowedDecision()
+    public async Task OptionalAuditSinkFailurePreservesAllowedDecisionAsync()
     {
         IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
@@ -193,7 +193,7 @@ public sealed class CommandAuthorizationEvaluatorTests {
     }
 
     [Fact]
-    public async Task EvaluateAsync_PrincipalChangeDuringAuditStillFailsClosed()
+    public async Task PrincipalChangeDuringAuditStillFailsClosedAsync()
     {
         IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
