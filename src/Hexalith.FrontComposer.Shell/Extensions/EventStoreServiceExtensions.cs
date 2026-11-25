@@ -57,8 +57,7 @@ public static class EventStoreServiceExtensions {
         services.TryAddSingleton<EventStoreResponseClassifier>();
         services.TryAddSingleton<IFrontComposerRegistry, FrontComposerRegistry>();
         services.TryAddScoped<Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor, NullUserContextAccessor>();
-        services.TryAddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
-        services.TryAddScoped<ITenantScopedManifestGate, TenantScopedManifestGate>();
+        ServiceCollectionExtensions.AddHexalithTenancy(services);
         services.TryAddScoped<AuthenticationStateProvider, NullAuthenticationStateProvider>();
         services.TryAddScoped<ICommandAuthorizationEvaluator, CommandAuthorizationEvaluator>();
         services.TryAddScoped<ICommandDispatchAuthorizationGate, CommandDispatchAuthorizationGate>();

@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
@@ -96,6 +97,26 @@ public sealed class EventStoreRegistrationTests {
         provider.GetRequiredService<ICommandServiceWithLifecycle>().ShouldNotBeNull();
         provider.GetRequiredService<ICommandDispatchAuthorizationGate>().ShouldNotBeNull();
         provider.GetRequiredService<AuthenticationStateProvider>().ShouldNotBeNull();
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void RegistrationKeepsBothTenantServicesScopedAndUnique(bool shell, bool eventStore) {
+        ServiceCollection services = [];
+        if (shell) {
+            _ = services.AddHexalithFrontComposer();
+        }
+
+        if (eventStore) {
+            _ = services.AddHexalithEventStore();
+        }
+
+        services.Where(descriptor => descriptor.ServiceType == typeof(IFrontComposerTenantContextAccessor))
+            .ShouldHaveSingleItem().Lifetime.ShouldBe(ServiceLifetime.Scoped);
+        services.Where(descriptor => descriptor.ServiceType == typeof(ITenantScopedManifestGate))
+            .ShouldHaveSingleItem().Lifetime.ShouldBe(ServiceLifetime.Scoped);
     }
 
     [Fact]

@@ -59,6 +59,12 @@ namespace Hexalith.FrontComposer.Shell.Extensions;
 /// Extension methods for registering FrontComposer Shell services.
 /// </summary>
 public static class ServiceCollectionExtensions {
+    /// <summary>Registers the shared scoped tenant services for Shell and EventStore entry points.</summary>
+    internal static void AddHexalithTenancy(IServiceCollection services) {
+        services.TryAddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
+        services.TryAddScoped<ITenantScopedManifestGate, TenantScopedManifestGate>();
+    }
+
 
     /// <summary>
     /// Discovers and registers generated domain registration classes from the assembly containing <typeparamref name="T"/>.
@@ -273,9 +279,8 @@ public static class ServiceCollectionExtensions {
         // Story 2-2 Decision D31 — default fail-closed IUserContextAccessor; adopters replace
         // this with a real accessor (HTTP-claims / AuthenticationStateProvider / demo stub).
         services.TryAddScoped<IUserContextAccessor, NullUserContextAccessor>();
-        services.TryAddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
+        AddHexalithTenancy(services);
         services.TryAddScoped<IValidatedPendingScope, ValidatedPendingScope>();
-        services.TryAddScoped<ITenantScopedManifestGate, TenantScopedManifestGate>();
         services.TryAddScoped<AuthenticationStateProvider, NullAuthenticationStateProvider>();
         services.TryAddScoped<ICommandAuthorizationEvaluator, CommandAuthorizationEvaluator>();
         services.TryAddScoped<ICommandDispatchAuthorizationGate, CommandDispatchAuthorizationGate>();
