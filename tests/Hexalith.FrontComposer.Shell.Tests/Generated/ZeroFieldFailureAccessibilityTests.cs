@@ -3,6 +3,7 @@ using Bunit;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Services.Announcements;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
@@ -327,6 +328,35 @@ public sealed class ZeroFieldFailureAccessibilityTests : CommandRendererTestBase
         cut.WaitForAssertion(() => AttemptedControlFocus().Count.ShouldBe(2));
         AttemptedControlFocus().ShouldAllBe(call => call.Arguments.SequenceEqual(new object?[] { triggerId, false }));
         _ = service.DidNotReceive().DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
+        FcFocusModule.VerifyNotInvoke("focusValidationOutcome");
+        FcFocusModule.VerifyNotInvoke("focusElementById");
+    }
+
+    [Fact]
+    public async Task DispatchTenantContextFailureUsesScopeFeedbackAndReleasesSubmission()
+    {
+        const string correlationId = "tenant-diagnostic-correlation";
+        ICommandServiceWithLifecycleObservations service = Substitute.For<ICommandServiceWithLifecycleObservations>();
+        _ = service.DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<CommandResult>(new TenantContextException(TenantContextFailureCategory.TenantMismatch, correlationId)));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<ZeroFieldInlineCommandRenderer> cut = Render<ZeroFieldInlineCommandRenderer>();
+        string triggerId = cut.Find("fluent-button").Id!;
+        List<string> announcements = [];
+        using IDisposable subscription = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>()
+            .Subscribe("command-renderer:" + triggerId, announcements.Add);
+
+        cut.Find("fluent-button").Click();
+
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-zero-field-outcome']").TextContent.ShouldContain("workspace identity"));
+        cut.WaitForAssertion(() => announcements.ShouldHaveSingleItem().ShouldContain("workspace identity"));
+        cut.Markup.ShouldNotContain(correlationId);
+        cut.WaitForAssertion(() => Services.GetRequiredService<Fluxor.IState<ZeroFieldInlineCommandLifecycleState>>().Value.State
+            .ShouldBe(CommandLifecycleState.Idle));
+        cut.Find("fluent-button").Click();
+        cut.WaitForAssertion(() => announcements.Count(message => message.Contains("workspace identity", StringComparison.Ordinal)).ShouldBe(2));
+        _ = service.Received(2).DispatchAsync(Arg.Any<ZeroFieldInlineCommand>(), Arg.Any<Action<CommandLifecycleObservation>?>(), Arg.Any<CancellationToken>());
         FcFocusModule.VerifyNotInvoke("focusValidationOutcome");
         FcFocusModule.VerifyNotInvoke("focusElementById");
     }

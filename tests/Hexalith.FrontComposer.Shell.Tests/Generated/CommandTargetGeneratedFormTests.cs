@@ -871,7 +871,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
     }
 
     [Fact]
-    public async Task ScopeSwitchDuringTargetResolution_DoesNotDispatch() {
+    public async Task ScopeSwitchDuringTargetResolution_ReturnsToIdleWithoutDispatch() {
         EarlyTerminalCommandService service = new(AcceptedMessageId, emitTerminal: false);
         BlockingProvider provider = new();
         UserContext.TenantId = "tenant-a";
@@ -895,7 +895,10 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         UserContext.UserId = "user-b";
         provider.Release();
 
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Workspace unavailable"));
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("Workspace unavailable");
+            Services.GetRequiredService<IState<ProviderTargetCommandLifecycleState>>().Value.State.ShouldBe(CommandLifecycleState.Idle);
+        });
         SpinWait.SpinUntil(() => service.DispatchCount != 0, TimeSpan.FromMilliseconds(200)).ShouldBeFalse();
         service.DispatchCount.ShouldBe(0);
         pending.Snapshot().ShouldBeEmpty();

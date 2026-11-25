@@ -1555,6 +1555,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        int acceptedTerminalAssociation = 0;");
         _ = sb.AppendLine("        string? acceptedTerminalMessageId = null;");
         _ = sb.AppendLine("        bool acceptedAssociationSucceeded = false;");
+        _ = sb.AppendLine("        bool dispatchReturned = false;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");
@@ -1575,6 +1576,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            var dispatchScope = validatedScope?.Current();");
         _ = sb.AppendLine("            if (validatedScope is not null && !(admissionScope is { } dispatchOrigin && dispatchScope is { } dispatchCurrent && dispatchOrigin == dispatchCurrent))");
         _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
         _ = sb.AppendLine("                await PresentScopeUnavailableAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("                return;");
         _ = sb.AppendLine("            }");
@@ -1690,6 +1692,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                    });");
         _ = sb.AppendLine("                },");
         _ = sb.AppendLine("                cancellationToken: cancellationToken);");
+        _ = sb.AppendLine("            dispatchReturned = true;");
         _ = sb.AppendLine("            // Story 9.4 — only accepted dispatch associates the immutable pre-dispatch target.");
         _ = sb.AppendLine("            global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationResult? pendingRegistration = null;");
         _ = sb.AppendLine("            bool accepted = string.Equals(result.Status, \"Accepted\", StringComparison.OrdinalIgnoreCase);");
@@ -1805,6 +1808,14 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".AcknowledgedAction(correlationId, result.MessageId) { ObservedAt = pendingRegistration?.Entry?.SubmittedAt });");
         _ = sb.AppendLine("            if (Logger is not null) { LogCommandAcknowledged(Logger, correlationId, result.MessageId); }");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        catch (global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextException) when (!dispatchReturned)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            if (!_disposed)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
+        _ = sb.AppendLine("                await PresentScopeUnavailableAsync().ConfigureAwait(false);");
+        _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (CommandValidationException ex)");
         _ = sb.AppendLine("        {");

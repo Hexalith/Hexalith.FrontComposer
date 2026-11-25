@@ -651,6 +651,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         int acceptedTerminalAssociation = 0;
         string? acceptedTerminalMessageId = null;
         bool acceptedAssociationSucceeded = false;
+        bool dispatchReturned = false;
 
         try
         {
@@ -662,6 +663,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             var dispatchScope = validatedScope?.Current();
             if (validatedScope is not null && !(admissionScope is { } dispatchOrigin && dispatchScope is { } dispatchCurrent && dispatchOrigin == dispatchCurrent))
             {
+                Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
                 await PresentScopeUnavailableAsync().ConfigureAwait(false);
                 return;
             }
@@ -787,6 +789,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                     });
                 },
                 cancellationToken: cancellationToken);
+            dispatchReturned = true;
             // Story 9.4 — only accepted dispatch associates the immutable pre-dispatch target.
             global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationResult? pendingRegistration = null;
             bool accepted = string.Equals(result.Status, "Accepted", StringComparison.OrdinalIgnoreCase);
@@ -906,6 +909,14 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             }
             Dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId) { ObservedAt = pendingRegistration?.Entry?.SubmittedAt });
             if (Logger is not null) { LogCommandAcknowledged(Logger, correlationId, result.MessageId); }
+        }
+        catch (global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextException) when (!dispatchReturned)
+        {
+            if (!_disposed)
+            {
+                Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
+                await PresentScopeUnavailableAsync().ConfigureAwait(false);
+            }
         }
         catch (CommandValidationException ex)
         {
