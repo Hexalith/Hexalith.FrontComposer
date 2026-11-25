@@ -57,6 +57,10 @@ projection state, grid snapshot, and column visibility. Caching the context or a
 service, or deferred callback can render stale rows or columns after an update. Use the context
 supplied with the next render after state changes.
 
+The generated `FieldRenderer` used by Level 2 and Level 4 matches the case-sensitive CLR property
+name. Use `nameof(Projection.Property)` or a property name from `Context.Columns`. An empty,
+unknown, or differently cased name produces an empty fragment without throwing.
+
 ## Parameters / slots
 
 The tables describe the public component parameters. Injected services and internal Fluent composition are implementation details.

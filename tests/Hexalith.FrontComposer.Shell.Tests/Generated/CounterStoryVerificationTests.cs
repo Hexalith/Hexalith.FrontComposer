@@ -1060,6 +1060,31 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
     }
 
     [Fact]
+    public async Task Level4FieldRendererEmitsNothingForAnUnrecognizedField()
+    {
+        UseFakeTime(s_fixedNow);
+        Services.AddViewOverride<CounterProjection, FieldRendererCounterReplacement>();
+        await InitializeStoreAsync();
+        using CultureScope _ = new(CultureInfo.InvariantCulture);
+        Services.GetRequiredService<IDispatcher>().Dispatch(new CounterProjectionLoadedAction("field-renderer",
+            [new CounterProjection { Id = "counter-1", Count = 1234, LastUpdated = s_lastUpdated }])
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.Find("[data-known-field]").TextContent.ShouldBe("1,234");
+            var unknownFields = cut.FindAll("[data-requested-field]");
+            unknownFields.Count.ShouldBe(3);
+            foreach (var field in unknownFields)
+            {
+                field.InnerHtml.ShouldBeEmpty();
+            }
+            cut.FindComponents<FluentDataGrid<CounterProjection>>().ShouldBeEmpty();
+        });
+    }
+
+    [Fact]
     public async Task Level4DefaultBodyUsesTheCurrentRenderSnapshot()
     {
         UseFakeTime(s_fixedNow);
