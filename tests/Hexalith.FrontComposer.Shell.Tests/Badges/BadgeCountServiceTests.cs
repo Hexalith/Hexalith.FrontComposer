@@ -387,6 +387,21 @@ public sealed class BadgeCountServiceTests {
     }
 
     [Fact]
+    public async Task TotalActionableItems_SaturatesWhenOnlyTwoProjectionCountsOverflow() {
+        StubCatalog catalog = new(typeof(ProjectionAlpha), typeof(ProjectionBeta));
+        StubReader reader = new((type, _) => new ValueTask<int>(type == typeof(ProjectionAlpha) ? int.MaxValue : 1));
+        using ServiceProvider provider = EmptyProvider();
+        using BadgeCountService sut = new(
+            catalog, reader, provider,
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
+
+        await sut.InitializeAsync(Ct);
+
+        sut.TotalActionableItems.ShouldBe(int.MaxValue);
+        sut.Counts[typeof(ProjectionBeta)].ShouldBe(1);
+    }
+
+    [Fact]
     public async Task TotalActionableItems_SumsCurrentCounts() {
         StubCatalog catalog = new(typeof(ProjectionAlpha), typeof(ProjectionBeta), typeof(ProjectionGamma));
         StubReader reader = new((type, _) => new ValueTask<int>(

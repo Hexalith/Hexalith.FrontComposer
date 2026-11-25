@@ -119,7 +119,9 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
     public IObservable<BadgeCountChangedArgs> CountChanged => _subject.AsObservable();
 
     /// <inheritdoc />
-    public int TotalActionableItems => CurrentScope() is null ? 0 : _counts.Values.Sum();
+    public int TotalActionableItems => CurrentScope() is null
+        ? 0
+        : (int)Math.Min(int.MaxValue, _counts.Values.Sum(static count => (long)count));
 
     internal void ResetScope() {
         lock (_initializeGate) {

@@ -8,7 +8,7 @@ namespace Hexalith.FrontComposer.Shell.Components.Home;
 /// across assembly boundaries (Razor components' generated partial classes are public by default).
 /// </summary>
 /// <param name="Manifest">The source <see cref="DomainManifest"/>.</param>
-/// <param name="AggregateCount">Sum of all projection counts inside this manifest.</param>
+/// <param name="AggregateCount">Sum of this manifest’s projection counts, capped at <see cref="int.MaxValue"/>.</param>
 /// <param name="IsReady">Whether at least one projection count has arrived for this card.</param>
 /// <param name="ProjectionRows">Per-projection (FQN, count) rows for the card body.</param>
 public sealed record HomeCardModel(

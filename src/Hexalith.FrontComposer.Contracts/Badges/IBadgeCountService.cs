@@ -42,7 +42,7 @@ public interface IBadgeCountService {
     IObservable<BadgeCountChangedArgs> CountChanged { get; }
 
     /// <summary>
-    /// Sum of all <see cref="Counts"/> values — used by Story 3-5's home dashboard summary tile.
+    /// Sum of all <see cref="Counts"/> values, capped at <see cref="int.MaxValue"/>.
     /// </summary>
     int TotalActionableItems { get; }
 }

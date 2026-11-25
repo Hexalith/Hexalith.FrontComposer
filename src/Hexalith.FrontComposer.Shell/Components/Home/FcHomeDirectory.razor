@@ -52,7 +52,7 @@ else
     {
         List<HomeCardModel> aggregated = AggregateManifests(manifests, discovery.Counts);
         bool isSeeded = discovery.HydrationState == CapabilityDiscoveryHydrationState.Seeded;
-        int totalActionable = 0;
+        long totalActionable = 0;
         int contextsWithUrgency = 0;
         foreach (HomeCardModel card in aggregated)
         {
@@ -72,7 +72,7 @@ else
             {
                 <p class="fc-home-subtitle" data-testid="fc-home-subtitle">
                     @string.Format(System.Globalization.CultureInfo.CurrentCulture,
-                        Localizer["HomeItemsTemplate"].Value, totalActionable, contextsWithUrgency)
+                        Localizer["HomeItemsTemplate"].Value, Math.Min(int.MaxValue, totalActionable), contextsWithUrgency)
                 </p>
             }
             else if (isSeeded && discovery.SeenCapabilities.IsEmpty)

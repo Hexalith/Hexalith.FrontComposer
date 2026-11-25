@@ -2456,6 +2456,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-st
 location: src/Hexalith.FrontComposer.Contracts/Attributes/ProjectionEmptyStateCtaAttribute.cs:7
 reason: **`ProjectionEmptyStateCta` `Struct` target may not flow through generator parser** [`src/Hexalith.FrontComposer.Contracts/Attributes/ProjectionEmptyStateCtaAttribute.cs:7`] — attribute is `AttributeTargets.Class | AttributeTargets.Struct` but `AttributeParser.ParseDomain` may only emit `EmptyStateCtaCommandTypeName` IR for class/record projections. Struct projections are an edge case (projections are typically records/classes). Re-open if a struct-projection adopter surfaces. Reconciliation: Row: DW-0275; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Contracts/Attributes/ProjectionEmptyStateCtaAttribute.cs:7.
 status: open
+decision: 2026-11-26 Skipped. The projection attribute supports classes and records. The parser explicitly rejects struct projections with HFC1004. A broader projection-type contract would be needed.
 
 ### DW-1007: Snapshot files lost UTF-8 BOM after regeneration
 
@@ -2469,6 +2470,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-st
 location: BoundedContextAttribute.cs:7
 reason: **`BoundedContextAttribute.AttributeTargets` is `Class` only — struct projections silent fallback hole** [`Contracts/Attributes/BoundedContextAttribute.cs:7`] — `ProjectionEmptyStateCtaAttribute` allows `Class | Struct` but `[BoundedContext]` does not, so struct projections cannot drive the BC fallback chain. Owned by Story 1-2 contract scope; struct projections are an edge case not addressed by Story 4-6. Reconciliation: Row: DW-0277; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: Contracts/Attributes/BoundedContextAttribute.cs:7.
 status: open
+decision: 2026-11-26 Skipped. The same struct-projection restriction applies. Allowing bounded-context metadata on structs alone would leave the reported projection path unavailable.
 
 ### DW-1009: External native-French sign-off remains required but cannot be completed in-tool
 
@@ -2476,6 +2478,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-dir
 location: 3-5-home-directory-badge-counts-and-new-capability-discovery.md
 reason: **External native-French sign-off remains required but cannot be completed in-tool** — AC13 / D19 / Task 6.2 still require native-French review for `HomeWelcomeTemplate`, `HomeAllCaughtUpText`, `HomeWelcomeAnonymous`, and `HomeFirstVisitText`. Deferred because this review session cannot supply the external native-language reviewer sign-off; keep it as a merge gate. Reconciliation: Row: DW-0278; Split to external native-French review gate 2026-05-13; Disposition: split-to-named-story; Reason: requires human language review outside the tool; Residual release-gate risk: blocks localization sign-off only.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
 status: open
+decision: 2026-11-26 Skipped. The release requirement calls for an external native-French reviewer to sign off.
 decision: 2026-08-27 Keep open
 
 ### DW-1010: `_unresolvedTypes` concurrent dict grows unbounded in `BadgeCountService`
@@ -2484,6 +2487,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-dir
 location: src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:57-58
 reason: **`_unresolvedTypes` concurrent dict grows unbounded in `BadgeCountService`** — `src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:57-58,287-301`. Scoped-per-circuit so bounded by circuit lifetime, but revisit once Story 5-3 exposes the real SignalR `IProjectionChangeNotifier` where adversarial type-name strings become reachable. Reconciliation: Row: DW-0279; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood low, impact low; Release risk: scoped circuit dictionary can grow only within circuit lifetime; Downstream impact: badge notifier hot path; Owner: Shell runtime owner; Review by: 2026-06-30; Reopen trigger: adversarial projection-type names become externally reachable through SignalR notifier; Validation: static BadgeCountService review.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
 status: open
+decision: 2026-11-26 Skipped. Built-in SignalR delivery checks tenant and active subscription keys before reaching the badge service. Unregistered wire names cannot grow the dictionary.
 
 ### DW-1011: Duplicate `AppInitializedAction` on Blazor Server prerender + interactive double-fire
 
@@ -2503,13 +2507,15 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-dir
 location: 3-5-home-directory-badge-counts-and-new-capability-discovery.md
 reason: **Adopter-supplied `IBadgeCountService` not initialized by seed effect** — `CapabilityDiscoveryEffects.SeedBadgeCountsAsync` uses `is BadgeCountService concrete` pattern match. Adopters ship their own init per D1 extensibility hatch. Reconciliation: Row: DW-0282; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood low, impact low; Release risk: custom badge service owns its own initialization; Downstream impact: adopter extension point only; Owner: Shell extensibility owner; Review by: 2026-06-30; Reopen trigger: documented adopter service cannot initialize counts; Validation: static extension review.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
 status: open
+decision: 2026-11-26 Skipped. Custom badge services own initialization under the documented extension contract. The ledger has no example of an adopter blocked by that design.
 
 ### DW-1014: `BadgeCountService.TotalActionableItems = Sum()` overflow
 
 origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22)"), 2026-08-27
 location: 3-5-home-directory-badge-counts-and-new-capability-discovery.md
 reason: **`BadgeCountService.TotalActionableItems = Sum()` overflow** — theoretical `int` overflow when aggregate exceeds `int.MaxValue`. Unreachable in realistic catalogs (< 50 projections). Reconciliation: Row: DW-0283; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood very low, impact low; Release risk: unrealistic projection counts required for int overflow; Downstream impact: home aggregate count; Owner: Shell runtime owner; Review by: 2026-06-30; Reopen trigger: manifests approach high-cardinality projection counts; Validation: manifest scale review.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
-status: open
+status: done 2026-11-26
+resolution: Capped badge and Home aggregates at the public int limit, with two-projection overflow coverage.
 
 ### DW-1015: `DisposeAsync` calls synchronous `Dispose` and returns completed `ValueTask`
 

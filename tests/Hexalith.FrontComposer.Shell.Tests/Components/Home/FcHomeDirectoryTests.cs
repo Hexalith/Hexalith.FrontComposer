@@ -277,6 +277,29 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void OversizedCountsKeepHomeCardsUrgentAndCapTheSummary() {
+        _registry.GetManifests().Returns([
+            new DomainManifest("Alpha", "Alpha", [typeof(string).FullName!, typeof(int).FullName!], []),
+            new DomainManifest("Beta", "Beta", [typeof(double).FullName!], []),
+        ]);
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)));
+        dispatcher.Dispatch(new BadgeCountsSeededAction(ImmutableDictionary<Type, int>.Empty
+            .Add(typeof(string), int.MaxValue)
+            .Add(typeof(int), 1)
+            .Add(typeof(double), 2)));
+
+        IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
+
+        cut.WaitForAssertion(() => {
+            cut.Find("[data-testid='fc-home-card-badge-Alpha']").TextContent.ShouldBe("2147483647");
+            cut.Find("[data-testid='fc-home-card-badge-Beta']").TextContent.ShouldBe("2");
+            cut.Find("[data-testid='fc-home-subtitle']").TextContent.ShouldContain(int.MaxValue.ToString(CultureInfo.CurrentCulture));
+        });
+    }
+
+    [Fact]
     public void RendersUrgencySortedCards_WhenTotalActionableItemsExceedsZero() {
         // AC3 — urgency cards sort by aggregate count descending, ties broken by name ascending.
         _registry.GetManifests().Returns([

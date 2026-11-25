@@ -131,7 +131,7 @@ public partial class FcHomeDirectory {
         List<HomeCardModel> result = new(manifests.Count);
         foreach (DomainManifest manifest in manifests) {
             List<HomeProjectionRow> rows = new(manifest.Projections.Count);
-            int aggregate = 0;
+            long aggregate = 0;
             bool isReady = false;
             foreach (string projection in manifest.Projections) {
                 if (string.IsNullOrWhiteSpace(projection)) {
@@ -147,7 +147,7 @@ public partial class FcHomeDirectory {
                 rows.Add(new HomeProjectionRow(projection, count));
             }
 
-            result.Add(new HomeCardModel(manifest, aggregate, isReady, rows));
+            result.Add(new HomeCardModel(manifest, (int)Math.Min(int.MaxValue, aggregate), isReady, rows));
         }
 
         return result;
