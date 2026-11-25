@@ -127,7 +127,13 @@ public sealed class FrontComposerAuthenticationOptions {
         CustomBrokered.Enabled = false;
     }
 
-    internal FrontComposerAuthenticationProviderKind SelectedProviderKind {
+    /// <summary>Gets the configured authentication provider kind.</summary>
+    /// <remarks>
+    /// Configuration validation requires exactly one provider. Before validation, this property returns
+    /// the first enabled mode in the order OpenID Connect, SAML2, GitHub OAuth, and custom brokered,
+    /// or <see cref="FrontComposerAuthenticationProviderKind.None"/> when no mode is enabled.
+    /// </remarks>
+    public FrontComposerAuthenticationProviderKind SelectedProviderKind {
         get {
             if (OpenIdConnect.Enabled) {
                 return FrontComposerAuthenticationProviderKind.OpenIdConnect;

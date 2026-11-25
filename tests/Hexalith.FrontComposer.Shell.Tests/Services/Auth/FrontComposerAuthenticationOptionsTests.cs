@@ -11,6 +11,25 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services.Auth;
 
 public sealed class FrontComposerAuthenticationOptionsTests {
     [Fact]
+    public void SelectedProviderKindIsPublicAndTracksConfiguredModes() {
+        typeof(FrontComposerAuthenticationProviderKind).IsPublic.ShouldBeTrue();
+        typeof(FrontComposerAuthenticationOptions)
+            .GetProperty(nameof(FrontComposerAuthenticationOptions.SelectedProviderKind)).ShouldNotBeNull();
+
+        FrontComposerAuthenticationOptions options = new();
+        options.SelectedProviderKind.ShouldBe(FrontComposerAuthenticationProviderKind.None);
+        options.CustomBrokered.Enabled = true;
+        options.SelectedProviderKind.ShouldBe(FrontComposerAuthenticationProviderKind.CustomBrokered);
+        options.GitHubOAuth.Enabled = true;
+        options.SelectedProviderKind.ShouldBe(FrontComposerAuthenticationProviderKind.GitHubOAuth);
+        options.Saml2.Enabled = true;
+        options.SelectedProviderKind.ShouldBe(FrontComposerAuthenticationProviderKind.Saml2);
+        options.OpenIdConnect.Enabled = true;
+        options.SelectedProviderKind.ShouldBe(FrontComposerAuthenticationProviderKind.OpenIdConnect);
+        Validate(options).Failed.ShouldBeTrue();
+    }
+
+    [Fact]
     public void Validate_Fails_WhenNoProviderIsSelected() {
         ValidateOptionsResult result = Validate(new FrontComposerAuthenticationOptions());
 

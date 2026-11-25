@@ -174,8 +174,8 @@ public sealed class ShellTypeOrganizationGovernanceTests
         DirectDeclaration[] actual = [.. sources.SelectMany(ParseDirectDeclarations)];
 
         expected.Length.ShouldBe(111);
-        expected.Count(pin => pin.Accessibility == "public").ShouldBe(97);
-        expected.Count(pin => pin.Accessibility == "internal").ShouldBe(14);
+        expected.Count(pin => pin.Accessibility == "public").ShouldBe(98);
+        expected.Count(pin => pin.Accessibility == "internal").ShouldBe(13);
 
         // AC2's exact type-kind census. Without this a pin row could be swapped for any
         // other already-conforming public declaration and the suite would stay green,
@@ -193,7 +193,7 @@ public sealed class ShellTypeOrganizationGovernanceTests
         // substitution visible, because it does not depend on the manifest to describe
         // itself. Re-seal deliberately when the split output legitimately changes.
         ManifestChecksum().ShouldBe(
-            "f7512dcfa0fb4c1c4bba45049f8c364d5f13a72fa0916a25a7d64aefa88b4967",
+            "cd4aca3532360a4545ddd845b151f3bc35b87539fc69d5fde10e41c3bb503aa7",
             "the 111-declaration manifest is sealed; re-seal only for a deliberate split change");
 
         FindManifestUniquenessViolations(expected).ShouldBeEmpty();
@@ -1522,7 +1522,7 @@ Infrastructure/EventStore/ProjectionHubConnectionStateChanged.cs|Hexalith.FrontC
 Infrastructure/Storage/LocalStorageService.cs|Hexalith.FrontComposer.Shell.Infrastructure.Storage.LocalStorageService|class|public|public sealed
 Infrastructure/Storage/PendingWrite.cs|Hexalith.FrontComposer.Shell.Infrastructure.Storage.PendingWrite|record struct|internal|internal readonly
 Options/FrontComposerAuthenticationOptions.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerAuthenticationOptions|class|public|public sealed
-Options/FrontComposerAuthenticationProviderKind.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerAuthenticationProviderKind|enum|internal|internal
+Options/FrontComposerAuthenticationProviderKind.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerAuthenticationProviderKind|enum|public|public
 Options/FrontComposerOpenIdConnectOptions.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerOpenIdConnectOptions|class|public|public sealed
 Options/FrontComposerSaml2Options.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerSaml2Options|class|public|public sealed
 Options/FrontComposerGitHubOAuthOptions.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerGitHubOAuthOptions|class|public|public sealed
