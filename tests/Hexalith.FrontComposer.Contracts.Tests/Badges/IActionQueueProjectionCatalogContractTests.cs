@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Hexalith.FrontComposer.Contracts.Badges;
 
 using Shouldly;
@@ -15,7 +17,7 @@ public sealed class IActionQueueProjectionCatalogContractTests {
     public void Interface_ExposesActionQueueTypes_AsReadOnlyListOfType() {
         Type interfaceType = typeof(IActionQueueProjectionCatalog);
 
-        System.Reflection.PropertyInfo? property = interfaceType.GetProperty("ActionQueueTypes");
+        PropertyInfo? property = interfaceType.GetProperty(nameof(IActionQueueProjectionCatalog.ActionQueueTypes));
         _ = property.ShouldNotBeNull();
         property!.PropertyType.ShouldBe(typeof(IReadOnlyList<Type>));
         property.CanRead.ShouldBeTrue();
@@ -25,10 +27,13 @@ public sealed class IActionQueueProjectionCatalogContractTests {
     [Fact]
     public void Interface_DeclaresOnlyOneMember_PreventingShapeDrift() {
         Type interfaceType = typeof(IActionQueueProjectionCatalog);
-        System.Reflection.MemberInfo[] declared = interfaceType.GetMembers(
-            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly);
+        const BindingFlags declaredPublic =
+            BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+        PropertyInfo property = interfaceType.GetProperties(declaredPublic).ShouldHaveSingleItem();
 
-        // 1 property + its getter accessor = 2 members.
-        declared.Length.ShouldBe(2);
+        interfaceType.GetMembers(declaredPublic)
+            .Where(member => !member.Equals(property.GetMethod))
+            .ShouldHaveSingleItem()
+            .ShouldBe(property);
     }
 }

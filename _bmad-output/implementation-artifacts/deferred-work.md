@@ -2547,6 +2547,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-dir
 location: 3-5-home-directory-badge-counts-and-new-capability-discovery.md
 reason: **`NavigationException` during SSR prerender on home card click** — project-wide prerender-safety pattern; not per-component. Reconciliation: Row: DW-0287; Split to Story 11.6 Shell prerender UX policy 2026-05-13; Disposition: split-to-named-story; Reason: NavigationException handling is framework-wide Shell behavior; Residual release-gate risk: low.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
 status: open
+decision: 2026-11-26 Skipped. The Home card navigates only from interactive click or key events. Static prerender cannot deliver those events.
 
 ### DW-1019: `BadgeCountService.ContainsCatalogType` O(n) linear scan on notifier hot-path
 
@@ -2554,13 +2555,15 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-dir
 location: 3-5-home-directory-badge-counts-and-new-capability-discovery.md
 reason: **`BadgeCountService.ContainsCatalogType` O(n) linear scan on notifier hot-path** — catalog < 50 types today; add `HashSet<Type>` cache if profiling shows cost. Reconciliation: Row: DW-0288; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood low, impact low; Release risk: catalog size remains small; Downstream impact: notifier hot path only; Owner: Shell runtime owner; Review by: 2026-06-30; Reopen trigger: profiling shows notifier lookup cost; Validation: catalog scale review.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
 status: open
+decision: 2026-11-26 Skipped. The proposed lookup cache depends on evidence of catalog lookup cost. The current ledger contains no such profile.
 
 ### DW-1020: `IActionQueueProjectionCatalogContractTests` reflection shape assertion brittle
 
 origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22)"), 2026-08-27
 location: 3-5-home-directory-badge-counts-and-new-capability-discovery.md
 reason: **`IActionQueueProjectionCatalogContractTests` reflection shape assertion brittle** — `GetMembers(DeclaredOnly).Length == 2` relies on getter-accessor reflection detail. Reconciliation: Row: DW-0289; Split to Story 11.2/9.4 diagnostics governance 2026-05-13; Disposition: split-to-named-story; Reason: reflection-shape brittleness is contract-test governance, not EventStore runtime; Residual release-gate risk: low.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
-status: open
+status: done 2026-11-26
+resolution: Asserts the actual declared public property and excludes its accessor without relying on the reflection member count.
 
 ### DW-1021: Duplicate `data-testid` / DOM ids when two projection FQNs share a last segment
 
