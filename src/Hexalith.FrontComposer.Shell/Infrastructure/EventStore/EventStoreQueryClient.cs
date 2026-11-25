@@ -375,10 +375,12 @@ public sealed class EventStoreQueryClient(
             return;
         }
 
+        using Activity? activity = FrontComposerTelemetry.Source.StartActivity(FrontComposerTelemetry.QueryCacheWriteOperation);
         try {
             await cache.SetAsync(cacheKey, entry, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex) {
+            FrontComposerTelemetry.SetQueryCacheWriteFailure(ex.GetType().Name);
             FrontComposerLog.QueryCacheWriteFailed(logger, ex.GetType().Name);
         }
     }

@@ -16,6 +16,7 @@ internal static class FrontComposerTelemetry {
 
     public const string CommandDispatchOperation = "frontcomposer.command.dispatch";
     public const string QueryExecuteOperation = "frontcomposer.query.execute";
+    public const string QueryCacheWriteOperation = "frontcomposer.query.cache_write";
     public const string ProjectionNudgeOperation = "frontcomposer.projection.nudge";
     // F03 — distinguish the SignalR-callback receive seam from the lane refresh seam to avoid
     // double-counting under `frontcomposer.projection.nudge` when both fire for the same logical
@@ -132,6 +133,15 @@ internal static class FrontComposerTelemetry {
 
         SetTag(activity, FailureCategoryTag, bounded);
         _ = (activity?.SetStatus(ActivityStatusCode.Error, bounded));
+    }
+
+    /// <summary>Records a cache-write failure within the active query cache-write operation.</summary>
+    public static void SetQueryCacheWriteFailure(string failureCategory) {
+        Activity? activity = Activity.Current;
+        if (activity is { OperationName: QueryCacheWriteOperation } && activity.Source == Source) {
+            SetOutcome(activity, "failed");
+            SetFailure(activity, failureCategory);
+        }
     }
 
     public static void SetHttpStatus(Activity? activity, int statusCode)

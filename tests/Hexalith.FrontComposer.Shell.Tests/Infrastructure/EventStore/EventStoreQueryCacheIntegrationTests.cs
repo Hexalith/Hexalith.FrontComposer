@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 
@@ -5,7 +6,9 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Contracts.Telemetry;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -60,6 +63,83 @@ public class EventStoreQueryCacheIntegrationTests : IDisposable {
         ETagCacheEntry? cached = await _cache.TryGetAsync(BuildKey(0), 1, TestContext.Current.CancellationToken);
         cached.ShouldNotBeNull();
         cached!.ETag.ShouldBe("\"v1\"");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task QueryAsync_DetachedCacheWriteFails_RecordsSafeChildActivity(bool defaultCache) {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        TaskCompletionSource pendingWrite = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<Activity> stoppedWrite = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using Activity trace = new Activity(nameof(QueryAsync_DetachedCacheWriteFails_RecordsSafeChildActivity))
+            .SetIdFormat(ActivityIdFormat.W3C)
+            .Start();
+        ActivityTraceId traceId = trace.TraceId;
+        Activity? query = null;
+        using ActivityListener listener = new() {
+            ShouldListenTo = static source => source.Name == FrontComposerActivitySource.Name,
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = activity => {
+                if (activity.TraceId != traceId) {
+                    return;
+                }
+
+                if (activity.OperationName == FrontComposerTelemetry.QueryExecuteOperation) {
+                    query = activity;
+                }
+                else if (activity.OperationName == FrontComposerTelemetry.QueryCacheWriteOperation) {
+                    _ = stoppedWrite.TrySetResult(activity);
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        IStorageService storage = Substitute.For<IStorageService>();
+        storage.GetKeysAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<string>>([]));
+        storage.SetAsync(Arg.Any<string>(), Arg.Any<ETagCacheEntry>(), Arg.Any<CancellationToken>())
+            .Returns(pendingWrite.Task);
+        using ETagCacheService builtInCache = new(
+            storage, new TestOptionsMonitor(new FcShellOptions { MaxETagCacheEntries = 50 }),
+            TimeProvider.System, NullLogger<ETagCacheService>.Instance);
+
+        IETagCache customCache = Substitute.For<IETagCache>();
+        customCache.TryBuildKey(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), out Arg.Any<string>())
+            .Returns(call => {
+                call[3] = "private-cache-key";
+                return true;
+            });
+        customCache.SetAsync(Arg.Any<string>(), Arg.Any<ETagCacheEntry>(), Arg.Any<CancellationToken>())
+            .Returns(pendingWrite.Task);
+
+        ScriptedHandler handler = new();
+        handler.Script.Add(_ => Ok("[{\"id\":\"order-1\"}]", "\"v1\""));
+        string discriminator = ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)!;
+        EventStoreQueryClient client = NewClient(handler, cache: defaultCache ? builtInCache : customCache);
+
+        try {
+            QueryResult<OrderProjection> result = await client.QueryAsync<OrderProjection>(
+                BuildRequest(cacheDiscriminator: discriminator), ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+            result.Items.Single().Id.ShouldBe("order-1");
+            query.ShouldNotBeNull();
+            query.GetTagItem(FrontComposerTelemetry.OutcomeTag).ShouldBe("ok");
+            query.GetTagItem(FrontComposerTelemetry.FailureCategoryTag).ShouldBeNull();
+            stoppedWrite.Task.IsCompleted.ShouldBeFalse();
+        }
+        finally {
+            pendingWrite.SetException(new InvalidOperationException("private storage error"));
+        }
+
+        Activity write = await stoppedWrite.Task.WaitAsync(TimeSpan.FromSeconds(5), ct);
+        write.ParentSpanId.ShouldBe(query!.SpanId);
+        write.Status.ShouldBe(ActivityStatusCode.Error);
+        write.StatusDescription.ShouldBe(nameof(InvalidOperationException));
+        write.GetTagItem(FrontComposerTelemetry.OutcomeTag).ShouldBe("failed");
+        write.GetTagItem(FrontComposerTelemetry.FailureCategoryTag).ShouldBe(nameof(InvalidOperationException));
+        query.GetTagItem(FrontComposerTelemetry.FailureCategoryTag).ShouldBeNull();
+        write.TagObjects.Select(tag => tag.Value?.ToString()).ShouldNotContain(value =>
+            value != null && (value.Contains("private", StringComparison.Ordinal) || value.Contains("order-1", StringComparison.Ordinal)));
     }
 
     [Theory]

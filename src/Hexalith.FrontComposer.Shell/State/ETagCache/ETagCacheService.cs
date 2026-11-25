@@ -196,6 +196,7 @@ public sealed class ETagCacheService : IETagCache, IDisposable {
             throw;
         }
         catch (System.Exception ex) {
+            FrontComposerTelemetry.SetQueryCacheWriteFailure(ex.GetType().Name);
             FrontComposerHotPathLog.ETagStorageWriteFailed(
                 _logger,
                 ex,
