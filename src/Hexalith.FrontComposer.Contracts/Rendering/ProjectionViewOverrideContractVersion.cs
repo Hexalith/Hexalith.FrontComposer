@@ -17,5 +17,5 @@ public static class ProjectionViewOverrideContractVersion {
     /// Packed contract version. The major value drives compatibility; minor/build drift remains
     /// diagnosable without changing selection semantics.
     /// </summary>
-    public const int Current = (Major * 1_000_000) + (Minor * 1_000) + Build;
+    public const int Current = (Major * CustomizationContractVersion.MajorFactor) + (Minor * CustomizationContractVersion.MinorFactor) + Build;
 }

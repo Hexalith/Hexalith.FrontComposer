@@ -25,10 +25,20 @@ public sealed class CustomizationContractVersionTests {
         comparison.ShouldReportDiagnostic.ShouldBeFalse();
     }
 
-    [Fact]
-    public void Compare_MajorMismatch_SuppressesSelection() {
+    [Theory]
+    [InlineData(nameof(ProjectionTemplateContractVersion), ProjectionTemplateContractVersion.Current,
+        ProjectionTemplateContractVersion.Major, ProjectionTemplateContractVersion.Minor, ProjectionTemplateContractVersion.Build)]
+    [InlineData(nameof(ProjectionSlotContractVersion), ProjectionSlotContractVersion.Current,
+        ProjectionSlotContractVersion.Major, ProjectionSlotContractVersion.Minor, ProjectionSlotContractVersion.Build)]
+    [InlineData(nameof(ProjectionViewOverrideContractVersion), ProjectionViewOverrideContractVersion.Current,
+        ProjectionViewOverrideContractVersion.Major, ProjectionViewOverrideContractVersion.Minor, ProjectionViewOverrideContractVersion.Build)]
+    public void Compare_MajorMismatch_SuppressesSelection(string contract, int current, int major, int minor, int build) {
+        CustomizationContractVersion installed = new(major, minor, build);
+        installed.Packed.ShouldBe(current, contract);
+        CustomizationContractVersion.Unpack(current).ShouldBe(installed);
+
         CustomizationContractVersionComparison comparison =
-            CustomizationContractVersion.Compare(expectedPacked: 2_000_000, actualPacked: 1_000_000);
+            CustomizationContractVersion.Compare(expectedPacked: new CustomizationContractVersion(major + 1, minor, build).Packed, actualPacked: current);
 
         comparison.Decision.ShouldBe(CustomizationContractVersionDecision.MajorMismatch);
         comparison.CanSelect.ShouldBeFalse();

@@ -35,5 +35,5 @@ public static class ProjectionTemplateContractVersion {
     public const int Build = 0;
 
     /// <summary>The packed contract version identifier (Major*1_000_000 + Minor*1_000 + Build).</summary>
-    public const int Current = (Major * 1_000_000) + (Minor * 1_000) + Build;
+    public const int Current = (Major * CustomizationContractVersion.MajorFactor) + (Minor * CustomizationContractVersion.MinorFactor) + Build;
 }

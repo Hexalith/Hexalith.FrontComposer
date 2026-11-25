@@ -22,5 +22,5 @@ public static class ProjectionSlotContractVersion {
     public const int Build = 0;
 
     /// <summary>Current packed version: <c>Major * 1_000_000 + Minor * 1_000 + Build</c>.</summary>
-    public const int Current = (Major * 1_000_000) + (Minor * 1_000) + Build;
+    public const int Current = (Major * CustomizationContractVersion.MajorFactor) + (Minor * CustomizationContractVersion.MinorFactor) + Build;
 }

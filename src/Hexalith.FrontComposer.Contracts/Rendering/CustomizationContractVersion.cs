@@ -4,8 +4,14 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// Packed customization contract version triplet.
 /// </summary>
 public readonly record struct CustomizationContractVersion(int Major, int Minor, int Build) {
+    /// <summary>The multiplier for the minor component and radix for the build component.</summary>
+    internal const int MinorFactor = 1_000;
+
+    /// <summary>The multiplier for the major component.</summary>
+    internal const int MajorFactor = MinorFactor * MinorFactor;
+
     /// <summary>Packs the version as <c>Major * 1_000_000 + Minor * 1_000 + Build</c>.</summary>
-    public int Packed => (Major * 1_000_000) + (Minor * 1_000) + Build;
+    public int Packed => (Major * MajorFactor) + (Minor * MinorFactor) + Build;
 
     /// <summary>Unpacks a packed customization contract version.</summary>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="packed"/> is negative.</exception>
@@ -17,7 +23,7 @@ public readonly record struct CustomizationContractVersion(int Major, int Minor,
                 "Packed customization contract versions are non-negative integers of the form Major*1_000_000 + Minor*1_000 + Build.");
         }
 
-        return new(packed / 1_000_000, packed / 1_000 % 1_000, packed % 1_000);
+        return new(packed / MajorFactor, packed / MinorFactor % MinorFactor, packed % MinorFactor);
     }
 
     /// <summary>
