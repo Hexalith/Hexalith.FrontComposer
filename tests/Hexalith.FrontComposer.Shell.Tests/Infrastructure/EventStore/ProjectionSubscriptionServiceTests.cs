@@ -650,6 +650,59 @@ public sealed class ProjectionSubscriptionServiceTests {
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task RetiredSubscriptionDoesNotDeliverAfterRevalidation(bool detail, bool resubscribe) {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        FakeProjectionHubConnection connection = new();
+        DetailCapturingNotifier notifier = new();
+        TestRefreshScheduler refresh = new();
+        TenantContextSnapshot captured = new("acme", "user-a", IsAuthenticated: true, CorrelationId: "correlation");
+        TenantContextResult allowed = TenantContextResult.Success(captured);
+        IFrontComposerTenantContextAccessor accessor = Substitute.For<IFrontComposerTenantContextAccessor>();
+        _ = accessor.TryGetContext(Arg.Any<string?>(), Arg.Any<string>()).Returns(allowed);
+        _ = accessor.Revalidate(Arg.Any<TenantContextSnapshot>(), Arg.Any<string>()).Returns(allowed);
+        ProjectionSubscriptionService sut = new(
+            accessor,
+            Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"), RequireAccessToken = false,
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(), refresh, notifier, NullLogger<ProjectionSubscriptionService>.Instance);
+        await using ConfiguredAsyncDisposable lifetime = sut.ConfigureAwait(true);
+        await sut.SubscribeAsync("orders", "acme", cancellationToken);
+
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        string operation = detail ? "projection-detail" : "projection-nudge";
+        _ = accessor.Revalidate(captured, operation).Returns(_ => {
+            entered.TrySetResult();
+            release.Wait(cancellationToken);
+            return allowed;
+        });
+        Task notification = Task.Run(() => detail
+            ? connection.RaiseDetailAsync(new ProjectionChangedDetail("orders", "acme", null, new Dictionary<string, string>()))
+            : connection.RaiseAsync("orders", "acme"), cancellationToken);
+        try {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+            await sut.UnsubscribeAsync("orders", "acme", cancellationToken);
+            if (resubscribe) {
+                await sut.SubscribeAsync("orders", "acme", cancellationToken);
+            }
+        }
+        finally {
+            release.Set();
+            await notification.ConfigureAwait(true);
+        }
+
+        notifier.Changed.ShouldBeEmpty();
+        notifier.Details.ShouldBeEmpty();
+        refresh.NudgeRefreshes.ShouldBeEmpty();
+    }
+
+    [Theory]
     [InlineData(null, "HFC2015")]
     [InlineData("other-tenant", "HFC2019")]
     public async Task ProjectionNudgesRateLimitTenantWarningsAndRevalidateEveryGroup(

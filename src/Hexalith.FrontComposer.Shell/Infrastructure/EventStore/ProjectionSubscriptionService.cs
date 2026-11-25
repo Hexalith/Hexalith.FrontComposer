@@ -201,7 +201,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                 // subscribe would short-circuit the same way. Fall through and retry the join.
             }
             else {
-                added = _activeGroups.TryAdd(key, new GroupState(GroupHealth.Pending, context));
+                added = _activeGroups.TryAdd(key, new GroupState(GroupHealth.Pending, context, new object()));
             }
 
             ProjectionHubConnectionPhase phase = _connection.Phase;
@@ -375,11 +375,6 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                 return;
             }
 
-            // Re-read state in case IsGroupContextCurrent flipped Health back to Active.
-            if (!_activeGroups.TryGetValue(key, out state) || state.Health != GroupHealth.Active) {
-                return;
-            }
-
             // F03 — use the receive-seam span name so it does not double-count under the
             // `frontcomposer.projection.nudge` operation alongside the scheduler's per-refresh
             // span. Operators see "received" and "refreshed" as distinct measurements.
@@ -387,11 +382,19 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                 key.ProjectionType,
                 FrontComposerTelemetry.TenantMarker(key.TenantId));
             try {
+                if (!IsActiveRegistration(key, state)) {
+                    return;
+                }
+
                 if (_notifier is IProjectionChangeNotifierWithTenant tenantAware) {
                     tenantAware.NotifyChanged(key.ProjectionType, key.TenantId);
                 }
                 else {
                     _notifier.NotifyChanged(key.ProjectionType);
+                }
+
+                if (!IsActiveRegistration(key, state)) {
+                    return;
                 }
 
                 // P11 — link nudge refresh to the service's disposal CTS so disposal cancels
@@ -409,7 +412,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                 // own PollOnceAsync; with default budget=25 and 50 concurrent nudges this fans
                 // out to ~1,250 status queries. The in-flight flag swallows concurrent invocations
                 // so a burst produces at most one running poll.
-                if (_pendingCommandPolling is not null
+                if (_pendingCommandPolling is not null && IsActiveRegistration(key, state)
                     && Interlocked.CompareExchange(ref _pendingPollInFlight, 1, 0) == 0) {
                     try {
                         _ = await _pendingCommandPolling.PollOnceAsync(_disposalCts.Token).ConfigureAwait(false);
@@ -465,6 +468,10 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             detail.ProjectionType,
             FrontComposerTelemetry.TenantMarker(detail.TenantId));
         try {
+            if (!IsActiveRegistration(key, state)) {
+                return;
+            }
+
             await detailNotifier.NotifyDetailAsync(detail, _disposalCts.Token).ConfigureAwait(false);
             FrontComposerTelemetry.SetOutcome(activity, "handled");
         }
@@ -888,6 +895,13 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         }
     }
 
+    // The same key can be unsubscribed and then rejoined while a callback revalidates.
+    private bool IsActiveRegistration(GroupKey key, GroupState origin)
+        => !_disposed
+            && _activeGroups.TryGetValue(key, out GroupState current)
+            && current.Health == GroupHealth.Active
+            && ReferenceEquals(current.Registration, origin.Registration);
+
     private bool IsGroupContextCurrent(GroupKey key, GroupState state, string operationKind, bool promoteActive = true) {
         if (_tenantContextAccessor is null || state.TenantContext is null) {
             _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Blocked }, state);
@@ -989,7 +1003,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
 
     private readonly record struct GroupKey(string ProjectionType, string TenantId, string? Scope);
 
-    private readonly record struct GroupState(GroupHealth Health, TenantContextSnapshot? TenantContext);
+    private readonly record struct GroupState(GroupHealth Health, TenantContextSnapshot? TenantContext, object Registration);
 
     private enum GroupHealth : byte {
         // Active stays 0 so default(GroupState) keeps its historical meaning; see the P4 note in
