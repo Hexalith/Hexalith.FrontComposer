@@ -11,7 +11,31 @@ public readonly record struct CustomizationContractVersion(int Major, int Minor,
     internal const int MajorFactor = MinorFactor * MinorFactor;
 
     /// <summary>Packs the version as <c>Major * 1_000_000 + Minor * 1_000 + Build</c>.</summary>
-    public int Packed => (Major * MajorFactor) + (Minor * MinorFactor) + Build;
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The major component is negative, or the minor or build component is outside 0–999.
+    /// </exception>
+    /// <exception cref="OverflowException">The packed version exceeds <see cref="int.MaxValue"/>.</exception>
+    public int Packed => Pack(Major, Minor, Build);
+
+    private static int Pack(int major, int minor, int build)
+    {
+        if (major < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(major), major, "The major version must be nonnegative.");
+        }
+
+        if (minor < 0 || minor >= MinorFactor)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minor), minor, "The minor version must be between 0 and 999.");
+        }
+
+        if (build < 0 || build >= MinorFactor)
+        {
+            throw new ArgumentOutOfRangeException(nameof(build), build, "The build version must be between 0 and 999.");
+        }
+
+        return checked((major * MajorFactor) + (minor * MinorFactor) + build);
+    }
 
     /// <summary>Unpacks a packed customization contract version.</summary>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="packed"/> is negative.</exception>

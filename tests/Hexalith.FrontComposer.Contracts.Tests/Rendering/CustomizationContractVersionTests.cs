@@ -15,6 +15,41 @@ public sealed class CustomizationContractVersionTests {
     [InlineData(2_003_004, 2, 3, 4)]
     public void Unpack_ReturnsVersionTriplet(int packed, int major, int minor, int build) => CustomizationContractVersion.Unpack(packed).ShouldBe(new CustomizationContractVersion(major, minor, build));
 
+    [Theory]
+    [InlineData(0, 0, 0, 0)]
+    [InlineData(1, 999, 999, 1_999_999)]
+    [InlineData(2147, 483, 647, int.MaxValue)]
+    public void PackedRoundTripsCanonicalVersions(int major, int minor, int build, int expected)
+    {
+        CustomizationContractVersion version = new(major, minor, build);
+
+        version.Packed.ShouldBe(expected);
+        CustomizationContractVersion.Unpack(expected).ShouldBe(version);
+    }
+
+    [Theory]
+    [InlineData(-1, 0, 0, "major")]
+    [InlineData(1, -1, 0, "minor")]
+    [InlineData(0, 1000, 0, "minor")]
+    [InlineData(1, 0, -1, "build")]
+    [InlineData(1, 0, 1000, "build")]
+    public void PackedRejectsOutOfRangeComponents(int major, int minor, int build, string invalidComponent)
+    {
+        CustomizationContractVersion version = new(major, minor, build);
+
+        Should.Throw<ArgumentOutOfRangeException>(() => _ = version.Packed).ParamName.ShouldBe(invalidComponent);
+    }
+
+    [Theory]
+    [InlineData(2147, 483, 648)]
+    [InlineData(2148, 0, 0)]
+    public void PackedThrowsWhenTheVersionExceedsInt32(int major, int minor, int build)
+    {
+        CustomizationContractVersion version = new(major, minor, build);
+
+        Should.Throw<OverflowException>(() => _ = version.Packed);
+    }
+
     [Fact]
     public void Compare_ExactMatch_SelectsOverride() {
         CustomizationContractVersionComparison comparison =
