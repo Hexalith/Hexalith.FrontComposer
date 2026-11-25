@@ -2335,7 +2335,8 @@ decision: 2026-09-06 Versioned URL-label records — Introduce a versioned persi
 origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccommandpalette-and-keyboard-shortcuts — Pass 6 / Chunk 2 (2026-04-25 bmad-code-review)"), 2026-08-27
 location: CommandPaletteEffects.cs:_shortcutAliases
 reason: **`_shortcutAliases` array has no FR-locale aliases (`aide`, `clés`, etc.)** [`CommandPaletteEffects.cs:_shortcutAliases`] — French users discover help only via `?` (universal). Spec scope line 36 covers the v1 ASCII alias set; v2 i18n rolodex. Reconciliation: Row: DW-0260; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: CommandPaletteEffects.cs:_shortcutAliases.
-status: open
+status: done 2026-11-25
+resolution: French UI cultures recognize localized shortcut aliases and preserve the original query and existing aliases.
 
 ### DW-992: `PaletteResultsComputedAction.Results` Query field invariant fragile under future canonicalisation
 

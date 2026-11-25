@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 
 using Fluxor;
 
@@ -50,6 +51,7 @@ public sealed class CommandPaletteEffects : IDisposable {
     private static readonly TimeSpan PersistGateTimeout = TimeSpan.FromSeconds(2);
 
     private static readonly string[] _shortcutAliases = ["?", "help", "keys", "kb", "shortcut"];
+    private static readonly string[] _frenchShortcutAliases = ["aide", "clés", "cles", "raccourci", "raccourcis", "raccourcis clavier"];
     private const string ShortcutsCanonicalQuery = "shortcuts";
 
     /// <summary>Sentinel <c>CommandTypeName</c> for the synthetic "Keyboard Shortcuts" entry (D23).</summary>
@@ -941,7 +943,8 @@ public sealed class CommandPaletteEffects : IDisposable {
     /// </summary>
     /// <param name="query">The raw user query.</param>
     /// <returns>
-    /// <c>"shortcuts"</c> when the query is a known alias or canonical; otherwise the input as
+    /// <c>"shortcuts"</c> when the query matches a default alias, a French alias in a French UI culture,
+    /// or the canonical query; otherwise the input as
     /// supplied (raw — no trimming). Callers that need the trimmed shape must apply <c>.Trim()</c>
     /// themselves; the only call site (<see cref="HandlePaletteQueryChanged"/>) already does so.
     /// </returns>
@@ -962,7 +965,10 @@ public sealed class CommandPaletteEffects : IDisposable {
             }
         }
 
-        if (string.Equals(trimmed, ShortcutsCanonicalQuery, StringComparison.OrdinalIgnoreCase)) {
+        CultureInfo uiCulture = CultureInfo.CurrentUICulture;
+        if (string.Equals(trimmed, ShortcutsCanonicalQuery, StringComparison.OrdinalIgnoreCase)
+            || (uiCulture.TwoLetterISOLanguageName == "fr"
+                && _frenchShortcutAliases.Any(alias => uiCulture.CompareInfo.Compare(trimmed, alias, CompareOptions.IgnoreCase) == 0))) {
             return ShortcutsCanonicalQuery;
         }
 

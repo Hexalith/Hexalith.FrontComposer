@@ -2,6 +2,7 @@
 #pragma warning disable CA2007 // ConfigureAwait — test code
 #pragma warning disable xUnit1051 // CancellationToken — substitute storage does not honour the token
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text.Json;
 
 using Fluxor;
@@ -150,6 +151,37 @@ public class CommandPaletteEffectsTests {
         dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             a.Results.Length >= 1
             && a.Results.All(r => r.Category == PaletteResultCategory.Shortcut)));
+    }
+
+    [Theory]
+    [InlineData("fr-FR", "  CLÉS  ", true)]
+    [InlineData("fr-FR", "CLE\u0301S", true)]
+    [InlineData("fr-CA", "aide", true)]
+    [InlineData("fr", "raccourci", true)]
+    [InlineData("fr", "raccourcis", true)]
+    [InlineData("fr", "Raccourcis clavier", true)]
+    [InlineData("fr", "cles", true)]
+    [InlineData("fr", "?", true)]
+    [InlineData("fr", "help", true)]
+    [InlineData("en-US", "aide", false)]
+    [InlineData("fr", "centre d’aide", false)]
+    public async Task ShortcutAliases_RespectTheFrenchUICulture(string culture, string query, bool isAlias) {
+        CultureInfo previous = CultureInfo.CurrentUICulture;
+        try {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+            CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider sp);
+            sp.GetRequiredService<IShortcutService>().Register("ctrl+k", "PaletteShortcutDescription", () => Task.CompletedTask);
+
+            Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("culture", query), dispatcher);
+            time.Advance(TimeSpan.FromMilliseconds(150));
+            await pending;
+
+            dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteResultsComputedAction>(action =>
+                action.Query == query && action.Results.Any(result => result.Category == PaletteResultCategory.Shortcut) == isAlias));
+        }
+        finally {
+            CultureInfo.CurrentUICulture = previous;
+        }
     }
 
     [Fact]
