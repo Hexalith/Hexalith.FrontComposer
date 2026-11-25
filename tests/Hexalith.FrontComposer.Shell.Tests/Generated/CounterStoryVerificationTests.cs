@@ -1198,12 +1198,6 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
     private static string NormalizeGridMarkup(string markup) {
         string normalized = Regex.Replace(markup, "\\s+id=\"[^\"]+\"", string.Empty);
         normalized = Regex.Replace(normalized, "\\s+blazor:[^=]+=\"[^\"]*\"", string.Empty);
-        // Story 4-6 review fix: per-instance Guid suffix on _expandPanelId (added to prevent
-        // duplicate DOM ids) makes aria-controls non-deterministic across runs.
-        // P-6 (Pass-3): narrow the scrub to the specific `fc-expand-panel-{viewKey}-{guid32}`
-        // slot so future emitter additions of any 32-hex sequence (e.g., a content hash) are
-        // NOT silently masked.
-        normalized = Regex.Replace(normalized, @"fc-expand-panel-([A-Za-z0-9-]+)-[0-9a-f]{32}", "fc-expand-panel-$1-{guid}");
         normalized = Regex.Replace(normalized, "data-fc-stale-owner=\"[0-9a-f]{32}\"", "data-fc-stale-owner=\"{owner}\"");
         normalized = Regex.Replace(normalized, "data-fc-datagrid-instance=\"[0-9a-f]{32}\"", "data-fc-datagrid-instance=\"{instance}\"");
         // Blazor CSS-isolation scope ids (` b-xxxxxxxxxx`) are an SDK implementation detail: the

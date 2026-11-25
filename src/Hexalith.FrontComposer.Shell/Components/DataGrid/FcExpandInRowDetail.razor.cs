@@ -1,3 +1,7 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
@@ -75,6 +79,15 @@ public partial class FcExpandInRowDetail : ComponentBase {
     public string? PanelId { get; set; }
 
     private string EffectivePanelId { get => string.IsNullOrWhiteSpace(PanelId) ? field : PanelId!; } = $"fc-expand-panel-{Guid.NewGuid():N}";
+
+    /// <summary>Creates an element identifier for a mounted view slot and its current row.</summary>
+    public static string CreatePanelId(string viewKey, int instanceSlot, object? rowKey) {
+        ArgumentNullException.ThrowIfNull(viewKey);
+        string? rowIdentity = Convert.ToString(rowKey, CultureInfo.InvariantCulture);
+        string identity = FormattableString.Invariant(
+            $"{viewKey.Length}:{viewKey}:{instanceSlot}:{rowKey is not null}:{rowIdentity}");
+        return "fc-expand-panel-" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
+    }
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {

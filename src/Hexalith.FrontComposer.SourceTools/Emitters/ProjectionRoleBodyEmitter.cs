@@ -115,6 +115,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
         _ = sb.AppendLine("        object? _expandedItemKey = _expandedEntry?.ItemKey;");
         _ = sb.AppendLine("        string? _expandedStatusKey = _expandedItemKey as string;");
+        EmitExpandPanelId(sb, model, "_expandedStatusKey");
         _ = sb.AppendLine("        " + recordTypeName + "? _expandedStatusOverviewItem = null;");
         _ = sb.AppendLine("        if (_expandedItemKey is not null)");
         _ = sb.AppendLine("        {");
@@ -474,6 +475,7 @@ public static class ProjectionRoleBodyEmitter {
             _ = sb.AppendLine("        // Story 4-5 — resolve expanded-row state for this render pass.");
             _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
             _ = sb.AppendLine("        object? _expandedItemKey = _expandedEntry?.ItemKey;");
+            EmitExpandPanelId(sb, model);
             _ = sb.AppendLine("        " + model.TypeName + "? _expandedItem = null;");
             _ = sb.AppendLine("        if (_expandedItemKey is not null)");
             _ = sb.AppendLine("        {");
@@ -682,6 +684,14 @@ public static class ProjectionRoleBodyEmitter {
 
         _ = sb.AppendLine("        }));");
         _ = sb.AppendLine("        builder.CloseComponent();");
+    }
+
+    /// <summary>Emits the ID shared by the expand triggers and the persistent detail host.</summary>
+    internal static void EmitExpandPanelId(StringBuilder sb, RazorModel model, string? keyExpression = null) {
+        string rowKey = keyExpression ?? (RoleBodyHelpers.ResolveItemKeyAccessorExpression(model) == "(object)x"
+            ? "null"
+            : "_expandedItemKey");
+        _ = sb.AppendLine("        string _expandPanelId = global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail.CreatePanelId(_viewKey, _expandPanelSlot, " + rowKey + ");");
     }
 
     private static void EmitStatusOverviewDetailPanel(StringBuilder sb, RazorModel model) {

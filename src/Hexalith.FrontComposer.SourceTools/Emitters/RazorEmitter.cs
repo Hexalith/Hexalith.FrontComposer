@@ -267,20 +267,6 @@ public static class RazorEmitter {
         return false;
     }
 
-    private static string ResolveDomIdSuffix(string value) {
-        StringBuilder sb = new(value.Length);
-        foreach (char c in value) {
-            if (c is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z') or (>= '0' and <= '9')) {
-                _ = sb.Append(c);
-            }
-            else {
-                _ = sb.Append('-');
-            }
-        }
-
-        return sb.ToString();
-    }
-
     private static void EmitStrategyMembers(StringBuilder sb, RazorModel model) {
         _ = sb.AppendLine("    private int _disposed;");
         _ = sb.AppendLine();
@@ -325,10 +311,7 @@ public static class RazorEmitter {
             if (EmitsExpandInRowMachinery(model.Strategy)) {
                 _ = sb.AppendLine("    private readonly string _ephemeralViewKey = \"" + RoleBodyHelpers.EscapeString(viewKey) + ":\" + System.Guid.NewGuid().ToString(\"N\");");
                 _ = sb.AppendLine();
-                // Story 4-6 review fix: per-instance Guid suffix prevents duplicate DOM ids when
-                // the same projection is rendered twice on a page (WCAG 4.1.2). The previous
-                // `const string` shared the id across every instance.
-                _ = sb.AppendLine("    private readonly string _expandPanelId = \"fc-expand-panel-" + ResolveDomIdSuffix(viewKey) + "-\" + System.Guid.NewGuid().ToString(\"N\");");
+                _ = sb.AppendLine("    private int _expandPanelSlot;");
                 _ = sb.AppendLine();
             }
 
@@ -712,6 +695,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedItem is null;");
         _ = sb.AppendLine();
+        ProjectionRoleBodyEmitter.EmitExpandPanelId(sb, model);
         ProjectionRoleBodyEmitter.EmitExpandInRowDetailPanel(sb, model);
         _ = sb.AppendLine("        };");
         _ = sb.AppendLine("    }");
@@ -1042,7 +1026,9 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    {");
         if (isGrid) {
             _ = sb.AppendLine("        _gridViewOwners = global::Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership.For(Dispatcher);");
-            _ = sb.AppendLine("        _gridViewGeneration = _gridViewOwners.Register(_viewKey);");
+            _ = sb.AppendLine(EmitsExpandInRowMachinery(model.Strategy)
+                ? "        _gridViewGeneration = _gridViewOwners.Register(_viewKey, out _expandPanelSlot);"
+                : "        _gridViewGeneration = _gridViewOwners.Register(_viewKey);");
             _ = sb.AppendLine("        _viewportScrollTop = CurrentGridSnapshot()?.ScrollTop ?? 0d;");
         }
         _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged += OnStateChanged;");
@@ -1443,7 +1429,9 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        _projectionFallbackLaneRegistration?.Dispose();");
             _ = sb.AppendLine("        _projectionFallbackLaneRegistration = null;");
             _ = sb.AppendLine("        _registeredProjectionFallbackLaneKey = null;");
-            _ = sb.AppendLine("        bool finalViewOwner = _gridViewOwners?.Release(_viewKey) ?? false;");
+            _ = sb.AppendLine(EmitsExpandInRowMachinery(model.Strategy)
+                ? "        bool finalViewOwner = _gridViewOwners?.Release(_viewKey, _expandPanelSlot) ?? false;"
+                : "        bool finalViewOwner = _gridViewOwners?.Release(_viewKey) ?? false;");
             _ = sb.AppendLine("        if (finalViewOwner)");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.ClearPendingPagesAction(_viewKey) { StillFinalOwner = () => _gridViewOwners?.CanDispose(_viewKey, _gridViewGeneration) == true }); }");

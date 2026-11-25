@@ -13,6 +13,7 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.ExpandedRow;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
@@ -76,6 +77,43 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
             ExpandButton(cut, "counter-2").GetAttribute("aria-expanded").ShouldBe("false");
         });
     }
+
+    [Fact]
+    public async Task PanelIdsAreStableAcrossRemountsAndUniqueForConcurrentViews() {
+        SetupExpandInRowModule();
+        using CultureScope cultureScope = new("en");
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new CounterProjectionLoadedAction("panel-slots",
+            [Counter("counter-1", 1), Counter("counter-2", 2)]) {
+            ScopeTenantId = "test-tenant", ScopeUserId = "test-user",
+        });
+
+        bool showFirst = true;
+        RenderFragment views = builder => {
+            if (showFirst) {
+                builder.OpenComponent<CounterProjectionView>(0);
+                builder.CloseComponent();
+            }
+            builder.OpenComponent<CounterProjectionView>(1);
+            builder.CloseComponent();
+        };
+        IRenderedComponent<CascadingValue<bool>> host = Render<CascadingValue<bool>>(parameters => parameters.Add(p => p.Value, true).Add(p => p.ChildContent, views));
+        string[] initialIds = PanelIds(host);
+        initialIds.Length.ShouldBe(2);
+        initialIds.Distinct(StringComparer.Ordinal).Count().ShouldBe(2);
+
+        showFirst = false;
+        host.Render(parameters => parameters.Add(p => p.Value, true).Add(p => p.ChildContent, views));
+        host.WaitForAssertion(() => PanelIds(host).ShouldBe([initialIds[1]]));
+
+        showFirst = true;
+        host.Render(parameters => parameters.Add(p => p.Value, true).Add(p => p.ChildContent, views));
+        host.WaitForAssertion(() => PanelIds(host).ShouldBe(initialIds));
+    }
+
+    private static string[] PanelIds(IRenderedComponent<CascadingValue<bool>> host)
+        => [.. host.FindAll(".fc-expand-in-row-detail").Select(panel => panel.GetAttribute("id").ShouldNotBeNull())];
 
     [Fact]
     public async Task CounterProjectionView_MissingExpandedRow_UsesNeutralFeedbackWithoutFilterSpeech() {
@@ -200,6 +238,8 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
         await cut.InvokeAsync(() => RestoreExpandedRowState(firstExpand));
         await cut.WaitForAssertionAsync(() => cut.Find(".fc-expand-in-row-detail").TextContent.ShouldContain("counter-1"));
 
+        string? firstPanelId = cut.Find(".fc-expand-in-row-detail").GetAttribute("id");
+
         // Single-expand invariant (UX-DR17): both triggers in the same grid emit the SAME ephemeral
         // view key at runtime — the precondition the reducer's REPLACE keys off (the REPLACE itself is
         // pinned in ExpandedRowReducerTests.ExpandRowAction_ReplacesEntry_OnSameViewKey). With the
@@ -211,6 +251,8 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
 
         await cut.WaitForAssertionAsync(() => {
             IElement region = cut.Find(".fc-expand-in-row-detail");
+            region.GetAttribute("id").ShouldNotBe(firstPanelId);
+            region.GetAttribute("id").ShouldBe(CollapseButton(cut, "counter-2").GetAttribute("aria-controls"));
             region.GetAttribute("aria-label").ShouldBe("Details for counter-2");
             region.TextContent.ShouldContain("counter-2");
             region.TextContent.ShouldNotContain("counter-1");

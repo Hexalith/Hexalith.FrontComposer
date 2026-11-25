@@ -105,7 +105,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
 
     private readonly string _ephemeralViewKey = "Support:RoleSpecific.Negative.ActionQueueNoEnumProjection:" + System.Guid.NewGuid().ToString("N");
 
-    private readonly string _expandPanelId = "fc-expand-panel-Support-RoleSpecific-Negative-ActionQueueNoEnumProjection-" + System.Guid.NewGuid().ToString("N");
+    private int _expandPanelSlot;
 
     private object? _cachedActionQueueSource;
     private List<ActionQueueNoEnumProjection>? _cachedActionQueueItems;
@@ -267,6 +267,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
             }
             bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedItem is null;
 
+        string _expandPanelId = global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail.CreatePanelId(_viewKey, _expandPanelSlot, _expandedItemKey);
         // Story 4-5 — detail panel host; ChildContent is the factored EmitDetailRecordBody output.
         builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(0);
         builder.AddAttribute(1, "ViewKey", _ephemeralViewKey);
@@ -481,7 +482,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
     protected override void OnInitialized()
     {
         _gridViewOwners = global::Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership.For(Dispatcher);
-        _gridViewGeneration = _gridViewOwners.Register(_viewKey);
+        _gridViewGeneration = _gridViewOwners.Register(_viewKey, out _expandPanelSlot);
         _viewportScrollTop = CurrentGridSnapshot()?.ScrollTop ?? 0d;
         ActionQueueNoEnumProjectionState.StateChanged += OnStateChanged;
         AnnounceProjectionState();
@@ -832,7 +833,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
         _projectionFallbackLaneRegistration?.Dispose();
         _projectionFallbackLaneRegistration = null;
         _registeredProjectionFallbackLaneKey = null;
-        bool finalViewOwner = _gridViewOwners?.Release(_viewKey) ?? false;
+        bool finalViewOwner = _gridViewOwners?.Release(_viewKey, _expandPanelSlot) ?? false;
         if (finalViewOwner)
         {
             try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.ClearPendingPagesAction(_viewKey) { StillFinalOwner = () => _gridViewOwners?.CanDispose(_viewKey, _gridViewGeneration) == true }); }
@@ -1275,6 +1276,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
         // Story 4-5 — resolve expanded-row state for this render pass.
         global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);
         object? _expandedItemKey = _expandedEntry?.ItemKey;
+        string _expandPanelId = global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail.CreatePanelId(_viewKey, _expandPanelSlot, _expandedItemKey);
         ActionQueueNoEnumProjection? _expandedItem = null;
         if (_expandedItemKey is not null)
         {
