@@ -69,6 +69,9 @@ The tables describe the public component parameters. Injected services and inter
 | `SecondaryText` | `string?` | Optional localized secondary guidance. When omitted, uses the projection's secondary-guidance resource if present. See the key convention below. |
 | `SuppressStandaloneStatus` | `bool` | Uses the generated view's shared polite status instead of a second live node. |
 
+When a CTA resolves, the placeholder reserves space for it during prerender and interactive
+authorization. The link is rendered only after authentication or the command policy grants access.
+
 For secondary guidance, append `_EmptyStateSecondaryText` to the projection's CLR full name.
 Keep the `+` in nested type names. For a generic projection, use its generic type definition,
 including its arity marker. For example, ``Acme.Orders.OrderProjection`1_EmptyStateSecondaryText`` applies to each constructed type. An existing resource keyed by the full constructed name

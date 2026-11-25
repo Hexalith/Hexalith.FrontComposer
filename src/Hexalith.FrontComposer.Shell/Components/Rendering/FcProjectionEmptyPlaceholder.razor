@@ -11,29 +11,31 @@
     <FluentLabel Typography="Typography.Body1" Class="fc-projection-empty-placeholder-text">@DisplayMessage</FluentLabel>
     @if (_resolvedCta is { } cta && !string.IsNullOrWhiteSpace(cta.CommandRoute))
     {
-        @if (cta.AuthorizationPolicy is { Length: > 0 } policy)
-        {
-            Type? ctaCommandType = ResolveCommandType(cta.CommandFqn);
-            if (ctaCommandType is not null)
+        <div class="fc-projection-empty-placeholder__cta-slot">
+            @if (cta.AuthorizationPolicy is { Length: > 0 } policy)
             {
-                <FcAuthorizedCommandRegion CommandType="ctaCommandType"
-                                           PolicyName="@policy"
-                                           BoundedContext="@cta.BoundedContext"
-                                           DisplayLabel="@cta.CommandDisplayName">
+                Type? ctaCommandType = ResolveCommandType(cta.CommandFqn);
+                if (ctaCommandType is not null)
+                {
+                    <FcAuthorizedCommandRegion CommandType="ctaCommandType"
+                                               PolicyName="@policy"
+                                               BoundedContext="@cta.BoundedContext"
+                                               DisplayLabel="@cta.CommandDisplayName">
+                        <Authorized>
+                            @RenderCta(cta)
+                        </Authorized>
+                    </FcAuthorizedCommandRegion>
+                }
+            }
+            else
+            {
+                <AuthorizeView>
                     <Authorized>
                         @RenderCta(cta)
                     </Authorized>
-                </FcAuthorizedCommandRegion>
+                </AuthorizeView>
             }
-        }
-        else
-        {
-            <AuthorizeView>
-                <Authorized>
-                    @RenderCta(cta)
-                </Authorized>
-            </AuthorizeView>
-        }
+        </div>
     }
     @if (ResolvedSecondaryText is { Length: > 0 } secondary)
     {

@@ -15,6 +15,13 @@
     margin-top: 8px;
 }
 
+.fc-projection-empty-placeholder__cta-slot {
+    display: grid;
+    justify-items: center;
+    /* Preserve the space for the button and its margin while authorization resolves. */
+    min-block-size: max(40px, 2.5rem);
+}
+
 .fc-field-placeholder {
     border: 2px dashed var(--colorNeutralStroke1, #aaaaaa);
     padding: 12px;

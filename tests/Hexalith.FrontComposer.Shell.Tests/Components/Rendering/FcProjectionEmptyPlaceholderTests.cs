@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Shell.Components.Rendering;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -137,6 +138,43 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
         cut.Markup.ShouldContain("fc-projection-empty-placeholder-cta");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void CtaSlotPersistsFromPrerenderToInteractiveAuthorization(bool authorized) {
+        Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
+            Name: "Orders",
+            BoundedContext: "Orders",
+            Projections: [typeof(OrderProjection).FullName!],
+            Commands: ["CreateOrderCommand"]));
+        SetRendererInfo(new RendererInfo("Static", isInteractive: false));
+        _auth.SetAuthorizing();
+        IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(OrderProjection))
+            .Add(p => p.CtaCommandName, "CreateOrderCommand")
+            .Add(p => p.SecondaryText, "Guidance under the action."));
+
+        const string slotSelector = ".fc-projection-empty-placeholder__cta-slot";
+        cut.Find(slotSelector).Children.Length.ShouldBe(0);
+        cut.Find(".fc-projection-empty-placeholder-secondary").TextContent.Trim().ShouldBe("Guidance under the action.");
+
+        SetRendererInfo(new RendererInfo("Server", isInteractive: true));
+        if (authorized) {
+            _auth.SetAuthorized("test-user");
+        }
+        else {
+            _auth.SetNotAuthorized();
+        }
+
+        IRenderedComponent<FcProjectionEmptyPlaceholder> interactive = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(OrderProjection))
+            .Add(p => p.CtaCommandName, "CreateOrderCommand")
+            .Add(p => p.SecondaryText, "Guidance under the action."));
+
+        interactive.WaitForAssertion(() => interactive.Find(slotSelector).QuerySelectorAll("[href]").Length.ShouldBe(authorized ? 1 : 0));
+        interactive.Find(".fc-projection-empty-placeholder-secondary").TextContent.Trim().ShouldBe("Guidance under the action.");
+    }
+
     [Fact]
     public void CtaIsHiddenWhenGeneratedCommandHasNoFullPageRoute() {
         Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
@@ -199,6 +237,39 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
         cut.Markup.ShouldContain("fc-projection-empty-placeholder-cta");
         cut.WaitForAssertion(() => _authorizationEvaluator.LastRequest.ShouldNotBeNull());
         _authorizationEvaluator.LastRequest!.SourceSurface.ShouldBe(CommandAuthorizationSurface.EmptyStateCta);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task PolicyProtectedCtaKeepsItsSlotWhileDecisionSettles(bool allowed) {
+        string commandFqn = typeof(ProtectedCreateOrderCommand).FullName!;
+        Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
+            Name: "Orders",
+            BoundedContext: "Orders",
+            Projections: [typeof(OrderProjection).FullName!],
+            Commands: [commandFqn],
+            CommandPolicies: new Dictionary<string, string>(StringComparer.Ordinal) { [commandFqn] = "OrderApprover" }));
+        _auth.SetAuthorized("test-user");
+        var decision = new TaskCompletionSource<CommandAuthorizationDecision>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _authorizationEvaluator.PendingDecision = decision.Task;
+        IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(OrderProjection))
+            .Add(p => p.CtaCommandName, commandFqn));
+
+        const string slot = ".fc-projection-empty-placeholder__cta-slot";
+        IRenderedComponent<FcAuthorizedCommandRegion> region = cut.FindComponent<FcAuthorizedCommandRegion>();
+        region.RenderCount.ShouldBeGreaterThan(0);
+        cut.Find(slot).Children.Length.ShouldBe(0);
+        int pendingRenderCount = region.RenderCount;
+        decision.SetResult(allowed
+            ? CommandAuthorizationDecision.Allowed("corr-allowed")
+            : CommandAuthorizationDecision.Denied("corr-denied"));
+
+        await region.WaitForAssertionAsync(() => {
+            region.RenderCount.ShouldBeGreaterThan(pendingRenderCount);
+            cut.Find(slot).QuerySelectorAll("[href]").Length.ShouldBe(allowed ? 1 : 0);
+        });
     }
 
     [Fact]
@@ -288,11 +359,13 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
 
         public CommandAuthorizationRequest? LastRequest { get; private set; }
 
+        public Task<CommandAuthorizationDecision>? PendingDecision { get; set; }
+
         public Task<CommandAuthorizationDecision> EvaluateAsync(
             CommandAuthorizationRequest request,
             CancellationToken cancellationToken = default) {
             LastRequest = request;
-            return Task.FromResult(Decision);
+            return PendingDecision?.WaitAsync(cancellationToken) ?? Task.FromResult(Decision);
         }
     }
 }
