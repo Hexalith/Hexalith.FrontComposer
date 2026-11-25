@@ -478,6 +478,9 @@
     <value>Collapse details for {0}</value>
     <comment>Story 4-5 D15 / AC1 — aria-label on the row-action chevron when expanded. {0}=row identifier.</comment>
   </data>
+  <data name="StatusOverviewLoadedItemsTemplate" xml:space="preserve">
+    <value>{0:N0} in current results</value>
+  </data>
   <data name="ExpandInRowDetailPanelAriaLabelTemplate" xml:space="preserve">
     <value>Details for {0}</value>
     <comment>Story 4-5 D15 / D19 / AC3 — aria-label on the FcExpandInRowDetail region landmark. {0}=row identifier.</comment>

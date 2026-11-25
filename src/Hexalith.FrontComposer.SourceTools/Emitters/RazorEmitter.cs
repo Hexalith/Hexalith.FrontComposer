@@ -371,7 +371,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine();
         }
         else if (model.Strategy == ProjectionRenderStrategy.StatusOverview) {
-            _ = sb.AppendLine("    private sealed record " + model.TypeName + "StatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, " + model.TypeName + "? DetailItem)");
+            _ = sb.AppendLine("    private sealed record " + model.TypeName + "StatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, IEnumerable<" + model.TypeName + "> Items)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        public string StatusKey { get; } = Status?.ToString(\"D\") ?? \"null\";");
             _ = sb.AppendLine("    }");

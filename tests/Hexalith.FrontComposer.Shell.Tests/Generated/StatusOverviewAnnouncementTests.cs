@@ -72,11 +72,39 @@ public sealed class StatusOverviewAnnouncementTests : GeneratedComponentTestBase
             .GetMethod("HandleStatusOverviewRowClickAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
         Type rowType = click.GetParameters()[0].ParameterType;
         foreach (StatusOverviewAnnouncementState status in new[] { StatusOverviewAnnouncementState.Open, StatusOverviewAnnouncementState.Closed }) {
-            object row = Activator.CreateInstance(rowType, status, "Shared display label", 1, (long)status, null)!;
+            object row = Activator.CreateInstance(rowType, status, "Shared display label", 1, (long)status, Array.Empty<StatusOverviewAnnouncementProjection>())!;
             await cut.InvokeAsync(() => (Task)click.Invoke(cut.Instance, [row])!);
         }
 
         expandedKeys.ShouldBe(["0", "1"]);
+    }
+
+    [Fact]
+    public async Task ExpandedStatusShowsEveryLoadedRecordInItsGroup()
+    {
+        Services.AddSingleton(Substitute.For<IEmptyStateCtaResolver>());
+        Services.AddFluxor(options => options.ScanTypes(typeof(StatusOverviewAnnouncementProjectionFeature),
+            typeof(StatusOverviewAnnouncementProjectionReducers)));
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new StatusOverviewAnnouncementProjectionLoadedAction("initial",
+            [new() { Id = "first-ticket", Status = StatusOverviewAnnouncementState.Open },
+             new() { Id = "second-ticket", Status = StatusOverviewAnnouncementState.Open },
+             new() { Id = "other-ticket", Status = StatusOverviewAnnouncementState.Closed }])
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
+
+        IRenderedComponent<StatusOverviewAnnouncementProjectionView> cut = Render<StatusOverviewAnnouncementProjectionView>();
+        ExpandedRowFeature expansion = Services.GetRequiredService<ExpandedRowFeature>();
+        await cut.InvokeAsync(() => expansion.RestoreState(new ExpandedRowState {
+            ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty
+                .Add(EphemeralKey(cut), new ExpandedRowEntry("0", DateTimeOffset.UtcNow)),
+        }));
+
+        string details = cut.Find(".fc-expand-in-row-detail").TextContent;
+        details.ShouldContain("2 in current results");
+        details.ShouldContain("first-ticket");
+        details.ShouldContain("second-ticket");
+        details.ShouldNotContain("other-ticket");
     }
 
     [Fact]

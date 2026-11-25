@@ -115,7 +115,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
 
     private readonly string _expandPanelId = "fc-expand-panel-Tickets-RoleSpecific-Tickets-StatusOverviewProjection-" + System.Guid.NewGuid().ToString("N");
 
-    private sealed record StatusOverviewProjectionStatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, StatusOverviewProjection? DetailItem)
+    private sealed record StatusOverviewProjectionStatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, IEnumerable<StatusOverviewProjection> Items)
     {
         public string StatusKey { get; } = Status?.ToString("D") ?? "null";
     }
@@ -1251,7 +1251,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
             var builder = __bb;
         var unfilteredGroupedItems = state.Items
             .GroupBy(x => x.Status)
-            .Select(g => new StatusOverviewProjectionStatusOverviewRow((Enum?)(object)g.Key, HumanizeEnumLabel(g.Key.ToString()), g.Count(), GetEnumSortOrder((Enum?)(object)g.Key), g.FirstOrDefault()))
+            .Select(g => new StatusOverviewProjectionStatusOverviewRow((Enum?)(object)g.Key, HumanizeEnumLabel(g.Key.ToString()), g.Count(), GetEnumSortOrder((Enum?)(object)g.Key), g))
             .OrderByDescending(g => g.Count)
             .ThenBy(g => g.SortOrder)
             .ToList();
@@ -1407,21 +1407,27 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         }));
         builder.CloseComponent();
 
-        // Story 4-5 — StatusOverview detail panel host; detail body uses the first item in the expanded status group.
+        // Story 4-5 — StatusOverview detail panel host for the loaded items in the expanded group.
         builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(121);
         builder.AddAttribute(122, "ViewKey", _ephemeralViewKey);
         builder.AddAttribute(123, "PanelId", _expandPanelId);
-        builder.AddAttribute(124, "HasExpanded", _expandedStatusOverviewItem?.DetailItem is not null);
+        builder.AddAttribute(124, "HasExpanded", _expandedStatusOverviewItem is not null);
         builder.AddAttribute(125, "DetailPanelAriaLabel", FcShellLocalizer["ExpandInRowDetailPanelAriaLabelTemplate", _expandedStatusOverviewItem?.StatusLabel ?? string.Empty].Value);
         builder.AddAttribute(126, "SuppressedAnnouncement", _expandedItemHiddenByFilter ? FcShellLocalizer["ExpandInRowDetailSuppressedByFilterAnnouncement"].Value : null);
         builder.AddAttribute(127, "SuppressStandaloneAnnouncement", true);
         builder.AddAttribute(128, "ChildContent", (RenderFragment)((RenderTreeBuilder builder) =>
         {
-            if (_expandedStatusOverviewItem?.DetailItem is null) { return; }
-        var entity = _expandedStatusOverviewItem.DetailItem;
+            if (_expandedStatusOverviewItem is null) { return; }
+            builder.OpenComponent<FluentText>(800);
+            builder.AddAttribute(801, "ChildContent", (RenderFragment)(text => text.AddContent(0, FcShellLocalizer["StatusOverviewLoadedItemsTemplate", _expandedStatusOverviewItem.Count].Value)));
+            builder.CloseComponent();
+            foreach (var item in _expandedStatusOverviewItem.Items)
+            {
+                builder.OpenRegion(802);
+        var entity = item;
 
-        builder.OpenComponent<FluentCard>(800);
-        builder.AddAttribute(801, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
+        builder.OpenComponent<FluentCard>(803);
+        builder.AddAttribute(804, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
         {
 
             b.OpenElement(800, "div");
@@ -1600,6 +1606,8 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
             b.CloseElement();
         }));
         builder.CloseComponent();
+                builder.CloseRegion();
+            }
         }));
         builder.CloseComponent();
         };

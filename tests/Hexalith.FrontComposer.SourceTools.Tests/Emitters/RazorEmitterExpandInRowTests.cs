@@ -154,8 +154,10 @@ public sealed class RazorEmitterExpandInRowTests {
         src.ShouldContain("aria-controls\", _expandPanelId");
         src.ShouldContain("WebRenderTreeBuilderExtensions.AddEventStopPropagationAttribute(rb, 8, \"onclick\", true);");
         src.ShouldContain("FcExpandInRowDetail");
-        src.ShouldContain("_expandedStatusOverviewItem?.DetailItem is not null");
-        src.ShouldContain("var entity = _expandedStatusOverviewItem.DetailItem;");
+        src.ShouldContain("_expandedStatusOverviewItem is not null");
+        src.ShouldContain("StatusOverviewLoadedItemsTemplate");
+        src.ShouldContain("foreach (var item in _expandedStatusOverviewItem.Items)");
+        src.ShouldNotContain("g.FirstOrDefault()");
     }
 
     [Theory]

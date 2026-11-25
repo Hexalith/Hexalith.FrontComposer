@@ -102,8 +102,8 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("            .GroupBy(x => x." + statusProperty + ")");
         _ = sb.AppendLine(
             statusColumn.IsNullable
-                ? "            .Select(g => new " + recordTypeName + "(g.Key.HasValue ? (Enum?)(object)g.Key.Value : null, g.Key.HasValue ? HumanizeEnumLabel(g.Key.Value.ToString()) : \"\\u2014\", g.Count(), g.Key.HasValue ? GetEnumSortOrder((Enum?)(object)g.Key.Value) : long.MaxValue, g.FirstOrDefault()))"
-                : "            .Select(g => new " + recordTypeName + "((Enum?)(object)g.Key, HumanizeEnumLabel(g.Key.ToString()), g.Count(), GetEnumSortOrder((Enum?)(object)g.Key), g.FirstOrDefault()))");
+                ? "            .Select(g => new " + recordTypeName + "(g.Key.HasValue ? (Enum?)(object)g.Key.Value : null, g.Key.HasValue ? HumanizeEnumLabel(g.Key.Value.ToString()) : \"\\u2014\", g.Count(), g.Key.HasValue ? GetEnumSortOrder((Enum?)(object)g.Key.Value) : long.MaxValue, g))"
+                : "            .Select(g => new " + recordTypeName + "((Enum?)(object)g.Key, HumanizeEnumLabel(g.Key.ToString()), g.Count(), GetEnumSortOrder((Enum?)(object)g.Key), g))");
         _ = sb.AppendLine("            .OrderByDescending(g => g.Count)");
         _ = sb.AppendLine("            .ThenBy(g => g.SortOrder)");
         _ = sb.AppendLine("            .ToList();");
@@ -205,7 +205,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        }));");
         _ = sb.AppendLine("        builder.CloseComponent();");
         _ = sb.AppendLine();
-        EmitStatusOverviewDetailPanel(sb, model, recordTypeName);
+        EmitStatusOverviewDetailPanel(sb, model);
     }
 
     /// <summary>
@@ -684,28 +684,36 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        builder.CloseComponent();");
     }
 
-    private static void EmitStatusOverviewDetailPanel(StringBuilder sb, RazorModel model, string recordTypeName) {
-        _ = sb.AppendLine("        // Story 4-5 — StatusOverview detail panel host; detail body uses the first item in the expanded status group.");
+    private static void EmitStatusOverviewDetailPanel(StringBuilder sb, RazorModel model) {
+        _ = sb.AppendLine("        // Story 4-5 — StatusOverview detail panel host for the loaded items in the expanded group.");
         _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _ephemeralViewKey);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"PanelId\", _expandPanelId);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasExpanded\", _expandedStatusOverviewItem?.DetailItem is not null);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasExpanded\", _expandedStatusOverviewItem is not null);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DetailPanelAriaLabel\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailPanelAriaLabelTemplate\", _expandedStatusOverviewItem?.StatusLabel ?? string.Empty].Value);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SuppressedAnnouncement\", _expandedItemHiddenByFilter ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailSuppressedByFilterAnnouncement\"].Value : null);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SuppressStandaloneAnnouncement\", true);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder builder) =>");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            if (_expandedStatusOverviewItem?.DetailItem is null) { return; }");
+        _ = sb.AppendLine("            if (_expandedStatusOverviewItem is null) { return; }");
         _ = sb.AppendLine("            int seq = 800;");
+        _ = sb.AppendLine("            builder.OpenComponent<FluentText>(seq++);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(text => text.AddContent(0, " + ColumnEmitter.ShellLocalizerFieldName + "[\"StatusOverviewLoadedItemsTemplate\", _expandedStatusOverviewItem.Count].Value)));");
+        _ = sb.AppendLine("            builder.CloseComponent();");
+        _ = sb.AppendLine("            foreach (var item in _expandedStatusOverviewItem.Items)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                builder.OpenRegion(seq++);");
 
         EmitDetailRecordBody(
             sb,
             model,
             builderName: "builder",
-            itemExpression: "_expandedStatusOverviewItem.DetailItem",
+            itemExpression: "item",
             seqStart: 800,
             groupByFieldGroup: true);
 
+        _ = sb.AppendLine("                builder.CloseRegion();");
+        _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }));");
         _ = sb.AppendLine("        builder.CloseComponent();");
     }

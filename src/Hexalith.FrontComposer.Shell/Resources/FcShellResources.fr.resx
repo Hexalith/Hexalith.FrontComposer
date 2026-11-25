@@ -411,6 +411,9 @@
   <data name="CollapseRowButtonAriaLabelTemplate" xml:space="preserve">
     <value>Réduire les détails pour {0}</value>
   </data>
+  <data name="StatusOverviewLoadedItemsTemplate" xml:space="preserve">
+    <value>{0:N0} dans les résultats actuels</value>
+  </data>
   <data name="ExpandInRowDetailPanelAriaLabelTemplate" xml:space="preserve">
     <value>Détails pour {0}</value>
   </data>
