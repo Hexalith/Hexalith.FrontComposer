@@ -442,7 +442,7 @@ jobs:
           fi
           python3 eng/adopter_proof.py \
             --candidate-sha "$(git rev-parse HEAD)" \
-            --package-version 6.1.0-ci \
+            --package-version 6.2.0-ci \
             --package-source ./nupkgs-validation \
             --runtime-version "$runtime" \
             --eventstore-endpoint http://127.0.0.1:1 \
