@@ -131,10 +131,11 @@ public partial class FcHomeDirectory {
         List<HomeCardModel> result = new(manifests.Count);
         foreach (DomainManifest manifest in manifests) {
             List<HomeProjectionRow> rows = new(manifest.Projections.Count);
+            HashSet<string> seenProjections = new(StringComparer.Ordinal);
             long aggregate = 0;
             bool isReady = false;
             foreach (string projection in manifest.Projections) {
-                if (string.IsNullOrWhiteSpace(projection)) {
+                if (string.IsNullOrWhiteSpace(projection) || !seenProjections.Add(projection)) {
                     continue;
                 }
 

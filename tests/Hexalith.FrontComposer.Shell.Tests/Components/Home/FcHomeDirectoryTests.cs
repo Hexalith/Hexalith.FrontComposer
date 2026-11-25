@@ -300,6 +300,28 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void DuplicateProjectionMembershipContributesOneHomeRowAndCount() {
+        string projection = typeof(string).FullName!;
+        _registry.GetManifests().Returns([
+            new DomainManifest("Alpha", "Alpha", [projection, projection, typeof(int).FullName!], []),
+        ]);
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)));
+        dispatcher.Dispatch(new BadgeCountsSeededAction(ImmutableDictionary<Type, int>.Empty
+            .Add(typeof(string), 8)
+            .Add(typeof(int), 1)));
+
+        IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
+
+        cut.WaitForAssertion(() => {
+            cut.Find("[data-testid='fc-home-card-badge-Alpha']").TextContent.ShouldBe("9");
+            cut.FindAll("[data-testid='fc-home-card-projection-Alpha-String']").Count.ShouldBe(1);
+            cut.Find("[data-testid='fc-home-card-projection-badge-Alpha-String']").TextContent.ShouldBe("8");
+        });
+    }
+
+    [Fact]
     public void RendersUrgencySortedCards_WhenTotalActionableItemsExceedsZero() {
         // AC3 — urgency cards sort by aggregate count descending, ties broken by name ascending.
         _registry.GetManifests().Returns([

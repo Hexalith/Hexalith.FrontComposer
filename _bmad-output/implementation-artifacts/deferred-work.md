@@ -2523,6 +2523,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-dir
 location: BadgeCountService.cs:157-160
 reason: **`DisposeAsync` calls synchronous `Dispose` and returns completed `ValueTask`** — `BadgeCountService.cs:157-160`. Cosmetic; no async teardown work today. Reconciliation: Row: DW-0284; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood low, impact low; Release risk: no async teardown exists; Downstream impact: badge service disposal only; Owner: Shell runtime owner; Review by: 2026-06-30; Reopen trigger: async notifier resources are added; Validation: static disposal review.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
 status: open
+decision: 2026-11-26 Skipped. Badge teardown is synchronous and has no async resource to await.
 
 ### DW-1016: `_subject.OnCompleted` race with in-flight `OnNext` in `Dispose`
 
@@ -2530,13 +2531,15 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-dir
 location: BadgeCountService.cs:182-184
 reason: **`_subject.OnCompleted` race with in-flight `OnNext` in `Dispose`** — `BadgeCountService.cs:182-184`. Narrow window; `OnNext` call-site catches `ObjectDisposedException`. Reconciliation: Row: DW-0285; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood low, impact low; Release risk: narrow OnCompleted/OnNext race is already caught at call site; Downstream impact: badge observer completion; Owner: Shell runtime owner; Review by: 2026-06-30; Reopen trigger: observer race reproduces in UI; Validation: static disposal review.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
 status: open
+decision: 2026-11-26 Skipped. The accepted narrow disposal race has no recorded UI reproduction. The notification path already handles disposal.
 
 ### DW-1017: Duplicate FQN in `manifest.Projections` double-counts home card aggregate
 
 origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22)"), 2026-08-27
 location: 3-5-home-directory-badge-counts-and-new-capability-discovery.md
 reason: **Duplicate FQN in `manifest.Projections` double-counts home card aggregate** — governance concern for adopter manifests; escalate to Story 9-4 build-time analyzer. Reconciliation: Row: DW-0286; Split to Story 9.4 manifest governance 2026-05-13; Disposition: split-to-named-story; Reason: duplicate projection FQN enforcement belongs to build-time diagnostics; Residual release-gate risk: low.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
-status: open
+status: done 2026-11-26
+resolution: Counts each projection FQN once per Home card and renders a single row for duplicate membership.
 
 ### DW-1018: `NavigationException` during SSR prerender on home card click
 
