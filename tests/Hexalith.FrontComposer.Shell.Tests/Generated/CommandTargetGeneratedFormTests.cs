@@ -871,7 +871,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
     }
 
     [Fact]
-    public async Task ScopeSwitchDuringTargetResolution_ReturnsToIdleWithoutDispatch() {
+    public async Task ScopeSwitchDuringTargetResolution_DoesNotDispatch() {
         EarlyTerminalCommandService service = new(AcceptedMessageId, emitTerminal: false);
         BlockingProvider provider = new();
         UserContext.TenantId = "tenant-a";

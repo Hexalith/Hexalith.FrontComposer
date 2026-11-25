@@ -652,7 +652,7 @@ public sealed class ProjectionSubscriptionServiceTests {
     [Theory]
     [InlineData(null, "HFC2015")]
     [InlineData("other-tenant", "HFC2019")]
-    public async Task ProjectionNudges_RateLimitTenantWarningsAndRevalidateEveryGroup(
+    public async Task ProjectionNudgesRateLimitTenantWarningsAndRevalidateEveryGroup(
         string? changedTenant, string diagnosticId) {
         FakeProjectionHubConnection connection = new();
         DetailCapturingNotifier notifier = new();

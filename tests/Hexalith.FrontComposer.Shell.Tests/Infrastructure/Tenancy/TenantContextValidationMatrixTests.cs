@@ -25,7 +25,7 @@ public sealed class TenantContextValidationMatrixTests {
     }
 
     [Fact]
-    public void TryGetContext_AcceptsSegmentsAtTheirLengthLimits() {
+    public void TryGetContextAcceptsSegmentsAtTheirLengthLimits() {
         string tenant = new('t', 64);
         string user = new('u', 1024);
 
@@ -40,7 +40,7 @@ public sealed class TenantContextValidationMatrixTests {
     [InlineData(8, 1025, 8, 't')]
     [InlineData(8, 8, 65, 't')]
     [InlineData(8, 8, 65, ' ')]
-    public void TryGetContext_RejectsAnyOversizedSegment(
+    public void TryGetContextRejectsAnyOversizedSegment(
         int tenantLength, int userLength, int requestedLength, char requestedCharacter) {
         FrontComposerTenantContextAccessor sut = NewAccessor(new string('t', tenantLength), new string('u', userLength));
 
@@ -61,7 +61,7 @@ public sealed class TenantContextValidationMatrixTests {
     }
 
     [Fact]
-    public void TryGetContext_Issues128BitHexCorrelationIdsForSuccessAndFailure() {
+    public void TryGetContextIssues128BitHexCorrelationIdsForSuccessAndFailure() {
         FrontComposerTenantContextAccessor sut = NewAccessor("tenant", "user");
         TenantContextResult success = sut.TryGetContext("tenant");
         TenantContextResult failure = sut.TryGetContext("other-tenant");

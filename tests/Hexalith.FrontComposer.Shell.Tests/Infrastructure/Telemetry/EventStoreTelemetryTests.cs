@@ -63,7 +63,7 @@ public sealed class EventStoreTelemetryTests {
     }
 
     [Fact]
-    public async Task CommandDispatch_TenantMismatchEmitsRedactedBlockedActivity() {
+    public async Task CommandDispatchTenantMismatchEmitsRedactedBlockedActivity() {
         RecordingHandler handler = new(_ => throw new InvalidOperationException("No request expected."));
         EventStoreCommandClient sut = new(
             new SingleClientFactory(handler),
