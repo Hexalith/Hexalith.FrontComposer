@@ -39,3 +39,10 @@ builder.Services.AddHexalithEventStore(options =>
 In production, Story 7-1 supplies real `TenantId` / `UserId` values through `IUserContextAccessor`. Story 7-2 starts at the Shell boundary and propagates that validated context into commands, queries, live projection subscriptions, and ETag cache keys. Do not configure `AllowDemoTenantContext` for production deployments.
 
 Keep provider secrets in user secrets or deployment secret storage. Do not put real client secrets, tokens, tenant IDs, user IDs, SAML assertions, or provider payloads in sample configuration.
+
+## Level 4 startup diagnostic fixture
+
+In Development or Test, run Counter.Web with
+`Hexalith__FrontComposer__E2E__SeedInvalidViewOverride=true` and specimens disabled. The sample
+registers a raw Level 4 descriptor whose component lacks a public `Context` parameter. Startup
+logs HFC1043 once, and the Counter projection uses its Level 2 template and Level 3 count slot.

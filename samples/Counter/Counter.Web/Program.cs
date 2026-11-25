@@ -15,6 +15,7 @@ using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
+using Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -131,11 +132,19 @@ else {
     // Story 6-4 T9 / AC12 — Level 4 full view replacement reference. The replacement owns the
     // projection body only; generated shell, loading/empty state, lifecycle, grid envelope, and
     // render-context plumbing remain framework-owned around it. The registration is role-agnostic
-    // because CounterProjection has only one role (Default ≡ no [ProjectionRole] attribute);
-    // fallback-to-generated evidence lives in the SourceTools test fixtures and in the
-    // `CounterProjectionView_LoadedState_RendersColumnsAndFormatting` Shell test which renders
-    // the same view without `AddViewOverride`.
-    if ((builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Test"))
+    // because CounterProjection has only one role (Default). The opt-in raw descriptor below
+    // exercises registry rejection at startup.
+    bool allowOverrideFixtures = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Test");
+    if (allowOverrideFixtures
+        && builder.Configuration.GetValue<bool>("Hexalith:FrontComposer:E2E:SeedInvalidViewOverride"))
+    {
+        _ = builder.Services.AddSingleton(new ProjectionViewOverrideDescriptorSource([
+            new ProjectionViewOverrideDescriptor(
+                typeof(CounterProjection), null, typeof(InvalidViewMissingContext),
+                ProjectionViewOverrideContractVersion.Current, nameof(InvalidViewMissingContext)),
+        ]));
+    }
+    else if (allowOverrideFixtures
         && builder.Configuration.GetValue<bool>("Hexalith:FrontComposer:E2E:SeedOverrideRenderFault"))
     {
         _ = builder.Services.AddViewOverride<CounterProjection, ThrowingCounterReplacement>();

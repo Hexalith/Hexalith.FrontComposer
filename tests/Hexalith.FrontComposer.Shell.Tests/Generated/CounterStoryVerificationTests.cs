@@ -1259,14 +1259,6 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         }
     }
 
-    private sealed class InvalidViewMissingContext : ComponentBase {
-        protected override void BuildRenderTree(RenderTreeBuilder builder) {
-            builder.OpenElement(0, "span");
-            builder.AddContent(1, "INVALID-VIEW-RENDERED");
-            builder.CloseElement();
-        }
-    }
-
     private sealed class ListLogger<T> : ILogger<T> {
         public List<(LogLevel Level, EventId EventId, string Message)> Entries { get; } = [];
 

@@ -11,11 +11,13 @@ const externalFaultUrl = process.env.FC_E2E_STORY_6_4_FAULT_BASE_URL;
 const DEVELOPMENT_BASE_URL = externalDevelopmentUrl ?? 'http://127.0.0.1:5084';
 const NON_DEVELOPMENT_BASE_URL = externalNonDevelopmentUrl ?? 'http://127.0.0.1:5085';
 const FAULT_BASE_URL = externalFaultUrl ?? 'http://127.0.0.1:5098';
+const INVALID_VIEW_BASE_URL = 'http://127.0.0.1:5099';
 const SERVER_READY_TIMEOUT_MS = 120_000;
 const COUNTER_PROJECT_DIRECTORY = new URL('../../../samples/Counter/Counter.Web/', import.meta.url);
 const COUNTER_DEBUG_ASSEMBLY = fileURLToPath(new URL('bin/Debug/net11.0/Counter.Web.dll', COUNTER_PROJECT_DIRECTORY));
 
 const ownedProcesses: OwnedProcess[] = [];
+type CounterFixture = 'contract-mismatch' | 'render-fault' | 'invalid-view';
 
 test.describe('Story 6.4: override accessibility safety diagnostics', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Dedicated host coverage runs once in Chromium.');
@@ -34,9 +36,9 @@ test.describe('Story 6.4: override accessibility safety diagnostics', () => {
       await buildDebugCounter(deadline, false);
     }
     await Promise.all([
-      externalDevelopmentUrl || startCounterHost(DEVELOPMENT_BASE_URL, 'Development', deadline, false),
-      externalNonDevelopmentUrl || startCounterHost(NON_DEVELOPMENT_BASE_URL, 'Test', deadline, false),
-      externalFaultUrl || startCounterHost(FAULT_BASE_URL, 'Development', deadline, true),
+      externalDevelopmentUrl || startCounterHost(DEVELOPMENT_BASE_URL, 'Development', deadline, 'contract-mismatch'),
+      externalNonDevelopmentUrl || startCounterHost(NON_DEVELOPMENT_BASE_URL, 'Test', deadline, 'contract-mismatch'),
+      externalFaultUrl || startCounterHost(FAULT_BASE_URL, 'Development', deadline, 'render-fault'),
     ]);
   });
 
@@ -102,6 +104,35 @@ test.describe('Story 6.4: override accessibility safety diagnostics', () => {
     await page.getByRole('tab', { name: 'Projection', exact: true }).click();
     await expect(grid.locator('.counter-count-slot strong')).toHaveText('4');
   });
+
+  test('startup rejects an invalid replacement and keeps the Counter view usable', async ({ page }) => {
+    test.setTimeout(SERVER_READY_TIMEOUT_MS);
+    const deadline = Date.now() + SERVER_READY_TIMEOUT_MS - 10_000;
+    if (externalDevelopmentUrl && externalNonDevelopmentUrl && externalFaultUrl) {
+      await buildDebugCounter(deadline, false);
+    }
+
+    const host = await startCounterHost(INVALID_VIEW_BASE_URL, 'Development', deadline, 'invalid-view');
+    const rejected = /HFC1043: Invalid Level 4 view override component\./g;
+    expect(host.output.match(rejected)).toHaveLength(1);
+
+    await page.goto(new URL('/counter', INVALID_VIEW_BASE_URL).href);
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    const form = page.locator('.fc-command-form[aria-label="Batch Increment command form"]');
+    await fillFieldByLabel(form, 'Amount', '2');
+    await fillFieldByLabel(form, 'Note', 'Counter command after startup rejection');
+    await form.getByRole('button', { name: 'Batch Increment' }).click();
+    await expect(page.locator('[data-testid="fc-lifecycle-batch-increment"]')).toHaveAttribute(
+      'data-lifecycle-state', 'confirmed',
+    );
+
+    await page.getByRole('tab', { name: 'Projection', exact: true }).click();
+    const grid = page.locator('[data-fc-datagrid]');
+    await expect(grid.locator('.counter-cards')).toBeVisible();
+    await expect(grid.locator('.counter-count-slot strong')).toHaveText('2');
+    await expect(grid.getByText('INVALID-VIEW-RENDERED')).toHaveCount(0);
+    expect(host.output.match(rejected)).toHaveLength(1);
+  });
 });
 
 const buildDebugCounter = async (deadline: number, accessibilityFixture: boolean): Promise<void> => {
@@ -132,20 +163,22 @@ const startCounterHost = async (
   baseUrl: string,
   environmentName: 'Development' | 'Test',
   deadline: number,
-  renderFault: boolean,
-): Promise<void> => {
+  fixture: CounterFixture,
+): Promise<OwnedProcess> => {
   const host = spawnOwnedProcess('dotnet', [COUNTER_DEBUG_ASSEMBLY, '--urls', baseUrl], {
     cwd: COUNTER_PROJECT_DIRECTORY,
     env: {
       ...process.env,
       ASPNETCORE_ENVIRONMENT: environmentName,
       DOTNET_ENVIRONMENT: environmentName,
-      Hexalith__FrontComposer__E2E__SeedContractMismatch: String(!renderFault),
-      Hexalith__FrontComposer__E2E__SeedOverrideRenderFault: String(renderFault),
+      Hexalith__FrontComposer__E2E__SeedContractMismatch: String(fixture === 'contract-mismatch'),
+      Hexalith__FrontComposer__E2E__SeedOverrideRenderFault: String(fixture === 'render-fault'),
+      Hexalith__FrontComposer__E2E__SeedInvalidViewOverride: String(fixture === 'invalid-view'),
       Hexalith__FrontComposer__Specimens__Enabled: '',
       Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs: '200',
     },
   });
   ownedProcesses.push(host);
   await waitForOwnedServer(host, baseUrl, deadline);
+  return host;
 };
