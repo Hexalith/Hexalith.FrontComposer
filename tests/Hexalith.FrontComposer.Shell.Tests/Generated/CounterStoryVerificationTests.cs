@@ -17,6 +17,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Components.Rendering;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
@@ -922,6 +923,54 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             cut.Markup.ShouldNotContain("SensitiveTokenSentinel");
             cut.Markup.ShouldNotContain("data-fc-diagnostic");
         });
+    }
+
+    [Fact]
+    public async Task Level4FaultLeavesSiblingProjectionUsable()
+    {
+        UseFakeTime(s_fixedNow);
+        ListLogger<FcProjectionViewOverrideHost<CounterProjection>> logger = new();
+        Services.Replace(ServiceDescriptor.Singleton<ILogger<FcProjectionViewOverrideHost<CounterProjection>>>(logger));
+        Services.AddSingleton(new ProjectionTemplateAssemblySource([
+            new ProjectionTemplateDescriptor(typeof(CounterProjection), null, typeof(SelectedCounterTemplate),
+                ProjectionTemplateContractVersion.Current)]));
+        Services.AddViewOverride<CounterProjection, ThrowingCounterReplacement>();
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new CounterProjectionLoadedAction("faulting-counter",
+            [new CounterProjection { Id = "counter-1", Count = 42, LastUpdated = s_lastUpdated }])
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
+        dispatcher.Dispatch(new StatusProjectionLoadedAction("initial-status",
+            [new StatusProjection { Name = "Status before update", IsEnabled = true }])
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
+
+        IRenderedComponent<IComponent> cut = Render(builder =>
+        {
+            builder.OpenComponent<CounterProjectionView>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<StatusProjectionView>(1);
+            builder.CloseComponent();
+        });
+        await FillGridViewportAsync<StatusProjection>(cut);
+        IRenderedComponent<StatusProjectionView> sibling = cut.FindComponent<StatusProjectionView>();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.Find(".fc-selected-template").TextContent.ShouldContain("42");
+            sibling.Markup.ShouldContain("Status before update");
+            logger.Entries.ShouldContain(entry =>
+                entry.Level == LogLevel.Warning && entry.Message.Contains("HFC2121", StringComparison.Ordinal));
+        });
+
+        await cut.InvokeAsync(() => dispatcher.Dispatch(new StatusProjectionLoadedAction("updated-status",
+            [new StatusProjection { Name = "Status after update", IsEnabled = false }])
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" }));
+        await sibling.WaitForAssertionAsync(() =>
+        {
+            sibling.Markup.ShouldContain("Status after update");
+            sibling.Markup.ShouldNotContain("Status before update");
+        });
+        cut.Find(".fc-selected-template").TextContent.ShouldContain("42");
     }
 
     [Fact]

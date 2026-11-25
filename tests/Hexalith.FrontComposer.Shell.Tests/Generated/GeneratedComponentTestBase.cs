@@ -182,11 +182,16 @@ public abstract class GeneratedComponentTestBase : BunitContext {
     protected async Task<IRenderedComponent<TComponent>> RenderVirtualizedAsync<TComponent, TItem>()
         where TComponent : IComponent {
         IRenderedComponent<TComponent> cut = Render<TComponent>();
-        IRenderedComponent<IComponent> root = (IRenderedComponent<IComponent>)cut;
+        await FillGridViewportAsync<TItem>((IRenderedComponent<IComponent>)cut).ConfigureAwait(true);
+        return cut;
+    }
+
+    /// <summary>Supplies a viewport for a generated grid within an already rendered tree.</summary>
+    protected static async Task FillGridViewportAsync<TItem>(IRenderedComponent<IComponent> root) {
         IRenderedComponent<FluentDataGrid<TItem>>? grid =
             root.FindComponents<FluentDataGrid<TItem>>().SingleOrDefault();
         if (grid is null) {
-            return cut;
+            return;
         }
 
         FieldInfo virtualizerField = grid.Instance.GetType()
@@ -199,12 +204,10 @@ public abstract class GeneratedComponentTestBase : BunitContext {
             .Single(method => method.Name.EndsWith(".OnBeforeSpacerVisible", StringComparison.Ordinal));
         // .NET 11 distinguishes an initial viewport fill from scrolling and content measurements.
         object viewportFill = Enum.Parse(callback.GetParameters()[3].ParameterType, "ViewportFill");
-        _ = await cut.InvokeAsync(() => callback.Invoke(virtualizer, [0f, 0f, 10_000f, viewportFill]))
+        _ = await root.InvokeAsync(() => callback.Invoke(virtualizer, [0f, 0f, 10_000f, viewportFill]))
             .ConfigureAwait(true);
-        await cut.InvokeAsync(() => grid.Instance.RefreshDataAsync(force: true)).ConfigureAwait(true);
-        cut.Render();
-
-        return cut;
+        await root.InvokeAsync(() => grid.Instance.RefreshDataAsync(force: true)).ConfigureAwait(true);
+        root.Render();
     }
 
     private sealed class NoopLastUsedSubscriberRegistry : ILastUsedSubscriberRegistry {
