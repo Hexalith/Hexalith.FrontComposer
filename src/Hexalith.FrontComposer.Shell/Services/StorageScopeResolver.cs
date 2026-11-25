@@ -54,30 +54,30 @@ internal sealed class StorageScopeResolver : IStorageScopeResolver {
         // The accessor property getters may throw (claims principal disposed, JWT parse error in an
         // adopter implementation). Wrap the reads so the fail-closed branch fires consistently with
         // HFC2105 instead of bubbling an unhandled effect exception into Fluxor's pipeline.
-        TenantContextSnapshot? scope;
+        tenantId = string.Empty;
+        userId = string.Empty;
+        TenantContextResult? result = null;
+        string? accessorExceptionType;
         try {
-            scope = _validatedAccessor is not null
-                ? _validatedAccessor.TryGetContext(operationKind: "storage-scope").Context
+            result = _validatedAccessor is not null
+                ? _validatedAccessor.TryGetContext(operationKind: "storage-scope")
                 : _accessor is null
                     ? null
                     : FrontComposerTenantContextAccessor.Resolve(
-                        _accessor, new FcShellOptions(), NullLogger.Instance, operationKind: "storage-scope").Context;
+                        _accessor, new FcShellOptions(), NullLogger.Instance, operationKind: "storage-scope");
+            accessorExceptionType = result?.IdentityAccessorExceptionType;
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            FrontComposerSecurityLog.StorageAccessorFailed(
-                _logger,
-                feature,
-                direction,
-                ex.GetType().FullName ?? "Exception");
-            tenantId = string.Empty;
-            userId = string.Empty;
+            accessorExceptionType = ex.GetType().FullName ?? "Exception";
+        }
+
+        if (accessorExceptionType is not null) {
+            FrontComposerSecurityLog.StorageAccessorFailed(_logger, feature, direction, accessorExceptionType);
             return false;
         }
 
-        if (scope is null) {
+        if (result?.Context is not TenantContextSnapshot scope) {
             FrontComposerSecurityLog.StorageScopeMissing(_logger, feature, direction);
-            tenantId = string.Empty;
-            userId = string.Empty;
             return false;
         }
 

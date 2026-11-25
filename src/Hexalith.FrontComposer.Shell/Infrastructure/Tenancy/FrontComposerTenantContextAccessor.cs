@@ -118,16 +118,23 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
 
+        bool requestedPresent = HasValue(requestedTenant, MaxTenantLength);
         string? tenant = null;
-        string? user = null;
+        string? user;
         try {
             tenant = userContextAccessor.TenantId;
             user = userContextAccessor.UserId;
         }
         catch (Exception exception) when (exception is not OperationCanceledException && !ExceptionGuard.IsFatal(exception)) {
-            // Leave the unavailable identity segment unset. The missing-context path logs only presence flags.
+            bool authenticatedTenantPresent = HasValue(tenant, MaxTenantLength);
+            TenantContextFailureCategory category = authenticatedTenantPresent
+                ? TenantContextFailureCategory.UserMissing
+                : TenantContextFailureCategory.TenantMissing;
+            return Failure(category, requestedPresent, authenticatedTenantPresent, false) with {
+                IdentityAccessorExceptionType = exception.GetType().FullName ?? "Exception",
+            };
         }
-        bool requestedPresent = HasValue(requestedTenant, MaxTenantLength);
+
         bool tenantPresent = HasValue(tenant, MaxTenantLength);
         bool userPresent = HasValue(user, MaxUserLength);
         if (!tenantPresent) {

@@ -8,6 +8,9 @@ public sealed record TenantContextResult(
     TenantContextSnapshot? Context,
     TenantContextFailureCategory FailureCategory,
     string CorrelationId) {
+    // Storage uses this sanitized type name to preserve its accessor-failure diagnostic.
+    internal string? IdentityAccessorExceptionType { get; init; }
+
     /// <summary>Creates a successful context result.</summary>
     public static TenantContextResult Success(TenantContextSnapshot context) {
         ArgumentNullException.ThrowIfNull(context);

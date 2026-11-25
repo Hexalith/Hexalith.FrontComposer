@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
 
@@ -92,13 +93,18 @@ public sealed class StorageScopeResolverTests {
         logger.ShouldHaveInformation(FcDiagnosticIds.HFC2105_StoragePersistenceSkipped, "hydrate");
     }
 
-    [Fact]
-    public void TryResolveScope_ThrowingAccessorGetter_FailsClosedAndLogsSanitizedCategory() {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TryResolveScope_ThrowingAccessorGetter_FailsClosedAndLogsSanitizedCategory(bool useValidatedAccessor) {
         CapturingLogger logger = new();
         IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
         _ = accessor.TenantId.Returns("acme");
         _ = accessor.UserId.Returns(_ => throw new InvalidOperationException("secret-user@corp"));
-        StorageScopeResolver sut = new(accessor, logger);
+        IFrontComposerTenantContextAccessor? validatedAccessor = useValidatedAccessor
+            ? new FrontComposerTenantContextAccessor(accessor, static () => new FcShellOptions(), NullLogger.Instance)
+            : null;
+        StorageScopeResolver sut = new(accessor, logger, validatedAccessor);
 
         bool ok = sut.TryResolveScope(out string tenantId, out string userId, "Theme", "persist");
 
