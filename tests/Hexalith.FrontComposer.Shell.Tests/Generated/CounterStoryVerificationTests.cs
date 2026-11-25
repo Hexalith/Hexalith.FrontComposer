@@ -484,7 +484,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
     [Fact]
     public async Task CounterProjectionView_LoadedState_RendersColumnsAndFormatting() {
-        UseFakeTime(s_fixedNow);
+        UseFakeTime(s_lastUpdated.AddDays(2));
 
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
@@ -519,7 +519,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             countHeader.ShouldBeLessThan(lastUpdatedHeader);
             markup.ShouldContain("counter-1");
             markup.ShouldContain("1,234");
-            markup.ShouldContain("04/14/2026");
+            cut.Find("td[col-index='3']").TextContent.ShouldBe("2d ago");
         });
 
         await Verify(NormalizeGridMarkup(cut.Markup));
