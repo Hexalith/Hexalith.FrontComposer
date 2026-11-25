@@ -41,3 +41,6 @@ builder.Services.AddOpenTelemetry()
    in the collector or the connected trace viewer. The Counter sample can
    also run with in-memory services. Use an EventStore-backed host to see
    these two activities.
+
+Message and correlation fields emitted by FrontComposer tracing are sanitized
+and bounded at 128 characters. A trailing tilde (`~`) marks a truncated value.

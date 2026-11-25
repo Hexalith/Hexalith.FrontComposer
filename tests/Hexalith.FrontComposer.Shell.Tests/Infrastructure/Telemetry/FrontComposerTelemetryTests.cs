@@ -112,6 +112,24 @@ public sealed class FrontComposerTelemetryTests {
     public void FailureCategory_IsBoundedAndSanitized() => FrontComposerTelemetry.BoundCategory("bad value\r\nwith spaces and a very very very very very long suffix")
             .ShouldBe("bad_value__with_spaces_and_a_very_very_very_very_very_long_suffi");
 
+    [Theory]
+    [InlineData(64)]
+    [InlineData(65)]
+    [InlineData(128)]
+    [InlineData(129)]
+    public void IdentifierDiagnosticsPreserveSupportedLengthAndMarkOverflow(int length) {
+        string value = new string('a', length - 1) + "z";
+        string expected = length <= 128 ? value : new string('a', 127) + "~";
+
+        FrontComposerTelemetry.SafeIdentifier(value).ShouldBe(expected);
+        FrontComposerTelemetry.SafeIdentifierOrAbsent(value).ShouldBe(expected);
+    }
+
+    [Fact]
+    public void IdentifierDiagnosticsReserveTruncationMarkerAndSanitizeControls() {
+        FrontComposerTelemetry.SafeIdentifier("  id+~\r\n-end  ").ShouldBe("id____-end");
+    }
+
     private sealed class ActivityCapture : IDisposable {
         private readonly ActivityListener _listener;
         private readonly List<Activity> _activities = [];

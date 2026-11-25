@@ -315,6 +315,28 @@ public sealed class EventStoreTelemetryTests {
         activity.GetTagItem(FrontComposerTelemetry.FailureCategoryTag).ShouldBeNull();
     }
 
+    [Fact]
+    public async Task CommandDispatchPreservesMaximumSupportedCorrelationInActivity() {
+        string correlationId = new string('C', 127) + "Z";
+        RecordingHandler handler = new(_ => {
+            HttpResponseMessage response = new(HttpStatusCode.Accepted);
+            response.Headers.Add("X-Correlation-ID", correlationId);
+            return response;
+        });
+        EventStoreCommandClient client = new(
+            new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("tenant-secret", "user-secret"), EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance);
+        using var parent = new Activity(nameof(CommandDispatchPreservesMaximumSupportedCorrelationInActivity)).SetIdFormat(ActivityIdFormat.W3C).Start();
+        using var capture = ActivityCapture.Start();
+
+        CommandResult result = await client.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
+
+        result.CorrelationId.ShouldBe(correlationId);
+        Activity activity = capture.Single(FrontComposerTelemetry.CommandDispatchOperation, span => span.TraceId == parent.TraceId);
+        activity.GetTagItem(FrontComposerTelemetry.CorrelationIdTag).ShouldBe(correlationId);
+    }
+
     private static IOptions<EventStoreOptions> Options()
         => Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
             BaseAddress = new Uri("https://eventstore.test"),
