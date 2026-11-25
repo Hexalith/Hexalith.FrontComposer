@@ -2417,7 +2417,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-states-field-descriptions-and-unsupported-types — Pass 3 (2026-04-25 bmad-code-review)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor.cs:128-131
 reason: **Empty-state secondary-text resource key uses raw FQN with `+` (nested) / backtick (generics)** [`src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor.cs:128-131`] — `ProjectionType.FullName` for nested types contains `+`; for generic types contains backtick. `.resx` `<data name="">` cannot contain `+` → silent no-op for nested/generic projections. Reconciliation: Row: DW-0271; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor.cs:128-131.
-status: open
+status: done 2026-11-25
+resolution: Kept existing nested and constructed-name resources and added a stable generic-definition lookup.
 
 ### DW-1003: `<AuthorizeView>` flicker on prerender → interactive transition
 

@@ -66,8 +66,13 @@ The tables describe the public component parameters. Injected services and inter
 | `EntityPluralOverride` | `string?` | Optional localized plural label. When omitted, the projection type name is humanized with a basic English "s" suffix. |
 | `Role` | `ProjectionRole?` | Projection role used to select the empty-state action copy. |
 | `CtaCommandName` | `string?` | Optional action command name. When supplied, bypasses `[ProjectionEmptyStateCta]` discovery; otherwise the resolver uses that attribute or the bounded-context fallback. |
-| `SecondaryText` | `string?` | Optional localized secondary guidance. When omitted, uses the `{ProjectionFqn}_EmptyStateSecondaryText` resource if present; otherwise renders no secondary line. |
+| `SecondaryText` | `string?` | Optional localized secondary guidance. When omitted, uses the projection's secondary-guidance resource if present. See the key convention below. |
 | `SuppressStandaloneStatus` | `bool` | Uses the generated view's shared polite status instead of a second live node. |
+
+For secondary guidance, append `_EmptyStateSecondaryText` to the projection's CLR full name.
+Keep the `+` in nested type names. For a generic projection, use its generic type definition,
+including its arity marker. For example, ``Acme.Orders.OrderProjection`1_EmptyStateSecondaryText`` applies to each constructed type. An existing resource keyed by the full constructed name
+takes precedence.
 
 ### `FcProjectionFailure`
 

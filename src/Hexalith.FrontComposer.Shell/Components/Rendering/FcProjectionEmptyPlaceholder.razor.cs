@@ -198,8 +198,14 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
             return null;
         }
 
-        string projectionFqn = ProjectionType.FullName ?? ProjectionType.Name;
-        string conventionKey = projectionFqn + "_EmptyStateSecondaryText";
+        string? exactText = GetConventionSecondaryText(ProjectionType);
+        return exactText ?? (ProjectionType.IsConstructedGenericType
+            ? GetConventionSecondaryText(ProjectionType.GetGenericTypeDefinition())
+            : null);
+    }
+
+    private string? GetConventionSecondaryText(Type projectionType) {
+        string conventionKey = (projectionType.FullName ?? projectionType.Name) + "_EmptyStateSecondaryText";
         LocalizedString secondary = Localizer[conventionKey];
         // Guard against IStringLocalizer implementations that return ResourceNotFound==false
         // with Value==Name on miss. Treat value-equals-key as "no resource" so the user never
