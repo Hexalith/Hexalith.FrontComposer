@@ -7,6 +7,7 @@ using System.Xml.Linq;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Tests.Governance;
 
 using Shouldly;
 
@@ -560,20 +561,6 @@ internal static class InfrastructureGovernance {
         new("Google.Cloud", "GCP provider SDK", "Google.Cloud"),
     ];
 
-    private static readonly ForbiddenRule[] NamespaceRules = [
-        new("Dapr", "Dapr SDK", "Dapr"),
-        new("StackExchange.Redis", "Redis", "StackExchange.Redis"),
-        new("Microsoft.AspNetCore.SignalR.StackExchangeRedis", "Redis", "Microsoft.AspNetCore.SignalR.StackExchangeRedis"),
-        new("Microsoft.AspNetCore.SignalR.Client", "SignalR Client (Shell-only)", "Microsoft.AspNetCore.SignalR.Client"),
-        new("Confluent.Kafka", "Kafka", "Confluent.Kafka"),
-        new("Npgsql", "PostgreSQL", "Npgsql"),
-        new("Microsoft.Azure.Cosmos", "Cosmos DB", "Microsoft.Azure.Cosmos"),
-        new("Azure.Storage", "Azure Storage", "Azure.Storage"),
-        new("Azure.Messaging.ServiceBus", "Azure Service Bus", "Azure.Messaging.ServiceBus"),
-        new("Amazon.S3", "AWS provider SDK", "Amazon.S3"),
-        new("Google.Cloud", "GCP provider SDK", "Google.Cloud"),
-    ];
-
     public static List<GovernanceViolation> ScanProjectReferences(string projectPath, string root) {
         var document = XDocument.Load(projectPath);
         bool allowSignalRClient = IsShellProject(projectPath);
@@ -693,13 +680,13 @@ internal static class InfrastructureGovernance {
         string relative = RelativePath(file, repositoryRoot);
         string text = File.ReadAllText(file);
         List<GovernanceViolation> violations = [];
-        foreach (ForbiddenRule rule in NamespaceRules) {
-            if (allowSignalRClient && rule.Reference == "Microsoft.AspNetCore.SignalR.Client") {
+        foreach ((string reference, string providerFamily) in InfrastructureNamespaceRules.All) {
+            if (allowSignalRClient && reference == "Microsoft.AspNetCore.SignalR.Client") {
                 continue;
             }
 
-            if (ContainsNamespaceUse(text, rule.Reference)) {
-                violations.Add(Violation(relative, rule.Reference, rule.ProviderFamily));
+            if (ContainsNamespaceUse(text, reference)) {
+                violations.Add(Violation(relative, reference, providerFamily));
             }
         }
 

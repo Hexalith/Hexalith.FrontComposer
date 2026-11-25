@@ -459,7 +459,7 @@ public sealed class ProjectionTemplateMarkerTests {
             line,
             column);
 
-    private const string ValidProjection = """
+    internal const string ValidProjection = """
         using Hexalith.FrontComposer.Contracts.Attributes;
 
         namespace TestDomain;
@@ -471,7 +471,7 @@ public sealed class ProjectionTemplateMarkerTests {
         }
         """;
 
-    private const string ValidTemplate = """
+    internal const string ValidTemplate = """
         using Hexalith.FrontComposer.Contracts.Attributes;
         using Hexalith.FrontComposer.Contracts.Rendering;
         using Microsoft.AspNetCore.Components;

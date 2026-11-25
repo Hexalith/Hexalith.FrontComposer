@@ -4,6 +4,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\Shared\InfrastructureNamespaceRules.cs" Link="Governance\InfrastructureNamespaceRules.cs" />
     <!-- Exercise the host-owned realm renderer directly without starting an Aspire topology. -->
     <Compile Include="..\..\src\Hexalith.FrontComposer.AppHost\LocalWorkloadRealm.cs" Link="Integration\LocalWorkloadRealm.cs" />
     <Compile Include="..\..\src\Hexalith.FrontComposer.AppHost\LocalReadinessConfiguration.cs" Link="Integration\LocalReadinessConfiguration.cs" />
