@@ -8,7 +8,7 @@ namespace Hexalith.FrontComposer.Shell.Services.Auth;
 
 internal sealed class FrontComposerAuthenticationOptionsValidator(IHostEnvironment? environment = null)
     : IValidateOptions<FrontComposerAuthenticationOptions> {
-    private const string DocsBase = "https://hexalith.dev/frontcomposer/authentication";
+    private const string DocsBase = "https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/docs/how-to/authentication.md";
 
     public ValidateOptionsResult Validate(string? name, FrontComposerAuthenticationOptions options) {
         ArgumentNullException.ThrowIfNull(options);

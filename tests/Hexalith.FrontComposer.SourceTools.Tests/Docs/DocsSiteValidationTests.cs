@@ -40,6 +40,28 @@ public sealed partial class DocsSiteValidationTests {
     }
 
     [Fact]
+    public void AuthenticationGuideCoversEveryValidatorHelpAnchor() {
+        string root = ProjectRoot();
+        string docs = Path.Combine(root, "docs");
+        string guide = File.ReadAllText(Path.Combine(docs, "how-to", "authentication.md"));
+        string validator = File.ReadAllText(Path.Combine(root, "src", "Hexalith.FrontComposer.Shell",
+            "Services", "Auth", "FrontComposerAuthenticationOptionsValidator.cs"));
+        validator.ShouldContain("https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/docs/how-to/authentication.md");
+        File.ReadAllText(Path.Combine(docs, "toc.yml")).ShouldContain("href: how-to/authentication.md");
+
+        string[] anchors = Regex.Matches(validator, "\"#([a-z][a-z-]+)\"")
+            .Select(match => match.Groups[1].Value)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        anchors.ShouldNotBeEmpty();
+
+        HashSet<string> headings = Regex.Matches(guide, @"(?m)^## ([A-Za-z ]+)\r?$")
+            .Select(match => match.Groups[1].Value.ToLowerInvariant().Replace(' ', '-'))
+            .ToHashSet(StringComparer.Ordinal);
+        anchors.ShouldAllBe(anchor => headings.Contains(anchor));
+    }
+
+    [Fact]
     public void ContentPagesDeclareRequiredFrontMatterAndStableIdentities() {
         Dictionary<string, string> uids = new(StringComparer.Ordinal);
         Dictionary<string, string> slugs = new(StringComparer.Ordinal);
