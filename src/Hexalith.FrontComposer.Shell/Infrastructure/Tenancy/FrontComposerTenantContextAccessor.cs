@@ -18,10 +18,15 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
     // Match the EventStore command and query request limit for tenant identifiers.
     private const int MaxTenantLength = 64;
     private const int MaxUserLength = 1024;
+    private static readonly TimeSpan ProjectionNudgeWarningInterval = TimeSpan.FromSeconds(30);
 
     private readonly IUserContextAccessor _userContextAccessor;
     private readonly Func<FcShellOptions> _getOptions;
     private readonly ILogger _logger;
+    private readonly TimeProvider _timeProvider;
+    private readonly Func<bool> _shouldLogProjectionNudgeFailure;
+    private readonly Lock _projectionNudgeWarningLock = new();
+    private long? _lastProjectionNudgeWarning;
 
     /// <summary>Initializes the accessor using Shell options.</summary>
     public FrontComposerTenantContextAccessor(
@@ -44,10 +49,13 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
     internal FrontComposerTenantContextAccessor(
         IUserContextAccessor userContextAccessor,
         Func<FcShellOptions> getOptions,
-        ILogger logger) {
+        ILogger logger,
+        TimeProvider? timeProvider = null) {
         _userContextAccessor = userContextAccessor;
         _getOptions = getOptions;
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        _shouldLogProjectionNudgeFailure = ShouldLogProjectionNudgeFailure;
     }
     private static readonly string[] SyntheticIdentifiers = [
         "default",
@@ -66,7 +74,11 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
     /// <inheritdoc />
     public TenantContextResult Revalidate(TenantContextSnapshot snapshot, string operationKind = "tenant-scoped") {
         ArgumentNullException.ThrowIfNull(snapshot);
-        TenantContextResult current = TryGetContext(operationKind: operationKind);
+        Func<bool>? shouldLogFailure = operationKind == "projection-nudge"
+            ? _shouldLogProjectionNudgeFailure
+            : null;
+        TenantContextResult current = ResolveCore(
+            _userContextAccessor, _getOptions(), _logger, null, operationKind, shouldLogFailure);
         if (!current.Succeeded || current.Context is null) {
             return current;
         }
@@ -82,7 +94,8 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
             operationKind,
             requestedTenantPresent: true,
             authenticatedTenantPresent: true,
-            userPresent: true);
+            userPresent: true,
+            shouldLogFailure);
     }
 
     internal static TenantContextResult Resolve(
@@ -90,7 +103,16 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
         FcShellOptions options,
         ILogger logger,
         string? requestedTenant = null,
-        string operationKind = "tenant-scoped") {
+        string operationKind = "tenant-scoped")
+        => ResolveCore(userContextAccessor, options, logger, requestedTenant, operationKind, null);
+
+    private static TenantContextResult ResolveCore(
+        IUserContextAccessor userContextAccessor,
+        FcShellOptions options,
+        ILogger logger,
+        string? requestedTenant,
+        string operationKind,
+        Func<bool>? shouldLogFailure) {
         ArgumentNullException.ThrowIfNull(userContextAccessor);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
@@ -101,11 +123,11 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
         bool tenantPresent = HasValue(tenant, MaxTenantLength);
         bool userPresent = HasValue(user, MaxUserLength);
         if (!tenantPresent) {
-            return Block(logger, TenantContextFailureCategory.TenantMissing, operationKind, requestedPresent, false, userPresent);
+            return Failure(TenantContextFailureCategory.TenantMissing, requestedPresent, false, userPresent);
         }
 
         if (!userPresent) {
-            return Block(logger, TenantContextFailureCategory.UserMissing, operationKind, requestedPresent, true, false);
+            return Failure(TenantContextFailureCategory.UserMissing, requestedPresent, true, false);
         }
 
         // P9 — flags reflect *valid* presence: a malformed segment is "present but unusable",
@@ -114,10 +136,8 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
         bool userValid = IsValidSegment(user!, MaxUserLength);
         bool requestedValid = !requestedPresent || IsValidSegment(requestedTenant!, MaxTenantLength);
         if (!tenantValid || !userValid || !requestedValid) {
-            return Block(
-                logger,
+            return Failure(
                 TenantContextFailureCategory.MalformedSegment,
-                operationKind,
                 requestedPresent && requestedValid,
                 tenantValid,
                 userValid);
@@ -125,16 +145,14 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
 
         if (requestedPresent
             && !string.Equals(requestedTenant, tenant, StringComparison.Ordinal)) {
-            return Block(logger, TenantContextFailureCategory.TenantMismatch, operationKind, true, true, true);
+            return Failure(TenantContextFailureCategory.TenantMismatch, true, true, true);
         }
 
         if (!options.AllowDemoTenantContext
             && (IsSynthetic(tenant!) || IsSynthetic(user!))) {
             // P9 — set the affected flag to false so operators can tell which side was synthetic.
-            return Block(
-                logger,
+            return Failure(
                 TenantContextFailureCategory.SyntheticTenantRejected,
-                operationKind,
                 requestedPresent && !IsSynthetic(requestedTenant!),
                 !IsSynthetic(tenant!),
                 !IsSynthetic(user!));
@@ -145,6 +163,9 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
             user!,
             IsAuthenticated: true,
             CorrelationId: NewCorrelationId()));
+
+        TenantContextResult Failure(TenantContextFailureCategory category, bool requested, bool authenticated, bool hasUser)
+            => Block(logger, category, operationKind, requested, authenticated, hasUser, shouldLogFailure);
     }
 
     private static bool IsValidSegment(string value, int maxLength) {
@@ -175,18 +196,35 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
         string operationKind,
         bool requestedTenantPresent,
         bool authenticatedTenantPresent,
-        bool userPresent) {
+        bool userPresent,
+        Func<bool>? shouldLogFailure) {
         string correlationId = NewCorrelationId();
-        FrontComposerLog.TenantContextBlocked(
-            logger,
-            DiagnosticId(failureCategory),
-            operationKind,
-            failureCategory.ToString(),
-            requestedTenantPresent,
-            authenticatedTenantPresent,
-            userPresent,
-            correlationId);
+        if (shouldLogFailure?.Invoke() != false) {
+            FrontComposerLog.TenantContextBlocked(
+                logger,
+                DiagnosticId(failureCategory),
+                operationKind,
+                failureCategory.ToString(),
+                requestedTenantPresent,
+                authenticatedTenantPresent,
+                userPresent,
+                correlationId);
+        }
+
         return TenantContextResult.Failure(failureCategory, correlationId);
+    }
+
+    private bool ShouldLogProjectionNudgeFailure() {
+        lock (_projectionNudgeWarningLock) {
+            long now = _timeProvider.GetTimestamp();
+            if (_lastProjectionNudgeWarning is long previous
+                && _timeProvider.GetElapsedTime(previous, now) < ProjectionNudgeWarningInterval) {
+                return false;
+            }
+
+            _lastProjectionNudgeWarning = now;
+            return true;
+        }
     }
 
     private static string DiagnosticId(TenantContextFailureCategory failureCategory)

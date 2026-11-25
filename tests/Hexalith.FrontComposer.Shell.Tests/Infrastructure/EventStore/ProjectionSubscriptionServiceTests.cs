@@ -649,6 +649,57 @@ public sealed class ProjectionSubscriptionServiceTests {
         sut.HasBlockedGroup("orders", "tenant-a").ShouldBeTrue();
     }
 
+    [Theory]
+    [InlineData(null, "HFC2015")]
+    [InlineData("other-tenant", "HFC2019")]
+    public async Task ProjectionNudges_RateLimitTenantWarningsAndRevalidateEveryGroup(
+        string? changedTenant, string diagnosticId) {
+        FakeProjectionHubConnection connection = new();
+        DetailCapturingNotifier notifier = new();
+        MutableUserContextAccessor identity = new("tenant-a", "user-a");
+        TestRefreshScheduler refresh = new();
+        CapturingLogger<ProjectionSubscriptionService> logger = new();
+        FakeTimeProvider time = new();
+        ProjectionSubscriptionService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"), RequireAccessToken = false,
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(), refresh, notifier, logger,
+            userContextAccessor: identity, timeProvider: time);
+        await using ConfiguredAsyncDisposable subscriptionLifetime = sut.ConfigureAwait(true);
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        await sut.SubscribeAsync("orders", "tenant-a", cancellationToken);
+        await sut.SubscribeAsync("customers", "tenant-a", cancellationToken);
+
+        identity.TenantId = changedTenant;
+        await connection.RaiseAsync("orders", "tenant-a");
+        await connection.RaiseAsync("customers", "tenant-a");
+
+        string[] Warnings() => [.. logger.Entries.Where(entry => entry.Message.StartsWith(diagnosticId + ":", StringComparison.Ordinal))
+            .Select(entry => entry.Message)];
+        Warnings().ShouldHaveSingleItem();
+        notifier.Changed.ShouldBeEmpty();
+        refresh.NudgeRefreshes.ShouldBeEmpty();
+        sut.HasBlockedGroup("orders", "tenant-a").ShouldBeTrue();
+        sut.HasBlockedGroup("customers", "tenant-a").ShouldBeTrue();
+
+        time.Advance(TimeSpan.FromSeconds(29));
+        await connection.RaiseAsync("customers", "tenant-a");
+        Warnings().ShouldHaveSingleItem();
+        time.Advance(TimeSpan.FromSeconds(1));
+        await connection.RaiseAsync("orders", "tenant-a");
+        Warnings().Length.ShouldBe(2);
+
+        // The throttle is specific to nudge callbacks. Interactive subscription failures still log.
+        _ = await Should.ThrowAsync<TenantContextException>(() => sut.SubscribeAsync("other", "tenant-a", cancellationToken));
+        logger.Entries.ShouldContain(entry => entry.Message.Contains("OperationKind=projection-subscribe", StringComparison.Ordinal));
+        identity.TenantId = "tenant-a";
+        await connection.RaiseAsync("orders", "tenant-a");
+        notifier.Changed.ShouldHaveSingleItem();
+        refresh.NudgeRefreshes.ShouldHaveSingleItem();
+    }
+
     [Fact]
     public async Task ScopeSwitch_RemovesStalePendingGroupWithoutLeavingItBlocked() {
         FakeProjectionHubConnection connection = new();

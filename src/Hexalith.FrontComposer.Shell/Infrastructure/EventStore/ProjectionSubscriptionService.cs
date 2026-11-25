@@ -113,7 +113,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         _shellOptionsMonitor = shellOptionsMonitor;
         _tenantContextAccessor = tenantContextAccessor ?? (userContextAccessor is null
             ? null
-            : new FrontComposerTenantContextAccessor(userContextAccessor, CurrentShellOptions, logger));
+            : new FrontComposerTenantContextAccessor(userContextAccessor, CurrentShellOptions, logger, _timeProvider));
         EventStoreOptions current = options.Value;
         _requireAccessToken = current.RequireAccessToken;
         _configuredAccessTokenProvider = current.AccessTokenProvider;
