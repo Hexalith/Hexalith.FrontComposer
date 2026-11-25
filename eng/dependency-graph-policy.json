@@ -85,7 +85,7 @@
         "FsCheck.Xunit.v3": "3.6.0",
         "Microsoft.CodeAnalysis.Workspaces.Common": "5.12.0",
         "Microsoft.Extensions.Localization": "11.0.0",
-        "Microsoft.Extensions.TimeProvider.Testing": "11.0.0",
+        "Microsoft.Extensions.TimeProvider.Testing": "11.0.1",
         "ModelContextProtocol.AspNetCore": "2.4.0",
         "NUlid": "1.7.3",
         "PactNet": "5.0.1",
@@ -93,8 +93,8 @@
         "System.ComponentModel.Annotations": "5.0.0",
         "System.Reactive": "7.0.0",
         "System.Threading.Tasks.Extensions": "4.6.3",
-        "Verify": "33.6.0",
-        "Verify.XunitV3": "33.6.0"
+        "Verify": "33.7.2",
+        "Verify.XunitV3": "33.7.2"
       }
     },
     "eventstore-catalog-v1": {
@@ -148,8 +148,8 @@
         "well_formed_project_root": true,
         "override_not_enabled": true,
         "canonical_source_files": {
-          "DaprSelfHostedMtls.cs": "d68d48222e60ff978344b005d921a48520f31be282294e2fe93d8957e5d3f33d",
-          "DaprSelfHostedMtlsSubscriber.cs": "c7c60cad8c0f612029fb6904eca4fd6f567a068d6ea0735c3239fb360de8fc3a"
+          "DaprSelfHostedMtls.cs": "a378574e27ed24e1d503e4ba1fc74e91e57165980e5d86801efe39eb2d4099a7",
+          "DaprSelfHostedMtlsSubscriber.cs": "e36dee920aacc19873d5deafbca7130b0eba7dd3e3ae627e8ef3116fa4ef26c8"
         }
       },
       "selected_catalog_required_properties": {},
@@ -3520,9 +3520,9 @@
   },
   "consumer_source_projections": {
     "github.com/hexalith/hexalith.platform": {
-      "owner_commit": "44dd1e52904cd07ef49be74edd947c75f9b76374",
+      "owner_commit": "3bcac63c6fe20b46687b6e0bb7a333ea8c66fb4d",
       "gitmodules_sha256": "0e0b9eaf9e639f24cc4e9816aabbda14909358e70f3ab66d4714a99ae61897bd",
-      "inventory_sha256": "789e085961bc48b69f249c62429f66ecaec66e20f51750dd8aee8db1dedf092c",
+      "inventory_sha256": "0de1aa068c76e452eabac7ce1871963a2e54c53d4ef6ee09d7d72310ea0c8bab",
       "inventory_only_identities": [
         "github.com/hexalith/hexalith.agents",
         "github.com/hexalith/hexalith.chatbot",
@@ -3533,8 +3533,8 @@
         "github.com/hexalith/hexalith.works"
       ],
       "source_files": {
-        "DaprSelfHostedMtls.cs": "d68d48222e60ff978344b005d921a48520f31be282294e2fe93d8957e5d3f33d",
-        "DaprSelfHostedMtlsSubscriber.cs": "c7c60cad8c0f612029fb6904eca4fd6f567a068d6ea0735c3239fb360de8fc3a"
+        "DaprSelfHostedMtls.cs": "a378574e27ed24e1d503e4ba1fc74e91e57165980e5d86801efe39eb2d4099a7",
+        "DaprSelfHostedMtlsSubscriber.cs": "e36dee920aacc19873d5deafbca7130b0eba7dd3e3ae627e8ef3116fa4ef26c8"
       },
       "consumer_repository": "github.com/hexalith/hexalith.frontcomposer",
       "consumer_project": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
@@ -3543,10 +3543,10 @@
         "DaprSelfHostedMtls.cs": "Platform/DaprSelfHostedMtls.cs",
         "DaprSelfHostedMtlsSubscriber.cs": "Platform/DaprSelfHostedMtlsSubscriber.cs"
       },
-      "builds_commit": "6439a71d240a32a7486c4fd437539a56c7a909b8",
+      "builds_commit": "bf8a28b4bbcec619e8d9764d335f786f2bafb69e",
       "builds_project": "src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj",
-      "root_selectors_sha256": "141e8daf093ff0cd6ee96a7452eeb50b2dd2ce9f4a5f423cfa31bf7a9ade30e4",
-      "consumer_configuration_sha256": "75376039b93700fb9f8d986ec8e47744e80a246016c81e87c2e189c528329071"
+      "root_selectors_sha256": "ea3e2b0fe00f6389d394ccb50bb1c26082954797f0762f90886a4f22b26ad650",
+      "consumer_configuration_sha256": "ae96ac68cde82dc657b125401b46be1fec2e817ba09d4f61846d03773d41276f"
     }
   }
 }

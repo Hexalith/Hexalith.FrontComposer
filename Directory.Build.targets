@@ -65,13 +65,14 @@
       GenerateSuppressionFile="false" />
   </Target>
 
-  <!-- FrontComposer's own checkout retains its sealed 5.4.0 pin. In an umbrella,
-       compare even forwarded global properties with the sibling catalog's actual default. -->
+  <!-- FrontComposer's own checkout selects the published EventStore 5.6.0 cohort.
+       In an umbrella, compare even forwarded global properties with the sibling
+       catalog's actual default. -->
   <Target Name="ValidateFrontComposerEventStoreVersion"
           BeforeTargets="CollectPackageReferences;PrepareForBuild"
           Condition="'$(FrontComposerRoot)' == 'true'">
     <PropertyGroup>
-      <_FrontComposerRequiredEventStore>5.4.0</_FrontComposerRequiredEventStore>
+      <_FrontComposerRequiredEventStore>5.6.0</_FrontComposerRequiredEventStore>
       <_FrontComposerExternalCatalog Condition="!Exists('$(Hexalith1BuildPackageProps)') And Exists('$(Hexalith2BuildPackageProps)')">$(Hexalith2BuildPackageProps)</_FrontComposerExternalCatalog>
       <_FrontComposerExternalCatalog Condition="!Exists('$(Hexalith1BuildPackageProps)') And '$(_FrontComposerExternalCatalog)' == '' And Exists('$(Hexalith3BuildPackageProps)')">$(Hexalith3BuildPackageProps)</_FrontComposerExternalCatalog>
     </PropertyGroup>
@@ -82,7 +83,7 @@
     <PropertyGroup Condition="'$(_FrontComposerExternalCatalog)' != ''">
       <_FrontComposerRequiredEventStore>$(_FrontComposerSiblingEventStore)</_FrontComposerRequiredEventStore>
     </PropertyGroup>
-    <Error Condition="'$(_FrontComposerRequiredEventStore)' != '5.4.0' And '$(_FrontComposerRequiredEventStore)' != '5.5.1' And '$(_FrontComposerRequiredEventStore)' != '5.5.2'"
+    <Error Condition="'$(_FrontComposerRequiredEventStore)' != '5.4.0' And '$(_FrontComposerRequiredEventStore)' != '5.5.1' And '$(_FrontComposerRequiredEventStore)' != '5.5.2' And '$(_FrontComposerRequiredEventStore)' != '5.6.0'"
            Text="FrontComposer has no qualification for the selected catalog's EventStore version '$(_FrontComposerRequiredEventStore)'." />
     <Error Condition="'$(HexalithEventStoreVersion)' != '$(_FrontComposerRequiredEventStore)'"
            Text="FrontComposer requires EventStore $(_FrontComposerRequiredEventStore). Selected version: '$(HexalithEventStoreVersion)'." />

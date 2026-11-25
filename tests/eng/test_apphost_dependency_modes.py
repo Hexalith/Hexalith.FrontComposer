@@ -100,13 +100,15 @@ class AppHostDependencyModeTests(unittest.TestCase):
             check("5.5.2", True)
             check("5.5.1", False)
             catalog(sibling, "5.6.0")
-            check("5.6.0", False)
+            check("5.6.0", True)
+            check("5.5.2", False)
             sibling.write_text("<Project />")
             check("5.4.0", False)
             catalog(owner / "references/Hexalith.Builds/Props/Directory.Packages.props", "5.4.0")
-            check("5.4.0", True)
+            check("5.4.0", False)
             check("5.5.1", False)
             check("5.5.2", False)
+            check("5.6.0", True)
 
     def test_release_restores_only_the_selected_eventstore_version(self) -> None:
         with tempfile.TemporaryDirectory(prefix="frontcomposer-eventstore-release-") as artifacts:
