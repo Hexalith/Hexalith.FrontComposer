@@ -101,6 +101,33 @@ If the median latency for scenario 1.3 exceeds 2 s, copy the row below into `_bm
   - branch/commit: <ref>
 ```
 
+### 3.4 Level 4 replacement verification on .NET 11
+
+On 2026-11-25, Counter.Web ran in Debug and Development on Linux under .NET SDK
+`11.0.100` and ASP.NET Core `11.0.0`. The test used source revision
+`6a349b8241517b6309f78a7886aba8fda2622f2b` and Chromium `156.0.8078.4`.
+
+With projection rows loaded and the Level 4 view mounted, a markup-only edit to
+`CounterFullViewReplacement.razor` changed the heading from `counters` to
+`counters — DW941 refreshed` in the open browser. The document marker and listening
+Counter.Web process stayed the same.
+
+To reproduce, start the sample with
+`dotnet watch --project samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug`.
+Submit a Counter command, switch to the Projection tab, then append text to the
+replacement's heading and save while the tab stays open.
+
+| Edit | Developer action |
+|---|---|
+| Replacement Razor body | Use Hot Reload for supported markup edits. The mounted heading edit above was observed. |
+| Add or remove a registration or introduce a duplicate | Rebuild and restart so startup rehydrates and validates the registrations. |
+| Change the projection, replacement component, or generic context type | Rebuild and restart so generated code and the registry use the updated types. |
+| Change the contract version or descriptor metadata | Rebuild and restart so startup validates the new descriptors and manifest. |
+
+`HotReloadRebuildClassifierTests` exercise the classification for registration
+changes, duplicates, generic context, contract versions, and generated marker,
+descriptor, and manifest changes. The live run exercised the Razor body edit.
+
 ## 4. How the Incremental Generator Is Validated Automatically
 
 Human validation (§3) measures the **full** cycle. Automated validation lives in the test project:
