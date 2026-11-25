@@ -1500,6 +1500,24 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public Task CommandFormUnprotectedAuthorizationSnapshot()
+        => Verify(EmitAuthorizationFixture(policyName: null));
+
+    [Fact]
+    public Task CommandFormProtectedAuthorizationSnapshot()
+        => Verify(EmitAuthorizationFixture("Orders.Approve"));
+
+    private static string EmitAuthorizationFixture(string? policyName)
+    {
+        CommandFormModel form = BuildForm(
+            [new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null)],
+            typeName: "ApproveOrderCommand",
+            @namespace: "Orders.Domain",
+            authorizationPolicyName: policyName);
+        return CommandFormEmitter.Emit(form, BuildFluxor("ApproveOrderCommand", "Orders.Domain"));
+    }
+
+    [Fact]
     public Task CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("TenantId", "String", FormFieldTypeCategory.TextInput, "Tenant Id", false, true, null),
