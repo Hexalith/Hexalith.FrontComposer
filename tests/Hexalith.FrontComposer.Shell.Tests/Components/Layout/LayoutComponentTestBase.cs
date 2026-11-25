@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -48,10 +49,10 @@ public abstract class LayoutComponentTestBase : BunitContext {
         _ = PrefersColorSchemeModule.SetupVoid("unsubscribe", _ => true).SetVoidResult();
 
         KeyboardModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js");
-        _ = KeyboardModule.SetupVoid("focusElement", _ => true).SetVoidResult();
-        _ = KeyboardModule.SetupVoid("registerShellKeyFilter", _ => true).SetVoidResult();
-        _ = KeyboardModule.SetupVoid("registerPaletteKeyFilter", _ => true).SetVoidResult();
-        _ = KeyboardModule.Setup<bool>("isEditableElementActive", _ => true).SetResult(false);
+        _ = KeyboardModule.SetupVoid("focusElement", invocation => invocation.Arguments is [ElementReference]).SetVoidResult();
+        _ = KeyboardModule.SetupVoid("registerShellKeyFilter", invocation => invocation.Arguments is [ElementReference]).SetVoidResult();
+        _ = KeyboardModule.SetupVoid("registerPaletteKeyFilter", invocation => invocation.Arguments is [ElementReference]).SetVoidResult();
+        _ = KeyboardModule.Setup<bool>("isEditableElementActive").SetResult(false);
 
         FocusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
         _ = FocusModule.SetupVoid("restoreOverlayOrigin", _ => true).SetVoidResult();
