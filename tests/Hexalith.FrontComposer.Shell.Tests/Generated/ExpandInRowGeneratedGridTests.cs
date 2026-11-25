@@ -238,7 +238,8 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
         await cut.InvokeAsync(() => RestoreExpandedRowState(firstExpand));
         await cut.WaitForAssertionAsync(() => cut.Find(".fc-expand-in-row-detail").TextContent.ShouldContain("counter-1"));
 
-        string? firstPanelId = cut.Find(".fc-expand-in-row-detail").GetAttribute("id");
+        string? panelId = cut.Find(".fc-expand-in-row-detail").GetAttribute("id");
+        string? firstRowId = cut.Find(".fc-expand-in-row-detail > div[id]").GetAttribute("id");
 
         // Single-expand invariant (UX-DR17): both triggers in the same grid emit the SAME ephemeral
         // view key at runtime — the precondition the reducer's REPLACE keys off (the REPLACE itself is
@@ -251,7 +252,8 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
 
         await cut.WaitForAssertionAsync(() => {
             IElement region = cut.Find(".fc-expand-in-row-detail");
-            region.GetAttribute("id").ShouldNotBe(firstPanelId);
+            region.GetAttribute("id").ShouldBe(panelId);
+            cut.Find(".fc-expand-in-row-detail > div[id]").GetAttribute("id").ShouldNotBe(firstRowId);
             region.GetAttribute("id").ShouldBe(CollapseButton(cut, "counter-2").GetAttribute("aria-controls"));
             region.GetAttribute("aria-label").ShouldBe("Details for counter-2");
             region.TextContent.ShouldContain("counter-2");

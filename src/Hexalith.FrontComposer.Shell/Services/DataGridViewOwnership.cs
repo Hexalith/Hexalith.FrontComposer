@@ -1,4 +1,7 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
 
 using Fluxor;
 
@@ -10,7 +13,7 @@ public sealed class DataGridViewOwnership
     private static readonly ConditionalWeakTable<IDispatcher, DataGridViewOwnership> Owners = new();
     private readonly object _gate = new();
     private readonly Dictionary<string, int> _counts = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, HashSet<int>> _panelSlots = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HashSet<(string Scope, int Slot)>> _panelSlots = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _generations = new(StringComparer.Ordinal);
     private long _nextGeneration;
 
@@ -31,20 +34,20 @@ public sealed class DataGridViewOwnership
     }
 
     /// <summary>Registers a mounted view and reserves its reusable detail panel slot.</summary>
-    public long Register(string viewKey, out int panelSlot)
+    public long Register(string viewKey, string panelScope, out int panelSlot)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(viewKey);
         lock (_gate)
         {
             long generation = CurrentOrNewGeneration(viewKey);
-            if (!_panelSlots.TryGetValue(viewKey, out HashSet<int>? slots))
+            if (!_panelSlots.TryGetValue(viewKey, out HashSet<(string Scope, int Slot)>? slots))
             {
                 slots = [];
                 _panelSlots.Add(viewKey, slots);
             }
 
             panelSlot = 0;
-            while (!slots.Add(panelSlot))
+            while (!slots.Add((panelScope, panelSlot)))
             {
                 panelSlot++;
             }
@@ -84,11 +87,11 @@ public sealed class DataGridViewOwnership
     }
 
     /// <summary>Releases the mounted panel slot and reports whether it was the final owner.</summary>
-    public bool Release(string viewKey, int panelSlot)
+    public bool Release(string viewKey, string panelScope, int panelSlot)
     {
         lock (_gate)
         {
-            if (!_panelSlots.TryGetValue(viewKey, out HashSet<int>? slots) || !slots.Remove(panelSlot))
+            if (!_panelSlots.TryGetValue(viewKey, out HashSet<(string Scope, int Slot)>? slots) || !slots.Remove((panelScope, panelSlot)))
             {
                 return false;
             }
@@ -100,6 +103,23 @@ public sealed class DataGridViewOwnership
 
             return !HasOwners(viewKey);
         }
+    }
+
+    /// <summary>Creates an element ID for a mounted view slot or its active detail.</summary>
+    public static string CreatePanelId(string viewKey, string panelScope, int instanceSlot, object? rowKey = null)
+    {
+        ArgumentNullException.ThrowIfNull(viewKey);
+        ArgumentNullException.ThrowIfNull(panelScope);
+        string? rowIdentity = rowKey switch
+        {
+            DateTime timestamp => timestamp.Ticks.ToString(CultureInfo.InvariantCulture),
+            DateTimeOffset timestamp => timestamp.UtcTicks.ToString(CultureInfo.InvariantCulture),
+            decimal number => number.ToString("G29", CultureInfo.InvariantCulture),
+            _ => Convert.ToString(rowKey, CultureInfo.InvariantCulture),
+        };
+        string identity = FormattableString.Invariant(
+            $"{viewKey.Length}:{viewKey}:{panelScope.Length}:{panelScope}:{instanceSlot}:{rowKey is not null}:{rowIdentity}");
+        return "fc-expand-panel-" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
     }
 
     private bool HasOwners(string viewKey)

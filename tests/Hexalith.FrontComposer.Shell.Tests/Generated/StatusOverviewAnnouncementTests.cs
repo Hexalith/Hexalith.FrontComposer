@@ -108,6 +108,35 @@ public sealed class StatusOverviewAnnouncementTests : GeneratedComponentTestBase
     }
 
     [Fact]
+    public async Task ExpandedStatusPagesThroughLoadedDetails()
+    {
+        Services.AddSingleton(Substitute.For<IEmptyStateCtaResolver>());
+        Services.AddFluxor(options => options.ScanTypes(typeof(StatusOverviewAnnouncementProjectionFeature),
+            typeof(StatusOverviewAnnouncementProjectionReducers)));
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        StatusOverviewAnnouncementProjection[] rows = [.. Enumerable.Range(1, 21)
+            .Select(index => new StatusOverviewAnnouncementProjection { Id = $"ticket-{index:D2}", Status = StatusOverviewAnnouncementState.Open })];
+        dispatcher.Dispatch(new StatusOverviewAnnouncementProjectionLoadedAction("pages", rows)
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
+
+        IRenderedComponent<StatusOverviewAnnouncementProjectionView> cut = Render<StatusOverviewAnnouncementProjectionView>();
+        ExpandedRowFeature expansion = Services.GetRequiredService<ExpandedRowFeature>();
+        await cut.InvokeAsync(() => expansion.RestoreState(new ExpandedRowState {
+            ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty
+                .Add(EphemeralKey(cut), new ExpandedRowEntry("0", DateTimeOffset.UtcNow)),
+        }));
+
+        cut.Find(".fc-expand-in-row-detail").TextContent.ShouldContain("21 in current results");
+        cut.Find(".fc-expand-in-row-detail").TextContent.ShouldNotContain("ticket-21");
+        cut.FindAll(".fc-expand-in-row-detail fluent-button").Single(button => button.TextContent.Contains("Next page", StringComparison.Ordinal)).Click();
+        string secondPage = cut.Find(".fc-expand-in-row-detail").TextContent;
+        secondPage.ShouldContain("Page 2 of 2");
+        secondPage.ShouldContain("ticket-21");
+        secondPage.ShouldNotContain("ticket-01");
+    }
+
+    [Fact]
     public async Task RemovedStatusGroupWithoutExcludingFilterHasNoClearFilterBanner()
     {
         Services.AddSingleton(Substitute.For<IEmptyStateCtaResolver>());

@@ -110,7 +110,7 @@ public sealed class RazorEmitterExpandInRowTests {
         // Story 11.21 ASP0006 — the detail body keeps its own sequence scope; the `int seq = 800`
         // counter it used to declare is now the literal that its first emitted frame carries.
         src.ShouldNotContain("int seq = 800;");
-        src.ShouldContain("builder.OpenComponent<FluentCard>(800);");
+        src.ShouldContain("builder.OpenComponent<FluentCard>(802);");
         src.ShouldContain("if (_expandedItem is null) { return; }");
         src.ShouldContain("var entity = _expandedItem;");
         src.ShouldContain("\"Header\", \"Shipping\"");
@@ -155,8 +155,8 @@ public sealed class RazorEmitterExpandInRowTests {
         src.ShouldContain("WebRenderTreeBuilderExtensions.AddEventStopPropagationAttribute(rb, 8, \"onclick\", true);");
         src.ShouldContain("FcExpandInRowDetail");
         src.ShouldContain("_expandedStatusOverviewItem is not null");
-        src.ShouldContain("StatusOverviewLoadedItemsTemplate");
-        src.ShouldContain("foreach (var item in _expandedStatusOverviewItem.Items)");
+        src.ShouldContain("FcStatusOverviewDetails<OrderProjection>");
+        src.ShouldContain("\"Items\", _expandedStatusOverviewItem.Items");
         src.ShouldNotContain("g.FirstOrDefault()");
     }
 

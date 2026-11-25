@@ -113,7 +113,11 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
 
     private readonly string _ephemeralViewKey = "Tickets:RoleSpecific.Tickets.StatusOverviewProjection:" + System.Guid.NewGuid().ToString("N");
 
+    /// <summary>Stable discriminator for independently remounted copies of this view. Set a distinct value on each copy and keep it fixed for the mount.</summary>
+    [Parameter] public string? ExpandPanelScope { get; set; }
+    private string _expandPanelScope = string.Empty;
     private int _expandPanelSlot;
+    private string _expandPanelId = string.Empty;
 
     private sealed record StatusOverviewProjectionStatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, IEnumerable<StatusOverviewProjection> Items)
     {
@@ -382,7 +386,9 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
     protected override void OnInitialized()
     {
         _gridViewOwners = global::Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership.For(Dispatcher);
-        _gridViewGeneration = _gridViewOwners.Register(_viewKey, out _expandPanelSlot);
+        _expandPanelScope = ExpandPanelScope ?? string.Empty;
+        _gridViewGeneration = _gridViewOwners.Register(_viewKey, _expandPanelScope, out _expandPanelSlot);
+        _expandPanelId = global::Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership.CreatePanelId(_viewKey, _expandPanelScope, _expandPanelSlot);
         _viewportScrollTop = CurrentGridSnapshot()?.ScrollTop ?? 0d;
         StatusOverviewProjectionState.StateChanged += OnStateChanged;
         AnnounceProjectionState();
@@ -733,7 +739,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         _projectionFallbackLaneRegistration?.Dispose();
         _projectionFallbackLaneRegistration = null;
         _registeredProjectionFallbackLaneKey = null;
-        bool finalViewOwner = _gridViewOwners?.Release(_viewKey, _expandPanelSlot) ?? false;
+        bool finalViewOwner = _gridViewOwners?.Release(_viewKey, _expandPanelScope, _expandPanelSlot) ?? false;
         if (finalViewOwner)
         {
             try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.ClearPendingPagesAction(_viewKey) { StillFinalOwner = () => _gridViewOwners?.CanDispose(_viewKey, _gridViewGeneration) == true }); }
@@ -1263,7 +1269,6 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);
         object? _expandedItemKey = _expandedEntry?.ItemKey;
         string? _expandedStatusKey = _expandedItemKey as string;
-        string _expandPanelId = global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail.CreatePanelId(_viewKey, _expandPanelSlot, _expandedStatusKey);
         StatusOverviewProjectionStatusOverviewRow? _expandedStatusOverviewItem = null;
         if (_expandedItemKey is not null)
         {
@@ -1419,16 +1424,19 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         builder.AddAttribute(128, "ChildContent", (RenderFragment)((RenderTreeBuilder builder) =>
         {
             if (_expandedStatusOverviewItem is null) { return; }
-            builder.OpenComponent<FluentText>(800);
-            builder.AddAttribute(801, "ChildContent", (RenderFragment)(text => text.AddContent(0, FcShellLocalizer["StatusOverviewLoadedItemsTemplate", _expandedStatusOverviewItem.Count].Value)));
-            builder.CloseComponent();
-            foreach (var item in _expandedStatusOverviewItem.Items)
+            builder.OpenElement(800, "div");
+            builder.SetKey(_expandedStatusOverviewItem.StatusKey);
+            builder.AddAttribute(801, "id", global::Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership.CreatePanelId(_viewKey, _expandPanelScope, _expandPanelSlot, _expandedStatusOverviewItem.StatusKey));
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcStatusOverviewDetails<StatusOverviewProjection>>(802);
+            builder.AddAttribute(803, "Items", _expandedStatusOverviewItem.Items);
+            builder.AddAttribute(804, "ItemCount", _expandedStatusOverviewItem.Count);
+            builder.AddAttribute(805, "ItemKey", _itemKeyAccessor);
+            builder.AddAttribute(806, "ItemContent", (RenderFragment<StatusOverviewProjection>)(item => builder =>
             {
-                builder.OpenRegion(802);
         var entity = item;
 
-        builder.OpenComponent<FluentCard>(803);
-        builder.AddAttribute(804, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
+        builder.OpenComponent<FluentCard>(800);
+        builder.AddAttribute(801, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
         {
 
             b.OpenElement(800, "div");
@@ -1607,8 +1615,9 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
             b.CloseElement();
         }));
         builder.CloseComponent();
-                builder.CloseRegion();
-            }
+            }));
+            builder.CloseComponent();
+            builder.CloseElement();
         }));
         builder.CloseComponent();
         };

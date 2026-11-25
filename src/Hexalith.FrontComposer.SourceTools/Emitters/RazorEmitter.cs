@@ -311,7 +311,11 @@ public static class RazorEmitter {
             if (EmitsExpandInRowMachinery(model.Strategy)) {
                 _ = sb.AppendLine("    private readonly string _ephemeralViewKey = \"" + RoleBodyHelpers.EscapeString(viewKey) + ":\" + System.Guid.NewGuid().ToString(\"N\");");
                 _ = sb.AppendLine();
+                _ = sb.AppendLine("    /// <summary>Stable discriminator for independently remounted copies of this view. Set a distinct value on each copy and keep it fixed for the mount.</summary>");
+                _ = sb.AppendLine("    [Parameter] public string? ExpandPanelScope { get; set; }");
+                _ = sb.AppendLine("    private string _expandPanelScope = string.Empty;");
                 _ = sb.AppendLine("    private int _expandPanelSlot;");
+                _ = sb.AppendLine("    private string _expandPanelId = string.Empty;");
                 _ = sb.AppendLine();
             }
 
@@ -695,7 +699,6 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedItem is null;");
         _ = sb.AppendLine();
-        ProjectionRoleBodyEmitter.EmitExpandPanelId(sb, model);
         ProjectionRoleBodyEmitter.EmitExpandInRowDetailPanel(sb, model);
         _ = sb.AppendLine("        };");
         _ = sb.AppendLine("    }");
@@ -1026,9 +1029,14 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    {");
         if (isGrid) {
             _ = sb.AppendLine("        _gridViewOwners = global::Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership.For(Dispatcher);");
-            _ = sb.AppendLine(EmitsExpandInRowMachinery(model.Strategy)
-                ? "        _gridViewGeneration = _gridViewOwners.Register(_viewKey, out _expandPanelSlot);"
-                : "        _gridViewGeneration = _gridViewOwners.Register(_viewKey);");
+            if (EmitsExpandInRowMachinery(model.Strategy)) {
+                _ = sb.AppendLine("        _expandPanelScope = ExpandPanelScope ?? string.Empty;");
+                _ = sb.AppendLine("        _gridViewGeneration = _gridViewOwners.Register(_viewKey, _expandPanelScope, out _expandPanelSlot);");
+                _ = sb.AppendLine("        _expandPanelId = global::Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership.CreatePanelId(_viewKey, _expandPanelScope, _expandPanelSlot);");
+            }
+            else {
+                _ = sb.AppendLine("        _gridViewGeneration = _gridViewOwners.Register(_viewKey);");
+            }
             _ = sb.AppendLine("        _viewportScrollTop = CurrentGridSnapshot()?.ScrollTop ?? 0d;");
         }
         _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged += OnStateChanged;");
@@ -1430,7 +1438,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        _projectionFallbackLaneRegistration = null;");
             _ = sb.AppendLine("        _registeredProjectionFallbackLaneKey = null;");
             _ = sb.AppendLine(EmitsExpandInRowMachinery(model.Strategy)
-                ? "        bool finalViewOwner = _gridViewOwners?.Release(_viewKey, _expandPanelSlot) ?? false;"
+                ? "        bool finalViewOwner = _gridViewOwners?.Release(_viewKey, _expandPanelScope, _expandPanelSlot) ?? false;"
                 : "        bool finalViewOwner = _gridViewOwners?.Release(_viewKey) ?? false;");
             _ = sb.AppendLine("        if (finalViewOwner)");
             _ = sb.AppendLine("        {");

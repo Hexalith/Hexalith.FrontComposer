@@ -1,0 +1,50 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Rendering
+@using Hexalith.FrontComposer.Shell.Resources
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@typeparam TItem
+@inject IStringLocalizer<FcShellResources> Localizer
+
+<FluentText>@Localizer["StatusOverviewLoadedItemsTemplate", ItemCount].Value</FluentText>
+@{
+    HashSet<object> keys = [];
+}
+@foreach (TItem item in Items.Skip(_page * PageSize).Take(PageSize))
+{
+    object key = ItemKey(item);
+    <div @key="@(keys.Add(key) ? key : null)">@ItemContent(item)</div>
+}
+@if (LastPage > 0)
+{
+    <FluentStack VerticalAlignment="VerticalAlignment.Center">
+        <FluentButton OnClick="Previous" Disabled="@(_page == 0)">@Localizer["StatusOverviewPreviousPage"].Value</FluentButton>
+        <FluentText role="status">@Localizer["StatusOverviewPageTemplate", _page + 1, LastPage + 1].Value</FluentText>
+        <FluentButton OnClick="Next" Disabled="@(_page == LastPage)">@Localizer["StatusOverviewNextPage"].Value</FluentButton>
+    </FluentStack>
+}
+
+@code {
+    private const int PageSize = 20;
+    private int _page;
+    private int LastPage => Math.Max(0, ItemCount - 1) / PageSize;
+
+    /// <summary>The loaded records in the expanded group, in result order.</summary>
+    [Parameter, EditorRequired] public IEnumerable<TItem> Items { get; set; } = [];
+
+    /// <summary>The number of loaded records in the group.</summary>
+    [Parameter, EditorRequired] public int ItemCount { get; set; }
+
+    /// <summary>Gets the row identity used to preserve each rendered record's component state.</summary>
+    [Parameter, EditorRequired] public Func<TItem, object> ItemKey { get; set; } = default!;
+
+    /// <summary>The generated detail fragment for a single record.</summary>
+    [Parameter, EditorRequired] public RenderFragment<TItem> ItemContent { get; set; } = default!;
+
+    /// <inheritdoc />
+    protected override void OnParametersSet() => _page = Math.Min(_page, LastPage);
+
+    private void Previous() => _page = Math.Max(0, _page - 1);
+
+    private void Next() => _page = Math.Min(LastPage, _page + 1);
+}

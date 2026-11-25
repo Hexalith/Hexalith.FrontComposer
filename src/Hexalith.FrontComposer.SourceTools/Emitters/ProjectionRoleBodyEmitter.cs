@@ -115,7 +115,6 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
         _ = sb.AppendLine("        object? _expandedItemKey = _expandedEntry?.ItemKey;");
         _ = sb.AppendLine("        string? _expandedStatusKey = _expandedItemKey as string;");
-        EmitExpandPanelId(sb, model, "_expandedStatusKey");
         _ = sb.AppendLine("        " + recordTypeName + "? _expandedStatusOverviewItem = null;");
         _ = sb.AppendLine("        if (_expandedItemKey is not null)");
         _ = sb.AppendLine("        {");
@@ -475,7 +474,6 @@ public static class ProjectionRoleBodyEmitter {
             _ = sb.AppendLine("        // Story 4-5 — resolve expanded-row state for this render pass.");
             _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
             _ = sb.AppendLine("        object? _expandedItemKey = _expandedEntry?.ItemKey;");
-            EmitExpandPanelId(sb, model);
             _ = sb.AppendLine("        " + model.TypeName + "? _expandedItem = null;");
             _ = sb.AppendLine("        if (_expandedItemKey is not null)");
             _ = sb.AppendLine("        {");
@@ -673,6 +671,10 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            if (_expandedItem is null) { return; }");
         _ = sb.AppendLine("            int seq = 800;");
+        bool hasStableRowKey = RoleBodyHelpers.ResolveItemKeyAccessorExpression(model) != "(object)x";
+        if (hasStableRowKey) {
+            EmitRowDetailRegionStart(sb, "_expandedItemKey");
+        }
 
         EmitDetailRecordBody(
             sb,
@@ -682,16 +684,18 @@ public static class ProjectionRoleBodyEmitter {
             seqStart: 800,
             groupByFieldGroup: true);
 
+        if (hasStableRowKey) {
+            _ = sb.AppendLine("            builder.CloseElement();");
+        }
+
         _ = sb.AppendLine("        }));");
         _ = sb.AppendLine("        builder.CloseComponent();");
     }
 
-    /// <summary>Emits the ID shared by the expand triggers and the persistent detail host.</summary>
-    internal static void EmitExpandPanelId(StringBuilder sb, RazorModel model, string? keyExpression = null) {
-        string rowKey = keyExpression ?? (RoleBodyHelpers.ResolveItemKeyAccessorExpression(model) == "(object)x"
-            ? "null"
-            : "_expandedItemKey");
-        _ = sb.AppendLine("        string _expandPanelId = global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail.CreatePanelId(_viewKey, _expandPanelSlot, " + rowKey + ");");
+    private static void EmitRowDetailRegionStart(StringBuilder sb, string rowKey) {
+        _ = sb.AppendLine("            builder.OpenElement(seq++, \"div\");");
+        _ = sb.AppendLine("            builder.SetKey(" + rowKey + ");");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"id\", global::Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership.CreatePanelId(_viewKey, _expandPanelScope, _expandPanelSlot, " + rowKey + "));");
     }
 
     private static void EmitStatusOverviewDetailPanel(StringBuilder sb, RazorModel model) {
@@ -707,12 +711,14 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            if (_expandedStatusOverviewItem is null) { return; }");
         _ = sb.AppendLine("            int seq = 800;");
-        _ = sb.AppendLine("            builder.OpenComponent<FluentText>(seq++);");
-        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(text => text.AddContent(0, " + ColumnEmitter.ShellLocalizerFieldName + "[\"StatusOverviewLoadedItemsTemplate\", _expandedStatusOverviewItem.Count].Value)));");
-        _ = sb.AppendLine("            builder.CloseComponent();");
-        _ = sb.AppendLine("            foreach (var item in _expandedStatusOverviewItem.Items)");
+        EmitRowDetailRegionStart(sb, "_expandedStatusOverviewItem.StatusKey");
+        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcStatusOverviewDetails<" + model.TypeName + ">>(seq++);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Items\", _expandedStatusOverviewItem.Items);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ItemCount\", _expandedStatusOverviewItem.Count);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ItemKey\", _itemKeyAccessor);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ItemContent\", (RenderFragment<" + model.TypeName + ">)(item => builder =>");
         _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                builder.OpenRegion(seq++);");
+        _ = sb.AppendLine("                int seq = 800;");
 
         EmitDetailRecordBody(
             sb,
@@ -722,8 +728,9 @@ public static class ProjectionRoleBodyEmitter {
             seqStart: 800,
             groupByFieldGroup: true);
 
-        _ = sb.AppendLine("                builder.CloseRegion();");
-        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            }));");
+        _ = sb.AppendLine("            builder.CloseComponent();");
+        _ = sb.AppendLine("            builder.CloseElement();");
         _ = sb.AppendLine("        }));");
         _ = sb.AppendLine("        builder.CloseComponent();");
     }
