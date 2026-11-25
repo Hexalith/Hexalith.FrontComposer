@@ -39,7 +39,9 @@
     <Compile Include="$(HexalithPlatformRoot)/DaprSelfHostedMtls.cs" Link="Platform/DaprSelfHostedMtls.cs" />
     <Compile Include="$(HexalithPlatformRoot)/DaprSelfHostedMtlsSubscriber.cs" Link="Platform/DaprSelfHostedMtlsSubscriber.cs" />
     <ProjectReference Include="$(HexalithBuildsRoot)/src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj"
-                      AdditionalProperties="$(_HexalithSourceReferenceProperties)" IsAspireProjectResource="false" />
+                      AdditionalProperties="$(_HexalithSourceReferenceProperties)"
+                      GlobalPropertiesToRemove="HexalithEventStoreVersion;HexalithCatalogEventStoreVersion"
+                      IsAspireProjectResource="false" />
   </ItemGroup>
 
   <!-- Debug build-forcing references for path-only child resources. The resources are added to the

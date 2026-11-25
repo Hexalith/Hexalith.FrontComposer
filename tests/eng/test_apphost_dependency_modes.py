@@ -109,6 +109,20 @@ class AppHostDependencyModeTests(unittest.TestCase):
             check("5.5.1", False)
             check("5.5.2", False)
             check("5.6.0", True)
+            nested = owner / "references/Hexalith.Commons"
+            nested.mkdir(parents=True)
+            (nested / "Directory.Packages.props").write_bytes((owner / "Directory.Packages.props").read_bytes())
+            nested_probe = nested / "guard.proj"
+            nested_probe.write_text(
+                '<Project><PropertyGroup><FrontComposerRoot>true</FrontComposerRoot></PropertyGroup>'
+                '<Import Project="Directory.Packages.props"/>'
+                '<Import Project="../../Directory.Build.targets"/></Project>')
+            catalog(owner / "references/Hexalith.Builds/Props/Directory.Packages.props", "5.5.1")
+            nested_result = subprocess.run(
+                ["dotnet", "msbuild", str(nested_probe), "-nologo",
+                 "-t:ValidateFrontComposerEventStoreVersion", "-p:HexalithEventStoreVersion=5.6.0"],
+                cwd=nested, capture_output=True, text=True, timeout=30)
+            self.assertEqual(nested_result.returncode, 0, nested_result.stdout + nested_result.stderr)
 
     def test_release_restores_only_the_selected_eventstore_version(self) -> None:
         with tempfile.TemporaryDirectory(prefix="frontcomposer-eventstore-release-") as artifacts:
@@ -128,6 +142,11 @@ class AppHostDependencyModeTests(unittest.TestCase):
                 if not Path(reference["FullPath"]).is_relative_to(ROOT / "references"):
                     continue
                 properties = forwarded_properties(reference)
+                if Path(reference["FullPath"]).name == "Hexalith.Builds.Tooling.csproj":
+                    self.assertNotIn("HexalithEventStoreVersion", properties)
+                    self.assertEqual(properties.get("HexalithCommonsFromSource"), "true")
+                    self.assertEqual(Path(properties["HexalithBuildsRoot"]), ROOT / "references/Hexalith.Builds")
+                    continue
                 selection = {key: value for key, value in properties.items() if key != "CustomAfterMicrosoftCommonTargets"}
                 self.assertNotIn("UseHexalithProjectReferences", selection)
                 self.assertEqual(selection.get("HexalithCommonsFromSource"), "true")
@@ -182,6 +201,7 @@ class AppHostDependencyModeTests(unittest.TestCase):
                     forwarded = forwarded_properties(reference)
                     self.assertEqual(Path(forwarded["HexalithPlatformRoot"]), platform)
                     self.assertEqual(Path(forwarded["HexalithBuildsRoot"]), ROOT / "references/Hexalith.Builds")
+                    self.assertNotIn("HexalithEventStoreVersion", forwarded)
 
     def test_foreign_eventstore_version_stops_at_the_exact_debug_commons_boundary(self) -> None:
         host = evaluate(APPHOST, "Debug")
@@ -264,8 +284,13 @@ class AppHostDependencyModeTests(unittest.TestCase):
             promoted_host = json.loads(promoted.stdout)
             contracts = ROOT / "references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj"
             self.assertIn(contracts, {Path(item["FullPath"]) for item in promoted_host["Items"]["ProjectReference"]})
+            tooling = ROOT / "references/Hexalith.Builds/src/libraries/Hexalith.Builds.Tooling/Hexalith.Builds.Tooling.csproj"
             for reference in promoted_host["Items"]["ProjectReference"]:
-                self.assertEqual(forwarded_properties(reference).get("HexalithEventStoreVersion"),
+                forwarded = forwarded_properties(reference)
+                if Path(reference["FullPath"]) == tooling:
+                    self.assertNotIn("HexalithEventStoreVersion", forwarded)
+                    continue
+                self.assertEqual(forwarded.get("HexalithEventStoreVersion"),
                                  promoted_host["Properties"]["HexalithEventStoreVersion"], reference["FullPath"])
 
             build = subprocess.run(

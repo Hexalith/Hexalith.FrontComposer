@@ -66,15 +66,17 @@
   </Target>
 
   <!-- FrontComposer's own checkout selects the published EventStore 5.6.0 cohort.
-       In an umbrella, compare even forwarded global properties with the sibling
-       catalog's actual default. -->
+       Resolve catalogs from this file's repository, not from a nested module's
+       Directory.Packages.props: Commons' Hexalith2 is this repo's Builds default.
+       In an umbrella, compare forwarded versions with the sibling catalog. -->
   <Target Name="ValidateFrontComposerEventStoreVersion"
           BeforeTargets="CollectPackageReferences;PrepareForBuild"
           Condition="'$(FrontComposerRoot)' == 'true'">
     <PropertyGroup>
       <_FrontComposerRequiredEventStore>5.6.0</_FrontComposerRequiredEventStore>
-      <_FrontComposerExternalCatalog Condition="!Exists('$(Hexalith1BuildPackageProps)') And Exists('$(Hexalith2BuildPackageProps)')">$(Hexalith2BuildPackageProps)</_FrontComposerExternalCatalog>
-      <_FrontComposerExternalCatalog Condition="!Exists('$(Hexalith1BuildPackageProps)') And '$(_FrontComposerExternalCatalog)' == '' And Exists('$(Hexalith3BuildPackageProps)')">$(Hexalith3BuildPackageProps)</_FrontComposerExternalCatalog>
+      <_FrontComposerRepoCatalog>$(MSBuildThisFileDirectory)references/Hexalith.Builds/Props/Directory.Packages.props</_FrontComposerRepoCatalog>
+      <_FrontComposerExternalCatalog Condition="!Exists('$(_FrontComposerRepoCatalog)') And Exists('$(MSBuildThisFileDirectory)../Hexalith.Builds/Props/Directory.Packages.props')">$(MSBuildThisFileDirectory)../Hexalith.Builds/Props/Directory.Packages.props</_FrontComposerExternalCatalog>
+      <_FrontComposerExternalCatalog Condition="!Exists('$(_FrontComposerRepoCatalog)') And '$(_FrontComposerExternalCatalog)' == '' And Exists('$(MSBuildThisFileDirectory)../../Hexalith.Builds/Props/Directory.Packages.props')">$(MSBuildThisFileDirectory)../../Hexalith.Builds/Props/Directory.Packages.props</_FrontComposerExternalCatalog>
     </PropertyGroup>
     <XmlPeek Condition="'$(_FrontComposerExternalCatalog)' != ''" XmlInputPath="$(_FrontComposerExternalCatalog)"
              Query="/Project/PropertyGroup[not(@Condition)]/HexalithEventStoreVersion[not(@Condition) or @Condition=&quot;'%24(HexalithEventStoreVersion)' == ''&quot;]/text()">
@@ -96,7 +98,7 @@
        defined only after deps.local.props, so the edges are completed here. -->
   <ItemGroup Condition="'$(_HexalithSourceReferenceProperties)' != '' AND '$(HexalithEventStoreVersion)' != ''">
     <ProjectReference Update="@(ProjectReference)">
-      <AdditionalProperties>%(ProjectReference.AdditionalProperties);HexalithEventStoreVersion=$(HexalithEventStoreVersion)</AdditionalProperties>
+      <AdditionalProperties Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('%(ProjectReference.AdditionalProperties)', '(?i)(^|;)\s*HexalithEventStoreVersion\s*=')) and !$([System.Text.RegularExpressions.Regex]::IsMatch('%(ProjectReference.GlobalPropertiesToRemove)', '(?i)(^|;)\s*HexalithEventStoreVersion\s*(;|$)'))">%(ProjectReference.AdditionalProperties);HexalithEventStoreVersion=$(HexalithEventStoreVersion)</AdditionalProperties>
     </ProjectReference>
   </ItemGroup>
   <!-- The SDK adds transitive references after evaluation without the edge metadata above. -->
@@ -104,8 +106,13 @@
           AfterTargets="IncludeTransitiveProjectReferences"
           Condition="'$(_HexalithSourceReferenceProperties)' != '' AND '$(HexalithEventStoreVersion)' != ''">
     <ItemGroup>
-      <ProjectReference Condition="!$([System.String]::Copy(';%(ProjectReference.AdditionalProperties);').Contains(';HexalithEventStoreVersion='))">
-        <AdditionalProperties>%(ProjectReference.AdditionalProperties);HexalithEventStoreVersion=$(HexalithEventStoreVersion)</AdditionalProperties>
+      <ProjectReference Update="@(ProjectReference)" Condition="'%(ProjectReference.Filename)' == 'Hexalith.Builds.Tooling'">
+        <GlobalPropertiesToRemove Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('%(ProjectReference.GlobalPropertiesToRemove)', '(?i)(^|;)\s*HexalithEventStoreVersion\s*(;|$)'))">%(ProjectReference.GlobalPropertiesToRemove);HexalithEventStoreVersion;HexalithCatalogEventStoreVersion</GlobalPropertiesToRemove>
+      </ProjectReference>
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Update="@(ProjectReference)">
+        <AdditionalProperties Condition="!$([System.String]::Copy(';%(ProjectReference.AdditionalProperties);').Contains(';HexalithEventStoreVersion=')) and !$([System.Text.RegularExpressions.Regex]::IsMatch('%(ProjectReference.GlobalPropertiesToRemove)', '(?i)(^|;)\s*HexalithEventStoreVersion\s*(;|$)'))">%(ProjectReference.AdditionalProperties);HexalithEventStoreVersion=$(HexalithEventStoreVersion)</AdditionalProperties>
       </ProjectReference>
     </ItemGroup>
   </Target>
