@@ -27,7 +27,6 @@ Hexalith.FrontComposer.Mcp.IFrontComposerMcpDescriptorEpochProvider
 Hexalith.FrontComposer.Mcp.IFrontComposerMcpTenantToolGate
 Hexalith.FrontComposer.Mcp.Invocation.FrontComposerMcpCommandInvoker
 Hexalith.FrontComposer.Mcp.Invocation.FrontComposerMcpLifecycleTracker
-Hexalith.FrontComposer.Mcp.Invocation.FrontComposerMcpProjectionReader
 Hexalith.FrontComposer.Mcp.Invocation.FrontComposerMcpToolAdmissionService
 Hexalith.FrontComposer.Mcp.Invocation.IFrontComposerMcpVisibleToolCatalogProvider
 Hexalith.FrontComposer.Mcp.McpDescriptorEpochs
@@ -39,7 +38,6 @@ Hexalith.FrontComposer.Mcp.McpVisibleToolCatalogEntry
 Hexalith.FrontComposer.Mcp.Rendering.DefaultFrontComposerMcpProjectionRenderer
 Hexalith.FrontComposer.Mcp.Rendering.IFrontComposerMcpProjectionRenderer
 Hexalith.FrontComposer.Mcp.Rendering.McpMarkdownProjectionDocument
-Hexalith.FrontComposer.Mcp.Rendering.McpMarkdownProjectionRenderer
 Hexalith.FrontComposer.Mcp.Rendering.McpMarkdownStatusSummary
 Hexalith.FrontComposer.Mcp.Rendering.McpMarkdownTable
 Hexalith.FrontComposer.Mcp.Rendering.McpMarkdownTimeline
@@ -61,9 +59,7 @@ Hexalith.FrontComposer.Mcp.Skills.GeneratedCodeDiagnostic
 Hexalith.FrontComposer.Mcp.Skills.GeneratedCodeFailureCategory
 Hexalith.FrontComposer.Mcp.Skills.GeneratedCodeFile
 Hexalith.FrontComposer.Mcp.Skills.GeneratedCodeValidationResult
-Hexalith.FrontComposer.Mcp.Skills.InvalidSkillCorpusException
 Hexalith.FrontComposer.Mcp.Skills.SkillCorpusAggregateManifestBuilder
-Hexalith.FrontComposer.Mcp.Skills.SkillCorpusDiagnostic
 Hexalith.FrontComposer.Mcp.Skills.SkillCorpusDiagnosticCategory
 Hexalith.FrontComposer.Mcp.Skills.SkillCorpusLoader
 Hexalith.FrontComposer.Mcp.Skills.SkillCorpusManifestEntry
