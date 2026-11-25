@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Registration;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -303,6 +304,43 @@ public class FrontComposerRegistryTests {
             _ = new FrontComposerRegistry([action], [], NullLogger<FrontComposerRegistry>.Instance));
 
         exception.Message.ShouldContain("HFC1601");
+    }
+
+    [Fact]
+    public async Task StartupRejectsDuplicateCommandOwnershipWithEveryContext() {
+        string command = typeof(IncrementCommand).FullName!;
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        _ = builder.Services.AddHexalithFrontComposer();
+        foreach (string context in new[] { "Zebra", "Middle", "Alpha" }) {
+            _ = builder.Services.AddSingleton(new DomainRegistrationAction(registry =>
+                registry.RegisterDomain(new DomainManifest(context, context, [], [command]))));
+        }
+
+        using IHost host = builder.Build();
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            host.StartAsync(TestContext.Current.CancellationToken));
+
+        exception.Message.ShouldContain("HFC1601");
+        exception.Message.ShouldContain($"{command} [Alpha, Middle, Zebra]");
+    }
+
+    [Fact]
+    public void LateCrossContextRegistrationIsRejectedWithoutPublishingIt() {
+        string command = typeof(IncrementCommand).FullName!;
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        registry.RegisterDomain(new DomainManifest("Alpha", "Alpha", [], [command]) {
+            FullPageCommands = [],
+        });
+        registry.RegisterDomain(new DomainManifest("Beta", "Beta", [], []));
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+            registry.RegisterDomain(new DomainManifest("Beta", "Beta", [], [command])));
+
+        exception.Message.ShouldContain("HFC1601");
+        exception.Message.ShouldContain($"{command} [Alpha, Beta]");
+        registry.GetManifests().Single(manifest => manifest.BoundedContext == "Beta").Commands.ShouldBeEmpty();
+        registry.HasFullPageRoute(command).ShouldBeFalse();
     }
 
     [Fact]

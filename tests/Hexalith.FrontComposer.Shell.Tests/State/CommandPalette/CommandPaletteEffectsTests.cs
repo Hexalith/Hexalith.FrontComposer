@@ -840,10 +840,10 @@ public class CommandPaletteEffectsTests {
     [Fact]
     public async Task PaletteQueryAuthorizesOnlyEnoughRankedCommandsToFillResultsAsync() {
         string command = typeof(PaletteProtectedCommand).FullName!;
-        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        List<DomainManifest> manifests = [];
         foreach (int index in Enumerable.Range(0, 60)) {
             string context = $"Area{index}";
-            registry.RegisterDomain(new DomainManifest(context, context, [], [command],
+            manifests.Add(new DomainManifest(context, context, [], [command],
                 CommandPolicies: new Dictionary<string, string>(StringComparer.Ordinal) { [command] = "Approver" }));
         }
 
@@ -854,7 +854,7 @@ public class CommandPaletteEffectsTests {
                 : CommandAuthorizationDecision.Allowed("allowed"));
         using CommandPaletteEffects effect = BuildEffects(
             out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider services,
-            registry: registry, authorizationEvaluator: evaluator);
+            manifests: manifests, authorizationEvaluator: evaluator);
         using ServiceProvider provider = (ServiceProvider)services;
 
         Task query = effect.HandlePaletteQueryChanged(new PaletteQueryChangedAction("ranked", "Protected"), dispatcher);

@@ -2571,6 +2571,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-dir
 location: 3-5-home-directory-badge-counts-and-new-capability-discovery.md
 reason: **Duplicate `data-testid` / DOM ids when two projection FQNs share a last segment** — current sample + test manifests don't collide; harden id scheme with hash-suffix when first adopter reports a clash. Reconciliation: Row: DW-0290; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood low, impact low; Release risk: no current sample/test manifest collides; Downstream impact: DOM/test-id only; Owner: Shell UX owner; Review by: 2026-06-30; Reopen trigger: adopter reports duplicate last-segment projection names; Validation: manifest review.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
 status: open
+decision: 2026-11-26 Skipped. The reported collision is confined to test selectors in the current markup. There is no recorded adopter collision meeting the reopening condition.
 
 ### DW-1022: AC7 behavioural test: home card `@onclick` / `@onkeydown` silently dropped by Razor compiler
 
@@ -2596,6 +2597,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fc
 location: tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcCommandPaletteTests.cs:88
 reason: **Plural-unaware `"1 results"` live-region string** — F-14 from Pass 3; v1.x resource polish (ICU message format or separate singular/plural keys). `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcCommandPaletteTests.cs:88` Reconciliation: Row: DW-0294; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 1 review (2026-04-21 pass 5).
 status: open
+decision: 2026-11-26 Skipped. Story 13.2 superseded the result-count announcement. The palette announces only the no-results case.
 
 ### DW-1026: `NavigationManager.ToAbsoluteUri(targetUrl)` throws on malformed `targetUrl`
 
@@ -2621,6 +2623,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fc
 location: src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:IsChordPrefix
 reason: **`IsChordPrefix` linear O(N) scan per bare-letter keystroke** — optimise to a prefix-HashSet maintained at `Register`/`Remove` if the registered-binding count grows. V1 registrar ships 5 bindings; the O(N) scan is a non-issue at that scale. Revisit when adopter-binding count exceeds ~50 or when profiling shows hot-path cost. `src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:IsChordPrefix` Reconciliation: Row: DW-0298; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
 status: open
+decision: 2026-11-26 Skipped. The ledger calls for reopening on a large binding catalog or a profiling result. The recorded threshold has not been demonstrated.
 
 ### DW-1030: `_pendingGeneration` long overflow after 2^63 chord starts
 
@@ -2628,6 +2631,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fc
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`_pendingGeneration` long overflow after 2^63 chord starts** — theoretical; no real-world trigger. Reconciliation: Row: DW-0299; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
 status: open
+decision: 2026-11-26 Skipped. The accepted counter-overflow case requires more than nine quintillion chord generations in one service lifetime.
 
 ### DW-1031: `NavigateHomeAsync` `JSDisconnectedException` on dead circuit
 
@@ -2646,7 +2650,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`FrontComposerRegistry.HasFullPageRoute` duplicate-command ambiguity across manifests** — returning `true` when the same command name appears in two bounded contexts is a build-time governance concern (Story 9-4 analyzer). Runtime routing already disambiguates via `{boundedContext}` segment. Reconciliation: Row: DW-0302; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
-status: open
+status: done 2026-11-26
+resolution: Rejects ambiguous command owners with HFC1601 at startup and during late registration, and reports all conflicting contexts.
 decision: 2026-09-06 Reject duplicates — Keep the command-name API, detect cross-manifest duplicate full names during validation, and fail startup with a stable diagnostic naming every context.
 decision: 2026-09-06 Reject duplicates — Keep the command-name API, detect cross-manifest duplicate full names during validation, and fail startup with a stable diagnostic naming every context.
 

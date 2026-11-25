@@ -20,6 +20,7 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
     private readonly List<(string Name, string BoundedContext)> _navGroups = [];
     private readonly List<FrontComposerNavEntry> _navEntries = [];
     private readonly ILogger<FrontComposerRegistry> _logger;
+    private bool _collectingStartupManifests = true;
 
     public FrontComposerRegistry(
         IEnumerable<DomainRegistrationAction> registrationActions,
@@ -40,22 +41,30 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             action.Apply(this);
         }
 
-        ValidateManifests();
+        lock (_sync) {
+            ValidateCommandOwnership(_manifests);
+            _collectingStartupManifests = false;
+        }
     }
 
-    /// <summary>
-    /// Walks every metadata-aware manifest and asserts each declared full-page command is also
-    /// present in <see cref="DomainManifest.Commands"/>.
-    /// </summary>
-    /// <remarks>
-    /// Legacy manifests have absent metadata and retain their compatibility behavior. Generated
-    /// manifests always provide metadata, including an explicitly empty collection for Inline and
-    /// CompactInline commands.
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">Thrown with <see cref="FcDiagnosticIds.HFC1601_ManifestInvalid"/> when full-page metadata names an unregistered command.</exception>
-    private void ValidateManifests() {
-        foreach (DomainManifest manifest in SnapshotManifestReferences()) {
-            ValidateManifest(manifest);
+    private static void ValidateCommandOwnership(IEnumerable<DomainManifest> manifests) {
+        string[] conflicts = [.. manifests
+            .SelectMany(static manifest => manifest.Commands
+                .Where(static command => !string.IsNullOrWhiteSpace(command))
+                .Select(command => (Command: command, manifest.BoundedContext)))
+            .GroupBy(static entry => entry.Command, StringComparer.Ordinal)
+            .Select(static group => (Command: group.Key, Contexts: group
+                .Select(static entry => entry.BoundedContext)
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToArray()))
+            .Where(static entry => entry.Contexts.Length > 1)
+            .OrderBy(static entry => entry.Command, StringComparer.Ordinal)
+            .Select(static entry => $"{entry.Command} [{string.Join(", ", entry.Contexts)}]")];
+
+        if (conflicts.Length > 0) {
+            throw new InvalidOperationException(
+                $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: Command type names must belong to a single bounded context. Conflicting entries are {string.Join(", ", conflicts)}.");
         }
     }
 
@@ -172,6 +181,11 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         ValidateManifest(incoming);
 
         lock (_sync) {
+            // Startup collects all contexts so diagnostics can report every owner in one pass.
+            if (!_collectingStartupManifests) {
+                ValidateCommandOwnership(_manifests.Append(incoming));
+            }
+
             int existingIndex = _manifests.FindIndex(m => string.Equals(m.BoundedContext, incoming.BoundedContext, StringComparison.Ordinal));
             if (existingIndex < 0) {
                 if (_manifests.Any(m => string.Equals(m.BoundedContext, incoming.BoundedContext, StringComparison.OrdinalIgnoreCase))) {
