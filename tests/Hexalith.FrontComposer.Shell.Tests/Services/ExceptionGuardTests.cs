@@ -29,9 +29,7 @@ public sealed class ExceptionGuardTests {
     [Fact]
     public void IsFatal_NestedReflectionAndAggregateCauses_ReturnsTrue()
     {
-#pragma warning disable CA2201 // This intentional fatal-exception construction is the fixture under test.
-        var fatal = new OutOfMemoryException();
-#pragma warning restore CA2201
+        var fatal = (OutOfMemoryException)RuntimeHelpers.GetUninitializedObject(typeof(OutOfMemoryException));
         var reflected = new TargetInvocationException(new InvalidOperationException("wrapper", fatal));
         ExceptionGuard.IsFatal(reflected).ShouldBeTrue();
         ExceptionGuard.IsFatal(new AggregateException(new IOException(), new AggregateException(reflected))).ShouldBeTrue();
