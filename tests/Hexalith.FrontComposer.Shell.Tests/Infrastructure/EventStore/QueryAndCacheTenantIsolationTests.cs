@@ -10,6 +10,8 @@ using Hexalith.FrontComposer.Shell.State.ETagCache;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
+using NSubstitute;
+
 using Shouldly;
 
 using MsOptions = Microsoft.Extensions.Options.Options;
@@ -31,19 +33,27 @@ public sealed class QueryAndCacheTenantIsolationTests {
         handler.Body.ShouldContain("\"tenant\":\"tenant-a\"");
     }
 
-    [Fact]
-    public async Task QueryAsync_TenantMismatch_BlocksBeforeCacheTokenAndHttpSend() {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task QueryAsync_TenantMismatch_BlocksBeforeCacheTokenAndHttpSend(bool useFilters) {
         int tokenCalls = 0;
         RecordingHandler handler = new();
         CountingCache cache = new();
         EventStoreQueryClient sut = NewClient(handler, cache, "tenant-a", "user-a", () => tokenCalls++);
 
+        IReadOnlyDictionary<string, string> filters = Substitute.For<IReadOnlyDictionary<string, string>>();
+        QueryRequest request = Request(tenantId: "tenant-b", cacheDiscriminator: ETagCacheDiscriminator.ForProjectionPage("Orders.Row", 0, 25));
+        if (useFilters) {
+            filters.Count.Returns(1);
+            filters.ClearReceivedCalls();
+            request = request with { Criteria = request.Criteria with { ColumnFilters = filters } };
+        }
         TenantContextException ex = await Should.ThrowAsync<TenantContextException>(
-            async () => await sut.QueryAsync<Row>(
-                Request(tenantId: "tenant-b", cacheDiscriminator: ETagCacheDiscriminator.ForProjectionPage("Orders.Row", 0, 25)),
-                TestContext.Current.CancellationToken).ConfigureAwait(true));
+            async () => await sut.QueryAsync<Row>(request, TestContext.Current.CancellationToken).ConfigureAwait(true));
 
         ex.FailureCategory.ShouldBe(TenantContextFailureCategory.TenantMismatch);
+        filters.ReceivedCalls().ShouldBeEmpty();
         cache.BuildKeyCount.ShouldBe(0);
         cache.GetCount.ShouldBe(0);
         cache.SetCount.ShouldBe(0);

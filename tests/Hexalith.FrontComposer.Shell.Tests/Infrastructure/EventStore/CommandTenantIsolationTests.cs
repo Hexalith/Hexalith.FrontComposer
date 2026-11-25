@@ -36,20 +36,28 @@ public sealed class CommandTenantIsolationTests {
             NullLogger<EventStoreCommandClient>.Instance,
             MsOptions.Create(new FcShellOptions()));
 
+        SerializationProbeCommand command = new() { TenantId = "tenant-b" };
         TenantContextException ex = await Should.ThrowAsync<TenantContextException>(
-            async () => await sut.DispatchAsync(new ExplodingCommand { TenantId = "tenant-b" }, TestContext.Current.CancellationToken)
+            async () => await sut.DispatchAsync(command, TestContext.Current.CancellationToken)
                 .ConfigureAwait(true));
 
         ex.FailureCategory.ShouldBe(TenantContextFailureCategory.TenantMismatch);
+        command.PayloadReads.ShouldBe(0);
         tokenCalls.ShouldBe(0);
         handler.SendCount.ShouldBe(0);
     }
 
     [BoundedContext("Orders")]
-    private sealed class ExplodingCommand {
+    private sealed class SerializationProbeCommand {
         public string TenantId { get; set; } = "tenant-a";
         public string AggregateId { get; set; } = "order-1";
-        public string Payload { get => throw new InvalidOperationException(field); } = "payload-secret";
+        public int PayloadReads { get; private set; }
+        public string Payload {
+            get {
+                PayloadReads++;
+                return "payload-secret";
+            }
+        }
     }
 
     private sealed class FixedUlidFactory : IUlidFactory {

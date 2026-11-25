@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 
 using Fluxor;
@@ -518,6 +519,14 @@ public sealed class ProjectionSubscriptionServiceTests {
         FakeProjectionHubConnection connection = new();
         TestNotifier notifier = new();
         MutableUserContextAccessor userContext = new("tenant-a", "user-a");
+        TestRefreshScheduler refresh = new();
+        TestReconciliationCoordinator reconciliation = new();
+        TestPendingPolling pending = new();
+        FcShellOptions shellOptions = new() { ProjectionFallbackPollingIntervalSeconds = 1 };
+        FakeTimeProvider time = new();
+        using ProjectionConnectionStateService state = new(time, NullLogger<ProjectionConnectionStateService>.Instance);
+        ProjectionFallbackPollingDriver fallback = new(
+            state, refresh, new TestOptionsMonitor(shellOptions), NullLogger<ProjectionFallbackPollingDriver>.Instance, time);
         ProjectionSubscriptionService sut = new(
             global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
                 BaseAddress = new Uri("https://eventstore.test"),
@@ -525,13 +534,22 @@ public sealed class ProjectionSubscriptionServiceTests {
                 ProjectionChangesHubPath = "/hubs/projection-changes",
             }),
             new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
-            new TestProjectionConnectionState(),
-            new TestRefreshScheduler(),
+            state,
+            refresh,
             notifier,
             NullLogger<ProjectionSubscriptionService>.Instance,
+            fallbackDriver: fallback,
+            reconciliationCoordinator: reconciliation,
+            pendingCommandPolling: pending,
             userContextAccessor: userContext,
-            shellOptions: global::Microsoft.Extensions.Options.Options.Create(new FcShellOptions()));
+            shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions),
+            timeProvider: time);
 
+        await using ConfiguredAsyncDisposable subscriptionLifetime = sut.ConfigureAwait(true);
+
+        // A connected circuit should stay connected when a caller attempts a foreign subscription.
+        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Connected));
+        int fallbackCallsBeforeRejection = refresh.FallbackCalls;
         TenantContextException ex = await Should.ThrowAsync<TenantContextException>(
             async () => await sut.SubscribeAsync("orders", "tenant-b", TestContext.Current.CancellationToken).ConfigureAwait(true));
 
@@ -539,7 +557,17 @@ public sealed class ProjectionSubscriptionServiceTests {
         connection.StartCount.ShouldBe(0);
         connection.JoinedGroups.ShouldBeEmpty();
         await connection.RaiseAsync("orders", "tenant-b");
+        time.Advance(TimeSpan.FromSeconds(2));
+        state.Current.Status.ShouldBe(ProjectionConnectionStatus.Connected);
+        refresh.FallbackCalls.ShouldBe(fallbackCallsBeforeRejection);
+        refresh.NudgeRefreshes.ShouldBeEmpty();
+        pending.Calls.ShouldBe(0);
+        reconciliation.Calls.ShouldBe(0);
         notifier.Changed.ShouldBeEmpty();
+
+        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
+        reconciliation.Calls.ShouldBe(1);
+        refresh.ReconciliationGroupHealth.ShouldNotBeNull().ShouldBeEmpty();
     }
 
     [Fact]
@@ -1305,12 +1333,19 @@ public sealed class ProjectionSubscriptionServiceTests {
 
     private sealed class TestRefreshScheduler : IProjectionFallbackRefreshScheduler {
         public List<(string ProjectionType, string TenantId)> NudgeRefreshes { get; } = [];
+        public int FallbackCalls { get; private set; }
+        public IReadOnlyDictionary<ProjectionFallbackGroupKey, bool>? ReconciliationGroupHealth { get; private set; }
+
+        public void SetReconciliationGroupHealth(IReadOnlyDictionary<ProjectionFallbackGroupKey, bool> activeGroups)
+            => ReconciliationGroupHealth = activeGroups;
 
         public IDisposable RegisterLane(ProjectionFallbackLane lane)
             => new Registration(() => { });
 
-        public Task<int> TriggerFallbackOnceAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(0);
+        public Task<int> TriggerFallbackOnceAsync(CancellationToken cancellationToken = default) {
+            FallbackCalls++;
+            return Task.FromResult(0);
+        }
 
         public Task<int> TriggerNudgeRefreshAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) {
             NudgeRefreshes.Add((projectionType, tenantId));
