@@ -727,6 +727,71 @@ public class CommandPaletteEffectsTests {
     }
 
     [Fact]
+    public async Task PaletteQueryReusesOnlyExactAuthorizationDecisionsAsync() {
+        string command = typeof(PaletteProtectedCommand).FullName!;
+        DomainManifest Manifest(string context, string policy) => new(
+            context, context, [], [command], CommandPolicies: new Dictionary<string, string>(StringComparer.Ordinal) {
+                [command] = policy,
+            });
+
+        ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
+        evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<CommandAuthorizationRequest>() is { BoundedContext: "Orders", PolicyName: "Approver" }
+                ? CommandAuthorizationDecision.Allowed("allowed")
+                : CommandAuthorizationDecision.Denied("denied"));
+        DomainManifest orders = Manifest("Orders", "Approver");
+        DomainManifest billing = Manifest("Billing", "Approver");
+        using CommandPaletteEffects effect = BuildEffects(
+            out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider services,
+            manifests: [orders, orders, billing, billing, Manifest("Orders", "Other")],
+            authorizationEvaluator: evaluator);
+        using ServiceProvider provider = (ServiceProvider)services;
+
+        foreach (string correlation in new[] { "first", "second" }) {
+            Task query = effect.HandlePaletteQueryChanged(new PaletteQueryChangedAction(correlation, "Protected"), dispatcher);
+            time.Advance(TimeSpan.FromMilliseconds(150));
+            await query;
+        }
+
+        foreach ((string context, string policy) in new[] { ("Orders", "Approver"), ("Billing", "Approver"), ("Orders", "Other") }) {
+            await evaluator.Received(2).EvaluateAsync(
+                ArgEx.Is<CommandAuthorizationRequest>(r => r.BoundedContext == context && r.PolicyName == policy),
+                Arg.Any<CancellationToken>());
+        }
+        dispatcher.Received(2).Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
+            a.Results.Length > 0 && a.Results.All(r => r.CommandTypeName == command && r.BoundedContext == "Orders")));
+    }
+
+    [Fact]
+    public async Task PaletteQueryAuthorizesOnlyEnoughRankedCommandsToFillResultsAsync() {
+        string command = typeof(PaletteProtectedCommand).FullName!;
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        foreach (int index in Enumerable.Range(0, 60)) {
+            string context = $"Area{index}";
+            registry.RegisterDomain(new DomainManifest(context, context, [], [command],
+                CommandPolicies: new Dictionary<string, string>(StringComparer.Ordinal) { [command] = "Approver" }));
+        }
+
+        ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
+        evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<CommandAuthorizationRequest>().BoundedContext == "Area0"
+                ? CommandAuthorizationDecision.Denied("denied")
+                : CommandAuthorizationDecision.Allowed("allowed"));
+        using CommandPaletteEffects effect = BuildEffects(
+            out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider services,
+            registry: registry, authorizationEvaluator: evaluator);
+        using ServiceProvider provider = (ServiceProvider)services;
+
+        Task query = effect.HandlePaletteQueryChanged(new PaletteQueryChangedAction("ranked", "Protected"), dispatcher);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        await query;
+
+        await evaluator.Received(51).EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>());
+        dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
+            a.Results.Select(r => r.BoundedContext).SequenceEqual(Enumerable.Range(1, 50).Select(i => $"Area{i}"))));
+    }
+
+    [Fact]
     public async Task SameQuery_AuthorizationCompletesAfterScopeSwitch_OldResultsAreRejected() {
         string commandTypeName = typeof(PaletteProtectedCommand).FullName!;
         TaskCompletionSource<CommandAuthorizationDecision> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -779,6 +844,7 @@ public class CommandPaletteEffectsTests {
         await oldQuery;
         current.Results.ShouldBeEmpty();
         current.ScopeGeneration.ShouldBe(1);
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteResultsComputedAction>());
     }
 
     // Story 2.7 Task 2 (AC2) — the durable DEFAULT-LANE integration pin: drive live registry

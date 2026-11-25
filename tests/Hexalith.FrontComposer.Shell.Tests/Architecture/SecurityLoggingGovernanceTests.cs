@@ -213,7 +213,7 @@ public sealed class SecurityLoggingGovernanceTests
         "src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/CapabilityDiscoveryEffects.cs:SeedBadgeCountsAsync:240:LogWarning",
         "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteQueryChanged:328:LogWarning",
         "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteQueryChanged:361:LogWarning",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteQueryChanged:420:LogWarning",
+        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:LogManifestScoringFailure:1088:LogWarning",
         "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteResultActivated:565:LogWarning",
         "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteResultActivated:584:LogWarning",
         "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:BuildDefaultResults:781:LogWarning",

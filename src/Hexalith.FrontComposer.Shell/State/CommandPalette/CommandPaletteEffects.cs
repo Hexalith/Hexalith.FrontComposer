@@ -324,12 +324,16 @@ public sealed class CommandPaletteEffects : IDisposable {
         ArgumentNullException.ThrowIfNull(dispatcher);
 
         long scopeGeneration = _paletteState.Value.ScopeGeneration;
-        CancellationTokenSource cts = ReplaceQueryCts();
+        CancellationToken queryToken = ReplaceQueryToken();
 
         try {
-            await Task.Delay(TimeSpan.FromMilliseconds(DebounceMilliseconds), Time, cts.Token).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromMilliseconds(DebounceMilliseconds), Time, queryToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
+            return;
+        }
+
+        if (queryToken.IsCancellationRequested) {
             return;
         }
 
@@ -369,7 +373,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
 
         string? currentContext = _navState.Value.CurrentBoundedContext;
-        ImmutableArray<PaletteResult>.Builder scored = ImmutableArray.CreateBuilder<PaletteResult>();
+        List<(PaletteResult Result, DomainManifest? Manifest)> scored = [];
         IFrontComposerRegistry? scoringRegistry = Registry;
 
         // Per-manifest try/catch so one malformed manifest (e.g., null/empty BoundedContext) does
@@ -388,6 +392,10 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
 
         foreach (DomainManifest manifest in manifests) {
+            if (queryToken.IsCancellationRequested) {
+                return;
+            }
+
             // P5 (Pass-6): narrow the per-manifest catch so fatal exceptions (OOM, StackOverflow,
             // ThreadAbort) propagate. Otherwise a real fatal becomes a LogWarning + the loop
             // continues, masking serious issues as routine HFC2110 noise.
@@ -407,7 +415,7 @@ public sealed class CommandPaletteEffects : IDisposable {
 
                     bool inContext = IsInCurrentContext(manifest.BoundedContext, currentContext);
                     int finalScore = score + (inContext ? ContextualBonus : 0);
-                    scored.Add(CreateProjectionResult(manifest, projection, finalScore, inContext));
+                    scored.Add((CreateProjectionResult(manifest, projection, finalScore, inContext), null));
                 }
 
                 foreach (string command in manifest.Commands) {
@@ -421,28 +429,20 @@ public sealed class CommandPaletteEffects : IDisposable {
                         continue;
                     }
 
-                    if (!await CanSurfaceCommandAsync(manifest, command, cts.Token).ConfigureAwait(false)) {
-                        continue;
-                    }
-
                     bool inContext = IsInCurrentContext(manifest.BoundedContext, currentContext);
                     int finalScore = score + (inContext ? ContextualBonus : 0);
-                    scored.Add(new PaletteResult(
+                    scored.Add((new PaletteResult(
                         Category: PaletteResultCategory.Command,
                         DisplayLabel: label,
                         BoundedContext: manifest.BoundedContext,
                         RouteUrl: null,
                         CommandTypeName: command,
                         Score: finalScore,
-                        IsInCurrentContext: inContext));
+                        IsInCurrentContext: inContext), manifest));
                 }
             }
             catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                FrontComposerWarningLog.PaletteManifestScoringFailed(
-                    _logger,
-                    FcDiagnosticIds.HFC2110_PaletteScoringFault,
-                    manifest.BoundedContext,
-                    ex);
+                LogManifestScoringFailure(manifest, ex);
             }
         }
 
@@ -450,31 +450,56 @@ public sealed class CommandPaletteEffects : IDisposable {
         foreach (string url in _paletteState.Value.RecentRouteUrls) {
             int score = PaletteScorer.Score(canonical, url);
             if (score > 0) {
-                scored.Add(new PaletteResult(
+                scored.Add((new PaletteResult(
                     Category: PaletteResultCategory.Recent,
                     DisplayLabel: url,
                     BoundedContext: string.Empty,
                     RouteUrl: url,
                     CommandTypeName: null,
                     Score: score,
-                    IsInCurrentContext: false));
+                    IsInCurrentContext: false), null));
             }
         }
 
-        ImmutableArray<PaletteResult> ranked = [.. scored
-            .OrderByDescending(static r => r.Score)
-            .Take(TopResultCap)];
+        // Authorize in stable score order so commands below the visible result limit need no policy check.
+        Dictionary<(string Command, string Policy, string Context), bool> authorizationDecisions = [];
+        ImmutableArray<PaletteResult>.Builder ranked = ImmutableArray.CreateBuilder<PaletteResult>();
+        foreach ((PaletteResult result, DomainManifest? manifest) in scored.OrderByDescending(static entry => entry.Result.Score)) {
+            if (queryToken.IsCancellationRequested) {
+                return;
+            }
+
+            if (manifest is not null) {
+                try {
+                    if (!await CanSurfaceCommandAsync(manifest, result.CommandTypeName!, queryToken, authorizationDecisions).ConfigureAwait(false)) {
+                        continue;
+                    }
+                }
+                catch (OperationCanceledException) when (queryToken.IsCancellationRequested) {
+                    return;
+                }
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                    LogManifestScoringFailure(manifest, ex);
+                    continue;
+                }
+            }
+
+            ranked.Add(result);
+            if (ranked.Count == TopResultCap) {
+                break;
+            }
+        }
 
         // Final stale-guard: if the palette closed (or the per-dispatch CTS was cancelled) while
         // the synchronous scoring loop ran, drop the dispatch so a torn-down dispatcher doesn't
         // raise `ObjectDisposedException`. Reducer-level `IsOpen` no-op covers the fast path, but
         // explicit check here also prevents the dispatch round-trip cost.
-        if (!_paletteState.Value.IsOpen) {
+        if (queryToken.IsCancellationRequested || !_paletteState.Value.IsOpen) {
             return;
         }
 
         try {
-            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ranked) { OriginScopeGeneration = scopeGeneration });
+            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ranked.ToImmutable()) { OriginScopeGeneration = scopeGeneration });
         }
         catch (ObjectDisposedException) {
             // Circuit disposed between stale-guard and dispatch — Fluxor store is gone, safe to ignore.
@@ -1008,10 +1033,19 @@ public sealed class CommandPaletteEffects : IDisposable {
             ProjectionType: ProjectionTypeResolver.Resolve(projection));
     }
 
-    private async Task<bool> CanSurfaceCommandAsync(DomainManifest manifest, string commandTypeName, CancellationToken cancellationToken) {
+    private async Task<bool> CanSurfaceCommandAsync(
+        DomainManifest manifest,
+        string commandTypeName,
+        CancellationToken cancellationToken,
+        Dictionary<(string Command, string Policy, string Context), bool>? authorizationDecisions = null) {
         if (!manifest.CommandPolicies.TryGetValue(commandTypeName, out string? policyName)
             || string.IsNullOrWhiteSpace(policyName)) {
             return true;
+        }
+
+        var key = (commandTypeName, policyName, manifest.BoundedContext);
+        if (authorizationDecisions?.TryGetValue(key, out bool allowed) == true) {
+            return allowed;
         }
 
         ICommandAuthorizationEvaluator? evaluator = TryGetService<ICommandAuthorizationEvaluator>();
@@ -1043,8 +1077,19 @@ public sealed class CommandPaletteEffects : IDisposable {
                 CommandAuthorizationSurface.CommandPalette),
             cancellationToken).ConfigureAwait(false);
 
+        if (authorizationDecisions is not null) {
+            authorizationDecisions[key] = decision.IsAllowed;
+        }
+
         return decision.IsAllowed;
     }
+
+    private void LogManifestScoringFailure(DomainManifest manifest, Exception exception)
+        => FrontComposerWarningLog.PaletteManifestScoringFailed(
+            _logger,
+            FcDiagnosticIds.HFC2110_PaletteScoringFault,
+            manifest.BoundedContext,
+            exception);
 
     private static bool IsInCurrentContext(string? boundedContext, string? currentContext)
         => !string.IsNullOrWhiteSpace(currentContext)
@@ -1062,7 +1107,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         _persistGate.Dispose();
     }
 
-    private CancellationTokenSource ReplaceQueryCts() {
+    private CancellationToken ReplaceQueryToken() {
         lock (_ctsSync) {
             CancellationTokenSource? previous = _queryCts;
             try {
@@ -1073,20 +1118,15 @@ public sealed class CommandPaletteEffects : IDisposable {
             }
 
             previous?.Dispose();
-            // P15 (Pass-6): when Dispose has run, return an already-cancelled CTS so the caller's
-            // `await Task.Delay(_, _, cts.Token)` throws `OperationCanceledException` and unwinds
-            // cleanly. Allocating a fresh active CTS post-dispose would leak (no consumer to dispose
-            // it; subsequent CancelInFlightQuery is gated by Dispose's `_disposed` flag).
             if (_disposed) {
-                CancellationTokenSource cancelled = new();
-                cancelled.Cancel();
                 _queryCts = null;
-                return cancelled;
+                return new CancellationToken(canceled: true);
             }
 
             CancellationTokenSource fresh = new();
             _queryCts = fresh;
-            return fresh;
+            // Capture the token under the lock. A newer query can dispose the source immediately.
+            return fresh.Token;
         }
     }
 
