@@ -1,5 +1,20 @@
 # Dependency governance source projection
 
+## 2026-11-25 v6.2 compatibility ledger and 6.1.0 baseline
+
+FrontComposer now plans release line `v6.2` and validates packs against published
+`6.1.0`. Consumer configuration digest is
+`92ffc5762fc1ab9755beb5eec065ee4ea28c4a99cce8adfcf046b5c6984c5aa7`.
+Root selector digest remains
+`ea3e2b0fe00f6389d394ccb50bb1c26082954797f0762f90886a4f22b26ad650`.
+The graph still contains 76 edges.
+
+The matching policy reseal is `13bc0732cba1bb3b44d279665e69a7669864b7ea`.
+This documentation-only child is the later-base activation of that policy.
+The previous event-base policy rejected the changed consumer
+configuration, as expected. Hosted CI and Quality on this commit are the
+release evidence; local validation of 76 edges does not replace those gates.
+
 ## 2026-11-25 AppHost Tooling EventStore isolation
 
 FrontComposer Debug source-graph restore no longer forwards EventStore `5.6.0`
