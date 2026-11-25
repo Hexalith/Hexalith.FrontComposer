@@ -187,6 +187,7 @@ public sealed class EventStoreQueryClient(
                 current.MaxRequestBytes);
 
             HttpClient client = httpClientFactory.CreateClient(HttpClientName);
+            RevalidateSnapshot(tenantContext, "query-send");
             using HttpResponseMessage response = await client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             FrontComposerTelemetry.SetHttpStatus(activity, (int)response.StatusCode);
             EventStoreQueryClassification classification = await classifier
@@ -357,12 +358,8 @@ public sealed class EventStoreQueryClient(
                 ? key
                 : null;
 
-    private void RevalidateSnapshot(TenantContextSnapshot snapshot) {
-        TenantContextResult current = _tenantContextAccessor.Revalidate(snapshot, "query-delayed-effect");
-        if (!current.Succeeded || current.Context is null) {
-            throw new TenantContextException(current.FailureCategory, snapshot.CorrelationId);
-        }
-    }
+    private void RevalidateSnapshot(TenantContextSnapshot snapshot, string operationKind = "query-delayed-effect")
+        => _ = _tenantContextAccessor.Revalidate(snapshot, operationKind).EnsureSuccess();
 
     private async Task PersistCacheEntryAsync(string cacheKey, ETagCacheEntry entry, TenantContextSnapshot snapshot) {
         // P6 — revalidate INSIDE the fire-and-forget body so a tenant/user switch between

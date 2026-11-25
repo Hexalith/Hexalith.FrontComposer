@@ -7,7 +7,9 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -59,6 +61,27 @@ public sealed class QueryAndCacheTenantIsolationTests {
         cache.SetCount.ShouldBe(0);
         tokenCalls.ShouldBe(0);
         handler.SendCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ScopeChangeDuringTokenAcquisitionPreventsHttpSend() {
+        RecordingHandler handler = new();
+        CountingCache cache = new();
+        TestUserContextAccessor identity = new("tenant-a", "user-a");
+        CapturingLogger<EventStoreQueryClient> logger = new();
+        EventStoreQueryClient sut = NewClient(
+            handler, cache, "tenant-a", "user-a",
+            onToken: () => identity.UserId = "user-b", context: identity, logger: logger);
+
+        TenantContextException error = await Should.ThrowAsync<TenantContextException>(() =>
+            sut.QueryAsync<Row>(Request("tenant-a"), TestContext.Current.CancellationToken));
+
+        error.FailureCategory.ShouldBe(TenantContextFailureCategory.StaleTenantContext);
+        logger.Entries.ShouldContain(entry =>
+            entry.Message.Contains("query-send", StringComparison.Ordinal)
+            && entry.Message.Contains(error.CorrelationId, StringComparison.Ordinal));
+        handler.SendCount.ShouldBe(0);
+        cache.SetCount.ShouldBe(0);
     }
 
     [Fact]
@@ -122,7 +145,8 @@ public sealed class QueryAndCacheTenantIsolationTests {
         string tenant,
         string user,
         Action? onToken = null,
-        IUserContextAccessor? context = null) {
+        IUserContextAccessor? context = null,
+        ILogger<EventStoreQueryClient>? logger = null) {
         EventStoreOptions options = new() {
             BaseAddress = new Uri("https://eventstore.test"),
             AccessTokenProvider = _ => {
@@ -138,7 +162,7 @@ public sealed class QueryAndCacheTenantIsolationTests {
             EventStoreTestSupport.CreateClassifier(),
             cache,
             new EventStoreTestSupport.RecordingAuthRedirector(),
-            NullLogger<EventStoreQueryClient>.Instance,
+            logger ?? NullLogger<EventStoreQueryClient>.Instance,
             MsOptions.Create(new FcShellOptions()));
     }
 
