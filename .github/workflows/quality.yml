@@ -96,7 +96,7 @@ jobs:
       - name: 'Gate 2a: CLI Tool Package Smoke'
         shell: bash
         run: |
-          dotnet pack src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release --no-build --output ./nupkgs -p:PackageVersion=0.0.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=6.0.1 -p:FrontComposerPackageValidationSkipBaseline=false
+          dotnet pack src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release --no-build --output ./nupkgs -p:PackageVersion=0.0.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=6.1.0 -p:FrontComposerPackageValidationSkipBaseline=false
 
           tool_home="$(mktemp -d)"
           fixture="$(mktemp -d)"
@@ -424,7 +424,7 @@ jobs:
             # sequential packs (and their ProjectReference graphs) intermingle in a single
             # bin/Release/<tfm>/, and ApiCompat could then diff a stale sibling assembly.
             name="$(basename "$project" .csproj)"
-            dotnet pack "$project" --configuration Release --output ./nupkgs-validation -p:Version=6.1.0-ci -p:PackageVersion=6.1.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=6.0.1 -p:FrontComposerPackageValidationSkipBaseline=false -p:BaseOutputPath="$GITHUB_WORKSPACE/artifacts/library-package-validation/$name/bin/"
+            dotnet pack "$project" --configuration Release --output ./nupkgs-validation -p:Version=6.2.0-ci -p:PackageVersion=6.2.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=6.1.0 -p:FrontComposerPackageValidationSkipBaseline=false -p:BaseOutputPath="$GITHUB_WORKSPACE/artifacts/library-package-validation/$name/bin/"
           done
 
       # Story 12.1: the adopter proof kit copies Shell markup, diagnostics, and types that the
