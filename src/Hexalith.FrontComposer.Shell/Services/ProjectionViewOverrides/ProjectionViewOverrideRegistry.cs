@@ -306,8 +306,15 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
             return false;
         }
 
-        if (contextProperty.GetCustomAttribute<ParameterAttribute>() is null) {
+        ParameterAttribute? parameter = contextProperty.GetCustomAttribute<ParameterAttribute>();
+        if (parameter is null) {
             reason = "Context property is missing [Parameter].";
+            return false;
+        }
+
+        if (parameter.CaptureUnmatchedValues || contextProperty.GetCustomAttributes<CascadingParameterAttributeBase>()
+                .Any(static attribute => attribute is not SupplyParameterFromQueryAttribute)) {
+            reason = "Context property must accept the supplied parameter directly.";
             return false;
         }
 

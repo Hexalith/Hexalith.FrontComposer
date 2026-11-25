@@ -1016,7 +1016,10 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
         ListLogger<ProjectionViewOverrideRegistry> capturedLogger = new();
         Services.Replace(ServiceDescriptor.Singleton<ILogger<ProjectionViewOverrideRegistry>>(capturedLogger));
-        Services.AddViewOverride<CounterProjection, InvalidViewMissingContext>();
+        Services.AddSingleton(new ProjectionViewOverrideDescriptorSource([
+            new ProjectionViewOverrideDescriptor(typeof(CounterProjection), null, typeof(InvalidViewMissingContext),
+                ProjectionViewOverrideContractVersion.Current, nameof(InvalidViewMissingContext)),
+        ]));
 
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
