@@ -265,6 +265,35 @@ public sealed class InfrastructureGovernanceTests {
     }
 
     [Fact]
+    public void SourceScan_ExcludesExactBuildDirectoriesAtAnyDepth() {
+        using var temp = TempRepo.Create();
+        _ = temp.Write("bin/Generated.cs", "using Npgsql;");
+        _ = temp.Write("obj/Generated.cs", "using Npgsql;");
+        _ = temp.Write("src/library/bin/Generated.cs", "using Npgsql;");
+        _ = temp.Write("src/library/obj/Generated.cs", "using Npgsql;");
+        _ = temp.Write("src/library.bin/Source.cs", "using Npgsql;");
+        _ = temp.Write("src/obj-tools/Source.cs", "using Npgsql;");
+
+        InfrastructureGovernance.ScanSourceTree(temp.Root, temp.Root, allowSignalRClient: false)
+            .Select(violation => violation.Path)
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(["src/library.bin/Source.cs", "src/obj-tools/Source.cs"]);
+    }
+
+    [Fact]
+    public void SourceScan_RejectsSiblingThatSharesTheRepositoryNamePrefix() {
+        using var temp = TempRepo.Create();
+        _ = temp.Write("repo/Source.cs", "namespace Inside;");
+        _ = temp.Write("repo-other/Source.cs", "using Npgsql;");
+        string root = Path.Combine(temp.Root, "repo");
+        string sibling = Path.Combine(root, "..", "repo-other");
+
+        Should.Throw<InvalidOperationException>(() =>
+            InfrastructureGovernance.ScanSourceTree(sibling, root, allowSignalRClient: false))
+            .Message.ShouldContain("Path escaped repository root");
+    }
+
+    [Fact]
     public void ShellSignalRClient_IsExactAllowlistOnly() {
         using var temp = TempRepo.Create();
         string project = temp.Write(
@@ -770,9 +799,10 @@ internal static class InfrastructureGovernance {
             return false;
         }
 
-        string relative = RelativePath(file, repositoryRoot).Replace('\\', '/');
-        if (relative.Contains("/bin/", StringComparison.Ordinal)
-            || relative.Contains("/obj/", StringComparison.Ordinal)
+        string relative = RelativePath(file, repositoryRoot);
+        string pathWithBoundary = "/" + relative;
+        if (pathWithBoundary.Contains("/bin/", StringComparison.Ordinal)
+            || pathWithBoundary.Contains("/obj/", StringComparison.Ordinal)
             || relative.StartsWith(".bmad/", StringComparison.Ordinal)
             || relative.StartsWith(".agents/", StringComparison.Ordinal)
             || relative.StartsWith(".github/skills/", StringComparison.Ordinal)) {
@@ -787,17 +817,30 @@ internal static class InfrastructureGovernance {
         => Path.GetFileNameWithoutExtension(projectPath).Equals("Hexalith.FrontComposer.Shell", StringComparison.Ordinal);
 
     private static string NormalizeInsideRoot(string path, string root) {
-        string fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        string fullPath = Path.GetFullPath(path);
-        if (!fullPath.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase)) {
-            throw new InvalidOperationException($"Path escaped repository root: {path}");
+        _ = RelativePath(path, root);
+        string fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+        string fullRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+        for (string? directory = fullPath; directory is not null; directory = Path.GetDirectoryName(directory)) {
+            if (Path.GetRelativePath(fullRoot, directory) == ".") {
+                break;
+            }
+            if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) {
+                throw new InvalidOperationException($"Source root traverses a directory link: {path}");
+            }
         }
-
         return fullPath;
     }
 
-    private static string RelativePath(string path, string root)
-        => Path.GetRelativePath(root, NormalizeInsideRoot(path, root)).Replace('\\', '/');
+    private static string RelativePath(string path, string root) {
+        string relative = Path.GetRelativePath(root, path);
+        if (Path.IsPathRooted(relative)
+            || relative.Equals("..", StringComparison.Ordinal)
+            || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
+            throw new InvalidOperationException($"Path escaped repository root: {path}");
+        }
+
+        return relative.Replace(Path.DirectorySeparatorChar, '/');
+    }
 
     private static GovernanceViolation Violation(string path, string reference, string providerFamily)
         => new(
