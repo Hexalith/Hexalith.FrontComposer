@@ -559,6 +559,7 @@ public class CommandPaletteEffectsTests {
 
         await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
 
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteInformationalShortcutActivatedAction>());
         dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
         dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
     }

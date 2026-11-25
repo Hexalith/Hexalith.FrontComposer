@@ -627,6 +627,9 @@
   <data name="StartupFailureText" xml:space="preserve">
     <value>FrontComposer n'a pas pu démarrer. Vérifiez la configuration.</value>
   </data>
+  <data name="PaletteInformationalShortcutText" xml:space="preserve">
+    <value>Fermez la palette pour utiliser ce raccourci.</value>
+  </data>
   <data name="RouteNavigationFailedText" xml:space="preserve">
     <value>Impossible d’ouvrir {0}.</value>
   </data>

@@ -47,6 +47,8 @@ public sealed record FrontComposerCommandPaletteState(
     /// <summary>Changes once for each navigation failure while the palette stays open.</summary>
     public long ActivationFailureVersion { get; init; }
 
+    internal long InformationalShortcutVersion { get; init; }
+
     /// <summary>Maximum size of the recent-route ring buffer (Story 3-4 D10).</summary>
     public const int RingBufferCap = 5;
 }

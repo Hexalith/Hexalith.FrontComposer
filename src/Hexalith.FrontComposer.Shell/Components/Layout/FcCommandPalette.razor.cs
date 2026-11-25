@@ -50,11 +50,12 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     private bool _navigatesToOtherRoute;
     private long _lastDenialVersion;
     private long _lastFailureVersion;
+    private long _lastInformationalShortcutVersion;
     private string? _openedRoute;
     private string? _announcedZeroQuery;
     private string? _pendingZeroQuery;
-    private string? _pendingFailureText;
-    private bool _liveRegionHoldsFailure;
+    private string? _pendingActivationStatus;
+    private bool _liveRegionHoldsActivationStatus;
     private CancellationTokenSource? _zeroStatusDelay;
     private bool _disposed;
     private ElementReference _paletteRoot;
@@ -101,6 +102,7 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             _openedRoute = NavigationManager.Uri;
             // A failure from an earlier palette session must not speak in this one.
             _lastFailureVersion = PaletteState.Value.ActivationFailureVersion;
+            _lastInformationalShortcutVersion = PaletteState.Value.InformationalShortcutVersion;
             await RegisterKeyboardInteropAsync();
             IJSObjectReference? focus = await EnsureFocusModuleAsync();
             if (focus is not null)
@@ -120,6 +122,8 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             return;
         }
         FrontComposerCommandPaletteState state = PaletteState.Value;
+        bool shortcutActivated = state.InformationalShortcutVersion != _lastInformationalShortcutVersion;
+        _lastInformationalShortcutVersion = state.InformationalShortcutVersion;
         if (state.ActivationDenialVersion != _lastDenialVersion) {
             _lastDenialVersion = state.ActivationDenialVersion;
             _navigatesToOtherRoute = false;
@@ -132,11 +136,16 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         if (state.ActivationFailureVersion != _lastFailureVersion) {
             _lastFailureVersion = state.ActivationFailureVersion;
             _navigatesToOtherRoute = false;
-            QueueActivationFailureStatus();
+            string text = Services.GetService<NavigationFailureNotifier>()?.Message
+                ?? Localizer["RouteNavigationFailedText", Localizer["RouteNavigationUnknownDestinationLabel"].Value].Value;
+            QueueActivationStatus(text);
         }
-        else if (_pendingFailureText is { } failureText) {
-            _pendingFailureText = null;
-            _liveRegionText = failureText;
+        else if (shortcutActivated && state.IsOpen) {
+            QueueActivationStatus(Localizer["PaletteInformationalShortcutText"].Value);
+        }
+        else if (_pendingActivationStatus is { } statusText) {
+            _pendingActivationStatus = null;
+            _liveRegionText = statusText;
             StateHasChanged();
         }
         if (!_explicitlyClosed && !state.IsOpen && Dialog is not null) {
@@ -215,8 +224,8 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     private Task OnQueryChangedAsync(string newQuery) {
         _localQuery = newQuery ?? string.Empty;
         _navigatesToOtherRoute = false;
-        _liveRegionHoldsFailure = false;
-        _pendingFailureText = null;
+        _liveRegionHoldsActivationStatus = false;
+        _pendingActivationStatus = null;
         Dispatcher.Dispatch(new PaletteQueryChangedAction(UlidFactory.NewUlid(), _localQuery));
         return Task.CompletedTask;
     }
@@ -283,10 +292,6 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
                 }
 
                 PaletteResult result = enterResults[selected];
-                if (IsInformationalShortcut(result)) {
-                    return;
-                }
-
                 bool isSentinel = string.Equals(
                     result.CommandTypeName,
                     CommandPaletteEffects.KeyboardShortcutsSentinel,
@@ -428,18 +433,16 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         }
     }
 
-    // The modal palette makes the shell's status region inert, so an activation failure (AM-23)
-    // speaks through this palette-owned region while the palette stays open.
-    private void QueueActivationFailureStatus() {
-        string text = Services.GetService<NavigationFailureNotifier>()?.Message
-            ?? Localizer["RouteNavigationFailedText", Localizer["RouteNavigationUnknownDestinationLabel"].Value].Value;
-        _liveRegionHoldsFailure = true;
+    // The modal palette makes the shell's status region inert.
+    private void QueueActivationStatus(string text) {
+        _liveRegionHoldsActivationStatus = true;
         if (_liveRegionText.Length > 0) {
             // Clear first so the next render inserts fresh text into the existing live region.
             _liveRegionText = string.Empty;
-            _pendingFailureText = text;
+            _pendingActivationStatus = text;
         }
         else {
+            _pendingActivationStatus = null;
             _liveRegionText = text;
         }
 
@@ -458,7 +461,7 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             _zeroStatusDelay?.Dispose();
             _zeroStatusDelay = null;
             _pendingZeroQuery = null;
-            if (_liveRegionText.Length > 0 && !_liveRegionHoldsFailure) {
+            if (_liveRegionText.Length > 0 && !_liveRegionHoldsActivationStatus) {
                 _liveRegionText = string.Empty;
                 StateHasChanged();
             }
@@ -496,9 +499,7 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             }
 
             await InvokeAsync(() => {
-                // AM-23 owns the live region until a later query edit. A delayed empty-result
-                // timer must not clear that failure after the palette stays open.
-                if (_liveRegionHoldsFailure) {
+                if (_liveRegionHoldsActivationStatus) {
                     return;
                 }
 
@@ -506,7 +507,7 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
                 if (current.IsOpen && current.LoadState == PaletteLoadState.Ready && current.Results.IsEmpty
                     && string.Equals(current.Query.Trim(), query, StringComparison.OrdinalIgnoreCase)) {
                     _announcedZeroQuery = query;
-                    _pendingFailureText = null;
+                    _pendingActivationStatus = null;
                     _liveRegionText = Localizer["PaletteNoCommandsOrPagesText"].Value;
                     StateHasChanged();
                 }

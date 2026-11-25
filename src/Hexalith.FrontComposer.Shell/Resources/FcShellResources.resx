@@ -833,6 +833,9 @@
   <data name="StartupFailureText" xml:space="preserve">
     <value>FrontComposer could not start. Review the configuration.</value>
   </data>
+  <data name="PaletteInformationalShortcutText" xml:space="preserve">
+    <value>Close the palette to use this shortcut.</value>
+  </data>
   <data name="RouteNavigationFailedText" xml:space="preserve">
     <value>Could not open {0}.</value>
   </data>

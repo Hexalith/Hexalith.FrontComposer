@@ -91,6 +91,43 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
         cut.Markup.ShouldContain("aria-atomic=\"true\"");
     }
 
+    [Theory]
+    [InlineData("en", "Close the palette to use this shortcut.")]
+    [InlineData("fr", "Fermez la palette pour utiliser ce raccourci.")]
+    public async Task EnterOnInformationalShortcut_AnnouncesWithoutNavigatingOrClosing(string culture, string expected)
+    {
+        System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(culture);
+        EnsureStoreInitialized();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        IState<FrontComposerCommandPaletteState> state = Services.GetRequiredService<IState<FrontComposerCommandPaletteState>>();
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        string originalUri = navigation.Uri;
+        dispatcher.Dispatch(new PaletteOpenedAction("open"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction(string.Empty,
+            [new PaletteResult(PaletteResultCategory.Shortcut, "Ctrl+K", "", null, null, 1, false)]));
+        IDialogInstance dialog = CreateRegisteredDialogInstance();
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>(parameters => parameters.Add(palette => palette.Dialog, dialog));
+        cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBeEmpty();
+
+        Task PressEnter() => cut.InvokeAsync(() =>
+            cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "Enter" }));
+        await PressEnter();
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe(expected));
+
+        ConcurrentQueue<string> announcements = new();
+        cut.OnMarkupUpdated += (_, _) => announcements.Enqueue(cut.Find("[data-testid='fc-palette-live']").TextContent);
+        await PressEnter();
+        cut.WaitForAssertion(() => {
+            announcements.ShouldContain(string.Empty);
+            cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe(expected);
+            state.Value.InformationalShortcutVersion.ShouldBe(2);
+        });
+
+        state.Value.IsOpen.ShouldBeTrue();
+        navigation.Uri.ShouldBe(originalUri);
+        dialog.Result.IsCompleted.ShouldBeFalse();
+    }
+
     [Fact]
     public void SearchInput_WiresResultsAccessibilityAttributes() {
         // Pass-5 P1 — `aria-expanded` is now dynamic: reflects listbox-popup visibility per the

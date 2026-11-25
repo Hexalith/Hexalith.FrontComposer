@@ -133,6 +133,22 @@ public static class CommandPaletteReducers {
             : state;
     }
 
+    /// <summary>Signals a new announcement for an informational shortcut in the current results.</summary>
+    [ReducerMethod]
+    public static FrontComposerCommandPaletteState ReduceInformationalShortcutActivated(
+        FrontComposerCommandPaletteState state,
+        PaletteInformationalShortcutActivatedAction action)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.IsOpen
+            && state.LoadState != PaletteLoadState.Searching
+            && HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)
+            && string.Equals(state.Query, action.Query, StringComparison.Ordinal)
+            ? state with { InformationalShortcutVersion = state.InformationalShortcutVersion + 1 }
+            : state;
+    }
+
     /// <summary>
     /// Assigns the pre-computed <see cref="PaletteResultsComputedAction.Results"/>. The D20
     /// stale-result guard refuses assignments that arrive after the palette closed

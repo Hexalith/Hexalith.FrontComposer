@@ -530,8 +530,6 @@ public sealed class CommandPaletteEffects : IDisposable {
     public async Task HandlePaletteResultActivated(PaletteResultActivatedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
-        long activationAttempt = Interlocked.Increment(ref _activationAttemptVersion);
-
         FrontComposerCommandPaletteState snapshot = _paletteState.Value;
         if (!snapshot.IsOpen) {
             return;
@@ -553,8 +551,15 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
 
         if (result.Category == PaletteResultCategory.Shortcut && string.IsNullOrEmpty(result.RouteUrl)) {
+            if (snapshot.LoadState != PaletteLoadState.Searching) {
+                dispatcher.Dispatch(new PaletteInformationalShortcutActivatedAction(snapshot.Query) {
+                    OriginScopeGeneration = snapshot.ScopeGeneration,
+                });
+            }
             return;
         }
+
+        long activationAttempt = Interlocked.Increment(ref _activationAttemptVersion);
 
         // D23 sentinel — refill instead of navigating.
         if (string.Equals(result.CommandTypeName, KeyboardShortcutsSentinel, StringComparison.Ordinal)) {
