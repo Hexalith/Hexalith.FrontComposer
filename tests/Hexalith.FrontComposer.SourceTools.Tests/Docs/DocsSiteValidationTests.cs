@@ -614,13 +614,20 @@ public sealed partial class DocsSiteValidationTests {
         try
         {
             string pidFile = Path.Combine(root, "child.pid");
-            string runner = Path.Combine(root, "wait.ps1");
-            await File.WriteAllTextAsync(runner, "[IO.File]::WriteAllText($args[0], [string]$PID); Start-Sleep -Seconds 120", CancellationToken.None);
+            bool windows = OperatingSystem.IsWindows();
+            string executable = windows ? "pwsh" : "sh";
+            string runner = Path.Combine(root, windows ? "wait.ps1" : "wait.sh");
+            // Use a lightweight Unix child so cold PowerShell startup does not consume the deadline.
+            string script = windows
+                ? "[IO.File]::WriteAllText($args[0], [string]$PID); Start-Sleep -Seconds 120"
+                : """printf '%s' "$$" > "$1"; exec sleep 120""";
+            await File.WriteAllTextAsync(runner, script, CancellationToken.None);
+            string[] arguments = windows ? ["-NoProfile", "-File", runner, pidFile] : [runner, pidFile];
 
             TimeoutException exception = await Should.ThrowAsync<TimeoutException>(() => RunFluentProcessWithTimeoutAsync(
-                root, "pwsh", null, TimeSpan.FromSeconds(10), "-NoProfile", "-File", runner, pidFile));
+                root, executable, null, TimeSpan.FromSeconds(10), arguments));
 
-            exception.Message.ShouldBe("pwsh did not exit within 10 seconds.");
+            exception.Message.ShouldBe($"{executable} did not exit within 10 seconds.");
             File.Exists(pidFile).ShouldBeTrue("the child must have started before the deadline");
             int childId = int.Parse(await File.ReadAllTextAsync(pidFile, CancellationToken.None), System.Globalization.CultureInfo.InvariantCulture);
             try
