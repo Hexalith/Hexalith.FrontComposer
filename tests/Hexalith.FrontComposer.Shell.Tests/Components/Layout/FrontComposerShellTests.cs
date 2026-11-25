@@ -868,6 +868,36 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public async Task RendererDiscardsNavigationSupersededDuringHandoff() {
+        HandoffNavigationManager navigation = new();
+        Services.Replace(ServiceDescriptor.Singleton<NavigationManager>(navigation));
+        EnsureStoreInitialized();
+        IActionSubscriber actions = Services.GetRequiredService<IActionSubscriber>();
+        var keyboardRegistration = KeyboardModule.SetupVoid("registerShellKeyFilter", invocation => invocation.Arguments is [ElementReference]);
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>();
+        cut.WaitForAssertion(() => keyboardRegistration.Invocations.Count.ShouldBe(1));
+
+        List<(string? Context, bool OnRenderer)> contexts = [];
+        actions.SubscribeToAction<BoundedContextChangedAction>(this,
+            action => contexts.Add((action.NewBoundedContext, Renderer.Dispatcher.CheckAccess())));
+        navigation.NavigateTo("/orders/list");
+        keyboardRegistration.SetVoidResult();
+        cut.WaitForAssertion(() => contexts.ShouldBe([("orders", true)]));
+        using ManualResetEventSlim navigationFinished = new();
+        // Hold the renderer for one synchronous turn so both notifications queue behind it.
+        await cut.InvokeAsync(() => {
+            _ = Task.Run(() => {
+                navigation.NavigateTo("/domain/commerce/submit-order-command");
+                navigation.NavigateTo("/counter/counter-view");
+                navigation.NavigateTo("/domain/commerce/submit-order-command");
+                navigationFinished.Set();
+            });
+            navigationFinished.Wait(TimeSpan.FromSeconds(5)).ShouldBeTrue();
+        });
+        cut.WaitForAssertion(() => contexts.ShouldBe([("orders", true), ("commerce", true)]));
+    }
+
+    [Fact]
     public void LateHydratedSessionRoute_RestoresFromHomeAfterHydrationCompletes() {
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
         registry.GetManifests().Returns([

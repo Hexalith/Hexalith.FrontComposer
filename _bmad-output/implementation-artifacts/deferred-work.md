@@ -2357,7 +2357,8 @@ resolution: Matched the keyboard interop setup against its declared ElementRefer
 origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccommandpalette-and-keyboard-shortcuts — Pass 6 / Chunk 2 (2026-04-25 bmad-code-review)"), 2026-08-27
 location: FrontComposerShell.razor.cs:OnAfterRenderAsync
 reason: **`OnAfterRenderAsync` `RegisterLocationTracking` precedes `SyncCurrentBoundedContext` — race in CSR-prerender hand-off window** [`FrontComposerShell.razor.cs:OnAfterRenderAsync`] — Both fire and race to dispatch. Action is idempotent in payload; observable only in narrow timing windows. Pre-existing. Reconciliation: Row: DW-0263; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: FrontComposerShell.razor.cs:OnAfterRenderAsync.
-status: open
+status: done 2026-11-25
+resolution: Serialized shell startup and location updates on the renderer and ignored superseded location notifications.
 
 ### DW-995: `registerShellKeyFilter` early-return on `__fcShellKeyFilter` marker after circuit reconnect — sub-finding of C2-D1
 

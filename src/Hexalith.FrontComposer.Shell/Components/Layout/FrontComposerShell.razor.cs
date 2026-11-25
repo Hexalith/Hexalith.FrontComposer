@@ -109,6 +109,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
     private ElementReference _startupFailureHeading;
     private bool _locationTrackingRegistered;
+    private int _locationChangeVersion;
     private readonly object _locationTrackingSync = new();
     private bool _sessionRestoreAttempted;
     private string? _initialRenderUri;
@@ -581,13 +582,13 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
         if (firstRender) {
             try {
-                await ApplyThemeAsync().ConfigureAwait(false);
-                await RegisterBeforeUnloadAsync().ConfigureAwait(false);
-                await RegisterKeyboardInteropAsync().ConfigureAwait(false);
+                await ApplyThemeAsync().ConfigureAwait(true);
+                await RegisterBeforeUnloadAsync().ConfigureAwait(true);
+                await RegisterKeyboardInteropAsync().ConfigureAwait(true);
                 RegisterLocationTracking();
                 DispatchStorageReadyIfScopeAvailable();
                 SyncCurrentBoundedContext(NavigationManager.Uri);
-                await Registrar.RegisterShellDefaultsAsync().ConfigureAwait(false);
+                await Registrar.RegisterShellDefaultsAsync().ConfigureAwait(true);
                 _initialRenderUri = NavigationManager.Uri;
                 _interactiveReady = true;
                 _ = InvokeAsync(StateHasChanged);
@@ -844,19 +845,25 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         }
     }
 
-    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e) {
+    private async void HandleLocationChanged(object? sender, LocationChangedEventArgs e) {
+        int version = Interlocked.Increment(ref _locationChangeVersion);
         try {
-            NavigationFailure.ObserveLocation(e.Location);
-            SyncCurrentBoundedContext(e.Location);
+            await InvokeAsync(() => {
+                // The renderer can process a queued notification after another navigation.
+                if (_locationTrackingRegistered
+                    && version == Volatile.Read(ref _locationChangeVersion)
+                    && string.Equals(e.Location, NavigationManager.Uri, StringComparison.Ordinal)) {
+                    NavigationFailure.ObserveLocation(e.Location);
+                    SyncCurrentBoundedContext(e.Location);
+                }
+            }).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException) {
-            // An aborted circuit (network disconnect / tab close) may dispose the Fluxor dispatcher
-            // before DisposeAsync runs. Some Fluxor versions throw InvalidOperationException once
-            // the store is disposed; others throw ObjectDisposedException. Detach the handler
-            // defensively so future LocationChanged events do not re-enter a disposed scope.
-            // Lock-protected detach (P14) prevents a racing DisposeAsync from leaving the field
-            // in a transient inconsistent state.
+        catch (InvalidOperationException) {
+            // A circuit can dispose its renderer or dispatcher before shell disposal runs.
             DetachLocationTracking();
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            await DispatchExceptionAsync(ex).ConfigureAwait(false);
         }
     }
 

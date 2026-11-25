@@ -15,7 +15,8 @@ public sealed partial class FatalExceptionGuardGovernanceTests {
     // .NET 11 account-state observation adds its shared fatal filter for asynchronous authentication failures.
     // DW-900 adds a guard for authorization failures during ranked command selection.
     // DW-925 adds a guard for failing identity accessors.
-    private const int ExpectedCatchFilterCount = 83;
+    // DW-994 routes location callback failures through the component error boundary.
+    private const int ExpectedCatchFilterCount = 84;
     private const string ExceptionGuardPath = "Services/ExceptionGuard.cs";
     private static readonly HashSet<string> FatalTypeNames = new(StringComparer.Ordinal) {
         nameof(OutOfMemoryException),
