@@ -53,6 +53,33 @@ public sealed class StatusOverviewAnnouncementTests : GeneratedComponentTestBase
     }
 
     [Fact]
+    public async Task DistinctStatusesWithTheSameDisplayLabelDispatchDistinctKeys()
+    {
+        Services.AddSingleton(Substitute.For<IEmptyStateCtaResolver>());
+        Services.AddFluxor(options => options.ScanTypes(typeof(StatusOverviewAnnouncementProjectionFeature),
+            typeof(StatusOverviewAnnouncementProjectionReducers)));
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        IRenderedComponent<StatusOverviewAnnouncementProjectionView> cut = Render<StatusOverviewAnnouncementProjectionView>();
+        List<object> expandedKeys = [];
+        dispatcher.ActionDispatched += (_, args) => {
+            if (args.Action is ExpandRowAction expand) {
+                expandedKeys.Add(expand.ItemKey);
+            }
+        };
+
+        MethodInfo click = typeof(StatusOverviewAnnouncementProjectionView)
+            .GetMethod("HandleStatusOverviewRowClickAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Type rowType = click.GetParameters()[0].ParameterType;
+        foreach (StatusOverviewAnnouncementState status in new[] { StatusOverviewAnnouncementState.Open, StatusOverviewAnnouncementState.Closed }) {
+            object row = Activator.CreateInstance(rowType, status, "Shared display label", 1, (long)status, null)!;
+            await cut.InvokeAsync(() => (Task)click.Invoke(cut.Instance, [row])!);
+        }
+
+        expandedKeys.ShouldBe(["0", "1"]);
+    }
+
+    [Fact]
     public async Task RemovedStatusGroupWithoutExcludingFilterHasNoClearFilterBanner()
     {
         Services.AddSingleton(Substitute.For<IEmptyStateCtaResolver>());
@@ -66,8 +93,10 @@ public sealed class StatusOverviewAnnouncementTests : GeneratedComponentTestBase
         ExpandedRowFeature expansion = Services.GetRequiredService<ExpandedRowFeature>();
         await cut.InvokeAsync(() => expansion.RestoreState(new ExpandedRowState {
             ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty
-                .Add(EphemeralKey(cut), new ExpandedRowEntry("Open", DateTimeOffset.UtcNow)),
+                .Add(EphemeralKey(cut), new ExpandedRowEntry(StatusOverviewAnnouncementState.Open.ToString("D"), DateTimeOffset.UtcNow)),
         }));
+        cut.Find(".fc-expand-in-row-detail").GetAttribute("aria-label").ShouldBe("Details for Open");
+        cut.Find(".fc-expand-in-row-detail").TextContent.ShouldContain("open");
         await cut.InvokeAsync(() => dispatcher.Dispatch(new StatusOverviewAnnouncementProjectionLoadedAction("deleted", Rows(false))
             { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" }));
         cut.Find("[data-testid='fc-expanded-row-hidden-banner']").TextContent.ShouldContain("not in the current results");
@@ -97,7 +126,7 @@ public sealed class StatusOverviewAnnouncementTests : GeneratedComponentTestBase
         ExpandedRowFeature expansion = Services.GetRequiredService<ExpandedRowFeature>();
         await cut.InvokeAsync(() => expansion.RestoreState(new ExpandedRowState {
             ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty
-                .Add(EphemeralKey(cut), new ExpandedRowEntry("Open", DateTimeOffset.UtcNow)),
+                .Add(EphemeralKey(cut), new ExpandedRowEntry(StatusOverviewAnnouncementState.Open.ToString("D"), DateTimeOffset.UtcNow)),
         }));
         cut.WaitForAssertion(() => cut.Find("[data-testid='fc-expanded-row-hidden-banner']")
             .TextContent.ShouldContain("Clear filter"));
@@ -119,7 +148,7 @@ public sealed class StatusOverviewAnnouncementTests : GeneratedComponentTestBase
         ExpandedRowFeature expansion = Services.GetRequiredService<ExpandedRowFeature>();
         await cut.InvokeAsync(() => expansion.RestoreState(new ExpandedRowState {
             ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty
-                .Add(EphemeralKey(cut), new ExpandedRowEntry("Open", DateTimeOffset.UtcNow)),
+                .Add(EphemeralKey(cut), new ExpandedRowEntry(StatusOverviewAnnouncementState.Open.ToString("D"), DateTimeOffset.UtcNow)),
         }));
         DataGridNavigationFeature navigation = Services.GetRequiredService<DataGridNavigationFeature>();
         DataGridNavigationState current = Services.GetRequiredService<IState<DataGridNavigationState>>().Value;
@@ -162,7 +191,7 @@ public sealed class StatusOverviewAnnouncementTests : GeneratedComponentTestBase
         ExpandedRowFeature expansion = Services.GetRequiredService<ExpandedRowFeature>();
         await cut.InvokeAsync(() => expansion.RestoreState(new ExpandedRowState {
             ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty
-                .Add(EphemeralKey(cut), new ExpandedRowEntry("Open", DateTimeOffset.UtcNow)),
+                .Add(EphemeralKey(cut), new ExpandedRowEntry(StatusOverviewAnnouncementState.Open.ToString("D"), DateTimeOffset.UtcNow)),
         }));
         cut.FindAll("[data-testid='fc-expanded-row-hidden-banner']").ShouldBeEmpty();
         if (changeFilter)
@@ -200,8 +229,8 @@ public sealed class StatusOverviewAnnouncementTests : GeneratedComponentTestBase
         string secondKey = EphemeralKey(second);
         await first.InvokeAsync(() => expansion.RestoreState(new ExpandedRowState {
             ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty
-                .Add(firstKey, new ExpandedRowEntry("Open", DateTimeOffset.UtcNow))
-                .Add(secondKey, new ExpandedRowEntry("Open", DateTimeOffset.UtcNow)),
+                .Add(firstKey, new ExpandedRowEntry(StatusOverviewAnnouncementState.Open.ToString("D"), DateTimeOffset.UtcNow))
+                .Add(secondKey, new ExpandedRowEntry(StatusOverviewAnnouncementState.Open.ToString("D"), DateTimeOffset.UtcNow)),
         }));
         DataGridNavigationFeature navigation = Services.GetRequiredService<DataGridNavigationFeature>();
         DataGridNavigationState current = Services.GetRequiredService<IState<DataGridNavigationState>>().Value;

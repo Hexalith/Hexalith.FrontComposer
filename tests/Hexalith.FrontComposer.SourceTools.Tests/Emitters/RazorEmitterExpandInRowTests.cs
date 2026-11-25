@@ -44,7 +44,7 @@ public sealed class RazorEmitterExpandInRowTests {
         string src = RazorEmitter.Emit(Model(ProjectionRenderStrategy.StatusOverview,
             Col("Id"), Col("Status", TypeCategory.Enum)));
 
-        src.ShouldContain("unfilteredGroupedItems.Any(group => string.Equals(group.StatusLabel, _expandedStatusKey, StringComparison.Ordinal))");
+        src.ShouldContain("unfilteredGroupedItems.Any(group => string.Equals(group.StatusKey, _expandedStatusKey, StringComparison.Ordinal))");
         src.ShouldContain("!string.IsNullOrWhiteSpace(_activeStatusFilter)");
         src.ShouldContain("_statusLastCompletedRequestIdentity");
         src.ShouldNotContain("_expandedStatusHiddenByChangedFilter");
@@ -146,6 +146,10 @@ public sealed class RazorEmitterExpandInRowTests {
         RenderTreeSequenceRewriterTests.ShouldUseLiteralRenderTreeSequences(src);
         src.ShouldContain("OrderProjectionStatusOverviewRow");
         src.ShouldContain("HandleStatusOverviewRowClickAsync");
+        src.ShouldContain("Status?.ToString(\"D\") ?? \"null\"");
+        src.ShouldContain("object key = row.StatusKey;");
+        src.ShouldContain("static r => (object)r.StatusKey");
+        src.ShouldContain("string.Equals(item.StatusKey, _expandedStatusKey, StringComparison.Ordinal)");
         src.ShouldContain("TemplateColumn<OrderProjectionStatusOverviewRow>");
         src.ShouldContain("aria-controls\", _expandPanelId");
         src.ShouldContain("WebRenderTreeBuilderExtensions.AddEventStopPropagationAttribute(rb, 8, \"onclick\", true);");

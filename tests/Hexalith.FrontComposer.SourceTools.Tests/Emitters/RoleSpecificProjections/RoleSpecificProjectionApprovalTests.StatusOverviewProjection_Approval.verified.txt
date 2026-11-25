@@ -115,7 +115,10 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
 
     private readonly string _expandPanelId = "fc-expand-panel-Tickets-RoleSpecific-Tickets-StatusOverviewProjection-" + System.Guid.NewGuid().ToString("N");
 
-    private sealed record StatusOverviewProjectionStatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, StatusOverviewProjection? DetailItem);
+    private sealed record StatusOverviewProjectionStatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, StatusOverviewProjection? DetailItem)
+    {
+        public string StatusKey { get; } = Status?.ToString("D") ?? "null";
+    }
 
     private static long GetEnumSortOrder(Enum? value)
     {
@@ -766,7 +769,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
     private System.Threading.Tasks.Task HandleStatusOverviewRowClickAsync(StatusOverviewProjectionStatusOverviewRow row)
     {
         if (row is null) { return System.Threading.Tasks.Task.CompletedTask; }
-        object key = row.StatusLabel;
+        object key = row.StatusKey;
         var entry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);
         if (entry.HasValue && entry.Value.ItemKey.Equals(key))
         {
@@ -1259,19 +1262,19 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         // Story 4-5 — resolve expanded-row state for this StatusOverview render pass.
         global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);
         object? _expandedItemKey = _expandedEntry?.ItemKey;
+        string? _expandedStatusKey = _expandedItemKey as string;
         StatusOverviewProjectionStatusOverviewRow? _expandedStatusOverviewItem = null;
         if (_expandedItemKey is not null)
         {
             foreach (var __candidate in groupedItems)
             {
-                if (string.Equals(__candidate.StatusLabel, _expandedItemKey.ToString(), StringComparison.Ordinal))
+                if (string.Equals(__candidate.StatusKey, _expandedStatusKey, StringComparison.Ordinal))
                 {
                     _expandedStatusOverviewItem = __candidate;
                     break;
                 }
             }
         }
-        string? _expandedStatusKey = _expandedItemKey?.ToString();
         string _statusResultIdentity = PrimaryCompletedPage()?.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? state.LastResultCorrelationId ?? "initial";
         string _statusRequestIdentity = PageRequestIdentity(CurrentGridSnapshot());
         if (_statusResultScopeGeneration != LoadedPageState.Value.ScopeGeneration)
@@ -1289,7 +1292,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
             && string.Equals(_statusLastCompletedRequestIdentity, _statusRequestIdentity, StringComparison.Ordinal);
         bool _expandedItemMissing = _expandedStatusKey is not null && _expandedStatusOverviewItem is null;
         bool _expandedItemHiddenByFilter = _statusResultSettled && _expandedItemMissing && !string.IsNullOrWhiteSpace(_activeStatusFilter)
-            && unfilteredGroupedItems.Any(group => string.Equals(group.StatusLabel, _expandedStatusKey, StringComparison.Ordinal));
+            && unfilteredGroupedItems.Any(group => string.Equals(group.StatusKey, _expandedStatusKey, StringComparison.Ordinal));
 
         builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner>(100);
         builder.AddAttribute(101, "ViewKey", _viewKey);
@@ -1310,8 +1313,8 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         builder.AddAttribute(114, "ItemSize", GridRowHeight);
         builder.AddAttribute(115, "data-fc-grid-item-size", GridRowHeight.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.AddAttribute(116, "OverscanCount", 3);
-        builder.AddAttribute(117, "ItemKey", (System.Func<StatusOverviewProjectionStatusOverviewRow, object>)(static r => (object)r.StatusLabel));
-        builder.AddAttribute(118, "RowClass", (System.Func<StatusOverviewProjectionStatusOverviewRow, string?>)(row => _expandedItemKey is not null && string.Equals(row.StatusLabel, _expandedItemKey.ToString(), StringComparison.Ordinal) ? "fc-row-expanded" : null));
+        builder.AddAttribute(117, "ItemKey", (System.Func<StatusOverviewProjectionStatusOverviewRow, object>)(static r => (object)r.StatusKey));
+        builder.AddAttribute(118, "RowClass", (System.Func<StatusOverviewProjectionStatusOverviewRow, string?>)(row => _expandedItemKey is not null && string.Equals(row.StatusKey, _expandedStatusKey, StringComparison.Ordinal) ? "fc-row-expanded" : null));
         builder.AddAttribute(119, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
         {
 
@@ -1377,7 +1380,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
             b.AddAttribute(310, "Width", "40px");
             b.AddAttribute(311, "ChildContent", (RenderFragment<StatusOverviewProjectionStatusOverviewRow>)(item => (RenderTreeBuilder rb) =>
             {
-                bool _isThisRowExpanded = _expandedItemKey is not null && string.Equals(item.StatusLabel, _expandedItemKey.ToString(), StringComparison.Ordinal) && _expandedStatusOverviewItem is not null;
+                bool _isThisRowExpanded = _expandedItemKey is not null && string.Equals(item.StatusKey, _expandedStatusKey, StringComparison.Ordinal) && _expandedStatusOverviewItem is not null;
                 string _buttonClass = _isThisRowExpanded ? "fc-expand-button fc-expand-button--open" : "fc-expand-button";
                 string _ariaLabelKey = _isThisRowExpanded ? "CollapseRowButtonAriaLabelTemplate" : "ExpandRowButtonAriaLabelTemplate";
                 string _ariaLabel = FcShellLocalizer[_ariaLabelKey, item.StatusLabel].Value;
@@ -1409,7 +1412,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         builder.AddAttribute(122, "ViewKey", _ephemeralViewKey);
         builder.AddAttribute(123, "PanelId", _expandPanelId);
         builder.AddAttribute(124, "HasExpanded", _expandedStatusOverviewItem?.DetailItem is not null);
-        builder.AddAttribute(125, "DetailPanelAriaLabel", FcShellLocalizer["ExpandInRowDetailPanelAriaLabelTemplate", _expandedItemKey?.ToString() ?? string.Empty].Value);
+        builder.AddAttribute(125, "DetailPanelAriaLabel", FcShellLocalizer["ExpandInRowDetailPanelAriaLabelTemplate", _expandedStatusOverviewItem?.StatusLabel ?? string.Empty].Value);
         builder.AddAttribute(126, "SuppressedAnnouncement", _expandedItemHiddenByFilter ? FcShellLocalizer["ExpandInRowDetailSuppressedByFilterAnnouncement"].Value : null);
         builder.AddAttribute(127, "SuppressStandaloneAnnouncement", true);
         builder.AddAttribute(128, "ChildContent", (RenderFragment)((RenderTreeBuilder builder) =>

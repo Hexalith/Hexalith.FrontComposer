@@ -2403,7 +2403,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-states-field-descriptions-and-unsupported-types — Pass 3 (2026-04-25 bmad-code-review)"), 2026-08-27
 location: src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs
 reason: **`_expandedItemKey.Equals(key)` StatusOverview key fragility** [`src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs ~line 1761, 1970`] — Two enum values humanizing to the same `StatusLabel` (e.g., a localized override) collapse/expand the wrong group. Narrow edge case; revisit if surfaced by adopter. Reconciliation: Row: DW-0269; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC5-AC13, AC26-AC29, AC33-AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs ~line 1761, 1970.
-status: open
+status: done 2026-11-25
+resolution: Used stable enum-value keys for StatusOverview rendering and expansion, including a distinct null group.
 
 ### DW-1001: `RegisterDomain` not thread-safe with resolver's `_registry.GetManifests()` enumeration
 

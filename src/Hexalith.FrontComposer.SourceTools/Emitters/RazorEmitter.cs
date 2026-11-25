@@ -371,7 +371,10 @@ public static class RazorEmitter {
             _ = sb.AppendLine();
         }
         else if (model.Strategy == ProjectionRenderStrategy.StatusOverview) {
-            _ = sb.AppendLine("    private sealed record " + model.TypeName + "StatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, " + model.TypeName + "? DetailItem);");
+            _ = sb.AppendLine("    private sealed record " + model.TypeName + "StatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, " + model.TypeName + "? DetailItem)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        public string StatusKey { get; } = Status?.ToString(\"D\") ?? \"null\";");
+            _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
             EmitStatusOverviewSortHelper(sb, model);
         }
@@ -1489,7 +1492,7 @@ public static class RazorEmitter {
                 _ = sb.AppendLine("    private System.Threading.Tasks.Task HandleStatusOverviewRowClickAsync(" + model.TypeName + "StatusOverviewRow row)");
                 _ = sb.AppendLine("    {");
                 _ = sb.AppendLine("        if (row is null) { return System.Threading.Tasks.Task.CompletedTask; }");
-                _ = sb.AppendLine("        object key = row.StatusLabel;");
+                _ = sb.AppendLine("        object key = row.StatusKey;");
                 _ = sb.AppendLine("        var entry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
                 _ = sb.AppendLine("        if (entry.HasValue && entry.Value.ItemKey.Equals(key))");
                 _ = sb.AppendLine("        {");
