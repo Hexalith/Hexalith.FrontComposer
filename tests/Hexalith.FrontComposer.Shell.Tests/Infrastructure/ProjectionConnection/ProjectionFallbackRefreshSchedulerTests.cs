@@ -1,11 +1,14 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Text.Json;
 
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
@@ -1507,7 +1510,9 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
     [InlineData(false)]
     public async Task FailedEligibleLanesConsumeFallbackAndNudgeAttemptBudget(bool fallback)
     {
+        const string secret = "secret-from-refresh-callback";
         int attempts = 0;
+        CapturingLogger<ProjectionFallbackRefreshScheduler> logger = new();
         TestConnectionState state = new(new ProjectionConnectionSnapshot(
             ProjectionConnectionStatus.Disconnected, DateTimeOffset.UtcNow, 1, "Closed"));
         ProjectionFallbackRefreshScheduler scheduler = new(
@@ -1515,23 +1520,33 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
                 ProjectionFallbackPollingIntervalSeconds = 15,
                 MaxProjectionFallbackPollingLanes = 1,
-            }).ToMonitor(), NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
+            }).ToMonitor(), logger);
         for (int index = 0; index < 3; index++)
         {
             _ = scheduler.RegisterLane(DefaultLane("acme:OrdersProjection:" + index) with {
                 RefreshAsync = _ => {
                     Interlocked.Increment(ref attempts);
-                    throw new InvalidOperationException("fixture failure");
+                    throw new InvalidOperationException(secret);
                 },
             });
         }
 
+        using var parent = new Activity(nameof(FailedEligibleLanesConsumeFallbackAndNudgeAttemptBudget)).SetIdFormat(ActivityIdFormat.W3C).Start();
+        using var capture = ActivityCapture.Start();
         int refreshed = fallback
             ? await scheduler.TriggerFallbackOnceAsync(TestContext.Current.CancellationToken).ConfigureAwait(true)
             : await scheduler.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         refreshed.ShouldBe(0);
         attempts.ShouldBe(1);
+        CapturedLogEntry warning = TelemetryRedactionAssertions.AssertLog(logger.Entries, 5621, secret, "acme");
+        warning.State["FailureCategory"].ShouldBe(nameof(InvalidOperationException));
+        warning.State["ProjectionType"].ShouldBe("OrdersProjection");
+        if (fallback) {
+            Activity activity = TelemetryRedactionAssertions.AssertActivity(capture, parent.TraceId,
+                FrontComposerTelemetry.ProjectionFallbackPollOperation, secret, "acme");
+            activity.GetTagItem(FrontComposerTelemetry.OutcomeTag).ShouldBe("empty");
+        }
     }
 
     [Fact]

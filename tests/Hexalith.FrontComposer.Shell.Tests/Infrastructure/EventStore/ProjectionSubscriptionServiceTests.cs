@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 
@@ -10,6 +11,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services;
@@ -18,6 +20,7 @@ using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -1159,7 +1162,6 @@ public sealed class ProjectionSubscriptionServiceTests {
         TestNotifier notifier = new();
         CapturingLogger<ProjectionSubscriptionService> logger = new();
         const string sensitive = "tenant=acme group=orders:acme token=Bearer-secret";
-        connection.JoinException = new InvalidOperationException(sensitive);
 
         ProjectionSubscriptionService sut = new(
             Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
@@ -1174,21 +1176,23 @@ public sealed class ProjectionSubscriptionServiceTests {
             logger,
             userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
-        connection.JoinException = null;
-        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+        await using ConfiguredAsyncDisposable subscriptionLifetime = sut.ConfigureAwait(true);
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        await sut.SubscribeAsync("orders", "acme", cancellationToken);
         connection.JoinException = new InvalidOperationException(sensitive);
+        using var parent = new Activity(nameof(RejoinFailure_LogsRedactedFailureCategory_NotRawExceptionMessage)).SetIdFormat(ActivityIdFormat.W3C).Start();
+        using var capture = ActivityCapture.Start();
 
         await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
 
-        logger.Entries.ShouldNotBeEmpty();
-        foreach (CapturingLogger<ProjectionSubscriptionService>.Entry entry in logger.Entries) {
-            entry.Message.ShouldNotContain("acme");
-            entry.Message.ShouldNotContain("orders:acme");
-            entry.Message.ShouldNotContain("Bearer-secret");
-            entry.Message.ShouldNotContain(sensitive);
-        }
-
-        logger.Entries.ShouldContain(e => e.Message.Contains("InvalidOperationException", StringComparison.Ordinal));
+        CapturedLogEntry warning = TelemetryRedactionAssertions.AssertLog(
+            logger.Entries, 5623, "acme", "orders:acme", "Bearer-secret");
+        warning.State["FailureCategory"].ShouldBe(nameof(InvalidOperationException));
+        warning.State["ProjectionType"].ShouldBe("orders");
+        Activity activity = TelemetryRedactionAssertions.AssertActivity(capture, parent.TraceId,
+            FrontComposerTelemetry.ProjectionRejoinOperation, "acme", "orders:acme", "Bearer-secret");
+        activity.Status.ShouldBe(ActivityStatusCode.Error);
+        activity.GetTagItem(FrontComposerTelemetry.FailureCategoryTag).ShouldBe(nameof(InvalidOperationException));
     }
 
     private static ProjectionSubscriptionService Create(
@@ -1494,22 +1498,5 @@ public sealed class ProjectionSubscriptionServiceTests {
     private sealed class MutableUserContextAccessor(string? tenantId, string? userId) : IUserContextAccessor {
         public string? TenantId { get; set; } = tenantId;
         public string? UserId { get; set; } = userId;
-    }
-
-    private sealed class CapturingLogger<T> : ILogger<T> {
-        public List<Entry> Entries { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel,
-            EventId eventId,
-            TState state,
-            Exception? exception,
-            Func<TState, Exception?, string> formatter) => Entries.Add(new Entry(logLevel, formatter(state, exception), exception?.GetType().Name));
-
-        public sealed record Entry(LogLevel Level, string Message, string? ExceptionType);
     }
 }

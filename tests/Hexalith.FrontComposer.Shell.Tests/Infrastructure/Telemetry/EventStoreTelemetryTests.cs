@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Communication;
@@ -9,8 +10,11 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Options;
+using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -214,6 +218,103 @@ public sealed class EventStoreTelemetryTests {
         activity.Tags.Select(static tag => tag.Value).ShouldNotContain("tenant-secret");
     }
 
+
+    [Fact]
+    public async Task TokenAcquisitionFailureKeepsProviderDetailOutOfDiagnostics() {
+        const string secret = "secret-from-access-token-provider";
+        CapturingLogger<FrontComposerAccessTokenProvider> tokenLogger = new();
+        FrontComposerAuthenticationOptions authentication = new();
+        authentication.TokenRelay.HostAccessTokenProvider = _ => throw new InvalidOperationException(secret);
+        FrontComposerAccessTokenProvider tokenProvider = new(
+            new HttpContextAccessor(), new CircuitServicesAccessor(), new FrontComposerUserTokenStore(),
+            Microsoft.Extensions.Options.Options.Create(authentication), tokenLogger);
+        EventStoreOptions options = Options().Value;
+        options.AccessTokenProvider = tokenProvider.GetAccessTokenAsync;
+        RecordingHandler handler = new(_ => throw new InvalidOperationException("No request expected."));
+        CapturingLogger<EventStoreCommandClient> logger = new();
+        EventStoreCommandClient client = new(
+            new SingleClientFactory(handler), Microsoft.Extensions.Options.Options.Create(options),
+            new FixedUlidFactory(), new TestUserContextAccessor("tenant-secret", "user-secret"),
+            EventStoreTestSupport.CreateClassifier(), logger);
+        using var parent = new Activity(nameof(TokenAcquisitionFailureKeepsProviderDetailOutOfDiagnostics)).SetIdFormat(ActivityIdFormat.W3C).Start();
+        using var capture = ActivityCapture.Start();
+
+        var error = await Should.ThrowAsync<FrontComposerAuthenticationException>(() =>
+            client.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken));
+
+        error.InnerException!.Message.ShouldBe(secret);
+        handler.LastRequest.ShouldBeNull();
+        CapturedLogEntry warning = TelemetryRedactionAssertions.AssertLog(
+            tokenLogger.Entries, 5666, secret, "tenant-secret", "user-secret");
+        warning.State["ExceptionType"].ShouldBe(typeof(InvalidOperationException).FullName);
+        TelemetryRedactionAssertions.AssertLogs(logger.Entries, secret, "tenant-secret", "user-secret");
+        Activity activity = TelemetryRedactionAssertions.AssertActivity(capture, parent.TraceId,
+            FrontComposerTelemetry.CommandDispatchOperation, secret, "tenant-secret", "user-secret");
+        activity.Status.ShouldBe(ActivityStatusCode.Error);
+        activity.GetTagItem(FrontComposerTelemetry.FailureCategoryTag).ShouldBe(nameof(FrontComposerAuthenticationException));
+        activity.GetTagItem(FrontComposerTelemetry.OutcomeTag).ShouldBe("failed");
+    }
+
+    [Fact]
+    public async Task MalformedQueryJsonKeepsResponseDetailOutOfDiagnostics() {
+        const string secret = "secret-response-value";
+        // The JSON parser includes the unexpected first character in its error.
+        const string body = "!" + secret;
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK) {
+            Content = new StringContent(body, Encoding.UTF8, "application/json"),
+        });
+        CapturingLogger<EventStoreQueryClient> logger = new();
+        EventStoreQueryClient client = new(
+            new SingleClientFactory(handler), Options(), new TestUserContextAccessor("tenant-secret", "user-secret"),
+            EventStoreTestSupport.CreateClassifier(), new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(), logger);
+        using var parent = new Activity(nameof(MalformedQueryJsonKeepsResponseDetailOutOfDiagnostics)).SetIdFormat(ActivityIdFormat.W3C).Start();
+        using var capture = ActivityCapture.Start();
+
+        var error = await Should.ThrowAsync<ProjectionSchemaMismatchException>(() =>
+            client.QueryAsync<OrderProjection>(
+                QueryRequest.Create(Criteria: new ProjectionQuery("orders"), TenantId: "tenant-secret", Domain: "orders",
+                    AggregateId: "order-1", QueryType: "ReadOrders"),
+                TestContext.Current.CancellationToken));
+
+        error.InnerException.ShouldBeAssignableTo<JsonException>();
+        error.InnerException!.Message.ShouldContain("'!'");
+        CapturedLogEntry warning = TelemetryRedactionAssertions.AssertLog(
+            logger.Entries, 5611, secret, "'!'", "tenant-secret", "user-secret");
+        warning.State["FailureCategory"].ShouldBe(error.InnerException!.GetType().Name);
+        Activity activity = TelemetryRedactionAssertions.AssertActivity(capture, parent.TraceId,
+            FrontComposerTelemetry.QueryExecuteOperation, secret, "'!'", "tenant-secret", "user-secret");
+        activity.Status.ShouldBe(ActivityStatusCode.Error);
+        activity.GetTagItem(FrontComposerTelemetry.FailureCategoryTag).ShouldBe(error.InnerException!.GetType().Name);
+    }
+
+    [Fact]
+    public async Task LifecycleObserverFailureKeepsExceptionDetailOutOfDiagnostics() {
+        const string secret = "secret-from-lifecycle-observer";
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted) {
+            Content = new StringContent("""{"correlationId":"corr-1"}""", Encoding.UTF8, "application/json"),
+        });
+        CapturingLogger<EventStoreCommandClient> logger = new();
+        EventStoreCommandClient client = new(
+            new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("tenant-secret", "user-secret"), EventStoreTestSupport.CreateClassifier(), logger);
+        using var parent = new Activity(nameof(LifecycleObserverFailureKeepsExceptionDetailOutOfDiagnostics)).SetIdFormat(ActivityIdFormat.W3C).Start();
+        using var capture = ActivityCapture.Start();
+
+        CommandResult result = await client.DispatchAsync(new ShipOrderCommand(), (_, _) => throw new InvalidOperationException(secret),
+            TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        CapturedLogEntry warning = TelemetryRedactionAssertions.AssertLog(
+            logger.Entries, 5854, secret, result.MessageId, "tenant-secret", "user-secret");
+        warning.State["ExceptionType"].ShouldBe(typeof(InvalidOperationException).FullName);
+        warning.State["MessageIdDigest"].ShouldBeOfType<string>().ShouldNotBeNullOrWhiteSpace();
+        Activity activity = TelemetryRedactionAssertions.AssertActivity(capture, parent.TraceId,
+            FrontComposerTelemetry.CommandDispatchOperation, secret, "tenant-secret", "user-secret");
+        activity.GetTagItem(FrontComposerTelemetry.OutcomeTag).ShouldBe("accepted");
+        activity.GetTagItem(FrontComposerTelemetry.FailureCategoryTag).ShouldBeNull();
+    }
+
     private static IOptions<EventStoreOptions> Options()
         => Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
             BaseAddress = new Uri("https://eventstore.test"),
@@ -249,46 +350,5 @@ public sealed class EventStoreTelemetryTests {
             LastRequest = request;
             return Task.FromResult(responseFactory(request));
         }
-    }
-
-    private sealed class ActivityCapture : IDisposable {
-        private readonly ActivityListener _listener;
-        private readonly List<Activity> _activities = [];
-        private readonly object _sync = new();
-
-        private ActivityCapture() {
-            _listener = new ActivityListener {
-                ShouldListenTo = source => source.Name == Hexalith.FrontComposer.Contracts.Telemetry.FrontComposerActivitySource.Name,
-                Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-                ActivityStopped = activity => {
-                    lock (_sync) {
-                        _activities.Add(activity);
-                    }
-                },
-            };
-            ActivitySource.AddActivityListener(_listener);
-        }
-
-        public static ActivityCapture Start() => new();
-
-        public Activity Single(string operationName, Func<Activity, bool> predicate) {
-            Activity[] snapshot;
-            lock (_sync) {
-                snapshot = [.. _activities];
-            }
-
-            return snapshot.Single(activity => activity.OperationName == operationName && predicate(activity));
-        }
-
-        public IEnumerable<Activity> AllOf(string operationName) {
-            Activity[] snapshot;
-            lock (_sync) {
-                snapshot = [.. _activities];
-            }
-
-            return snapshot.Where(activity => activity.OperationName == operationName);
-        }
-
-        public void Dispose() => _listener.Dispose();
     }
 }
