@@ -26,6 +26,7 @@ public static class CommandPaletteReducers {
             Query = string.Empty,
             Results = ImmutableArray<PaletteResult>.Empty,
             RecentRouteUrls = ImmutableArray<string>.Empty,
+            RecentRouteLabels = FrontComposerCommandPaletteState.EmptyRecentRouteLabels,
             SelectedIndex = 0,
             LoadState = PaletteLoadState.Idle,
             HydrationState = HydrationState.Idle,
@@ -244,15 +245,23 @@ public static class CommandPaletteReducers {
         RecentRouteVisitedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
         // P14 (2026-04-21 pass-3): OrdinalIgnoreCase dedupe — Blazor's default routing is
         // case-insensitive, so `/Counter` and `/counter` resolve to the same view. Using Ordinal
         // here allowed the ring buffer to fill with near-duplicates differing only in case.
         ImmutableArray<string> updated = state.RecentRouteUrls.Remove(action.Url, StringComparer.OrdinalIgnoreCase).Insert(0, action.Url);
+        ImmutableDictionary<string, string> labels = state.RecentRouteLabels;
+        if (!string.IsNullOrWhiteSpace(action.DisplayLabel)) {
+            labels = labels.SetItem(action.Url, action.DisplayLabel);
+        }
         if (updated.Length > FrontComposerCommandPaletteState.RingBufferCap) {
+            labels = labels.RemoveRange(updated.Skip(FrontComposerCommandPaletteState.RingBufferCap));
             updated = [.. updated.Take(FrontComposerCommandPaletteState.RingBufferCap)];
         }
 
-        return state with { RecentRouteUrls = updated };
+        return state with { RecentRouteUrls = updated, RecentRouteLabels = labels };
     }
 
     /// <summary>
@@ -284,7 +293,7 @@ public static class CommandPaletteReducers {
         ImmutableArray<string> capped = action.RecentRouteUrls.Length > FrontComposerCommandPaletteState.RingBufferCap
             ? [.. action.RecentRouteUrls.Take(FrontComposerCommandPaletteState.RingBufferCap)]
             : action.RecentRouteUrls;
-        return state with { RecentRouteUrls = capped };
+        return state with { RecentRouteUrls = capped, RecentRouteLabels = action.RecentRouteLabels };
     }
 
     /// <summary>
@@ -311,6 +320,7 @@ public static class CommandPaletteReducers {
             IsOpen = false,
             HydrationState = HydrationState.Idle,
             RecentRouteUrls = ImmutableArray<string>.Empty,
+            RecentRouteLabels = FrontComposerCommandPaletteState.EmptyRecentRouteLabels,
             Results = ImmutableArray<PaletteResult>.Empty,
             Query = string.Empty,
             SelectedIndex = 0,

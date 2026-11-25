@@ -82,13 +82,15 @@ public sealed class CommandPaletteE2ETests {
         harness.State.IsOpen.ShouldBeFalse();
         harness.State.RecentRouteUrls.ShouldContain(ExpectedCounterRoute);
         await harness.Storage.Received().SetAsync(
-            Arg.Any<string>(),
-            Arg.Is<string[]>(arr => arr.Contains(ExpectedCounterRoute)));
+            Arg.Is<string>(key => key.EndsWith(":palette-recent:v2", StringComparison.Ordinal)),
+            Arg.Is<PaletteRecentRoute[]>(routes => routes.Any(route =>
+                route.Url == ExpectedCounterRoute && route.Label == counterRow.DisplayLabel)));
 
         // Re-open: the Recent row must surface in the default result set.
         await harness.DispatchAndSettleAsync(new PaletteOpenedAction("c-reopen"));
         harness.State.Results.ShouldContain(
-            r => r.Category == PaletteResultCategory.Recent && r.RouteUrl == ExpectedCounterRoute);
+            r => r.Category == PaletteResultCategory.Recent
+                && r.RouteUrl == ExpectedCounterRoute && r.DisplayLabel == counterRow.DisplayLabel);
     }
 
     [Fact]

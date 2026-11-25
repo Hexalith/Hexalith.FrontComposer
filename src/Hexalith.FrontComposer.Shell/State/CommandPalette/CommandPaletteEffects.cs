@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 
 using Fluxor;
 
@@ -33,6 +34,7 @@ namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
 /// </remarks>
 public sealed class CommandPaletteEffects : IDisposable {
     private const string FeatureSegment = "palette-recent";
+    private const string RecentRouteVersion = "v2";
     private const string DirectionHydrate = "hydrate";
     private const string DirectionPersist = "persist";
     private const int DebounceMilliseconds = 150;
@@ -169,6 +171,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         await HydrateRecentRoutesAsync(dispatcher).ConfigureAwait(false);
     }
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties, typeof(PaletteRecentRoute))]
     private async Task HydrateRecentRoutesAsync(IDispatcher dispatcher) {
         long scopeGeneration = _paletteState.Value.ScopeGeneration;
         if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Palette", DirectionHydrate)) {
@@ -185,13 +188,17 @@ public sealed class CommandPaletteEffects : IDisposable {
             return;
         }
 
-        string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
-        string[]? stored;
+        string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment, RecentRouteVersion);
+        PaletteRecentRoute?[]? stored;
         try {
-            stored = await storage.GetAsync<string[]>(key).ConfigureAwait(false);
-            if (!ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Palette", DirectionHydrate)
-                || !string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
-                || !string.Equals(currentUser, userId, StringComparison.Ordinal)) {
+            stored = await storage.GetAsync<PaletteRecentRoute?[]>(key).ConfigureAwait(false);
+            if (stored is null && IsHydrationScopeCurrent(tenantId, userId)) {
+                string legacyKey = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
+                string[]? legacy = await storage.GetAsync<string[]>(legacyKey).ConfigureAwait(false);
+                stored = legacy?.Select(static url => new PaletteRecentRoute(url, null)).ToArray();
+            }
+
+            if (!IsHydrationScopeCurrent(tenantId, userId)) {
                 return;
             }
         }
@@ -239,9 +246,10 @@ public sealed class CommandPaletteEffects : IDisposable {
 
         // P6 (Pass-6): dedupe identical filtered entries — older code paths or storage corruption
         // could persist duplicates; the reducer dedupes on visit but NOT on hydrate.
-        ImmutableArray<string> filtered = [.. stored
-            .Where(IsAdvertisableRecentRoute)
-            .Distinct(StringComparer.OrdinalIgnoreCase)];
+        PaletteRecentRoute[] filtered = [.. stored
+            .OfType<PaletteRecentRoute>()
+            .Where(static route => IsAdvertisableRecentRoute(route.Url))
+            .DistinctBy(static route => route.Url, StringComparer.OrdinalIgnoreCase)];
         int rejected = stored.Length - filtered.Length;
         if (rejected > 0) {
             FrontComposerDiagnosticLog.PaletteRecentRouteEntriesRejected(
@@ -259,7 +267,11 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
 
         if (filtered.Length > 0) {
-            dispatcher.Dispatch(new PaletteHydratedAction(filtered) { OriginScopeGeneration = scopeGeneration });
+            dispatcher.Dispatch(new PaletteHydratedAction([.. filtered.Select(static route => route.Url)]) {
+                OriginScopeGeneration = scopeGeneration,
+                RecentRouteLabels = filtered.Where(static route => !string.IsNullOrWhiteSpace(route.Label))
+                    .ToImmutableDictionary(static route => route.Url, static route => route.Label!, StringComparer.OrdinalIgnoreCase),
+            });
         }
 
         dispatcher.Dispatch(new PaletteHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
@@ -270,8 +282,8 @@ public sealed class CommandPaletteEffects : IDisposable {
             && string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
             && string.Equals(currentUser, userId, StringComparison.Ordinal);
 
-    private static bool IsAdvertisableRecentRoute(string route) {
-        if (!CommandRouteBuilder.IsInternalRoute(route)) {
+    private static bool IsAdvertisableRecentRoute(string? route) {
+        if (route is null || !CommandRouteBuilder.IsInternalRoute(route)) {
             return false;
         }
 
@@ -446,13 +458,14 @@ public sealed class CommandPaletteEffects : IDisposable {
             }
         }
 
-        // Recent routes whose URL also scores against the query.
-        foreach (string url in _paletteState.Value.RecentRouteUrls) {
-            int score = PaletteScorer.Score(canonical, url);
+        FrontComposerCommandPaletteState recentState = _paletteState.Value;
+        foreach (string url in recentState.RecentRouteUrls) {
+            string label = recentState.GetRecentRouteLabel(url);
+            int score = PaletteScorer.Score(canonical, label);
             if (score > 0) {
                 scored.Add((new PaletteResult(
                     Category: PaletteResultCategory.Recent,
-                    DisplayLabel: url,
+                    DisplayLabel: label,
                     BoundedContext: string.Empty,
                     RouteUrl: url,
                     CommandTypeName: null,
@@ -756,7 +769,12 @@ public sealed class CommandPaletteEffects : IDisposable {
             // ring buffer, even when they carry a RouteUrl (e.g., g-h with RouteUrl="/").
             if (result.Category != PaletteResultCategory.Shortcut) {
                 try {
-                    dispatcher.Dispatch(new RecentRouteVisitedAction(targetUrl));
+                    dispatcher.Dispatch(new RecentRouteVisitedAction(targetUrl) {
+                        DisplayLabel = result.Category == PaletteResultCategory.Recent
+                            ? snapshot.RecentRouteLabels.GetValueOrDefault(targetUrl)
+                            : result.DisplayLabel,
+                        OriginScopeGeneration = snapshot.ScopeGeneration,
+                    });
                 }
                 catch (ObjectDisposedException) {
                     // Navigation tore down the circuit synchronously; nothing to persist.
@@ -808,7 +826,9 @@ public sealed class CommandPaletteEffects : IDisposable {
     [EffectMethod]
     public async Task HandleRecentRouteVisited(RecentRouteVisitedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Palette", DirectionPersist)) {
+        FrontComposerCommandPaletteState snapshot = _paletteState.Value;
+        if (!HydrationScopeGeneration.IsCurrent(snapshot.ScopeGeneration, action.OriginScopeGeneration)
+            || !ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Palette", DirectionPersist)) {
             return;
         }
 
@@ -821,8 +841,9 @@ public sealed class CommandPaletteEffects : IDisposable {
         // BEFORE awaiting the persist gate so the snapshot reflects the action that triggered
         // this effect. Without the synchronous read, two rapid activations could swap snapshots
         // before either persist completes.
-        string[] payload = [.. _paletteState.Value.RecentRouteUrls];
-        string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
+        PaletteRecentRoute[] payload = [.. snapshot.RecentRouteUrls.Select(url =>
+            new PaletteRecentRoute(url, snapshot.RecentRouteLabels.GetValueOrDefault(url)))];
+        string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment, RecentRouteVersion);
 
         // P7 (Pass-6): serialise persist calls so an older payload cannot overwrite a newer one
         // when storage I/O latency exceeds the inter-action interval. Snapshot is captured above.
@@ -1013,10 +1034,11 @@ public sealed class CommandPaletteEffects : IDisposable {
             DescriptionKey: "KeyboardShortcutsCommandDescription"));
 
     private void AddRecentRoutes(ImmutableArray<PaletteResult>.Builder builder) {
-        foreach (string url in _paletteState.Value.RecentRouteUrls) {
+        FrontComposerCommandPaletteState state = _paletteState.Value;
+        foreach (string url in state.RecentRouteUrls) {
             builder.Add(new PaletteResult(
                 Category: PaletteResultCategory.Recent,
-                DisplayLabel: url,
+                DisplayLabel: state.GetRecentRouteLabel(url),
                 BoundedContext: string.Empty,
                 RouteUrl: url,
                 CommandTypeName: null,

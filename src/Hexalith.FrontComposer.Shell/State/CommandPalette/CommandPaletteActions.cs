@@ -65,7 +65,11 @@ public sealed record PaletteResultActivatedAction(int SelectedIndex, PaletteResu
 /// Triggers the recent-route ring-buffer persist effect.
 /// </summary>
 /// <param name="Url">The navigated route URL.</param>
-public sealed record RecentRouteVisitedAction(string Url);
+public sealed record RecentRouteVisitedAction(string Url) {
+    internal string? DisplayLabel { get; init; }
+
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>CommandPaletteEffects.HandleAppInitialized</c> after loading the persisted
@@ -74,6 +78,8 @@ public sealed record RecentRouteVisitedAction(string Url);
 /// <param name="RecentRouteUrls">The persisted (and route-safety-filtered) recent-route list.</param>
 public sealed record PaletteHydratedAction(ImmutableArray<string> RecentRouteUrls) {
     internal long? OriginScopeGeneration { get; init; }
+
+    internal ImmutableDictionary<string, string> RecentRouteLabels { get; init; } = FrontComposerCommandPaletteState.EmptyRecentRouteLabels;
 }
 
 /// <summary>

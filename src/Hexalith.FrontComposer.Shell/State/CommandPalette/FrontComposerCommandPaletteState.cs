@@ -13,8 +13,8 @@ namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
 /// <see langword="false"/> via <c>PaletteClosedAction</c> (D11 dismiss-path coherence).
 /// </para>
 /// <para>
-/// <see cref="Results"/> is NEVER persisted; <see cref="RecentRouteUrls"/> IS persisted under
-/// <c>{tenantId}:{userId}:palette-recent</c> (D10).
+/// <see cref="RecentRouteUrls"/> and their labels are persisted under
+/// <c>{tenantId}:{userId}:palette-recent:v2</c> (D10). <see cref="Results"/> is transient.
 /// </para>
 /// </remarks>
 /// <param name="IsOpen">Whether the palette dialog is currently open.</param>
@@ -48,6 +48,13 @@ public sealed record FrontComposerCommandPaletteState(
     public long ActivationFailureVersion { get; init; }
 
     internal long InformationalShortcutVersion { get; init; }
+
+    internal static ImmutableDictionary<string, string> EmptyRecentRouteLabels { get; } =
+        ImmutableDictionary.Create<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    internal ImmutableDictionary<string, string> RecentRouteLabels { get; init; } = EmptyRecentRouteLabels;
+
+    internal string GetRecentRouteLabel(string url) => RecentRouteLabels.GetValueOrDefault(url, url);
 
     /// <summary>Maximum size of the recent-route ring buffer (Story 3-4 D10).</summary>
     public const int RingBufferCap = 5;

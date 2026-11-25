@@ -46,6 +46,10 @@
                                 {
                                     <span class="fc-palette-option-hint">@Localizer[result.DescriptionKey!].Value</span>
                                 }
+                                @if (HasAmbiguousRecentLabel(result))
+                                {
+                                    <span class="fc-palette-option-hint">@result.RouteUrl</span>
+                                }
                                 @if (_badgeCounts is not null
                                     && result.Category == PaletteResultCategory.Projection
                                     && result.ProjectionType is { } projection
@@ -88,6 +92,12 @@
         => SelectedIndex >= 0 && SelectedIndex < Results.Length
             ? ResultElementId(SelectedIndex)
             : null;
+
+    private bool HasAmbiguousRecentLabel(PaletteResult result)
+        => result.Category == PaletteResultCategory.Recent
+            && Results.Any(other => other.Category == PaletteResultCategory.Recent
+                && !string.Equals(other.RouteUrl, result.RouteUrl, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(other.DisplayLabel, result.DisplayLabel, StringComparison.CurrentCultureIgnoreCase));
 
     /// <inheritdoc />
     protected override void OnInitialized()

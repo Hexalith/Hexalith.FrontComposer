@@ -2,6 +2,7 @@
 #pragma warning disable CA2007 // ConfigureAwait — test code
 #pragma warning disable xUnit1051 // CancellationToken — substitute storage does not honour the token
 using System.Collections.Immutable;
+using System.Text.Json;
 
 using Fluxor;
 
@@ -12,6 +13,7 @@ using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Infrastructure.Storage;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Shortcuts;
@@ -214,7 +216,46 @@ public class CommandPaletteEffectsTests {
 
         await sut.HandlePaletteHydrated(new PaletteHydratedAction(["/x"]), dispatcher);
 
-        await storage.DidNotReceiveWithAnyArgs().SetAsync<string[]>(default!, default!);
+        await storage.DidNotReceiveWithAnyArgs().SetAsync<PaletteRecentRoute[]>(default!, default!);
+    }
+
+    [Fact]
+    public async Task HydratedRecentRouteUsesStoredLabelForDisplayAndSearch() {
+        IState<FrontComposerCommandPaletteState> palette = Substitute.For<IState<FrontComposerCommandPaletteState>>();
+        CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider sp,
+            suppliedPaletteState: palette);
+        IStorageService storage = sp.GetRequiredService<IStorageService>();
+        const string url = "/workspace/opaque-destination";
+        const string label = "Sales forecast";
+        PaletteRecentRoute[] persisted = [new PaletteRecentRoute(url, label),
+            new PaletteRecentRoute(url.ToUpperInvariant(), "Duplicate"),
+            new PaletteRecentRoute("//external.example/", "External")];
+        JsonSerializerOptions storageFormat = LocalStorageService.SchemaLockJsonOptions;
+        string json = JsonSerializer.Serialize(persisted, storageFormat);
+        storage.GetAsync<PaletteRecentRoute[]>(StorageKeys.BuildKey(TestTenant, TestUser, "palette-recent", "v2"))
+            .Returns(JsonSerializer.Deserialize<PaletteRecentRoute[]>(json, storageFormat));
+        dispatcher.When(d => d.Dispatch(Arg.Any<PaletteHydratedAction>())).Do(call =>
+            palette.Value.Returns(CommandPaletteReducers.ReducePaletteHydrated(palette.Value, call.Arg<PaletteHydratedAction>())));
+
+        await sut.HandleAppInitialized(new AppInitializedAction("init"), dispatcher);
+        await storage.DidNotReceive().GetAsync<string[]>(Arg.Any<string>());
+        palette.Value.RecentRouteUrls.ShouldBe([url]);
+
+        await sut.HandlePaletteOpened(new PaletteOpenedAction("open"), dispatcher);
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
+            a.Results.Any(r => r.RouteUrl == url && r.DisplayLabel == label)));
+
+        Task byLabel = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("label", "forecast"), dispatcher);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        await byLabel;
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
+            a.Query == "forecast" && a.Results.Any(r => r.RouteUrl == url && r.DisplayLabel == label)));
+
+        Task byUrl = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("url", "opaque"), dispatcher);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        await byUrl;
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
+            a.Query == "opaque" && a.Results.All(r => r.RouteUrl != url)));
     }
 
     // P27 (Pass-6): D10 hydrate-time route safety filter — `HandleAppInitialized` filters
@@ -230,14 +271,15 @@ public class CommandPaletteEffectsTests {
     public async Task HandleAppInitialized_FiltersTamperedUrls_BeforeDispatchingHydrate(string tampered) {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider sp);
         IStorageService storage = sp.GetRequiredService<IStorageService>();
-        storage.GetAsync<string[]>(Arg.Any<string>()).Returns(["/safe/route", tampered]);
+        storage.GetAsync<string[]>(StorageKeys.BuildKey(TestTenant, TestUser, "palette-recent")).Returns(["/safe/route", tampered]);
 
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 
         // The hydrate dispatch (if any) must NOT include the tampered URL — only the safe entry survives.
         dispatcher.Received().Dispatch(ArgEx.Is<PaletteHydratedAction>(a =>
             !a.RecentRouteUrls.Contains(tampered)
-            && a.RecentRouteUrls.Contains("/safe/route")));
+            && a.RecentRouteUrls.Contains("/safe/route")
+            && a.RecentRouteLabels.IsEmpty));
     }
 
     [Fact]
@@ -939,6 +981,7 @@ public class CommandPaletteEffectsTests {
         services.AddSingleton(accessor);
 
         IStorageService storage = Substitute.For<IStorageService>();
+        storage.GetAsync<PaletteRecentRoute[]>(Arg.Any<string>()).Returns((PaletteRecentRoute[]?)null);
         services.AddSingleton(storage);
 
         IUlidFactory ulids = Substitute.For<IUlidFactory>();

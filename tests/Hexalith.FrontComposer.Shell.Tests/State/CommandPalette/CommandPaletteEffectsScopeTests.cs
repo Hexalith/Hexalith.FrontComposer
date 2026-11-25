@@ -37,7 +37,7 @@ public class CommandPaletteEffectsScopeTests {
 
         await sut.HandleRecentRouteVisited(new RecentRouteVisitedAction("/x"), dispatcher);
 
-        await storage.DidNotReceiveWithAnyArgs().SetAsync<string[]>(default!, default!);
+        await storage.DidNotReceiveWithAnyArgs().SetAsync<PaletteRecentRoute[]>(default!, default!);
     }
 
     [Fact]
@@ -48,8 +48,8 @@ public class CommandPaletteEffectsScopeTests {
         await sut.HandleRecentRouteVisited(new RecentRouteVisitedAction("/x"), dispatcher);
 
         await storage.Received().SetAsync(
-            ArgEx.Is<string>(k => k.StartsWith("tenant-a:user-1:palette-recent", StringComparison.Ordinal)),
-            Arg.Any<string[]>());
+            "tenant-a:user-1:palette-recent:v2",
+            ArgEx.Is<PaletteRecentRoute[]>(routes => routes.Length == 1 && routes[0].Url == "/x"));
     }
 
     [Fact]
@@ -61,6 +61,7 @@ public class CommandPaletteEffectsScopeTests {
         accessor.UserId.Returns(_ => user);
         TaskCompletionSource<string[]?> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
         IStorageService storage = Substitute.For<IStorageService>();
+        _ = storage.GetAsync<PaletteRecentRoute[]>(Arg.Any<string>()).Returns((PaletteRecentRoute[]?)null);
         _ = storage.GetAsync<string[]>(Arg.Any<string>()).Returns(held.Task);
         CommandPaletteEffects sut = Build(accessor, storage, out IDispatcher dispatcher);
 

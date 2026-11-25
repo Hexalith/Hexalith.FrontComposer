@@ -57,6 +57,22 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void RecentRowsWithTheSameLabelShowTheirDestinations() {
+        EnsureStoreInitialized();
+        ImmutableArray<PaletteResult> results = [
+            new(PaletteResultCategory.Recent, "Orders", "", "/retail/orders", null, 0, false),
+            new(PaletteResultCategory.Recent, "Orders", "", "/wholesale/orders", null, 0, false),
+            new(PaletteResultCategory.Recent, "Shipments", "", "/retail/shipments", null, 0, false),
+        ];
+        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
+            .Add(c => c.Id, "fc-palette-results")
+            .Add(c => c.Results, results));
+
+        cut.FindAll(".fc-palette-option-hint").Select(hint => hint.TextContent)
+            .ShouldBe(["/retail/orders", "/wholesale/orders"]);
+    }
+
+    [Fact]
     public void RendersBadges_WhenBadgeServiceIsRegistered_AndProjectionMatches() {
         Services.AddSingleton<IBadgeCountService>(new StubBadgeService((typeof(CounterProjectionStub), 7)));
         EnsureStoreInitialized();

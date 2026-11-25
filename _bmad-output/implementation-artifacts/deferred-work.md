@@ -2318,13 +2318,15 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccomman
 location: CommandPaletteEffects.cs:HandlePaletteQueryChanged
 reason: **`HandlePaletteQueryChanged` debounce wastes CPU on cancelled queries** [`CommandPaletteEffects.cs:HandlePaletteQueryChanged`] — Stale-query reducer guard defends correctness; wasted cycles are perf only. Acceptable per D9. Reconciliation: Row: DW-0258; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: CommandPaletteEffects.cs:HandlePaletteQueryChanged.
 status: open
+decision: 2026-11-25 Skipped. The current pipeline cancels its debounce and checks cancellation before scoring manifests, evaluating authorization, and publishing results. No matching performance regression is recorded.
 
 ### DW-990: Recent-route scoring uses raw URL not human label — long URLs dominate substring matches
 
 origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccommandpalette-and-keyboard-shortcuts — Pass 6 / Chunk 2 (2026-04-25 bmad-code-review)"), 2026-08-27
 location: CommandPaletteEffects.cs
 reason: **Recent-route scoring uses raw URL not human label — long URLs dominate substring matches** [`CommandPaletteEffects.cs` recent-route scoring branch] — Affects perceived ranking quality; v2 with persisted human labels alongside URLs in the ring buffer. Reconciliation: Row: DW-0259; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: CommandPaletteEffects.cs.
-status: open
+status: done 2026-11-25
+resolution: Stores URL and label pairs in a versioned scoped record, reads legacy URL arrays, and ranks labelled recent destinations by their display labels.
 decision: 2026-09-06 Versioned URL-label records — Introduce a versioned persisted record containing URL and label, tolerate reads from the current string array, and score and display the stored label.
 decision: 2026-09-06 Versioned URL-label records — Introduce a versioned persisted record containing URL and label, tolerate reads from the current string array, and score and display the stored label.
 
