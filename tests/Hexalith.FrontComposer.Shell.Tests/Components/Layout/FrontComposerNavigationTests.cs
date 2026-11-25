@@ -547,6 +547,17 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void RepeatedProjectionMembershipAppearsOnceBeforeAndAfterCountsAreSeeded() {
+        string projection = typeof(string).FullName!;
+        DomainManifest manifest = new("Counter", "Counter", [projection, projection], []);
+        var counts = ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 7);
+
+        FrontComposerNavigation.RenderableProjections(manifest).ShouldBe([projection]);
+        FrontComposerNavigation.VisibleProjections(manifest, counts).ShouldBe([projection]);
+        FrontComposerNavigation.AggregateBoundedContextCount(manifest, counts).ShouldBe(7);
+    }
+
+    [Fact]
     public void CountBadge_RendersBrandFilledBadgeWithValue_WhenProjectionCountPositive() {
         // AC1 — count > 0 → FluentBadge Filled/Brand carrying the count text, keyed fc-nav-badge-{bc}-{label}.
         _registry.GetManifests().Returns([

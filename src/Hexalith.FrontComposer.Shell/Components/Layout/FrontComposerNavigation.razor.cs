@@ -337,7 +337,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     internal static List<string> RenderableProjections(DomainManifest manifest) {
         ArgumentNullException.ThrowIfNull(manifest);
         List<string> list = new(manifest.Projections.Count);
-        foreach (string projection in manifest.Projections) {
+        foreach (string projection in manifest.Projections.Distinct(StringComparer.Ordinal)) {
             if (!string.IsNullOrWhiteSpace(projection)) {
                 list.Add(projection);
             }
@@ -370,7 +370,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
         }
 
         List<string> list = new(manifest.Projections.Count);
-        foreach (string projection in manifest.Projections) {
+        foreach (string projection in manifest.Projections.Distinct(StringComparer.Ordinal)) {
             if (string.IsNullOrWhiteSpace(projection)) {
                 continue;
             }
@@ -403,7 +403,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
         ImmutableDictionary<Type, int> counts) {
         ArgumentNullException.ThrowIfNull(manifest);
         long total = 0;
-        foreach (string projection in manifest.Projections) {
+        foreach (string projection in manifest.Projections.Distinct(StringComparer.Ordinal)) {
             if (string.IsNullOrWhiteSpace(projection)) {
                 continue;
             }
