@@ -380,6 +380,43 @@ public class CommandParserTests {
     }
 
     [Fact]
+    public void GeneratorReportsDuplicatePolicyAcrossPartialCommandDeclarations()
+    {
+        const string declaration = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace Orders;
+
+            [Command]
+            [BoundedContext("Orders")]
+            [RequiresPolicy("Orders.Approve")]
+            public sealed partial class ApproveOrderCommand
+            {
+                public string MessageId { get; set; } = "";
+            }
+            """;
+        const string secondDeclaration = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace Orders;
+
+            [RequiresPolicy("Orders.Audit")]
+            public sealed partial class ApproveOrderCommand;
+            """;
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation([declaration, secondDeclaration]);
+        compilation.GetDiagnostics(cancellationToken).ShouldContain(diagnostic => diagnostic.Id == "CS0579");
+
+        GeneratorDriverRunResult result = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
+            .RunGenerators(compilation, cancellationToken).GetRunResult();
+
+        Diagnostic duplicate = result.Diagnostics.Single(diagnostic => diagnostic.Id == "HFC1057");
+        duplicate.Severity.ShouldBe(DiagnosticSeverity.Error);
+        result.GeneratedTrees.ShouldNotContain(tree =>
+            tree.GetText(cancellationToken).ToString().Contains("ApproveOrderCommand", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Parse_RequiresPolicyAttribute_CapturesPolicyName() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyProtectedCommand, "TestDomain.ApproveOrderCommand");
 
