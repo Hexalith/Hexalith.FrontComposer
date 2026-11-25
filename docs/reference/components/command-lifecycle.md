@@ -55,6 +55,11 @@ The tables describe the public component parameters. Injected services and inter
 
 ### `FcAuthorizedCommandRegion`
 
+ASP.NET Core's `[Authorize]` can inherit authorization metadata from a base class.
+`[RequiresPolicy]` applies only to the command class that declares it.
+Put `[RequiresPolicy("YourPolicy")]` on each derived command that requires a policy,
+even when its base class declares the same policy.
+
 | Parameter | Type | Contract |
 |---|---|---|
 | `CommandType` | `Type` | Command type whose authorization is evaluated; required. |

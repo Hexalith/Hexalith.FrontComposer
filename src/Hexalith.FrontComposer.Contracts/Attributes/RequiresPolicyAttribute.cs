@@ -6,6 +6,10 @@ namespace Hexalith.FrontComposer.Contracts.Attributes;
 /// Declares the ASP.NET Core authorization policy required to execute a command.
 /// Policy registration, claim mapping, and authorization handlers remain host concerns.
 /// </summary>
+/// <remarks>
+/// The attribute applies only to the command class that declares it. Annotate each derived
+/// command that requires a policy, even when its base class declares the same policy.
+/// </remarks>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 public sealed class RequiresPolicyAttribute : Attribute {
     /// <summary>
