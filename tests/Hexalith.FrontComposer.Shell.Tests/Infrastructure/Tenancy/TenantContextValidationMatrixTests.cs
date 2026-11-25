@@ -4,6 +4,8 @@ using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging;
 
+using NSubstitute;
+
 using Shouldly;
 
 using MsOptions = Microsoft.Extensions.Options.Options;
@@ -89,6 +91,37 @@ public sealed class TenantContextValidationMatrixTests {
 
         result.Succeeded.ShouldBeFalse();
         result.FailureCategory.ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData(true, TenantContextFailureCategory.TenantMissing)]
+    [InlineData(false, TenantContextFailureCategory.UserMissing)]
+    public void ThrowingIdentityAccessorFailsClosedWithSanitizedDiagnostics(
+        bool tenantGetterThrows, TenantContextFailureCategory expected) {
+        const string privateDetail = "private identity failure";
+        IUserContextAccessor identity = Substitute.For<IUserContextAccessor>();
+        _ = identity.TenantId.Returns(_ => tenantGetterThrows ? throw new ObjectDisposedException(privateDetail) : "tenant");
+        _ = identity.UserId.Returns(_ => tenantGetterThrows ? "user" : throw new InvalidOperationException(privateDetail));
+        CapturingLogger<FrontComposerTenantContextAccessor> logger = new();
+        FrontComposerTenantContextAccessor sut = new(identity, MsOptions.Create(new FcShellOptions()), logger);
+
+        TenantContextResult result = sut.TryGetContext();
+
+        result.FailureCategory.ShouldBe(expected);
+        result.Context.ShouldBeNull();
+        TenantContextException error = Should.Throw<TenantContextException>(() => result.EnsureSuccess());
+        error.Message.ShouldNotContain(privateDetail);
+        AssertSingleBlockedEntry(logger, "HFC2015", expected, result.CorrelationId);
+        logger.Entries.ShouldHaveSingleItem().ShouldNotContain(privateDetail);
+    }
+
+    [Fact]
+    public void IdentityAccessorCancellationPropagates() {
+        IUserContextAccessor identity = Substitute.For<IUserContextAccessor>();
+        _ = identity.TenantId.Returns(_ => throw new OperationCanceledException());
+        FrontComposerTenantContextAccessor sut = new(identity, MsOptions.Create(new FcShellOptions()), new CapturingLogger<FrontComposerTenantContextAccessor>());
+
+        _ = Should.Throw<OperationCanceledException>(() => sut.TryGetContext());
     }
 
     [Fact]

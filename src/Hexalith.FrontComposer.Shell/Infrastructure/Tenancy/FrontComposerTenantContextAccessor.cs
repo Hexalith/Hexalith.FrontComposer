@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -117,8 +118,15 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
 
-        string? tenant = userContextAccessor.TenantId;
-        string? user = userContextAccessor.UserId;
+        string? tenant = null;
+        string? user = null;
+        try {
+            tenant = userContextAccessor.TenantId;
+            user = userContextAccessor.UserId;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException && !ExceptionGuard.IsFatal(exception)) {
+            // Leave the unavailable identity segment unset. The missing-context path logs only presence flags.
+        }
         bool requestedPresent = HasValue(requestedTenant, MaxTenantLength);
         bool tenantPresent = HasValue(tenant, MaxTenantLength);
         bool userPresent = HasValue(user, MaxUserLength);
