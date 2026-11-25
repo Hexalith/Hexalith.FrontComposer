@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -59,6 +60,36 @@ public sealed class EventStoreTelemetryTests {
         handler.LastRequest.ShouldNotBeNull();
         handler.LastRequest!.Headers.Authorization.ShouldNotBeNull();
         handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe(token);
+    }
+
+    [Fact]
+    public async Task CommandDispatch_TenantMismatchEmitsRedactedBlockedActivity() {
+        RecordingHandler handler = new(_ => throw new InvalidOperationException("No request expected."));
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new FixedUlidFactory(),
+            new TestUserContextAccessor("authenticated-tenant-secret", "caller-secret"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance);
+        using var capture = ActivityCapture.Start();
+
+        TenantContextException failure = await Should.ThrowAsync<TenantContextException>(() =>
+            sut.DispatchAsync(new ShipOrderCommand { TenantId = "requested-tenant-secret" },
+                TestContext.Current.CancellationToken));
+
+        Activity activity = capture.Single(
+            FrontComposerTelemetry.CommandDispatchOperation,
+            span => Equals(span.GetTagItem(FrontComposerTelemetry.CorrelationIdTag), failure.CorrelationId));
+        activity.Status.ShouldBe(ActivityStatusCode.Error);
+        activity.GetTagItem(FrontComposerTelemetry.OutcomeTag).ShouldBe("blocked");
+        activity.GetTagItem(FrontComposerTelemetry.FailureCategoryTag).ShouldBe(nameof(TenantContextFailureCategory.TenantMismatch));
+        activity.GetTagItem(FrontComposerTelemetry.TenantMarkerTag).ShouldBe("absent");
+        activity.GetTagItem(FrontComposerTelemetry.HttpStatusCodeTag).ShouldBeNull();
+        activity.Tags.Select(static tag => tag.Value).ShouldNotContain("authenticated-tenant-secret");
+        activity.Tags.Select(static tag => tag.Value).ShouldNotContain("requested-tenant-secret");
+        activity.Tags.Select(static tag => tag.Value).ShouldNotContain("caller-secret");
+        handler.LastRequest.ShouldBeNull();
     }
 
     [Fact]

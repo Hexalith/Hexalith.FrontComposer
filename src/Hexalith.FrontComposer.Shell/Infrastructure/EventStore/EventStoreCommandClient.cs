@@ -101,18 +101,24 @@ public sealed class EventStoreCommandClient(
         EventStoreOptions current = options.Value;
         FcShellOptions currentShellOptions = shellOptions?.Value ?? new FcShellOptions();
         string messageId = ulidFactory.NewUlid();
-        TenantContextSnapshot tenantContext = _tenantContextAccessor
-            .TryGetContext(ReadStringProperty(command, "TenantId"), "command-dispatch")
-            .EnsureSuccess();
-        (string tenant, _) = EventStoreIdentity.RequireUserContext(tenantContext);
-        string domain = EventStoreIdentity.GetDomain(typeof(TCommand));
-        string aggregateId = EventStoreIdentity.GetAggregateId(command);
         string commandTypeName = typeof(TCommand).FullName ?? typeof(TCommand).Name;
         long startedAt = Stopwatch.GetTimestamp();
         using Activity? activity = FrontComposerTelemetry.StartCommandDispatch(
-            commandTypeName,
-            messageId,
-            FrontComposerTelemetry.TenantMarker(tenant));
+            commandTypeName, messageId, FrontComposerTelemetry.TenantMarker(null));
+        TenantContextResult tenantResult = _tenantContextAccessor
+            .TryGetContext(ReadStringProperty(command, "TenantId"), "command-dispatch");
+        if (!tenantResult.Succeeded || tenantResult.Context is null) {
+            FrontComposerTelemetry.SetOutcome(activity, "blocked");
+            FrontComposerTelemetry.SetFailure(activity, tenantResult.FailureCategory.ToString());
+            FrontComposerTelemetry.SetCorrelation(activity, tenantResult.CorrelationId);
+            FrontComposerTelemetry.SetElapsed(activity, Stopwatch.GetElapsedTime(startedAt));
+        }
+
+        TenantContextSnapshot tenantContext = tenantResult.EnsureSuccess();
+        (string tenant, _) = EventStoreIdentity.RequireUserContext(tenantContext);
+        _ = activity?.SetTag(FrontComposerTelemetry.TenantMarkerTag, FrontComposerTelemetry.TenantMarker(tenant));
+        string domain = EventStoreIdentity.GetDomain(typeof(TCommand));
+        string aggregateId = EventStoreIdentity.GetAggregateId(command);
 
         try {
             JsonElement payload = SerializeCommandPayload(command);
