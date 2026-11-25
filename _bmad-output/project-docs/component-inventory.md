@@ -221,6 +221,7 @@ This additive classification preserves the accepted scan above. Adopter rows res
 | `FcStatusBadge` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
 | `FcStatusFilterChips` | adopter | `docs/reference/components/datagrid.md` | FrontComposer |
 | `FcStatusIcon` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
+| `FcStatusOverviewDetails` | infrastructure | `docs/reference/components/datagrid.md` | FrontComposer |
 | `FcSurfaceStatus` | adopter | `docs/reference/components/projection-status.md` | FrontComposer |
 | `FcSystemThemeWatcher` | infrastructure | `docs/reference/components/settings.md` | FrontComposer |
 | `FcThemeToggle` | adopter | `docs/reference/components/settings.md` | FrontComposer |

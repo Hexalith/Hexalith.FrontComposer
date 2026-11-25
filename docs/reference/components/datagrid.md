@@ -58,6 +58,13 @@ filter state, column visibility, row expansion, and notices resolve against the 
 </FcColumnPrioritizer>
 ```
 
+Expanding a generated StatusOverview group shows the count from the current results and lets
+you page through the loaded records in that group.
+
+When multiple copies of the same generated view remount independently, give each copy a distinct
+`ExpandPanelScope` value. Keep the value fixed for that placement so the detail region retains
+its ID across remounts.
+
 ## Parameters / slots
 
 The focused FC-TBL public baseline currently covers these public types under
