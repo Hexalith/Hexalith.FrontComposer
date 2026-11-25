@@ -398,11 +398,11 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
         return resolved is not null && counts.TryGetValue(resolved, out int count) ? count : 0;
     }
 
-    internal static int AggregateBoundedContextCount(
+    internal static long AggregateBoundedContextCount(
         DomainManifest manifest,
         ImmutableDictionary<Type, int> counts) {
         ArgumentNullException.ThrowIfNull(manifest);
-        int total = 0;
+        long total = 0;
         foreach (string projection in manifest.Projections) {
             if (string.IsNullOrWhiteSpace(projection)) {
                 continue;

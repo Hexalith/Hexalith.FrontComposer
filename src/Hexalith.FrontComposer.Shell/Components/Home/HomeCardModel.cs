@@ -15,4 +15,10 @@ public sealed record HomeCardModel(
     DomainManifest Manifest,
     int AggregateCount,
     bool IsReady,
-    IReadOnlyList<HomeProjectionRow> ProjectionRows);
+    IReadOnlyList<HomeProjectionRow> ProjectionRows) {
+    /// <summary>The exact aggregate computed by the Home directory when it exceeds the public limit.</summary>
+    internal long? OverflowAggregateCount { get; init; }
+
+    /// <summary>The aggregate used for Home presentation and ordering.</summary>
+    internal long DisplayCount => OverflowAggregateCount ?? AggregateCount;
+}

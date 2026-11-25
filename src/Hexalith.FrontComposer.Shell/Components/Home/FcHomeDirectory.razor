@@ -56,8 +56,8 @@ else
         int contextsWithUrgency = 0;
         foreach (HomeCardModel card in aggregated)
         {
-            totalActionable += card.AggregateCount;
-            if (card.AggregateCount > 0)
+            totalActionable += card.DisplayCount;
+            if (card.DisplayCount > 0)
             {
                 contextsWithUrgency++;
             }
@@ -72,7 +72,7 @@ else
             {
                 <p class="fc-home-subtitle" data-testid="fc-home-subtitle">
                     @string.Format(System.Globalization.CultureInfo.CurrentCulture,
-                        Localizer["HomeItemsTemplate"].Value, Math.Min(int.MaxValue, totalActionable), contextsWithUrgency)
+                        Localizer["HomeItemsTemplate"].Value, totalActionable, contextsWithUrgency)
                 </p>
             }
             else if (isSeeded && discovery.SeenCapabilities.IsEmpty)
@@ -95,7 +95,7 @@ else
                 aria-description="@Localizer["HomeSortedByUrgencyAriaDescription"].Value">
                 @foreach (HomeCardModel card in aggregated
                     .OrderByDescending(static c => c.IsReady)
-                    .ThenByDescending(static c => c.AggregateCount)
+                    .ThenByDescending(static c => c.DisplayCount)
                     .ThenBy(static c => c.Manifest.Name, StringComparer.Ordinal))
                 {
                     if (card.IsReady)
@@ -136,11 +136,11 @@ else
         else
         {
             IEnumerable<HomeCardModel> urgent = aggregated
-                .Where(static c => c.AggregateCount > 0)
-                .OrderByDescending(static c => c.AggregateCount)
+                .Where(static c => c.DisplayCount > 0)
+                .OrderByDescending(static c => c.DisplayCount)
                 .ThenBy(static c => c.Manifest.Name, StringComparer.Ordinal);
             IReadOnlyList<HomeCardModel> zeros = [.. aggregated
-                .Where(static c => c.AggregateCount == 0)
+                .Where(static c => c.DisplayCount == 0)
                 .OrderBy(static c => c.Manifest.Name, StringComparer.Ordinal)];
 
             <ul class="fc-home-cards fc-home-cards-urgent" data-testid="fc-home-cards-urgent"

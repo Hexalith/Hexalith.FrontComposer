@@ -148,7 +148,9 @@ public partial class FcHomeDirectory {
                 rows.Add(new HomeProjectionRow(projection, count));
             }
 
-            result.Add(new HomeCardModel(manifest, (int)Math.Min(int.MaxValue, aggregate), isReady, rows));
+            result.Add(new HomeCardModel(manifest, (int)Math.Min(int.MaxValue, aggregate), isReady, rows) {
+                OverflowAggregateCount = aggregate > int.MaxValue ? aggregate : null,
+            });
         }
 
         return result;

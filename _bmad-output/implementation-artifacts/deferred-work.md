@@ -2515,7 +2515,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-dir
 location: 3-5-home-directory-badge-counts-and-new-capability-discovery.md
 reason: **`BadgeCountService.TotalActionableItems = Sum()` overflow** — theoretical `int` overflow when aggregate exceeds `int.MaxValue`. Unreachable in realistic catalogs (< 50 projections). Reconciliation: Row: DW-0283; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood very low, impact low; Release risk: unrealistic projection counts required for int overflow; Downstream impact: home aggregate count; Owner: Shell runtime owner; Review by: 2026-06-30; Reopen trigger: manifests approach high-cardinality projection counts; Validation: manifest scale review.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
 status: done 2026-11-26
-resolution: Capped badge and Home aggregates at the public int limit, with two-projection overflow coverage.
+resolution: Capped the public badge count and preserved exact Home totals and urgency ordering with widened arithmetic.
 
 ### DW-1015: `DisposeAsync` calls synchronous `Dispose` and returns completed `ValueTask`
 

@@ -75,7 +75,7 @@
         List<FrontComposerNavEntry> entries = EntriesForContext(navEntries, manifest.BoundedContext);
         string anchorId = RailAnchorId(manifest.BoundedContext);
         string bcCapabilityId = CapabilityIds.ForBoundedContext(manifest.BoundedContext);
-        int aggregateCount = AggregateBoundedContextCount(manifest, discovery.Counts);
+        long aggregateCount = AggregateBoundedContextCount(manifest, discovery.Counts);
         bool bcShowsNew = !discovery.SeenCapabilities.Contains(bcCapabilityId) && aggregateCount > 0;
         bool activeContext = IsContextActive(manifest.BoundedContext, projections, entries);
         string menuId = FlyoutMenuId(manifest.BoundedContext);

@@ -15,13 +15,13 @@
 
 @{
     string bcCapabilityId = CapabilityIds.ForBoundedContext(Card.Manifest.BoundedContext);
-    bool bcShowsNew = !SeenCapabilities.Contains(bcCapabilityId) && Card.AggregateCount > 0;
-    string ariaLabel = Card.AggregateCount > 0
+    bool bcShowsNew = !SeenCapabilities.Contains(bcCapabilityId) && Card.DisplayCount > 0;
+    string ariaLabel = Card.DisplayCount > 0
         ? string.Format(
             System.Globalization.CultureInfo.CurrentCulture,
             Localizer["HomeCardPendingAriaLabelTemplate"].Value,
             Card.Manifest.Name,
-            Card.AggregateCount)
+            Card.DisplayCount)
         : Card.Manifest.Name;
     bool anyVisibleProjection = Card.ProjectionRows.Any(row => ShouldRenderProjectionRow(row));
 }
@@ -33,7 +33,7 @@
             @onclick="HandleClickAsync"
             @onkeydown="HandleKeydownAsync">
         <h2 class="fc-home-card-title">
-            @if (Card.AggregateCount > 0)
+            @if (Card.DisplayCount > 0)
             {
                 @* The localized pending summary already says the name and total, so the visible name
                    and total badge are hidden from assistive technology to avoid announcing them twice. *@
@@ -41,7 +41,7 @@
                 <FluentBadge Appearance="@BadgeAppearance.Filled"
                              Color="@BadgeColor.Brand"
                              aria-hidden="true"
-                             data-testid="@($"fc-home-card-badge-{Card.Manifest.BoundedContext}")">@Card.AggregateCount</FluentBadge>
+                             data-testid="@($"fc-home-card-badge-{Card.Manifest.BoundedContext}")">@Card.DisplayCount</FluentBadge>
                 <span class="fc-sr-only">@ariaLabel</span>
             }
             else

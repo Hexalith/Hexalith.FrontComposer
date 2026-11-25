@@ -537,6 +537,16 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void AggregateBoundedContextCountPreservesCountsAboveIntMaxValue() {
+        DomainManifest manifest = new("Counter", "Counter", [typeof(string).FullName!, typeof(int).FullName!], []);
+        var counts = ImmutableDictionary<Type, int>.Empty
+            .Add(typeof(string), int.MaxValue)
+            .Add(typeof(int), 1);
+
+        FrontComposerNavigation.AggregateBoundedContextCount(manifest, counts).ShouldBe((long)int.MaxValue + 1);
+    }
+
+    [Fact]
     public void CountBadge_RendersBrandFilledBadgeWithValue_WhenProjectionCountPositive() {
         // AC1 — count > 0 → FluentBadge Filled/Brand carrying the count text, keyed fc-nav-badge-{bc}-{label}.
         _registry.GetManifests().Returns([

@@ -277,10 +277,10 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void OversizedCountsKeepHomeCardsUrgentAndCapTheSummary() {
+    public void OversizedCountsKeepExactTotalsAndUrgencyOrdering() {
         _registry.GetManifests().Returns([
             new DomainManifest("Alpha", "Alpha", [typeof(string).FullName!, typeof(int).FullName!], []),
-            new DomainManifest("Beta", "Beta", [typeof(double).FullName!], []),
+            new DomainManifest("Beta", "Beta", [typeof(double).FullName!, typeof(decimal).FullName!], []),
         ]);
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
@@ -288,14 +288,17 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
         dispatcher.Dispatch(new BadgeCountsSeededAction(ImmutableDictionary<Type, int>.Empty
             .Add(typeof(string), int.MaxValue)
             .Add(typeof(int), 1)
-            .Add(typeof(double), 2)));
+            .Add(typeof(double), int.MaxValue)
+            .Add(typeof(decimal), 2)));
 
         IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
 
         cut.WaitForAssertion(() => {
-            cut.Find("[data-testid='fc-home-card-badge-Alpha']").TextContent.ShouldBe("2147483647");
-            cut.Find("[data-testid='fc-home-card-badge-Beta']").TextContent.ShouldBe("2");
-            cut.Find("[data-testid='fc-home-subtitle']").TextContent.ShouldContain(int.MaxValue.ToString(CultureInfo.CurrentCulture));
+            cut.Find("[data-testid='fc-home-card-badge-Alpha']").TextContent.ShouldBe("2147483648");
+            cut.Find("[data-testid='fc-home-card-badge-Beta']").TextContent.ShouldBe("2147483649");
+            cut.Find("[data-testid='fc-home-subtitle']").TextContent.ShouldContain("4294967297");
+            cut.Markup.IndexOf("fc-home-card-Beta", StringComparison.Ordinal)
+                .ShouldBeLessThan(cut.Markup.IndexOf("fc-home-card-Alpha", StringComparison.Ordinal));
         });
     }
 
