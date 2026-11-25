@@ -10,13 +10,16 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -832,6 +835,32 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         service.LastCommand.ShouldNotBeNull();
         service.LastCommand!.Name.ShouldBe("approved name");
         evaluator.Requests.ShouldContain(r => r.SourceSurface == CommandAuthorizationSurface.GeneratedForm);
+    }
+
+    [Fact]
+    public async Task ProtectedGeneratedFormWithAnonymousPrincipalNeverDispatchesAsync()
+    {
+        ICommandServiceWithLifecycleObservations commandService = Substitute.For<ICommandServiceWithLifecycleObservations>();
+        IAuthorizationService authorizationService = Substitute.For<IAuthorizationService>();
+        Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(new MutableTestAuthenticationStateProvider()));
+        Services.AddSingleton(authorizationService);
+        Services.AddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator, CommandAuthorizationEvaluator>());
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
+        await InitializeStoreAsync();
+        List<CommandFeedbackWarning> warnings = [];
+        using IDisposable subscription = Services.GetRequiredService<ICommandFeedbackPublisher>().Subscribe(warnings.Add);
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "Protected order", Amount = 9 }));
+        cut.WaitForAssertion(() => cut.Find("[id$='-authorization-heading']").TextContent.ShouldContain("Sign-in required"));
+
+        await cut.Find("form").SubmitAsync();
+
+        warnings.ShouldContain(warning => warning.Kind == CommandWarningKind.Forbidden);
+        commandService.ReceivedCalls().ShouldBeEmpty();
+        authorizationService.ReceivedCalls().ShouldBeEmpty();
+        Services.GetRequiredService<IPendingCommandStateService>().Snapshot().ShouldBeEmpty();
     }
 
     [Theory]
