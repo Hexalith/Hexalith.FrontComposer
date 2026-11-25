@@ -13,6 +13,7 @@ slug: how-to/
 # How-to guides
 
 - [Configure authentication](authentication.md)
+- [Export FrontComposer traces](export-frontcomposer-traces.md)
 - [Customize a relative-time field at four levels](customization-gradient-cookbook.md)
 - [Test generated components](test-generated-components.md)
 - [Prove the three-call adopter bootstrap](adopter-bootstrap-proof.md)

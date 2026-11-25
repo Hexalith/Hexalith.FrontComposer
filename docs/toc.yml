@@ -5,6 +5,8 @@
   items:
   - name: Configure authentication
     href: how-to/authentication.md
+  - name: Export FrontComposer traces
+    href: how-to/export-frontcomposer-traces.md
   - name: Fluent UI v5 contingency
     href: fluent-ui-v5-contingency.md
   - name: Release incident response
