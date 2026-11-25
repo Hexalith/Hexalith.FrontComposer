@@ -1,5 +1,23 @@
 # Dependency governance source projection
 
+## 2026-11-25 AppHost Tooling EventStore isolation
+
+FrontComposer Debug source-graph restore no longer forwards EventStore `5.6.0`
+onto Builds.Tooling. Tooling keeps the Builds catalog identity so the platform
+catalog writer can validate. EventStore guards resolve catalogs from this
+repository, not from a nested module Directory.Packages.props. Package pins
+and module gitlinks are unchanged. Consumer configuration digest is
+`a4e16fef6e1712a07aa5cd755daee9ae8aadff6dd22ec3e688c1061a4e458c95`.
+Root selector digest remains
+`ea3e2b0fe00f6389d394ccb50bb1c26082954797f0762f90886a4f22b26ad650`.
+The graph still contains 76 edges.
+
+The matching policy reseal is `55445f13e1bdaa22a37cd87edbc1684586fa3e71`.
+This documentation-only child is the later-base activation of that policy.
+The previous event-base policy rejected the changed consumer
+configuration, as expected. Hosted CI and Quality on this commit are the
+release evidence; local validation of 76 edges does not replace those gates.
+
 ## 2026-11-25 published EventStore 5.6.0 package cohort
 
 FrontComposer now selects EventStore `5.6.0` with Commons `3.0.4`, Memories
