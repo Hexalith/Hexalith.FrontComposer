@@ -1,5 +1,28 @@
 # Dependency governance source projection
 
+## 2026-11-25 published EventStore 5.6.0 package cohort
+
+FrontComposer now selects EventStore `5.6.0` with Commons `3.0.4`, Memories
+`4.1.1`, Tenants `8.0.4`, Parties `4.0.1`, PolymorphicSerializations `2.0.2`,
+and Conversations `2.2.0`. Direct module gitlinks match current origin/main
+except Builds, which remains the CiCd-owned
+`bf8a28b4bbcec619e8d9764d335f786f2bafb69e`. Platform is
+`3bcac63c6fe20b46687b6e0bb7a333ea8c66fb4d`. Root selector digest is
+`ea3e2b0fe00f6389d394ccb50bb1c26082954797f0762f90886a4f22b26ad650`.
+Consumer configuration digest is
+`ae96ac68cde82dc657b125401b46be1fec2e817ba09d4f61846d03773d41276f`.
+Platform inventory digest is
+`0de1aa068c76e452eabac7ce1871963a2e54c53d4ef6ee09d7d72310ea0c8bab`.
+The FrontComposer catalog profile requires TimeProvider.Testing `11.0.1` and
+Verify `33.7.2` to match that Builds catalog. The graph still contains 76
+edges.
+
+The matching policy reseal is `adcc8b3267beb87a9f444a7b18886c9cdd238443`.
+This documentation-only child is the later-base activation of that policy.
+The previous event-base policy rejected the changed selectors and consumer
+configuration, as expected. Hosted CI and Quality on this commit are the
+release evidence; local validation of 76 edges does not replace those gates.
+
 ## 2026-11-23 EventStore compatibility in umbrella workspaces
 
 FrontComposer's standalone checkout selects EventStore `5.4.0`. When an
