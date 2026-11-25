@@ -111,6 +111,29 @@ public sealed class ProjectionViewOverrideServiceCollectionExtensionsTests {
         registry.Resolve(typeof(ViewProjection), null).ShouldBeNull();
     }
 
+    [Theory]
+    [InlineData(typeof(void))]
+    [InlineData(typeof(Span<int>))]
+    [InlineData(typeof(List<>))]
+    public void RegistryRejectsAnUnusableProjectionTypeAndKeepsValidRegistrations(Type projectionType)
+    {
+        ServiceCollection services = NewServices();
+        ProjectionViewOverrideDescriptor invalid = new(
+            projectionType, null, typeof(ValidReplacement), ProjectionViewOverrideContractVersion.Current, "test");
+        _ = services.AddSingleton(new ProjectionViewOverrideDescriptorSource([invalid]));
+        _ = services.AddViewOverride<ViewProjection, ValidReplacement>();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IProjectionViewOverrideRegistry registry = provider.GetRequiredService<IProjectionViewOverrideRegistry>();
+        IProjectionViewOverrideDiagnostics diagnostics = registry.ShouldBeAssignableTo<IProjectionViewOverrideDiagnostics>();
+
+        registry.Resolve(projectionType, null).ShouldBeNull();
+        registry.Resolve(typeof(ViewProjection), null).ShouldNotBeNull().ComponentType.ShouldBe(typeof(ValidReplacement));
+        ProjectionViewOverrideRejection rejection = diagnostics.RejectedDescriptors.ShouldHaveSingleItem();
+        rejection.Descriptor.ShouldBe(invalid);
+        rejection.DiagnosticId.ShouldBe("HFC1043");
+    }
+
     [Fact]
     public void RegistryExposesRejectedDescriptorsWithoutSelectingThem()
     {

@@ -292,7 +292,6 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideDiag
             return false;
         }
 
-        Type expectedContextType = typeof(ProjectionViewContext<>).MakeGenericType(descriptor.ProjectionType);
         PropertyInfo? contextProperty;
         try {
             contextProperty = componentType.GetProperty(
@@ -309,8 +308,11 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideDiag
             return false;
         }
 
-        if (contextProperty.PropertyType != expectedContextType) {
-            reason = $"Context property type is {contextProperty.PropertyType.FullName}.";
+        Type contextType = contextProperty.PropertyType;
+        if (!contextType.IsGenericType
+            || contextType.GetGenericTypeDefinition() != typeof(ProjectionViewContext<>)
+            || contextType.GetGenericArguments()[0] != descriptor.ProjectionType) {
+            reason = $"Context property type is {contextType.FullName}.";
             return false;
         }
 
