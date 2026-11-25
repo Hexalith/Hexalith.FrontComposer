@@ -240,6 +240,26 @@ internal static partial class FrontComposerSecurityLog
             SanitizeIdentifier(correlationId));
     }
 
+    /// <summary>Logs a successful named-policy evaluation using bounded, digested metadata.</summary>
+    public static void AuthorizationPolicySucceeded(
+        ILogger? logger,
+        CommandAuthorizationSurface surface,
+        string commandType,
+        string policy,
+        string correlationId)
+    {
+        if (logger is null || !logger.IsEnabled(LogLevel.Information))
+        {
+            return;
+        }
+
+        string boundedSurface = Enum.IsDefined(surface) ? surface.ToString() : "Unknown";
+        string commandTypeDigest = SanitizeIdentifier(commandType);
+        string policyDigest = SanitizeIdentifier(policy);
+        string correlationDigest = SanitizeIdentifier(correlationId);
+        LogAuthorizationPolicySucceeded(logger, boundedSurface, commandTypeDigest, policyDigest, correlationDigest);
+    }
+
     /// <summary>Logs denial of a command whose declared and runtime types are unnamed.</summary>
     public static void DispatchDeclaredAndRuntimeCommandUnnamed(ILogger? logger, string commandShortName)
         => LogSingleIdentifier(
@@ -849,4 +869,13 @@ internal static partial class FrontComposerSecurityLog
         string diagnosticId,
         string featureDigest,
         string direction);
+
+    [LoggerMessage(EventId = 5692, EventName = "AuthorizationPolicySucceeded", Level = LogLevel.Information,
+        Message = "Named command authorization policy succeeded. Surface={Surface} CommandTypeDigest={CommandTypeDigest} PolicyDigest={PolicyDigest} CorrelationDigest={CorrelationDigest}.")]
+    private static partial void LogAuthorizationPolicySucceeded(
+        ILogger logger,
+        string surface,
+        string commandTypeDigest,
+        string policyDigest,
+        string correlationDigest);
 }

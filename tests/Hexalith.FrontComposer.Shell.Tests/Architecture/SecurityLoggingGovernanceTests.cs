@@ -299,7 +299,7 @@ public sealed class SecurityLoggingGovernanceTests
         ]);
 
         LoggerEvent[] securityEvents = [.. events.Where(static entry => entry.Path.EndsWith("/FrontComposerSecurityLog.cs", StringComparison.Ordinal))];
-        securityEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(5660, 32));
+        securityEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(5660, 33));
         foreach (LoggerEvent entry in securityEvents)
         {
             entry.EventName.ShouldNotBeNullOrWhiteSpace($"{entry.Location} must declare an explicit EventName");

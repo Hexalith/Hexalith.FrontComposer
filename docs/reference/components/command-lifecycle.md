@@ -70,6 +70,22 @@ even when its base class declares the same policy.
 | `Pending` | `RenderFragment?` | Content rendered while the authorization decision is pending. |
 | `NotAuthorized` | `RenderFragment?` | Content rendered for blocked or failed authorization evaluation. |
 
+Hosts can opt in to Information-level logging of successful named-policy evaluations:
+
+```csharp
+builder.Services.Configure<FrontComposerAuthorizationOptions>(options =>
+    options.LogAllowedDecisions = true);
+```
+
+Event `5692` (`AuthorizationPolicySucceeded`) records the authorization surface and digests of the
+command type, policy name, and decision correlation ID. Enable Information for the
+`Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationEvaluator` log category
+in the logging provider that collects these records. A single interaction can trigger
+multiple evaluations, including presentation and dispatch checks. If the principal changes or
+the request is canceled while the event is being written, the evaluator blocks the decision
+and records the reason with the same correlation digest. Audit sink failures leave the
+policy decision intact. Logging is off by default.
+
 ### `FcFormAbandonmentGuard`
 
 | Parameter | Type | Contract |

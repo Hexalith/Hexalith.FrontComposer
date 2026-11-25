@@ -51,9 +51,10 @@ public sealed class FrontComposerSecurityLogTests
         FrontComposerSecurityLog.EmptyStateUnsafeRoute(logger, IdentifierSentinel, IdentifierSentinel);
         FrontComposerSecurityLog.StorageAccessorFailed(logger, IdentifierSentinel, "persist", typeof(InvalidOperationException).FullName!);
         FrontComposerSecurityLog.StorageScopeMissing(logger, IdentifierSentinel, "hydrate");
+        FrontComposerSecurityLog.AuthorizationPolicySucceeded(logger, CommandAuthorizationSurface.DirectDispatch, IdentifierSentinel, IdentifierSentinel, IdentifierSentinel);
 
-        logger.Entries.Select(static entry => entry.EventId.Id).ShouldBe(Enumerable.Range(5660, 32));
-        logger.Entries.Select(static entry => entry.EventId.Name).Distinct(StringComparer.Ordinal).Count().ShouldBe(32);
+        logger.Entries.Select(static entry => entry.EventId.Id).ShouldBe(Enumerable.Range(5660, 33));
+        logger.Entries.Select(static entry => entry.EventId.Name).Distinct(StringComparer.Ordinal).Count().ShouldBe(33);
         logger.Entries.Select(static entry => entry.Level).ShouldBe([
             LogLevel.Warning,
             LogLevel.Information,
@@ -85,6 +86,7 @@ public sealed class FrontComposerSecurityLogTests
             LogLevel.Warning,
             LogLevel.Warning,
             LogLevel.Warning,
+            LogLevel.Information,
             LogLevel.Information,
             LogLevel.Information,
         ]);

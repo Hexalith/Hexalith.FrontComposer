@@ -2,11 +2,13 @@ using System.Security.Claims;
 
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.Services.Authorization;
 
@@ -16,11 +18,32 @@ namespace Hexalith.FrontComposer.Shell.Services.Authorization;
 /// the policy decision to ASP.NET Core <see cref="IAuthorizationService"/>. Constructor-injects all
 /// dependencies; service-locator pattern was removed during Story 7-3 Pass 2 review (P30 / DN1).
 /// </summary>
+/// <param name="authorizationService">The host policy evaluator.</param>
+/// <param name="authenticationStateProvider">The current scope's principal provider.</param>
+/// <param name="tenantContextAccessor">The current scope's tenant context accessor.</param>
+/// <param name="logger">The security event logger.</param>
+/// <param name="options">The host's command authorization options.</param>
 public sealed class CommandAuthorizationEvaluator(
     IAuthorizationService authorizationService,
     AuthenticationStateProvider authenticationStateProvider,
     IFrontComposerTenantContextAccessor tenantContextAccessor,
-    ILogger<CommandAuthorizationEvaluator> logger) : ICommandAuthorizationEvaluator {
+    ILogger<CommandAuthorizationEvaluator> logger,
+    IOptions<FrontComposerAuthorizationOptions> options) : ICommandAuthorizationEvaluator {
+    /// <summary>Creates an evaluator with the default command authorization options.</summary>
+    /// <param name="authorizationService">The host policy evaluator.</param>
+    /// <param name="authenticationStateProvider">The current scope's principal provider.</param>
+    /// <param name="tenantContextAccessor">The current scope's tenant context accessor.</param>
+    /// <param name="logger">The security event logger.</param>
+    public CommandAuthorizationEvaluator(
+        IAuthorizationService authorizationService,
+        AuthenticationStateProvider authenticationStateProvider,
+        IFrontComposerTenantContextAccessor tenantContextAccessor,
+        ILogger<CommandAuthorizationEvaluator> logger)
+        : this(authorizationService, authenticationStateProvider, tenantContextAccessor, logger,
+            Microsoft.Extensions.Options.Options.Create(new FrontComposerAuthorizationOptions()))
+    {
+    }
+
     /// <inheritdoc/>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "BL0013", Justification = "This is a one-shot authorization decision: every evaluation resolves a fresh principal and retains no authentication state between calls; dispatch consumers reauthorize immediately before dispatch.")]
     public async Task<CommandAuthorizationDecision> EvaluateAsync(
@@ -106,8 +129,15 @@ public sealed class CommandAuthorizationEvaluator(
                     .AuthorizeAsync(user, resource, resource.PolicyName)
                     .ConfigureAwait(false);
 
+                if (result?.Succeeded == true && !cancellationToken.IsCancellationRequested
+                    && Volatile.Read(ref authenticationChanged) == 0)
+                {
+                    LogPolicySuccess(request, trimmedPolicy, correlationId);
+                }
+
                 // Re-check cancellation: the AuthorizeAsync overload used does not accept a token, so an
-                // in-flight handler keeps running even when the caller cancels. Honor cancellation here.
+                // in-flight handler keeps running even when the caller cancels. The optional audit sink
+                // also runs host code, so keep the final cancellation and principal checks after it.
                 if (cancellationToken.IsCancellationRequested) {
                     LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
                     return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
@@ -176,6 +206,22 @@ public sealed class CommandAuthorizationEvaluator(
         }
         finally {
             authenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        }
+    }
+
+    private void LogPolicySuccess(CommandAuthorizationRequest request, string policy, string correlationId)
+    {
+        try
+        {
+            if (options.Value.LogAllowedDecisions)
+            {
+                FrontComposerSecurityLog.AuthorizationPolicySucceeded(
+                    logger, request.SourceSurface, request.CommandType.FullName ?? request.CommandType.Name, policy, correlationId);
+            }
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
+        {
+            // An optional audit sink failure must preserve the already completed policy decision.
         }
     }
 

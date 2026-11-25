@@ -36,4 +36,10 @@ public sealed class FrontComposerAuthorizationOptions {
     /// during <c>StartAsync</c> and aborts host startup.
     /// </summary>
     public bool StrictPolicyCatalogValidation { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to log successful named-policy evaluations at
+    /// Information level. The default is <see langword="false"/>.
+    /// </summary>
+    public bool LogAllowedDecisions { get; set; }
 }

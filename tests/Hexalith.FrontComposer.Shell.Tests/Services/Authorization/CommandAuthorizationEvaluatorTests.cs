@@ -1,12 +1,17 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 
+using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -97,6 +102,116 @@ public sealed class CommandAuthorizationEvaluatorTests {
         captured.SourceSurface.ShouldBe(CommandAuthorizationSurface.DirectDispatch);
         captured.TenantContext.ShouldNotBeNull();
         captured.TenantContext.TenantId.ShouldBe("tenant-a");
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_AllowedAuditIsOffByDefault()
+    {
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
+            .Returns(AuthorizationResult.Success());
+        CapturingLogger<CommandAuthorizationEvaluator> logger = new();
+        CommandAuthorizationEvaluator sut = Create(authorization, logger: logger);
+
+        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
+
+        result.IsAllowed.ShouldBeTrue();
+        logger.Entries.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_OptedInAuditRecordsOnlySuccessfulNamedPolicies()
+    {
+        const string policy = "private-policy-name";
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), policy)
+            .Returns(AuthorizationResult.Success());
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OtherPolicy")
+            .Returns(AuthorizationResult.Failed());
+        CapturingLogger<CommandAuthorizationEvaluator> logger = new();
+        ServiceCollection services = [];
+        services.AddLogging();
+        services.AddHexalithFrontComposer();
+        services.AddSingleton(authorization);
+        services.AddScoped(_ => DefaultTenant());
+        services.AddScoped<AuthenticationStateProvider>(_ => new FakeAuthenticationStateProvider(
+            new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, "user-a")], "Test")))));
+        services.AddSingleton<ILogger<CommandAuthorizationEvaluator>>(logger);
+        services.Configure<FrontComposerAuthorizationOptions>(options => options.LogAllowedDecisions = true);
+        await using ServiceProvider root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        await using AsyncServiceScope scope = root.CreateAsyncScope();
+        ICommandAuthorizationEvaluator sut = scope.ServiceProvider.GetRequiredService<ICommandAuthorizationEvaluator>();
+        CommandAuthorizationRequest request = Request(policy) with {
+            SourceSurface = CommandAuthorizationSurface.GeneratedForm,
+            DisplayLabel = "private-display-label",
+            Command = new TestCommand { SecretBlob = "private-command-payload" },
+        };
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+
+        CommandAuthorizationDecision allowed = await sut.EvaluateAsync(request, cancellationToken);
+        CommandAuthorizationDecision noPolicy = await sut.EvaluateAsync(request with { PolicyName = null }, cancellationToken);
+        CommandAuthorizationDecision denied = await sut.EvaluateAsync(request with { PolicyName = "OtherPolicy" }, cancellationToken);
+
+        allowed.IsAllowed.ShouldBeTrue();
+        noPolicy.Reason.ShouldBe(CommandAuthorizationReason.NoPolicy);
+        denied.IsAllowed.ShouldBeFalse();
+        CapturedLogEntry entry = logger.Entries.Where(entry => entry.Level == LogLevel.Information).ShouldHaveSingleItem();
+        entry.EventId.ShouldBe(new EventId(5692, "AuthorizationPolicySucceeded"));
+        entry.Exception.ShouldBeNull();
+        entry.State["Surface"].ShouldBe(nameof(CommandAuthorizationSurface.GeneratedForm));
+        entry.State["CommandTypeDigest"].ShouldBe(ExpectedDigest(typeof(TestCommand).FullName!));
+        entry.State["PolicyDigest"].ShouldBe(ExpectedDigest(policy));
+        entry.State["CorrelationDigest"].ShouldBe(ExpectedDigest(allowed.CorrelationId));
+
+        foreach (string rawValue in new[] { policy, "tenant-a", "user-a", "private-display-label",
+            "private-command-payload", typeof(TestCommand).FullName!, allowed.CorrelationId })
+        {
+            entry.Message.ShouldNotContain(rawValue);
+            entry.State.Values.OfType<string>().ShouldNotContain(text => text.Contains(rawValue, StringComparison.Ordinal));
+        }
+
+        static string ExpectedDigest(string value)
+            => "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)).AsSpan(0, 8)).ToLowerInvariant();
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_OptionalAuditSinkFailurePreservesAllowedDecision()
+    {
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
+            .Returns(AuthorizationResult.Success());
+        ILogger<CommandAuthorizationEvaluator> logger = Substitute.For<ILogger<CommandAuthorizationEvaluator>>();
+        logger.IsEnabled(LogLevel.Information).Returns(_ => throw new InvalidOperationException("Audit sink unavailable."));
+        CommandAuthorizationEvaluator sut = Create(authorization, logger: logger,
+            options: new FrontComposerAuthorizationOptions { LogAllowedDecisions = true });
+
+        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
+
+        result.IsAllowed.ShouldBeTrue();
+        logger.Received(1).IsEnabled(LogLevel.Information);
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_PrincipalChangeDuringAuditStillFailsClosed()
+    {
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
+            .Returns(AuthorizationResult.Success());
+        MutableTestAuthenticationStateProvider provider = new();
+        provider.Publish(Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity("Test")))));
+        ILogger<CommandAuthorizationEvaluator> logger = Substitute.For<ILogger<CommandAuthorizationEvaluator>>();
+        logger.IsEnabled(LogLevel.Information).Returns(_ => {
+            provider.Publish(Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()))));
+            return true;
+        });
+        CommandAuthorizationEvaluator sut = Create(authorization, provider, logger: logger,
+            options: new FrontComposerAuthorizationOptions { LogAllowedDecisions = true });
+
+        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
+
+        result.IsAllowed.ShouldBeFalse();
+        result.Reason.ShouldBe(CommandAuthorizationReason.StaleTenantContext);
     }
 
     [Fact]
@@ -338,10 +453,11 @@ public sealed class CommandAuthorizationEvaluatorTests {
 
     private static CommandAuthorizationEvaluator Create(
         IAuthorizationService authorizationService,
-        FakeAuthenticationStateProvider? stateProvider = null,
+        AuthenticationStateProvider? stateProvider = null,
         IFrontComposerTenantContextAccessor? tenant = null,
         bool authenticated = true,
-        ILogger<CommandAuthorizationEvaluator>? logger = null) {
+        ILogger<CommandAuthorizationEvaluator>? logger = null,
+        FrontComposerAuthorizationOptions? options = null) {
         ArgumentNullException.ThrowIfNull(authorizationService);
 
         if (stateProvider is null) {
@@ -357,7 +473,8 @@ public sealed class CommandAuthorizationEvaluatorTests {
             authorizationService,
             stateProvider,
             tenant,
-            logger ?? NullLogger<CommandAuthorizationEvaluator>.Instance);
+            logger ?? NullLogger<CommandAuthorizationEvaluator>.Instance,
+            Microsoft.Extensions.Options.Options.Create(options ?? new FrontComposerAuthorizationOptions()));
     }
 
     private static IFrontComposerTenantContextAccessor DefaultTenant() {
