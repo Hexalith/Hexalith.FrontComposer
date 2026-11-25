@@ -200,7 +200,7 @@ public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantCon
         };
 
     private static string NewCorrelationId() {
-        Span<byte> bytes = stackalloc byte[8];
+        Span<byte> bytes = stackalloc byte[16];
         RandomNumberGenerator.Fill(bytes);
         return Convert.ToHexString(bytes);
     }

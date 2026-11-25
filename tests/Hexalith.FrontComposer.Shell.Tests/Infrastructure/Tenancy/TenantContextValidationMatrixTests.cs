@@ -60,6 +60,18 @@ public sealed class TenantContextValidationMatrixTests {
         result.FailureCategory.ShouldBe(TenantContextFailureCategory.TenantMismatch);
     }
 
+    [Fact]
+    public void TryGetContext_Issues128BitHexCorrelationIdsForSuccessAndFailure() {
+        FrontComposerTenantContextAccessor sut = NewAccessor("tenant", "user");
+        TenantContextResult success = sut.TryGetContext("tenant");
+        TenantContextResult failure = sut.TryGetContext("other-tenant");
+
+        success.CorrelationId.ShouldMatch("^[0-9A-F]{32}$");
+        failure.CorrelationId.ShouldMatch("^[0-9A-F]{32}$");
+        success.EnsureSuccess().CorrelationId.ShouldBe(success.CorrelationId);
+        Should.Throw<TenantContextException>(() => failure.EnsureSuccess()).CorrelationId.ShouldBe(failure.CorrelationId);
+    }
+
     [Theory]
     [InlineData(null, "user", TenantContextFailureCategory.TenantMissing)]
     [InlineData("   ", "user", TenantContextFailureCategory.TenantMissing)]
