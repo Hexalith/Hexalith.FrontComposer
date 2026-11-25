@@ -1,3 +1,4 @@
+import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 import { expect, test } from '../fixtures/index.js';
@@ -11,8 +12,9 @@ const externalFaultUrl = process.env.FC_E2E_STORY_6_4_FAULT_BASE_URL;
 const DEVELOPMENT_BASE_URL = externalDevelopmentUrl ?? 'http://127.0.0.1:5084';
 const NON_DEVELOPMENT_BASE_URL = externalNonDevelopmentUrl ?? 'http://127.0.0.1:5085';
 const FAULT_BASE_URL = externalFaultUrl ?? 'http://127.0.0.1:5098';
-const INVALID_VIEW_BASE_URL = 'http://127.0.0.1:5099';
+const externalFixturesConfigured = Boolean(externalDevelopmentUrl && externalNonDevelopmentUrl && externalFaultUrl);
 const SERVER_READY_TIMEOUT_MS = 120_000;
+const DOTNET_BUILD_TIMEOUT_MS = 240_000;
 const COUNTER_PROJECT_DIRECTORY = new URL('../../../samples/Counter/Counter.Web/', import.meta.url);
 const COUNTER_DEBUG_ASSEMBLY = fileURLToPath(new URL('bin/Debug/net11.0/Counter.Web.dll', COUNTER_PROJECT_DIRECTORY));
 
@@ -29,12 +31,13 @@ test.describe('Story 6.4: override accessibility safety diagnostics', () => {
   });
 
   test.beforeAll(async () => {
-    test.setTimeout(SERVER_READY_TIMEOUT_MS);
-    const deadline = Date.now() + SERVER_READY_TIMEOUT_MS - 10_000;
-    if (!externalDevelopmentUrl || !externalNonDevelopmentUrl || !externalFaultUrl) {
-      await buildDebugCounter(deadline, true);
-      await buildDebugCounter(deadline, false);
+    const buildBudget = externalFixturesConfigured ? 0 : 2 * DOTNET_BUILD_TIMEOUT_MS;
+    test.setTimeout(buildBudget + SERVER_READY_TIMEOUT_MS);
+    if (!externalFixturesConfigured) {
+      await buildDebugCounter(true);
+      await buildDebugCounter(false);
     }
+    const deadline = Date.now() + SERVER_READY_TIMEOUT_MS - 10_000;
     await Promise.all([
       externalDevelopmentUrl || startCounterHost(DEVELOPMENT_BASE_URL, 'Development', deadline, 'contract-mismatch'),
       externalNonDevelopmentUrl || startCounterHost(NON_DEVELOPMENT_BASE_URL, 'Test', deadline, 'contract-mismatch'),
@@ -106,17 +109,26 @@ test.describe('Story 6.4: override accessibility safety diagnostics', () => {
   });
 
   test('startup rejects an invalid replacement and keeps the Counter view usable', async ({ page }) => {
+    test.skip(externalFixturesConfigured, 'Startup diagnostics require an owned Counter host.');
     test.setTimeout(SERVER_READY_TIMEOUT_MS);
     const deadline = Date.now() + SERVER_READY_TIMEOUT_MS - 10_000;
-    if (externalDevelopmentUrl && externalNonDevelopmentUrl && externalFaultUrl) {
-      await buildDebugCounter(deadline, false);
+    const host = spawnCounterHost('http://127.0.0.1:0', 'Development', 'invalid-view');
+    let rejectionCount = 0;
+    for (const stream of [host.child.stdout, host.child.stderr]) {
+      createInterface({ input: stream }).on('line', line => {
+        if (line.includes('HFC1043: Invalid Level 4 view override component.')) {
+          rejectionCount++;
+        }
+      });
     }
 
-    const host = await startCounterHost(INVALID_VIEW_BASE_URL, 'Development', deadline, 'invalid-view');
-    const rejected = /HFC1043: Invalid Level 4 view override component\./g;
-    expect(host.output.match(rejected)).toHaveLength(1);
+    const listeningOrigin = () => [...host.listeningOrigins][0];
+    await expect.poll(listeningOrigin, { timeout: deadline - Date.now() }).toBeTruthy();
+    const baseUrl = listeningOrigin();
+    await waitForOwnedServer(host, baseUrl, deadline);
+    expect(rejectionCount).toBe(1);
 
-    await page.goto(new URL('/counter', INVALID_VIEW_BASE_URL).href);
+    await page.goto(new URL('/counter', baseUrl).href);
     await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
     const form = page.locator('.fc-command-form[aria-label="Batch Increment command form"]');
     await fillFieldByLabel(form, 'Amount', '2');
@@ -131,11 +143,11 @@ test.describe('Story 6.4: override accessibility safety diagnostics', () => {
     await expect(grid.locator('.counter-cards')).toBeVisible();
     await expect(grid.locator('.counter-count-slot strong')).toHaveText('2');
     await expect(grid.getByText('INVALID-VIEW-RENDERED')).toHaveCount(0);
-    expect(host.output.match(rejected)).toHaveLength(1);
+    expect(rejectionCount).toBe(1);
   });
 });
 
-const buildDebugCounter = async (deadline: number, accessibilityFixture: boolean): Promise<void> => {
+const buildDebugCounter = async (accessibilityFixture: boolean): Promise<void> => {
   const args = ['build', 'Counter.Web.csproj', '--configuration', 'Debug', '--disable-build-servers', '-m:1'];
   if (accessibilityFixture) {
     args.push('-p:DefineConstants=COUNTER_ACCESSIBILITY_WARNING_FIXTURE', '-p:WarningsNotAsErrors=HFC1050');
@@ -144,7 +156,7 @@ const buildDebugCounter = async (deadline: number, accessibilityFixture: boolean
     'dotnet',
     args,
     { cwd: COUNTER_PROJECT_DIRECTORY, env: process.env },
-    deadline - Date.now(),
+    DOTNET_BUILD_TIMEOUT_MS,
   );
   ownedProcesses.push(build);
   const exitCode = await new Promise<number | null>((resolve, reject) => {
@@ -164,7 +176,16 @@ const startCounterHost = async (
   environmentName: 'Development' | 'Test',
   deadline: number,
   fixture: CounterFixture,
-): Promise<OwnedProcess> => {
+): Promise<void> => {
+  const host = spawnCounterHost(baseUrl, environmentName, fixture);
+  await waitForOwnedServer(host, baseUrl, deadline);
+};
+
+const spawnCounterHost = (
+  baseUrl: string,
+  environmentName: 'Development' | 'Test',
+  fixture: CounterFixture,
+): OwnedProcess => {
   const host = spawnOwnedProcess('dotnet', [COUNTER_DEBUG_ASSEMBLY, '--urls', baseUrl], {
     cwd: COUNTER_PROJECT_DIRECTORY,
     env: {
@@ -179,6 +200,5 @@ const startCounterHost = async (
     },
   });
   ownedProcesses.push(host);
-  await waitForOwnedServer(host, baseUrl, deadline);
   return host;
 };
