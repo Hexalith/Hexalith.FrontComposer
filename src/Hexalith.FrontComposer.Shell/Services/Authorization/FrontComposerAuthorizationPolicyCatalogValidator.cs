@@ -1,6 +1,7 @@
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Options;
+using Hexalith.FrontComposer.Shell.Registration;
 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -37,6 +38,9 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidator(
         // Snapshot manifests once: a custom IFrontComposerRegistry implementation that refreshes
         // manifests between calls would otherwise produce a declared-vs-missing race.
         DomainManifest[] manifests = [.. registry.GetManifests()];
+        if (registry is not FrontComposerRegistry) {
+            FrontComposerRegistry.ValidateCommandOwnership(manifests);
+        }
 
         // Collect the set of policies any manifest declares so we can distinguish
         // "no catalog vs no protected commands" from "no catalog but commands declare policies".

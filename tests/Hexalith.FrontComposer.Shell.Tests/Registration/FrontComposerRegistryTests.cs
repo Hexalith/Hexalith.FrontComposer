@@ -10,6 +10,8 @@ using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using NSubstitute;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Registration;
@@ -323,6 +325,27 @@ public class FrontComposerRegistryTests {
 
         exception.Message.ShouldContain("HFC1601");
         exception.Message.ShouldContain($"{command} [Alpha, Middle, Zebra]");
+    }
+
+    [Fact]
+    public async Task StartupRejectsDuplicateCommandOwnershipFromCustomRegistry() {
+        string command = typeof(IncrementCommand).FullName!;
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+        registry.GetManifests().Returns([
+            new DomainManifest("Beta", "Beta", [], [command]),
+            new DomainManifest("Alpha", "Alpha", [], [command]),
+        ]);
+        _ = builder.Services.AddHexalithFrontComposer();
+        _ = builder.Services.AddSingleton(registry);
+
+        using IHost host = builder.Build();
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            host.StartAsync(TestContext.Current.CancellationToken));
+
+        exception.Message.ShouldContain("HFC1601");
+        exception.Message.ShouldContain($"{command} [Alpha, Beta]");
     }
 
     [Fact]

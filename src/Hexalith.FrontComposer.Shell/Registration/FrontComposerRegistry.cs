@@ -47,7 +47,8 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         }
     }
 
-    private static void ValidateCommandOwnership(IEnumerable<DomainManifest> manifests) {
+    /// <summary>Validates that each command has one owning bounded context.</summary>
+    internal static void ValidateCommandOwnership(IEnumerable<DomainManifest> manifests) {
         string[] conflicts = [.. manifests
             .SelectMany(static manifest => manifest.Commands
                 .Where(static command => !string.IsNullOrWhiteSpace(command))
