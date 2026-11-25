@@ -43,4 +43,4 @@ builder.Services.AddOpenTelemetry()
    these two activities.
 
 Message and correlation fields emitted by FrontComposer tracing are sanitized
-and bounded at 128 characters. A trailing tilde (`~`) marks a truncated value.
+and bounded at 128 characters. A tilde (`~`) marks an identifier that exceeded the bound.

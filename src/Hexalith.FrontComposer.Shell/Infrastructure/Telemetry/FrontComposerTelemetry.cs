@@ -8,7 +8,7 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 internal static class FrontComposerTelemetry {
     // EventStore correlation IDs can contain up to 128 characters.
     private const int IdentifierLimit = 128;
-    private const char IdentifierTruncationMarker = '~';
+    private const string IdentifierOverflow = "~";
 
     public static readonly ActivitySource Source = new(
         FrontComposerActivitySource.Name,
@@ -184,26 +184,26 @@ internal static class FrontComposerTelemetry {
         => SafeIdentifier(value) ?? "absent";
 
     public static string? SafeIdentifier(string? value)
-        => SanitizeBounded(value, IdentifierLimit, truncationMarker: IdentifierTruncationMarker);
+        => SanitizeBounded(value, IdentifierLimit, overflowValue: IdentifierOverflow);
 
     /// <summary>Gets the bounded type name shared by activity tags and structured logs.</summary>
     public static string? SafeTypeName(string? value)
         => SanitizeBounded(value, 256, allowPlus: true);
 
-    private static string? SanitizeBounded(string? value, int maxLength, bool allowPlus = false, char? truncationMarker = null) {
+    private static string? SanitizeBounded(string? value, int maxLength, bool allowPlus = false, string? overflowValue = null) {
         if (string.IsNullOrWhiteSpace(value)) {
             return null;
         }
 
         ReadOnlySpan<char> span = value.AsSpan().Trim();
+        if (span.Length > maxLength && overflowValue is not null) {
+            return overflowValue;
+        }
+
         Span<char> buffer = stackalloc char[Math.Min(span.Length, maxLength)];
         for (int i = 0; i < buffer.Length; i++) {
             char ch = span[i];
             buffer[i] = char.IsLetterOrDigit(ch) || ch is '-' or '_' or '.' || (allowPlus && ch == '+') ? ch : '_';
-        }
-
-        if (span.Length > maxLength && truncationMarker is char marker) {
-            buffer[^1] = marker;
         }
 
         return new string(buffer);

@@ -117,9 +117,10 @@ public sealed class FrontComposerTelemetryTests {
     [InlineData(65)]
     [InlineData(128)]
     [InlineData(129)]
+    [InlineData(4096)]
     public void IdentifierDiagnosticsPreserveSupportedLengthAndMarkOverflow(int length) {
         string value = new string('a', length - 1) + "z";
-        string expected = length <= 128 ? value : new string('a', 127) + "~";
+        string expected = length <= 128 ? value : "~";
 
         FrontComposerTelemetry.SafeIdentifier(value).ShouldBe(expected);
         FrontComposerTelemetry.SafeIdentifierOrAbsent(value).ShouldBe(expected);
